@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useChat, convertBackendMessage } from '../hooks/useChat'
@@ -40,10 +40,12 @@ export default function Chat() {
     const [initError, setInitError] = useState<string | null>(null)
     const [isCreatingSession, setIsCreatingSession] = useState(false)
     const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
+    const [showStopHint, setShowStopHint] = useState(false)
+    const stopHintTimerRef = useRef<number | null>(null)
 
     const client = selectedAgent ? getClient(selectedAgent) : null
 
-    const { messages, isLoading, error, sendMessage, clearMessages, setInitialMessages } = useChat({
+    const { messages, isLoading, error, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
         sessionId,
         client: client!,
     })
@@ -151,9 +153,36 @@ export default function Chat() {
         }
     }, [initialMessage, sessionId, isInitializing, messages.length, sendMessage])
 
+    useEffect(() => {
+        return () => {
+            if (stopHintTimerRef.current !== null) {
+                window.clearTimeout(stopHintTimerRef.current)
+                stopHintTimerRef.current = null
+            }
+        }
+    }, [])
+
     const handleSendMessage = useCallback((text: string) => {
+        if (stopHintTimerRef.current !== null) {
+            window.clearTimeout(stopHintTimerRef.current)
+            stopHintTimerRef.current = null
+        }
+        setShowStopHint(false)
         sendMessage(text)
     }, [sendMessage])
+
+    const handleStopMessage = useCallback(async () => {
+        const stopped = await stopMessage()
+        if (stopped) {
+            setShowStopHint(true)
+            if (stopHintTimerRef.current !== null) {
+                window.clearTimeout(stopHintTimerRef.current)
+            }
+            stopHintTimerRef.current = window.setTimeout(() => {
+                setShowStopHint(false)
+            }, 2200)
+        }
+    }, [stopMessage])
 
     if (isInitializing) {
         return (
@@ -215,9 +244,14 @@ export default function Chat() {
             {/* Input at bottom - floating */}
             <div className="chat-input-area-bottom">
                 <div className="chat-input-area-inner">
+                    <div className={`chat-inline-hint ${showStopHint ? 'visible' : ''}`}>
+                        已停止生成
+                    </div>
                     <ChatInput
                         onSubmit={handleSendMessage}
                         disabled={isLoading || !isConnected || isCreatingSession}
+                        isGenerating={isLoading}
+                        onStopGeneration={handleStopMessage}
                         placeholder={isCreatingSession ? "Switching agent..." : isLoading ? "Waiting for response..." : "Type a message..."}
                         autoFocus
                         selectedAgent={selectedAgent}

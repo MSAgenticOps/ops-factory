@@ -12,6 +12,7 @@ interface UseChatReturn {
     isLoading: boolean
     error: string | null
     sendMessage: (text: string) => Promise<void>
+    stopMessage: () => Promise<boolean>
     clearMessages: () => void
     setInitialMessages: (msgs: ChatMessage[]) => void
 }
@@ -71,6 +72,9 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
     const messagesRef = useRef<ChatMessage[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const isLoadingRef = useRef(false)
+    const activeRequestIdRef = useRef(0)
+    const stopRequestedRef = useRef(false)
 
     // Track mounted state to prevent state updates after unmount
     const isMountedRef = useRef(true)
@@ -95,10 +99,14 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
     }, [updateMessages])
 
     const sendMessage = useCallback(async (text: string) => {
-        if (!sessionId || !text.trim()) return
+        if (!sessionId || !text.trim() || isLoadingRef.current) return
 
         setError(null)
         setIsLoading(true)
+        isLoadingRef.current = true
+        stopRequestedRef.current = false
+        const requestId = activeRequestIdRef.current + 1
+        activeRequestIdRef.current = requestId
 
         // Add user message immediately
         const userMessage: ChatMessage = {
@@ -115,7 +123,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
             // Stream the response
             for await (const event of client.sendMessage(sessionId, text)) {
                 // Check if component is still mounted before updating state
-                if (!isMountedRef.current) break
+                if (!isMountedRef.current || requestId !== activeRequestIdRef.current || stopRequestedRef.current) break
 
                 if (event.type === 'Message' && event.message) {
                     // Convert incoming message to ChatMessage format
@@ -131,15 +139,35 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                 }
             }
         } catch (err) {
-            if (isMountedRef.current) {
+            if (isMountedRef.current && requestId === activeRequestIdRef.current && !stopRequestedRef.current) {
                 setError(err instanceof Error ? err.message : 'Failed to send message')
             }
         } finally {
-            if (isMountedRef.current) {
+            if (isMountedRef.current && requestId === activeRequestIdRef.current) {
                 setIsLoading(false)
+                isLoadingRef.current = false
+                stopRequestedRef.current = false
             }
         }
     }, [client, sessionId, updateMessages])
+
+    const stopMessage = useCallback(async (): Promise<boolean> => {
+        if (!sessionId || !isLoadingRef.current) return false
+
+        stopRequestedRef.current = true
+        setIsLoading(false)
+        isLoadingRef.current = false
+
+        try {
+            await client.stopSession(sessionId)
+            return true
+        } catch (err) {
+            if (isMountedRef.current) {
+                setError(err instanceof Error ? err.message : 'Failed to stop message')
+            }
+            return false
+        }
+    }, [client, sessionId])
 
     const clearMessages = useCallback(() => {
         updateMessages([])
@@ -151,6 +179,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         isLoading,
         error,
         sendMessage,
+        stopMessage,
         clearMessages,
         setInitialMessages
     }
@@ -158,4 +187,3 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
 
 // Export the convert function for use in Chat.tsx
 export { convertBackendMessage }
-

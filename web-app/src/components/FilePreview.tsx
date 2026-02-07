@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
+import { inferFileType } from '../utils/filePreview'
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
@@ -79,26 +80,19 @@ function getLanguageName(type: string): string {
         rs: 'Rust',
         java: 'Java',
         csv: 'CSV',
+        tsv: 'TSV',
+        pdf: 'PDF',
+        mp3: 'Audio',
+        wav: 'Audio',
+        ogg: 'Audio',
+        m4a: 'Audio',
+        mp4: 'Video',
+        webm: 'Video',
+        mov: 'Video',
+        docx: 'DOCX',
+        xlsx: 'XLSX',
     }
     return map[type.toLowerCase()] || type.toUpperCase()
-}
-
-// Check if file type should be rendered (not shown as code)
-function isRenderedType(type: string): boolean {
-    const t = type.toLowerCase()
-    return t === 'html' || t === 'htm' || t === 'md' || t === 'markdown'
-}
-
-// Check if file is markdown
-function isMarkdown(type: string): boolean {
-    const t = type.toLowerCase()
-    return t === 'md' || t === 'markdown'
-}
-
-// Check if file is HTML
-function isHtmlType(type: string): boolean {
-    const t = type.toLowerCase()
-    return t === 'html' || t === 'htm'
 }
 
 // Safely decode URL-encoded filename
@@ -140,7 +134,7 @@ export default function FilePreview() {
     // Syntax highlighted code
     const highlightedCode = useMemo(() => {
         if (!previewFile?.content) return ''
-        const lang = HLJS_LANG_MAP[previewFile.type.toLowerCase()]
+        const lang = HLJS_LANG_MAP[inferFileType(previewFile)]
         if (lang) {
             try {
                 return hljs.highlight(previewFile.content, { language: lang }).value
@@ -162,9 +156,10 @@ export default function FilePreview() {
     }, [previewFile?.content, previewFile?.type])
 
     const isOpen = !!previewFile
-    const canRender = previewFile && isRenderedType(previewFile.type)
-    const isMd = previewFile && isMarkdown(previewFile.type)
-    const isHtml = previewFile && isHtmlType(previewFile.type)
+    const previewKind = previewFile?.previewKind
+    const canToggleSource = previewKind === 'html' || previewKind === 'markdown'
+    const canCopyContent = !!previewFile?.content
+    const displayType = previewFile ? inferFileType(previewFile) : ''
 
     return (
         <div className={`file-preview-panel ${isOpen ? 'open' : ''}`}>
@@ -173,10 +168,10 @@ export default function FilePreview() {
                     <div className="file-preview-header">
                         <div className="file-preview-title">
                             <span className="file-preview-name">{decodeFileName(previewFile.name)}</span>
-                            <span className="file-preview-lang">{getLanguageName(previewFile.type)}</span>
+                            <span className="file-preview-lang">{getLanguageName(displayType)}</span>
                         </div>
                         <div className="file-preview-actions">
-                            {canRender && (
+                            {canToggleSource && (
                                 <button
                                     className={`file-preview-btn ${showSource ? 'active' : ''}`}
                                     onClick={() => setShowSource(!showSource)}
@@ -198,22 +193,24 @@ export default function FilePreview() {
                                     </svg>
                                 </button>
                             )}
-                            <button
-                                className="file-preview-btn"
-                                onClick={handleCopy}
-                                title={copied ? 'Copied!' : 'Copy content'}
-                            >
-                                {copied ? (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                        <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                ) : (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                    </svg>
-                                )}
-                            </button>
+                            {canCopyContent && (
+                                <button
+                                    className="file-preview-btn"
+                                    onClick={handleCopy}
+                                    title={copied ? 'Copied!' : 'Copy content'}
+                                >
+                                    {copied ? (
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                    ) : (
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                        </svg>
+                                    )}
+                                </button>
+                            )}
                             <a
                                 href={getDownloadUrl()}
                                 className="file-preview-btn"
@@ -259,10 +256,62 @@ export default function FilePreview() {
                             </div>
                         )}
 
-                        {!isLoading && !error && previewFile.content !== undefined && (
+                        {!isLoading && !error && previewFile && (
                             <>
+                                {previewKind === 'image' && (
+                                    <div className="file-preview-media-wrapper">
+                                        <img
+                                            className="file-preview-media-image"
+                                            src={getDownloadUrl()}
+                                            alt={previewFile.name}
+                                        />
+                                    </div>
+                                )}
+
+                                {previewKind === 'pdf' && (
+                                    <iframe
+                                        className="file-preview-iframe"
+                                        src={getDownloadUrl()}
+                                        title={previewFile.name}
+                                    />
+                                )}
+
+                                {previewKind === 'audio' && (
+                                    <div className="file-preview-media-wrapper">
+                                        <audio className="file-preview-media-audio" controls src={getDownloadUrl()} />
+                                    </div>
+                                )}
+
+                                {previewKind === 'video' && (
+                                    <div className="file-preview-media-wrapper">
+                                        <video className="file-preview-media-video" controls src={getDownloadUrl()} />
+                                    </div>
+                                )}
+
+                                {previewKind === 'docx' && previewFile.content !== undefined && (
+                                    <pre className="file-preview-code">
+                                        <code>{previewFile.content}</code>
+                                    </pre>
+                                )}
+
+                                {previewKind === 'spreadsheet' && previewFile.tableData && (
+                                    <div className="file-preview-table-wrap">
+                                        <table className="file-preview-table">
+                                            <tbody>
+                                                {previewFile.tableData.map((row, rowIdx) => (
+                                                    <tr key={`row-${rowIdx}`}>
+                                                        {row.map((cell, cellIdx) => (
+                                                            <td key={`cell-${rowIdx}-${cellIdx}`}>{cell}</td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
                                 {/* HTML: render in iframe or show source */}
-                                {isHtml && !showSource && (
+                                {previewKind === 'html' && !showSource && previewFile.content !== undefined && (
                                     <iframe
                                         className="file-preview-iframe"
                                         srcDoc={previewFile.content}
@@ -272,7 +321,7 @@ export default function FilePreview() {
                                 )}
 
                                 {/* Markdown: render or show source */}
-                                {isMd && !showSource && (
+                                {previewKind === 'markdown' && !showSource && previewFile.content !== undefined && (
                                     <div className="file-preview-markdown">
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                             {previewFile.content}
@@ -281,7 +330,7 @@ export default function FilePreview() {
                                 )}
 
                                 {/* Source view for renderable types */}
-                                {canRender && showSource && (
+                                {canToggleSource && showSource && previewFile.content !== undefined && (
                                     <pre className="file-preview-code">
                                         <code
                                             dangerouslySetInnerHTML={{ __html: highlightedCode || previewFile.content }}
@@ -290,7 +339,7 @@ export default function FilePreview() {
                                 )}
 
                                 {/* Code files: syntax highlighted */}
-                                {!canRender && (
+                                {previewKind === 'code' && previewFile.content !== undefined && (
                                     <pre className="file-preview-code">
                                         <code
                                             dangerouslySetInnerHTML={{ __html: highlightedCode || previewFile.content }}

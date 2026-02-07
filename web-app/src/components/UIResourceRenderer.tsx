@@ -33,6 +33,10 @@ function isMermaidVisualization(uri: string, html: string): boolean {
 /**
  * Create a clean HTML page with CDN Mermaid.js
  */
+/**
+ * Create a clean HTML page with CDN Mermaid.js
+ * Uses ESM import for Mermaid v10+ and applies "Beautiful" styling
+ */
 function createCleanMermaidHtml(mermaidCode: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -40,12 +44,11 @@ function createCleanMermaidHtml(mermaidCode: string): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mermaid Diagram</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js" onerror="document.body.innerHTML='<h1>Failed to load Mermaid.js</h1><p>Please check your internet connection or CDN access.</p>';"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 40px;
             background-color: #ffffff;
             display: flex;
             justify-content: center;
@@ -53,37 +56,89 @@ function createCleanMermaidHtml(mermaidCode: string): string {
             min-height: 100vh;
             box-sizing: border-box;
         }
-        .mermaid {
-            max-width: 100%;
-        }
         .container {
-            text-align: center;
             width: 100%;
+            max-width: 100%;
+            text-align: center;
         }
-        h1 {
-            font-size: 1.5em;
-            font-weight: 300;
-            color: #333;
-            margin-bottom: 20px;
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #ffffff;
+            border-radius: 12px;
+            /* subtle shadow for premium feel */
+            /* box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); */
+        }
+        #error-container {
+            color: #ef4444;
+            background: #fef2f2;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: left;
+            font-family: monospace;
+            white-space: pre-wrap;
+            display: none;
+            margin: 20px;
         }
     </style>
 </head>
 <body>
+    <div id="error-container"></div>
     <div class="container">
-        <h1>Mermaid Diagram</h1>
         <div class="mermaid">
 ${mermaidCode}
         </div>
     </div>
-    <script>
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: 'default',
-            flowchart: { useMaxWidth: true, htmlLabels: true }
-        });
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        
+        try {
+            // "Beautiful" configuration mimicking modern aesthetics
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: 'base',
+                securityLevel: 'loose',
+                themeVariables: {
+                    primaryColor: '#e0e7ff', // Soft Indigo
+                    primaryTextColor: '#1e1b4b',
+                    primaryBorderColor: '#c7d2fe',
+                    lineColor: '#6366f1',
+                    secondaryColor: '#f3e8ff', // Soft Purple
+                    tertiaryColor: '#fde68a', // Soft Amber
+                    fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                    fontSize: '16px',
+                },
+                flowchart: { 
+                    useMaxWidth: true, 
+                    htmlLabels: true,
+                    curve: 'basis' // Smoother curves
+                }
+            });
+        } catch (e) {
+            const errDiv = document.getElementById('error-container');
+            errDiv.style.display = 'block';
+            errDiv.textContent = 'Mermaid Initialization Error:\\n' + e.message;
+        }
     </script>
 </body>
 </html>`
+}
+
+/**
+ * Helper to correctly decode Base64 UTF-8 string
+ */
+function decodeBase64Utf8(base64: string): string {
+    try {
+        const binaryString = window.atob(base64)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+        }
+        return new TextDecoder().decode(bytes)
+    } catch (e) {
+        console.error('Base64 decode error:', e);
+        return window.atob(base64); // Fallback to standard atob
+    }
 }
 
 /**
@@ -102,8 +157,8 @@ export default function UIResourceRenderer({ resource }: UIResourceRendererProps
 
             // Decode the HTML content from base64 blob or text
             if (resource.blob) {
-                // Base64 decode
-                decoded = atob(resource.blob)
+                // Base64 decode with UTF-8 support
+                decoded = decodeBase64Utf8(resource.blob)
             } else if (resource.text) {
                 decoded = resource.text
             } else {

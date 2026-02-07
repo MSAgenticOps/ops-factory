@@ -1,37 +1,34 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { getPreviewKind, inferFileType, isPreviewableFile, needsTextContent, PreviewKind } from '../utils/filePreview'
+import { extractDocxText, extractXlsxTable, parseCsvTable } from '../utils/officePreview'
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
-
-// File types that can be previewed as text
-const PREVIEWABLE_TYPES = new Set([
-    'txt', 'md', 'markdown',
-    'js', 'ts', 'jsx', 'tsx',
-    'py', 'sh', 'bash', 'zsh',
-    'yaml', 'yml', 'json', 'toml',
-    'css', 'scss', 'less',
-    'html', 'htm', 'xml', 'svg',
-    'sql', 'graphql',
-    'go', 'rs', 'java', 'c', 'cpp', 'h',
-    'env', 'gitignore', 'dockerfile',
-    'csv',
-])
 
 export interface PreviewFile {
     name: string
     path: string
     type: string
     agentId: string
+    previewKind: PreviewKind
     content?: string
+    tableData?: string[][]
+}
+
+interface PreviewRequest {
+    name: string
+    path: string
+    type: string
+    agentId: string
 }
 
 interface PreviewContextType {
     previewFile: PreviewFile | null
     isLoading: boolean
     error: string | null
-    openPreview: (file: PreviewFile) => Promise<void>
+    openPreview: (file: PreviewRequest) => Promise<void>
     closePreview: () => void
-    isPreviewable: (type: string) => boolean
+    isPreviewable: (type: string, name?: string, path?: string) => boolean
 }
 
 const PreviewContext = createContext<PreviewContextType | null>(null)
@@ -41,15 +38,52 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const isPreviewable = useCallback((type: string) => {
-        return PREVIEWABLE_TYPES.has(type.toLowerCase())
+    const isPreviewable = useCallback((type: string, name?: string, path?: string) => {
+        return isPreviewableFile({ type, name, path })
     }, [])
 
-    const openPreview = useCallback(async (file: PreviewFile) => {
+    const openPreview = useCallback(async (file: PreviewRequest) => {
         setIsLoading(true)
         setError(null)
 
         try {
+            const normalizedType = inferFileType(file)
+            const previewKind = getPreviewKind(file)
+            if (previewKind === 'unsupported') {
+                throw new Error(`Unsupported preview type: ${normalizedType}`)
+            }
+
+            const normalizedFile = { ...file, type: normalizedType, previewKind }
+
+            if (!needsTextContent(previewKind)) {
+                if (previewKind === 'docx') {
+                    const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+                    const res = await fetch(url)
+                    if (!res.ok) throw new Error(`Failed to fetch DOCX: ${res.status}`)
+                    const buffer = await res.arrayBuffer()
+                    const content = await extractDocxText(buffer)
+                    setPreviewFile({ ...normalizedFile, content })
+                    return
+                }
+
+                if (previewKind === 'spreadsheet') {
+                    const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+                    const res = await fetch(url)
+                    if (!res.ok) throw new Error(`Failed to fetch spreadsheet: ${res.status}`)
+
+                    const tableData = normalizedType === 'xlsx'
+                        ? await extractXlsxTable(await res.arrayBuffer())
+                        : parseCsvTable(await res.text(), normalizedType === 'tsv' ? '\t' : ',')
+
+                    const content = tableData.map(row => row.join('\t')).join('\n')
+                    setPreviewFile({ ...normalizedFile, content, tableData })
+                    return
+                }
+
+                setPreviewFile(normalizedFile)
+                return
+            }
+
             const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
             const res = await fetch(url)
 
@@ -58,11 +92,11 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
             }
 
             const content = await res.text()
-            setPreviewFile({ ...file, content })
+            setPreviewFile({ ...normalizedFile, content })
         } catch (err) {
             console.error('Failed to load file for preview:', err)
             setError(err instanceof Error ? err.message : 'Failed to load file')
-            setPreviewFile({ ...file, content: '' })
+            setPreviewFile(null)
         } finally {
             setIsLoading(false)
         }

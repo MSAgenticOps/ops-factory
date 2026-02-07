@@ -78,7 +78,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
         <>
           {hasDefault && (
             <div className="mcp-category">
-              <h4 className="mcp-category-title">Default</h4>
+              <h4 className="mcp-category-title">Enabled</h4>
               <div className="mcp-grid">
                 {categorized.default.map(entry => (
                   <McpCard

@@ -1,7 +1,8 @@
 import { ChildProcess, spawn } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { relative, join } from 'node:path'
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import type { AgentConfig, GatewayConfig } from './config.js'
 
 interface ManagedProcess {
@@ -29,29 +30,29 @@ export class ProcessManager {
     }
   }
 
-  private getWorkspacePath(agentId: string): string {
-    return `${this.config.agentsDir}/${agentId}/workspace`
+  private getArtifactsPath(agentId: string): string {
+    return `${this.config.agentsDir}/${agentId}/artifacts`
   }
 
-  private getGooseConfigDir(agentId: string): string {
-    return `${this.config.agentsDir}/${agentId}/goose-config`
+  private getAgentRootPath(agentId: string): string {
+    return `${this.config.agentsDir}/${agentId}`
   }
 
-  private getWorkspacePathRelative(agentId: string): string {
-    const workspacePath = this.getWorkspacePath(agentId)
-    const relativePath = relative(this.config.projectRoot, workspacePath)
+  private getArtifactsPathRelative(agentId: string): string {
+    const artifactsPath = this.getArtifactsPath(agentId)
+    const relativePath = relative(this.config.projectRoot, artifactsPath)
     return relativePath || '.'
   }
 
-  // Public method to get absolute workspace path for file operations
-  getWorkspacePathAbsolute(agentId: string): string | null {
+  // Public method to get absolute artifacts path for file operations
+  getArtifactsPathAbsolute(agentId: string): string | null {
     const m = this.processes.get(agentId)
     if (!m) return null
-    return this.getWorkspacePath(m.config.id)
+    return this.getArtifactsPath(m.config.id)
   }
 
   private getAgentSkills(agentId: string): string[] {
-    const skillsDir = join(this.getWorkspacePath(agentId), '.claude', 'skills')
+    const skillsDir = join(this.getAgentRootPath(agentId), 'config', 'skills')
     if (!existsSync(skillsDir)) return []
 
     try {
@@ -64,29 +65,28 @@ export class ProcessManager {
     }
   }
 
+
+
   private async startAgent(agent: AgentConfig): Promise<void> {
     console.log(`Starting ${agent.id} on port ${agent.port}...`)
 
-    // Ensure workspace directory exists
-    const workspacePath = this.getWorkspacePath(agent.id)
-    await mkdir(workspacePath, { recursive: true })
+    // Ensure artifacts directory exists
+    const artifactsPath = this.getArtifactsPath(agent.id)
+    await mkdir(artifactsPath, { recursive: true })
 
-    // Ensure goose config directory exists (for per-agent MCP configuration)
-    const gooseConfigDir = this.getGooseConfigDir(agent.id)
-    await mkdir(gooseConfigDir, { recursive: true })
-
+    // Build environment for goosed
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       GOOSE_PORT: String(agent.port),
       GOOSE_HOST: agent.host,
       GOOSE_SERVER__SECRET_KEY: agent.secret_key,
-      GOOSE_CONFIG_DIR: gooseConfigDir,
-      ...(agent.env || {}),
+      GOOSE_PATH_ROOT: this.getAgentRootPath(agent.id),
+      GOOSE_DISABLE_KEYRING: '1', // Use file-based secrets.yaml instead of keyring
     }
 
     const child = spawn(this.config.goosedBin, ['agent'], {
       env,
-      cwd: workspacePath,
+      cwd: artifactsPath,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 
@@ -150,16 +150,30 @@ export class ProcessManager {
     model?: string
     skills: string[]
   }> {
-    return Array.from(this.processes.values()).map(m => ({
-      id: m.config.id,
-      name: m.config.name,
-      status: m.status,
-      working_dir: this.getWorkspacePathRelative(m.config.id),
-      port: m.config.port,
-      provider: m.config.env?.GOOSE_PROVIDER,
-      model: m.config.env?.GOOSE_MODEL,
-      skills: this.getAgentSkills(m.config.id),
-    }))
+    return Array.from(this.processes.values()).map(m => {
+      const gooseConfig = this.getAgentGooseConfig(m.config.id)
+      return {
+        id: m.config.id,
+        name: m.config.name,
+        status: m.status,
+        working_dir: this.getArtifactsPathRelative(m.config.id),
+        port: m.config.port,
+        provider: gooseConfig?.GOOSE_PROVIDER,
+        model: gooseConfig?.GOOSE_MODEL,
+        skills: this.getAgentSkills(m.config.id),
+      }
+    })
+  }
+
+  private getAgentGooseConfig(agentId: string): { GOOSE_PROVIDER?: string; GOOSE_MODEL?: string } | null {
+    const configPath = join(this.getAgentRootPath(agentId), 'config', 'config.yaml')
+    if (!existsSync(configPath)) return null
+    try {
+      const content = readFileSync(configPath, 'utf-8')
+      return parseYaml(content) as { GOOSE_PROVIDER?: string; GOOSE_MODEL?: string }
+    } catch {
+      return null
+    }
   }
 
   async stopAll(): Promise<void> {
@@ -170,5 +184,177 @@ export class ProcessManager {
       }
     }
     await new Promise(r => setTimeout(r, 1000))
+  }
+
+  // ========== Agent Config Management ==========
+
+  private getAgentConfigPath(agentId: string): string {
+    return join(this.config.agentsDir, agentId, 'config.yaml')
+  }
+
+  private getAgentsMdPath(agentId: string): string {
+    return join(this.config.agentsDir, agentId, 'AGENTS.md')
+  }
+
+  getAgentConfig(agentId: string): {
+    id: string
+    name: string
+    port: number
+    agentsMd: string
+    workingDir: string
+    provider?: string
+    model?: string
+  } | null {
+    const m = this.processes.get(agentId)
+    if (!m) return null
+
+    // Read AGENTS.md content
+    const agentsMdPath = this.getAgentsMdPath(agentId)
+    let agentsMd = ''
+    if (existsSync(agentsMdPath)) {
+      try {
+        agentsMd = readFileSync(agentsMdPath, 'utf-8')
+      } catch {
+        agentsMd = ''
+      }
+    }
+
+    const gooseConfig = this.getAgentGooseConfig(agentId)
+
+    return {
+      id: m.config.id,
+      name: m.config.name,
+      port: m.config.port,
+      agentsMd,
+      workingDir: this.getArtifactsPathRelative(agentId),
+      provider: gooseConfig?.GOOSE_PROVIDER,
+      model: gooseConfig?.GOOSE_MODEL,
+    }
+  }
+
+  updateAgentConfig(agentId: string, updates: { port?: number; agentsMd?: string }): {
+    success: boolean
+    error?: string
+    requiresRestart?: boolean
+  } {
+    const m = this.processes.get(agentId)
+    if (!m) {
+      return { success: false, error: `Agent '${agentId}' not found` }
+    }
+
+    let requiresRestart = false
+
+    try {
+      // Update port in config.yaml
+      if (updates.port !== undefined && updates.port !== m.config.port) {
+        const configPath = this.getAgentConfigPath(agentId)
+        if (existsSync(configPath)) {
+          const configContent = readFileSync(configPath, 'utf-8')
+          const config = parseYaml(configContent) as Record<string, unknown>
+          config.port = updates.port
+          writeFileSync(configPath, stringifyYaml(config), 'utf-8')
+          requiresRestart = true
+        } else {
+          return { success: false, error: 'Config file not found' }
+        }
+      }
+
+      // Update AGENTS.md
+      if (updates.agentsMd !== undefined) {
+        const agentsMdPath = this.getAgentsMdPath(agentId)
+        writeFileSync(agentsMdPath, updates.agentsMd, 'utf-8')
+      }
+
+      return { success: true, requiresRestart }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+    }
+  }
+
+  // ========== Skills Detailed ==========
+
+  getAgentSkillsDetailed(agentId: string): Array<{
+    name: string
+    description: string
+    path: string
+  }> {
+    const skillsDir = join(this.getAgentRootPath(agentId), 'config', 'skills')
+    if (!existsSync(skillsDir)) return []
+
+    try {
+      const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort((a, b) => a.localeCompare(b))
+
+      return skillDirs.map(skillName => {
+        const skillPath = join(skillsDir, skillName)
+        const skillMdPath = join(skillPath, 'SKILL.md')
+
+        let description = ''
+        if (existsSync(skillMdPath)) {
+          try {
+            const content = readFileSync(skillMdPath, 'utf-8')
+            // Extract description from YAML frontmatter or first paragraph
+            const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/)
+            if (frontmatterMatch) {
+              const frontmatter = frontmatterMatch[1]
+              const descMatch = frontmatter.match(/description:\s*(.+)/)
+              if (descMatch) {
+                description = descMatch[1].trim().replace(/^["']|["']$/g, '')
+              }
+            }
+            // Fallback: first non-empty line after frontmatter or title
+            if (!description) {
+              const lines = content.split('\n')
+              for (const line of lines) {
+                const trimmed = line.trim()
+                if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('---')) {
+                  description = trimmed
+                  break
+                }
+              }
+            }
+          } catch {
+            // ignore read errors
+          }
+        }
+
+        return {
+          name: skillName,
+          description: description || 'No description available',
+          path: `.claude/skills/${skillName}`,
+        }
+      })
+    } catch {
+      return []
+    }
+  }
+
+  // ========== Port Validation ==========
+
+  validatePort(port: number, excludeAgentId?: string): {
+    valid: boolean
+    conflictWith?: string
+  } {
+    // Check port range
+    if (port < 1024 || port > 65535) {
+      return { valid: false }
+    }
+
+    // Check for conflict with other agents
+    for (const [id, managed] of this.processes) {
+      if (excludeAgentId && id === excludeAgentId) continue
+      if (managed.config.port === port) {
+        return { valid: false, conflictWith: id }
+      }
+    }
+
+    // Check gateway port
+    if (port === this.config.port) {
+      return { valid: false, conflictWith: 'gateway' }
+    }
+
+    return { valid: true }
   }
 }

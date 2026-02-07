@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "http-proxy": "^1.18.1",
-    "yaml": "^2.7.0"
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@types/http-proxy": "^1.17.16",

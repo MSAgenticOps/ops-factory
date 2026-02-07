@@ -34,7 +34,9 @@ interface UploadedFile {
 
 interface ChatInputProps {
     onSubmit: (message: string) => void
+    onStopGeneration?: () => void | Promise<void>
     disabled?: boolean
+    isGenerating?: boolean
     placeholder?: string
     autoFocus?: boolean
     selectedAgent?: string
@@ -45,7 +47,9 @@ interface ChatInputProps {
 
 export default function ChatInput({
     onSubmit,
+    onStopGeneration,
     disabled = false,
+    isGenerating = false,
     placeholder = "Type a message...",
     autoFocus = false,
     selectedAgent = '',
@@ -267,6 +271,11 @@ export default function ChatInput({
         }
     }
 
+    const handleStopGeneration = () => {
+        if (!isGenerating || !onStopGeneration) return
+        onStopGeneration()
+    }
+
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
@@ -369,17 +378,6 @@ export default function ChatInput({
                     disabled={disabled}
                     rows={1}
                 />
-                <button
-                    className="chat-send-btn-new"
-                    onClick={handleSubmit}
-                    disabled={disabled || !hasContent || isAnyFileLoading}
-                    aria-label="Send message"
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                </button>
             </div>
 
             {/* Toolbar */}
@@ -391,8 +389,8 @@ export default function ChatInput({
                     disabled={disabled || uploadedFiles.length >= MAX_FILES_PER_MESSAGE}
                     title={`Attach files (${uploadedFiles.length}/${MAX_FILES_PER_MESSAGE})`}
                 >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" width="17" height="17">
+                        <path d="M12 5v14M5 12h14" />
                     </svg>
                     {uploadedFiles.length > 0 && (
                         <span className="toolbar-badge">{uploadedFiles.length}</span>
@@ -423,6 +421,25 @@ export default function ChatInput({
                         disabled={disabled}
                     />
                 )}
+
+                <button
+                    className={`chat-send-btn-new ${isGenerating ? 'is-stop' : ''}`}
+                    onClick={isGenerating ? handleStopGeneration : handleSubmit}
+                    disabled={isGenerating ? !onStopGeneration : (disabled || !hasContent || isAnyFileLoading)}
+                    aria-label={isGenerating ? "Stop generation" : "Send message"}
+                    title={isGenerating ? "Stop generation" : "Send message"}
+                >
+                    {isGenerating ? (
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+                            <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
+                        </svg>
+                    ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width="18" height="18">
+                            <path d="M12 19V5" />
+                            <path d="M6.5 10.5L12 5l5.5 5.5" />
+                        </svg>
+                    )}
+                </button>
             </div>
         </div>
     )

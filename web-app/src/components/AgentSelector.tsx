@@ -69,7 +69,6 @@ export default function AgentSelector({
 
             {isOpen && (
                 <div className="agent-dropdown">
-                    <div className="agent-dropdown-header">Agent</div>
                     {agents.map(agent => (
                         <button
                             key={agent.id}
@@ -83,7 +82,7 @@ export default function AgentSelector({
                         >
                             {agent.name}
                             {agent.status !== 'running' && (
-                                <span style={{ fontSize: '0.75em', opacity: 0.6, marginLeft: '4px' }}>
+                                <span className="agent-option-status">
                                     ({agent.status})
                                 </span>
                             )}

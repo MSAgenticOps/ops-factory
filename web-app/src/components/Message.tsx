@@ -104,9 +104,64 @@ export default function Message({ message, toolResponses = new Map(), agentId }:
 
     const fullText = textContent.join('\n')
 
+    // Detect file paths in text - match absolute paths containing /artifacts/
+    // More flexible regex that handles paths in various contexts
+    const filePathRegex = /(\/[^\s\n]+\/artifacts\/[^\s\n,，。]+\.[a-zA-Z0-9]+)/g
+    const detectedFiles: { path: string; name: string; ext: string }[] = []
+    const seenPaths = new Set<string>()
+    let match
+    while ((match = filePathRegex.exec(fullText)) !== null) {
+        const filePath = match[1]
+        if (seenPaths.has(filePath)) continue  // Deduplicate
+        seenPaths.add(filePath)
+        const fileName = filePath.split('/').pop() || filePath
+        const fileExt = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
+        detectedFiles.push({ path: filePath, name: fileName, ext: fileExt })
+    }
+
     // Don't render empty messages (no text and no tool calls)
     if (!fullText && toolCalls.length === 0) {
         return null
+    }
+
+    // File capsule component
+    const FileCapsule = ({ filePath, fileName, fileExt }: { filePath: string; fileName: string; fileExt: string }) => {
+        const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(fileName)}?key=${GATEWAY_SECRET_KEY}`
+        const canPreview = isPreviewable(fileExt, fileName, filePath)
+
+        const handlePreview = (e: React.MouseEvent) => {
+            e.preventDefault()
+            openPreview({
+                name: fileName,
+                path: filePath,
+                type: fileExt,
+                agentId: agentId || '',
+            })
+        }
+
+        return (
+            <div className="file-capsule">
+                <span className="file-capsule-icon">📄</span>
+                <span className="file-capsule-name">{fileName}</span>
+                <div className="file-capsule-actions">
+                    {canPreview && (
+                        <button className="file-capsule-btn" onClick={handlePreview} title="Preview">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </button>
+                    )}
+                    <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="file-capsule-btn" title="Download">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -115,78 +170,100 @@ export default function Message({ message, toolResponses = new Map(), agentId }:
                 {isUser ? 'U' : 'G'}
             </div>
             <div className="message-content">
-                {fullText && (
-                    <div className="message-text">
-                        <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                                a: ({ href, children, ...props }) => {
-                                    if (href && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:') && agentId) {
-                                        const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(href)}?key=${GATEWAY_SECRET_KEY}`
-                                        const fileName = href.split('/').pop() || href
-                                        const fileExt = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
-                                        const canPreview = isPreviewable(fileExt)
+                {message.content.map((content, index) => {
+                    if (content.type === 'text' && content.text) {
+                        return (
+                            <div key={`text-${index}`} className="message-text">
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        a: ({ href, children, ...props }) => {
+                                            if (href && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:') && agentId) {
+                                                const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(href)}?key=${GATEWAY_SECRET_KEY}`
+                                                const fileName = href.split('/').pop() || href
+                                                const fileExt = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
+                                                const canPreview = isPreviewable(fileExt, fileName, href)
 
-                                        const handlePreview = (e: React.MouseEvent) => {
-                                            e.preventDefault()
-                                            openPreview({
-                                                name: fileName,
-                                                path: href,
-                                                type: fileExt,
-                                                agentId: agentId,
-                                            })
+                                                const handlePreview = (e: React.MouseEvent) => {
+                                                    e.preventDefault()
+                                                    openPreview({
+                                                        name: fileName,
+                                                        path: href,
+                                                        type: fileExt,
+                                                        agentId: agentId,
+                                                    })
+                                                }
+
+                                                return (
+                                                    <span className="file-link-group" {...props}>
+                                                        <span className="file-link-name">{children}</span>
+                                                        {canPreview && (
+                                                            <button
+                                                                className="file-link-btn file-preview-trigger"
+                                                                onClick={handlePreview}
+                                                                title="Preview"
+                                                            >
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                                    <circle cx="12" cy="12" r="3" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                        <a
+                                                            href={downloadUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="file-link-btn"
+                                                            title="Download"
+                                                        >
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                                <polyline points="7 10 12 15 17 10" />
+                                                                <line x1="12" y1="15" x2="12" y2="3" />
+                                                            </svg>
+                                                        </a>
+                                                    </span>
+                                                )
+                                            }
+                                            return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
                                         }
+                                    }}
+                                >
+                                    {content.text}
+                                </ReactMarkdown>
+                            </div>
+                        )
+                    } else if (content.type === 'toolRequest' && content.id) {
+                        const toolCall = toolCalls.find(t => t.id === content.id)
+                        if (!toolCall) return null
 
-                                        return (
-                                            <span className="file-link-group" {...props}>
-                                                <span className="file-link-name">{children}</span>
-                                                {canPreview && (
-                                                    <button
-                                                        className="file-link-btn file-preview-trigger"
-                                                        onClick={handlePreview}
-                                                        title="Preview"
-                                                    >
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                            <circle cx="12" cy="12" r="3" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                                <a
-                                                    href={downloadUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="file-link-btn"
-                                                    title="Download"
-                                                >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                        <polyline points="7 10 12 15 17 10" />
-                                                        <line x1="12" y1="15" x2="12" y2="3" />
-                                                    </svg>
-                                                </a>
-                                            </span>
-                                        )
-                                    }
-                                    return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
-                                }
-                            }}
-                        >
-                            {fullText}
-                        </ReactMarkdown>
+                        return (
+                            <ToolCallDisplay
+                                key={toolCall.id}
+                                name={toolCall.name}
+                                args={toolCall.args}
+                                result={toolCall.result}
+                                isPending={toolCall.isPending}
+                                isError={toolCall.isError}
+                            />
+                        )
+                    }
+                    return null
+                })}
+
+                {/* Render detected file capsules at the end */}
+                {!isUser && detectedFiles.length > 0 && (
+                    <div className="file-capsules-container">
+                        {detectedFiles.map((file, idx) => (
+                            <FileCapsule
+                                key={`${file.path}-${idx}`}
+                                filePath={file.path}
+                                fileName={file.name}
+                                fileExt={file.ext}
+                            />
+                        ))}
                     </div>
                 )}
-
-                {toolCalls.map((tool) => (
-                    <ToolCallDisplay
-                        key={tool.id}
-                        name={tool.name}
-                        args={tool.args}
-                        result={tool.result}
-                        isPending={tool.isPending}
-                        isError={tool.isError}
-                    />
-                ))}
             </div>
         </div>
     )

@@ -76,7 +76,7 @@ export default function ToolCallDisplay({
     const [showDetails, setShowDetails] = useState(false)
     const [showOutput, setShowOutput] = useState(false)
 
-    const statusIcon = isPending ? '⏳' : isError ? '❌' : '✅'
+    const statusClass = isPending ? 'pending' : isError ? 'error' : 'success'
     const displayName = formatToolName(name)
 
     // Extract UI resources from result
@@ -88,7 +88,7 @@ export default function ToolCallDisplay({
             <div className="tool-call">
                 {/* Main Header - Tool Name (always visible, no collapse) */}
                 <div className="tool-call-header">
-                    <span style={{ marginRight: '8px' }}>{statusIcon}</span>
+                    <span className={`tool-call-indicator ${statusClass}`} aria-hidden="true" />
                     <span className="tool-call-name">{displayName}</span>
                 </div>
 
@@ -99,45 +99,24 @@ export default function ToolCallDisplay({
                             <div
                                 className="tool-call-section-header"
                                 onClick={() => setShowDetails(!showDetails)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    cursor: 'pointer',
-                                    padding: '8px 0',
-                                    borderBottom: showDetails ? '1px solid var(--color-border)' : 'none'
-                                }}
                             >
                                 <svg
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
-                                    style={{
-                                        width: '14px',
-                                        height: '14px',
-                                        transform: showDetails ? 'rotate(90deg)' : 'rotate(0deg)',
-                                        transition: 'transform 0.2s'
-                                    }}
+                                    className={`tool-call-chevron ${showDetails ? 'open' : ''}`}
                                 >
                                     <polyline points="9 18 15 12 9 6" />
                                 </svg>
                                 <span className="tool-call-section-title">Tool Details</span>
                             </div>
                             {showDetails && (
-                                <div style={{ padding: '8px 0' }}>
+                                <div className="tool-call-section-content">
                                     {Object.entries(args).map(([key, value]) => (
-                                        <div key={key} style={{
-                                            display: 'flex',
-                                            gap: '16px',
-                                            fontSize: 'var(--font-size-sm)',
-                                            padding: '4px 0'
-                                        }}>
-                                            <span style={{
-                                                color: 'var(--color-text-muted)',
-                                                minWidth: '80px'
-                                            }}>{key}</span>
-                                            <span style={{ color: 'var(--color-text-primary)' }}>
+                                        <div key={key} className="tool-call-kv">
+                                            <span className="tool-call-kv-key">{key}</span>
+                                            <span className="tool-call-kv-value">
                                                 {typeof value === 'string' ? value : JSON.stringify(value)}
                                             </span>
                                         </div>
@@ -153,44 +132,21 @@ export default function ToolCallDisplay({
                             <div
                                 className="tool-call-section-header"
                                 onClick={() => setShowOutput(!showOutput)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    cursor: 'pointer',
-                                    padding: '8px 0',
-                                    borderBottom: showOutput ? '1px solid var(--color-border)' : 'none'
-                                }}
                             >
                                 <svg
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
-                                    style={{
-                                        width: '14px',
-                                        height: '14px',
-                                        transform: showOutput ? 'rotate(90deg)' : 'rotate(0deg)',
-                                        transition: 'transform 0.2s'
-                                    }}
+                                    className={`tool-call-chevron ${showOutput ? 'open' : ''}`}
                                 >
                                     <polyline points="9 18 15 12 9 6" />
                                 </svg>
                                 <span className="tool-call-section-title">Output</span>
                             </div>
                             {showOutput && (
-                                <div style={{ padding: '8px 0' }}>
-                                    <pre style={{
-                                        margin: 0,
-                                        fontSize: 'var(--font-size-xs)',
-                                        background: 'var(--color-bg-tertiary)',
-                                        padding: 'var(--spacing-3)',
-                                        borderRadius: 'var(--radius-md)',
-                                        overflow: 'auto',
-                                        maxHeight: '300px',
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word'
-                                    }}>
+                                <div className="tool-call-section-content">
+                                    <pre className="tool-call-output">
                                         {formatResult(result)}
                                     </pre>
                                 </div>
@@ -200,14 +156,7 @@ export default function ToolCallDisplay({
 
                     {/* Pending indicator */}
                     {isPending && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px 0',
-                            color: 'var(--color-text-muted)',
-                            fontSize: 'var(--font-size-sm)'
-                        }}>
+                        <div className="tool-call-running">
                             <span className="loading-dots">
                                 <span></span>
                                 <span></span>

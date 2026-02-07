@@ -356,7 +356,7 @@ export default function Files() {
                                     </div>
                                 </div>
                                 <div className="file-actions">
-                                    {isPreviewable(file.type) && (
+                                    {isPreviewable(file.type, file.name, file.path) && (
                                         <button
                                             className="file-preview-btn"
                                             title="Preview"

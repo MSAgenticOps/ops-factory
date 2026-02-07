@@ -49,12 +49,15 @@ export interface McpAddRequest {
 
 // Categorized MCP entries for UI display
 export interface CategorizedMcpEntries {
-  default: McpEntry[];      // bundled + default enabled
-  available: McpEntry[];    // bundled + not default enabled
+  default: McpEntry[];      // bundled + currently enabled
+  available: McpEntry[];    // bundled + currently disabled
   custom: McpEntry[];       // not bundled (user-added)
 }
 
 // Helper to categorize MCP entries
+// Default = bundled MCPs that are enabled
+// Available = bundled MCPs that are not enabled
+// Custom = user-added (non-bundled) MCPs
 export function categorizeMcpEntries(entries: McpEntry[]): CategorizedMcpEntries {
   const result: CategorizedMcpEntries = {
     default: [],
@@ -66,20 +69,13 @@ export function categorizeMcpEntries(entries: McpEntry[]): CategorizedMcpEntries
     if (!entry.bundled) {
       // User-added custom MCP
       result.custom.push(entry);
-    } else if (entry.type === 'platform' || entry.type === 'builtin') {
-      // Bundled - check if it's a default-enabled type
-      // Default MCPs: developer, memory, todo, skills, extensionmanager
-      const defaultMcpNames = ['developer', 'memory', 'todo', 'skills', 'extensionmanager'];
-      const isDefault = defaultMcpNames.includes(entry.name.toLowerCase().replace(/\s+/g, ''));
-
-      if (isDefault) {
+    } else {
+      // Bundled - categorize by enabled state
+      if (entry.enabled) {
         result.default.push(entry);
       } else {
         result.available.push(entry);
       }
-    } else {
-      // Other bundled types go to available
-      result.available.push(entry);
     }
   }
 

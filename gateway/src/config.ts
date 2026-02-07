@@ -1,5 +1,6 @@
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { readFileSync, existsSync } from 'node:fs'
+import { join, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
 
 export interface AgentConfig {
@@ -8,7 +9,14 @@ export interface AgentConfig {
   port: number
   host: string
   secret_key: string
-  env?: Record<string, string>
+}
+
+export interface GatewayAgentsConfig {
+  agents: Array<{
+    id: string
+    name: string
+    port: number
+  }>
 }
 
 export interface GatewayConfig {
@@ -21,6 +29,9 @@ export interface GatewayConfig {
   agents: AgentConfig[]
 }
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 export function loadGatewayConfig(): GatewayConfig {
   const host = process.env.GATEWAY_HOST || '127.0.0.1'
   const port = parseInt(process.env.GATEWAY_PORT || '3000', 10)
@@ -29,44 +40,37 @@ export function loadGatewayConfig(): GatewayConfig {
   const agentsDir = resolve(process.env.AGENTS_DIR || join(projectRoot, 'agents'))
   const goosedBin = process.env.GOOSED_BIN || 'goosed'
 
-  const agents = loadAgentConfigs(agentsDir, host, secretKey, port)
+  // Load centralized agents config
+  const gatewayConfigDir = resolve(__dirname, '../config')
+  const agentsConfigPath = join(gatewayConfigDir, 'agents.yaml')
 
-  return { host, port, secretKey, projectRoot, agentsDir, goosedBin, agents }
-}
-
-function loadAgentConfigs(
-  agentsDir: string,
-  defaultHost: string,
-  defaultSecretKey: string,
-  gatewayPort: number,
-): AgentConfig[] {
-  if (!existsSync(agentsDir)) return []
-
-  const entries = readdirSync(agentsDir, { withFileTypes: true })
-  const agents: AgentConfig[] = []
-  let nextPort = gatewayPort + 1
-
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (!entry.isDirectory()) continue
-
-    const configPath = join(agentsDir, entry.name, 'config.yaml')
-    if (!existsSync(configPath)) continue
-
-    const raw = readFileSync(configPath, 'utf-8')
-    const parsed = parse(raw) as Record<string, unknown>
-
-    const port = typeof parsed.port === 'number' ? parsed.port : nextPort++
-    if (port >= nextPort) nextPort = port + 1
-
-    agents.push({
-      id: (parsed.id as string) || entry.name,
-      name: (parsed.name as string) || entry.name,
-      port,
-      host: (parsed.host as string) || defaultHost,
-      secret_key: (parsed.secret_key as string) || defaultSecretKey,
-      env: (parsed.env as Record<string, string>) || undefined,
-    })
+  let gatewayAgentsConfig: GatewayAgentsConfig = {
+    agents: []
   }
 
-  return agents
+  if (existsSync(agentsConfigPath)) {
+    const raw = readFileSync(agentsConfigPath, 'utf-8')
+    gatewayAgentsConfig = parse(raw) as GatewayAgentsConfig
+  } else {
+    console.warn(`Warning: Gateway agents config not found at ${agentsConfigPath}`)
+  }
+
+  // Convert to AgentConfig array with host and secret_key
+  const agents: AgentConfig[] = (gatewayAgentsConfig.agents || []).map(agent => ({
+    id: agent.id,
+    name: agent.name,
+    port: agent.port,
+    host,
+    secret_key: secretKey,
+  }))
+
+  return {
+    host,
+    port,
+    secretKey,
+    projectRoot,
+    agentsDir,
+    goosedBin,
+    agents,
+  }
 }

@@ -62,6 +62,9 @@ export function useMcp(agentId: string | null): UseMcpResult {
     setError(null)
 
     try {
+      // Extract config from entry (everything except enabled)
+      const { enabled: _currentEnabled, ...config } = entry
+
       const res = await fetch(`${GATEWAY_URL}/agents/${agentId}/mcp`, {
         method: 'POST',
         headers: {
@@ -69,8 +72,9 @@ export function useMcp(agentId: string | null): UseMcpResult {
           'x-secret-key': GATEWAY_SECRET_KEY,
         },
         body: JSON.stringify({
-          ...entry,
+          name: entry.name,
           enabled,
+          config,
         }),
         signal: AbortSignal.timeout(10000),
       })
@@ -98,13 +102,19 @@ export function useMcp(agentId: string | null): UseMcpResult {
     setError(null)
 
     try {
+      const { enabled, ...config } = request
+
       const res = await fetch(`${GATEWAY_URL}/agents/${agentId}/mcp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-secret-key': GATEWAY_SECRET_KEY,
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify({
+          name: request.name,
+          enabled,
+          config,
+        }),
         signal: AbortSignal.timeout(10000),
       })
 

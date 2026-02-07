@@ -1,0 +1,19 @@
+# Gateway Agent Configuration
+# This file defines all agents managed by the Gateway (metadata only)
+
+agents:
+  - id: universal-agent
+    name: "Universal Agent"
+    port: 3001
+
+  - id: kb-agent
+    name: "KB Agent"
+    port: 3002
+
+  - id: report-agent
+    name: "Report Agent"
+    port: 3003
+
+  - id: contract-agent
+    name: "Contract Agent"
+    port: 3004

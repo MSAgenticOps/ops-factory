@@ -5,8 +5,10 @@ import Chat from './pages/Chat'
 import History from './pages/History'
 import Files from './pages/Files'
 import Agents from './pages/Agents'
+import AgentConfigure from './pages/AgentConfigure'
 import FilePreview from './components/FilePreview'
 import { PreviewProvider, usePreview } from './contexts/PreviewContext'
+import { ToastProvider } from './contexts/ToastContext'
 
 function AppContent() {
     const { previewFile } = usePreview()
@@ -23,6 +25,7 @@ function AppContent() {
                         <Route path="/history" element={<History />} />
                         <Route path="/files" element={<Files />} />
                         <Route path="/agents" element={<Agents />} />
+                        <Route path="/agents/:agentId/configure" element={<AgentConfigure />} />
                     </Routes>
                 </main>
                 <FilePreview />
@@ -33,8 +36,11 @@ function AppContent() {
 
 export default function App() {
     return (
-        <PreviewProvider>
-            <AppContent />
-        </PreviewProvider>
+        <ToastProvider>
+            <PreviewProvider>
+                <AppContent />
+            </PreviewProvider>
+        </ToastProvider>
     )
 }
+

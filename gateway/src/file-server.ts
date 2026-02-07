@@ -33,26 +33,26 @@ export interface FileInfo {
   type: string
 }
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'data', 'scripts', '__pycache__', '.venv', 'venv'])
+const SKIP_DIRS = new Set(['node_modules', '.git', '__pycache__', '.venv', 'venv'])
 const SKIP_FILES = new Set(['.DS_Store', 'Thumbs.db', '.gitkeep'])
 
 /**
- * Recursively find all `output/` directories under workingDir and collect their files.
- * Handles skills at any depth: top-level, .claude/skills/**, .goose/skills/**, etc.
+ * Recursively collect all files under artifactsDir.
+ * Now scans the entire artifacts directory, not just output/ subdirectories.
  */
-export async function listOutputFiles(workingDir: string): Promise<FileInfo[]> {
+export async function listOutputFiles(artifactsDir: string): Promise<FileInfo[]> {
   const files: FileInfo[] = []
 
-  if (!existsSync(workingDir)) return files
+  if (!existsSync(artifactsDir)) return files
 
-  await findOutputDirs(workingDir, '', files)
+  await collectFilesRecursive(artifactsDir, '', files)
 
   // Sort by modifiedAt descending
   files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
   return files
 }
 
-async function findOutputDirs(dir: string, relBase: string, files: FileInfo[]): Promise<void> {
+async function collectFilesRecursive(dir: string, relBase: string, files: FileInfo[]): Promise<void> {
   let entries
   try {
     entries = await readdir(dir, { withFileTypes: true })
@@ -61,31 +61,12 @@ async function findOutputDirs(dir: string, relBase: string, files: FileInfo[]): 
   }
 
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue
-    if (SKIP_DIRS.has(entry.name)) continue
-
     const fullPath = join(dir, entry.name)
     const relPath = relBase ? join(relBase, entry.name) : entry.name
 
-    if (entry.name === 'output') {
-      // Found an output directory — collect all files inside it
-      await collectFiles(fullPath, relPath, files)
-    } else {
-      // Keep searching deeper
-      await findOutputDirs(fullPath, relPath, files)
-    }
-  }
-}
-
-async function collectFiles(dir: string, relativePath: string, files: FileInfo[]): Promise<void> {
-  const entries = await readdir(dir, { withFileTypes: true })
-
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name)
-    const relPath = join(relativePath, entry.name)
-
     if (entry.isDirectory()) {
-      await collectFiles(fullPath, relPath, files)
+      if (SKIP_DIRS.has(entry.name)) continue
+      await collectFilesRecursive(fullPath, relPath, files)
     } else if (entry.isFile()) {
       if (SKIP_FILES.has(entry.name)) continue
       const fileStat = await stat(fullPath)
