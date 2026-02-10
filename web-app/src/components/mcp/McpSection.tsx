@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMcp } from '../../hooks/useMcp'
 import McpCard from './McpCard'
 import AddMcpModal from './AddMcpModal'
+import type { McpEntry } from '../../types/mcp'
 
 interface McpSectionProps {
   agentId: string | null
@@ -20,6 +21,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
   } = useMcp(agentId)
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<McpEntry | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   useEffect(() => {
@@ -39,6 +41,16 @@ export default function McpSection({ agentId }: McpSectionProps) {
     }
   }
 
+  const handleOpenAddModal = () => {
+    setEditingEntry(null)
+    setIsAddModalOpen(true)
+  }
+
+  const handleOpenEditModal = (entry: McpEntry) => {
+    setEditingEntry(entry)
+    setIsAddModalOpen(true)
+  }
+
   if (!agentId) {
     return null
   }
@@ -54,7 +66,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
         <button
           type="button"
           className="mcp-add-btn"
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={handleOpenAddModal}
         >
           + Add MCP Server
         </button>
@@ -115,6 +127,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
                     key={entry.name}
                     entry={entry}
                     onToggle={toggleMcp}
+                    onEdit={handleOpenEditModal}
                     onDelete={(name) => handleDelete(name)}
                     isCustom
                   />
@@ -139,8 +152,13 @@ export default function McpSection({ agentId }: McpSectionProps) {
 
       <AddMcpModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={addMcp}
+        onClose={() => {
+          setIsAddModalOpen(false)
+          setEditingEntry(null)
+        }}
+        onSubmit={addMcp}
+        mode={editingEntry ? 'edit' : 'add'}
+        initialEntry={editingEntry}
       />
     </div>
   )

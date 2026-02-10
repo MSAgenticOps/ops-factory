@@ -113,6 +113,21 @@ await client.deleteSession(session.id);
 - `deleteSession(sessionId)` - Delete session
 - `exportSession(sessionId)` - Export session data
 
+### Recipes
+- `saveRecipe(recipe, id?)` - Save recipe to goosed recipe library
+- `listRecipes()` - List recipe manifests (includes `file_path`)
+
+### Schedules
+- `createSchedule({ id, recipe_source, cron })` - Create scheduled job
+- `listSchedules()` - List scheduled jobs
+- `updateSchedule(id, cron)` - Update cron for a schedule
+- `deleteSchedule(id)` - Delete schedule
+- `runScheduleNow(id)` - Trigger schedule immediately
+- `pauseSchedule(id)` / `unpauseSchedule(id)` - Pause or resume schedule
+- `listScheduleSessions(id, limit?)` - List schedule run sessions
+- `killSchedule(id)` - Kill running schedule job
+- `inspectSchedule(id)` - Get running schedule inspection details
+
 ## Testing
 
 ### Unit Tests

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "daily-incident-job",
+    "source": "/Users/buyangnie/Documents/GitHub/ops-factory/agents/universal-agent/data/scheduled_recipes/daily-incident-job.yaml",
+    "cron": "0 0 2 * * *",
+    "last_run": "2026-02-10T13:06:19.420606Z",
+    "currently_running": false,
+    "paused": false,
+    "current_session_id": null,
+    "process_start_time": null
+  }
+]

@@ -39,7 +39,6 @@ export default function SkillSection({ agentId }: SkillSectionProps) {
             ) : (
                 <div className="skill-empty">
                     <p>No skills configured.</p>
-                    <p>Add skills to the <code>.claude/skills/</code> directory.</p>
                 </div>
             )}
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useGoosed } from '../contexts/GoosedContext'
+import { useInbox } from '../contexts/InboxContext'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
 import type { Session } from '@goosed/sdk'
 
@@ -8,13 +9,24 @@ interface AgentSession extends Session {
     agentId: string
 }
 
+type HistoryFilter = 'user' | 'scheduled' | 'all'
+
 export default function History() {
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected } = useGoosed()
+    const { markSessionRead } = useInbox()
     const [sessions, setSessions] = useState<AgentSession[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => {
+        const rawType = searchParams.get('type')
+        if (rawType === 'scheduled' || rawType === 'all' || rawType === 'user') {
+            return rawType
+        }
+        return 'user'
+    })
     const [deletingSessionKeys, setDeletingSessionKeys] = useState<Set<string>>(new Set())
     const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
     const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
@@ -67,19 +79,52 @@ export default function History() {
         }
     }, [getClient, agents, isConnected])
 
+    const filteredByType = useMemo(() => {
+        if (historyFilter === 'all') return sessions
+        if (historyFilter === 'scheduled') {
+            return sessions.filter(session => session.session_type === 'scheduled' || !!session.schedule_id)
+        }
+        return sessions.filter(session => (session.session_type || 'user') === 'user' && !session.schedule_id)
+    }, [sessions, historyFilter])
+
+    useEffect(() => {
+        const rawType = searchParams.get('type')
+        const normalized: HistoryFilter =
+            rawType === 'scheduled' || rawType === 'all' || rawType === 'user' ? rawType : 'user'
+        if (normalized !== historyFilter) {
+            setHistoryFilter(normalized)
+        }
+    }, [historyFilter, searchParams])
+
+    useEffect(() => {
+        const currentType = searchParams.get('type') || 'user'
+        if (currentType === historyFilter) return
+
+        const nextParams = new URLSearchParams(searchParams)
+        if (historyFilter === 'user') {
+            nextParams.delete('type')
+        } else {
+            nextParams.set('type', historyFilter)
+        }
+        setSearchParams(nextParams, { replace: true })
+    }, [historyFilter, searchParams, setSearchParams])
+
     // Filter sessions by search term
     const filteredSessions = useMemo(() => {
-        if (!searchTerm.trim()) return sessions
+        if (!searchTerm.trim()) return filteredByType
 
         const term = searchTerm.toLowerCase()
-        return sessions.filter(session =>
+        return filteredByType.filter(session =>
             session.name.toLowerCase().includes(term) ||
             session.working_dir.toLowerCase().includes(term)
         )
-    }, [sessions, searchTerm])
+    }, [filteredByType, searchTerm])
 
     const handleResumeSession = (session: SessionWithAgent) => {
         const resolvedAgentId = session.agentId || agents[0]?.id || ''
+        if (resolvedAgentId && (session.session_type === 'scheduled' || !!session.schedule_id)) {
+            markSessionRead(resolvedAgentId, session.id)
+        }
         navigate(`/chat?sessionId=${session.id}&agent=${resolvedAgentId}`)
     }
 
@@ -164,6 +209,30 @@ export default function History() {
                 </div>
             </div>
 
+            <div className="history-filter-group" role="tablist" aria-label="Session type filter">
+                <button
+                    type="button"
+                    className={`history-filter-btn ${historyFilter === 'user' ? 'active' : ''}`}
+                    onClick={() => setHistoryFilter('user')}
+                >
+                    User
+                </button>
+                <button
+                    type="button"
+                    className={`history-filter-btn ${historyFilter === 'scheduled' ? 'active' : ''}`}
+                    onClick={() => setHistoryFilter('scheduled')}
+                >
+                    Scheduled
+                </button>
+                <button
+                    type="button"
+                    className={`history-filter-btn ${historyFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setHistoryFilter('all')}
+                >
+                    All
+                </button>
+            </div>
+
             {error && (
                 <div style={{
                     padding: 'var(--spacing-4)',
@@ -230,14 +299,14 @@ export default function History() {
                 </>
             )}
 
-            {!isLoading && sessions.length > 0 && (
+            {!isLoading && filteredByType.length > 0 && (
                 <p style={{
                     marginTop: 'var(--spacing-6)',
                     fontSize: 'var(--font-size-sm)',
                     color: 'var(--color-text-muted)',
                     textAlign: 'center'
                 }}>
-                    {sessions.length} total session{sessions.length !== 1 ? 's' : ''}
+                    {filteredByType.length} total session{filteredByType.length !== 1 ? 's' : ''}
                 </p>
             )}
         </div>

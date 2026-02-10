@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react'
-import type { McpEntry, McpResponse, McpAddRequest, CategorizedMcpEntries } from '../types/mcp'
+import type {
+  McpEntry,
+  McpResponse,
+  McpAddRequest,
+  CategorizedMcpEntries,
+} from '../types/mcp'
 import { categorizeMcpEntries } from '../types/mcp'
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'

@@ -1,25 +1,55 @@
-import { useState } from 'react'
-import type { McpAddRequest, McpType } from '../../types/mcp'
+import { useEffect, useState } from 'react'
+import type { McpAddRequest, McpEntry, McpType } from '../../types/mcp'
 
 interface AddMcpModalProps {
   isOpen: boolean
   onClose: () => void
-  onAdd: (request: McpAddRequest) => Promise<void>
+  onSubmit: (request: McpAddRequest) => Promise<void>
+  mode?: 'add' | 'edit'
+  initialEntry?: McpEntry | null
 }
 
 type ConnectionType = 'stdio' | 'streamable_http'
+type EnvVarRow = { key: string; value: string; fromExisting?: boolean }
 
-export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps) {
+export default function AddMcpModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  mode = 'add',
+  initialEntry = null,
+}: AddMcpModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [connectionType, setConnectionType] = useState<ConnectionType>('stdio')
   const [command, setCommand] = useState('')
   const [args, setArgs] = useState('')
   const [uri, setUri] = useState('')
-  const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([])
+  const [envVars, setEnvVars] = useState<EnvVarRow[]>([])
   const [timeout, setTimeout] = useState('300')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isEditMode = mode === 'edit'
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    if (isEditMode && initialEntry) {
+      setName(initialEntry.name)
+      setDescription(initialEntry.description || '')
+      setConnectionType(initialEntry.type === 'streamable_http' ? 'streamable_http' : 'stdio')
+      setCommand(initialEntry.cmd || '')
+      setArgs(initialEntry.args?.join(' ') || '')
+      setUri(initialEntry.uri || '')
+      const existingEnvKeys = initialEntry.env_keys || Object.keys(initialEntry.envs || {})
+      setEnvVars(existingEnvKeys.map((key) => ({ key, value: '', fromExisting: true })))
+      setTimeout(String(initialEntry.timeout || 300))
+      setError(null)
+      return
+    }
+
+    resetForm()
+  }, [isOpen, isEditMode, initialEntry])
 
   const resetForm = () => {
     setName('')
@@ -72,20 +102,45 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
       return
     }
 
-    // Build envs object
+    // Build env_keys + envs payload
+    const envKeysSet = new Set<string>()
     const envs: Record<string, string> = {}
-    for (const { key, value } of envVars) {
-      if (key.trim()) {
-        envs[key.trim()] = value
+    for (const { key, value, fromExisting } of envVars) {
+      const trimmedKey = key.trim()
+      const trimmedValue = value.trim()
+
+      if (!trimmedKey && !trimmedValue) {
+        continue
+      }
+
+      if (!trimmedKey && trimmedValue) {
+        setError('Environment variable key is required when value is set')
+        return
+      }
+
+      if (trimmedKey) {
+        envKeysSet.add(trimmedKey)
+      }
+
+      // Existing keys may keep blank value to preserve current secret value
+      if (!trimmedValue && !fromExisting) {
+        setError(`Environment variable "${trimmedKey}" must have a value`)
+        return
+      }
+
+      if (trimmedKey && trimmedValue) {
+        envs[trimmedKey] = value
       }
     }
+    const envKeys = Array.from(envKeysSet)
 
     const request: McpAddRequest = {
       name: name.trim(),
-      enabled: true,
+      enabled: isEditMode ? (initialEntry?.enabled ?? true) : true,
       type: connectionType as McpType,
       description: description.trim() || undefined,
       timeout: parseInt(timeout, 10) || 300,
+      env_keys: isEditMode || envKeys.length > 0 ? envKeys : undefined,
       ...(connectionType === 'stdio' && {
         cmd: command.trim(),
         args: args.trim() ? args.trim().split(/\s+/) : [],
@@ -99,10 +154,10 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
 
     setIsSubmitting(true)
     try {
-      await onAdd(request)
+      await onSubmit(request)
       handleClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add MCP server')
+      setError(err instanceof Error ? err.message : `Failed to ${isEditMode ? 'update' : 'add'} MCP server`)
     } finally {
       setIsSubmitting(false)
     }
@@ -114,7 +169,7 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content mcp-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Add MCP Server</h2>
+          <h2 className="modal-title">{isEditMode ? 'Edit MCP Server' : 'Add MCP Server'}</h2>
           <button
             type="button"
             className="modal-close"
@@ -140,7 +195,11 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="my-mcp-server"
+              disabled={isEditMode}
             />
+            {isEditMode && (
+              <span className="mcp-form-hint">Name cannot be changed while editing.</span>
+            )}
           </div>
 
           <div className="mcp-form-group">
@@ -243,13 +302,14 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
                   value={env.key}
                   onChange={e => updateEnvVar(index, 'key', e.target.value)}
                   placeholder="KEY"
+                  disabled={env.fromExisting}
                 />
                 <input
                   type="text"
                   className="mcp-form-input mcp-form-env-value"
                   value={env.value}
                   onChange={e => updateEnvVar(index, 'value', e.target.value)}
-                  placeholder="value"
+                  placeholder={env.fromExisting ? 'Leave blank to keep current value' : 'value'}
                 />
                 <button
                   type="button"
@@ -261,6 +321,9 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
               </div>
             ))}
           </div>
+          {isEditMode && envVars.some(env => env.fromExisting) && (
+            <span className="mcp-form-hint">Existing variable values are hidden. Leave blank to keep unchanged.</span>
+          )}
 
           <div className="mcp-form-group">
             <label className="mcp-form-label">Timeout (seconds)</label>
@@ -287,7 +350,9 @@ export default function AddMcpModal({ isOpen, onClose, onAdd }: AddMcpModalProps
               className="mcp-form-btn mcp-form-btn-primary"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Adding...' : 'Add MCP Server'}
+              {isSubmitting
+                ? (isEditMode ? 'Saving...' : 'Adding...')
+                : (isEditMode ? 'Save Changes' : 'Add MCP Server')}
             </button>
           </div>
         </form>

@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom'
+import { useInbox } from '../contexts/InboxContext'
 
 export default function Sidebar() {
+    const { unreadCount } = useInbox()
 
     return (
         <aside className="sidebar">
@@ -35,6 +37,18 @@ export default function Sidebar() {
                 </NavLink>
 
                 <NavLink
+                    to="/inbox"
+                    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 12h-4l-3 4H9l-3-4H2" />
+                        <path d="M5 12V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7" />
+                    </svg>
+                    <span>Inbox</span>
+                    {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
+                </NavLink>
+
+                <NavLink
                     to="/agents"
                     className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                 >
@@ -56,6 +70,18 @@ export default function Sidebar() {
                         <line x1="16" y1="17" x2="8" y2="17" />
                     </svg>
                     <span>Files</span>
+                </NavLink>
+
+                <NavLink
+                    to="/scheduled-actions"
+                    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 7v5l3 2" />
+                        <path d="M9 2v3M15 2v3M9 19v3M15 19v3" />
+                    </svg>
+                    <span>Scheduler</span>
                 </NavLink>
             </nav>
 

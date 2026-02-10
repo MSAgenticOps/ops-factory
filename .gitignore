@@ -44,4 +44,4 @@ web-app/node_modules/
 gateway/node_modules/
 
 # Agents artifacts
-agents/*
+agents/*/artifacts/

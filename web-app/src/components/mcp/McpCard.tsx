@@ -37,20 +37,6 @@ export default function McpCard({ entry, onToggle, onEdit, onDelete, isCustom }:
         {entry.description || 'No description'}
       </p>
 
-      {isCustom && entry.type === 'stdio' && entry.cmd && (
-        <div className="mcp-card-meta">
-          <code className="mcp-card-cmd">
-            {entry.cmd} {entry.args?.join(' ')}
-          </code>
-        </div>
-      )}
-
-      {isCustom && entry.type === 'streamable_http' && entry.uri && (
-        <div className="mcp-card-meta">
-          <code className="mcp-card-cmd">{entry.uri}</code>
-        </div>
-      )}
-
       {isCustom && (onEdit || onDelete) && (
         <div className="mcp-card-actions">
           {onEdit && (

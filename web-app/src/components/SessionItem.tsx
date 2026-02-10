@@ -17,6 +17,7 @@ export default function SessionItem({ session, onResume, onDelete, isDeleting = 
         hour: '2-digit',
         minute: '2-digit'
     })
+    const sessionType = session.session_type === 'scheduled' || session.schedule_id ? 'scheduled' : 'user'
 
     const handleDeleteClick = (e: MouseEvent) => {
         e.preventDefault()
@@ -33,6 +34,10 @@ export default function SessionItem({ session, onResume, onDelete, isDeleting = 
             >
                 <div className="session-name">{session.name || 'Untitled Session'}</div>
                 <div className="session-meta">
+                    <span className={`session-type-badge ${sessionType}`}>{sessionType.toUpperCase()}</span>
+                    {sessionType === 'scheduled' && session.schedule_id && (
+                        <span className="session-schedule-id">Schedule: {session.schedule_id}</span>
+                    )}
                     <span>{formattedDate}</span>
                     {session.message_count !== undefined && (
                         <span>{session.message_count} messages</span>

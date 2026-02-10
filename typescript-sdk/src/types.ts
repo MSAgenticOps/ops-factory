@@ -51,6 +51,7 @@ export interface Session {
     name: string;
     working_dir: string;
     session_type: string;
+    schedule_id?: string | null;
     created_at: string;
     updated_at: string;
     user_set_name?: boolean;
@@ -108,4 +109,55 @@ export interface GoosedClientOptions {
 export interface SetProviderRequest {
     provider: string;
     model: string;
+}
+
+export interface Recipe {
+    title: string;
+    description: string;
+    instructions?: string;
+    prompt?: string;
+    [key: string]: unknown;
+}
+
+export interface RecipeManifest {
+    id: string;
+    recipe: Recipe;
+    file_path: string;
+    last_modified: string;
+    schedule_cron?: string | null;
+    slash_command?: string | null;
+}
+
+export interface ScheduledJob {
+    id: string;
+    source: string;
+    cron: string;
+    last_run?: string | null;
+    currently_running?: boolean;
+    paused?: boolean;
+    current_session_id?: string | null;
+    process_start_time?: string | null;
+}
+
+export interface ListSchedulesResponse {
+    jobs: ScheduledJob[];
+}
+
+export interface RunNowResponse {
+    session_id: string;
+}
+
+export interface ScheduleSessionInfo {
+    id: string;
+    name: string;
+    createdAt: string;
+    workingDir: string;
+    scheduleId?: string | null;
+    messageCount: number;
+    totalTokens?: number | null;
+    inputTokens?: number | null;
+    outputTokens?: number | null;
+    accumulatedTotalTokens?: number | null;
+    accumulatedInputTokens?: number | null;
+    accumulatedOutputTokens?: number | null;
 }

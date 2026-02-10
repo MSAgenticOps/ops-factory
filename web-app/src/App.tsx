@@ -6,9 +6,12 @@ import History from './pages/History'
 import Files from './pages/Files'
 import Agents from './pages/Agents'
 import AgentConfigure from './pages/AgentConfigure'
+import ScheduledActions from './pages/ScheduledActions'
+import Inbox from './pages/Inbox'
 import FilePreview from './components/FilePreview'
 import { PreviewProvider, usePreview } from './contexts/PreviewContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { InboxProvider } from './contexts/InboxContext'
 
 function AppContent() {
     const { previewFile } = usePreview()
@@ -24,6 +27,8 @@ function AppContent() {
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/history" element={<History />} />
                         <Route path="/files" element={<Files />} />
+                        <Route path="/scheduled-actions" element={<ScheduledActions />} />
+                        <Route path="/inbox" element={<Inbox />} />
                         <Route path="/agents" element={<Agents />} />
                         <Route path="/agents/:agentId/configure" element={<AgentConfigure />} />
                     </Routes>
@@ -37,10 +42,11 @@ function AppContent() {
 export default function App() {
     return (
         <ToastProvider>
-            <PreviewProvider>
-                <AppContent />
-            </PreviewProvider>
+            <InboxProvider>
+                <PreviewProvider>
+                    <AppContent />
+                </PreviewProvider>
+            </InboxProvider>
         </ToastProvider>
     )
 }
-

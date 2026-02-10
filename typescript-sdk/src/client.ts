@@ -10,6 +10,12 @@ import type {
     SystemInfo,
     ExtensionResult,
     GoosedClientOptions,
+    Recipe,
+    RecipeManifest,
+    ScheduledJob,
+    ListSchedulesResponse,
+    RunNowResponse,
+    ScheduleSessionInfo,
 } from './types.js';
 
 export class GoosedException extends Error {
@@ -373,5 +379,71 @@ export class GoosedClient {
         return this.get<string>(`/sessions/${sessionId}/export`);
     }
 
+    // === Recipe APIs ===
+
+    async saveRecipe(recipe: Recipe, id?: string): Promise<{ id: string }> {
+        const body: Record<string, unknown> = { recipe };
+        if (id) {
+            body.id = id;
+        }
+        return this.post<{ id: string }>('/recipes/save', body);
+    }
+
+    async listRecipes(): Promise<RecipeManifest[]> {
+        const data = await this.get<{ manifests: RecipeManifest[] }>('/recipes/list');
+        return data.manifests ?? [];
+    }
+
+    // === Schedule APIs ===
+
+    async createSchedule(request: { id: string; recipe_source: string; cron: string }): Promise<ScheduledJob> {
+        return this.post<ScheduledJob>('/schedule/create', request);
+    }
+
+    async listSchedules(): Promise<ScheduledJob[]> {
+        const data = await this.get<ListSchedulesResponse>('/schedule/list');
+        return data.jobs ?? [];
+    }
+
+    async updateSchedule(id: string, cron: string): Promise<ScheduledJob> {
+        return this.put<ScheduledJob>(`/schedule/${id}`, { cron });
+    }
+
+    async deleteSchedule(id: string): Promise<void> {
+        await this.delete(`/schedule/delete/${id}`);
+    }
+
+    async runScheduleNow(id: string): Promise<string> {
+        const data = await this.post<RunNowResponse>(`/schedule/${id}/run_now`);
+        return data.session_id;
+    }
+
+    async pauseSchedule(id: string): Promise<void> {
+        await this.post(`/schedule/${id}/pause`);
+    }
+
+    async unpauseSchedule(id: string): Promise<void> {
+        await this.post(`/schedule/${id}/unpause`);
+    }
+
+    async listScheduleSessions(id: string, limit = 20): Promise<ScheduleSessionInfo[]> {
+        return this.get<ScheduleSessionInfo[]>(`/schedule/${id}/sessions`, { limit: String(limit) });
+    }
+
+    async killSchedule(id: string): Promise<{ message: string }> {
+        return this.post<{ message: string }>(`/schedule/${id}/kill`);
+    }
+
+    async inspectSchedule(id: string): Promise<{
+        sessionId?: string | null;
+        processStartTime?: string | null;
+        runningDurationSeconds?: number | null;
+    }> {
+        return this.get<{
+            sessionId?: string | null;
+            processStartTime?: string | null;
+            runningDurationSeconds?: number | null;
+        }>(`/schedule/${id}/inspect`);
+    }
 
 }

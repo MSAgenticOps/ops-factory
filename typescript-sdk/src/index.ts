@@ -24,4 +24,10 @@ export type {
     SystemInfo,
     ExtensionResult,
     GoosedClientOptions,
+    Recipe,
+    RecipeManifest,
+    ScheduledJob,
+    ListSchedulesResponse,
+    RunNowResponse,
+    ScheduleSessionInfo,
 } from './types.js';

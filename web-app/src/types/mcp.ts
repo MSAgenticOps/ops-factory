@@ -42,6 +42,7 @@ export interface McpAddRequest {
   description?: string;
   cmd?: string;
   args?: string[];
+  env_keys?: string[];
   envs?: Record<string, string>;
   uri?: string;
   timeout?: number;
