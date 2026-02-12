@@ -8,9 +8,10 @@ interface SessionItemProps {
     onResume: (session: SessionWithAgent) => void
     onDelete: (session: SessionWithAgent) => void
     isDeleting?: boolean
+    onMarkUnread?: (session: SessionWithAgent) => void
 }
 
-export default function SessionItem({ session, onResume, onDelete, isDeleting = false }: SessionItemProps) {
+export default function SessionItem({ session, onResume, onDelete, isDeleting = false, onMarkUnread }: SessionItemProps) {
     const formattedDate = new Date(session.updated_at || session.created_at).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -49,6 +50,24 @@ export default function SessionItem({ session, onResume, onDelete, isDeleting = 
             </div>
 
             <div className="session-actions">
+                {onMarkUnread && sessionType === 'scheduled' && (
+                    <button
+                        type="button"
+                        className="session-action-btn"
+                        onClick={(e: MouseEvent) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onMarkUnread(session)
+                        }}
+                        title="Move to Inbox"
+                        aria-label="Mark as unread"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                            <path d="M22 12h-4l-3 4H9l-3-4H2" />
+                            <path d="M5 12V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7" />
+                        </svg>
+                    </button>
+                )}
                 <button
                     type="button"
                     className="session-action-btn delete"

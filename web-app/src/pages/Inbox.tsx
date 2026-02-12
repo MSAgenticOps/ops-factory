@@ -1,24 +1,20 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInbox } from '../contexts/InboxContext'
-import { useState } from 'react'
 
 export default function Inbox() {
     const navigate = useNavigate()
-    const { unreadSessions, scheduledSessions, unreadCount, isLoading, markSessionRead, markSessionUnread, markAllRead, isSessionRead } = useInbox()
-    const [showAll, setShowAll] = useState(false)
-
-    const visibleSessions = showAll ? scheduledSessions : unreadSessions
+    const { unreadSessions, unreadCount, isLoading, markSessionRead, markAllRead } = useInbox()
 
     const groupedByAgent = useMemo(() => {
-        const map = new Map<string, typeof visibleSessions>()
-        for (const session of visibleSessions) {
+        const map = new Map<string, typeof unreadSessions>()
+        for (const session of unreadSessions) {
             const list = map.get(session.agentId) ?? []
             list.push(session)
             map.set(session.agentId, list)
         }
         return Array.from(map.entries())
-    }, [visibleSessions])
+    }, [unreadSessions])
 
     const openSession = (agentId: string, sessionId: string) => {
         markSessionRead(agentId, sessionId)
@@ -38,13 +34,6 @@ export default function Inbox() {
                     <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={() => setShowAll(prev => !prev)}
-                    >
-                        {showAll ? 'Show unread only' : 'Show all scheduled'}
-                    </button>
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
                         onClick={markAllRead}
                         disabled={unreadCount === 0}
                     >
@@ -57,12 +46,10 @@ export default function Inbox() {
                 <div className="empty-state">
                     <h3 className="empty-state-title">Loading inbox...</h3>
                 </div>
-            ) : visibleSessions.length === 0 ? (
+            ) : unreadSessions.length === 0 ? (
                 <div className="empty-state">
-                    <h3 className="empty-state-title">{showAll ? 'No scheduled sessions' : 'Inbox is clear'}</h3>
-                    <p className="empty-state-description">
-                        {showAll ? 'No scheduled sessions available.' : 'No unread scheduled sessions.'}
-                    </p>
+                    <h3 className="empty-state-title">Inbox is clear</h3>
+                    <p className="empty-state-description">No unread scheduled sessions.</p>
                 </div>
             ) : (
                 <div className="inbox-groups">
@@ -71,13 +58,11 @@ export default function Inbox() {
                             <h3 className="inbox-group-title">{agentId}</h3>
                             <div className="inbox-list">
                                 {sessions.map(session => (
-                                    <div key={session.id} className="inbox-item">
+                                    <div key={`${session.agentId}:${session.id}`} className="inbox-item">
                                         <div className="inbox-item-main">
                                             <div className="inbox-item-title">{session.name || session.id}</div>
                                             <div className="inbox-item-meta">
-                                                <span className={`session-type-badge ${isSessionRead(agentId, session.id) ? 'user' : 'scheduled'}`}>
-                                                    {isSessionRead(agentId, session.id) ? 'READ' : 'UNREAD'}
-                                                </span>
+                                                <span className="session-type-badge scheduled">UNREAD</span>
                                                 {session.schedule_id && <span>Schedule: {session.schedule_id}</span>}
                                                 <span>{new Date(session.updated_at || session.created_at).toLocaleString()}</span>
                                                 {session.message_count !== undefined && <span>{session.message_count} messages</span>}
@@ -87,15 +72,9 @@ export default function Inbox() {
                                             <button
                                                 type="button"
                                                 className="btn btn-secondary"
-                                                onClick={() => {
-                                                    if (isSessionRead(agentId, session.id)) {
-                                                        markSessionUnread(agentId, session.id)
-                                                    } else {
-                                                        markSessionRead(agentId, session.id)
-                                                    }
-                                                }}
+                                                onClick={() => markSessionRead(agentId, session.id)}
                                             >
-                                                {isSessionRead(agentId, session.id) ? 'Mark unread' : 'Mark read'}
+                                                Dismiss
                                             </button>
                                             <button
                                                 type="button"

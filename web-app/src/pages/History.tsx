@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useInbox } from '../contexts/InboxContext'
@@ -11,23 +11,33 @@ interface AgentSession extends Session {
 
 type HistoryFilter = 'user' | 'scheduled' | 'all'
 
+function parseHistoryFilter(raw: string | null): HistoryFilter {
+    if (raw === 'scheduled' || raw === 'all' || raw === 'user') return raw
+    return 'user'
+}
+
 export default function History() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected } = useGoosed()
-    const { markSessionRead } = useInbox()
+    const { markSessionRead, markSessionUnread } = useInbox()
     const [sessions, setSessions] = useState<AgentSession[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [error, setError] = useState<string | null>(null)
-    const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => {
-        const rawType = searchParams.get('type')
-        if (rawType === 'scheduled' || rawType === 'all' || rawType === 'user') {
-            return rawType
-        }
-        return 'user'
-    })
     const [deletingSessionKeys, setDeletingSessionKeys] = useState<Set<string>>(new Set())
+
+    // Single source of truth: derive filter from URL
+    const historyFilter = parseHistoryFilter(searchParams.get('type'))
+    const setHistoryFilter = useCallback((filter: HistoryFilter) => {
+        const nextParams = new URLSearchParams(searchParams)
+        if (filter === 'user') {
+            nextParams.delete('type')
+        } else {
+            nextParams.set('type', filter)
+        }
+        setSearchParams(nextParams, { replace: true })
+    }, [searchParams, setSearchParams])
     const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
     const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
 
@@ -55,11 +65,11 @@ export default function History() {
                     }
                 }
                 // Sort by updated_at descending
-                const sorted = allSessions.sort((a: AgentSession, b: AgentSession) =>
+                allSessions.sort((a, b) =>
                     new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
                 )
                 if (!cancelled) {
-                    setSessions(sorted)
+                    setSessions(allSessions)
                 }
             } catch (err) {
                 console.error('Failed to load sessions:', err)
@@ -87,28 +97,6 @@ export default function History() {
         return sessions.filter(session => (session.session_type || 'user') === 'user' && !session.schedule_id)
     }, [sessions, historyFilter])
 
-    useEffect(() => {
-        const rawType = searchParams.get('type')
-        const normalized: HistoryFilter =
-            rawType === 'scheduled' || rawType === 'all' || rawType === 'user' ? rawType : 'user'
-        if (normalized !== historyFilter) {
-            setHistoryFilter(normalized)
-        }
-    }, [historyFilter, searchParams])
-
-    useEffect(() => {
-        const currentType = searchParams.get('type') || 'user'
-        if (currentType === historyFilter) return
-
-        const nextParams = new URLSearchParams(searchParams)
-        if (historyFilter === 'user') {
-            nextParams.delete('type')
-        } else {
-            nextParams.set('type', historyFilter)
-        }
-        setSearchParams(nextParams, { replace: true })
-    }, [historyFilter, searchParams, setSearchParams])
-
     // Filter sessions by search term
     const filteredSessions = useMemo(() => {
         if (!searchTerm.trim()) return filteredByType
@@ -126,6 +114,14 @@ export default function History() {
             markSessionRead(resolvedAgentId, session.id)
         }
         navigate(`/chat?sessionId=${session.id}&agent=${resolvedAgentId}`)
+    }
+
+    const handleMarkUnread = (session: SessionWithAgent) => {
+        const isScheduled = session.session_type === 'scheduled' || !!session.schedule_id
+        if (!isScheduled) return
+        const agentId = session.agentId || agents[0]?.id || ''
+        if (!agentId) return
+        markSessionUnread(agentId, session.id)
     }
 
     const handleDeleteSession = async (session: SessionWithAgent) => {
@@ -295,6 +291,7 @@ export default function History() {
                         onDelete={handleDeleteSession}
                         deletingSessionKeys={deletingSessionKeys}
                         getSessionKey={getSessionKey}
+                        onMarkUnread={historyFilter !== 'user' ? handleMarkUnread : undefined}
                     />
                 </>
             )}

@@ -51,6 +51,13 @@ export class ProcessManager {
     return this.getArtifactsPath(m.config.id)
   }
 
+  // Get per-user artifacts path: {agentsDir}/{agentId}/artifacts/users/{userId}
+  getUserArtifactsPath(agentId: string, userId: string): string | null {
+    const m = this.processes.get(agentId)
+    if (!m) return null
+    return `${this.getArtifactsPath(m.config.id)}/users/${userId}`
+  }
+
   private getAgentSkills(agentId: string): string[] {
     const skillsDir = join(this.getAgentRootPath(agentId), 'config', 'skills')
     if (!existsSync(skillsDir)) return []

@@ -41,6 +41,7 @@ interface MessageProps {
     message: ChatMessage
     toolResponses?: ToolResponseMap
     agentId?: string
+    isStreaming?: boolean
 }
 
 export type ToolResponseMap = Map<string, { result?: unknown; isError: boolean }>
@@ -58,7 +59,7 @@ interface ToolCallPair {
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
 
-export default function Message({ message, toolResponses = new Map(), agentId }: MessageProps) {
+export default function Message({ message, toolResponses = new Map(), agentId, isStreaming = false }: MessageProps) {
     const isUser = message.role === 'user'
     const { openPreview, isPreviewable } = usePreview()
 
@@ -104,13 +105,27 @@ export default function Message({ message, toolResponses = new Map(), agentId }:
 
     const fullText = textContent.join('\n')
 
+    // Split thinking blocks from visible text
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi
+    const thinkingParts: string[] = []
+    const visibleText = fullText.replace(thinkRegex, (_match, content) => {
+        thinkingParts.push(content.trim())
+        return ''
+    }).trim()
+    const thinkingText = thinkingParts.join('\n\n')
+
+    // Check for unclosed thinking block (still thinking)
+    const unclosedThinkMatch = fullText.match(/<think>([\s\S]*)$/i)
+    const isThinking = !!unclosedThinkMatch
+    const unclosedThinkingText = unclosedThinkMatch ? unclosedThinkMatch[1].trim() : ''
+
     // Detect file paths in text - match absolute paths containing /artifacts/
     // More flexible regex that handles paths in various contexts
     const filePathRegex = /(\/[^\s\n]+\/artifacts\/[^\s\n,，。]+\.[a-zA-Z0-9]+)/g
     const detectedFiles: { path: string; name: string; ext: string }[] = []
     const seenPaths = new Set<string>()
     let match
-    while ((match = filePathRegex.exec(fullText)) !== null) {
+    while ((match = filePathRegex.exec(visibleText || fullText)) !== null) {
         const filePath = match[1]
         if (seenPaths.has(filePath)) continue  // Deduplicate
         seenPaths.add(filePath)
@@ -123,6 +138,10 @@ export default function Message({ message, toolResponses = new Map(), agentId }:
     if (!fullText && toolCalls.length === 0) {
         return null
     }
+
+    // Determine which text to display for assistant messages
+    const displayText = !isUser ? (visibleText || fullText) : fullText
+    const hasThinking = !isUser && (thinkingText || isThinking)
 
     // File capsule component
     const FileCapsule = ({ filePath, fileName, fileExt }: { filePath: string; fileName: string; fileExt: string }) => {
@@ -170,86 +189,105 @@ export default function Message({ message, toolResponses = new Map(), agentId }:
                 {isUser ? 'U' : 'G'}
             </div>
             <div className="message-content">
-                {message.content.map((content, index) => {
-                    if (content.type === 'text' && content.text) {
-                        return (
-                            <div key={`text-${index}`} className="message-text">
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        a: ({ href, children, ...props }) => {
-                                            if (href && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:') && agentId) {
-                                                const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(href)}?key=${GATEWAY_SECRET_KEY}`
-                                                const fileName = href.split('/').pop() || href
-                                                const fileExt = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
-                                                const canPreview = isPreviewable(fileExt, fileName, href)
+                {/* Thinking block (collapsible) */}
+                {hasThinking && (
+                    <details className="thinking-block">
+                        <summary className="thinking-block-summary">
+                            {isThinking ? 'Thinking...' : 'Show thinking'}
+                        </summary>
+                        <div className="thinking-block-content">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {thinkingText || unclosedThinkingText}
+                            </ReactMarkdown>
+                        </div>
+                    </details>
+                )}
 
-                                                const handlePreview = (e: React.MouseEvent) => {
-                                                    e.preventDefault()
-                                                    openPreview({
-                                                        name: fileName,
-                                                        path: href,
-                                                        type: fileExt,
-                                                        agentId: agentId,
-                                                    })
-                                                }
+                {/* Main text content (with thinking stripped) */}
+                {displayText && (
+                    <div className="message-text">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                a: ({ href, children, ...props }) => {
+                                    if (href && !href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('mailto:') && agentId) {
+                                        const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(href)}?key=${GATEWAY_SECRET_KEY}`
+                                        const fileName = href.split('/').pop() || href
+                                        const fileExt = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
+                                        const canPreview = isPreviewable(fileExt, fileName, href)
 
-                                                return (
-                                                    <span className="file-link-group" {...props}>
-                                                        <span className="file-link-name">{children}</span>
-                                                        {canPreview && (
-                                                            <button
-                                                                className="file-link-btn file-preview-trigger"
-                                                                onClick={handlePreview}
-                                                                title="Preview"
-                                                            >
-                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                                    <circle cx="12" cy="12" r="3" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
-                                                        <a
-                                                            href={downloadUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="file-link-btn"
-                                                            title="Download"
-                                                        >
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                                <polyline points="7 10 12 15 17 10" />
-                                                                <line x1="12" y1="15" x2="12" y2="3" />
-                                                            </svg>
-                                                        </a>
-                                                    </span>
-                                                )
-                                            }
-                                            return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+                                        const handlePreview = (e: React.MouseEvent) => {
+                                            e.preventDefault()
+                                            openPreview({
+                                                name: fileName,
+                                                path: href,
+                                                type: fileExt,
+                                                agentId: agentId,
+                                            })
                                         }
-                                    }}
-                                >
-                                    {content.text}
-                                </ReactMarkdown>
-                            </div>
-                        )
-                    } else if (content.type === 'toolRequest' && content.id) {
-                        const toolCall = toolCalls.find(t => t.id === content.id)
-                        if (!toolCall) return null
 
-                        return (
-                            <ToolCallDisplay
-                                key={toolCall.id}
-                                name={toolCall.name}
-                                args={toolCall.args}
-                                result={toolCall.result}
-                                isPending={toolCall.isPending}
-                                isError={toolCall.isError}
-                            />
-                        )
-                    }
-                    return null
-                })}
+                                        return (
+                                            <span className="file-link-group" {...props}>
+                                                <span className="file-link-name">{children}</span>
+                                                {canPreview && (
+                                                    <button
+                                                        className="file-link-btn file-preview-trigger"
+                                                        onClick={handlePreview}
+                                                        title="Preview"
+                                                    >
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                            <circle cx="12" cy="12" r="3" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                                <a
+                                                    href={downloadUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="file-link-btn"
+                                                    title="Download"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                        <polyline points="7 10 12 15 17 10" />
+                                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                                    </svg>
+                                                </a>
+                                            </span>
+                                        )
+                                    }
+                                    return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+                                }
+                            }}
+                        >
+                            {displayText}
+                        </ReactMarkdown>
+                    </div>
+                )}
+
+                {/* Tool calls */}
+                {toolCalls.map(toolCall => (
+                    <ToolCallDisplay
+                        key={toolCall.id}
+                        name={toolCall.name}
+                        args={toolCall.args}
+                        result={toolCall.result}
+                        isPending={toolCall.isPending}
+                        isError={toolCall.isError}
+                    />
+                ))}
+
+                {/* Streaming indicator on last assistant message */}
+                {isStreaming && (
+                    <div className="streaming-indicator">
+                        <div className="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Render detected file capsules at the end */}
                 {!isUser && detectedFiles.length > 0 && (

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@goosed/sdk'
 import { useGoosed } from './GoosedContext'
+import { useUser } from './UserContext'
 
 interface InboxSession extends Session {
     agentId: string
@@ -18,7 +19,9 @@ interface InboxContextValue {
     markAllRead: () => void
 }
 
-const READ_STORAGE_KEY = 'opsfactory:inbox:read-sessions:v1'
+function getReadStorageKey(userId: string): string {
+    return `opsfactory:${userId}:inbox:read-sessions:v1`
+}
 
 const InboxContext = createContext<InboxContextValue | null>(null)
 
@@ -26,10 +29,10 @@ function makeSessionKey(agentId: string, sessionId: string): string {
     return `${agentId}:${sessionId}`
 }
 
-function loadReadSet(): Set<string> {
+function loadReadSet(storageKey: string): Set<string> {
     if (typeof window === 'undefined') return new Set()
     try {
-        const raw = window.localStorage.getItem(READ_STORAGE_KEY)
+        const raw = window.localStorage.getItem(storageKey)
         if (!raw) return new Set()
         const parsed = JSON.parse(raw) as string[]
         if (!Array.isArray(parsed)) return new Set()
@@ -39,20 +42,27 @@ function loadReadSet(): Set<string> {
     }
 }
 
-function saveReadSet(readSet: Set<string>): void {
+function saveReadSet(storageKey: string, readSet: Set<string>): void {
     if (typeof window === 'undefined') return
     try {
-        window.localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(Array.from(readSet)))
+        window.localStorage.setItem(storageKey, JSON.stringify(Array.from(readSet)))
     } catch {
         // Ignore write failures (private mode / quota)
     }
 }
 
 export function InboxProvider({ children }: { children: ReactNode }) {
+    const { userId } = useUser()
     const { agents, getClient, isConnected } = useGoosed()
     const [scheduledSessions, setScheduledSessions] = useState<InboxSession[]>([])
-    const [readSessionKeys, setReadSessionKeys] = useState<Set<string>>(() => loadReadSet())
+    const storageKey = getReadStorageKey(userId || 'anonymous')
+    const [readSessionKeys, setReadSessionKeys] = useState<Set<string>>(() => loadReadSet(storageKey))
     const [isLoading, setIsLoading] = useState(false)
+
+    // Reload read set when userId changes
+    useEffect(() => {
+        setReadSessionKeys(loadReadSet(storageKey))
+    }, [storageKey])
 
     const refresh = useCallback(async () => {
         if (!isConnected || agents.length === 0) {
@@ -97,8 +107,8 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     }, [refresh])
 
     useEffect(() => {
-        saveReadSet(readSessionKeys)
-    }, [readSessionKeys])
+        saveReadSet(storageKey, readSessionKeys)
+    }, [storageKey, readSessionKeys])
 
     const isSessionRead = useCallback((agentId: string, sessionId: string) => {
         return readSessionKeys.has(makeSessionKey(agentId, sessionId))

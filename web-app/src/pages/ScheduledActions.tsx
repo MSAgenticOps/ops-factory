@@ -4,6 +4,7 @@ import type { ScheduledJob, ScheduleSessionInfo } from '@goosed/sdk'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useToast } from '../contexts/ToastContext'
 import { useInbox } from '../contexts/InboxContext'
+import { useUser } from '../contexts/UserContext'
 
 interface FormState {
     name: string
@@ -21,7 +22,10 @@ interface ScheduleDraftMap {
 }
 
 const DEFAULT_CRON = '0 0 9 * * *'
-const SCHEDULE_DRAFTS_KEY = 'opsfactory:scheduler:drafts:v1'
+
+function getScheduleDraftsKey(userId: string): string {
+    return `opsfactory:${userId}:scheduler:drafts:v1`
+}
 
 function slugifyName(value: string): string {
     return value
@@ -45,10 +49,10 @@ function isCronLikelyValid(cron: string): boolean {
     return parts.length === 5 || parts.length === 6
 }
 
-function loadDrafts(): ScheduleDraftMap {
+function loadDrafts(storageKey: string): ScheduleDraftMap {
     if (typeof window === 'undefined') return {}
     try {
-        const raw = window.localStorage.getItem(SCHEDULE_DRAFTS_KEY)
+        const raw = window.localStorage.getItem(storageKey)
         if (!raw) return {}
         const parsed = JSON.parse(raw) as ScheduleDraftMap
         return parsed && typeof parsed === 'object' ? parsed : {}
@@ -57,17 +61,19 @@ function loadDrafts(): ScheduleDraftMap {
     }
 }
 
-function saveDrafts(drafts: ScheduleDraftMap): void {
+function saveDrafts(storageKey: string, drafts: ScheduleDraftMap): void {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(SCHEDULE_DRAFTS_KEY, JSON.stringify(drafts))
+    window.localStorage.setItem(storageKey, JSON.stringify(drafts))
 }
 
 export default function ScheduledActions() {
     const navigate = useNavigate()
+    const { userId } = useUser()
     const { agents, getClient, isConnected, error } = useGoosed()
     const { showToast } = useToast()
     const { markSessionRead } = useInbox()
 
+    const draftsKey = getScheduleDraftsKey(userId || 'anonymous')
     const [selectedAgent, setSelectedAgent] = useState('')
     const [jobs, setJobs] = useState<ScheduledJob[]>([])
     const [loading, setLoading] = useState(false)
@@ -77,7 +83,7 @@ export default function ScheduledActions() {
     const [runs, setRuns] = useState<ScheduleSessionInfo[]>([])
     const [runsLoading, setRunsLoading] = useState(false)
     const [showModal, setShowModal] = useState(false)
-    const [drafts, setDrafts] = useState<ScheduleDraftMap>(() => loadDrafts())
+    const [drafts, setDrafts] = useState<ScheduleDraftMap>(() => loadDrafts(draftsKey))
     const [form, setForm] = useState<FormState>({
         name: '',
         instruction: '',
@@ -223,7 +229,7 @@ export default function ScheduledActions() {
                 },
             }
             setDrafts(nextDrafts)
-            saveDrafts(nextDrafts)
+            saveDrafts(draftsKey, nextDrafts)
 
             setShowModal(false)
             await loadSchedules()

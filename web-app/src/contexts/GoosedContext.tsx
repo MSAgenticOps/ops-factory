@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { GoosedClient } from '@goosed/sdk'
+import { useUser } from './UserContext'
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
@@ -26,26 +27,38 @@ interface GoosedContextType {
 const GoosedContext = createContext<GoosedContextType | null>(null)
 
 export function GoosedProvider({ children }: { children: ReactNode }) {
+    const { userId } = useUser()
     const [agents, setAgents] = useState<AgentInfo[]>([])
     const [isConnected, setIsConnected] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const clientCache = useRef<Record<string, GoosedClient>>({})
+    const lastUserId = useRef<string | null>(null)
+
+    // Clear client cache when userId changes
+    if (lastUserId.current !== userId) {
+        clientCache.current = {}
+        lastUserId.current = userId
+    }
 
     const getClient = useCallback((agentId: string): GoosedClient => {
-        if (!clientCache.current[agentId]) {
-            clientCache.current[agentId] = new GoosedClient({
+        const cacheKey = `${agentId}:${userId || ''}`
+        if (!clientCache.current[cacheKey]) {
+            clientCache.current[cacheKey] = new GoosedClient({
                 baseUrl: `${GATEWAY_URL}/agents/${agentId}`,
                 secretKey: GATEWAY_SECRET_KEY,
                 timeout: 5 * 60 * 1000, // 5 minutes for LLM responses
+                userId: userId || undefined,
             })
         }
-        return clientCache.current[agentId]
-    }, [])
+        return clientCache.current[cacheKey]
+    }, [userId])
 
     const fetchAgents = useCallback(async () => {
         try {
+            const headers: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
+            if (userId) headers['x-user-id'] = userId
             const res = await fetch(`${GATEWAY_URL}/agents`, {
-                headers: { 'x-secret-key': GATEWAY_SECRET_KEY },
+                headers,
                 signal: AbortSignal.timeout(5000),
             })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -57,7 +70,7 @@ export function GoosedProvider({ children }: { children: ReactNode }) {
             setIsConnected(false)
             setError(err instanceof Error ? err.message : 'Failed to connect to gateway')
         }
-    }, [])
+    }, [userId])
 
     useEffect(() => {
         fetchAgents()

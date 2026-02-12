@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent, ChangeEvent, DragEvent } from 'react'
+import type { TokenState } from '@goosed/sdk'
 import AgentSelector from './AgentSelector'
 
 // File handling constants
@@ -43,6 +44,7 @@ interface ChatInputProps {
     onAgentChange?: (agentId: string) => void
     showAgentSelector?: boolean
     modelInfo?: { provider: string; model: string } | null
+    tokenState?: TokenState | null
     presetMessage?: string
     presetToken?: number
 }
@@ -58,6 +60,7 @@ export default function ChatInput({
     onAgentChange,
     showAgentSelector = true,
     modelInfo,
+    tokenState,
     presetMessage,
     presetToken
 }: ChatInputProps) {
@@ -429,6 +432,21 @@ export default function ChatInput({
                                 <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
                             </svg>
                             <span className="toolbar-text">{modelInfo.model}</span>
+                        </div>
+                        <div className="toolbar-divider" />
+                    </>
+                )}
+
+                {/* Token usage */}
+                {tokenState && tokenState.accumulatedTotalTokens > 0 && (
+                    <>
+                        <div className="toolbar-item toolbar-token-info" title={`Input: ${tokenState.accumulatedInputTokens.toLocaleString()} / Output: ${tokenState.accumulatedOutputTokens.toLocaleString()}`}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+                                <line x1="16" y1="8" x2="2" y2="22" />
+                                <line x1="17.5" y1="15" x2="9" y2="15" />
+                            </svg>
+                            <span className="toolbar-text">{tokenState.accumulatedTotalTokens.toLocaleString()}</span>
                         </div>
                         <div className="toolbar-divider" />
                     </>

@@ -24,9 +24,13 @@ Extension name: `feishu-doc`
 
 ## Authentication
 
-Uses **user_access_token** via `USER_ACCESS_TOKEN` environment variable.
+Uses static **user_access_token** via `USER_ACCESS_TOKEN` environment variable.
 
-Required OAuth scopes: `docs:document.content:read`, `drive:drive.search:readonly`
+Required OAuth scopes:
+- `wiki:wiki:readonly` (or `wiki:wiki`)
+- `search:docs:read`
+- `docs:document.content:read`
+- `drive:drive.search:readonly`
 
 ### Prerequisites
 
@@ -34,7 +38,7 @@ Required secrets in `agents/kb-agent/config/secrets.yaml`:
 
 - `APP_ID`
 - `APP_SECRET`
-- `USER_ACCESS_TOKEN` (user access token with correct scopes)
+- `USER_ACCESS_TOKEN` (manual refresh every ~2 hours)
 
 ## Usage policy
 
@@ -46,6 +50,10 @@ Required secrets in `agents/kb-agent/config/secrets.yaml`:
 
 ## Local verification
 
-1. Start stack: `OFFICE_PREVIEW_ENABLED=false ./scripts/startup.sh`
-2. Check mcp list: `curl -H 'x-secret-key: test' http://127.0.0.1:3000/agents/kb-agent/mcp`
-3. In kb-agent chat, ask: "reportAgent 包含哪些报表？"
+1. Update `USER_ACCESS_TOKEN` in `agents/kb-agent/config/secrets.yaml`.
+2. Start stack:
+   - `OFFICE_PREVIEW_ENABLED=false ./scripts/startup.sh`
+3. Check mcp list:
+   - `curl -H 'x-secret-key: test' http://127.0.0.1:3000/agents/kb-agent/mcp`
+4. In kb-agent chat, ask:
+   - `reportAgent 包含哪些报表？`

@@ -1,16 +1,76 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useReducer, useRef, useEffect } from 'react'
 import { GoosedClient } from '@goosed/sdk'
+import type { TokenState } from '@goosed/sdk'
 import { ChatMessage, MessageContent } from '../components/Message'
+
+// ── ChatState enum ──────────────────────────────────────────────
+export enum ChatState {
+    Idle = 'idle',
+    Streaming = 'streaming',
+    Thinking = 'thinking',
+    Compacting = 'compacting',
+    Errored = 'errored',
+}
+
+// ── Reducer state & actions ─────────────────────────────────────
+interface StreamState {
+    messages: ChatMessage[]
+    chatState: ChatState
+    error: string | null
+    tokenState: TokenState | null
+}
+
+type StreamAction =
+    | { type: 'SET_MESSAGES'; payload: ChatMessage[] }
+    | { type: 'SET_CHAT_STATE'; payload: ChatState }
+    | { type: 'SET_ERROR'; payload: string | null }
+    | { type: 'SET_TOKEN_STATE'; payload: TokenState }
+    | { type: 'START_STREAMING' }
+    | { type: 'STREAM_FINISH'; error?: string }
+
+const initialState: StreamState = {
+    messages: [],
+    chatState: ChatState.Idle,
+    error: null,
+    tokenState: null,
+}
+
+function streamReducer(state: StreamState, action: StreamAction): StreamState {
+    switch (action.type) {
+        case 'SET_MESSAGES':
+            return { ...state, messages: action.payload }
+        case 'SET_CHAT_STATE':
+            return { ...state, chatState: action.payload }
+        case 'SET_ERROR':
+            return { ...state, error: action.payload }
+        case 'SET_TOKEN_STATE':
+            return { ...state, tokenState: action.payload }
+        case 'START_STREAMING':
+            return { ...state, chatState: ChatState.Streaming, error: null }
+        case 'STREAM_FINISH':
+            return {
+                ...state,
+                chatState: action.error ? ChatState.Errored : ChatState.Idle,
+                error: action.error ?? state.error,
+            }
+        default:
+            return state
+    }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────
 
 interface UseChatOptions {
     sessionId: string | null
     client: GoosedClient
 }
 
-interface UseChatReturn {
+export interface UseChatReturn {
     messages: ChatMessage[]
+    chatState: ChatState
     isLoading: boolean
     error: string | null
+    tokenState: TokenState | null
     sendMessage: (text: string) => Promise<void>
     stopMessage: () => Promise<boolean>
     clearMessages: () => void
@@ -18,43 +78,58 @@ interface UseChatReturn {
 }
 
 /**
+ * Detect thinking blocks in message text (e.g. <think>…</think>).
+ * Used to switch ChatState to Thinking while the model is reasoning.
+ */
+function hasThinkingContent(msg: ChatMessage): boolean {
+    return msg.content.some(
+        c => c.type === 'text' && c.text && /<think>/i.test(c.text) && !/<\/think>/i.test(c.text)
+    )
+}
+
+/**
+ * Detect compaction system notifications.
+ */
+function hasCompactingContent(msg: ChatMessage): boolean {
+    return msg.content.some(
+        c =>
+            (c as unknown as Record<string, unknown>).type === 'systemNotification' &&
+            (c as unknown as Record<string, unknown>).notificationType === 'compactingMessage'
+    )
+}
+
+/**
  * Push or update a message in the messages array.
- * This mirrors the desktop's pushMessage logic:
- * - If the incoming message has the same ID as the last message, update it
- * - For text content: accumulate (append) the text
- * - For other content types: push to the content array
+ * Mirrors the desktop's pushMessage logic:
+ * - Same ID as last message → update in place
+ *   - text + text with single content item → accumulate (append)
+ *   - otherwise → push to content array
+ * - Different ID → append new message
  */
 function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): ChatMessage[] {
     const lastMsg = currentMessages[currentMessages.length - 1]
 
-    // Check if this is an update to the last message (same ID)
     if (lastMsg?.id && lastMsg.id === incomingMsg.id) {
         const lastContent = lastMsg.content[lastMsg.content.length - 1]
         const newContent = incomingMsg.content[incomingMsg.content.length - 1]
 
-        // If both are text and incoming has only one content item, accumulate text
         if (
             lastContent?.type === 'text' &&
             newContent?.type === 'text' &&
             incomingMsg.content.length === 1
         ) {
-            // Accumulate text content
             lastContent.text = (lastContent.text || '') + (newContent.text || '')
         } else {
-            // Push all incoming content items to the existing message
             lastMsg.content.push(...incomingMsg.content)
         }
-
-        // Return a new array reference to trigger re-render
         return [...currentMessages]
     } else {
-        // This is a new message, append it
         return [...currentMessages, incomingMsg]
     }
 }
 
 /**
- * Convert backend message format to ChatMessage format
+ * Convert backend message format to ChatMessage format.
  */
 function convertBackendMessage(msg: Record<string, unknown>): ChatMessage {
     const metadata = msg.metadata as { userVisible?: boolean; agentVisible?: boolean } | undefined
@@ -63,127 +138,163 @@ function convertBackendMessage(msg: Record<string, unknown>): ChatMessage {
         role: (msg.role as 'user' | 'assistant') || 'assistant',
         content: (msg.content as MessageContent[]) || [],
         created: (msg.created as number) || Math.floor(Date.now() / 1000),
-        metadata: metadata
+        metadata: metadata,
     }
 }
 
+// ── Hook ────────────────────────────────────────────────────────
+
 export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
-    const [messages, setMessages] = useState<ChatMessage[]>([])
+    const [state, dispatch] = useReducer(streamReducer, initialState)
+
     const messagesRef = useRef<ChatMessage[]>([])
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const isLoadingRef = useRef(false)
-    const activeRequestIdRef = useRef(0)
-    const stopRequestedRef = useRef(false)
+    const isStreamingRef = useRef(false)
+    const abortControllerRef = useRef<AbortController | null>(null)
 
-    // Track mounted state to prevent state updates after unmount
+    // Track mounted state
     const isMountedRef = useRef(true)
-
     useEffect(() => {
         isMountedRef.current = true
-        return () => {
-            isMountedRef.current = false
-        }
+        return () => { isMountedRef.current = false }
     }, [])
 
     // Keep messagesRef in sync
-    const updateMessages = useCallback((newMessages: ChatMessage[]) => {
-        if (!isMountedRef.current) return
-        messagesRef.current = newMessages
-        setMessages(newMessages)
+    useEffect(() => {
+        messagesRef.current = state.messages
+    }, [state.messages])
+
+    const setInitialMessages = useCallback((msgs: ChatMessage[]) => {
+        dispatch({ type: 'SET_MESSAGES', payload: msgs })
     }, [])
 
-    // Set initial messages from session history
-    const setInitialMessages = useCallback((msgs: ChatMessage[]) => {
-        updateMessages(msgs)
-    }, [updateMessages])
-
     const sendMessage = useCallback(async (text: string) => {
-        if (!sessionId || !text.trim() || isLoadingRef.current) return
+        if (!sessionId || !text.trim() || isStreamingRef.current) return
 
-        setError(null)
-        setIsLoading(true)
-        isLoadingRef.current = true
-        stopRequestedRef.current = false
-        const requestId = activeRequestIdRef.current + 1
-        activeRequestIdRef.current = requestId
+        dispatch({ type: 'START_STREAMING' })
+        isStreamingRef.current = true
+
+        // Create an AbortController so we can cancel the HTTP connection
+        const controller = new AbortController()
+        abortControllerRef.current = controller
 
         // Add user message immediately
         const userMessage: ChatMessage = {
             id: `user-${Date.now()}`,
             role: 'user',
             content: [{ type: 'text', text }],
-            created: Math.floor(Date.now() / 1000)
+            created: Math.floor(Date.now() / 1000),
         }
 
         let currentMessages = [...messagesRef.current, userMessage]
-        updateMessages(currentMessages)
+        dispatch({ type: 'SET_MESSAGES', payload: currentMessages })
 
         try {
-            // Stream the response
             for await (const event of client.sendMessage(sessionId, text)) {
-                // Check if component is still mounted before updating state
-                if (!isMountedRef.current || requestId !== activeRequestIdRef.current || stopRequestedRef.current) break
+                if (!isMountedRef.current || controller.signal.aborted) break
 
-                if (event.type === 'Message' && event.message) {
-                    // Convert incoming message to ChatMessage format
-                    const incomingMessage = convertBackendMessage(event.message as Record<string, unknown>)
+                switch (event.type) {
+                    case 'Message': {
+                        if (!event.message) break
+                        const incomingMessage = convertBackendMessage(event.message as Record<string, unknown>)
+                        currentMessages = pushMessage(currentMessages, incomingMessage)
+                        dispatch({ type: 'SET_MESSAGES', payload: currentMessages })
 
-                    // Use pushMessage logic to properly handle streaming
-                    currentMessages = pushMessage(currentMessages, incomingMessage)
-                    updateMessages(currentMessages)
-                } else if (event.type === 'Error') {
-                    if (isMountedRef.current) {
-                        setError(event.error || 'Unknown error occurred')
+                        // Update token state
+                        if (event.token_state) {
+                            dispatch({ type: 'SET_TOKEN_STATE', payload: event.token_state })
+                        }
+
+                        // Determine chat sub-state from message content
+                        if (hasCompactingContent(incomingMessage)) {
+                            dispatch({ type: 'SET_CHAT_STATE', payload: ChatState.Compacting })
+                        } else if (hasThinkingContent(incomingMessage)) {
+                            dispatch({ type: 'SET_CHAT_STATE', payload: ChatState.Thinking })
+                        } else {
+                            dispatch({ type: 'SET_CHAT_STATE', payload: ChatState.Streaming })
+                        }
+                        break
                     }
+
+                    case 'UpdateConversation': {
+                        // Context compaction: backend sends entire replacement conversation
+                        if (event.conversation && Array.isArray(event.conversation)) {
+                            currentMessages = event.conversation.map(msg =>
+                                convertBackendMessage(msg as Record<string, unknown>)
+                            )
+                            dispatch({ type: 'SET_MESSAGES', payload: currentMessages })
+                        }
+                        break
+                    }
+
+                    case 'Finish': {
+                        // Stream completed. Capture final token state.
+                        if (event.token_state) {
+                            dispatch({ type: 'SET_TOKEN_STATE', payload: event.token_state })
+                        }
+                        break
+                    }
+
+                    case 'Error': {
+                        dispatch({ type: 'SET_ERROR', payload: event.error || 'Unknown error occurred' })
+                        break
+                    }
+
+                    case 'ModelChange':
+                    case 'Notification':
+                    case 'Ping':
+                        // Acknowledged but no action needed for now
+                        break
                 }
             }
         } catch (err) {
-            if (isMountedRef.current && requestId === activeRequestIdRef.current && !stopRequestedRef.current) {
-                setError(err instanceof Error ? err.message : 'Failed to send message')
+            if (isMountedRef.current && !(err instanceof DOMException && err.name === 'AbortError')) {
+                dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Failed to send message' })
             }
         } finally {
-            if (isMountedRef.current && requestId === activeRequestIdRef.current) {
-                setIsLoading(false)
-                isLoadingRef.current = false
-                stopRequestedRef.current = false
+            if (isMountedRef.current) {
+                const hadError = state.error !== null
+                dispatch({ type: 'STREAM_FINISH', error: hadError ? state.error ?? undefined : undefined })
+                isStreamingRef.current = false
+                abortControllerRef.current = null
             }
         }
-    }, [client, sessionId, updateMessages])
+    }, [client, sessionId, state.error])
 
     const stopMessage = useCallback(async (): Promise<boolean> => {
-        if (!sessionId || !isLoadingRef.current) return false
+        if (!sessionId || !isStreamingRef.current) return false
 
-        stopRequestedRef.current = true
-        setIsLoading(false)
-        isLoadingRef.current = false
+        // Abort the SSE connection immediately
+        abortControllerRef.current?.abort()
+        isStreamingRef.current = false
+        dispatch({ type: 'STREAM_FINISH' })
 
         try {
             await client.stopSession(sessionId)
             return true
         } catch (err) {
             if (isMountedRef.current) {
-                setError(err instanceof Error ? err.message : 'Failed to stop message')
+                dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Failed to stop message' })
             }
             return false
         }
     }, [client, sessionId])
 
     const clearMessages = useCallback(() => {
-        updateMessages([])
-        setError(null)
-    }, [updateMessages])
+        dispatch({ type: 'SET_MESSAGES', payload: [] })
+        dispatch({ type: 'SET_ERROR', payload: null })
+    }, [])
 
     return {
-        messages,
-        isLoading,
-        error,
+        messages: state.messages,
+        chatState: state.chatState,
+        isLoading: state.chatState === ChatState.Streaming || state.chatState === ChatState.Thinking || state.chatState === ChatState.Compacting,
+        error: state.error,
+        tokenState: state.tokenState,
         sendMessage,
         stopMessage,
         clearMessages,
-        setInitialMessages
+        setInitialMessages,
     }
 }
 
-// Export the convert function for use in Chat.tsx
 export { convertBackendMessage }

@@ -90,7 +90,7 @@ export interface SystemInfo {
     enabled_extensions: string[];
 }
 
-export type SSEEventType = 'Ping' | 'Message' | 'Finish' | 'Error' | 'ModelChange' | 'Notification';
+export type SSEEventType = 'Ping' | 'Message' | 'Finish' | 'Error' | 'ModelChange' | 'Notification' | 'UpdateConversation';
 
 export interface SSEEvent {
     type: SSEEventType;
@@ -98,12 +98,17 @@ export interface SSEEvent {
     token_state?: TokenState;
     reason?: string;
     error?: string;
+    model?: string;
+    mode?: string;
+    request_id?: string;
+    conversation?: Record<string, unknown>[];
 }
 
 export interface GoosedClientOptions {
     baseUrl?: string;
     secretKey?: string;
     timeout?: number;
+    userId?: string;
 }
 
 export interface SetProviderRequest {

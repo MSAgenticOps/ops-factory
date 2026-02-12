@@ -10,6 +10,7 @@ interface SessionListProps {
     onDelete: (session: SessionWithAgent) => void
     deletingSessionKeys?: Set<string>
     getSessionKey?: (session: SessionWithAgent) => string
+    onMarkUnread?: (session: SessionWithAgent) => void
 }
 
 export default function SessionList({
@@ -18,7 +19,8 @@ export default function SessionList({
     onResume,
     onDelete,
     deletingSessionKeys,
-    getSessionKey
+    getSessionKey,
+    onMarkUnread,
 }: SessionListProps) {
     if (isLoading) {
         return (
@@ -78,11 +80,12 @@ export default function SessionList({
         <div className="session-list">
             {sessions.map((session) => (
                 <SessionItem
-                    key={session.id}
+                    key={`${session.agentId || 'unknown'}:${session.id}`}
                     session={session}
                     onResume={onResume}
                     onDelete={onDelete}
                     isDeleting={deletingSessionKeys?.has(getSessionKey ? getSessionKey(session) : session.id)}
+                    onMarkUnread={onMarkUnread}
                 />
             ))}
         </div>

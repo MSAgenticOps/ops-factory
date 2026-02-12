@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { useGoosed } from '../contexts/GoosedContext'
+import { useInbox } from '../contexts/InboxContext'
 import { useChat, convertBackendMessage } from '../hooks/useChat'
 import MessageList from '../components/MessageList'
 import ChatInput from '../components/ChatInput'
@@ -30,6 +31,7 @@ export default function Chat() {
     const location = useLocation()
     const navigate = useNavigate()
     const { getClient, agents, isConnected } = useGoosed()
+    const { markSessionRead } = useInbox()
 
     const sessionId = searchParams.get('sessionId')
     const agentParam = searchParams.get('agent')
@@ -45,7 +47,7 @@ export default function Chat() {
 
     const client = selectedAgent ? getClient(selectedAgent) : null
 
-    const { messages, isLoading, error, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
+    const { messages, chatState, isLoading, error, tokenState, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
         sessionId,
         client: client!,
     })
@@ -117,18 +119,28 @@ export default function Chat() {
             setInitError(null)
 
             try {
+                let actualAgent = selectedAgent
                 const agentClient = getClient(selectedAgent)
                 const sessionDetails = await agentClient.getSession(sessionId)
                 setSession(sessionDetails)
 
+                // Auto-mark scheduled sessions as read when viewed
+                if (sessionDetails.session_type === 'scheduled' || sessionDetails.schedule_id) {
+                    const agentId = agentParam || detectAgentFromWorkingDir(sessionDetails.working_dir, agents)
+                    markSessionRead(agentId, sessionId)
+                }
+
                 if (!agentParam && sessionDetails.working_dir) {
                     const detected = detectAgentFromWorkingDir(sessionDetails.working_dir, agents)
                     if (detected !== selectedAgent) {
+                        actualAgent = detected
                         setSelectedAgent(detected)
                     }
                 }
 
-                await agentClient.resumeSession(sessionId)
+                // Use the correct agent's client (may differ from initial agentClient after detection)
+                const resumeClient = actualAgent !== selectedAgent ? getClient(actualAgent) : agentClient
+                await resumeClient.resumeSession(sessionId)
 
                 if (sessionDetails.conversation && Array.isArray(sessionDetails.conversation)) {
                     const historyMessages = sessionDetails.conversation.map(msg =>
@@ -230,7 +242,7 @@ export default function Chat() {
             {/* Messages area - scrollable */}
             <div className="chat-messages-area">
                 <div className="chat-messages-scroll">
-                    <MessageList messages={messages} isLoading={isLoading} agentId={selectedAgent} />
+                    <MessageList messages={messages} isLoading={isLoading} chatState={chatState} agentId={selectedAgent} />
                 </div>
             </div>
 
@@ -258,6 +270,7 @@ export default function Chat() {
                         onAgentChange={handleAgentChange}
                         showAgentSelector={true}
                         modelInfo={modelInfo}
+                        tokenState={tokenState}
                     />
                 </div>
             </div>

@@ -1,8 +1,19 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useInbox } from '../contexts/InboxContext'
+import { useUser } from '../contexts/UserContext'
+import { getAvatarForUser } from '../pages/Settings'
 
 export default function Sidebar() {
     const { unreadCount } = useInbox()
+    const { userId, logout } = useUser()
+    const navigate = useNavigate()
+
+    const avatar = userId ? getAvatarForUser(userId) : '🦆'
+
+    const handleLogout = () => {
+        logout()
+        navigate('/login', { replace: true })
+    }
 
     return (
         <aside className="sidebar">
@@ -23,6 +34,14 @@ export default function Sidebar() {
                         <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
                     <span>Home</span>
+                </NavLink>
+
+                <NavLink to="/chat" className="nav-link new-chat-nav">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>New Chat</span>
                 </NavLink>
 
                 <NavLink
@@ -85,14 +104,24 @@ export default function Sidebar() {
                 </NavLink>
             </nav>
 
-            <div className="sidebar-footer">
-                <NavLink to="/chat" className="new-chat-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    <span>New Chat</span>
-                </NavLink>
+            <div className="sidebar-user-section">
+                <span className="sidebar-user-avatar">{avatar}</span>
+                <span className="sidebar-user-name">{userId}</span>
+                <div className="sidebar-user-actions">
+                    <button className="sidebar-user-btn" onClick={() => navigate('/settings')} title="Settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                    </button>
+                    <button className="sidebar-user-btn" onClick={handleLogout} title="Log out">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </aside>
     )

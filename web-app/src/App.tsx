@@ -8,10 +8,13 @@ import Agents from './pages/Agents'
 import AgentConfigure from './pages/AgentConfigure'
 import ScheduledActions from './pages/ScheduledActions'
 import Inbox from './pages/Inbox'
+import Login from './pages/Login'
+import Settings from './pages/Settings'
 import FilePreview from './components/FilePreview'
 import { PreviewProvider, usePreview } from './contexts/PreviewContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { InboxProvider } from './contexts/InboxContext'
+import { ProtectedRoute } from './contexts/UserContext'
 
 function AppContent() {
     const { previewFile } = usePreview()
@@ -31,6 +34,7 @@ function AppContent() {
                         <Route path="/inbox" element={<Inbox />} />
                         <Route path="/agents" element={<Agents />} />
                         <Route path="/agents/:agentId/configure" element={<AgentConfigure />} />
+                        <Route path="/settings" element={<Settings />} />
                     </Routes>
                 </main>
                 <FilePreview />
@@ -41,12 +45,19 @@ function AppContent() {
 
 export default function App() {
     return (
-        <ToastProvider>
-            <InboxProvider>
-                <PreviewProvider>
-                    <AppContent />
-                </PreviewProvider>
-            </InboxProvider>
-        </ToastProvider>
+        <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/*" element={
+                <ProtectedRoute>
+                    <ToastProvider>
+                        <InboxProvider>
+                            <PreviewProvider>
+                                <AppContent />
+                            </PreviewProvider>
+                        </InboxProvider>
+                    </ToastProvider>
+                </ProtectedRoute>
+            } />
+        </Routes>
     )
 }

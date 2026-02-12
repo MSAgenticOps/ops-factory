@@ -67,6 +67,7 @@ export class GoosedClient {
     private baseUrl: string;
     private secretKey: string;
     private timeout: number;
+    private userId?: string;
 
     constructor(options: GoosedClientOptions = {}) {
         const env = typeof process !== 'undefined' ? process.env : {} as Record<string, string | undefined>;
@@ -76,13 +77,18 @@ export class GoosedClient {
         this.baseUrl = (options.baseUrl ?? defaultBaseUrl).replace(/\/$/, '');
         this.secretKey = options.secretKey ?? defaultSecretKey;
         this.timeout = options.timeout ?? 30000;
+        this.userId = options.userId;
     }
 
     private headers(): Record<string, string> {
-        return {
+        const h: Record<string, string> = {
             'Content-Type': 'application/json',
             'x-secret-key': this.secretKey,
         };
+        if (this.userId) {
+            h['x-user-id'] = this.userId;
+        }
+        return h;
     }
 
     private async handleResponse<T>(response: Response): Promise<T> {

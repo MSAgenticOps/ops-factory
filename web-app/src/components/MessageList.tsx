@@ -1,14 +1,16 @@
 import { useRef, useEffect, useMemo } from 'react'
 import Message, { ChatMessage } from './Message'
 import type { ToolResponseMap } from './Message'
+import { ChatState } from '../hooks/useChat'
 
 interface MessageListProps {
     messages: ChatMessage[]
     isLoading?: boolean
+    chatState?: ChatState
     agentId?: string
 }
 
-export default function MessageList({ messages, isLoading = false, agentId }: MessageListProps) {
+export default function MessageList({ messages, isLoading = false, chatState = ChatState.Idle, agentId }: MessageListProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -66,16 +68,23 @@ export default function MessageList({ messages, isLoading = false, agentId }: Me
 
     return (
         <div className="chat-messages" ref={containerRef}>
-            {visibleMessages.map((message, index) => (
-                <Message
-                    key={message.id || index}
-                    message={message}
-                    toolResponses={toolResponses}
-                    agentId={agentId}
-                />
-            ))}
+            {visibleMessages.map((message, index) => {
+                const isLastAssistant =
+                    isLoading &&
+                    message.role === 'assistant' &&
+                    index === visibleMessages.length - 1
+                return (
+                    <Message
+                        key={message.id || index}
+                        message={message}
+                        toolResponses={toolResponses}
+                        agentId={agentId}
+                        isStreaming={isLastAssistant}
+                    />
+                )
+            })}
 
-            {isLoading && (
+            {isLoading && visibleMessages[visibleMessages.length - 1]?.role !== 'assistant' && (
                 <div className="message assistant animate-fade-in">
                     <div className="message-avatar">G</div>
                     <div className="message-content">
@@ -84,6 +93,12 @@ export default function MessageList({ messages, isLoading = false, agentId }: Me
                             <span></span>
                             <span></span>
                         </div>
+                        {chatState === ChatState.Thinking && (
+                            <div className="loading-status-text">Thinking...</div>
+                        )}
+                        {chatState === ChatState.Compacting && (
+                            <div className="loading-status-text">Compacting context...</div>
+                        )}
                     </div>
                 </div>
             )}
