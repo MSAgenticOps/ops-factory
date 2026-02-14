@@ -2,15 +2,17 @@ import { useRef, useEffect, useMemo } from 'react'
 import Message, { ChatMessage } from './Message'
 import type { ToolResponseMap } from './Message'
 import { ChatState } from '../hooks/useChat'
+import { extractSourceDocuments, type Citation } from '../utils/citationParser'
 
 interface MessageListProps {
     messages: ChatMessage[]
     isLoading?: boolean
     chatState?: ChatState
     agentId?: string
+    onRetry?: () => void
 }
 
-export default function MessageList({ messages, isLoading = false, chatState = ChatState.Idle, agentId }: MessageListProps) {
+export default function MessageList({ messages, isLoading = false, chatState = ChatState.Idle, agentId, onRetry }: MessageListProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -46,6 +48,11 @@ export default function MessageList({ messages, isLoading = false, chatState = C
         return map
     }, [visibleMessages])
 
+    // Extract source documents from tool call results for fallback references
+    const sourceDocuments = useMemo<Citation[]>(() => {
+        return extractSourceDocuments(visibleMessages)
+    }, [visibleMessages])
+
     if (visibleMessages.length === 0 && !isLoading) {
         return (
             <div className="empty-state">
@@ -73,6 +80,10 @@ export default function MessageList({ messages, isLoading = false, chatState = C
                     isLoading &&
                     message.role === 'assistant' &&
                     index === visibleMessages.length - 1
+                // Pass source documents to the last assistant message for fallback references
+                const isLastAssistantMsg =
+                    message.role === 'assistant' &&
+                    index === visibleMessages.length - 1
                 return (
                     <Message
                         key={message.id || index}
@@ -80,6 +91,8 @@ export default function MessageList({ messages, isLoading = false, chatState = C
                         toolResponses={toolResponses}
                         agentId={agentId}
                         isStreaming={isLastAssistant}
+                        onRetry={message.role === 'assistant' && index === visibleMessages.length - 1 ? onRetry : undefined}
+                        sourceDocuments={isLastAssistantMsg ? sourceDocuments : undefined}
                     />
                 )
             })}

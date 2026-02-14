@@ -45,3 +45,8 @@ gateway/node_modules/
 
 # Agents artifacts
 agents/*/artifacts/
+agents/*/state/logs/
+agents/*/data/sessions/
+
+# Gateway runtime-generated agent dirs
+gateway/agents/

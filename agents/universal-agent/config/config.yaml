@@ -1,8 +1,12 @@
-GOOSE_PROVIDER: openai
-GOOSE_MODEL: deepseek-chat
-OPENAI_HOST: https://api.deepseek.com
+GOOSE_PROVIDER: litellm
+GOOSE_MODEL: google/gemini-3-flash-preview
+LITELLM_HOST: https://openrouter.ai/api/
+GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
-GOOSE_TELEMETRY_ENABLED: false
+GOOSE_TELEMETRY_ENABLED: true
+LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-opsfactory
+LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-opsfactory
+LANGFUSE_URL: http://localhost:3100
 extensions:
   extensionmanager:
     enabled: false
@@ -19,14 +23,14 @@ extensions:
     bundled: true
     available_tools: []
   todo:
-    enabled: true
+    enabled: false
     type: platform
     name: todo
     description: Enable a todo list for goose so it can keep track of what it is doing
     bundled: true
     available_tools: []
   developer:
-    enabled: false
+    enabled: true
     type: builtin
     name: developer
     description: General development tools useful for software engineering.
@@ -35,7 +39,7 @@ extensions:
     bundled: true
     available_tools: []
   computercontroller:
-    enabled: true
+    enabled: false
     type: builtin
     name: computercontroller
     description: General computer control tools that don't require you to be a developer or engineer.

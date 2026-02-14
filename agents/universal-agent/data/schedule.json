@@ -1,21 +1,21 @@
 [
   {
-    "id": "summary-change",
-    "source": "/Users/buyangnie/Documents/GitHub/ops-factory/agents/universal-agent/data/scheduled_recipes/summary-change.yaml",
-    "cron": "0 0 9 * * *",
-    "last_run": "2026-02-12T05:34:55.648263Z",
+    "id": "daily-incident-job",
+    "source": "/Users/buyangnie/Documents/GitHub/ops-factory/agents/universal-agent/data/scheduled_recipes/daily-incident-job.yaml",
+    "cron": "0 0 2 * * *",
+    "last_run": "2026-02-13T18:00:00.489318Z",
     "currently_running": false,
-    "paused": false,
+    "paused": true,
     "current_session_id": null,
     "process_start_time": null
   },
   {
-    "id": "daily-incident-job",
-    "source": "/Users/buyangnie/Documents/GitHub/ops-factory/agents/universal-agent/data/scheduled_recipes/daily-incident-job.yaml",
-    "cron": "0 0 2 * * *",
-    "last_run": "2026-02-10T13:06:19.420606Z",
+    "id": "summary-change",
+    "source": "/Users/buyangnie/Documents/GitHub/ops-factory/agents/universal-agent/data/scheduled_recipes/summary-change.yaml",
+    "cron": "0 0 9 * * *",
+    "last_run": "2026-02-13T01:00:00.186181Z",
     "currently_running": false,
-    "paused": false,
+    "paused": true,
     "current_session_id": null,
     "process_start_time": null
   }

@@ -7,7 +7,7 @@ set -euo pipefail
 # Usage: ./ctl.sh <action> [component]
 #
 #   action:    startup | shutdown | status | restart
-#   component: onlyoffice | gateway | agents | webapp | all (default)
+#   component: onlyoffice | langfuse | gateway | agents | webapp | all (default)
 #
 # Examples:
 #   ./ctl.sh startup            # start all services
@@ -29,6 +29,8 @@ export GOOSED_BIN="${GOOSED_BIN:-goosed}"
 export PROJECT_ROOT="${ROOT_DIR}"
 VITE_PORT="${VITE_PORT:-5173}"
 ONLYOFFICE_PORT="${ONLYOFFICE_PORT:-8080}"
+LANGFUSE_PORT="${LANGFUSE_PORT:-3100}"
+LANGFUSE_DIR="${ROOT_DIR}/langfuse"
 
 [ -n "${OFFICE_PREVIEW_ENABLED:-}" ] && export OFFICE_PREVIEW_ENABLED
 [ -n "${ONLYOFFICE_URL:-}" ]         && export ONLYOFFICE_URL
@@ -221,6 +223,46 @@ status_onlyoffice() {
 }
 
 # ==============================================================================
+# Component: Langfuse
+# ==============================================================================
+startup_langfuse() {
+    if docker ps --format '{{.Names}}' | grep -q '^langfuse$'; then
+        log_info "Langfuse already running"
+    else
+        log_info "Starting Langfuse (port ${LANGFUSE_PORT})..."
+        docker compose -f "${LANGFUSE_DIR}/docker-compose.yml" up -d
+    fi
+
+    log_info "Checking Langfuse readiness (timeout: 60s)..."
+    if ! wait_http_ok "Langfuse" "http://127.0.0.1:${LANGFUSE_PORT}/api/public/health" "" 60 1; then
+        log_error "Langfuse health check failed"
+        return 1
+    fi
+    log_info "Langfuse ready at http://localhost:${LANGFUSE_PORT}"
+}
+
+shutdown_langfuse() {
+    if docker ps --format '{{.Names}}' | grep -q '^langfuse$'; then
+        log_info "Stopping Langfuse..."
+        docker compose -f "${LANGFUSE_DIR}/docker-compose.yml" down
+    fi
+}
+
+status_langfuse() {
+    if docker ps --format '{{.Names}}' | grep -q '^langfuse$'; then
+        if curl -fsS "http://127.0.0.1:${LANGFUSE_PORT}/api/public/health" >/dev/null 2>&1; then
+            log_ok "Langfuse running (http://localhost:${LANGFUSE_PORT})"
+        else
+            log_warn "Langfuse container running but health check failed"
+            return 1
+        fi
+    else
+        log_fail "Langfuse is not running"
+        return 1
+    fi
+}
+
+# ==============================================================================
 # Component: Gateway
 # ==============================================================================
 startup_gateway() {
@@ -392,23 +434,27 @@ do_startup() {
                 shutdown_webapp
                 shutdown_agents
                 shutdown_gateway
+                shutdown_langfuse
                 shutdown_onlyoffice
             fi
             log_info "Starting all services..."
             # 1. OnlyOffice (Docker, returns when ready)
             startup_onlyoffice
-            # 2. Gateway in background (spawns agents)
+            # 2. Langfuse (Docker, returns when ready)
+            startup_langfuse
+            # 3. Gateway in background (spawns agents)
             trap cleanup EXIT INT TERM
             startup_gateway background
-            # 3. Verify agents
+            # 4. Verify agents
             if ! check_agents_running; then
                 log_error "Agents failed to start"
                 exit 1
             fi
-            # 4. Webapp in foreground (blocking)
+            # 5. Webapp in foreground (blocking)
             startup_webapp
             ;;
         onlyoffice) startup_onlyoffice ;;
+        langfuse)   startup_langfuse ;;
         gateway)    shutdown_agents; shutdown_gateway; startup_gateway foreground ;;
         agents)     startup_agents foreground ;;
         webapp)     startup_webapp ;;
@@ -423,10 +469,12 @@ do_shutdown() {
             shutdown_webapp
             shutdown_agents
             shutdown_gateway
+            shutdown_langfuse
             shutdown_onlyoffice
             log_info "All services stopped"
             ;;
         onlyoffice) shutdown_onlyoffice ;;
+        langfuse)   shutdown_langfuse ;;
         gateway)    shutdown_agents; shutdown_gateway ;;
         agents)     shutdown_agents ;;
         webapp)     shutdown_webapp ;;
@@ -444,6 +492,7 @@ do_status() {
     case "${component}" in
         all)
             status_onlyoffice || has_fail=1
+            status_langfuse   || has_fail=1
             status_gateway    || has_fail=1
             status_agents     || has_fail=1
             status_webapp     || has_fail=1
@@ -455,6 +504,7 @@ do_status() {
             fi
             ;;
         onlyoffice) status_onlyoffice || has_fail=1 ;;
+        langfuse)   status_langfuse   || has_fail=1 ;;
         gateway)    status_gateway    || has_fail=1 ;;
         agents)     status_agents     || has_fail=1 ;;
         webapp)     status_webapp     || has_fail=1 ;;
@@ -513,6 +563,7 @@ Actions:
 Components:
   all         All services (default)
   onlyoffice  OnlyOffice Document Server (Docker)
+  langfuse    Langfuse observability platform (Docker)
   gateway     Gateway HTTP proxy server
   agents      Goosed agent processes (managed by gateway)
   webapp      Web application (Vite dev server)

@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import { mkdir } from 'node:fs/promises'
 import { existsSync, readdirSync, renameSync, mkdirSync, writeFileSync } from 'node:fs'
 import httpProxy from 'http-proxy'
@@ -280,14 +280,27 @@ async function main() {
         const bodyStr = await readBody(req)
         const body = bodyStr ? JSON.parse(bodyStr) : {}
 
-        // Rewrite working_dir to per-user path
-        const agentRelPath = relative(config.projectRoot, manager.getUserArtifactsPath(agentId, userId) || '')
-        body.working_dir = agentRelPath || `agents/${agentId}/artifacts/users/${userId}`
-
-        // Ensure user directory exists
+        // Rewrite working_dir to per-user absolute path
         const userArtifactsAbs = manager.getUserArtifactsPath(agentId, userId)
         if (userArtifactsAbs) {
           await mkdir(userArtifactsAbs, { recursive: true })
+          body.working_dir = userArtifactsAbs
+
+          // Create .goosehints to instruct the LLM to write files using absolute paths
+          // (goose's text_editor resolves relative paths against process CWD, not session working_dir)
+          const hintsPath = join(userArtifactsAbs, '.goosehints')
+          const hintsContent = [
+            `Your working directory is: ${userArtifactsAbs}`,
+            '',
+            'IMPORTANT: When creating or writing files, you MUST use absolute paths starting with',
+            `${userArtifactsAbs}/. For example, to create "report.md", use the full path:`,
+            `${userArtifactsAbs}/report.md`,
+            '',
+            'Do NOT use relative paths like "report.md" or "./report.md" — they will be saved to the wrong location.',
+          ].join('\n')
+          writeFileSync(hintsPath, hintsContent, 'utf-8')
+        } else {
+          body.working_dir = `artifacts/users/${userId}`
         }
 
         // Forward to goosed
@@ -473,6 +486,16 @@ async function main() {
       await mkdir(userArtifactsPath, { recursive: true })
       try {
         const files = await listOutputFiles(userArtifactsPath)
+        // Also include files from the general artifacts root (excludes users/ subdir)
+        const generalArtifactsPath = manager.getArtifactsPathAbsolute(agentId)
+        if (generalArtifactsPath && generalArtifactsPath !== userArtifactsPath) {
+          const rootFiles = await listOutputFiles(generalArtifactsPath, ['users'])
+          const userPaths = new Set(files.map(f => f.name))
+          for (const f of rootFiles) {
+            if (!userPaths.has(f.name)) files.push(f)
+          }
+          files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ files }))
       } catch (err) {
@@ -494,7 +517,9 @@ async function main() {
         res.end(JSON.stringify({ error: `Agent '${agentId}' not found` }))
         return
       }
-      await serveFile(userArtifactsPath, filePath, req, res)
+      // Also pass the general artifacts dir as fallback (handles files created before per-user isolation)
+      const generalArtifactsPath = manager.getArtifactsPathAbsolute(agentId)
+      await serveFile(userArtifactsPath, filePath, req, res, generalArtifactsPath)
       return
     }
 

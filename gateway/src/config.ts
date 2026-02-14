@@ -48,7 +48,8 @@ export function loadGatewayConfig(): GatewayConfig {
   const host = process.env.GATEWAY_HOST || '0.0.0.0'
   const port = parseInt(process.env.GATEWAY_PORT || '3000', 10)
   const secretKey = process.env.GATEWAY_SECRET_KEY || 'test'
-  const projectRoot = resolve(process.env.PROJECT_ROOT || process.cwd())
+  // Default to repository root regardless of current working directory.
+  const projectRoot = resolve(process.env.PROJECT_ROOT || join(__dirname, '../..'))
   const agentsDir = resolve(process.env.AGENTS_DIR || join(projectRoot, 'agents'))
   const goosedBin = process.env.GOOSED_BIN || 'goosed'
 

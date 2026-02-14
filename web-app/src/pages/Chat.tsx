@@ -183,6 +183,19 @@ export default function Chat() {
         sendMessage(text)
     }, [sendMessage])
 
+    const handleRetry = useCallback(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i]
+            if (msg.role === 'user') {
+                const text = msg.content.find(c => c.type === 'text')?.text
+                if (text) {
+                    sendMessage(text)
+                    return
+                }
+            }
+        }
+    }, [messages, sendMessage])
+
     const handleStopMessage = useCallback(async () => {
         const stopped = await stopMessage()
         if (stopped) {
@@ -242,7 +255,7 @@ export default function Chat() {
             {/* Messages area - scrollable */}
             <div className="chat-messages-area">
                 <div className="chat-messages-scroll">
-                    <MessageList messages={messages} isLoading={isLoading} chatState={chatState} agentId={selectedAgent} />
+                    <MessageList messages={messages} isLoading={isLoading} chatState={chatState} agentId={selectedAgent} onRetry={handleRetry} />
                 </div>
             </div>
 

@@ -82,8 +82,13 @@ export class ProcessManager {
     await mkdir(artifactsPath, { recursive: true })
 
     // Build environment for goosed
+    // Read agent config.yaml and secrets.yaml, inject top-level string values as env vars
+    // so that goosed tracing (e.g. Langfuse) can pick them up via std::env::var()
+    const agentConfigEnv = this.getAgentConfigEnv(agent.id)
+
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
+      ...agentConfigEnv,
       GOOSE_PORT: String(agent.port),
       GOOSE_HOST: agent.host,
       GOOSE_SERVER__SECRET_KEY: agent.secret_key,
@@ -170,6 +175,30 @@ export class ProcessManager {
         skills: this.getAgentSkills(m.config.id),
       }
     })
+  }
+
+  /**
+   * Read top-level string/number/boolean values from agent config.yaml and secrets.yaml,
+   * return them as a flat key-value map suitable for process environment variables.
+   * This ensures vars like LANGFUSE_* are available to goosed via std::env::var().
+   */
+  private getAgentConfigEnv(agentId: string): Record<string, string> {
+    const result: Record<string, string> = {}
+    const configDir = join(this.getAgentRootPath(agentId), 'config')
+
+    for (const filename of ['config.yaml', 'secrets.yaml']) {
+      const filePath = join(configDir, filename)
+      if (!existsSync(filePath)) continue
+      try {
+        const parsed = parseYaml(readFileSync(filePath, 'utf-8')) as Record<string, unknown>
+        if (!parsed || typeof parsed !== 'object') continue
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === 'string') result[key] = value
+          else if (typeof value === 'number' || typeof value === 'boolean') result[key] = String(value)
+        }
+      } catch { /* ignore parse errors */ }
+    }
+    return result
   }
 
   private getAgentGooseConfig(agentId: string): { GOOSE_PROVIDER?: string; GOOSE_MODEL?: string } | null {
