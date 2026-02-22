@@ -328,23 +328,22 @@ export default function Message({
         const doneCount = tasks.filter(t => t.done).length
         const totalCount = tasks.length
         const progress = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
-        const status = (() => {
-            if (toolCall.isError) return { label: '更新失败', tone: 'error' as const }
-            if (toolCall.isPending) return { label: '更新中', tone: 'pending' as const }
-            if (totalCount > 0 && doneCount === totalCount) return { label: '已完成', tone: 'success' as const }
-            return { label: '进行中', tone: 'active' as const }
+        const indicatorTone = (() => {
+            if (toolCall.isError) return 'error'
+            if (toolCall.isPending) return 'pending'
+            if (totalCount > 0 && doneCount === totalCount) return 'success'
+            return 'active'
         })()
 
         return (
             <div className={`todo-inline ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(prev => !prev)}>
                 <div className="todo-inline-summary">
-                    <span className={`tool-call-indicator ${toolCall.isPending ? 'pending' : toolCall.isError ? 'error' : 'success'}`} aria-hidden="true" />
+                    <span className={`tool-call-indicator ${indicatorTone}`} aria-hidden="true" />
                     <span className="todo-inline-label">Todo</span>
                     <span className="todo-inline-title">{title}</span>
                     {totalCount > 0 && (
                         <span className="todo-inline-progress">{doneCount}/{totalCount}</span>
                     )}
-                    <span className={`todo-status-badge ${status.tone}`}>{status.label}</span>
                     <span className={`todo-inline-chevron ${expanded ? 'open' : ''}`} aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                             <polyline points="6 9 12 15 18 9" />

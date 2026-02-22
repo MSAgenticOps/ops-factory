@@ -1654,6 +1654,10 @@ textarea {
     background: #d49a2d;
 }
 
+.tool-call-indicator.active {
+    background: #3b82f6;
+}
+
 .tool-call-status {
     margin-left: auto;
     font-size: var(--font-size-xs);
