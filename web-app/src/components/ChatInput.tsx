@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent, ChangeEvent, DragEvent, ClipboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { TokenState, ImageData } from '@goosed/sdk'
 import AgentSelector from './AgentSelector'
 import { compressImageDataUrl, isImageFile, parseDataUrl, readFileAsDataUrl } from '../utils/imageUtils'
@@ -74,6 +75,7 @@ export default function ChatInput({
     presetToken,
     visionMode = 'off',
 }: ChatInputProps) {
+    const { t } = useTranslation()
     const [value, setValue] = useState('')
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
     const [isDragging, setIsDragging] = useState(false)
@@ -173,7 +175,7 @@ export default function ChatInput({
 
         // Check image limits
         if (imageFiles.length > 0 && !imagesAllowed) {
-            alert('Image upload is not enabled for this agent.')
+            alert(t('chat.imageUploadNotEnabled'))
             if (nonImageFiles.length === 0) return
         }
 
@@ -183,10 +185,10 @@ export default function ChatInput({
         const allowedFiles = nonImageFiles.slice(0, MAX_FILES_PER_MESSAGE - currentFileCount)
 
         if (allowedImages.length < imageFiles.length && imagesAllowed) {
-            alert(`Maximum ${MAX_IMAGES_PER_MESSAGE} images allowed per message.`)
+            alert(t('chat.maxImagesAllowed', { max: MAX_IMAGES_PER_MESSAGE }))
         }
         if (allowedFiles.length < nonImageFiles.length) {
-            alert(`Maximum ${MAX_FILES_PER_MESSAGE} files allowed per message.`)
+            alert(t('chat.maxFilesAllowed', { max: MAX_FILES_PER_MESSAGE }))
         }
 
         const allFiles = [...allowedImages, ...allowedFiles]
@@ -272,13 +274,13 @@ export default function ChatInput({
         e.preventDefault()
 
         if (!imagesAllowed) {
-            alert('Image upload is not enabled for this agent.')
+            alert(t('chat.imageUploadNotEnabled'))
             return
         }
 
         const remaining = MAX_IMAGES_PER_MESSAGE - currentImageCount
         if (remaining <= 0) {
-            alert(`Maximum ${MAX_IMAGES_PER_MESSAGE} images allowed per message.`)
+            alert(t('chat.maxImagesAllowed', { max: MAX_IMAGES_PER_MESSAGE }))
             return
         }
 
@@ -385,7 +387,7 @@ export default function ChatInput({
                             <polyline points="17 8 12 3 7 8" />
                             <line x1="12" y1="3" x2="12" y2="15" />
                         </svg>
-                        <p>Drop files here</p>
+                        <p>{t('chat.dropFilesHere')}</p>
                     </div>
                 </div>
             )}
@@ -410,7 +412,7 @@ export default function ChatInput({
                                 {file.error ? (
                                     <span className="uploaded-file-error">{file.error}</span>
                                 ) : file.isLoading ? (
-                                    <span className="uploaded-file-loading">Loading...</span>
+                                    <span className="uploaded-file-loading">{t('common.loading')}</span>
                                 ) : (
                                     <span className="uploaded-file-size">
                                         {(file.size / 1024).toFixed(1)} KB
@@ -420,7 +422,7 @@ export default function ChatInput({
                             <button
                                 className="uploaded-file-remove"
                                 onClick={() => handleRemoveFile(file.id)}
-                                aria-label="Remove file"
+                                aria-label={t('chat.removeFile')}
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -453,7 +455,7 @@ export default function ChatInput({
                     className="toolbar-btn"
                     onClick={handleFileInputClick}
                     disabled={disabled || totalFileCount >= maxTotalFiles}
-                    title={`Attach files (${totalFileCount}/${maxTotalFiles})`}
+                    title={t('chat.attachFiles', { current: totalFileCount, max: maxTotalFiles })}
                 >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" width="17" height="17">
                         <path d="M12 5v14M5 12h14" />
@@ -507,8 +509,8 @@ export default function ChatInput({
                     className={`chat-send-btn-new ${isGenerating ? 'is-stop' : ''}`}
                     onClick={isGenerating ? handleStopGeneration : handleSubmit}
                     disabled={isGenerating ? !onStopGeneration : (disabled || !hasContent || isAnyFileLoading)}
-                    aria-label={isGenerating ? "Stop generation" : "Send message"}
-                    title={isGenerating ? "Stop generation" : "Send message"}
+                    aria-label={isGenerating ? t('chat.stopGeneration') : t('chat.sendMessage')}
+                    title={isGenerating ? t('chat.stopGeneration') : t('chat.sendMessage')}
                 >
                     {isGenerating ? (
                         <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">

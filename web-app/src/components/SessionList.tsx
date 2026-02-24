@@ -1,4 +1,5 @@
 import type { Session } from '@goosed/sdk'
+import { useTranslation } from 'react-i18next'
 import SessionItem from './SessionItem'
 
 export type SessionWithAgent = Session & { agentId?: string }
@@ -22,6 +23,8 @@ export default function SessionList({
     getSessionKey,
     onMarkUnread,
 }: SessionListProps) {
+    const { t } = useTranslation()
+
     if (isLoading) {
         return (
             <div className="session-list">
@@ -68,9 +71,9 @@ export default function SessionList({
                     <line x1="9" y1="9" x2="15" y2="15" />
                     <line x1="15" y1="9" x2="9" y2="15" />
                 </svg>
-                <h3 className="empty-state-title">No sessions yet</h3>
+                <h3 className="empty-state-title">{t('history.noSessions')}</h3>
                 <p className="empty-state-description">
-                    Start a new chat to create your first session.
+                    {t('history.noSessionsHint')}
                 </p>
             </div>
         )

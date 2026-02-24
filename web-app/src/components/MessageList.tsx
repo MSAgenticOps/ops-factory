@@ -1,4 +1,5 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Message, { ChatMessage, type DetectedFile } from './Message'
 import type { ToolResponseMap } from './Message'
 import { ChatState } from '../hooks/useChat'
@@ -24,6 +25,7 @@ const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
 
 export default function MessageList({ messages, isLoading = false, chatState = ChatState.Idle, agentId, onRetry }: MessageListProps) {
+    const { t } = useTranslation()
     const containerRef = useRef<HTMLDivElement>(null)
     const bottomRef = useRef<HTMLDivElement>(null)
     const baselineFilesRef = useRef<Map<string, ListedFile>>(new Map())
@@ -162,9 +164,9 @@ export default function MessageList({ messages, isLoading = false, chatState = C
                 >
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                <h3 className="empty-state-title">No messages yet</h3>
+                <h3 className="empty-state-title">{t('chat.noMessages')}</h3>
                 <p className="empty-state-description">
-                    Start a conversation by typing a message below.
+                    {t('chat.startConversation')}
                 </p>
             </div>
         )
@@ -206,10 +208,10 @@ export default function MessageList({ messages, isLoading = false, chatState = C
                             <span></span>
                         </div>
                         {chatState === ChatState.Thinking && (
-                            <div className="loading-status-text">Thinking...</div>
+                            <div className="loading-status-text">{t('chat.thinking')}</div>
                         )}
                         {chatState === ChatState.Compacting && (
-                            <div className="loading-status-text">Compacting context...</div>
+                            <div className="loading-status-text">{t('chat.compactingContext')}</div>
                         )}
                     </div>
                 </div>

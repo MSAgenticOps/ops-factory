@@ -1,13 +1,14 @@
 import { useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useMcp } from '../hooks/useMcp'
 
-function formatModel(provider?: string, model?: string): string {
+function formatModel(provider?: string, model?: string, unknownLabel = 'Unknown'): string {
     if (provider && model) return `${model} (${provider})`
     if (model) return model
     if (provider) return provider
-    return 'Unknown'
+    return unknownLabel
 }
 
 // Component to fetch and display MCP count for an agent
@@ -23,6 +24,7 @@ function McpCount({ agentId }: { agentId: string }) {
 }
 
 export default function Agents() {
+    const { t } = useTranslation()
     const { agents, isConnected, error } = useGoosed()
     const navigate = useNavigate()
 
@@ -33,15 +35,15 @@ export default function Agents() {
     return (
         <div className="page-container agents-page">
             <div className="page-header">
-                <h1 className="page-title">Agents</h1>
-                <p className="page-subtitle">Active and configured agents available through the gateway.</p>
+                <h1 className="page-title">{t('agents.title')}</h1>
+                <p className="page-subtitle">{t('agents.subtitle')}</p>
             </div>
 
             {error && (
-                <div className="agents-alert agents-alert-error">Connection error: {error}</div>
+                <div className="agents-alert agents-alert-error">{t('common.connectionError', { error })}</div>
             )}
             {!isConnected && !error && (
-                <div className="agents-alert agents-alert-warning">Connecting to gateway...</div>
+                <div className="agents-alert agents-alert-warning">{t('common.connectingGateway')}</div>
             )}
 
             {agents.length === 0 ? (
@@ -50,8 +52,8 @@ export default function Agents() {
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 7v5l3 2" />
                     </svg>
-                    <h3 className="empty-state-title">No agents found</h3>
-                    <p className="empty-state-description">Configure agents in the gateway to see them here.</p>
+                    <h3 className="empty-state-title">{t('agents.noAgents')}</h3>
+                    <p className="empty-state-description">{t('agents.noAgentsHint')}</p>
                 </div>
             ) : (
                 <div className="agents-grid">
@@ -71,20 +73,20 @@ export default function Agents() {
 
                                 <div className="agent-meta">
                                     <div className="agent-meta-row">
-                                        <span className="agent-meta-label">Model</span>
-                                        <span className="agent-meta-value">{formatModel(agent.provider, agent.model)}</span>
+                                        <span className="agent-meta-label">{t('agents.model')}</span>
+                                        <span className="agent-meta-value">{formatModel(agent.provider, agent.model, t('agents.unknown'))}</span>
                                     </div>
                                 </div>
 
                                 <div className="agent-extensions">
                                     <div className="agent-meta-row">
-                                        <span className="agent-meta-label">Skills</span>
+                                        <span className="agent-meta-label">{t('agents.skills')}</span>
                                         <span className={`agent-meta-value ${skills.length === 0 ? 'is-empty' : ''}`}>
                                             {skills.length}
                                         </span>
                                     </div>
                                     <div className="agent-meta-row">
-                                        <span className="agent-meta-label">MCP</span>
+                                        <span className="agent-meta-label">{t('agents.mcp')}</span>
                                         <span className="agent-meta-value">
                                             <McpCount agentId={agent.id} />
                                         </span>
@@ -97,7 +99,7 @@ export default function Agents() {
                                         className="agent-skill-button"
                                         onClick={() => navigate(`/agents/${agent.id}/configure`)}
                                     >
-                                        Configure
+                                        {t('agents.configure')}
                                     </button>
                                 </div>
                             </div>

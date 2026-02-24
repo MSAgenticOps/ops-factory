@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSkills } from '../../hooks/useSkills'
 import SkillCard from './SkillCard'
 
@@ -7,6 +8,7 @@ interface SkillSectionProps {
 }
 
 export default function SkillSection({ agentId }: SkillSectionProps) {
+    const { t } = useTranslation()
     const { skills, isLoading, error, fetchSkills } = useSkills()
 
     useEffect(() => {
@@ -20,7 +22,7 @@ export default function SkillSection({ agentId }: SkillSectionProps) {
     return (
         <div className="skill-section">
             <div className="skill-section-header">
-                <h3 className="skill-section-title">Skills</h3>
+                <h3 className="skill-section-title">{t('skill.title')}</h3>
                 <span className="skill-section-count">{skills.length}</span>
             </div>
 
@@ -29,7 +31,7 @@ export default function SkillSection({ agentId }: SkillSectionProps) {
             )}
 
             {isLoading ? (
-                <div className="skill-loading">Loading skills...</div>
+                <div className="skill-loading">{t('skill.loadingSkills')}</div>
             ) : skills.length > 0 ? (
                 <div className="skill-grid">
                     {skills.map(skill => (
@@ -38,7 +40,7 @@ export default function SkillSection({ agentId }: SkillSectionProps) {
                 </div>
             ) : (
                 <div className="skill-empty">
-                    <p>No skills configured.</p>
+                    <p>{t('skill.noSkills')}</p>
                 </div>
             )}
         </div>

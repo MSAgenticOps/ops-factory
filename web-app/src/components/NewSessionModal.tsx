@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type MouseEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface NewSessionModalProps {
     isOpen: boolean
@@ -13,6 +14,7 @@ export default function NewSessionModal({
     onSubmit,
     showInitialMessage = false
 }: NewSessionModalProps) {
+    const { t } = useTranslation()
     const defaultWorkingDir = process.env.GOOSE_WORKING_DIR || '~'
 
     const [workingDir, setWorkingDir] = useState(defaultWorkingDir)
@@ -40,14 +42,14 @@ export default function NewSessionModal({
         <div className="modal-overlay" onClick={handleOverlayClick}>
             <div className="modal animate-slide-up">
                 <div className="modal-header">
-                    <h2 className="modal-title">New Chat Session</h2>
+                    <h2 className="modal-title">{t('newSession.title')}</h2>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         <div className="form-group">
                             <label className="form-label" htmlFor="workingDir">
-                                Working Directory
+                                {t('newSession.workingDir')}
                             </label>
                             <input
                                 id="workingDir"
@@ -63,21 +65,21 @@ export default function NewSessionModal({
                                 color: 'var(--color-text-muted)',
                                 marginTop: 'var(--spacing-2)'
                             }}>
-                                The directory where Goose will operate. This affects file operations and tool access.
+                                {t('newSession.workingDirHint')}
                             </p>
                         </div>
 
                         {showInitialMessage && (
                             <div className="form-group">
                                 <label className="form-label" htmlFor="initialMessage">
-                                    Initial Message (optional)
+                                    {t('newSession.initialMessage')}
                                 </label>
                                 <textarea
                                     id="initialMessage"
                                     className="form-input"
                                     value={initialMessage}
                                     onChange={(e) => setInitialMessage(e.target.value)}
-                                    placeholder="What would you like to start with?"
+                                    placeholder={t('newSession.initialMessagePlaceholder')}
                                     rows={3}
                                     style={{ resize: 'vertical', minHeight: '80px' }}
                                 />
@@ -87,14 +89,14 @@ export default function NewSessionModal({
 
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={onClose}>
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
                             className="btn btn-primary"
                             disabled={!workingDir.trim()}
                         >
-                            Start Chat
+                            {t('newSession.startChat')}
                         </button>
                     </div>
                 </form>

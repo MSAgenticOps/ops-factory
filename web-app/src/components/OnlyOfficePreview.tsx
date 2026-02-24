@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
 
@@ -37,6 +38,7 @@ const EDITOR_CONTAINER_ID = 'onlyoffice-editor'
 export default function OnlyOfficePreview({
     name, path, agentId, type, onlyofficeUrl, fileBaseUrl,
 }: OnlyOfficePreviewProps) {
+    const { t, i18n } = useTranslation()
     const editorRef = useRef<OnlyOfficeEditor | null>(null)
     const [scriptError, setScriptError] = useState(false)
 
@@ -64,7 +66,7 @@ export default function OnlyOfficePreview({
                 documentType: getDocumentType(type),
                 editorConfig: {
                     mode: 'view',
-                    lang: 'zh',
+                    lang: i18n.language?.startsWith('zh') ? 'zh' : 'en',
                     customization: {
                         compactHeader: true,
                         toolbarHideFileName: true,
@@ -136,9 +138,9 @@ export default function OnlyOfficePreview({
                 textAlign: 'center',
             }}>
                 <div>
-                    <p>Failed to load OnlyOffice Document Server.</p>
+                    <p>{t('onlyoffice.loadFailed')}</p>
                     <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-2)' }}>
-                        Ensure the server is running at {onlyofficeUrl}
+                        {t('onlyoffice.ensureRunning', { url: onlyofficeUrl })}
                     </p>
                 </div>
             </div>

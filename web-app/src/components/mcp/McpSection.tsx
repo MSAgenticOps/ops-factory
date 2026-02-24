@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMcp } from '../../hooks/useMcp'
 import McpCard from './McpCard'
 import AddMcpModal from './AddMcpModal'
@@ -9,6 +10,7 @@ interface McpSectionProps {
 }
 
 export default function McpSection({ agentId }: McpSectionProps) {
+  const { t } = useTranslation()
   const {
     categorized,
     warnings,
@@ -62,13 +64,13 @@ export default function McpSection({ agentId }: McpSectionProps) {
   return (
     <div className="mcp-section">
       <div className="mcp-section-header">
-        <h3 className="mcp-section-title">MCP Servers</h3>
+        <h3 className="mcp-section-title">{t('mcp.title')}</h3>
         <button
           type="button"
           className="mcp-add-btn"
           onClick={handleOpenAddModal}
         >
-          + Add MCP Server
+          {t('mcp.addServer')}
         </button>
       </div>
 
@@ -85,12 +87,12 @@ export default function McpSection({ agentId }: McpSectionProps) {
       )}
 
       {isLoading ? (
-        <div className="mcp-loading">Loading MCP configuration...</div>
+        <div className="mcp-loading">{t('mcp.loadingConfig')}</div>
       ) : (
         <>
           {hasDefault && (
             <div className="mcp-category">
-              <h4 className="mcp-category-title">Enabled</h4>
+              <h4 className="mcp-category-title">{t('mcp.enabled')}</h4>
               <div className="mcp-grid">
                 {categorized.default.map(entry => (
                   <McpCard
@@ -105,7 +107,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
 
           {hasAvailable && (
             <div className="mcp-category">
-              <h4 className="mcp-category-title">Available</h4>
+              <h4 className="mcp-category-title">{t('mcp.available')}</h4>
               <div className="mcp-grid">
                 {categorized.available.map(entry => (
                   <McpCard
@@ -120,7 +122,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
 
           {hasCustom && (
             <div className="mcp-category">
-              <h4 className="mcp-category-title">Custom</h4>
+              <h4 className="mcp-category-title">{t('mcp.custom')}</h4>
               <div className="mcp-grid">
                 {categorized.custom.map(entry => (
                   <McpCard
@@ -135,7 +137,7 @@ export default function McpSection({ agentId }: McpSectionProps) {
               </div>
               {deleteConfirm && (
                 <div className="mcp-delete-confirm">
-                  Click delete again to confirm removing "{deleteConfirm}"
+                  {t('mcp.deleteConfirm', { name: deleteConfirm })}
                 </div>
               )}
             </div>
@@ -143,8 +145,8 @@ export default function McpSection({ agentId }: McpSectionProps) {
 
           {!hasDefault && !hasAvailable && !hasCustom && (
             <div className="mcp-empty">
-              <p>No MCP servers configured.</p>
-              <p>Click "Add MCP Server" to add one.</p>
+              <p>{t('mcp.noServers')}</p>
+              <p>{t('mcp.noServersHint')}</p>
             </div>
           )}
         </>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { McpAddRequest, McpEntry, McpType } from '../../types/mcp'
 
 interface AddMcpModalProps {
@@ -19,6 +20,7 @@ export default function AddMcpModal({
   mode = 'add',
   initialEntry = null,
 }: AddMcpModalProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [connectionType, setConnectionType] = useState<ConnectionType>('stdio')
@@ -88,17 +90,17 @@ export default function AddMcpModal({
 
     // Validation
     if (!name.trim()) {
-      setError('Name is required')
+      setError(t('mcp.nameRequired'))
       return
     }
 
     if (connectionType === 'stdio' && !command.trim()) {
-      setError('Command is required for stdio connection')
+      setError(t('mcp.commandRequired'))
       return
     }
 
     if (connectionType === 'streamable_http' && !uri.trim()) {
-      setError('URI is required for HTTP connection')
+      setError(t('mcp.uriRequired'))
       return
     }
 
@@ -114,7 +116,7 @@ export default function AddMcpModal({
       }
 
       if (!trimmedKey && trimmedValue) {
-        setError('Environment variable key is required when value is set')
+        setError(t('mcp.envKeyRequired'))
         return
       }
 
@@ -124,7 +126,7 @@ export default function AddMcpModal({
 
       // Existing keys may keep blank value to preserve current secret value
       if (!trimmedValue && !fromExisting) {
-        setError(`Environment variable "${trimmedKey}" must have a value`)
+        setError(t('mcp.envValueRequired', { key: trimmedKey }))
         return
       }
 
@@ -157,7 +159,7 @@ export default function AddMcpModal({
       await onSubmit(request)
       handleClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${isEditMode ? 'update' : 'add'} MCP server`)
+      setError(err instanceof Error ? err.message : t(isEditMode ? 'mcp.updateFailed' : 'mcp.addFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -169,12 +171,12 @@ export default function AddMcpModal({
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content mcp-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">{isEditMode ? 'Edit MCP Server' : 'Add MCP Server'}</h2>
+          <h2 className="modal-title">{isEditMode ? t('mcp.editTitle') : t('mcp.addTitle')}</h2>
           <button
             type="button"
             className="modal-close"
             onClick={handleClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             &times;
           </button>
@@ -187,34 +189,34 @@ export default function AddMcpModal({
 
           <div className="mcp-form-group">
             <label className="mcp-form-label">
-              Name <span className="mcp-form-required">*</span>
+              {t('mcp.name')} <span className="mcp-form-required">*</span>
             </label>
             <input
               type="text"
               className="mcp-form-input"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="my-mcp-server"
+              placeholder={t('mcp.namePlaceholder')}
               disabled={isEditMode}
             />
             {isEditMode && (
-              <span className="mcp-form-hint">Name cannot be changed while editing.</span>
+              <span className="mcp-form-hint">{t('mcp.nameCannotChange')}</span>
             )}
           </div>
 
           <div className="mcp-form-group">
-            <label className="mcp-form-label">Description</label>
+            <label className="mcp-form-label">{t('mcp.description')}</label>
             <input
               type="text"
               className="mcp-form-input"
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="What does this MCP server do?"
+              placeholder={t('mcp.descriptionPlaceholder')}
             />
           </div>
 
           <div className="mcp-form-group">
-            <label className="mcp-form-label">Connection Type</label>
+            <label className="mcp-form-label">{t('mcp.connectionType')}</label>
             <div className="mcp-form-radio-group">
               <label className="mcp-form-radio">
                 <input
@@ -224,7 +226,7 @@ export default function AddMcpModal({
                   checked={connectionType === 'stdio'}
                   onChange={() => setConnectionType('stdio')}
                 />
-                <span>Standard IO (stdio)</span>
+                <span>{t('mcp.stdio')}</span>
               </label>
               <label className="mcp-form-radio">
                 <input
@@ -234,7 +236,7 @@ export default function AddMcpModal({
                   checked={connectionType === 'streamable_http'}
                   onChange={() => setConnectionType('streamable_http')}
                 />
-                <span>HTTP (streamable_http)</span>
+                <span>{t('mcp.streamableHttp')}</span>
               </label>
             </div>
           </div>
@@ -243,7 +245,7 @@ export default function AddMcpModal({
             <>
               <div className="mcp-form-group">
                 <label className="mcp-form-label">
-                  Command <span className="mcp-form-required">*</span>
+                  {t('mcp.command')} <span className="mcp-form-required">*</span>
                 </label>
                 <input
                   type="text"
@@ -255,7 +257,7 @@ export default function AddMcpModal({
               </div>
 
               <div className="mcp-form-group">
-                <label className="mcp-form-label">Arguments</label>
+                <label className="mcp-form-label">{t('mcp.arguments')}</label>
                 <input
                   type="text"
                   className="mcp-form-input"
@@ -263,7 +265,7 @@ export default function AddMcpModal({
                   onChange={e => setArgs(e.target.value)}
                   placeholder="-m my_mcp_server"
                 />
-                <span className="mcp-form-hint">Space-separated arguments</span>
+                <span className="mcp-form-hint">{t('mcp.argumentsHint')}</span>
               </div>
             </>
           )}
@@ -271,7 +273,7 @@ export default function AddMcpModal({
           {connectionType === 'streamable_http' && (
             <div className="mcp-form-group">
               <label className="mcp-form-label">
-                URI <span className="mcp-form-required">*</span>
+                {t('mcp.uri')} <span className="mcp-form-required">*</span>
               </label>
               <input
                 type="text"
@@ -285,13 +287,13 @@ export default function AddMcpModal({
 
           <div className="mcp-form-group">
             <label className="mcp-form-label">
-              Environment Variables
+              {t('mcp.envVars')}
               <button
                 type="button"
                 className="mcp-form-add-btn"
                 onClick={addEnvVar}
               >
-                + Add
+                {t('mcp.envAdd')}
               </button>
             </label>
             {envVars.map((env, index) => (
@@ -301,7 +303,7 @@ export default function AddMcpModal({
                   className="mcp-form-input mcp-form-env-key"
                   value={env.key}
                   onChange={e => updateEnvVar(index, 'key', e.target.value)}
-                  placeholder="KEY"
+                  placeholder={t('mcp.envKeyPlaceholder')}
                   disabled={env.fromExisting}
                 />
                 <input
@@ -309,7 +311,7 @@ export default function AddMcpModal({
                   className="mcp-form-input mcp-form-env-value"
                   value={env.value}
                   onChange={e => updateEnvVar(index, 'value', e.target.value)}
-                  placeholder={env.fromExisting ? 'Leave blank to keep current value' : 'value'}
+                  placeholder={env.fromExisting ? t('mcp.envKeepCurrentValue') : t('mcp.envValuePlaceholder')}
                 />
                 <button
                   type="button"
@@ -322,11 +324,11 @@ export default function AddMcpModal({
             ))}
           </div>
           {isEditMode && envVars.some(env => env.fromExisting) && (
-            <span className="mcp-form-hint">Existing variable values are hidden. Leave blank to keep unchanged.</span>
+            <span className="mcp-form-hint">{t('mcp.envExistingHint')}</span>
           )}
 
           <div className="mcp-form-group">
-            <label className="mcp-form-label">Timeout (seconds)</label>
+            <label className="mcp-form-label">{t('mcp.timeout')}</label>
             <input
               type="number"
               className="mcp-form-input mcp-form-input-small"
@@ -343,7 +345,7 @@ export default function AddMcpModal({
               className="mcp-form-btn mcp-form-btn-secondary"
               onClick={handleClose}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -351,8 +353,8 @@ export default function AddMcpModal({
               disabled={isSubmitting}
             >
               {isSubmitting
-                ? (isEditMode ? 'Saving...' : 'Adding...')
-                : (isEditMode ? 'Save Changes' : 'Add MCP Server')}
+                ? (isEditMode ? t('agentConfigure.saving') : t('mcp.adding'))
+                : (isEditMode ? t('mcp.saveChanges') : t('mcp.addServer'))}
             </button>
           </div>
         </form>

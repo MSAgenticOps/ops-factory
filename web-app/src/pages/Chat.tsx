@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useInbox } from '../contexts/InboxContext'
 import { useChat, convertBackendMessage } from '../hooks/useChat'
@@ -28,6 +29,7 @@ function detectAgentFromWorkingDir(workingDir: string, agents: Array<{ id: strin
 }
 
 export default function Chat() {
+    const { t } = useTranslation()
     const [searchParams] = useSearchParams()
     const location = useLocation()
     const navigate = useNavigate()
@@ -242,7 +244,7 @@ export default function Chat() {
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ textAlign: 'center' }}>
                         <div className="loading-spinner" style={{ margin: '0 auto var(--spacing-4)' }} />
-                        <p style={{ color: 'var(--color-text-secondary)' }}>Loading session...</p>
+                        <p style={{ color: 'var(--color-text-secondary)' }}>{t('chat.loadingSession')}</p>
                     </div>
                 </div>
             </div>
@@ -259,10 +261,10 @@ export default function Chat() {
                             <line x1="12" y1="8" x2="12" y2="12" />
                             <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
-                        <h3 className="empty-state-title">Failed to load session</h3>
+                        <h3 className="empty-state-title">{t('chat.failedToLoadSession')}</h3>
                         <p className="empty-state-description">{initError}</p>
                         <button className="btn btn-primary" style={{ marginTop: 'var(--spacing-4)' }} onClick={() => navigate('/')}>
-                            Back to Home
+                            {t('chat.backToHome')}
                         </button>
                     </div>
                 </div>
@@ -297,7 +299,7 @@ export default function Chat() {
             <div className="chat-input-area-bottom">
                 <div className="chat-input-area-inner">
                     <div className={`chat-inline-hint ${showStopHint ? 'visible' : ''}`}>
-                        Generation stopped
+                        {t('chat.generationStopped')}
                     </div>
                     <ChatInput
                         onSubmit={handleSendMessage}
@@ -305,7 +307,7 @@ export default function Chat() {
                         disabled={isLoading || !isConnected || isCreatingSession}
                         isGenerating={isLoading}
                         onStopGeneration={handleStopMessage}
-                        placeholder={isCreatingSession ? "Switching agent..." : isLoading ? "Waiting for response..." : "Type a message..."}
+                        placeholder={isCreatingSession ? t('chat.switchingAgent') : isLoading ? t('chat.waitingForResponse') : t('chat.typePlaceholder')}
                         autoFocus
                         selectedAgent={selectedAgent}
                         onAgentChange={handleAgentChange}

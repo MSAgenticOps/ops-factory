@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
+import i18n from '../i18n'
 
 interface Props {
     children: ReactNode
@@ -67,7 +68,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                         color: 'var(--color-text-primary, #32353b)',
                         marginBottom: '0.5rem'
                     }}>
-                        Something went wrong
+                        {i18n.t('common.somethingWentWrong')}
                     </h1>
                     <p style={{
                         fontSize: '0.875rem',
@@ -75,7 +76,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                         marginBottom: '1.5rem',
                         maxWidth: '400px'
                     }}>
-                        {this.state.error?.message || 'An unexpected error occurred. Please try again.'}
+                        {this.state.error?.message || i18n.t('common.unexpectedError')}
                     </p>
                     <button
                         onClick={this.handleRetry}
@@ -90,7 +91,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                             cursor: 'pointer'
                         }}
                     >
-                        Try Again
+                        {i18n.t('common.tryAgain')}
                     </button>
                 </div>
             )

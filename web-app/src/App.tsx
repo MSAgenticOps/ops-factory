@@ -15,16 +15,24 @@ import FilePreview from './components/FilePreview'
 import { PreviewProvider, usePreview } from './contexts/PreviewContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { InboxProvider } from './contexts/InboxContext'
+import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
 import { ProtectedRoute } from './contexts/UserContext'
 
 function AppContent() {
     const { previewFile } = usePreview()
+    const { isCollapsed } = useSidebar()
     const isPreviewOpen = !!previewFile
+
+    const mainWrapperClass = [
+        'main-wrapper',
+        isPreviewOpen ? 'with-preview' : '',
+        isCollapsed ? 'sidebar-collapsed' : '',
+    ].filter(Boolean).join(' ')
 
     return (
         <div className="app-container">
             <Sidebar />
-            <div className={`main-wrapper ${isPreviewOpen ? 'with-preview' : ''}`}>
+            <div className={mainWrapperClass}>
                 <main className="main-content">
                     <Routes>
                         <Route path="/" element={<Home />} />
@@ -51,13 +59,15 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/*" element={
                 <ProtectedRoute>
-                    <ToastProvider>
-                        <InboxProvider>
-                            <PreviewProvider>
-                                <AppContent />
-                            </PreviewProvider>
-                        </InboxProvider>
-                    </ToastProvider>
+                    <SidebarProvider>
+                        <ToastProvider>
+                            <InboxProvider>
+                                <PreviewProvider>
+                                    <AppContent />
+                                </PreviewProvider>
+                            </InboxProvider>
+                        </ToastProvider>
+                    </SidebarProvider>
                 </ProtectedRoute>
             } />
         </Routes>

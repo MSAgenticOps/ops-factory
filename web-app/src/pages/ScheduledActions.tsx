@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { ScheduledJob, ScheduleSessionInfo } from '@goosed/sdk'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useToast } from '../contexts/ToastContext'
@@ -67,6 +68,7 @@ function saveDrafts(storageKey: string, drafts: ScheduleDraftMap): void {
 }
 
 export default function ScheduledActions() {
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const { userId } = useUser()
     const { agents, getClient, isConnected, error } = useGoosed()
@@ -276,16 +278,16 @@ export default function ScheduledActions() {
     return (
         <div className="page-container scheduled-page">
             <div className="page-header">
-                <h1 className="page-title">Scheduler</h1>
-                <p className="page-subtitle">Create and manage cron-based actions per agent.</p>
+                <h1 className="page-title">{t('scheduler.title')}</h1>
+                <p className="page-subtitle">{t('scheduler.subtitle')}</p>
             </div>
 
-            {error && <div className="agents-alert agents-alert-error">Connection error: {error}</div>}
-            {!isConnected && !error && <div className="agents-alert agents-alert-warning">Connecting to gateway...</div>}
+            {error && <div className="agents-alert agents-alert-error">{t('common.connectionError', { error })}</div>}
+            {!isConnected && !error && <div className="agents-alert agents-alert-warning">{t('common.connectingGateway')}</div>}
 
             <div className="scheduled-toolbar">
                 <label className="scheduled-agent-select-wrap">
-                    <span>Agent</span>
+                    <span>{t('scheduler.agent')}</span>
                     <select
                         className="scheduled-agent-select"
                         value={selectedAgent}
@@ -298,7 +300,7 @@ export default function ScheduledActions() {
                 </label>
 
                 <button type="button" className="btn btn-primary" onClick={openCreateModal} disabled={!selectedAgent}>
-                    Create Scheduled Action
+                    {t('scheduler.createAction')}
                 </button>
             </div>
 
@@ -313,22 +315,22 @@ export default function ScheduledActions() {
                                 setRuns([])
                             }}
                         >
-                            Back
+                            {t('common.back')}
                         </button>
                         <div>
-                            <h3 className="scheduled-runs-title">{viewingJobId} Runs</h3>
-                            <p className="scheduled-runs-subtitle">Recent scheduled executions for this job.</p>
+                            <h3 className="scheduled-runs-title">{t('scheduler.runs', { id: viewingJobId })}</h3>
+                            <p className="scheduled-runs-subtitle">{t('scheduler.runsSubtitle')}</p>
                         </div>
                     </div>
 
                     {runsLoading ? (
                         <div className="empty-state">
-                            <h3 className="empty-state-title">Loading runs...</h3>
+                            <h3 className="empty-state-title">{t('scheduler.loadingRuns')}</h3>
                         </div>
                     ) : runs.length === 0 ? (
                         <div className="empty-state">
-                            <h3 className="empty-state-title">No runs yet</h3>
-                            <p className="empty-state-description">This schedule has not produced any session yet.</p>
+                            <h3 className="empty-state-title">{t('scheduler.noRuns')}</h3>
+                            <p className="empty-state-description">{t('scheduler.noRunsHint')}</p>
                         </div>
                     ) : (
                         <div className="scheduled-runs-list">
@@ -338,9 +340,9 @@ export default function ScheduledActions() {
                                         <div className="scheduled-run-name">{run.name || run.id}</div>
                                         <div className="scheduled-run-meta">
                                             <span>{new Date(run.createdAt).toLocaleString()}</span>
-                                            <span>{run.messageCount} messages</span>
+                                            <span>{run.messageCount} {t('common.messages')}</span>
                                             {run.totalTokens !== undefined && run.totalTokens !== null && (
-                                                <span>{run.totalTokens.toLocaleString()} tokens</span>
+                                                <span>{run.totalTokens.toLocaleString()} {t('common.tokens')}</span>
                                             )}
                                         </div>
                                     </div>
@@ -349,7 +351,7 @@ export default function ScheduledActions() {
                                         className="btn btn-secondary"
                                         onClick={() => handleOpenRunSession(run.id)}
                                     >
-                                        Open Session
+                                        {t('scheduler.openSession')}
                                     </button>
                                 </div>
                             ))}
@@ -358,12 +360,12 @@ export default function ScheduledActions() {
                 </div>
             ) : loading ? (
                 <div className="empty-state">
-                    <h3 className="empty-state-title">Loading schedules...</h3>
+                    <h3 className="empty-state-title">{t('scheduler.loadingSchedules')}</h3>
                 </div>
             ) : jobs.length === 0 ? (
                 <div className="empty-state">
-                    <h3 className="empty-state-title">No schedules yet</h3>
-                    <p className="empty-state-description">Create your first scheduled action to automate an instruction.</p>
+                    <h3 className="empty-state-title">{t('scheduler.noSchedules')}</h3>
+                    <p className="empty-state-description">{t('scheduler.noSchedulesHint')}</p>
                 </div>
             ) : (
                 <div className="agents-grid scheduled-grid">
@@ -377,31 +379,31 @@ export default function ScheduledActions() {
                                     </div>
                                 </div>
                                 <span className={`status-pill ${job.paused ? 'status-stopped' : 'status-running'}`}>
-                                    {job.paused ? 'paused' : (job.currently_running ? 'running' : 'active')}
+                                    {job.paused ? t('scheduler.paused') : (job.currently_running ? t('scheduler.running') : t('scheduler.active'))}
                                 </span>
                             </div>
 
                             <div className="agent-meta">
                                 <div className="agent-meta-row">
-                                    <span className="agent-meta-label">Last run</span>
+                                    <span className="agent-meta-label">{t('scheduler.lastRun')}</span>
                                     <span className="agent-meta-value">
-                                        {job.last_run ? new Date(job.last_run).toLocaleString() : 'Never'}
+                                        {job.last_run ? new Date(job.last_run).toLocaleString() : t('scheduler.never')}
                                     </span>
                                 </div>
                                 <div className="agent-meta-row">
-                                    <span className="agent-meta-label">Source</span>
+                                    <span className="agent-meta-label">{t('scheduler.source')}</span>
                                     <span className="agent-meta-value scheduled-source">{job.source}</span>
                                 </div>
                             </div>
 
                             <div className="scheduled-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => openEditModal(job)}>Edit</button>
+                                <button type="button" className="btn btn-secondary" onClick={() => openEditModal(job)}>{t('common.edit')}</button>
                                 <button type="button" className="btn btn-secondary" onClick={() => handlePauseToggle(job)}>
-                                    {job.paused ? 'Resume' : 'Pause'}
+                                    {job.paused ? t('scheduler.resume') : t('scheduler.pause')}
                                 </button>
-                                <button type="button" className="btn btn-secondary" onClick={() => handleRunNow(job)}>Run now</button>
-                                <button type="button" className="btn btn-secondary" onClick={() => handleViewRuns(job)}>View Runs</button>
-                                <button type="button" className="btn btn-danger" onClick={() => handleDelete(job)}>Delete</button>
+                                <button type="button" className="btn btn-secondary" onClick={() => handleRunNow(job)}>{t('scheduler.runNow')}</button>
+                                <button type="button" className="btn btn-secondary" onClick={() => handleViewRuns(job)}>{t('scheduler.viewRuns')}</button>
+                                <button type="button" className="btn btn-danger" onClick={() => handleDelete(job)}>{t('common.delete')}</button>
                             </div>
                         </div>
                     ))}
@@ -412,12 +414,12 @@ export default function ScheduledActions() {
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal-content scheduled-modal">
                         <div className="modal-header">
-                            <h3 className="modal-title">{editingJobId ? 'Edit Scheduled Action' : 'Create Scheduled Action'}</h3>
+                            <h3 className="modal-title">{editingJobId ? t('scheduler.editAction') : t('scheduler.createAction')}</h3>
                             <button type="button" className="modal-close" onClick={() => setShowModal(false)}>×</button>
                         </div>
                         <div className="modal-body scheduled-modal-body">
                             <label className="scheduled-field-label">
-                                Name
+                                {t('scheduler.name')}
                                 <input
                                     className="scheduled-input"
                                     value={form.name}
@@ -426,20 +428,20 @@ export default function ScheduledActions() {
                                 />
                             </label>
                             <label className="scheduled-field-label">
-                                Instruction
+                                {t('scheduler.instruction')}
                                 <textarea
                                     className="scheduled-textarea"
                                     value={form.instruction}
                                     onChange={(e) => setForm(prev => ({ ...prev, instruction: e.target.value }))}
-                                    placeholder={editingJobId ? 'Enter updated instructions for this schedule.' : "Tell me to summarize today's progress and pending risks."}
+                                    placeholder={editingJobId ? t('scheduler.instructionPlaceholderEdit') : t('scheduler.instructionPlaceholderNew')}
                                     rows={5}
                                 />
                             </label>
 
-                            {editingJobId && <div className="scheduled-editing-id">Current schedule ID: {editingJobId}</div>}
+                            {editingJobId && <div className="scheduled-editing-id">{t('scheduler.currentScheduleId', { id: editingJobId })}</div>}
 
                             <label className="scheduled-field-label">
-                                Cron
+                                {t('scheduler.cron')}
                                 <input
                                     className="scheduled-input"
                                     value={form.cron}
@@ -447,14 +449,14 @@ export default function ScheduledActions() {
                                     placeholder="0 0 9 * * *"
                                 />
                             </label>
-                            <p className="scheduled-hint">Supports 5 or 6 fields. Example: 0 0 9 * * * (every day at 09:00).</p>
+                            <p className="scheduled-hint">{t('scheduler.cronHint')}</p>
                         </div>
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={submitting}>
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-                                {submitting ? 'Saving...' : (editingJobId ? 'Save' : 'Create')}
+                                {submitting ? t('scheduler.saving') : (editingJobId ? t('common.save') : t('scheduler.create'))}
                             </button>
                         </div>
                     </div>

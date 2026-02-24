@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // --- Mock data -----------------------------------------------------------
 
@@ -187,6 +188,7 @@ function StatusBadge({ status }: { status: AgentMetrics['status'] }) {
 type TimeRange = '24h' | '7d'
 
 export default function Monitoring() {
+    const { t } = useTranslation()
     const [range, setRange] = useState<TimeRange>('24h')
 
     // aggregated KPIs
@@ -200,16 +202,16 @@ export default function Monitoring() {
         <div className="page-container monitoring-page">
             <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                    <h1 className="page-title">Monitoring</h1>
+                    <h1 className="page-title">{t('monitoring.title')}</h1>
                     <p className="page-subtitle">
-                        Agent observability powered by Langfuse
+                        {t('monitoring.subtitle')}
                         <a
                             href="http://localhost:3100/"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mon-langfuse-link"
                         >
-                            Open Langfuse
+                            {t('monitoring.openLangfuse')}
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                                 <polyline points="15 3 21 3 21 9" />
@@ -226,15 +228,15 @@ export default function Monitoring() {
 
             {/* ---- KPI row ---- */}
             <div className="mon-kpi-row">
-                <KpiCard label="Total Requests" value={fmtNum(range === '7d' ? totalRequests * 7 : totalRequests)} sub={range === '24h' ? 'last 24 hours' : 'last 7 days'} />
-                <KpiCard label="Avg Resp Time" value={fmtMs(avgResponse)} sub="across all agents" />
-                <KpiCard label="Total Tokens" value={fmtNum(range === '7d' ? totalTokens * 7 : totalTokens)} sub="input + output" />
-                <KpiCard label="Avg Availability" value={`${avgAvailability}%`} sub="uptime" />
-                <KpiCard label="Errors" value={String(range === '7d' ? totalErrors : Math.ceil(totalErrors / 2))} sub={range === '24h' ? 'last 24 hours' : 'last 7 days'} />
+                <KpiCard label={t('monitoring.totalRequests')} value={fmtNum(range === '7d' ? totalRequests * 7 : totalRequests)} sub={range === '24h' ? t('monitoring.last24h') : t('monitoring.last7d')} />
+                <KpiCard label={t('monitoring.avgRespTime')} value={fmtMs(avgResponse)} sub={t('monitoring.acrossAllAgents')} />
+                <KpiCard label={t('monitoring.totalTokens')} value={fmtNum(range === '7d' ? totalTokens * 7 : totalTokens)} sub={t('monitoring.inputOutput')} />
+                <KpiCard label={t('monitoring.avgAvailability')} value={`${avgAvailability}%`} sub={t('monitoring.uptime')} />
+                <KpiCard label={t('monitoring.errors')} value={String(range === '7d' ? totalErrors : Math.ceil(totalErrors / 2))} sub={range === '24h' ? t('monitoring.last24h') : t('monitoring.last7d')} />
             </div>
 
             {/* ---- Per-agent cards ---- */}
-            <h2 className="mon-section-title">Agent Details</h2>
+            <h2 className="mon-section-title">{t('monitoring.agentDetails')}</h2>
             <div className="mon-agent-grid">
                 {AGENTS_METRICS.map(agent => (
                     <div key={agent.id} className="mon-agent-card">
@@ -250,27 +252,27 @@ export default function Monitoring() {
                         {/* metric pairs */}
                         <div className="mon-metric-grid">
                             <div className="mon-metric">
-                                <span className="mon-metric-label">Requests (24h)</span>
+                                <span className="mon-metric-label">{t('monitoring.requests24h')}</span>
                                 <span className="mon-metric-value">{fmtNum(agent.requests24h)}</span>
                             </div>
                             <div className="mon-metric">
-                                <span className="mon-metric-label">Avg Latency</span>
+                                <span className="mon-metric-label">{t('monitoring.avgLatency')}</span>
                                 <span className="mon-metric-value">{fmtMs(agent.avgResponseMs)}</span>
                             </div>
                             <div className="mon-metric">
-                                <span className="mon-metric-label">P95 Latency</span>
+                                <span className="mon-metric-label">{t('monitoring.p95Latency')}</span>
                                 <span className="mon-metric-value">{fmtMs(agent.p95ResponseMs)}</span>
                             </div>
                             <div className="mon-metric">
-                                <span className="mon-metric-label">Success Rate</span>
+                                <span className="mon-metric-label">{t('monitoring.successRate')}</span>
                                 <span className="mon-metric-value">{agent.successRate}%</span>
                             </div>
                             <div className="mon-metric">
-                                <span className="mon-metric-label">Tokens In</span>
+                                <span className="mon-metric-label">{t('monitoring.tokensIn')}</span>
                                 <span className="mon-metric-value">{fmtNum(agent.tokensInput)}</span>
                             </div>
                             <div className="mon-metric">
-                                <span className="mon-metric-label">Tokens Out</span>
+                                <span className="mon-metric-label">{t('monitoring.tokensOut')}</span>
                                 <span className="mon-metric-value">{fmtNum(agent.tokensOutput)}</span>
                             </div>
                         </div>
@@ -278,15 +280,15 @@ export default function Monitoring() {
                         {/* availability ring + bar charts */}
                         <div className="mon-visuals">
                             <div className="mon-visual-block">
-                                <span className="mon-visual-title">Availability</span>
+                                <span className="mon-visual-title">{t('monitoring.availability')}</span>
                                 <AvailabilityRing pct={agent.availability} />
                             </div>
                             <div className="mon-visual-block mon-visual-block-grow">
-                                <span className="mon-visual-title">Daily Requests</span>
+                                <span className="mon-visual-title">{t('monitoring.dailyRequests')}</span>
                                 <Sparkline values={agent.dailyRequests} color="var(--color-accent)" />
                             </div>
                             <div className="mon-visual-block mon-visual-block-grow">
-                                <span className="mon-visual-title">Daily Latency</span>
+                                <span className="mon-visual-title">{t('monitoring.dailyLatency')}</span>
                                 <Sparkline values={agent.dailyLatency} color="var(--color-warning)" formatter={fmtMs} />
                             </div>
                         </div>
@@ -294,7 +296,7 @@ export default function Monitoring() {
                         {/* error rate bar */}
                         <div className="mon-error-bar-wrapper">
                             <div className="mon-error-bar-header">
-                                <span className="mon-metric-label">Error Rate</span>
+                                <span className="mon-metric-label">{t('monitoring.errorRate')}</span>
                                 <span className="mon-metric-value">{agent.errorRate}%</span>
                             </div>
                             <div className="mon-error-bar-track">
@@ -309,13 +311,13 @@ export default function Monitoring() {
             </div>
 
             {/* ---- Recent errors ---- */}
-            <h2 className="mon-section-title">Recent Errors</h2>
+            <h2 className="mon-section-title">{t('monitoring.recentErrors')}</h2>
             <div className="mon-errors-table">
                 <div className="mon-errors-header">
-                    <span>Timestamp</span>
-                    <span>Agent</span>
-                    <span>Code</span>
-                    <span>Message</span>
+                    <span>{t('monitoring.timestamp')}</span>
+                    <span>{t('sidebar.agents')}</span>
+                    <span>{t('monitoring.code')}</span>
+                    <span>{t('monitoring.message')}</span>
                 </div>
                 {RECENT_ERRORS.map((err, i) => (
                     <div key={i} className="mon-errors-row">

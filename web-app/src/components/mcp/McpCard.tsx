@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { McpEntry } from '../../types/mcp'
 import { getMcpDisplayName } from '../../types/mcp'
 
@@ -10,6 +11,7 @@ interface McpCardProps {
 }
 
 export default function McpCard({ entry, onToggle, onEdit, onDelete, isCustom }: McpCardProps) {
+  const { t } = useTranslation()
   const displayName = getMcpDisplayName(entry)
 
   const handleToggle = () => {
@@ -21,7 +23,7 @@ export default function McpCard({ entry, onToggle, onEdit, onDelete, isCustom }:
       <div className="mcp-card-header">
         <div className="mcp-card-title">
           <span className="mcp-card-name">{displayName}</span>
-          {isCustom && <span className="mcp-card-badge">Custom</span>}
+          {isCustom && <span className="mcp-card-badge">{t('mcp.customBadge')}</span>}
         </div>
         <label className="mcp-toggle">
           <input
@@ -34,7 +36,7 @@ export default function McpCard({ entry, onToggle, onEdit, onDelete, isCustom }:
       </div>
 
       <p className="mcp-card-description">
-        {entry.description || 'No description'}
+        {entry.description || t('mcp.noDescription')}
       </p>
 
       {isCustom && (onEdit || onDelete) && (
@@ -45,7 +47,7 @@ export default function McpCard({ entry, onToggle, onEdit, onDelete, isCustom }:
               className="mcp-card-action"
               onClick={() => onEdit(entry)}
             >
-              Edit
+              {t('common.edit')}
             </button>
           )}
           {onDelete && (
@@ -54,7 +56,7 @@ export default function McpCard({ entry, onToggle, onEdit, onDelete, isCustom }:
               className="mcp-card-action mcp-card-action-danger"
               onClick={() => onDelete(entry.name)}
             >
-              Delete
+              {t('common.delete')}
             </button>
           )}
         </div>

@@ -1,8 +1,10 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext'
 
 export default function Login() {
+    const { t } = useTranslation()
     const { userId, login } = useUser()
     const navigate = useNavigate()
     const [username, setUsername] = useState('')
@@ -25,13 +27,13 @@ export default function Login() {
             <div className="login-card">
                 <div className="login-logo">🐎</div>
                 <h1 className="login-title">Ops Factory</h1>
-                <p className="login-subtitle">Enter your name to get started</p>
+                <p className="login-subtitle">{t('login.subtitle')}</p>
                 <form onSubmit={handleSubmit} className="login-form">
                     <input
                         type="text"
                         value={username}
                         onChange={e => setUsername(e.target.value)}
-                        placeholder="Your name"
+                        placeholder={t('login.placeholder')}
                         className="login-input"
                         autoFocus
                         autoComplete="username"
@@ -41,7 +43,7 @@ export default function Login() {
                         className="btn btn-primary login-button"
                         disabled={!username.trim()}
                     >
-                        Enter
+                        {t('login.submit')}
                     </button>
                 </form>
             </div>

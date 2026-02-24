@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAgentConfig } from '../hooks/useAgentConfig'
 import { useToast } from '../contexts/ToastContext'
 import { McpSection } from '../components/mcp'
 import { SkillSection } from '../components/skill'
 
 export default function AgentConfigure() {
+    const { t } = useTranslation()
     const { agentId } = useParams<{ agentId: string }>()
     const navigate = useNavigate()
     const { config, isLoading, error, fetchConfig, updateConfig } = useAgentConfig()
@@ -34,9 +36,9 @@ export default function AgentConfigure() {
         const result = await updateConfig(agentId, { agentsMd })
 
         if (result.success) {
-            showToast('success', 'Prompt saved successfully')
+            showToast('success', t('agentConfigure.promptSaved'))
         } else {
-            showToast('error', result.error || 'Failed to save prompt')
+            showToast('error', result.error || t('agentConfigure.promptSaveFailed'))
         }
 
         setIsSavingPrompt(false)
@@ -45,7 +47,7 @@ export default function AgentConfigure() {
     if (isLoading) {
         return (
             <div className="page-container agent-configure-page">
-                <div className="agent-configure-loading">Loading agent configuration...</div>
+                <div className="agent-configure-loading">{t('agentConfigure.loadingConfig')}</div>
             </div>
         )
     }
@@ -54,9 +56,9 @@ export default function AgentConfigure() {
         return (
             <div className="page-container agent-configure-page">
                 <div className="agent-configure-error">
-                    {error || 'Agent not found'}
+                    {error || t('agentConfigure.agentNotFound')}
                     <button type="button" onClick={() => navigate('/agents')}>
-                        Back to Agents
+                        {t('agentConfigure.backToAgents')}
                     </button>
                 </div>
             </div>
@@ -71,7 +73,7 @@ export default function AgentConfigure() {
                     className="agent-configure-back"
                     onClick={() => navigate('/agents')}
                 >
-                    ← Back to Agents
+                    {t('agentConfigure.backToAgents')}
                 </button>
                 <div className="agent-configure-title-section">
                     <h1 className="agent-configure-title">{config.name}</h1>
@@ -82,15 +84,15 @@ export default function AgentConfigure() {
             <div className="agent-configure-content">
                 {/* Agent Prompt Section */}
                 <section className="agent-configure-section">
-                    <h2 className="agent-configure-section-title">Agent Prompt (AGENTS.md)</h2>
+                    <h2 className="agent-configure-section-title">{t('agentConfigure.agentPromptTitle')}</h2>
                     <p className="agent-configure-section-desc">
-                        Define the agent&apos;s behavior, capabilities, and instructions.
+                        {t('agentConfigure.agentPromptDesc')}
                     </p>
                     <div className="agent-prompt-editor">
                         <textarea
                             value={agentsMd}
                             onChange={(e) => setAgentsMd(e.target.value)}
-                            placeholder="# Agent Instructions&#10;&#10;Write your agent prompt here..."
+                            placeholder={t('agentConfigure.promptPlaceholder')}
                             rows={15}
                         />
                     </div>
@@ -101,7 +103,7 @@ export default function AgentConfigure() {
                             onClick={handleSavePrompt}
                             disabled={isSavingPrompt}
                         >
-                            {isSavingPrompt ? 'Saving...' : 'Save Prompt'}
+                            {isSavingPrompt ? t('agentConfigure.saving') : t('agentConfigure.savePrompt')}
                         </button>
                     </div>
                 </section>

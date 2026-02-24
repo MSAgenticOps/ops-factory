@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
 import { usePreview } from '../contexts/PreviewContext'
 
@@ -20,13 +21,13 @@ interface AgentFile extends FileInfo {
 
 type FileCategory = 'all' | 'doc' | 'sheet' | 'slide' | 'markdown' | 'html' | 'others'
 
-const FILE_CATEGORIES: { key: FileCategory; label: string; types: string[] }[] = [
-    { key: 'all', label: 'All', types: [] },
-    { key: 'doc', label: 'Doc', types: ['docx', 'doc'] },
-    { key: 'sheet', label: 'Sheet', types: ['xlsx', 'xls', 'csv', 'tsv'] },
-    { key: 'slide', label: 'Slide', types: ['pptx', 'ppt'] },
-    { key: 'markdown', label: 'Markdown', types: ['md', 'markdown'] },
-    { key: 'html', label: 'HTML', types: ['html', 'htm'] },
+const FILE_CATEGORIES: { key: FileCategory; labelKey: string; types: string[] }[] = [
+    { key: 'all', labelKey: 'files.categories.all', types: [] },
+    { key: 'doc', labelKey: 'files.categories.doc', types: ['docx', 'doc'] },
+    { key: 'sheet', labelKey: 'files.categories.sheet', types: ['xlsx', 'xls', 'csv', 'tsv'] },
+    { key: 'slide', labelKey: 'files.categories.slide', types: ['pptx', 'ppt'] },
+    { key: 'markdown', labelKey: 'files.categories.markdown', types: ['md', 'markdown'] },
+    { key: 'html', labelKey: 'files.categories.html', types: ['html', 'htm'] },
 ]
 
 function getFileCategory(type: string): FileCategory {
@@ -113,6 +114,7 @@ function getDownloadUrl(file: AgentFile): string {
 }
 
 export default function Files() {
+    const { t } = useTranslation()
     const { agents, isConnected } = useGoosed()
     const { openPreview, isPreviewable } = usePreview()
     const [files, setFiles] = useState<AgentFile[]>([])
@@ -207,9 +209,9 @@ export default function Files() {
     return (
         <div className="page-container">
             <header className="page-header">
-                <h1 className="page-title">Files</h1>
+                <h1 className="page-title">{t('files.title')}</h1>
                 <p className="page-subtitle">
-                    Output files from agent skills
+                    {t('files.subtitle')}
                 </p>
             </header>
 
@@ -222,7 +224,7 @@ export default function Files() {
                     <input
                         type="text"
                         className="search-input"
-                        placeholder="Search files..."
+                        placeholder={t('files.searchPlaceholder')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -254,7 +256,7 @@ export default function Files() {
                         className={`file-tab ${activeCategory === cat.key ? 'active' : ''}`}
                         onClick={() => setActiveCategory(cat.key)}
                     >
-                        {cat.label}
+                        {t(cat.labelKey)}
                         {categoryCounts[cat.key] > 0 && (
                             <span className="file-tab-count">{categoryCounts[cat.key]}</span>
                         )}
@@ -296,9 +298,9 @@ export default function Files() {
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <polyline points="14 2 14 8 20 8" />
                     </svg>
-                    <h3 className="empty-state-title">No files yet</h3>
+                    <h3 className="empty-state-title">{t('files.noFiles')}</h3>
                     <p className="empty-state-description">
-                        Output files from agent skills will appear here.
+                        {t('files.noFilesHint')}
                     </p>
                 </div>
             )}
@@ -315,9 +317,9 @@ export default function Files() {
                         <circle cx="11" cy="11" r="8" />
                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
-                    <h3 className="empty-state-title">No results found</h3>
+                    <h3 className="empty-state-title">{t('common.noResults')}</h3>
                     <p className="empty-state-description">
-                        No files match "{searchTerm}"
+                        {t('files.noMatchFiles', { term: searchTerm })}
                     </p>
                 </div>
             )}
@@ -330,7 +332,7 @@ export default function Files() {
                             color: 'var(--color-text-secondary)',
                             marginBottom: 'var(--spacing-4)'
                         }}>
-                            {filteredFiles.length} result{filteredFiles.length !== 1 ? 's' : ''} found
+                            {t('common.resultsFound', { count: filteredFiles.length })}
                         </p>
                     )}
 
@@ -352,7 +354,7 @@ export default function Files() {
                                     {isPreviewable(file.type, file.name, file.path) && (
                                         <button
                                             className="file-preview-btn"
-                                            title="Preview"
+                                            title={t('files.preview')}
                                             onClick={() => openPreview({
                                                 name: file.name,
                                                 path: file.path,
@@ -369,7 +371,7 @@ export default function Files() {
                                     <a
                                         href={getDownloadUrl(file)}
                                         className="file-download-btn"
-                                        title="Download"
+                                        title={t('files.download')}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >
@@ -393,7 +395,7 @@ export default function Files() {
                     color: 'var(--color-text-muted)',
                     textAlign: 'center'
                 }}>
-                    {files.length} total file{files.length !== 1 ? 's' : ''}
+                    {t('common.totalFiles', { count: files.length })}
                 </p>
             )}
         </div>

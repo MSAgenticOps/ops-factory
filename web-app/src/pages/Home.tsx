@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
 import ChatInput from '../components/ChatInput'
 import { getAgentWorkingDir } from '../components/AgentSelector'
@@ -14,6 +15,7 @@ interface ModelInfo {
 const AGENT_TAB_ORDER = ['all', 'universal-agent', 'kb-agent'] as const
 
 export default function Home() {
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const { getClient, agents, isConnected, error: connectionError } = useGoosed()
     const [isCreatingSession, setIsCreatingSession] = useState(false)
@@ -61,7 +63,7 @@ export default function Home() {
             })
         } catch (err) {
             console.error('Failed to create session:', err)
-            alert('Failed to create session: ' + (err instanceof Error ? err.message : 'Unknown error'))
+            alert(t('home.failedToCreateSession', { error: err instanceof Error ? err.message : 'Unknown error' }))
         } finally {
             setIsCreatingSession(false)
         }
@@ -89,7 +91,7 @@ export default function Home() {
     )
 
     const getAgentLabel = (agentId: string) => {
-        if (agentId === 'all') return 'All Agents'
+        if (agentId === 'all') return t('home.allAgents')
 
         const fromConfig = agents.find(agent => agent.id === agentId)?.name
         if (fromConfig) return fromConfig
@@ -112,10 +114,9 @@ export default function Home() {
     return (
         <div className="home-container">
             <div className="home-hero">
-                <h1 className="home-title">Hello, I'm Ops Agent</h1>
+                <h1 className="home-title">{t('home.greeting')}</h1>
                 <p className="home-description">
-                    Your AI-powered coding assistant. Ask me anything about your codebase,
-                    let me help you write, debug, or explain code.
+                    {t('home.description')}
                 </p>
 
                 {connectionError && (
@@ -126,7 +127,7 @@ export default function Home() {
                         color: 'var(--color-error)',
                         marginBottom: 'var(--spacing-6)'
                     }}>
-                        Connection error: {connectionError}
+                        {t('common.connectionError', { error: connectionError })}
                     </div>
                 )}
 
@@ -138,7 +139,7 @@ export default function Home() {
                         color: 'var(--color-warning)',
                         marginBottom: 'var(--spacing-6)'
                     }}>
-                        Connecting to gateway...
+                        {t('common.connectingGateway')}
                     </div>
                 )}
             </div>
@@ -147,7 +148,7 @@ export default function Home() {
                 <ChatInput
                     onSubmit={handleInputSubmit}
                     disabled={!isConnected || isCreatingSession || !selectedAgent}
-                    placeholder={isCreatingSession ? 'Creating session...' : 'Ask me anything...'}
+                    placeholder={isCreatingSession ? t('home.creatingSession') : t('home.askAnything')}
                     autoFocus
                     selectedAgent={selectedAgent}
                     onAgentChange={setSelectedAgent}

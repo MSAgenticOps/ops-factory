@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
 import { useInbox } from '../contexts/InboxContext'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
@@ -17,6 +18,7 @@ function parseHistoryFilter(raw: string | null): HistoryFilter {
 }
 
 export default function History() {
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected } = useGoosed()
@@ -165,9 +167,9 @@ export default function History() {
     return (
         <div className="page-container">
             <header className="page-header">
-                <h1 className="page-title">Chat History</h1>
+                <h1 className="page-title">{t('history.title')}</h1>
                 <p className="page-subtitle">
-                    View and manage your previous chat sessions
+                    {t('history.subtitle')}
                 </p>
             </header>
 
@@ -180,7 +182,7 @@ export default function History() {
                     <input
                         type="text"
                         className="search-input"
-                        placeholder="Search sessions..."
+                        placeholder={t('history.searchPlaceholder')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -211,21 +213,21 @@ export default function History() {
                     className={`history-filter-btn ${historyFilter === 'user' ? 'active' : ''}`}
                     onClick={() => setHistoryFilter('user')}
                 >
-                    User
+                    {t('history.filterUser')}
                 </button>
                 <button
                     type="button"
                     className={`history-filter-btn ${historyFilter === 'scheduled' ? 'active' : ''}`}
                     onClick={() => setHistoryFilter('scheduled')}
                 >
-                    Scheduled
+                    {t('history.filterScheduled')}
                 </button>
                 <button
                     type="button"
                     className={`history-filter-btn ${historyFilter === 'all' ? 'active' : ''}`}
                     onClick={() => setHistoryFilter('all')}
                 >
-                    All
+                    {t('history.filterAll')}
                 </button>
             </div>
 
@@ -249,7 +251,7 @@ export default function History() {
                     color: 'var(--color-text-secondary)',
                     marginBottom: 'var(--spacing-6)'
                 }}>
-                    Session deleted • {new Date(lastDeletedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    {t('history.sessionDeleted')} • {new Date(lastDeletedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                 </div>
             )}
 
@@ -265,9 +267,9 @@ export default function History() {
                         <circle cx="11" cy="11" r="8" />
                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
-                    <h3 className="empty-state-title">No results found</h3>
+                    <h3 className="empty-state-title">{t('common.noResults')}</h3>
                     <p className="empty-state-description">
-                        No sessions match "{searchTerm}"
+                        {t('history.noMatchSessions', { term: searchTerm })}
                     </p>
                 </div>
             )}
@@ -280,7 +282,7 @@ export default function History() {
                             color: 'var(--color-text-secondary)',
                             marginBottom: 'var(--spacing-4)'
                         }}>
-                            {filteredSessions.length} result{filteredSessions.length !== 1 ? 's' : ''} found
+                            {t('common.resultsFound', { count: filteredSessions.length })}
                         </p>
                     )}
 
@@ -303,7 +305,7 @@ export default function History() {
                     color: 'var(--color-text-muted)',
                     textAlign: 'center'
                 }}>
-                    {filteredByType.length} total session{filteredByType.length !== 1 ? 's' : ''}
+                    {t('common.totalSessions', { count: filteredByType.length })}
                 </p>
             )}
         </div>
