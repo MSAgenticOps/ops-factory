@@ -11,7 +11,6 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { startGateway, type GatewayHandle } from './helpers.js'
 
 const AGENT_ID = 'universal-agent'
-const USER_ALICE = 'test-alice'
 
 let gw: GatewayHandle
 
@@ -30,7 +29,7 @@ afterAll(async () => {
 // =====================================================
 describe('Prompt template listing', () => {
     it('GET /agents/:id/config/prompts returns list of templates', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts`)
         expect(res.ok).toBe(true)
 
         const data = await res.json()
@@ -47,14 +46,14 @@ describe('Prompt template listing', () => {
     })
 
     it('includes known prompt templates (system.md)', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts`)
         const data = await res.json()
         const names = data.prompts.map((p: any) => p.name)
         expect(names).toContain('system.md')
     })
 
     it('each template has is_customized boolean', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts`)
         const data = await res.json()
         for (const prompt of data.prompts) {
             expect(typeof prompt.is_customized).toBe('boolean')
@@ -67,7 +66,7 @@ describe('Prompt template listing', () => {
 // =====================================================
 describe('Get individual prompt', () => {
     it('GET /agents/:id/config/prompts/system.md returns prompt content', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/system.md`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/system.md`)
         expect(res.ok).toBe(true)
 
         const data = await res.json()
@@ -82,14 +81,14 @@ describe('Get individual prompt', () => {
     })
 
     it('returns 404 for unknown prompt name', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/nonexistent.md`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/nonexistent.md`)
         expect(res.ok).toBe(false)
         // goosed returns 404 for unknown template names
         expect([404, 500]).toContain(res.status)
     })
 
     it('content equals default_content when not customized', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/system.md`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/system.md`)
         const data = await res.json()
 
         if (!data.is_customized) {
@@ -107,21 +106,21 @@ describe('Save and reset prompt', () => {
 
     it('save custom prompt content', async () => {
         // First, get the original content
-        const getRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`)
+        const getRes = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`)
         expect(getRes.ok).toBe(true)
         const original = await getRes.json()
         originalContent = original.default_content
 
         // Save custom content
         const customContent = originalContent + '\n\n# Custom test addition'
-        const saveRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`, {
+        const saveRes = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`, {
             method: 'PUT',
             body: JSON.stringify({ content: customContent }),
         })
         expect(saveRes.ok).toBe(true)
 
         // Verify it was saved
-        const verifyRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`)
+        const verifyRes = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`)
         expect(verifyRes.ok).toBe(true)
         const verified = await verifyRes.json()
         expect(verified.content).toBe(customContent)
@@ -131,7 +130,7 @@ describe('Save and reset prompt', () => {
     })
 
     it('customized flag appears in list after save', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts`)
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts`)
         const data = await res.json()
         const target = data.prompts.find((p: any) => p.name === TEST_PROMPT)
         expect(target).toBeDefined()
@@ -139,13 +138,13 @@ describe('Save and reset prompt', () => {
     })
 
     it('reset prompt to default', async () => {
-        const resetRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`, {
+        const resetRes = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`, {
             method: 'DELETE',
         })
         expect(resetRes.ok).toBe(true)
 
         // Verify it was reset
-        const verifyRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`)
+        const verifyRes = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`)
         expect(verifyRes.ok).toBe(true)
         const verified = await verifyRes.json()
         expect(verified.is_customized).toBe(false)
@@ -154,7 +153,7 @@ describe('Save and reset prompt', () => {
 
     it('reset non-customized prompt is idempotent', async () => {
         // Resetting a prompt that's already default should succeed silently
-        const resetRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`, {
+        const resetRes = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${TEST_PROMPT}`, {
             method: 'DELETE',
         })
         expect(resetRes.ok).toBe(true)
@@ -177,7 +176,7 @@ describe('SDK prompt methods', () => {
         const client = new GoosedClient({
             baseUrl: `${gw.baseUrl}/agents/${AGENT_ID}`,
             secretKey: gw.secretKey,
-            userId: USER_ALICE,
+            userId: 'sys',
         })
         const prompts = await client.listPrompts()
         expect(Array.isArray(prompts)).toBe(true)
@@ -190,7 +189,7 @@ describe('SDK prompt methods', () => {
         const client = new GoosedClient({
             baseUrl: `${gw.baseUrl}/agents/${AGENT_ID}`,
             secretKey: gw.secretKey,
-            userId: USER_ALICE,
+            userId: 'sys',
         })
         const prompt = await client.getPrompt('system.md')
         expect(prompt.name).toBe('system.md')
@@ -203,7 +202,7 @@ describe('SDK prompt methods', () => {
         const client = new GoosedClient({
             baseUrl: `${gw.baseUrl}/agents/${AGENT_ID}`,
             secretKey: gw.secretKey,
-            userId: USER_ALICE,
+            userId: 'sys',
         })
         const testPrompt = 'recipe.md'
 
@@ -232,7 +231,7 @@ describe('SDK prompt methods', () => {
         const client = new GoosedClient({
             baseUrl: `${gw.baseUrl}/agents/${AGENT_ID}`,
             secretKey: gw.secretKey,
-            userId: USER_ALICE,
+            userId: 'sys',
         })
         await expect(client.getPrompt('nonexistent.md')).rejects.toThrow()
     })
@@ -248,7 +247,7 @@ describe('Prompt auth & edge cases', () => {
     })
 
     it('PUT with empty content is handled', async () => {
-        const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/recipe.md`, {
+        const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/recipe.md`, {
             method: 'PUT',
             body: JSON.stringify({ content: '' }),
         })
@@ -256,7 +255,7 @@ describe('Prompt auth & edge cases', () => {
         expect([200, 400, 500]).toContain(res.status)
 
         // Clean up: reset to default
-        await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/recipe.md`, {
+        await gw.fetch(`/agents/${AGENT_ID}/config/prompts/recipe.md`, {
             method: 'DELETE',
         })
     })
@@ -264,7 +263,7 @@ describe('Prompt auth & edge cases', () => {
     it('multiple prompts can be read in sequence', async () => {
         const promptNames = ['system.md', 'compaction.md', 'recipe.md']
         for (const name of promptNames) {
-            const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config/prompts/${name}`)
+            const res = await gw.fetch(`/agents/${AGENT_ID}/config/prompts/${name}`)
             expect(res.ok).toBe(true)
             const data = await res.json()
             expect(data.name).toBe(name)

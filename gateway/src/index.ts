@@ -27,6 +27,21 @@ interface AgentSession extends JsonRecord {
 
 const DEFAULT_USER = SYSTEM_USER
 
+/** Determine user role based on userId */
+function getUserRole(userId: string): 'admin' | 'user' {
+  return userId === SYSTEM_USER ? 'admin' : 'user'
+}
+
+/** Return 403 if not admin. Returns true if allowed, false if blocked. */
+function requireAdmin(res: http.ServerResponse, role: string): boolean {
+  if (role !== 'admin') {
+    res.writeHead(403, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'Forbidden: admin access required' }))
+    return false
+  }
+  return true
+}
+
 /** Read request body as a string */
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -158,6 +173,7 @@ async function main() {
     }
 
     const userId = (req.headers['x-user-id'] as string) || DEFAULT_USER
+    const role = getUserRole(userId)
     const pathname = urlObj.pathname
 
     // Path traversal protection: check raw URL before URL normalization strips ".."
@@ -180,7 +196,7 @@ async function main() {
     // GET /me
     if (pathname === '/me' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ userId }))
+      res.end(JSON.stringify({ userId, role }))
       return
     }
 
@@ -198,10 +214,11 @@ async function main() {
       return
     }
 
-    // ===== Monitoring Routes (Langfuse proxy) =====
+    // ===== Monitoring Routes (Langfuse proxy) — admin only =====
 
     // GET /monitoring/status — is monitoring available?
     if (pathname === '/monitoring/status' && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
       if (!langfuse) {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ enabled: false }))
@@ -219,6 +236,7 @@ async function main() {
 
     // GET /monitoring/overview?from=ISO&to=ISO
     if (pathname === '/monitoring/overview' && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
       if (!langfuse) {
         res.writeHead(501, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Monitoring not configured' }))
@@ -240,6 +258,7 @@ async function main() {
 
     // GET /monitoring/traces?from=ISO&to=ISO&limit=20&errorsOnly=false
     if (pathname === '/monitoring/traces' && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
       if (!langfuse) {
         res.writeHead(501, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Monitoring not configured' }))
@@ -263,6 +282,7 @@ async function main() {
 
     // GET /monitoring/observations?from=ISO&to=ISO
     if (pathname === '/monitoring/observations' && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
       if (!langfuse) {
         res.writeHead(501, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Monitoring not configured' }))
@@ -622,11 +642,12 @@ async function main() {
       return
     }
 
-    // ===== Agent-level routes =====
+    // ===== Agent-level routes (admin only) =====
 
     // GET/POST /agents/:id/mcp — proxy to sys instance + fanout for POST
     const mcpMatch = pathname.match(/^\/agents\/([^/]+)\/mcp\/?$/)
     if (mcpMatch && (req.method === 'GET' || req.method === 'POST')) {
+      if (!requireAdmin(res, role)) return
       const agentId = mcpMatch[1]
       try {
         const target = await manager.getSystemInstance(agentId)
@@ -666,6 +687,7 @@ async function main() {
     // DELETE /agents/:id/mcp/:name — proxy + fanout
     const mcpDeleteMatch = pathname.match(/^\/agents\/([^/]+)\/mcp\/(.+)$/)
     if (mcpDeleteMatch && req.method === 'DELETE') {
+      if (!requireAdmin(res, role)) return
       const agentId = mcpDeleteMatch[1]
       const mcpName = mcpDeleteMatch[2]
       try {
@@ -694,9 +716,10 @@ async function main() {
       return
     }
 
-    // GET/PUT /agents/:id/config — reads/writes files directly, no instance needed
+    // GET/PUT /agents/:id/config — reads/writes files directly, no instance needed (admin only)
     const configMatch = pathname.match(/^\/agents\/([^/]+)\/config\/?$/)
     if (configMatch && (req.method === 'GET' || req.method === 'PUT')) {
+      if (!requireAdmin(res, role)) return
       const agentId = configMatch[1]
 
       if (req.method === 'GET') {
@@ -726,9 +749,10 @@ async function main() {
       }
     }
 
-    // GET /agents/:id/skills
+    // GET /agents/:id/skills (admin only)
     const skillsMatch = pathname.match(/^\/agents\/([^/]+)\/skills\/?$/)
     if (skillsMatch && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
       const agentId = skillsMatch[1]
       const skills = manager.getAgentSkillsDetailed(agentId)
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -866,12 +890,13 @@ async function main() {
       return
     }
 
-    // /agents/:id/* — catch-all proxy to sys instance (schedules, etc.)
+    // /agents/:id/* — catch-all proxy to sys instance (schedules, etc.) — admin only
     // Buffer the request body BEFORE async work (spawn) to prevent stream data loss.
     // http-proxy pipes from the original req stream, but if the body data events
     // fire during an await (e.g. instance spawn), the data is lost.
     const match = pathname.match(/^\/agents\/([^/]+)(\/.*)?$/)
     if (match) {
+      if (!requireAdmin(res, role)) return
       const agentId = match[1]
       const path = match[2] || '/'
 

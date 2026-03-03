@@ -15,7 +15,7 @@ import { PreviewProvider, usePreview } from './contexts/PreviewContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { InboxProvider } from './contexts/InboxContext'
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext'
-import { ProtectedRoute } from './contexts/UserContext'
+import { ProtectedRoute, AdminRoute } from './contexts/UserContext'
 
 function AppContent() {
     const { previewFile } = usePreview()
@@ -38,11 +38,11 @@ function AppContent() {
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/history" element={<History />} />
                         <Route path="/files" element={<Files />} />
-                        <Route path="/scheduled-actions" element={<ScheduledActions />} />
-                        <Route path="/monitoring" element={<Monitoring />} />
+                        <Route path="/scheduled-actions" element={<AdminRoute><ScheduledActions /></AdminRoute>} />
+                        <Route path="/monitoring" element={<AdminRoute><Monitoring /></AdminRoute>} />
                         <Route path="/inbox" element={<Inbox />} />
                         <Route path="/agents" element={<Agents />} />
-                        <Route path="/agents/:agentId/configure" element={<AgentConfigure />} />
+                        <Route path="/agents/:agentId/configure" element={<AdminRoute><AgentConfigure /></AdminRoute>} />
                     </Routes>
                 </main>
                 <FilePreview />

@@ -2,6 +2,7 @@ import { useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../contexts/GoosedContext'
+import { useUser } from '../contexts/UserContext'
 import { useMcp } from '../hooks/useMcp'
 
 function formatModel(provider?: string, model?: string, unknownLabel = 'Unknown'): string {
@@ -26,7 +27,9 @@ function McpCount({ agentId }: { agentId: string }) {
 export default function Agents() {
     const { t } = useTranslation()
     const { agents, isConnected, error } = useGoosed()
+    const { role } = useUser()
     const navigate = useNavigate()
+    const isAdmin = role === 'admin'
 
     const agentSkillsMap = useMemo(() => {
         return new Map(agents.map(agent => [agent.id, agent.skills || []]))
@@ -93,7 +96,7 @@ export default function Agents() {
                                     </div>
                                 </div>
 
-                                <div className="agent-skill-cta">
+                                {isAdmin && <div className="agent-skill-cta">
                                     <button
                                         type="button"
                                         className="agent-skill-button"
@@ -101,7 +104,7 @@ export default function Agents() {
                                     >
                                         {t('agents.configure')}
                                     </button>
-                                </div>
+                                </div>}
                             </div>
                         )
                     })}

@@ -9,9 +9,11 @@
  *
  * Covered:
  *   - Login flow
- *   - Sidebar navigation to all pages
- *   - Agents page: lists agents, shows status/model info
- *   - Agent Configure page: edit prompt, save
+ *   - Sidebar navigation (role-aware)
+ *   - RBAC: admin vs regular user sidebar visibility
+ *   - RBAC: admin-only page access guards
+ *   - Agents page: lists agents, configure button visibility
+ *   - Agent Configure page: edit prompt, save (admin only)
  *   - History page: renders, search input present
  *   - Files page: renders with category filters
  *   - Chat page: send message, receive streaming response
@@ -19,15 +21,22 @@
  */
 import { test, expect, type Page } from '@playwright/test'
 
-const TEST_USER = 'e2e-test-user'
+const REGULAR_USER = 'e2e-test-user'
+const ADMIN_USER = 'sys'
 
-// Helper: login and navigate to home
-async function login(page: Page) {
+// Helper: login as a specific user
+async function loginAs(page: Page, username: string) {
   await page.goto('/login')
-  await page.fill('input[placeholder="Your name"]', TEST_USER)
+  await page.fill('input[placeholder="Your name"]', username)
   await page.click('button:has-text("Enter")')
-  // Should redirect to home
   await page.waitForURL('/')
+  // Wait for role to be fetched from /me
+  await page.waitForTimeout(500)
+}
+
+// Helper: login as regular user (backward compat)
+async function login(page: Page) {
+  await loginAs(page, REGULAR_USER)
 }
 
 // =====================================================
@@ -36,14 +45,11 @@ async function login(page: Page) {
 test.describe('Login', () => {
   test('can login and reach home page', async ({ page }) => {
     await login(page)
-    // Sidebar should be visible with user's name
     await expect(page.locator('.sidebar')).toBeVisible()
-    // Home page content should be visible
     await expect(page.locator('text=Home').first()).toBeVisible()
   })
 
   test('redirects to login when not authenticated', async ({ page }) => {
-    // Clear any stored login
     await page.goto('/')
     await page.evaluate(() => localStorage.clear())
     await page.goto('/')
@@ -53,85 +59,168 @@ test.describe('Login', () => {
 })
 
 // =====================================================
-// 2. Sidebar Navigation
+// 2. Sidebar Navigation — Regular User
 // =====================================================
-test.describe('Sidebar navigation', () => {
+test.describe('Sidebar navigation — regular user', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
   })
 
-  const navItems = [
+  const userNavItems = [
     { text: 'Home', path: '/' },
     { text: 'History', path: '/history' },
-    { text: 'Agents', path: '/agents' },
     { text: 'Files', path: '/files' },
-    { text: 'Scheduler', path: '/scheduled-actions' },
     { text: 'Inbox', path: '/inbox' },
   ]
 
-  for (const item of navItems) {
+  for (const item of userNavItems) {
     test(`navigates to ${item.text} (${item.path})`, async ({ page }) => {
       await page.click(`.sidebar-nav a[href="${item.path}"]`)
+      await expect(page).toHaveURL(item.path)
+    })
+  }
+
+  test('does NOT show Agents link', async ({ page }) => {
+    await expect(page.locator('.sidebar-nav a[href="/agents"]')).not.toBeVisible()
+  })
+
+  test('does NOT show Scheduler link', async ({ page }) => {
+    await expect(page.locator('.sidebar-nav a[href="/scheduled-actions"]')).not.toBeVisible()
+  })
+
+  test('does NOT show Monitoring link', async ({ page }) => {
+    await expect(page.locator('.sidebar-nav a[href="/monitoring"]')).not.toBeVisible()
+  })
+})
+
+// =====================================================
+// 3. Sidebar Navigation — Admin User
+// =====================================================
+test.describe('Sidebar navigation — admin user', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+  })
+
+  const adminNavItems = [
+    { text: 'Home', path: '/' },
+    { text: 'History', path: '/history' },
+    { text: 'Files', path: '/files' },
+    { text: 'Inbox', path: '/inbox' },
+    { text: 'Agents', path: '/agents' },
+    { text: 'Scheduler', path: '/scheduled-actions' },
+    { text: 'Monitoring', path: '/monitoring' },
+  ]
+
+  for (const item of adminNavItems) {
+    test(`shows and navigates to ${item.text} (${item.path})`, async ({ page }) => {
+      const link = page.locator(`.sidebar-nav a[href="${item.path}"]`)
+      await expect(link).toBeVisible()
+      await link.click()
       await expect(page).toHaveURL(item.path)
     })
   }
 })
 
 // =====================================================
-// 3. Agents Page
+// 4. RBAC — Admin-Only Page Guards
 // =====================================================
-test.describe('Agents page', () => {
-  test.beforeEach(async ({ page }) => {
+test.describe('RBAC — page access guards', () => {
+  test('regular user redirected from /agents/:id/configure', async ({ page }) => {
     await login(page)
+    await page.goto('/agents/universal-agent/configure')
+    // AdminRoute should redirect to /
+    await expect(page).toHaveURL('/')
   })
 
-  test('lists configured agents', async ({ page }) => {
-    await page.goto('/agents')
-    // Wait for agents to load
-    await page.waitForSelector('.agent-card', { timeout: 10_000 })
-    const cards = page.locator('.agent-card')
-    await expect(cards).not.toHaveCount(0)
-
-    // Universal Agent should be present
-    await expect(page.locator('text=Universal Agent').first()).toBeVisible()
+  test('regular user redirected from /scheduled-actions', async ({ page }) => {
+    await login(page)
+    await page.goto('/scheduled-actions')
+    await expect(page).toHaveURL('/')
   })
 
-  test('agent cards show model info', async ({ page }) => {
-    await page.goto('/agents')
-    await page.waitForSelector('.agent-card', { timeout: 10_000 })
-    // At least one card should have model metadata
-    const modelLabel = page.locator('.agent-meta-label:has-text("Model")')
-    await expect(modelLabel.first()).toBeVisible()
+  test('regular user redirected from /monitoring', async ({ page }) => {
+    await login(page)
+    await page.goto('/monitoring')
+    await expect(page).toHaveURL('/')
   })
 
-  test('configure button navigates to agent settings', async ({ page }) => {
-    await page.goto('/agents')
-    await page.waitForSelector('.agent-card', { timeout: 10_000 })
+  test('admin can access /agents/:id/configure', async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+    await page.goto('/agents/universal-agent/configure')
+    await expect(page).toHaveURL('/agents/universal-agent/configure')
+    // Should load the configure page content
+    await page.waitForSelector('textarea', { timeout: 10_000 })
+  })
 
-    // Click the first Configure button
-    const configBtn = page.locator('.agent-skill-button').first()
-    await configBtn.click()
+  test('admin can access /scheduled-actions', async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+    await page.goto('/scheduled-actions')
+    await expect(page).toHaveURL('/scheduled-actions')
+  })
 
-    // Should navigate to agent configure page
-    await expect(page).toHaveURL(/\/agents\/[^/]+\/configure/)
+  test('admin can access /monitoring', async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+    await page.goto('/monitoring')
+    await expect(page).toHaveURL('/monitoring')
   })
 })
 
 // =====================================================
-// 4. Agent Configure Page
+// 5. Agents Page — Role-Based Content
+// =====================================================
+test.describe('Agents page', () => {
+  test('regular user can access /agents but has no Configure button', async ({ page }) => {
+    await login(page)
+    await page.goto('/agents')
+    await page.waitForSelector('.agent-card', { timeout: 10_000 })
+    // Agent cards should be visible
+    await expect(page.locator('.agent-card')).not.toHaveCount(0)
+    // Universal Agent name visible
+    await expect(page.locator('text=Universal Agent').first()).toBeVisible()
+    // Configure button should NOT be visible
+    await expect(page.locator('.agent-skill-button')).not.toBeVisible()
+  })
+
+  test('admin sees Configure button on agent cards', async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+    await page.goto('/agents')
+    await page.waitForSelector('.agent-card', { timeout: 10_000 })
+    // Configure button should be visible
+    const configBtn = page.locator('.agent-skill-button').first()
+    await expect(configBtn).toBeVisible()
+  })
+
+  test('admin configure button navigates to agent settings', async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+    await page.goto('/agents')
+    await page.waitForSelector('.agent-card', { timeout: 10_000 })
+    const configBtn = page.locator('.agent-skill-button').first()
+    await configBtn.click()
+    await expect(page).toHaveURL(/\/agents\/[^/]+\/configure/)
+  })
+
+  test('agent cards show model info', async ({ page }) => {
+    await loginAs(page, ADMIN_USER)
+    await page.goto('/agents')
+    await page.waitForSelector('.agent-card', { timeout: 10_000 })
+    const modelLabel = page.locator('.agent-meta-label:has-text("Model")')
+    await expect(modelLabel.first()).toBeVisible()
+  })
+})
+
+// =====================================================
+// 6. Agent Configure Page (admin only)
 // =====================================================
 test.describe('Agent configure page', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page)
+    await loginAs(page, ADMIN_USER)
   })
 
   test('loads agent prompt editor', async ({ page }) => {
     await page.goto('/agents/universal-agent/configure')
-    // Wait for config to load
     await page.waitForSelector('textarea', { timeout: 10_000 })
     const textarea = page.locator('textarea')
     await expect(textarea).toBeVisible()
-    // Should have some content (AGENTS.md)
     const value = await textarea.inputValue()
     expect(value.length).toBeGreaterThan(0)
   })
@@ -140,22 +229,15 @@ test.describe('Agent configure page', () => {
     await page.goto('/agents/universal-agent/configure')
     await page.waitForSelector('textarea', { timeout: 10_000 })
 
-    // Read original
     const textarea = page.locator('textarea')
     const original = await textarea.inputValue()
-
-    // Append test marker
     const marker = `\n<!-- e2e test ${Date.now()} -->`
     await textarea.fill(original + marker)
 
-    // Click save
     const saveBtn = page.locator('.btn-primary:has-text("Save")')
     await saveBtn.click()
-
-    // Wait for save to complete
     await page.waitForTimeout(1000)
 
-    // Reload and verify
     await page.reload()
     await page.waitForSelector('textarea', { timeout: 10_000 })
     const updated = await page.locator('textarea').inputValue()
@@ -169,7 +251,7 @@ test.describe('Agent configure page', () => {
 })
 
 // =====================================================
-// 5. History Page
+// 7. History Page
 // =====================================================
 test.describe('History page', () => {
   test.beforeEach(async ({ page }) => {
@@ -178,14 +260,13 @@ test.describe('History page', () => {
 
   test('renders with search and filter controls', async ({ page }) => {
     await page.goto('/history')
-    // Search input should exist
     const search = page.locator('input[placeholder*="Search"]').or(page.locator('input[type="search"]')).or(page.locator('input[placeholder*="search"]'))
     await expect(search.first()).toBeVisible({ timeout: 5000 })
   })
 })
 
 // =====================================================
-// 6. Files Page
+// 8. Files Page
 // =====================================================
 test.describe('Files page', () => {
   test.beforeEach(async ({ page }) => {
@@ -194,15 +275,13 @@ test.describe('Files page', () => {
 
   test('renders with category filters', async ({ page }) => {
     await page.goto('/files')
-    // Wait for page to load — check for category buttons
     await page.waitForSelector('text=All', { timeout: 5000 })
-    // Category filters should include at least "All"
     await expect(page.locator('text=All').first()).toBeVisible()
   })
 })
 
 // =====================================================
-// 7. Chat Page
+// 9. Chat Page
 // =====================================================
 test.describe('Chat page', () => {
   test.beforeEach(async ({ page }) => {
@@ -210,25 +289,12 @@ test.describe('Chat page', () => {
   })
 
   test('can send a message and receive a streamed response', async ({ page }) => {
-    // Navigate to chat (creates a new session)
     await page.goto('/chat')
-
-    // Wait for the chat page to be ready
-    // The chat input area should be present
     const chatInput = page.locator('textarea').or(page.locator('[contenteditable]')).or(page.locator('input[type="text"]'))
     await expect(chatInput.first()).toBeVisible({ timeout: 15_000 })
-
-    // Type a message
     await chatInput.first().fill('Reply with the single word "pong"')
-
-    // Submit (press Enter or click send button)
     await chatInput.first().press('Enter')
-
-    // Wait for a response message to appear (assistant bubble)
-    // This may take a few seconds due to LLM processing
     await page.waitForTimeout(3000)
-
-    // The page should contain some response content (not just the user message)
     const messageArea = page.locator('.main-content')
     const textContent = await messageArea.textContent()
     expect(textContent?.length).toBeGreaterThan(10)
@@ -236,7 +302,7 @@ test.describe('Chat page', () => {
 })
 
 // =====================================================
-// 8. Settings Page
+// 10. Settings Page
 // =====================================================
 test.describe('Settings page', () => {
   test.beforeEach(async ({ page }) => {
@@ -245,9 +311,7 @@ test.describe('Settings page', () => {
 
   test('shows user info and logout button', async ({ page }) => {
     await page.goto('/settings')
-    // Should show the test user's name
-    await expect(page.locator(`.settings-username:has-text("${TEST_USER}")`)).toBeVisible({ timeout: 5000 })
-    // Logout button should exist
+    await expect(page.locator(`.settings-username:has-text("${REGULAR_USER}")`)).toBeVisible({ timeout: 5000 })
     await expect(page.locator('button:has-text("Log out")')).toBeVisible()
   })
 

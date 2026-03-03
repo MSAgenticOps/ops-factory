@@ -1465,3 +1465,136 @@ describe('Path traversal — additional vectors', () => {
     expect(status).toBe(403)
   })
 })
+
+// =====================================================
+// 24. Role-Based Access Control (RBAC)
+// =====================================================
+describe('Role-based access control', () => {
+  // --- /me returns correct role ---
+
+  it('GET /me returns role=admin for sys user', async () => {
+    const res = await gw.fetchAs(USER_SYS, '/me')
+    const data = await res.json()
+    expect(data.userId).toBe('sys')
+    expect(data.role).toBe('admin')
+  })
+
+  it('GET /me returns role=user for non-sys user', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/me')
+    const data = await res.json()
+    expect(data.userId).toBe(USER_ALICE)
+    expect(data.role).toBe('user')
+  })
+
+  it('GET /me defaults to role=admin when no x-user-id (defaults to sys)', async () => {
+    const res = await gw.fetch('/me')
+    const data = await res.json()
+    expect(data.role).toBe('admin')
+  })
+
+  // --- Admin routes accessible by admin (sys) ---
+
+  it('admin can GET /agents/:id/config', async () => {
+    const res = await gw.fetchAs(USER_SYS, `/agents/${AGENT_ID}/config`)
+    expect(res.status).toBe(200)
+  })
+
+  it('admin can GET /agents/:id/skills', async () => {
+    const res = await gw.fetchAs(USER_SYS, `/agents/${AGENT_ID}/skills`)
+    expect(res.status).toBe(200)
+  })
+
+  it('admin can GET /agents/:id/mcp', async () => {
+    const res = await gw.fetchAs(USER_SYS, `/agents/${AGENT_ID}/mcp`)
+    expect(res.status).toBe(200)
+  })
+
+  it('admin can GET /monitoring/status', async () => {
+    const res = await gw.fetchAs(USER_SYS, '/monitoring/status')
+    expect(res.status).toBe(200)
+  })
+
+  // --- Admin routes blocked for regular user ---
+
+  it('regular user cannot GET /agents/:id/config', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config`)
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.error).toContain('admin')
+  })
+
+  it('regular user cannot PUT /agents/:id/config', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ agentsMd: 'hacked' }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot GET /agents/:id/skills', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/skills`)
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot GET /agents/:id/mcp', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/mcp`)
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot POST /agents/:id/mcp', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/mcp`, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'sse', uri: 'http://evil.com', name: 'evil' }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot DELETE /agents/:id/mcp/:name', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/mcp/some-extension`, {
+      method: 'DELETE',
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot GET /monitoring/status', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/monitoring/status')
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot GET /monitoring/overview', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/monitoring/overview')
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot GET /monitoring/traces', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/monitoring/traces')
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot GET /monitoring/observations', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/monitoring/observations')
+    expect(res.status).toBe(403)
+  })
+
+  it('regular user cannot access catch-all proxy (schedules etc.)', async () => {
+    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/schedules`)
+    expect(res.status).toBe(403)
+  })
+
+  // --- User routes remain accessible to regular users ---
+
+  it('regular user can GET /agents (listing)', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/agents')
+    expect(res.status).toBe(200)
+  })
+
+  it('regular user can GET /sessions', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/sessions')
+    expect(res.status).toBe(200)
+  })
+
+  it('regular user can GET /config', async () => {
+    const res = await gw.fetchAs(USER_ALICE, '/config')
+    expect(res.status).toBe(200)
+  })
+})

@@ -1,10 +1,15 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 
 const STORAGE_KEY = 'opsfactory:userId'
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:3000'
+const GATEWAY_SECRET_KEY = import.meta.env.VITE_GATEWAY_SECRET_KEY || 'test'
+
+export type UserRole = 'admin' | 'user'
 
 interface UserContextType {
     userId: string | null
+    role: UserRole | null
     login: (username: string) => void
     logout: () => void
 }
@@ -15,6 +20,35 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [userId, setUserId] = useState<string | null>(() => {
         return localStorage.getItem(STORAGE_KEY)
     })
+    const [role, setRole] = useState<UserRole | null>(null)
+
+    const fetchRole = useCallback(async (uid: string) => {
+        try {
+            const res = await fetch(`${GATEWAY_URL}/me`, {
+                headers: {
+                    'x-secret-key': GATEWAY_SECRET_KEY,
+                    'x-user-id': uid,
+                },
+                signal: AbortSignal.timeout(5000),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setRole(data.role ?? 'user')
+            } else {
+                setRole('user')
+            }
+        } catch {
+            setRole('user')
+        }
+    }, [])
+
+    useEffect(() => {
+        if (userId) {
+            fetchRole(userId)
+        } else {
+            setRole(null)
+        }
+    }, [userId, fetchRole])
 
     const login = useCallback((username: string) => {
         const trimmed = username.trim()
@@ -26,10 +60,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const logout = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY)
         setUserId(null)
+        setRole(null)
     }, [])
 
     return (
-        <UserContext.Provider value={{ userId, login, logout }}>
+        <UserContext.Provider value={{ userId, role, login, logout }}>
             {children}
         </UserContext.Provider>
     )
@@ -49,6 +84,21 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
     if (!userId) {
         return <Navigate to="/login" replace />
+    }
+
+    return <>{children}</>
+}
+
+/** Redirect to / if not admin */
+export function AdminRoute({ children }: { children: ReactNode }) {
+    const { userId, role } = useUser()
+
+    if (!userId) {
+        return <Navigate to="/login" replace />
+    }
+
+    if (role !== null && role !== 'admin') {
+        return <Navigate to="/" replace />
     }
 
     return <>{children}</>

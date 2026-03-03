@@ -10,8 +10,9 @@ import SettingsModal from '../pages/Settings'
 export default function Sidebar() {
     const { t } = useTranslation()
     const { unreadCount } = useInbox()
-    const { userId, logout } = useUser()
+    const { userId, role, logout } = useUser()
     const { isCollapsed, toggleSidebar } = useSidebar()
+    const isAdmin = role === 'admin'
     const navigate = useNavigate()
     const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -102,7 +103,7 @@ export default function Sidebar() {
                     {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
                 </NavLink>
 
-                <NavLink
+                {isAdmin && <NavLink
                     to="/agents"
                     className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                     title={isCollapsed ? t('sidebar.agents') : undefined}
@@ -112,7 +113,7 @@ export default function Sidebar() {
                         <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
                     </svg>
                     <span className="nav-label">{t('sidebar.agents')}</span>
-                </NavLink>
+                </NavLink>}
 
                 <NavLink
                     to="/files"
@@ -128,7 +129,7 @@ export default function Sidebar() {
                     <span className="nav-label">{t('sidebar.files')}</span>
                 </NavLink>
 
-                <NavLink
+                {isAdmin && <NavLink
                     to="/scheduled-actions"
                     className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                     title={isCollapsed ? t('sidebar.scheduler') : undefined}
@@ -139,9 +140,9 @@ export default function Sidebar() {
                         <path d="M9 2v3M15 2v3M9 19v3M15 19v3" />
                     </svg>
                     <span className="nav-label">{t('sidebar.scheduler')}</span>
-                </NavLink>
+                </NavLink>}
 
-                <NavLink
+                {isAdmin && <NavLink
                     to="/monitoring"
                     className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                     title={isCollapsed ? t('sidebar.monitoring') : undefined}
@@ -150,7 +151,7 @@ export default function Sidebar() {
                         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                     </svg>
                     <span className="nav-label">{t('sidebar.monitoring')}</span>
-                </NavLink>
+                </NavLink>}
             </nav>
 
             <div className="sidebar-user-section">

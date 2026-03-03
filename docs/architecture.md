@@ -203,20 +203,22 @@ Gateway HTTP 路由表
 |-- GET  /agents/:id/files/*          -> 下载文件（带路径穿越防护）
 |-- POST /agents/:id/files/upload     -> 文件上传（multipart/form-data）
 |
-|-- GET  /agents/:id/config           -> 读取 Agent 配置
-|-- PUT  /agents/:id/config           -> 更新 Agent Prompt
-|-- GET  /agents/:id/skills           -> 列出 Agent 技能
+|-- GET  /agents/:id/config           -> 读取 Agent 配置 [admin]
+|-- PUT  /agents/:id/config           -> 更新 Agent Prompt [admin]
+|-- GET  /agents/:id/skills           -> 列出 Agent 技能 [admin]
 |
-|-- GET/POST /agents/:id/mcp          -> MCP 扩展管理（带 fanout）
-|-- DELETE   /agents/:id/mcp/:name    -> 删除 MCP 扩展（带 fanout）
+|-- GET/POST /agents/:id/mcp          -> MCP 扩展管理（带 fanout）[admin]
+|-- DELETE   /agents/:id/mcp/:name    -> 删除 MCP 扩展（带 fanout）[admin]
 |
-|-- ANY  /agents/:id/*                -> 兜底代理到 sys 实例
+|-- GET  /monitoring/*                -> Langfuse 监控代理 [admin]
+|
+|-- ANY  /agents/:id/*                -> 兜底代理到 sys 实例 [admin]
 ```
 
-**认证机制：**
+**认证与鉴权机制：**
 
 ```typescript
-// gateway/src/index.ts:127-140
+// gateway/src/index.ts — 认证
 const headerKey = req.headers['x-secret-key']              // Header 认证
 const queryKey = urlObj.searchParams.get('key')             // Query 参数（仅文件路由）
 const isFileRoute = urlObj.pathname.match(/^\/agents\/[^/]+\/files(\/|$)/)
@@ -224,7 +226,25 @@ const isAuthed = headerKey === config.secretKey
                || (isFileRoute && queryKey === config.secretKey)
 
 const userId = (req.headers['x-user-id'] as string) || DEFAULT_USER  // 'sys'
+const role = getUserRole(userId)  // 'sys' -> 'admin', 其他 -> 'user'
 ```
+
+**角色权限控制（RBAC）：**
+
+系统定义两种角色：`admin`（`sys` 用户）和 `user`（其他所有用户）。管理类路由在进入业务逻辑前通过 `requireAdmin()` 守卫拦截，非管理员返回 `403 Forbidden`。
+
+| 路由 | admin | user | 说明 |
+| ------ | :-----: | :----: | ------ |
+| 聊天 reply/resume/stop | ✅ | ✅ | 用户核心功能 |
+| 会话 CRUD (sessions) | ✅ | ✅ | 按用户隔离 |
+| 文件上传/下载 (files) | ✅ | ✅ | 按用户目录隔离 |
+| Agent 列表 GET /agents | ✅ | ✅ | 只读列表 |
+| Agent 配置 GET/PUT /agents/:id/config | ✅ | ❌ | 管理功能 |
+| Agent Skills GET /agents/:id/skills | ✅ | ❌ | 管理功能 |
+| MCP 扩展 GET/POST/DELETE /agents/:id/mcp | ✅ | ❌ | 管理功能 |
+| 监控 GET /monitoring/* | ✅ | ❌ | 管理功能 |
+| 调度任务 catch-all /agents/:id/* | ✅ | ❌ | 代理到 sys 实例 |
+| GET /me | ✅ | ✅ | 返回 `{ userId, role }` |
 
 **SSE 流式代理与 Reply Pipeline：**
 
@@ -296,16 +316,17 @@ App (根组件)
     ├── InboxProvider   (定时任务收件箱)
     ├── PreviewProvider (文件预览)
     └── AppContent
-        ├── Sidebar     (侧边导航栏)
+        ├── Sidebar     (侧边导航栏，按 role 显示/隐藏管理入口)
         └── Routes
             ├── /            -> Home（Prompt 模板 + 快捷入口）
             ├── /chat        -> Chat（AI 对话主界面）
             ├── /history     -> History（历史会话）
             ├── /files       -> Files（文件浏览器）
-            ├── /agents      -> Agents（Agent 列表）
-            ├── /agents/:id/configure -> AgentConfigure（配置）
-            ├── /scheduled-actions    -> ScheduledActions（定时任务）
-            ├── /monitoring           -> Monitoring（监控面板）
+            ├── /inbox       -> Inbox（定时任务收件箱）
+            ├── /agents      -> Agents（Agent 列表，Configure 按钮仅 admin 可见）
+            ├── /agents/:id/configure -> AdminRoute > AgentConfigure（仅 admin）
+            ├── /scheduled-actions    -> AdminRoute > ScheduledActions（仅 admin）
+            ├── /monitoring           -> AdminRoute > Monitoring（仅 admin）
             └── /settings             -> Settings（用户设置）
 ```
 
@@ -317,8 +338,9 @@ GoosedProvider           # Agent 客户端管理、连接状态
   ├── agents[]           # 可用 Agent 列表
   └── isConnected        # 网关连接状态
 
-UserProvider             # 用户认证
+UserProvider             # 用户认证与角色
   ├── userId             # 当前用户 ID（localStorage 持久化）
+  ├── role               # 用户角色（'admin' | 'user'，登录后从 GET /me 获取）
   ├── login(username)    # 登录
   └── logout()           # 登出
 
@@ -1170,7 +1192,7 @@ ops-factory/
 │   │   ├── App.tsx                # 根组件 + 路由
 │   │   ├── contexts/              # React Context 状态管理
 │   │   │   ├── GoosedContext.tsx   # Agent 客户端管理
-│   │   │   ├── UserContext.tsx     # 用户认证
+│   │   │   ├── UserContext.tsx     # 用户认证与角色（ProtectedRoute、AdminRoute）
 │   │   │   ├── PreviewContext.tsx  # 文件预览
 │   │   │   ├── InboxContext.tsx    # 收件箱
 │   │   │   └── ToastContext.tsx    # 通知
@@ -1326,7 +1348,7 @@ ops-factory/
 | 问题 | 说明 |
 |------|------|
 | **监控页面使用 Mock 数据** | `Monitoring.tsx` 页面的指标（请求量、延迟、可用率）全部是硬编码假数据，未接入真实 Langfuse API |
-| **无用户管理** | 没有用户注册、角色权限、管理员后台等功能，任何人输入用户名即可使用 |
+| **无用户管理** | 没有用户注册、管理员后台等功能，任何人输入用户名即可使用。已实现基于 userId 的 RBAC（`sys` = admin，其他 = user），管理类路由和前端页面按角色区分访问权限 |
 | **定时任务管理不完整** | 定时任务依赖 goosed 内置的 Recipe/Schedule 机制，但 UI 上的管理体验较粗糙 |
 | **文件上传已实现但功能有限** | 支持通过聊天输入框上传图片（base64 内联）和文件（multipart 上传），但缺少独立的文件管理界面和批量上传能力 |
 | **Agent 配置热更新受限** | 修改 `AGENTS.md`（Prompt）可以通过 API 更新，但 `config.yaml` 修改需要重启 Agent 进程 |
@@ -1366,5 +1388,5 @@ ops-factory/
 **P3（长期演进）：**
 1. 容器化部署（每个 goosed 实例运行在独立容器中）
 2. 实现 Agent 配置热更新（无需重启进程）
-3. 引入 RBAC 权限模型
+3. ~~引入 RBAC 权限模型~~ ✅ 已实现（`sys` = admin，其他 = user，Gateway 路由守卫 + 前端 AdminRoute）
 4. 考虑 WebSocket 替代 SSE 以支持双向通信
