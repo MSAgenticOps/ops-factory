@@ -1,10 +1,11 @@
 import net from 'node:net'
 import { ChildProcess, spawn } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, writeFileSync, symlinkSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync, symlinkSync, mkdirSync, rmSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
-import { join, relative } from 'node:path'
-import { parse as parseYaml } from 'yaml'
-import type { AgentConfig, GatewayConfig } from './config.js'
+import { join, resolve, dirname, relative } from 'node:path'
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
+import { fileURLToPath } from 'node:url'
+import type { AgentConfig, GatewayConfig, GatewayYamlConfig } from './config.js'
 
 /** The system user whose instances are pre-started and never reaped. */
 export const SYSTEM_USER = 'sys'
@@ -17,6 +18,17 @@ interface ManagedInstance {
   status: 'starting' | 'running' | 'stopped' | 'error'
   lastActivity: number
   runtimeRoot: string // GOOSE_PATH_ROOT = CWD
+}
+
+/** A safe, serializable snapshot of a managed instance (no process handles). */
+export interface InstanceSnapshot {
+  agentId: string
+  userId: string
+  port: number
+  status: 'starting' | 'running' | 'stopped' | 'error'
+  lastActivity: number
+  runtimeRoot: string
+  idleSinceMs: number
 }
 
 function instanceKey(agentId: string, userId: string): string {
@@ -361,6 +373,24 @@ export class InstanceManager {
     return false
   }
 
+  /** Get a serializable snapshot of ALL instances (for monitoring dashboard). */
+  getInstancesSnapshot(): InstanceSnapshot[] {
+    const now = Date.now()
+    const result: InstanceSnapshot[] = []
+    for (const inst of this.instances.values()) {
+      result.push({
+        agentId: inst.agentId,
+        userId: inst.userId,
+        port: inst.port,
+        status: inst.status,
+        lastActivity: inst.lastActivity,
+        runtimeRoot: inst.runtimeRoot,
+        idleSinceMs: now - inst.lastActivity,
+      })
+    }
+    return result
+  }
+
   // ===================== Path helpers =====================
 
   private getAgentRootPath(agentId: string): string {
@@ -559,5 +589,134 @@ export class InstanceManager {
       } catch { /* ignore parse errors */ }
     }
     return result
+  }
+
+  // ===================== Agent creation =====================
+
+  /** Validate agent ID format: lowercase alphanumeric + hyphens, min 2 chars. */
+  private isValidAgentId(id: string): boolean {
+    return /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(id) && id.length >= 2
+  }
+
+  /**
+   * Create a new agent with goosed default configuration.
+   * Creates the directory structure, writes default config files,
+   * updates agents.yaml on disk, and registers in memory.
+   */
+  createAgent(id: string, name: string): {
+    success: boolean
+    error?: string
+    agent?: { id: string; name: string; provider: string; model: string }
+  } {
+    // Validate ID format
+    if (!this.isValidAgentId(id)) {
+      return { success: false, error: 'Agent ID must contain only lowercase letters, numbers, and hyphens (min 2 chars)' }
+    }
+
+    // Check duplicate ID
+    if (this.config.agents.some(a => a.id === id)) {
+      return { success: false, error: `Agent ID '${id}' already exists` }
+    }
+
+    // Check duplicate name
+    const agentsList = this.listAgents()
+    if (agentsList.some(a => a.name === name)) {
+      return { success: false, error: `Agent name '${name}' already exists` }
+    }
+
+    const agentRoot = join(this.config.agentsDir, id)
+    const configDir = join(agentRoot, 'config')
+    const skillsDir = join(configDir, 'skills')
+
+    try {
+      // Create directory structure
+      mkdirSync(skillsDir, { recursive: true })
+
+      // Copy config.yaml from universal-agent as the default template
+      const templateConfigPath = join(this.config.agentsDir, 'universal-agent', 'config', 'config.yaml')
+      const templateConfig = existsSync(templateConfigPath)
+        ? readFileSync(templateConfigPath, 'utf-8')
+        : stringifyYaml({ GOOSE_PROVIDER: 'openai', GOOSE_MODEL: 'gpt-4o', GOOSE_MODE: 'auto', GOOSE_DISABLE_KEYRING: '1' })
+      writeFileSync(join(configDir, 'config.yaml'), templateConfig, 'utf-8')
+      const parsedConfig = parseYaml(templateConfig) as Record<string, unknown>
+
+      // Write empty secrets.yaml
+      writeFileSync(join(configDir, 'secrets.yaml'), '', 'utf-8')
+
+      // Write AGENTS.md
+      writeFileSync(join(agentRoot, 'AGENTS.md'), `# ${name}\n`, 'utf-8')
+
+      // Update agents.yaml on disk
+      const gatewayConfigDir = resolve(dirname(fileURLToPath(import.meta.url)), '../config')
+      const agentsConfigPath = join(gatewayConfigDir, 'agents.yaml')
+      let yamlConfig: GatewayYamlConfig = { agents: [] }
+      if (existsSync(agentsConfigPath)) {
+        yamlConfig = parseYaml(readFileSync(agentsConfigPath, 'utf-8')) as GatewayYamlConfig
+      }
+      yamlConfig.agents = yamlConfig.agents || []
+      yamlConfig.agents.push({ id, name })
+      writeFileSync(agentsConfigPath, stringifyYaml(yamlConfig), 'utf-8')
+
+      // Register in memory
+      this.config.agents.push({
+        id,
+        name,
+        host: this.config.host,
+        secret_key: this.config.secretKey,
+      })
+
+      return {
+        success: true,
+        agent: {
+          id,
+          name,
+          provider: (parsedConfig.GOOSE_PROVIDER as string) || 'openai',
+          model: (parsedConfig.GOOSE_MODEL as string) || 'gpt-4o',
+        },
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to create agent' }
+    }
+  }
+
+  /**
+   * Delete an agent: stop all running instances, remove from registry and disk.
+   */
+  async deleteAgent(id: string): Promise<{ success: boolean; error?: string }> {
+    const agentConfig = this.findAgentConfig(id)
+    if (!agentConfig) {
+      return { success: false, error: `Agent '${id}' not found` }
+    }
+
+    try {
+      // Stop all running instances for this agent
+      const keysToStop: string[] = []
+      for (const [key, inst] of this.instances) {
+        if (inst.agentId === id) keysToStop.push(key)
+      }
+      await Promise.allSettled(keysToStop.map(k => this.stopInstance(k)))
+
+      // Remove agent directory from disk
+      const agentRoot = join(this.config.agentsDir, id)
+      if (existsSync(agentRoot)) {
+        rmSync(agentRoot, { recursive: true, force: true })
+      }
+
+      // Update agents.yaml on disk
+      const gatewayConfigDir = resolve(dirname(fileURLToPath(import.meta.url)), '../config')
+      const agentsConfigPath = join(gatewayConfigDir, 'agents.yaml')
+      if (existsSync(agentsConfigPath)) {
+        const yamlConfig = parseYaml(readFileSync(agentsConfigPath, 'utf-8')) as GatewayYamlConfig
+        yamlConfig.agents = (yamlConfig.agents || []).filter(a => a.id !== id)
+        writeFileSync(agentsConfigPath, stringifyYaml(yamlConfig), 'utf-8')
+      }
+
+      // Remove from in-memory config
+      this.config.agents = this.config.agents.filter(a => a.id !== id)
+
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to delete agent' }
+    }
   }
 }

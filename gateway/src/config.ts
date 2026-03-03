@@ -96,8 +96,8 @@ export function loadGatewayConfig(): GatewayConfig {
 
   // Default to repository root regardless of current working directory.
   const projectRoot = resolve(process.env.PROJECT_ROOT || join(__dirname, '../..'))
-  const agentsDir = resolve(process.env.AGENTS_DIR || join(projectRoot, 'agents'))
-  const usersDir = resolve(process.env.USERS_DIR || join(projectRoot, 'users'))
+  const agentsDir = resolve(process.env.AGENTS_DIR || join(projectRoot, 'gateway', 'agents'))
+  const usersDir = resolve(process.env.USERS_DIR || join(projectRoot, 'gateway', 'users'))
   const goosedBin = process.env.GOOSED_BIN || 'goosed'
 
   // Load centralized agents config

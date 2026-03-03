@@ -7,7 +7,7 @@ set -euo pipefail
 # Usage: ./ctl.sh <action> [component]
 #
 #   action:    startup | shutdown | status | restart
-#   component: onlyoffice | langfuse | gateway | agents | webapp | all (default)
+#   component: onlyoffice | langfuse | gateway | agents | exporter | webapp | all (default)
 #
 # Examples:
 #   ./ctl.sh startup            # start all services
@@ -20,6 +20,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 WEB_DIR="${ROOT_DIR}/web-app"
 GATEWAY_DIR="${ROOT_DIR}/gateway"
+EXPORTER_DIR="${ROOT_DIR}/prometheus-exporter"
 
 # --- Configuration (overridable via env) ---
 export GATEWAY_HOST="${GATEWAY_HOST:-0.0.0.0}"
@@ -31,6 +32,7 @@ VITE_PORT="${VITE_PORT:-5173}"
 ONLYOFFICE_PORT="${ONLYOFFICE_PORT:-8080}"
 LANGFUSE_PORT="${LANGFUSE_PORT:-3100}"
 LANGFUSE_DIR="${ROOT_DIR}/langfuse"
+EXPORTER_PORT="${EXPORTER_PORT:-9091}"
 
 [ -n "${OFFICE_PREVIEW_ENABLED:-}" ] && export OFFICE_PREVIEW_ENABLED
 [ -n "${ONLYOFFICE_URL:-}" ]         && export ONLYOFFICE_URL
@@ -41,6 +43,7 @@ LANGFUSE_DIR="${ROOT_DIR}/langfuse"
 
 GATEWAY_PID=""
 WEBAPP_PID=""
+EXPORTER_PID=""
 
 # ==============================================================================
 # Colors & Logging
@@ -460,6 +463,54 @@ status_webapp() {
 }
 
 # ==============================================================================
+# Component: Prometheus Exporter
+# ==============================================================================
+startup_exporter() {
+    local mode="${1:-foreground}"
+    stop_port "${EXPORTER_PORT}" "exporter"
+
+    log_info "Starting Prometheus Exporter at http://127.0.0.1:${EXPORTER_PORT}/metrics"
+    cd "${EXPORTER_DIR}"
+
+    export EXPORTER_PORT
+    export GATEWAY_URL="http://127.0.0.1:${GATEWAY_PORT}"
+    export GATEWAY_SECRET_KEY
+
+    if [ "${mode}" = "background" ]; then
+        npx tsx src/index.ts &
+        EXPORTER_PID=$!
+        if ! kill -0 "${EXPORTER_PID}" 2>/dev/null; then
+            log_error "Failed to start exporter"
+            return 1
+        fi
+        if ! wait_http_ok "Exporter" "http://127.0.0.1:${EXPORTER_PORT}/health" "" 15 1; then
+            return 1
+        fi
+        log_info "Exporter started (PID: ${EXPORTER_PID})"
+    else
+        npx tsx src/index.ts
+    fi
+}
+
+shutdown_exporter() {
+    stop_port "${EXPORTER_PORT}" "exporter"
+}
+
+status_exporter() {
+    if check_port "${EXPORTER_PORT}"; then
+        if curl -fsS "http://127.0.0.1:${EXPORTER_PORT}/health" >/dev/null 2>&1; then
+            log_ok "Exporter running (http://localhost:${EXPORTER_PORT}/metrics)"
+        else
+            log_warn "Exporter port open but health check failed"
+            return 1
+        fi
+    else
+        log_fail "Exporter not running on port ${EXPORTER_PORT}"
+        return 1
+    fi
+}
+
+# ==============================================================================
 # Orchestration
 # ==============================================================================
 cleanup() {
@@ -473,6 +524,11 @@ cleanup() {
         kill "${WEBAPP_PID}" 2>/dev/null || true
         wait "${WEBAPP_PID}" 2>/dev/null || true
     fi
+    if [[ -n "${EXPORTER_PID}" ]] && kill -0 "${EXPORTER_PID}" 2>/dev/null; then
+        log_info "Stopping exporter (PID: ${EXPORTER_PID})..."
+        kill "${EXPORTER_PID}" 2>/dev/null || true
+        wait "${EXPORTER_PID}" 2>/dev/null || true
+    fi
 }
 
 do_startup() {
@@ -483,6 +539,7 @@ do_startup() {
         all)
             # Clean slate (skipped when called from do_restart which already did shutdown)
             if [ "${skip_shutdown}" != "true" ]; then
+                shutdown_exporter
                 shutdown_webapp
                 shutdown_agents
                 shutdown_gateway
@@ -502,7 +559,9 @@ do_startup() {
                 log_error "No agents configured"
                 exit 1
             fi
-            # 5. Webapp in foreground (blocking)
+            # 5. Prometheus Exporter in background
+            startup_exporter background
+            # 6. Webapp in foreground (blocking)
             startup_webapp
             ;;
         onlyoffice) startup_onlyoffice ;;
@@ -510,6 +569,7 @@ do_startup() {
         gateway)    shutdown_agents; shutdown_gateway; startup_gateway foreground ;;
         agents)     startup_agents foreground ;;
         webapp)     startup_webapp ;;
+        exporter)   startup_exporter foreground ;;
         *) usage ;;
     esac
 }
@@ -518,6 +578,7 @@ do_shutdown() {
     local component="${1:-all}"
     case "${component}" in
         all)
+            shutdown_exporter
             shutdown_webapp
             shutdown_agents
             shutdown_gateway
@@ -530,6 +591,7 @@ do_shutdown() {
         gateway)    shutdown_agents; shutdown_gateway ;;
         agents)     shutdown_agents ;;
         webapp)     shutdown_webapp ;;
+        exporter)   shutdown_exporter ;;
         *) usage ;;
     esac
 }
@@ -547,6 +609,7 @@ do_status() {
             status_langfuse   || has_fail=1
             status_gateway    || has_fail=1
             status_agents     || has_fail=1
+            status_exporter   || has_fail=1
             status_webapp     || has_fail=1
             echo
             if [ "${has_fail}" -eq 0 ]; then
@@ -560,6 +623,7 @@ do_status() {
         gateway)    status_gateway    || has_fail=1 ;;
         agents)     status_agents     || has_fail=1 ;;
         webapp)     status_webapp     || has_fail=1 ;;
+        exporter)   status_exporter   || has_fail=1 ;;
         *) usage ;;
     esac
 
@@ -613,6 +677,7 @@ Components:
   langfuse    Langfuse observability platform (Docker)
   gateway     Gateway HTTP proxy server
   agents      Goosed agent processes (managed by gateway)
+  exporter    Prometheus metrics exporter (port ${EXPORTER_PORT})
   webapp      Web application (Vite dev server)
 
 Note: agents are child processes spawned by gateway.

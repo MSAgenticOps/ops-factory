@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMonitoring, type TimeRange, type DailyPoint, type TraceRow, type AgentInfo } from '../hooks/useMonitoring'
+import { useMonitoring, useMonitoringPlatform, type TimeRange, type DailyPoint, type TraceRow, type AgentInfo } from '../hooks/useMonitoring'
 
 // --- Helpers --------------------------------------------------------------
 
@@ -32,7 +32,24 @@ function fmtTime(iso: string): string {
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// --- Sub-components -------------------------------------------------------
+function fmtIdleTime(ms: number): string {
+  const sec = Math.floor(ms / 1000)
+  if (sec < 60) return `${sec}s`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m`
+  const hr = Math.floor(min / 60)
+  return `${hr}h ${min % 60}m`
+}
+
+function fmtMs(ms: number): string {
+  const sec = Math.floor(ms / 1000)
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}min`
+  const hr = Math.floor(min / 60)
+  return `${hr}h ${min % 60}min`
+}
+
+// --- Shared sub-components ------------------------------------------------
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: 'error' | 'success' }) {
   const cls = accent ? `mon-kpi-card mon-kpi-${accent}` : 'mon-kpi-card'
@@ -131,7 +148,15 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   )
 }
 
-// --- Disabled state -------------------------------------------------------
+function ExternalLinkIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={size} height={size}>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  )
+}
 
 function MonitoringDisabled({ title, desc }: { title: string; desc: string }) {
   return (
@@ -148,57 +173,170 @@ function MonitoringDisabled({ title, desc }: { title: string; desc: string }) {
   )
 }
 
-// --- Main page ------------------------------------------------------------
+// --- Tab: Platform --------------------------------------------------------
 
-const RANGES: TimeRange[] = ['1h', '24h', '7d', '30d']
-
-export default function Monitoring() {
+function PlatformTab() {
   const { t } = useTranslation()
-  const { status, overview, traces, observations, agents, isLoading, error, range, setRange, refresh } = useMonitoring()
-  const [traceFilter, setTraceFilter] = useState<'all' | 'errors'>('all')
+  const { system, instances, isLoading, error, refresh } = useMonitoringPlatform()
 
-  const filteredTraces = traceFilter === 'errors' ? traces.filter(tr => tr.hasError) : traces
-
-  // --- Disabled / error states ---
-  if (!isLoading && status && !status.enabled) {
-    return (
-      <div className="page-container monitoring-page">
-        <div className="page-header">
-          <h1 className="page-title">{t('monitoring.title')}</h1>
-        </div>
-        <MonitoringDisabled title={t('monitoring.notEnabled')} desc={t('monitoring.notEnabledDesc')} />
-      </div>
-    )
+  if (isLoading && !system) {
+    return <div className="mon-loading">{t('monitoring.loading')}</div>
   }
 
-  if (!isLoading && status && status.enabled && !status.reachable) {
+  if (error) {
     return (
-      <div className="page-container monitoring-page">
-        <div className="page-header">
-          <h1 className="page-title">{t('monitoring.title')}</h1>
-        </div>
-        <MonitoringDisabled
-          title={t('monitoring.notReachable')}
-          desc={t('monitoring.notReachableDesc', { host: status.host })}
-        />
+      <div className="mon-error-banner">
+        <span>{t('monitoring.errorLoading')}: {error}</span>
+        <button onClick={refresh} className="mon-retry-btn">{t('monitoring.retry')}</button>
       </div>
     )
   }
 
   return (
-    <div className="page-container monitoring-page">
-      {/* Header */}
-      <div className="mon-page-header">
+    <>
+      {/* Gateway Health */}
+      {system && (
+        <div className="mon-section">
+          <h2 className="mon-section-title">{t('monitoring.platformTitle')}</h2>
+          <div className="mon-kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <KpiCard label={t('monitoring.platformUptime')} value={system.gateway.uptimeFormatted} />
+            <KpiCard label={t('monitoring.platformHost')} value={`${system.gateway.host}:${system.gateway.port}`} />
+            <KpiCard label={t('monitoring.platformAgentsConfigured')} value={String(system.agents.configured)} />
+            <KpiCard
+              label={t('monitoring.platformLangfuse')}
+              value={system.langfuse.configured ? t('monitoring.platformConfigured') : t('monitoring.platformNotConfigured')}
+              accent={system.langfuse.configured ? 'success' : undefined}
+            />
+          </div>
+          <div className="mon-kpi-row" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginTop: 'var(--spacing-3)' }}>
+            <KpiCard label={t('monitoring.platformIdleTimeout')} value={fmtMs(system.idle.timeoutMs)} />
+            <KpiCard
+              label={t('monitoring.instancesRunning')}
+              value={instances ? `${instances.runningInstances} / ${instances.totalInstances}` : '—'}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Running Instances Table */}
+      {instances && (
+        <div className="mon-section">
+          <h2 className="mon-section-title">{t('monitoring.instancesTitle')}</h2>
+
+          {instances.totalInstances === 0 ? (
+            <div className="mon-no-data">{t('monitoring.instancesNone')}</div>
+          ) : (
+            <div className="mon-agent-table">
+              <div className="mon-inst-table-header">
+                <span>{t('monitoring.instancesAgent')}</span>
+                <span>{t('monitoring.instancesUser')}</span>
+                <span>{t('monitoring.instancesPort')}</span>
+                <span>{t('monitoring.instancesStatus')}</span>
+                <span>{t('monitoring.instancesIdleSince')}</span>
+              </div>
+              {instances.byAgent.flatMap(group =>
+                group.instances.map(inst => (
+                  <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
+                    <span className="mon-agent-name">{group.agentName}</span>
+                    <span>{inst.userId}</span>
+                    <span className="mon-agent-model">{inst.port}</span>
+                    <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
+                    <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+// --- Tab: Agents ----------------------------------------------------------
+
+function AgentsTab() {
+  const { t } = useTranslation()
+  const { instances, agents, isLoading, error, refresh } = useMonitoringPlatform()
+
+  if (isLoading && agents.length === 0) {
+    return <div className="mon-loading">{t('monitoring.loading')}</div>
+  }
+
+  if (error) {
+    return (
+      <div className="mon-error-banner">
+        <span>{t('monitoring.errorLoading')}: {error}</span>
+        <button onClick={refresh} className="mon-retry-btn">{t('monitoring.retry')}</button>
+      </div>
+    )
+  }
+
+  // Build map of agentId -> running instance count
+  const instanceCounts: Record<string, number> = {}
+  if (instances) {
+    for (const group of instances.byAgent) {
+      instanceCounts[group.agentId] = group.instances.filter(i => i.status === 'running').length
+    }
+  }
+
+  return (
+    <div className="mon-section">
+      <h2 className="mon-section-title">{t('monitoring.agentDetails')}</h2>
+      {agents.length === 0 ? (
+        <div className="mon-no-data">{t('monitoring.noData')}</div>
+      ) : (
+        <div className="mon-agent-table">
+          <div className="mon-agent-table-header mon-agent-table-5col">
+            <span>{t('monitoring.agentName')}</span>
+            <span>{t('monitoring.agentProvider')}</span>
+            <span>{t('monitoring.agentModel')}</span>
+            <span>{t('monitoring.agentInstanceCount')}</span>
+            <span>{t('monitoring.agentStatus')}</span>
+          </div>
+          {agents.map((agent: AgentInfo) => (
+            <div key={agent.id} className="mon-agent-table-row mon-agent-table-5col">
+              <span className="mon-agent-name">{agent.name}</span>
+              <span className="mon-agent-provider">{agent.provider}</span>
+              <span className="mon-agent-model">{agent.model}</span>
+              <span className="mon-obs-count">{instanceCounts[agent.id] || 0}</span>
+              <span><span className={`status-pill status-${agent.status}`}>{agent.status}</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Tab: Observability ---------------------------------------------------
+
+const RANGES: TimeRange[] = ['1h', '24h', '7d', '30d']
+
+function ObservabilityTab() {
+  const { t } = useTranslation()
+  const { status, overview, traces, observations, isLoading, error, range, setRange, refresh } = useMonitoring()
+  const [traceFilter, setTraceFilter] = useState<'all' | 'errors'>('all')
+  const filteredTraces = traceFilter === 'errors' ? traces.filter(tr => tr.hasError) : traces
+
+  // Disabled states (Langfuse not configured or not reachable)
+  if (!isLoading && status && !status.enabled) {
+    return <MonitoringDisabled title={t('monitoring.notEnabled')} desc={t('monitoring.notEnabledDesc')} />
+  }
+
+  if (!isLoading && status && status.enabled && !status.reachable) {
+    return <MonitoringDisabled title={t('monitoring.notReachable')} desc={t('monitoring.notReachableDesc', { host: status.host })} />
+  }
+
+  return (
+    <>
+      {/* Langfuse link + Time range toggle */}
+      <div className="mon-obs-toolbar">
         <div className="mon-header-left">
-          <h1 className="page-title" style={{ marginBottom: 0 }}>{t('monitoring.title')}</h1>
           {status?.host && (
             <a href={status.host} target="_blank" rel="noopener noreferrer" className="mon-langfuse-link">
               {t('monitoring.openLangfuse')}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
+              <ExternalLinkIcon />
             </a>
           )}
         </div>
@@ -251,31 +389,6 @@ export default function Monitoring() {
               <div className="mon-chart-block">
                 <span className="mon-chart-title">{t('monitoring.trendTraces')}</span>
                 <Sparkline data={overview.daily} valueKey="traces" color="var(--color-accent)" formatter={v => String(v)} />
-              </div>
-            </div>
-          )}
-
-          {/* Agent details table */}
-          {agents.length > 0 && (
-            <div className="mon-section">
-              <h2 className="mon-section-title">{t('monitoring.agentDetails')}</h2>
-              <div className="mon-agent-table">
-                <div className="mon-agent-table-header">
-                  <span>{t('monitoring.agentName')}</span>
-                  <span>{t('monitoring.agentProvider')}</span>
-                  <span>{t('monitoring.agentModel')}</span>
-                  <span>{t('monitoring.agentStatus')}</span>
-                </div>
-                {agents.map((agent: AgentInfo) => (
-                  <div key={agent.id} className="mon-agent-table-row">
-                    <span className="mon-agent-name">{agent.name}</span>
-                    <span className="mon-agent-provider">{agent.provider}</span>
-                    <span className="mon-agent-model">{agent.model}</span>
-                    <span>
-                      <span className={`status-pill status-${agent.status}`}>{agent.status}</span>
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -343,9 +456,56 @@ export default function Monitoring() {
       {!isLoading && !error && overview && overview.totalTraces === 0 && (
         <div className="mon-no-data">{t('monitoring.noData')}</div>
       )}
+    </>
+  )
+}
+
+// --- Main page ------------------------------------------------------------
+
+type MonitoringTab = 'platform' | 'agents' | 'observability'
+
+export default function Monitoring() {
+  const { t } = useTranslation()
+  const [activeTab, setActiveTab] = useState<MonitoringTab>('platform')
+
+  const tabs: { key: MonitoringTab; label: string }[] = [
+    { key: 'platform', label: t('monitoring.tabPlatform') },
+    { key: 'agents', label: t('monitoring.tabAgents') },
+    { key: 'observability', label: t('monitoring.tabObservability') },
+  ]
+
+  return (
+    <div className="page-container monitoring-page">
+      {/* Header */}
+      <div className="mon-page-header">
+        <div className="mon-header-left">
+          <h1 className="page-title" style={{ marginBottom: 0 }}>{t('monitoring.title')}</h1>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="config-tabs">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`config-tab ${activeTab === tab.key ? 'config-tab-active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'platform' && <PlatformTab />}
+      {activeTab === 'agents' && <AgentsTab />}
+      {activeTab === 'observability' && <ObservabilityTab />}
     </div>
   )
 }
+
+// --- Trace row sub-component (used by ObservabilityTab) --------------------
 
 function TraceRowComp({ trace: tr, langfuseHost }: { trace: TraceRow; langfuseHost?: string }) {
   const { t } = useTranslation()
@@ -387,11 +547,7 @@ function TraceRowComp({ trace: tr, langfuseHost }: { trace: TraceRow; langfuseHo
                 className="mon-traces-detail-link"
               >
                 View in Langfuse
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
+                <ExternalLinkIcon size={12} />
               </a>
             )}
           </div>

@@ -979,6 +979,7 @@ textarea {
 .agent-skill-cta {
     display: flex;
     justify-content: flex-end;
+    gap: var(--spacing-2);
     margin-top: var(--spacing-3);
 }
 
@@ -1001,6 +1002,17 @@ textarea {
 .agent-skill-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.agent-delete-button {
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+}
+
+.agent-delete-button:hover:not(:disabled) {
+    color: var(--color-error);
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.06);
 }
 
 /* ========================================
@@ -6092,6 +6104,56 @@ textarea {
     border-radius: var(--radius-xl);
 }
 
+/* ---- Monitoring: Instance table ---- */
+
+.mon-inst-table-header,
+.mon-inst-table-row {
+    display: grid;
+    grid-template-columns: 1fr 120px 80px 100px 100px;
+    gap: var(--spacing-4);
+    padding: var(--spacing-3) var(--spacing-5);
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.mon-inst-table-header {
+    background: var(--color-bg-secondary);
+    font-weight: 600;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.mon-inst-table-row {
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    transition: background var(--transition-fast);
+}
+
+.mon-inst-table-row:last-child {
+    border-bottom: none;
+}
+
+.mon-inst-table-row:hover {
+    background: var(--color-bg-hover);
+}
+
+/* Agent table 5-column variant (with instance count) */
+.mon-agent-table-5col {
+    grid-template-columns: 1fr 120px 1fr 80px 100px;
+}
+
+/* Observability tab toolbar (langfuse link + range toggle) */
+.mon-obs-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-6);
+}
+
 /* Responsive */
 @media (max-width: 1100px) {
     .mon-kpi-row {
@@ -6115,5 +6177,14 @@ textarea {
     .mon-obs-header,
     .mon-obs-row {
         grid-template-columns: 1fr 60px 90px 90px;
+    }
+    .mon-inst-table-header,
+    .mon-inst-table-row {
+        grid-template-columns: 1fr 100px 70px 80px 80px;
+    }
+    .mon-obs-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-3);
     }
 }

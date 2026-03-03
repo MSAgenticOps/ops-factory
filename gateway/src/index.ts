@@ -53,8 +53,20 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   })
 }
 
+/** Format milliseconds as a human-readable uptime string */
+function formatUptime(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h ${m}m`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
 async function main() {
   const config = loadGatewayConfig()
+  const startTime = Date.now()
   const manager = new InstanceManager(config)
   const ownerCache = new SessionOwnerCache()
 
@@ -216,7 +228,101 @@ async function main() {
       return
     }
 
-    // ===== Monitoring Routes (Langfuse proxy) — admin only =====
+    // POST /agents — create a new agent (admin only)
+    if (pathname === '/agents' && req.method === 'POST') {
+      if (!requireAdmin(res, role)) return
+      const body = await readBody(req)
+      try {
+        const { id, name } = JSON.parse(body)
+        if (!id || typeof id !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Agent ID is required' }))
+          return
+        }
+        if (!name || typeof name !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Agent name is required' }))
+          return
+        }
+        const result = manager.createAgent(id.trim(), name.trim())
+        res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }))
+      }
+      return
+    }
+
+    // DELETE /agents/:id — delete an agent (admin only)
+    const deleteAgentMatch = pathname.match(/^\/agents\/([^/]+)\/?$/)
+    if (deleteAgentMatch && req.method === 'DELETE') {
+      if (!requireAdmin(res, role)) return
+      const agentId = deleteAgentMatch[1]
+      const result = await manager.deleteAgent(agentId)
+      res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(result))
+      return
+    }
+
+    // ===== Monitoring Routes — admin only =====
+
+    // GET /monitoring/system — gateway health & platform info (no Langfuse dependency)
+    if (pathname === '/monitoring/system' && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
+      const now = Date.now()
+      const uptimeMs = now - startTime
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        gateway: {
+          host: config.host,
+          port: config.port,
+          uptimeMs,
+          uptimeFormatted: formatUptime(uptimeMs),
+          startedAt: new Date(startTime).toISOString(),
+        },
+        agents: {
+          configured: config.agents.length,
+          list: config.agents.map(a => ({ id: a.id, name: a.name })),
+        },
+        idle: {
+          timeoutMs: config.idleTimeoutMs,
+          checkIntervalMs: config.idleCheckIntervalMs,
+        },
+        langfuse: {
+          configured: !!config.langfuse,
+          host: config.langfuse?.host || null,
+        },
+      }))
+      return
+    }
+
+    // GET /monitoring/instances — all running instances grouped by agent
+    if (pathname === '/monitoring/instances' && req.method === 'GET') {
+      if (!requireAdmin(res, role)) return
+      const snapshots = manager.getInstancesSnapshot()
+
+      const byAgent: Record<string, { agentId: string; agentName: string; instances: typeof snapshots }> = {}
+      for (const snap of snapshots) {
+        if (!byAgent[snap.agentId]) {
+          const agentCfg = config.agents.find(a => a.id === snap.agentId)
+          byAgent[snap.agentId] = {
+            agentId: snap.agentId,
+            agentName: agentCfg?.name || snap.agentId,
+            instances: [],
+          }
+        }
+        byAgent[snap.agentId].instances.push(snap)
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        totalInstances: snapshots.length,
+        runningInstances: snapshots.filter(s => s.status === 'running').length,
+        byAgent: Object.values(byAgent),
+      }))
+      return
+    }
 
     // GET /monitoring/status — is monitoring available?
     if (pathname === '/monitoring/status' && req.method === 'GET') {

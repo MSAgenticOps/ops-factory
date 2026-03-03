@@ -52,8 +52,8 @@ export async function startGateway(): Promise<GatewayHandle> {
       GATEWAY_PORT: String(port),
       GATEWAY_SECRET_KEY: SECRET_KEY,
       PROJECT_ROOT,
-      AGENTS_DIR: join(PROJECT_ROOT, 'agents'),
-      USERS_DIR: join(PROJECT_ROOT, 'users'),
+      AGENTS_DIR: join(PROJECT_ROOT, 'gateway', 'agents'),
+      USERS_DIR: join(PROJECT_ROOT, 'gateway', 'users'),
       GOOSED_BIN: process.env.GOOSED_BIN || 'goosed',
       // Short idle timeout for testing (30s)
       IDLE_TIMEOUT_MS: '30000',

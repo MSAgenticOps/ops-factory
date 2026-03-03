@@ -81,6 +81,50 @@ async function gw<T>(path: string, params?: Record<string, string>): Promise<T> 
   return res.json() as Promise<T>
 }
 
+// ---- Types for platform monitoring (no Langfuse dependency) ----
+
+export interface SystemInfo {
+  gateway: {
+    host: string
+    port: number
+    uptimeMs: number
+    uptimeFormatted: string
+    startedAt: string
+  }
+  agents: {
+    configured: number
+    list: Array<{ id: string; name: string }>
+  }
+  idle: {
+    timeoutMs: number
+    checkIntervalMs: number
+  }
+  langfuse: {
+    configured: boolean
+    host: string | null
+  }
+}
+
+export interface InstanceSnapshot {
+  agentId: string
+  userId: string
+  port: number
+  status: 'starting' | 'running' | 'stopped' | 'error'
+  lastActivity: number
+  runtimeRoot: string
+  idleSinceMs: number
+}
+
+export interface InstancesData {
+  totalInstances: number
+  runningInstances: number
+  byAgent: Array<{
+    agentId: string
+    agentName: string
+    instances: InstanceSnapshot[]
+  }>
+}
+
 export interface AgentInfo {
   id: string
   name: string
@@ -171,4 +215,54 @@ export function useMonitoring(): UseMonitoringResult {
   useEffect(() => { load('24h') }, [load])
 
   return { status, overview, traces, observations, agents, isLoading, error, range, setRange, refresh }
+}
+
+// ---- Platform monitoring hook (gateway health + instances, no Langfuse) ----
+
+export interface UseMonitoringPlatformResult {
+  system: SystemInfo | null
+  instances: InstancesData | null
+  agents: AgentInfo[]
+  isLoading: boolean
+  error: string | null
+  refresh: () => void
+}
+
+export function useMonitoringPlatform(): UseMonitoringPlatformResult {
+  const [system, setSystem] = useState<SystemInfo | null>(null)
+  const [instances, setInstances] = useState<InstancesData | null>(null)
+  const [agents, setAgents] = useState<AgentInfo[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fetchIdRef = useRef(0)
+
+  const load = useCallback(async () => {
+    const id = ++fetchIdRef.current
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const [sys, inst, ag] = await Promise.all([
+        gw<SystemInfo>('/monitoring/system'),
+        gw<InstancesData>('/monitoring/instances'),
+        gw<{ agents: AgentInfo[] }>('/agents'),
+      ])
+
+      if (id !== fetchIdRef.current) return
+      setSystem(sys)
+      setInstances(inst)
+      setAgents(ag.agents || [])
+    } catch (err) {
+      if (id !== fetchIdRef.current) return
+      setError(err instanceof Error ? err.message : 'Failed to fetch platform data')
+    } finally {
+      if (id === fetchIdRef.current) setIsLoading(false)
+    }
+  }, [])
+
+  const refresh = useCallback(() => { load() }, [load])
+
+  useEffect(() => { load() }, [load])
+
+  return { system, instances, agents, isLoading, error, refresh }
 }

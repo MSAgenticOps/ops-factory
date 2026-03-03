@@ -1,25 +1,12 @@
-# Gateway Configuration
-# This file defines agents and gateway-level settings
-
-# Office file preview via OnlyOffice Document Server (CE)
-# Requires: docker run -d --name onlyoffice -p 8080:80 onlyoffice/documentserver
-# For local dev, startup.sh will copy gateway/config/onlyoffice.local.json into the container
-# to allow private host access (host.docker.internal) and disable JWT checks.
 officePreview:
   enabled: true
-  onlyofficeUrl: "http://localhost:8080"          # Browser loads OnlyOffice JS API from here
-  fileBaseUrl: "http://host.docker.internal:3000"  # OnlyOffice container fetches files from gateway via this URL
-
-# Per-user goosed instance idle timeout (minutes). Instances with no activity
-# beyond this threshold are automatically stopped to free resources.
+  onlyofficeUrl: http://localhost:8080
+  fileBaseUrl: http://host.docker.internal:3000
 idleTimeoutMinutes: 15
-
 agents:
   - id: universal-agent
-    name: "Universal Agent"
-
+    name: Universal Agent
   - id: kb-agent
-    name: "KB Agent"
-
+    name: KB Agent
   - id: report-agent
-    name: "Report Agent"
+    name: Report Agent
