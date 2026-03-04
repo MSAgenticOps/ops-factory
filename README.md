@@ -136,18 +136,89 @@ npm run test:e2e          # Playwright E2E tests (requires running app)
 npm run test:e2e:headed   # E2E with visible browser
 ```
 
-## Environment Variables
+## Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GATEWAY_HOST` | `0.0.0.0` | Gateway bind address |
-| `GATEWAY_PORT` | `3000` | Gateway port |
-| `GATEWAY_SECRET_KEY` | `test` | Shared auth key between gateway and web app |
-| `GOOSED_BIN` | `goosed` | Path to goosed binary |
-| `PROJECT_ROOT` | auto-detected | Project root directory |
-| `VITE_GATEWAY_URL` | `http://127.0.0.1:3000` | Gateway URL for the web app |
-| `OFFICE_PREVIEW_ENABLED` | `true` | Enable OnlyOffice file preview |
-| `IDLE_TIMEOUT_MS` | `900000` | User instance idle timeout (ms) |
+Every component uses a unified configuration approach:
+
+```text
+config.yaml  →  environment variable override  →  error if required field missing
+```
+
+Each component has its own `config.yaml` in its directory. Copy the corresponding `config.yaml.example` to `config.yaml` and edit as needed. Environment variables always take priority over `config.yaml` values.
+
+### Gateway (`gateway/config.yaml`)
+
+| Field | Env Var | Default | Required |
+| ----- | ------- | ------- | -------- |
+| `server.host` | `GATEWAY_HOST` | `0.0.0.0` | |
+| `server.port` | `GATEWAY_PORT` | `3000` | |
+| `server.secretKey` | `GATEWAY_SECRET_KEY` | — | **Yes** |
+| `server.corsOrigin` | `CORS_ORIGIN` | `*` | |
+| `tls.cert` | `TLS_CERT` | — | |
+| `tls.key` | `TLS_KEY` | — | |
+| `paths.projectRoot` | `PROJECT_ROOT` | auto-detected | |
+| `paths.agentsDir` | `AGENTS_DIR` | `<projectRoot>/gateway/agents` | |
+| `paths.usersDir` | `USERS_DIR` | `<projectRoot>/gateway/users` | |
+| `paths.goosedBin` | `GOOSED_BIN` | `goosed` | |
+| `idle.timeoutMinutes` | `IDLE_TIMEOUT_MS` (ms) | `15` | |
+| `idle.checkIntervalMs` | `IDLE_CHECK_INTERVAL_MS` | `60000` | |
+| `upload.maxFileSizeMb` | `MAX_UPLOAD_FILE_SIZE_MB` | `10` | |
+| `upload.maxImageSizeMb` | `MAX_UPLOAD_IMAGE_SIZE_MB` | `5` | |
+| `upload.retentionHours` | `UPLOAD_RETENTION_HOURS` | `24` | |
+| `officePreview.enabled` | `OFFICE_PREVIEW_ENABLED` | `false` | |
+| `officePreview.onlyofficeUrl` | `ONLYOFFICE_URL` | `http://localhost:8080` | |
+| `officePreview.fileBaseUrl` | `ONLYOFFICE_FILE_BASE_URL` | `http://host.docker.internal:3000` | |
+| `vision.mode` | `VISION_MODE` | `passthrough` | |
+| `langfuse.host` | `LANGFUSE_HOST` | — | |
+| `langfuse.publicKey` | `LANGFUSE_PUBLIC_KEY` | — | |
+| `langfuse.secretKey` | `LANGFUSE_SECRET_KEY` | — | |
+
+Agent-specific configuration (LLM provider, model, extensions) remains in `gateway/agents/{id}/config/config.yaml`.
+
+### Web App (`web-app/config.yaml`)
+
+| Field | Env Var | Default | Required |
+| ----- | ------- | ------- | -------- |
+| `gatewayUrl` | `GATEWAY_URL` | — | **Yes** |
+| `gatewaySecretKey` | `GATEWAY_SECRET_KEY` | — | **Yes** |
+| `port` | `VITE_PORT` | `5173` | |
+
+### Prometheus Exporter (`prometheus-exporter/config.yaml`)
+
+| Field | Env Var | Default | Required |
+| ----- | ------- | ------- | -------- |
+| `port` | `EXPORTER_PORT` | `9091` | |
+| `gatewayUrl` | `GATEWAY_URL` | — | **Yes** |
+| `gatewaySecretKey` | `GATEWAY_SECRET_KEY` | — | **Yes** |
+| `collectTimeoutMs` | `COLLECT_TIMEOUT_MS` | `5000` | |
+
+### Langfuse (`langfuse/config.yaml`)
+
+All fields are optional with defaults for local development. The `ctl.sh` script reads `config.yaml` and generates a `.env` file consumed by Docker Compose.
+
+| Field | Env Var | Default |
+| ----- | ------- | ------- |
+| `port` | `LANGFUSE_PORT` | `3100` |
+| `postgres.db` | `POSTGRES_DB` | `langfuse` |
+| `postgres.user` | `POSTGRES_USER` | `langfuse` |
+| `postgres.password` | `POSTGRES_PASSWORD` | `langfuse` |
+| `postgres.port` | `POSTGRES_PORT` | `5432` |
+| `nextauthSecret` | `NEXTAUTH_SECRET` | — |
+| `salt` | `SALT` | — |
+| `telemetryEnabled` | `TELEMETRY_ENABLED` | `false` |
+| `init.*` | `LANGFUSE_INIT_*` | see `config.yaml.example` |
+
+### OnlyOffice (`onlyoffice/config.yaml`)
+
+All fields are optional. The `ctl.sh` script reads `config.yaml` and generates a `.env` file consumed by Docker Compose.
+
+| Field | Env Var | Default |
+| ----- | ------- | ------- |
+| `port` | `ONLYOFFICE_PORT` | `8080` |
+| `jwtEnabled` | `JWT_ENABLED` | `false` |
+| `pluginsEnabled` | `PLUGINS_ENABLED` | `false` |
+| `allowPrivateIpAddress` | `ALLOW_PRIVATE_IP_ADDRESS` | `true` |
+| `allowMetaIpAddress` | `ALLOW_META_IP_ADDRESS` | `true` |
 
 ## Project Structure
 
