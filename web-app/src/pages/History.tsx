@@ -207,24 +207,24 @@ export default function History() {
                 </div>
             </div>
 
-            <div className="history-filter-group" role="tablist" aria-label="Session type filter">
+            <div className="seg-filter" role="tablist" aria-label="Session type filter">
                 <button
                     type="button"
-                    className={`history-filter-btn ${historyFilter === 'user' ? 'active' : ''}`}
+                    className={`seg-filter-btn ${historyFilter === 'user' ? 'active' : ''}`}
                     onClick={() => setHistoryFilter('user')}
                 >
                     {t('history.filterUser')}
                 </button>
                 <button
                     type="button"
-                    className={`history-filter-btn ${historyFilter === 'scheduled' ? 'active' : ''}`}
+                    className={`seg-filter-btn ${historyFilter === 'scheduled' ? 'active' : ''}`}
                     onClick={() => setHistoryFilter('scheduled')}
                 >
                     {t('history.filterScheduled')}
                 </button>
                 <button
                     type="button"
-                    className={`history-filter-btn ${historyFilter === 'all' ? 'active' : ''}`}
+                    className={`seg-filter-btn ${historyFilter === 'all' ? 'active' : ''}`}
                     onClick={() => setHistoryFilter('all')}
                 >
                     {t('history.filterAll')}

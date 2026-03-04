@@ -216,102 +216,24 @@ function MessageInner({
     const isThinking = !!unclosedThinkMatch
     const unclosedThinkingText = unclosedThinkMatch ? unclosedThinkMatch[1].trim() : ''
 
-    // Detect file paths from message text, tool arguments and tool results.
-    // This is a best-effort fallback. Stable file rendering primarily comes from
-    // outputFiles passed by MessageList based on /agents/:id/files snapshots.
-    const detectedFiles: DetectedFile[] = []
-    const seenFiles = new Set<string>()
-
-    const addFile = (rawPath: string) => {
-        if (!rawPath) return
-        const trimmed = rawPath.trim().replace(/^["'`]+|["'`]+$/g, '')
-        if (!trimmed) return
-
-        // Never pass absolute filesystem paths to download/preview route.
-        // Keep only a safe relative-looking path or basename fallback.
-        const normalizedPath = trimmed.startsWith('/') ? (trimmed.split('/').pop() || trimmed) : trimmed
-        const fileName = normalizedPath.split('/').pop() || normalizedPath
-        const fileExt = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() || '' : ''
-        if (!fileExt) return
-
-        const dedupeKey = `${normalizedPath}::${fileName}`
-        if (seenFiles.has(dedupeKey)) return
-        seenFiles.add(dedupeKey)
-        detectedFiles.push({ path: normalizedPath, name: fileName, ext: fileExt })
-    }
-
-    const scanStringForFiles = (value: string) => {
-        // 1) absolute artifacts paths
-        const filePathRegex = /(\/[^\s\n]+\/artifacts\/[^\s\n,，。)）\]】"']+\.[a-zA-Z0-9]+)/g
-        let match
-        while ((match = filePathRegex.exec(value)) !== null) {
-            addFile(match[1])
-        }
-
-        // 2) markdown links to local files
-        const KNOWN_EXTS = 'md|txt|html|htm|pdf|docx|xlsx|pptx|csv|json|yaml|yml|py|js|ts|sh|png|jpg|jpeg|gif|svg|mp3|wav|mp4'
-        const mdLinkRegex = new RegExp(`\\[([^\\]]*)\\]\\(([^)]+\\.(?:${KNOWN_EXTS}))\\)`, 'gi')
-        while ((match = mdLinkRegex.exec(value)) !== null) {
-            addFile(match[2])
-        }
-
-        // 3) shell redirection targets in scripts: > file.ext or >> file.ext
-        const redirectionRegex = /(?:^|\s)>>?\s*([^\s"'`<>|]+\.[a-zA-Z0-9]+)/g
-        while ((match = redirectionRegex.exec(value)) !== null) {
-            addFile(match[1])
-        }
-
-        // 4) generic file-like tokens
-        const genericFileRegex = /(?:^|[\s("'`])((?:[./~\\\w-]+\/)?[\w.-]+\.[a-zA-Z0-9]{1,10})(?=$|[\s)"'`,;])/g
-        while ((match = genericFileRegex.exec(value)) !== null) {
-            const candidate = match[1]
-            if (/^(https?:|mailto:)/i.test(candidate)) continue
-            addFile(candidate)
-        }
-    }
-
-    const scanUnknown = (value: unknown, key?: string) => {
-        // Skip blob fields entirely — they contain large base64 data (e.g. mermaid.js inline)
-        if (key === 'blob') return
-        if (typeof value === 'string') {
-            // Skip strings > 10KB to avoid expensive regex on multi-MB base64 blobs
-            if (value.length > 10_000) return
-            scanStringForFiles(value)
-            return
-        }
-        if (!value || typeof value !== 'object') return
-        if (Array.isArray(value)) {
-            for (const item of value) scanUnknown(item)
-            return
-        }
-        for (const [k, field] of Object.entries(value as Record<string, unknown>)) {
-            scanUnknown(field, k)
-        }
-    }
-
-    const searchText = visibleText || fullText
-    scanStringForFiles(searchText)
-
-    for (const toolCall of toolCalls) {
-        if (toolCall.args) scanUnknown(toolCall.args)
-        if (toolCall.result !== undefined) scanUnknown(toolCall.result)
-    }
-
-    for (const file of outputFiles) {
-        addFile(file.path || file.name)
-    }
-
-    // Detect empty assistant response (model returned nothing)
-    const isEmptyAssistantResponse = !isUser && !fullText && toolCalls.length === 0 && !isStreaming
+    // Detect empty assistant response (model truly returned nothing — empty content array)
+    const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
 
     // Don't render empty user messages
     if (isUser && !fullText) {
         return null
     }
 
+    // Skip assistant messages with only non-renderable content (e.g. reasoning, redactedThinking).
+    // These are intermediate chain-of-thought messages that get accumulated during live streaming
+    // but appear as separate messages when loading from session history.
+    const hasThinking = !isUser && (thinkingText || isThinking)
+    if (!isUser && !fullText && toolCalls.length === 0 && !hasThinking && !isStreaming && !isEmptyAssistantResponse) {
+        return null
+    }
+
     // Determine which text to display for assistant messages
     const rawDisplayText = !isUser ? (visibleText || fullText) : fullText
-    const hasThinking = !isUser && (thinkingText || isThinking)
 
     // Citation processing — only for assistant text content
     const citations: Citation[] = !isUser && rawDisplayText ? parseCitations(rawDisplayText) : []
@@ -460,10 +382,10 @@ function MessageInner({
                     </div>
                 )}
 
-                {/* File capsules — right after text content, before tool calls */}
-                {!isUser && showFileCapsules && detectedFiles.length > 0 && (
+                {/* File capsules — only show files confirmed by filesystem diff (outputFiles from MessageList) */}
+                {!isUser && showFileCapsules && outputFiles.length > 0 && (
                     <div className="file-capsules-container">
-                        {detectedFiles.map((file, idx) => (
+                        {outputFiles.map((file, idx) => (
                             <FileCapsule
                                 key={`${file.path}-${idx}`}
                                 filePath={file.path}

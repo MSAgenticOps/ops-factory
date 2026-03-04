@@ -249,16 +249,16 @@ export default function Files() {
                 </div>
             </div>
 
-            <div className="file-tabs">
+            <div className="seg-filter">
                 {FILE_CATEGORIES.map(cat => (
                     <button
                         key={cat.key}
-                        className={`file-tab ${activeCategory === cat.key ? 'active' : ''}`}
+                        className={`seg-filter-btn ${activeCategory === cat.key ? 'active' : ''}`}
                         onClick={() => setActiveCategory(cat.key)}
                     >
                         {t(cat.labelKey)}
                         {categoryCounts[cat.key] > 0 && (
-                            <span className="file-tab-count">{categoryCounts[cat.key]}</span>
+                            <span className="seg-filter-count">{categoryCounts[cat.key]}</span>
                         )}
                     </button>
                 ))}

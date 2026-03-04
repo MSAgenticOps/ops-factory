@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { mkdir, rename, readdir, rm } from 'node:fs/promises'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs'
 import httpProxy from 'http-proxy'
-import { loadGatewayConfig } from './config.js'
+import { parse as parseYaml } from 'yaml'
+import { loadGatewayConfig, type GatewayConfig } from './config.js'
 import { InstanceManager, SYSTEM_USER } from './instance-manager.js'
 import { listOutputFiles, serveFile } from './file-server.js'
 import { SessionOwnerCache, extractUserFromWorkingDir } from './user-registry.js'
@@ -88,6 +89,11 @@ async function main() {
 
   // Pre-start sys instances for all agents (sys = system user, always ready, never reaped)
   await manager.startAllForSystemUser()
+
+  // Register default schedules from agent recipe files (non-blocking)
+  registerDefaultSchedules(manager, config).catch(err =>
+    console.warn('[schedules] Failed to register default schedules:', err)
+  )
 
   const proxy = httpProxy.createProxyServer({
     proxyTimeout: 5 * 60 * 1000,
@@ -1095,6 +1101,86 @@ function cleanupSessionUploads(agentId: string, userId: string, sessionId: strin
     rmSync(uploadsDir, { recursive: true, force: true })
   } catch (err) {
     console.warn(`[cleanup] Failed to remove uploads for session ${sessionId}:`, err)
+  }
+}
+
+// ===== Default Schedule Registration =====
+
+/**
+ * Scan each agent's config/recipes/ directory for recipe files and register
+ * them as paused schedules on the sys instance (if not already present).
+ */
+async function registerDefaultSchedules(
+  manager: InstanceManager,
+  config: GatewayConfig,
+): Promise<void> {
+  const DEFAULT_CRON = '0 9 * * *' // daily at 09:00
+  const authHeaders = { 'x-secret-key': config.secretKey, 'Content-Type': 'application/json' }
+
+  for (const agent of config.agents) {
+    const recipesDir = join(config.agentsDir, agent.id, 'config', 'recipes')
+    if (!existsSync(recipesDir)) continue
+
+    let recipeFiles: string[]
+    try {
+      recipeFiles = readdirSync(recipesDir).filter(f => /\.(ya?ml|json)$/.test(f))
+    } catch { continue }
+    if (recipeFiles.length === 0) continue
+
+    const target = manager.getTarget(agent.id, SYSTEM_USER)
+    if (!target) {
+      console.warn(`[schedules] No sys instance for ${agent.id}, skipping schedule registration`)
+      continue
+    }
+
+    // Fetch existing schedules (response: { jobs: [...] })
+    let existing: Array<{ id: string }> = []
+    try {
+      const res = await fetch(`${target}/schedule/list`, {
+        headers: authHeaders,
+        signal: AbortSignal.timeout(5000),
+      })
+      if (res.ok) {
+        const data = await res.json() as { jobs?: Array<{ id: string }> }
+        existing = data.jobs || []
+      }
+    } catch { /* list failed — will try to create anyway */ }
+
+    const existingIds = new Set(existing.map(s => s.id))
+
+    for (const file of recipeFiles) {
+      const scheduleId = file.replace(/\.(ya?ml|json)$/, '')
+      if (existingIds.has(scheduleId)) continue
+
+      try {
+        const raw = readFileSync(join(recipesDir, file), 'utf-8')
+        const recipe = file.endsWith('.json') ? JSON.parse(raw) : parseYaml(raw)
+
+        // Create schedule
+        const createRes = await fetch(`${target}/schedule/create`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ id: scheduleId, recipe, cron: DEFAULT_CRON }),
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!createRes.ok) {
+          const msg = await createRes.text().catch(() => '')
+          console.warn(`[schedules] Failed to create schedule ${scheduleId} for ${agent.id}: ${createRes.status} ${msg}`)
+          continue
+        }
+
+        // Pause immediately (default schedules start paused)
+        await fetch(`${target}/schedule/${encodeURIComponent(scheduleId)}/pause`, {
+          method: 'POST',
+          headers: authHeaders,
+          signal: AbortSignal.timeout(5000),
+        })
+
+        console.log(`[schedules] Registered schedule "${scheduleId}" for ${agent.id} (paused)`)
+      } catch (err) {
+        console.warn(`[schedules] Error registering ${scheduleId} for ${agent.id}:`, err)
+      }
+    }
   }
 }
 

@@ -340,11 +340,11 @@ function ObservabilityTab() {
             </a>
           )}
         </div>
-        <div className="mon-range-toggle">
+        <div className="seg-filter seg-filter-compact">
           {RANGES.map(r => (
             <button
               key={r}
-              className={`mon-range-btn ${range === r ? 'active' : ''}`}
+              className={`seg-filter-btn ${range === r ? 'active' : ''}`}
               onClick={() => setRange(r)}
               disabled={isLoading}
             >
@@ -420,11 +420,11 @@ function ObservabilityTab() {
           <div className="mon-section">
             <div className="mon-traces-header-row">
               <h2 className="mon-section-title">{t('monitoring.recentTraces')}</h2>
-              <div className="mon-trace-filter">
-                <button className={`mon-filter-btn ${traceFilter === 'all' ? 'active' : ''}`} onClick={() => setTraceFilter('all')}>
+              <div className="seg-filter seg-filter-compact">
+                <button className={`seg-filter-btn ${traceFilter === 'all' ? 'active' : ''}`} onClick={() => setTraceFilter('all')}>
                   {t('monitoring.filterAll')}
                 </button>
-                <button className={`mon-filter-btn ${traceFilter === 'errors' ? 'active' : ''}`} onClick={() => setTraceFilter('errors')}>
+                <button className={`seg-filter-btn ${traceFilter === 'errors' ? 'active' : ''}`} onClick={() => setTraceFilter('errors')}>
                   {t('monitoring.filterErrors')}
                 </button>
               </div>

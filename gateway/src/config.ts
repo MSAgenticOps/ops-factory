@@ -8,12 +8,14 @@ export interface AgentConfig {
   name: string
   host: string
   secret_key: string
+  sysOnly: boolean
 }
 
 export interface GatewayYamlConfig {
   agents: Array<{
     id: string
     name: string
+    sysOnly?: boolean
   }>
 }
 
@@ -184,6 +186,7 @@ export function loadGatewayConfig(): GatewayConfig {
     name: agent.name,
     host,
     secret_key: secretKey,
+    sysOnly: agent.sysOnly ?? false,
   }))
 
   // --- Office Preview ---

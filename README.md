@@ -28,6 +28,10 @@ A multi-tenant AI agent management platform built on [Goose](https://github.com/
 
 ![KB Agent Feishu](videos/6-kb-agent-feishu.gif)
 
+### 7. Self-Supervisor Agent
+
+![Self-Supervisor Agent](videos/7-self-supervisor-agent.gif)
+
 ## Architecture
 
 ```text

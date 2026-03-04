@@ -125,7 +125,7 @@ export class InstanceManager {
     if (this.warmingUsers.has(userId)) return // Already warming
     this.warmingUsers.add(userId)
 
-    const otherAgents = this.config.agents.filter(a => a.id !== excludeAgentId)
+    const otherAgents = this.config.agents.filter(a => a.id !== excludeAgentId && !a.sysOnly)
     if (otherAgents.length === 0) {
       this.warmingUsers.delete(userId)
       return
@@ -417,6 +417,7 @@ export class InstanceManager {
     provider?: string
     model?: string
     skills: string[]
+    sysOnly: boolean
   }> {
     return this.config.agents.map(a => {
       const gooseConfig = this.getAgentGooseConfig(a.id)
@@ -428,6 +429,7 @@ export class InstanceManager {
         provider: gooseConfig?.GOOSE_PROVIDER,
         model: gooseConfig?.GOOSE_MODEL,
         skills: this.getAgentSkills(a.id),
+        sysOnly: a.sysOnly,
       }
     })
   }
@@ -663,6 +665,7 @@ export class InstanceManager {
         name,
         host: this.config.host,
         secret_key: this.config.secretKey,
+        sysOnly: false,
       })
 
       return {

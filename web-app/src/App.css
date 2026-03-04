@@ -2015,66 +2015,86 @@ textarea {
 }
 
 /* ========================================
-   File Tabs
+   Segmented Filter (unified)
    ======================================== */
-.file-tabs {
-    display: flex;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-6);
-    padding-bottom: var(--spacing-3);
-    border-bottom: 1px solid var(--color-border);
+.seg-filter {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    margin-bottom: var(--spacing-5);
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-secondary);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
 
-.file-tabs::-webkit-scrollbar {
+.seg-filter::-webkit-scrollbar {
     display: none;
 }
 
-.file-tab {
-    display: flex;
+.seg-filter-btn {
+    display: inline-flex;
     align-items: center;
     gap: var(--spacing-2);
     padding: 6px 16px;
+    border: none;
+    border-radius: var(--radius-md);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-full);
     color: var(--color-text-secondary);
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all var(--transition-base);
+    transition: all var(--transition-fast);
     white-space: nowrap;
 }
 
-.file-tab:hover {
-    background: var(--color-bg-tertiary);
-    border-color: var(--color-border-hover);
+.seg-filter-btn:hover:not(.active) {
     color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
 }
 
-.file-tab.active {
-    background: var(--color-text-primary);
-    border-color: var(--color-text-primary);
-    color: var(--color-bg-primary);
+.seg-filter-btn.active {
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
 }
 
-.file-tab-count {
+.seg-filter-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Compact variant for inline/toolbar usage */
+.seg-filter.seg-filter-compact {
+    margin-bottom: 0;
+}
+
+.seg-filter-compact .seg-filter-btn {
+    padding: 4px 12px;
+    font-size: var(--font-size-xs);
+}
+
+/* Count badge inside filter buttons */
+.seg-filter-count {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 var(--spacing-1);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
     background: var(--color-bg-tertiary);
     border-radius: var(--radius-full);
     font-size: var(--font-size-xs);
     font-weight: 600;
+    line-height: 1;
 }
 
-.file-tab.active .file-tab-count {
-    background: rgba(255, 255, 255, 0.2);
+.seg-filter-btn.active .seg-filter-count {
+    background: rgba(0, 0, 0, 0.08);
 }
 
 /* ========================================
@@ -3272,30 +3292,6 @@ textarea {
 
 .search-input::placeholder {
     color: var(--color-text-muted);
-}
-
-.history-filter-group {
-    display: inline-flex;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-5);
-    padding: var(--spacing-1);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-bg-secondary);
-}
-
-.history-filter-btn {
-    padding: 6px 16px;
-    border-radius: var(--radius-2xl);
-    font-size: var(--font-size-base);
-    color: var(--color-text-secondary);
-    transition: all var(--transition-base);
-}
-
-.history-filter-btn.active {
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    box-shadow: var(--shadow-sm);
 }
 
 .session-type-badge {
@@ -5542,44 +5538,6 @@ textarea {
     opacity: 0.6;
 }
 
-/* Time range toggle */
-.mon-range-toggle {
-    display: flex;
-    gap: 2px;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 2px;
-}
-
-.mon-range-btn {
-    padding: var(--spacing-2) var(--spacing-4);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    border: none;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.mon-range-btn.active {
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    font-weight: 600;
-    box-shadow: var(--shadow-sm);
-}
-
-.mon-range-btn:hover:not(.active) {
-    color: var(--color-text-primary);
-}
-
-.mon-range-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* Sections — consistent vertical rhythm */
 .mon-section {
     margin-bottom: var(--spacing-8);
@@ -5813,34 +5771,6 @@ textarea {
 
 .mon-traces-header-row .mon-section-title {
     margin-bottom: 0;
-}
-
-.mon-trace-filter {
-    display: flex;
-    gap: 2px;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 2px;
-}
-
-.mon-filter-btn {
-    padding: var(--spacing-1) var(--spacing-3);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    border: none;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.mon-filter-btn.active {
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    font-weight: 600;
-    box-shadow: var(--shadow-sm);
 }
 
 .mon-traces-table {
