@@ -153,6 +153,7 @@ public class InstanceManagerTest {
     @Test
     public void testGetOrSpawn_returnsExistingRunningInstance() {
         Process mockProcess = mock(Process.class);
+        when(mockProcess.isAlive()).thenReturn(true);
         ManagedInstance existing = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess);
         existing.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(existing);

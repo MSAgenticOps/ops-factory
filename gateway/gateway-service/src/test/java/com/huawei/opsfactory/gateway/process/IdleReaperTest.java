@@ -17,6 +17,7 @@ public class IdleReaperTest {
 
     private InstanceManager instanceManager;
     private GatewayProperties properties;
+    private PrewarmService prewarmService;
     private IdleReaper reaper;
 
     @Before
@@ -24,7 +25,8 @@ public class IdleReaperTest {
         instanceManager = mock(InstanceManager.class);
         properties = new GatewayProperties();
         properties.getIdle().setTimeoutMinutes(15);
-        reaper = new IdleReaper(instanceManager, properties);
+        prewarmService = mock(PrewarmService.class);
+        reaper = new IdleReaper(instanceManager, properties, prewarmService);
     }
 
     @Test

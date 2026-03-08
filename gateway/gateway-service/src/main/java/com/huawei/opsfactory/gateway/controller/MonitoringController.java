@@ -88,11 +88,13 @@ public class MonitoringController {
                         LinkedHashMap::new,
                         Collectors.mapping(inst -> {
                             Map<String, Object> m = new LinkedHashMap<>();
+                            m.put("agentId", inst.getAgentId());
                             m.put("userId", inst.getUserId());
                             m.put("port", inst.getPort());
                             m.put("pid", inst.getPid());
                             m.put("status", inst.getStatus().name().toLowerCase());
                             m.put("lastActivity", inst.getLastActivity());
+                            m.put("idleSinceMs", System.currentTimeMillis() - inst.getLastActivity());
                             return m;
                         }, Collectors.toList())));
 
@@ -100,6 +102,8 @@ public class MonitoringController {
         for (var entry : grouped.entrySet()) {
             Map<String, Object> agentGroup = new LinkedHashMap<>();
             agentGroup.put("agentId", entry.getKey());
+            var agentEntry = agentConfigService.findAgent(entry.getKey());
+            agentGroup.put("agentName", agentEntry != null ? agentEntry.name() : entry.getKey());
             agentGroup.put("instances", entry.getValue());
             byAgent.add(agentGroup);
         }
@@ -118,31 +122,56 @@ public class MonitoringController {
     @GetMapping("/status")
     public Mono<Map<String, Object>> langfuseStatus(ServerWebExchange exchange) {
         requireAdmin(exchange);
-        return Mono.just(Map.of("enabled", langfuseService.isConfigured()));
+        boolean configured = langfuseService.isConfigured();
+        String langfuseHost = gatewayProperties.getLangfuse().getHost();
+
+        if (!configured) {
+            return Mono.just(Map.of("enabled", false));
+        }
+
+        return langfuseService.checkReachable()
+                .map(reachable -> {
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    result.put("enabled", true);
+                    result.put("reachable", reachable);
+                    result.put("host", langfuseHost != null ? langfuseHost : "");
+                    return result;
+                });
+    }
+
+    @GetMapping("/overview")
+    public Mono<Map<String, Object>> overview(@RequestParam(required = false) String from,
+                                               @RequestParam(required = false) String to,
+                                               ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        if (from == null || to == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from and to parameters are required");
+        }
+        return langfuseService.getOverview(from, to);
     }
 
     @GetMapping("/traces")
-    public Mono<String> traces(@RequestParam(required = false) String from,
-                                @RequestParam(required = false) String to,
-                                @RequestParam(defaultValue = "20") int limit,
-                                @RequestParam(defaultValue = "false") boolean errorsOnly,
-                                ServerWebExchange exchange) {
+    public Mono<List<Map<String, Object>>> traces(@RequestParam(required = false) String from,
+                                                   @RequestParam(required = false) String to,
+                                                   @RequestParam(defaultValue = "20") int limit,
+                                                   @RequestParam(defaultValue = "false") boolean errorsOnly,
+                                                   ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (from == null || to == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from and to parameters are required");
         }
-        return langfuseService.getTraces(from, to, limit, errorsOnly);
+        return langfuseService.getTracesFormatted(from, to, limit, errorsOnly);
     }
 
     @GetMapping("/observations")
-    public Mono<String> observations(@RequestParam(required = false) String from,
-                                      @RequestParam(required = false) String to,
-                                      ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> observations(@RequestParam(required = false) String from,
+                                                   @RequestParam(required = false) String to,
+                                                   ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (from == null || to == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from and to parameters are required");
         }
-        return langfuseService.getObservations(from, to);
+        return langfuseService.getObservationsFormatted(from, to);
     }
 
     private static String formatUptime(long ms) {

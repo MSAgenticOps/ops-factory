@@ -88,10 +88,14 @@ public class FileService {
                     }
                 } else {
                     if (!SKIP_FILES.contains(name)) {
+                        int dot = name.lastIndexOf('.');
+                        String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
                         files.add(Map.of(
                                 "name", name,
                                 "path", base.relativize(entry).toString(),
-                                "size", Files.size(entry)));
+                                "size", Files.size(entry),
+                                "type", ext,
+                                "modifiedAt", Files.getLastModifiedTime(entry).toInstant().toString()));
                     }
                 }
             }

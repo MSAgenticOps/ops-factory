@@ -20,6 +20,14 @@ gateway:
     max-file-size-mb: ${MAX_FILE_SIZE_MB:50}
     max-image-size-mb: ${MAX_IMAGE_SIZE_MB:20}
 
+  limits:
+    max-instances-per-user: ${MAX_INSTANCES_PER_USER:5}
+    max-instances-global: ${MAX_INSTANCES_GLOBAL:50}
+
+  prewarm:
+    enabled: ${PREWARM_ENABLED:true}
+    default-agent-id: ${PREWARM_DEFAULT_AGENT_ID:universal-agent}
+
   vision:
     mode: ${VISION_MODE:off}
     provider: ${VISION_PROVIDER:}
@@ -34,7 +42,7 @@ gateway:
     secret-key: ${LANGFUSE_SECRET_KEY:}
 
   office-preview:
-    enabled: ${OFFICE_PREVIEW_ENABLED:false}
+    enabled: ${OFFICE_PREVIEW_ENABLED:true}
     onlyoffice-url: ${ONLYOFFICE_URL:}
     file-base-url: ${FILE_BASE_URL:}
 

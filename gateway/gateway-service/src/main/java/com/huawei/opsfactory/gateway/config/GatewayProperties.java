@@ -14,6 +14,8 @@ public class GatewayProperties {
     private Paths paths = new Paths();
     private Idle idle = new Idle();
     private Upload upload = new Upload();
+    private Limits limits = new Limits();
+    private Prewarm prewarm = new Prewarm();
     private Vision vision = new Vision();
     private Langfuse langfuse = new Langfuse();
     private OfficePreview officePreview = new OfficePreview();
@@ -82,6 +84,22 @@ public class GatewayProperties {
 
     public void setLangfuse(Langfuse langfuse) {
         this.langfuse = langfuse;
+    }
+
+    public Limits getLimits() {
+        return limits;
+    }
+
+    public void setLimits(Limits limits) {
+        this.limits = limits;
+    }
+
+    public Prewarm getPrewarm() {
+        return prewarm;
+    }
+
+    public void setPrewarm(Prewarm prewarm) {
+        this.prewarm = prewarm;
     }
 
     public OfficePreview getOfficePreview() {
@@ -160,6 +178,26 @@ public class GatewayProperties {
         public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
         public String getSecretKey() { return secretKey; }
         public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+    }
+
+    public static class Limits {
+        private int maxInstancesPerUser = 5;
+        private int maxInstancesGlobal = 50;
+
+        public int getMaxInstancesPerUser() { return maxInstancesPerUser; }
+        public void setMaxInstancesPerUser(int maxInstancesPerUser) { this.maxInstancesPerUser = maxInstancesPerUser; }
+        public int getMaxInstancesGlobal() { return maxInstancesGlobal; }
+        public void setMaxInstancesGlobal(int maxInstancesGlobal) { this.maxInstancesGlobal = maxInstancesGlobal; }
+    }
+
+    public static class Prewarm {
+        private boolean enabled = true;
+        private String defaultAgentId = "universal-agent";
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        public String getDefaultAgentId() { return defaultAgentId; }
+        public void setDefaultAgentId(String defaultAgentId) { this.defaultAgentId = defaultAgentId; }
     }
 
     public static class OfficePreview {

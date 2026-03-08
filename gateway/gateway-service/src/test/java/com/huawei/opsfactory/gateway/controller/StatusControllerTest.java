@@ -3,10 +3,12 @@ package com.huawei.opsfactory.gateway.controller;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -18,6 +20,9 @@ public class StatusControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
+
+    @MockBean
+    private PrewarmService prewarmService;
 
     @Test
     public void testStatus() {

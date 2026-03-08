@@ -3,6 +3,7 @@ package com.huawei.opsfactory.gateway.e2e;
 import com.huawei.opsfactory.gateway.hook.HookContext;
 import com.huawei.opsfactory.gateway.hook.HookPipeline;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.proxy.SseRelayService;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
@@ -39,6 +40,9 @@ public abstract class BaseE2ETest {
     // Mock all services that interact with external resources
     @MockBean
     protected InstanceManager instanceManager;
+
+    @MockBean
+    protected PrewarmService prewarmService;
 
     @MockBean
     protected AgentConfigService agentConfigService;

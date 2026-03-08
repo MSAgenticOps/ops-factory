@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Ops Factory is a multi-tenant AI agent management platform built on Goose. It consists of three main components:
 
-- **Gateway** (`gateway/`) — TypeScript HTTP server that manages per-user agent instances, proxies requests, and handles routing/auth. Contains `agents/` (shared configs) and `users/` (per-user runtime data)
+- **Gateway** (`gateway/`) — Java Spring Boot (WebFlux) HTTP server that manages per-user agent instances, proxies requests, and handles routing/auth. Multi-module Maven project with `gateway-common` (shared utilities/models) and `gateway-service` (main application).
 - **Web App** (`web-app/`) — React frontend for chat, session management, file browsing, and agent configuration
 - **TypeScript SDK** (`typescript-sdk/`) — Client library (`@goosed/sdk`) for programmatic access to the Goose API
 
@@ -33,10 +33,13 @@ Agents are configured in `gateway/agents/` (e.g., `universal-agent`, `kb-agent`)
 ### Gateway (`cd gateway`)
 
 ```bash
-npm install
-npm run dev          # Development mode (tsx src/index.ts)
-npm run build        # TypeScript compile
-npm run start        # Production (node dist/index.js)
+mvn compile                           # Compile all modules
+mvn package -DskipTests               # Build JAR (gateway-service/target/gateway-service.jar)
+mvn test                              # Run unit tests
+./scripts/ctl.sh startup              # Build + start gateway
+./scripts/ctl.sh startup --background # Start in background
+./scripts/ctl.sh shutdown             # Stop gateway + all goosed processes
+./scripts/ctl.sh status               # Health check
 ```
 
 ### Web App (`cd web-app`)
@@ -73,45 +76,71 @@ Web App (React/Vite :5173)
     │
     │  GATEWAY_URL + GATEWAY_SECRET_KEY
     ▼
-Gateway (Node.js :3000)
+Gateway (Spring Boot WebFlux :3000)
     │
     ├── agents/          Agent configs (config.yaml, secrets.yaml, AGENTS.md, skills/)
     ├── users/           Per-user runtime dirs (spawned on demand)
     │
     ├── InstanceManager: spawns goosed processes per user on dynamic ports
-    │   ├── "sys" user instance (always running, handles schedules)
+    │   ├── sysOnly agents (always running, e.g. supervisor-agent)
     │   └── per-user instances (spawned on demand, idle-reaped after 15 min)
     │
-    ├── Routes: /agents/:id/agent/* → proxy to user's goosed instance
-    ├── Routes: /agents/:id/sessions/* → session management
-    ├── Routes: /agents/:id/files/* → file serving
-    └── Routes: /agents/:id/config → agent config CRUD
+    ├── Controllers:
+    │   ├── AgentController      /agents, /agents/:id
+    │   ├── SessionController    /agents/:id/sessions/*
+    │   ├── FileController       /agents/:id/files/*
+    │   ├── MonitoringController /monitoring/*
+    │   ├── StatusController     /status, /me, /config
+    │   └── CatchAllProxyController  /agents/:id/agent/* → proxy to goosed
+    │
+    ├── Filters: AuthWebFilter (secret key), UserContextFilter (userId/role)
+    ├── Hooks: BodyLimitHook, FileAttachmentHook, VisionPreprocessHook
+    └── Services: AgentConfigService, SessionService, FileService, LangfuseService
 ```
 
 **Key architectural details:**
 
-- The gateway uses raw Node.js `http` module (no Express) with `http-proxy` for proxying to agent instances
+- The gateway is a **Java 21 / Spring Boot 2.7 / WebFlux** reactive application (multi-module Maven)
+- `gateway-common`: shared constants (`GatewayConstants`), models (`ManagedInstance`, `AgentRegistryEntry`, `UserRole`), utilities (`PathSanitizer`, `ProcessUtil`, `YamlLoader`)
+- `gateway-service`: controllers, filters, hooks, services, process management (`InstanceManager`, `IdleReaper`, `PortAllocator`, `RuntimePreparer`, `PrewarmService`)
+- `GoosedProxy` + `SseRelayService` handle HTTP proxying and SSE streaming to goosed instances
 - Agent configs in `gateway/agents/{id}/config/` are symlinked into per-user directories under `gateway/users/` to avoid duplication
 - Chat uses SSE (Server-Sent Events) streaming from goosed through the gateway proxy
 - The web app imports `@goosed/sdk` as a local dependency (`file:../typescript-sdk`)
 - The SDK's `GoosedClient` handles HTTP communication, SSE streaming, sessions, tools, recipes, and schedules
 - Web app state is managed through React Context providers (User, Goosed, Toast, Inbox, Preview)
 
-## Key Environment Variables
+## Gateway Configuration
+
+Gateway config lives in `gateway/config.yaml` with priority: **env var > config.yaml > default**.
+
+The `ctl.sh` script reads `config.yaml` values and injects them as Java system properties (`-D`) when starting the gateway. Spring Boot's `application.yml` maps these to `GatewayProperties` via `${ENV_VAR:default}` syntax.
 
 ```bash
-GATEWAY_HOST=0.0.0.0          # Gateway bind host
-GATEWAY_PORT=3000              # Gateway port
+# Core
+GATEWAY_HOST=0.0.0.0          # Bind host
+GATEWAY_PORT=3000              # Server port
 GATEWAY_SECRET_KEY=test        # Auth key shared between gateway and web app
 GOOSED_BIN=goosed              # Path to goosed binary
 PROJECT_ROOT=<auto>            # Set by ctl.sh
+
+# Limits
+IDLE_TIMEOUT_MINUTES=15        # Idle reap timeout
+MAX_INSTANCES_PER_USER=5
+MAX_INSTANCES_GLOBAL=50
+
+# Optional integrations
+LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+VISION_MODE, VISION_PROVIDER, VISION_MODEL, VISION_API_KEY
+OFFICE_PREVIEW_ENABLED, ONLYOFFICE_URL
 ```
 
 Web app env is in `web-app/.env`. Agent-level config (LLM provider, model, extensions) lives in `gateway/agents/{id}/config/config.yaml`.
 
 ## Module Structure
 
-All packages use ESM (`"type": "module"` in package.json). TypeScript is used throughout. There is no monorepo tool (no nx, turborepo, or npm workspaces) — each package has its own `node_modules` and must be installed separately.
+- **Gateway**: Java 21, Maven multi-module (`gateway-common`, `gateway-service`). Spring Boot WebFlux (reactive). Built JAR at `gateway-service/target/gateway-service.jar`.
+- **Web App, SDK, Tests**: ESM (`"type": "module"` in package.json), TypeScript. No monorepo tool — each package has its own `node_modules` and must be installed separately.
 
 ## General Rules
 
@@ -119,7 +148,8 @@ All packages use ESM (`"type": "module"` in package.json). TypeScript is used th
 
 ## Build & Verification
 
-- After implementing multi-file TypeScript changes, always run the build (`npm run build` or equivalent in the affected package) and fix ALL TypeScript errors (unused imports, type mismatches) before presenting the result as complete.
+- After implementing multi-file Java changes in the gateway, always run `mvn compile` (or `mvn package -DskipTests`) and fix ALL compilation errors before presenting the result as complete.
+- After implementing multi-file TypeScript changes in web-app/SDK/tests, always run `npm run build` and fix ALL TypeScript errors before presenting the result as complete.
 
 ## UI Development
 
@@ -135,4 +165,4 @@ All packages use ESM (`"type": "module"` in package.json). TypeScript is used th
 
 ## Configuration & Deployment
 
-- When configuring environment variables or service configs, verify the injection path end-to-end. Config values in YAML/JSON are not automatically available as process environment variables — confirm how the target process actually reads its configuration.
+- When configuring environment variables or service configs, verify the injection path end-to-end. Config values in `gateway/config.yaml` are read by `ctl.sh` and injected as Java `-D` properties. Spring Boot `application.yml` uses `${ENV_VAR:default}` to bind them to `GatewayProperties`. Confirm the full chain: config.yaml → ctl.sh → system property → application.yml → GatewayProperties.

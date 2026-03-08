@@ -5,6 +5,7 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,6 +35,9 @@ public class AgentControllerTest {
     private WebTestClient webTestClient;
 
     @MockBean
+    private PrewarmService prewarmService;
+
+    @MockBean
     private AgentConfigService agentConfigService;
 
     @MockBean
@@ -49,7 +53,8 @@ public class AgentControllerTest {
                 .thenReturn(Map.of("GOOSE_PROVIDER", "openai", "GOOSE_MODEL", "gpt-4o"));
         when(agentConfigService.loadAgentConfigYaml("agent2"))
                 .thenReturn(Map.of("GOOSE_PROVIDER", "anthropic", "GOOSE_MODEL", "claude-3"));
-        when(agentConfigService.listSkills("agent1")).thenReturn(List.of("brainstorming"));
+        when(agentConfigService.listSkills("agent1")).thenReturn(List.of(
+                Map.of("name", "brainstorming", "description", "Brainstorm ideas", "path", "skills/brainstorming")));
         when(agentConfigService.listSkills("agent2")).thenReturn(Collections.emptyList());
 
         webTestClient.get().uri("/agents")
@@ -62,6 +67,8 @@ public class AgentControllerTest {
                 .jsonPath("$.agents[0].sysOnly").isEqualTo(false)
                 .jsonPath("$.agents[0].provider").isEqualTo("openai")
                 .jsonPath("$.agents[0].skills.length()").isEqualTo(1)
+                .jsonPath("$.agents[0].skills[0].name").isEqualTo("brainstorming")
+                .jsonPath("$.agents[0].skills[0].description").isEqualTo("Brainstorm ideas")
                 .jsonPath("$.agents[1].id").isEqualTo("agent2")
                 .jsonPath("$.agents[1].sysOnly").isEqualTo(true);
     }
@@ -144,16 +151,19 @@ public class AgentControllerTest {
 
     @Test
     public void testGetSkills_asAdmin() {
-        when(agentConfigService.listSkills("agent1")).thenReturn(
-                List.of("brainstorming", "analysis"));
+        when(agentConfigService.listSkills("agent1")).thenReturn(List.of(
+                Map.of("name", "brainstorming", "description", "Brainstorm ideas", "path", "skills/brainstorming"),
+                Map.of("name", "analysis", "description", "Analyze data", "path", "skills/analysis")));
 
         webTestClient.get().uri("/agents/agent1/skills")
                 .header("x-secret-key", "test")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.skills[0]").isEqualTo("brainstorming")
-                .jsonPath("$.skills[1]").isEqualTo("analysis");
+                .jsonPath("$.skills[0].name").isEqualTo("brainstorming")
+                .jsonPath("$.skills[0].description").isEqualTo("Brainstorm ideas")
+                .jsonPath("$.skills[1].name").isEqualTo("analysis")
+                .jsonPath("$.skills[1].description").isEqualTo("Analyze data");
     }
 
     @Test

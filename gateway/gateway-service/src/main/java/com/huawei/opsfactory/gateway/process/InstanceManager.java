@@ -203,8 +203,15 @@ public class InstanceManager {
 
         ManagedInstance existing = instances.get(key);
         if (existing != null && existing.getStatus() == ManagedInstance.Status.RUNNING) {
-            existing.touch();
-            return Mono.just(existing);
+            if (!existing.getProcess().isAlive()) {
+                log.warn("Instance {}:{} process died (port={}), removing stale entry",
+                        agentId, userId, existing.getPort());
+                existing.setStatus(ManagedInstance.Status.STOPPED);
+                instances.remove(key);
+            } else {
+                existing.touch();
+                return Mono.just(existing);
+            }
         }
 
         return Mono.fromCallable(() -> doSpawn(agentId, userId))
@@ -223,7 +230,21 @@ public class InstanceManager {
                 return existing;
             }
 
+            // Check instance limits
+            int maxPerUser = properties.getLimits().getMaxInstancesPerUser();
+            int maxGlobal = properties.getLimits().getMaxInstancesGlobal();
+            long userCount = instances.values().stream()
+                    .filter(i -> i.getUserId().equals(userId) && i.getStatus() == ManagedInstance.Status.RUNNING)
+                    .count();
+            if (userCount >= maxPerUser) {
+                throw new IllegalStateException("Per-user instance limit reached (" + maxPerUser + ")");
+            }
+            if (instances.size() >= maxGlobal) {
+                throw new IllegalStateException("Global instance limit reached (" + maxGlobal + ")");
+            }
+
             Path runtimeRoot = runtimePreparer.prepare(agentId, userId);
+            resetStuckRunningSchedules(runtimeRoot);
             int port = portAllocator.allocate();
 
             Map<String, String> env = buildEnvironment(agentId, userId, port, runtimeRoot);
@@ -250,6 +271,41 @@ public class InstanceManager {
             throw e;
         } finally {
             lock.unlock();
+        }
+    }
+
+    /**
+     * Reset stuck currently_running flags in schedule.json before goosed starts.
+     * goosed persists currently_running=true but doesn't reset it on restart,
+     * so we fix it here before the process loads the file.
+     */
+    private void resetStuckRunningSchedules(Path runtimeRoot) {
+        Path scheduleFile = runtimeRoot.resolve("data").resolve("schedule.json");
+        if (!Files.exists(scheduleFile)) return;
+        try {
+            String content = Files.readString(scheduleFile, StandardCharsets.UTF_8);
+            if (!content.contains("\"currently_running\":true") && !content.contains("\"currently_running\": true")) {
+                return;
+            }
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            List<Map<String, Object>> jobs = mapper.readValue(content,
+                    new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            boolean modified = false;
+            for (Map<String, Object> job : jobs) {
+                if (Boolean.TRUE.equals(job.get("currently_running"))) {
+                    job.put("currently_running", false);
+                    job.put("current_session_id", null);
+                    job.put("process_start_time", null);
+                    modified = true;
+                }
+            }
+            if (modified) {
+                Files.writeString(scheduleFile, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jobs),
+                        StandardCharsets.UTF_8);
+                log.info("Reset stuck currently_running flags in {}", scheduleFile);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to reset schedule state in {}: {}", scheduleFile, e.getMessage());
         }
     }
 
@@ -283,22 +339,25 @@ public class InstanceManager {
     }
 
     private void waitForReady(int port) throws Exception {
+        long interval = GatewayConstants.HEALTH_CHECK_INITIAL_INTERVAL_MS;
         for (int i = 0; i < GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS; i++) {
             try {
                 URL url = new URL("http://127.0.0.1:" + port + "/status");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(500);
-                conn.setReadTimeout(500);
+                conn.setConnectTimeout(200);
+                conn.setReadTimeout(200);
                 conn.setRequestMethod("GET");
                 int code = conn.getResponseCode();
                 conn.disconnect();
                 if (code == 200) {
+                    log.info("goosed ready on port {} after {} attempts", port, i + 1);
                     return;
                 }
             } catch (IOException ignored) {
                 // Not ready yet
             }
-            Thread.sleep(GatewayConstants.HEALTH_CHECK_INTERVAL_MS);
+            Thread.sleep(interval);
+            interval = Math.min(interval * 2, GatewayConstants.HEALTH_CHECK_MAX_INTERVAL_MS);
         }
         throw new RuntimeException("goosed failed to start on port " + port);
     }

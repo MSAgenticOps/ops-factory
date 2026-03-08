@@ -204,7 +204,9 @@
     "loadingSchedules": "Loading schedules...",
     "paused": "paused",
     "running": "running",
-    "active": "active"
+    "active": "active",
+    "kill": "Kill",
+    "cannotModifyRunning": "Cannot trigger or modify a schedule while it's already running."
   },
   "monitoring": {
     "title": "Monitoring",

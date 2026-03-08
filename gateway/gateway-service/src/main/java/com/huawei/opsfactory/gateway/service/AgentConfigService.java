@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
@@ -26,6 +27,8 @@ public class AgentConfigService {
 
     private final GatewayProperties properties;
     private final CopyOnWriteArrayList<AgentRegistryEntry> registry = new CopyOnWriteArrayList<>();
+    private final ConcurrentHashMap<String, Map<String, Object>> configCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Map<String, Object>> secretsCache = new ConcurrentHashMap<>();
 
     public AgentConfigService(GatewayProperties properties) {
         this.properties = properties;
@@ -66,40 +69,99 @@ public class AgentConfigService {
     }
 
     /**
-     * Load the agent's config.yaml as a Map.
+     * Load the agent's config.yaml as a Map (cached).
      */
     public Map<String, Object> loadAgentConfigYaml(String agentId) {
-        Path configPath = getAgentConfigDir(agentId).resolve("config.yaml");
-        return YamlLoader.load(configPath);
+        return configCache.computeIfAbsent(agentId, id -> {
+            Path configPath = getAgentConfigDir(id).resolve("config.yaml");
+            return YamlLoader.load(configPath);
+        });
     }
 
     /**
-     * Load the agent's secrets.yaml as a Map.
+     * Load the agent's secrets.yaml as a Map (cached).
      */
     public Map<String, Object> loadAgentSecretsYaml(String agentId) {
-        Path secretsPath = getAgentConfigDir(agentId).resolve("secrets.yaml");
-        return YamlLoader.load(secretsPath);
+        return secretsCache.computeIfAbsent(agentId, id -> {
+            Path secretsPath = getAgentConfigDir(id).resolve("secrets.yaml");
+            return YamlLoader.load(secretsPath);
+        });
     }
 
     /**
-     * List skill subdirectories for an agent.
+     * Invalidate cached config/secrets for an agent.
      */
-    public List<String> listSkills(String agentId) {
+    public void invalidateCache(String agentId) {
+        configCache.remove(agentId);
+        secretsCache.remove(agentId);
+    }
+
+    /**
+     * List skills for an agent, parsing SKILL.md frontmatter for metadata.
+     */
+    public List<Map<String, String>> listSkills(String agentId) {
         Path skillsDir = getAgentConfigDir(agentId).resolve("skills");
-        List<String> skills = new ArrayList<>();
+        List<Map<String, String>> skills = new ArrayList<>();
         if (!Files.isDirectory(skillsDir)) {
             return skills;
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(skillsDir)) {
             for (Path entry : stream) {
                 if (Files.isDirectory(entry)) {
-                    skills.add(entry.getFileName().toString());
+                    String dirName = entry.getFileName().toString();
+                    Map<String, String> skill = new HashMap<>();
+                    skill.put("name", dirName);
+                    skill.put("description", "");
+                    skill.put("path", "skills/" + dirName);
+
+                    // Parse SKILL.md YAML frontmatter for name/description
+                    Path skillMd = entry.resolve("SKILL.md");
+                    if (Files.exists(skillMd)) {
+                        try {
+                            Map<String, String> frontmatter = parseMarkdownFrontmatter(skillMd);
+                            if (frontmatter.containsKey("name")) {
+                                skill.put("name", frontmatter.get("name"));
+                            }
+                            if (frontmatter.containsKey("description")) {
+                                skill.put("description", frontmatter.get("description"));
+                            }
+                        } catch (IOException e) {
+                            log.warn("Failed to parse SKILL.md for skill {}/{}", agentId, dirName, e);
+                        }
+                    }
+                    skills.add(skill);
                 }
             }
         } catch (IOException e) {
             log.error("Failed to list skills for {}", agentId, e);
         }
         return skills;
+    }
+
+    /**
+     * Parse YAML frontmatter (between --- delimiters) from a Markdown file.
+     */
+    private Map<String, String> parseMarkdownFrontmatter(Path mdPath) throws IOException {
+        Map<String, String> result = new HashMap<>();
+        String content = Files.readString(mdPath);
+        if (!content.startsWith("---")) {
+            return result;
+        }
+        int endIndex = content.indexOf("---", 3);
+        if (endIndex < 0) {
+            return result;
+        }
+        String yamlBlock = content.substring(3, endIndex).trim();
+        org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
+        Object parsed = yaml.load(yamlBlock);
+        if (parsed instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (e.getKey() != null && e.getValue() != null) {
+                    result.put(e.getKey().toString(), e.getValue().toString());
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -171,8 +233,9 @@ public class AgentConfigService {
         // Update config.yaml on disk
         updateAgentsYaml(id, name, false);
 
-        // Update in-memory registry
+        // Update in-memory registry and invalidate cache
         registry.add(new AgentRegistryEntry(id, name, false));
+        invalidateCache(id);
 
         // Read provider/model from created config
         Map<String, Object> config = YamlLoader.load(targetConfig);
@@ -201,8 +264,9 @@ public class AgentConfigService {
         // Update config.yaml
         updateAgentsYaml(id, null, true);
 
-        // Remove from in-memory registry
+        // Remove from in-memory registry and invalidate cache
         registry.removeIf(e -> e.id().equals(id));
+        invalidateCache(id);
     }
 
     private void updateAgentsYaml(String id, String name, boolean remove) throws IOException {

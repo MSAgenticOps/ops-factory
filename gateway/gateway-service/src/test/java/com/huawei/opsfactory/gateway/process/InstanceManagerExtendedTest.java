@@ -1,0 +1,313 @@
+package com.huawei.opsfactory.gateway.process;
+
+import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/**
+ * Extended tests for InstanceManager covering:
+ * - buildEnvironment
+ * - Instance limits (per-user and global)
+ * - Dead process detection (getOrSpawn with stale entry)
+ * - resetStuckRunningSchedules
+ */
+public class InstanceManagerExtendedTest {
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    private InstanceManager instanceManager;
+    private GatewayProperties properties;
+    private PortAllocator portAllocator;
+    private RuntimePreparer runtimePreparer;
+    private AgentConfigService agentConfigService;
+
+    @Before
+    public void setUp() {
+        properties = new GatewayProperties();
+        properties.setSecretKey("test-secret");
+        portAllocator = mock(PortAllocator.class);
+        runtimePreparer = mock(RuntimePreparer.class);
+        agentConfigService = mock(AgentConfigService.class);
+        when(agentConfigService.loadAgentConfigYaml(anyString())).thenReturn(Map.of());
+        when(agentConfigService.loadAgentSecretsYaml(anyString())).thenReturn(Map.of());
+
+        instanceManager = new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService);
+    }
+
+    // ====================== buildEnvironment ======================
+
+    @Test
+    public void testBuildEnvironment_coreEnvVars() throws Exception {
+        Path runtimeRoot = tempFolder.getRoot().toPath();
+        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of());
+        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of());
+
+        Method buildEnv = InstanceManager.class.getDeclaredMethod(
+                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        buildEnv.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
+                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+
+        assertEquals("9000", env.get("GOOSE_PORT"));
+        assertEquals("127.0.0.1", env.get("GOOSE_HOST"));
+        assertEquals("test-secret", env.get("GOOSE_SERVER__SECRET_KEY"));
+        assertEquals(runtimeRoot.toString(), env.get("GOOSE_PATH_ROOT"));
+        assertEquals("1", env.get("GOOSE_DISABLE_KEYRING"));
+    }
+
+    @Test
+    public void testBuildEnvironment_mergesAgentConfig() throws Exception {
+        Path runtimeRoot = tempFolder.getRoot().toPath();
+        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of(
+                "GOOSE_PROVIDER", "openai",
+                "GOOSE_MODEL", "gpt-4"
+        ));
+        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of(
+                "OPENAI_API_KEY", "sk-test"
+        ));
+
+        Method buildEnv = InstanceManager.class.getDeclaredMethod(
+                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        buildEnv.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
+                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+
+        assertEquals("openai", env.get("GOOSE_PROVIDER"));
+        assertEquals("gpt-4", env.get("GOOSE_MODEL"));
+        assertEquals("sk-test", env.get("OPENAI_API_KEY"));
+        // Core vars still present
+        assertEquals("9000", env.get("GOOSE_PORT"));
+    }
+
+    @Test
+    public void testBuildEnvironment_secretsOverrideConfig() throws Exception {
+        Path runtimeRoot = tempFolder.getRoot().toPath();
+        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of(
+                "API_KEY", "from-config"
+        ));
+        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of(
+                "API_KEY", "from-secrets"
+        ));
+
+        Method buildEnv = InstanceManager.class.getDeclaredMethod(
+                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        buildEnv.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
+                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+
+        // Secrets should override config
+        assertEquals("from-secrets", env.get("API_KEY"));
+    }
+
+    @Test
+    public void testBuildEnvironment_nonScalarValuesSkipped() throws Exception {
+        Path runtimeRoot = tempFolder.getRoot().toPath();
+        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of(
+                "SIMPLE", "value",
+                "NESTED", Map.of("key", "val") // non-scalar, should be skipped
+        ));
+
+        Method buildEnv = InstanceManager.class.getDeclaredMethod(
+                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        buildEnv.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
+                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+
+        assertEquals("value", env.get("SIMPLE"));
+        assertNull(env.get("NESTED"));
+    }
+
+    // ====================== getOrSpawn with dead process ======================
+
+    @Test
+    public void testGetOrSpawn_deadProcess_removesStaleEntry() {
+        Process deadProcess = mock(Process.class);
+        when(deadProcess.isAlive()).thenReturn(false);
+
+        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L, deadProcess);
+        staleInstance.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(staleInstance);
+
+        // getOrSpawn should detect dead process, remove it, then try to spawn
+        // Since doSpawn requires a real goosed binary, it will fail
+        try {
+            instanceManager.getOrSpawn("agent1", "user1").block();
+            fail("Expected exception from doSpawn");
+        } catch (Exception e) {
+            // Expected — doSpawn fails without real binary
+        }
+
+        // Stale instance should have been removed
+        assertNull(instanceManager.getInstance("agent1", "user1"));
+        assertEquals(ManagedInstance.Status.STOPPED, staleInstance.getStatus());
+    }
+
+    // ====================== resetStuckRunningSchedules ======================
+
+    @Test
+    public void testResetStuckRunningSchedules_fixesStuckJobs() throws Exception {
+        File dataDir = tempFolder.newFolder("data");
+        File scheduleFile = new File(dataDir, "schedule.json");
+        String content = "[{\"id\":\"job1\",\"currently_running\":true,\"current_session_id\":\"s1\"," +
+                "\"process_start_time\":\"2024-01-01\"},{\"id\":\"job2\",\"currently_running\":false}]";
+        try (FileWriter w = new FileWriter(scheduleFile)) {
+            w.write(content);
+        }
+
+        Method reset = InstanceManager.class.getDeclaredMethod("resetStuckRunningSchedules", Path.class);
+        reset.setAccessible(true);
+        reset.invoke(instanceManager, tempFolder.getRoot().toPath());
+
+        String updated = Files.readString(scheduleFile.toPath());
+        assertFalse(updated.contains("\"currently_running\" : true"));
+        assertTrue(updated.contains("\"currently_running\" : false"));
+        // job2 should remain unchanged
+        assertTrue(updated.contains("\"id\" : \"job2\""));
+    }
+
+    @Test
+    public void testResetStuckRunningSchedules_noStuckJobs_noChange() throws Exception {
+        File dataDir = tempFolder.newFolder("data");
+        File scheduleFile = new File(dataDir, "schedule.json");
+        String content = "[{\"id\":\"job1\",\"currently_running\":false}]";
+        try (FileWriter w = new FileWriter(scheduleFile)) {
+            w.write(content);
+        }
+
+        long modifiedBefore = scheduleFile.lastModified();
+        Thread.sleep(10);
+
+        Method reset = InstanceManager.class.getDeclaredMethod("resetStuckRunningSchedules", Path.class);
+        reset.setAccessible(true);
+        reset.invoke(instanceManager, tempFolder.getRoot().toPath());
+
+        // File should not have been modified
+        assertEquals(modifiedBefore, scheduleFile.lastModified());
+    }
+
+    @Test
+    public void testResetStuckRunningSchedules_noScheduleFile_noop() throws Exception {
+        // No data/schedule.json exists — should not throw
+        Method reset = InstanceManager.class.getDeclaredMethod("resetStuckRunningSchedules", Path.class);
+        reset.setAccessible(true);
+        reset.invoke(instanceManager, tempFolder.getRoot().toPath());
+    }
+
+    // ====================== Instance limit enforcement ======================
+
+    @Test
+    public void testPerUserLimitEnforced() {
+        properties.getLimits().setMaxInstancesPerUser(2);
+        properties.getLimits().setMaxInstancesGlobal(50);
+
+        Process aliveProcess = mock(Process.class);
+        when(aliveProcess.isAlive()).thenReturn(true);
+
+        // Add 2 running instances for user1
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess);
+        inst1.setStatus(ManagedInstance.Status.RUNNING);
+        ManagedInstance inst2 = new ManagedInstance("agent2", "user1", 8081, 2L, aliveProcess);
+        inst2.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(inst1);
+        addInstanceDirectly(inst2);
+
+        // Third spawn for user1 should fail with limit error
+        try {
+            instanceManager.getOrSpawn("agent3", "user1").block();
+            fail("Expected per-user limit error");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("Per-user instance limit"));
+        }
+    }
+
+    @Test
+    public void testGlobalLimitEnforced() {
+        properties.getLimits().setMaxInstancesPerUser(50);
+        properties.getLimits().setMaxInstancesGlobal(2);
+
+        Process aliveProcess = mock(Process.class);
+        when(aliveProcess.isAlive()).thenReturn(true);
+
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess);
+        inst1.setStatus(ManagedInstance.Status.RUNNING);
+        ManagedInstance inst2 = new ManagedInstance("agent1", "user2", 8081, 2L, aliveProcess);
+        inst2.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(inst1);
+        addInstanceDirectly(inst2);
+
+        // Third spawn should fail with global limit error
+        try {
+            instanceManager.getOrSpawn("agent1", "user3").block();
+            fail("Expected global limit error");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("Global instance limit"));
+        }
+    }
+
+    @Test
+    public void testStoppedInstancesNotCountedForPerUserLimit() {
+        properties.getLimits().setMaxInstancesPerUser(1);
+        properties.getLimits().setMaxInstancesGlobal(50);
+
+        Process deadProcess = mock(Process.class);
+        when(deadProcess.isAlive()).thenReturn(false);
+
+        // Add 1 stopped instance for user1
+        ManagedInstance stoppedInst = new ManagedInstance("agent1", "user1", 8080, 1L, deadProcess);
+        stoppedInst.setStatus(ManagedInstance.Status.STOPPED);
+        addInstanceDirectly(stoppedInst);
+
+        // Spawning a new agent should still fail (doSpawn will fail without binary),
+        // but NOT because of per-user limit — the stopped instance doesn't count.
+        try {
+            instanceManager.getOrSpawn("agent2", "user1").block();
+            fail("Expected exception from doSpawn, not limit error");
+        } catch (Exception e) {
+            // Should fail because goosed binary doesn't exist, not because of per-user limit
+            assertFalse(e.getMessage().contains("Per-user instance limit"));
+        }
+    }
+
+    /**
+     * Helper to add instances directly to the internal map via reflection.
+     */
+    private void addInstanceDirectly(ManagedInstance instance) {
+        try {
+            java.lang.reflect.Field field = InstanceManager.class.getDeclaredField("instances");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.concurrent.ConcurrentHashMap<String, ManagedInstance> instances =
+                    (java.util.concurrent.ConcurrentHashMap<String, ManagedInstance>) field.get(instanceManager);
+            instances.put(instance.getKey(), instance);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

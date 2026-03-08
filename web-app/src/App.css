@@ -572,6 +572,13 @@ textarea {
     gap: var(--spacing-2);
 }
 
+.scheduled-running-hint {
+    margin-top: var(--spacing-2);
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary, #999);
+    font-style: italic;
+}
+
 .scheduled-modal {
     max-width: 620px;
 }

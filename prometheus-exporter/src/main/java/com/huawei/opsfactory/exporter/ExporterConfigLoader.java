@@ -90,7 +90,7 @@ public class ExporterConfigLoader {
         }
     }
 
-    private Path getConfigPath() {
+    protected Path getConfigPath() {
         String configured = System.getenv("CONFIG_PATH");
         if (configured != null && !configured.isBlank()) {
             return Paths.get(configured);

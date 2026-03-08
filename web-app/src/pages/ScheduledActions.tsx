@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { ScheduledJob, ScheduleSessionInfo } from '@goosed/sdk'
@@ -134,6 +134,17 @@ export default function ScheduledActions() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClient])
 
+    // Auto-refresh schedule list every 15s (like official desktop UI)
+    const loadSchedulesRef = useRef(loadSchedules)
+    loadSchedulesRef.current = loadSchedules
+    useEffect(() => {
+        if (viewingJobId || !selectedClient) return
+        const id = setInterval(() => {
+            if (!submitting) loadSchedulesRef.current()
+        }, 15000)
+        return () => clearInterval(id)
+    }, [viewingJobId, selectedClient, submitting])
+
     const openCreateModal = () => {
         setEditingJobId(null)
         setForm({ name: '', instruction: '', cron: DEFAULT_CRON })
@@ -224,16 +235,33 @@ export default function ScheduledActions() {
         }
     }
 
-    const handlePauseToggle = async (job: ScheduledJob) => {
+    const handlePause = async (job: ScheduledJob) => {
         if (!selectedClient) return
         try {
-            if (job.paused) {
-                await selectedClient.unpauseSchedule(job.id)
-                showToast('success', `Unpaused ${job.id}`)
-            } else {
-                await selectedClient.pauseSchedule(job.id)
-                showToast('success', `Paused ${job.id}`)
-            }
+            await selectedClient.pauseSchedule(job.id)
+            showToast('success', `Paused ${job.id}`)
+            await loadSchedules()
+        } catch (err) {
+            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+        }
+    }
+
+    const handleUnpause = async (job: ScheduledJob) => {
+        if (!selectedClient) return
+        try {
+            await selectedClient.unpauseSchedule(job.id)
+            showToast('success', `Unpaused ${job.id}`)
+            await loadSchedules()
+        } catch (err) {
+            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+        }
+    }
+
+    const handleKill = async (job: ScheduledJob) => {
+        if (!selectedClient) return
+        try {
+            await selectedClient.killSchedule(job.id)
+            showToast('success', `Killed ${job.id}`)
             await loadSchedules()
         } catch (err) {
             showToast('error', err instanceof Error ? err.message : 'Operation failed')
@@ -397,14 +425,25 @@ export default function ScheduledActions() {
                             </div>
 
                             <div className="scheduled-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => openEditModal(job)}>{t('common.edit')}</button>
-                                <button type="button" className="btn btn-secondary" onClick={() => handlePauseToggle(job)}>
-                                    {job.paused ? t('scheduler.resume') : t('scheduler.pause')}
-                                </button>
-                                <button type="button" className="btn btn-secondary" onClick={() => handleRunNow(job)}>{t('scheduler.runNow')}</button>
+                                {!job.currently_running ? (
+                                    <>
+                                        <button type="button" className="btn btn-secondary" onClick={() => openEditModal(job)}>{t('common.edit')}</button>
+                                        {job.paused ? (
+                                            <button type="button" className="btn btn-secondary" onClick={() => handleUnpause(job)}>{t('scheduler.resume')}</button>
+                                        ) : (
+                                            <button type="button" className="btn btn-secondary" onClick={() => handlePause(job)}>{t('scheduler.pause')}</button>
+                                        )}
+                                        <button type="button" className="btn btn-secondary" onClick={() => handleRunNow(job)}>{t('scheduler.runNow')}</button>
+                                    </>
+                                ) : (
+                                    <button type="button" className="btn btn-secondary agent-delete-button" onClick={() => handleKill(job)}>{t('scheduler.kill')}</button>
+                                )}
                                 <button type="button" className="btn btn-secondary" onClick={() => handleViewRuns(job)}>{t('scheduler.viewRuns')}</button>
                                 <button type="button" className="btn btn-secondary agent-delete-button" onClick={() => handleDelete(job)}>{t('common.delete')}</button>
                             </div>
+                            {job.currently_running && (
+                                <div className="scheduled-running-hint">{t('scheduler.cannotModifyRunning')}</div>
+                            )}
                         </div>
                     ))}
                 </div>

@@ -204,7 +204,9 @@
     "loadingSchedules": "正在加载定时任务...",
     "paused": "已暂停",
     "running": "运行中",
-    "active": "活跃"
+    "active": "活跃",
+    "kill": "终止",
+    "cannotModifyRunning": "任务运行中无法触发或修改定时操作。"
   },
   "monitoring": {
     "title": "监控",

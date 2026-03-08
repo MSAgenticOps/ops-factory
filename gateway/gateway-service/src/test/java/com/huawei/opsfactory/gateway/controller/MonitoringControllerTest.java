@@ -5,6 +5,7 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.LangfuseService;
 import org.junit.Test;
@@ -16,7 +17,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import reactor.core.publisher.Mono;
+
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.when;
 
@@ -27,6 +31,9 @@ public class MonitoringControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
+
+    @MockBean
+    private PrewarmService prewarmService;
 
     @MockBean
     private InstanceManager instanceManager;
@@ -68,6 +75,8 @@ public class MonitoringControllerTest {
         ManagedInstance inst = new ManagedInstance("agent1", "user1", 9090, 5678L, null);
         inst.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst));
+        when(agentConfigService.findAgent("agent1")).thenReturn(
+                new com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry("agent1", "Agent One", false));
 
         webTestClient.get().uri("/monitoring/instances")
                 .header("x-secret-key", "test")
@@ -77,21 +86,26 @@ public class MonitoringControllerTest {
                 .jsonPath("$.totalInstances").isEqualTo(1)
                 .jsonPath("$.runningInstances").isEqualTo(1)
                 .jsonPath("$.byAgent[0].agentId").isEqualTo("agent1")
+                .jsonPath("$.byAgent[0].agentName").isEqualTo("Agent One")
                 .jsonPath("$.byAgent[0].instances[0].userId").isEqualTo("user1")
                 .jsonPath("$.byAgent[0].instances[0].port").isEqualTo(9090)
-                .jsonPath("$.byAgent[0].instances[0].status").isEqualTo("running");
+                .jsonPath("$.byAgent[0].instances[0].status").isEqualTo("running")
+                .jsonPath("$.byAgent[0].instances[0].idleSinceMs").isNumber();
     }
 
     @Test
     public void testLangfuseStatus() {
         when(langfuseService.isConfigured()).thenReturn(true);
+        when(langfuseService.checkReachable()).thenReturn(Mono.just(true));
 
         webTestClient.get().uri("/monitoring/status")
                 .header("x-secret-key", "test")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.enabled").isEqualTo(true);
+                .jsonPath("$.enabled").isEqualTo(true)
+                .jsonPath("$.reachable").isEqualTo(true)
+                .jsonPath("$.host").exists();
     }
 
     @Test
@@ -154,6 +168,37 @@ public class MonitoringControllerTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.enabled").isEqualTo(false);
+    }
+
+    @Test
+    public void testOverview() {
+        when(langfuseService.getOverview("2024-01-01", "2024-01-02")).thenReturn(Mono.just(Map.of(
+                "totalTraces", 10,
+                "totalObservations", 20,
+                "totalCost", 0.5,
+                "avgLatency", 1.2,
+                "p95Latency", 3.0,
+                "errorCount", 1,
+                "daily", List.of()
+        )));
+
+        webTestClient.get().uri("/monitoring/overview?from=2024-01-01&to=2024-01-02")
+                .header("x-secret-key", "test")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalTraces").isEqualTo(10)
+                .jsonPath("$.totalObservations").isEqualTo(20)
+                .jsonPath("$.errorCount").isEqualTo(1);
+    }
+
+    @Test
+    public void testOverview_nonAdminForbidden() {
+        webTestClient.get().uri("/monitoring/overview?from=2024-01-01&to=2024-01-02")
+                .header("x-secret-key", "test")
+                .header("x-user-id", "regular-user")
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
     @Test

@@ -12,6 +12,8 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 @Component
 public class GoosedProxy {
 
@@ -48,7 +50,7 @@ public class GoosedProxy {
             response.setStatusCode(upstream.statusCode());
             copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
             return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-        });
+        }).timeout(Duration.ofSeconds(60));
     }
 
     /**
@@ -67,7 +69,7 @@ public class GoosedProxy {
                     response.setStatusCode(upstream.statusCode());
                     copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
                     return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-                });
+                }).timeout(Duration.ofSeconds(60));
     }
 
     /**
@@ -79,7 +81,8 @@ public class GoosedProxy {
                 .uri(target)
                 .header(GatewayConstants.HEADER_SECRET_KEY, properties.getSecretKey())
                 .retrieve()
-                .bodyToMono(String.class);
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(30));
     }
 
     public WebClient getWebClient() {

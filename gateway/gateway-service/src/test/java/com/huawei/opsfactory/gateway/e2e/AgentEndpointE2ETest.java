@@ -33,7 +33,8 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .thenReturn(Map.of("GOOSE_PROVIDER", "openai", "GOOSE_MODEL", "gpt-4o"));
         when(agentConfigService.loadAgentConfigYaml("kb-agent"))
                 .thenReturn(Map.of("GOOSE_PROVIDER", "anthropic", "GOOSE_MODEL", "claude-3"));
-        when(agentConfigService.listSkills("universal-agent")).thenReturn(List.of("brainstorming"));
+        when(agentConfigService.listSkills("universal-agent")).thenReturn(List.of(
+                Map.of("name", "brainstorming", "description", "Brainstorm ideas", "path", "skills/brainstorming")));
         when(agentConfigService.listSkills("kb-agent")).thenReturn(Collections.emptyList());
 
         webClient.get().uri("/agents")
@@ -49,6 +50,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agents[0].provider").isEqualTo("openai")
                 .jsonPath("$.agents[0].model").isEqualTo("gpt-4o")
                 .jsonPath("$.agents[0].skills.length()").isEqualTo(1)
+                .jsonPath("$.agents[0].skills[0].name").isEqualTo("brainstorming")
                 .jsonPath("$.agents[1].id").isEqualTo("kb-agent")
                 .jsonPath("$.agents[1].sysOnly").isEqualTo(true);
     }
@@ -209,8 +211,9 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void listSkills_admin_returnsSkillsList() {
-        when(agentConfigService.listSkills("universal-agent"))
-                .thenReturn(List.of("brainstorming", "coding"));
+        when(agentConfigService.listSkills("universal-agent")).thenReturn(List.of(
+                Map.of("name", "brainstorming", "description", "Brainstorm ideas", "path", "skills/brainstorming"),
+                Map.of("name", "coding", "description", "Code assistance", "path", "skills/coding")));
 
         webClient.get().uri("/agents/universal-agent/skills")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -219,8 +222,10 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.skills.length()").isEqualTo(2)
-                .jsonPath("$.skills[0]").isEqualTo("brainstorming")
-                .jsonPath("$.skills[1]").isEqualTo("coding");
+                .jsonPath("$.skills[0].name").isEqualTo("brainstorming")
+                .jsonPath("$.skills[0].description").isEqualTo("Brainstorm ideas")
+                .jsonPath("$.skills[1].name").isEqualTo("coding")
+                .jsonPath("$.skills[1].description").isEqualTo("Code assistance");
     }
 
     @Test

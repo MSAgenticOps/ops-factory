@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.when;
 
@@ -64,6 +65,8 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
         ManagedInstance inst = new ManagedInstance("agent-a", "alice", 9001, 54321L, null);
         inst.setStatus(ManagedInstance.Status.RUNNING);
         when(instanceManager.getAllInstances()).thenReturn(List.of(inst));
+        when(agentConfigService.findAgent("agent-a")).thenReturn(
+                new AgentRegistryEntry("agent-a", "Agent A", false));
 
         webClient.get().uri("/monitoring/instances")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -75,11 +78,13 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.runningInstances").isEqualTo(1)
                 .jsonPath("$.byAgent.length()").isEqualTo(1)
                 .jsonPath("$.byAgent[0].agentId").isEqualTo("agent-a")
+                .jsonPath("$.byAgent[0].agentName").isEqualTo("Agent A")
                 .jsonPath("$.byAgent[0].instances[0].userId").isEqualTo("alice")
                 .jsonPath("$.byAgent[0].instances[0].port").isEqualTo(9001)
                 .jsonPath("$.byAgent[0].instances[0].pid").isEqualTo(54321)
                 .jsonPath("$.byAgent[0].instances[0].status").isEqualTo("running")
-                .jsonPath("$.byAgent[0].instances[0].lastActivity").isNumber();
+                .jsonPath("$.byAgent[0].instances[0].lastActivity").isNumber()
+                .jsonPath("$.byAgent[0].instances[0].idleSinceMs").isNumber();
     }
 
     @Test
@@ -133,6 +138,7 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
     @Test
     public void langfuseStatus_configured_returnsTrue() {
         when(langfuseService.isConfigured()).thenReturn(true);
+        when(langfuseService.checkReachable()).thenReturn(Mono.just(true));
 
         webClient.get().uri("/monitoring/status")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -140,7 +146,9 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.enabled").isEqualTo(true);
+                .jsonPath("$.enabled").isEqualTo(true)
+                .jsonPath("$.reachable").isEqualTo(true)
+                .jsonPath("$.host").exists();
     }
 
     @Test
@@ -165,32 +173,75 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    // ====================== GET /monitoring/overview ======================
+
+    @Test
+    public void overview_admin_returnsOverviewData() {
+        when(langfuseService.getOverview("2024-01-01", "2024-01-02")).thenReturn(Mono.just(Map.of(
+                "totalTraces", 5,
+                "totalObservations", 10,
+                "totalCost", 0.25,
+                "avgLatency", 1.0,
+                "p95Latency", 2.5,
+                "errorCount", 0,
+                "daily", List.of()
+        )));
+
+        webClient.get().uri("/monitoring/overview?from=2024-01-01&to=2024-01-02")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "sys")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalTraces").isEqualTo(5)
+                .jsonPath("$.totalObservations").isEqualTo(10)
+                .jsonPath("$.errorCount").isEqualTo(0);
+    }
+
+    @Test
+    public void overview_nonAdmin_returns403() {
+        webClient.get().uri("/monitoring/overview?from=2024-01-01&to=2024-01-02")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
     // ====================== GET /monitoring/traces ======================
 
     @Test
     public void traces_admin_returnsTraceData() {
-        when(langfuseService.getTraces("2024-01-01", "2024-01-02", 20, false))
-                .thenReturn(Mono.just("[{\"traceId\":\"t1\"}]"));
+        when(langfuseService.getTracesFormatted("2024-01-01", "2024-01-02", 20, false))
+                .thenReturn(Mono.just(List.of(Map.of(
+                        "id", "t1", "name", "test", "timestamp", "2024-01-01T00:00:00Z",
+                        "input", "hello", "latency", 1.0, "totalCost", 0.01,
+                        "observationCount", 2, "hasError", false
+                ))));
 
         webClient.get().uri("/monitoring/traces?from=2024-01-01&to=2024-01-02")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "sys")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("[{\"traceId\":\"t1\"}]");
+                .expectBody()
+                .jsonPath("$[0].id").isEqualTo("t1")
+                .jsonPath("$[0].name").isEqualTo("test");
     }
 
     @Test
     public void traces_customLimitAndErrorsOnly() {
-        when(langfuseService.getTraces("2024-01-01", "2024-01-02", 5, true))
-                .thenReturn(Mono.just("[{\"error\":true}]"));
+        when(langfuseService.getTracesFormatted("2024-01-01", "2024-01-02", 5, true))
+                .thenReturn(Mono.just(List.of(Map.of(
+                        "id", "t2", "name", "error-trace", "hasError", true
+                ))));
 
         webClient.get().uri("/monitoring/traces?from=2024-01-01&to=2024-01-02&limit=5&errorsOnly=true")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "sys")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("[{\"error\":true}]");
+                .expectBody()
+                .jsonPath("$[0].hasError").isEqualTo(true);
     }
 
     @Test
@@ -206,15 +257,20 @@ public class MonitoringEndpointE2ETest extends BaseE2ETest {
 
     @Test
     public void observations_admin_returnsData() {
-        when(langfuseService.getObservations("2024-01-01", "2024-01-02"))
-                .thenReturn(Mono.just("[{\"observationId\":\"o1\"}]"));
+        when(langfuseService.getObservationsFormatted("2024-01-01", "2024-01-02"))
+                .thenReturn(Mono.just(Map.of("observations", List.of(
+                        Map.of("name", "generation", "count", 5, "avgLatency", 1.0,
+                                "p95Latency", 2.0, "totalTokens", 100, "totalCost", 0.05)
+                ))));
 
         webClient.get().uri("/monitoring/observations?from=2024-01-01&to=2024-01-02")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "sys")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("[{\"observationId\":\"o1\"}]");
+                .expectBody()
+                .jsonPath("$.observations[0].name").isEqualTo("generation")
+                .jsonPath("$.observations[0].count").isEqualTo(5);
     }
 
     @Test

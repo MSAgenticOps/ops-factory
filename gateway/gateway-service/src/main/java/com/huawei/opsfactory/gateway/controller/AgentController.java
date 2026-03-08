@@ -40,7 +40,7 @@ public class AgentController {
         List<Map<String, Object>> agents = agentConfigService.getRegistry().stream()
                 .map(entry -> {
                     Map<String, Object> config = agentConfigService.loadAgentConfigYaml(entry.id());
-                    List<String> skills = agentConfigService.listSkills(entry.id());
+                    List<Map<String, String>> skills = agentConfigService.listSkills(entry.id());
                     Map<String, Object> agentMap = new LinkedHashMap<>();
                     agentMap.put("id", entry.id());
                     agentMap.put("name", entry.name());

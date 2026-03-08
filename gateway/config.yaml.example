@@ -20,6 +20,14 @@ upload:
   maxFileSizeMb: 50                     # env: MAX_FILE_SIZE_MB
   maxImageSizeMb: 20                    # env: MAX_IMAGE_SIZE_MB
 
+limits:
+  maxInstancesPerUser: 5               # env: MAX_INSTANCES_PER_USER
+  maxInstancesGlobal: 50               # env: MAX_INSTANCES_GLOBAL
+
+prewarm:
+  enabled: true                         # env: PREWARM_ENABLED
+  defaultAgentId: universal-agent       # env: PREWARM_DEFAULT_AGENT_ID
+
 agents:
   - {id: universal-agent, name: Universal Agent}
   - {id: kb-agent, name: KB Agent}

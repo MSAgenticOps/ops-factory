@@ -54,6 +54,18 @@ USERS_DIR="${USERS_DIR:-$(yaml_nested_val paths usersDir)}"
 USERS_DIR="${USERS_DIR:-users}"
 PROJECT_ROOT="${PROJECT_ROOT:-${ROOT_DIR}}"
 
+# Limits
+MAX_INSTANCES_PER_USER="${MAX_INSTANCES_PER_USER:-$(yaml_nested_val limits maxInstancesPerUser)}"
+MAX_INSTANCES_PER_USER="${MAX_INSTANCES_PER_USER:-5}"
+MAX_INSTANCES_GLOBAL="${MAX_INSTANCES_GLOBAL:-$(yaml_nested_val limits maxInstancesGlobal)}"
+MAX_INSTANCES_GLOBAL="${MAX_INSTANCES_GLOBAL:-50}"
+
+# Prewarm
+PREWARM_ENABLED="${PREWARM_ENABLED:-$(yaml_nested_val prewarm enabled)}"
+PREWARM_ENABLED="${PREWARM_ENABLED:-true}"
+PREWARM_DEFAULT_AGENT_ID="${PREWARM_DEFAULT_AGENT_ID:-$(yaml_nested_val prewarm defaultAgentId)}"
+PREWARM_DEFAULT_AGENT_ID="${PREWARM_DEFAULT_AGENT_ID:-universal-agent}"
+
 # Optional nested config sections
 VISION_MODE="${VISION_MODE:-$(yaml_nested_val vision mode)}"
 VISION_PROVIDER="${VISION_PROVIDER:-$(yaml_nested_val vision provider)}"
@@ -246,6 +258,10 @@ do_startup() {
         "-Dgateway.idle.check-interval-ms=${IDLE_CHECK_INTERVAL}"
         "-Dgateway.upload.max-file-size-mb=${UPLOAD_MAX_FILE_SIZE_MB}"
         "-Dgateway.upload.max-image-size-mb=${UPLOAD_MAX_IMAGE_SIZE_MB}"
+        "-Dgateway.limits.max-instances-per-user=${MAX_INSTANCES_PER_USER}"
+        "-Dgateway.limits.max-instances-global=${MAX_INSTANCES_GLOBAL}"
+        "-Dgateway.prewarm.enabled=${PREWARM_ENABLED}"
+        "-Dgateway.prewarm.default-agent-id=${PREWARM_DEFAULT_AGENT_ID}"
     )
 
     # Optional: vision

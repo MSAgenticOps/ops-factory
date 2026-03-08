@@ -116,15 +116,32 @@ public class AgentConfigServiceTest {
         Files.createDirectories(skillsDir.resolve("skill-b"));
         Files.writeString(skillsDir.resolve("readme.txt"), "not a skill");
 
-        List<String> skills = service.listSkills("test-agent");
+        // Add SKILL.md with frontmatter to skill-a
+        Files.writeString(skillsDir.resolve("skill-a").resolve("SKILL.md"),
+                "---\nname: Skill A\ndescription: Description of skill A\n---\n# Skill A\n");
+
+        List<Map<String, String>> skills = service.listSkills("test-agent");
         assertEquals(2, skills.size());
-        assertTrue(skills.contains("skill-a"));
-        assertTrue(skills.contains("skill-b"));
+
+        List<String> names = skills.stream().map(s -> s.get("name")).toList();
+        assertTrue(names.contains("Skill A"));  // parsed from frontmatter
+        assertTrue(names.contains("skill-b"));  // fallback to dir name
+
+        // Verify skill-a has parsed description
+        Map<String, String> skillA = skills.stream()
+                .filter(s -> "Skill A".equals(s.get("name"))).findFirst().orElseThrow();
+        assertEquals("Description of skill A", skillA.get("description"));
+        assertEquals("skills/skill-a", skillA.get("path"));
+
+        // Verify skill-b has empty description (no SKILL.md)
+        Map<String, String> skillB = skills.stream()
+                .filter(s -> "skill-b".equals(s.get("name"))).findFirst().orElseThrow();
+        assertEquals("", skillB.get("description"));
     }
 
     @Test
     public void testListSkills_noSkillsDir() {
-        List<String> skills = service.listSkills("nonexistent");
+        List<Map<String, String>> skills = service.listSkills("nonexistent");
         assertTrue(skills.isEmpty());
     }
 

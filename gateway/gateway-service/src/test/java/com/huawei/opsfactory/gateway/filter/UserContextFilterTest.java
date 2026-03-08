@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.model.UserRole;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -10,6 +11,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 
 public class UserContextFilterTest {
 
@@ -17,7 +19,8 @@ public class UserContextFilterTest {
 
     @Before
     public void setUp() {
-        filter = new UserContextFilter();
+        PrewarmService prewarmService = mock(PrewarmService.class);
+        filter = new UserContextFilter(prewarmService);
     }
 
     @Test

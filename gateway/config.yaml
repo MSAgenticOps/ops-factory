@@ -16,6 +16,20 @@ upload:
   maxFileSizeMb: 50
   maxImageSizeMb: 20
 
+limits:
+  maxInstancesPerUser: 5
+  maxInstancesGlobal: 50
+
+prewarm:
+  enabled: true
+  defaultAgentId: universal-agent
+
+# Values below must match langfuse/config.yaml (init.projectPublicKey, init.projectSecretKey, port)
+langfuse:
+  host: "http://127.0.0.1:3100"
+  publicKey: "pk-lf-opsfactory"
+  secretKey: "sk-lf-opsfactory"
+
 agents:
   - {id: universal-agent, name: Universal Agent}
   - {id: kb-agent, name: KB Agent}
