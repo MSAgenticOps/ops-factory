@@ -4,8 +4,10 @@ import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.UserRole;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -42,5 +44,15 @@ public class UserContextFilter implements WebFilter {
         prewarmService.onUserActivity(userId);
 
         return chain.filter(exchange);
+    }
+
+    /**
+     * Shared admin check — throws 403 if the current user is not an admin.
+     */
+    public static void requireAdmin(ServerWebExchange exchange) {
+        UserRole role = exchange.getAttribute(USER_ROLE_ATTR);
+        if (role == null || !role.isAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "admin access required");
+        }
     }
 }

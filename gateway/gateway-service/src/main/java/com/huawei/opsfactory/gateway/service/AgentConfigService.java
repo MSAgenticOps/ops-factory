@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
+import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.common.util.YamlLoader;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import org.apache.logging.log4j.LogManager;
@@ -29,6 +30,7 @@ public class AgentConfigService {
     private final CopyOnWriteArrayList<AgentRegistryEntry> registry = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<String, Map<String, Object>> configCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Map<String, Object>> secretsCache = new ConcurrentHashMap<>();
+    private Path gatewayRoot;
 
     public AgentConfigService(GatewayProperties properties) {
         this.properties = properties;
@@ -36,7 +38,9 @@ public class AgentConfigService {
 
     @PostConstruct
     public void loadRegistry() {
-        Path configYaml = getGatewayRoot().resolve("config.yaml");
+        this.gatewayRoot = Path.of(properties.getPaths().getProjectRoot())
+                .toAbsolutePath().normalize().resolve("gateway");
+        Path configYaml = gatewayRoot.resolve("config.yaml");
         Map<String, Object> data = YamlLoader.load(configYaml);
 
         Object agentsObj = data.get("agents");
@@ -258,7 +262,7 @@ public class AgentConfigService {
         // Remove agent directory
         Path agentDir = getAgentsDir().resolve(id);
         if (Files.exists(agentDir)) {
-            deleteRecursively(agentDir);
+            FileUtil.deleteRecursively(agentDir);
         }
 
         // Update config.yaml
@@ -293,23 +297,17 @@ public class AgentConfigService {
         Files.writeString(configYaml, yaml.dump(data));
     }
 
-    private void deleteRecursively(Path path) throws IOException {
-        if (Files.isDirectory(path)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
-                for (Path child : stream) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        Files.deleteIfExists(path);
-    }
 
     public Path getAgentsDir() {
-        return getGatewayRoot().resolve(properties.getPaths().getAgentsDir());
+        return gatewayRoot.resolve(properties.getPaths().getAgentsDir());
     }
 
     public Path getUsersDir() {
-        return getGatewayRoot().resolve(properties.getPaths().getUsersDir());
+        return gatewayRoot.resolve(properties.getPaths().getUsersDir());
+    }
+
+    public Path getUserAgentDir(String userId, String agentId) {
+        return getUsersDir().resolve(userId).resolve("agents").resolve(agentId);
     }
 
     public Path getAgentConfigDir(String agentId) {
@@ -317,7 +315,6 @@ public class AgentConfigService {
     }
 
     public Path getGatewayRoot() {
-        return Path.of(properties.getPaths().getProjectRoot()).toAbsolutePath().normalize()
-                .resolve("gateway");
+        return gatewayRoot;
     }
 }

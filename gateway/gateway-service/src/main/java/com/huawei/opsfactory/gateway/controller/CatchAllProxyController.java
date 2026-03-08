@@ -61,13 +61,8 @@ public class CatchAllProxyController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "admin access required");
         }
 
-        // Determine which userId to use — admin routes use "sys", user routes use the user's own
-        String userId;
-        if (isAdmin || isUserAccessible(remainderPath)) {
-            userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        } else {
-            userId = "sys";
-        }
+        // All requests use the authenticated user's instance
+        String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
 
         final String target = proxyTarget;
         return instanceManager.getOrSpawn(agentId, userId)

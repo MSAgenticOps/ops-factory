@@ -190,18 +190,13 @@ public class VisionPreprocessHook implements RequestHook {
 
         String requestBody = buildOpenAIRequest(config.model(), config.maxTokens(), config.prompt(), mimeType, data);
 
-        WebClient.RequestHeadersSpec<?> spec = webClient.post()
+        WebClient.RequestBodySpec reqSpec = webClient.post()
                 .uri(url)
-                .header("Content-Type", "application/json")
-                .bodyValue(requestBody);
-
+                .header("Content-Type", "application/json");
         if (config.apiKey() != null && !config.apiKey().isBlank()) {
-            spec = webClient.post()
-                    .uri(url)
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + config.apiKey())
-                    .bodyValue(requestBody);
+            reqSpec = reqSpec.header("Authorization", "Bearer " + config.apiKey());
         }
+        WebClient.RequestHeadersSpec<?> spec = reqSpec.bodyValue(requestBody);
 
         return spec.retrieve()
                 .bodyToMono(String.class)

@@ -2,7 +2,9 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
@@ -25,8 +27,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -62,8 +64,7 @@ public class SessionController {
                                     ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         // Inject working_dir into the request body (override any client-supplied value)
-        String workingDir = agentConfigService.getUsersDir()
-                .resolve(userId).resolve("agents").resolve(agentId)
+        String workingDir = agentConfigService.getUserAgentDir(userId, agentId)
                 .toAbsolutePath().normalize().toString();
         String modifiedBody;
         try {
@@ -87,7 +88,7 @@ public class SessionController {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return Flux.fromIterable(instanceManager.getAllInstances())
                 .filter(inst -> inst.getUserId().equals(userId)
-                        || "sys".equals(inst.getUserId()))
+                        || GatewayConstants.SYS_USER.equals(inst.getUserId()))
                 .filter(inst -> inst.getStatus() == ManagedInstance.Status.RUNNING)
                 .flatMap(inst -> sessionService.getSessionsFromInstance(inst)
                         .map(json -> extractSessionsArray(json, inst.getAgentId())))
@@ -188,8 +189,8 @@ public class SessionController {
                                      @PathVariable String sessionId,
                                      ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        sessionService.removeOwner(sessionId);
-        cleanupUploads(userId, agentId, sessionId);
+        Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
+                .subscribeOn(Schedulers.boundedElastic()).subscribe();
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
@@ -204,8 +205,8 @@ public class SessionController {
                                            @RequestParam String agentId,
                                            ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        sessionService.removeOwner(sessionId);
-        cleanupUploads(userId, agentId, sessionId);
+        Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
+                .subscribeOn(Schedulers.boundedElastic()).subscribe();
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
@@ -232,20 +233,10 @@ public class SessionController {
      */
     private void cleanupUploads(String userId, String agentId, String sessionId) {
         try {
-            Path uploadsDir = agentConfigService.getUsersDir()
-                    .resolve(userId).resolve("agents").resolve(agentId)
+            Path uploadsDir = agentConfigService.getUserAgentDir(userId, agentId)
                     .resolve("uploads").resolve(sessionId);
             if (Files.isDirectory(uploadsDir)) {
-                // Delete all files in the directory, then the directory itself
-                try (var entries = Files.walk(uploadsDir)) {
-                    entries.sorted(java.util.Comparator.reverseOrder())
-                            .forEach(p -> {
-                                try {
-                                    Files.deleteIfExists(p);
-                                } catch (IOException ignored) {
-                                }
-                            });
-                }
+                FileUtil.deleteRecursively(uploadsDir);
             }
         } catch (Exception e) {
             log.warn("Failed to clean up uploads for session {}: {}", sessionId, e.getMessage());

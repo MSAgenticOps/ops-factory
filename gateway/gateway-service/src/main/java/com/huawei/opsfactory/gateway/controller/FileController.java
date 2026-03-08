@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,21 +48,18 @@ public class FileController {
     public Mono<Map<String, Object>> listFiles(@PathVariable String agentId,
                                                 ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        Path workingDir = agentConfigService.getUsersDir()
-                .resolve(userId).resolve("agents").resolve(agentId);
-        try {
-            return Mono.just(Map.of("files", fileService.listFiles(workingDir)));
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to list files");
-        }
+        Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        return Mono.fromCallable(() -> Map.<String, Object>of("files", fileService.listFiles(workingDir)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorMap(IOException.class, e ->
+                        new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to list files"));
     }
 
     @GetMapping("/**")
     public Mono<ResponseEntity<?>> getFile(@PathVariable String agentId,
                                             ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        Path workingDir = agentConfigService.getUsersDir()
-                .resolve(userId).resolve("agents").resolve(agentId);
+        Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
 
         // Extract the file path after /agents/{agentId}/files/
         String fullPath = exchange.getRequest().getPath().value();
@@ -74,26 +72,25 @@ public class FileController {
                     .body(Map.of("error", "path traversal not allowed")));
         }
 
-        Resource resource = fileService.resolveFile(workingDir, relativePath);
-        if (resource == null) {
-            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "file not found")));
-        }
+        return Mono.<ResponseEntity<?>>fromCallable(() -> {
+            Resource resource = fileService.resolveFile(workingDir, relativePath);
+            if (resource == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "file not found"));
+            }
 
-        String filename = resource.getFilename();
-        String mimeType = fileService.getMimeType(filename != null ? filename : "");
-        String disposition = fileService.isInline(mimeType) ? "inline" : "attachment";
+            String filename = resource.getFilename();
+            String mimeType = fileService.getMimeType(filename != null ? filename : "");
+            String disposition = fileService.isInline(mimeType) ? "inline" : "attachment";
 
-        // Read file as bytes to prevent Spring from overriding Content-Type
-        try {
             byte[] content = resource.getInputStream().readAllBytes();
-            return Mono.just(ResponseEntity.ok()
+            return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(mimeType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + filename + "\"")
-                    .body(content));
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file");
-        }
+                    .body(content);
+        }).subscribeOn(Schedulers.boundedElastic())
+                .onErrorMap(IOException.class, e ->
+                        new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file"));
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -102,8 +99,7 @@ public class FileController {
                                                  @RequestPart("sessionId") String sessionId,
                                                  ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        Path uploadsDir = agentConfigService.getUsersDir()
-                .resolve(userId).resolve("agents").resolve(agentId)
+        Path uploadsDir = agentConfigService.getUserAgentDir(userId, agentId)
                 .resolve("uploads").resolve(sessionId);
 
         String originalName = filePart.filename();

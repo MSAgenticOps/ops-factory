@@ -11,8 +11,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class SessionService {
@@ -23,26 +21,11 @@ public class SessionService {
     private final WebClient webClient;
     private final String secretKey;
 
-    /** sessionId -> userId ownership cache */
-    private final ConcurrentHashMap<String, String> ownerCache = new ConcurrentHashMap<>();
-
     public SessionService(InstanceManager instanceManager,
                           com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy) {
         this.instanceManager = instanceManager;
         this.webClient = goosedProxy.getWebClient();
         this.secretKey = goosedProxy.getSecretKey();
-    }
-
-    public void cacheOwner(String sessionId, String userId) {
-        ownerCache.put(sessionId, userId);
-    }
-
-    public String getCachedOwner(String sessionId) {
-        return ownerCache.get(sessionId);
-    }
-
-    public void removeOwner(String sessionId) {
-        ownerCache.remove(sessionId);
     }
 
     /**

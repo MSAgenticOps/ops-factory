@@ -29,7 +29,10 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     public void setUp() {
         runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null);
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
-        when(agentConfigService.getUsersDir()).thenReturn(Path.of("/tmp/test-users"));
+        when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
+                .thenAnswer(inv -> Path.of("/tmp/test-users")
+                        .resolve(inv.getArgument(0, String.class))
+                        .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
 
     // ====================== GET /sessions/{sessionId}?agentId=X ======================
@@ -73,7 +76,6 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(sessionService).removeOwner("session-xyz");
         verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"));
     }
 

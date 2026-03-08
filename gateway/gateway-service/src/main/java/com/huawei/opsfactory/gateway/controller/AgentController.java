@@ -1,7 +1,6 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
-import com.huawei.opsfactory.gateway.common.model.UserRole;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,22 +37,24 @@ public class AgentController {
 
     @GetMapping
     public Mono<Map<String, Object>> listAgents() {
-        List<Map<String, Object>> agents = agentConfigService.getRegistry().stream()
-                .map(entry -> {
-                    Map<String, Object> config = agentConfigService.loadAgentConfigYaml(entry.id());
-                    List<Map<String, String>> skills = agentConfigService.listSkills(entry.id());
-                    Map<String, Object> agentMap = new LinkedHashMap<>();
-                    agentMap.put("id", entry.id());
-                    agentMap.put("name", entry.name());
-                    agentMap.put("sysOnly", entry.sysOnly());
-                    agentMap.put("status", "configured");
-                    agentMap.put("provider", config.getOrDefault("GOOSE_PROVIDER", ""));
-                    agentMap.put("model", config.getOrDefault("GOOSE_MODEL", ""));
-                    agentMap.put("skills", skills);
-                    return (Map<String, Object>) agentMap;
-                })
-                .toList();
-        return Mono.just(Map.of("agents", agents));
+        return Mono.fromCallable(() -> {
+            List<Map<String, Object>> agents = agentConfigService.getRegistry().stream()
+                    .map(entry -> {
+                        Map<String, Object> config = agentConfigService.loadAgentConfigYaml(entry.id());
+                        List<Map<String, String>> skills = agentConfigService.listSkills(entry.id());
+                        Map<String, Object> agentMap = new LinkedHashMap<>();
+                        agentMap.put("id", entry.id());
+                        agentMap.put("name", entry.name());
+                        agentMap.put("sysOnly", entry.sysOnly());
+                        agentMap.put("status", "configured");
+                        agentMap.put("provider", config.getOrDefault("GOOSE_PROVIDER", ""));
+                        agentMap.put("model", config.getOrDefault("GOOSE_MODEL", ""));
+                        agentMap.put("skills", skills);
+                        return (Map<String, Object>) agentMap;
+                    })
+                    .toList();
+            return Map.<String, Object>of("agents", agents);
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     @PostMapping
@@ -158,9 +160,6 @@ public class AgentController {
     }
 
     private void requireAdmin(ServerWebExchange exchange) {
-        UserRole role = exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR);
-        if (role == null || !role.isAdmin()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "admin access required");
-        }
+        UserContextFilter.requireAdmin(exchange);
     }
 }

@@ -12,7 +12,6 @@ import reactor.core.publisher.Mono;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -166,13 +165,7 @@ public class LangfuseService {
 
         double avgLatency = totalTraces > 0 ? sumLatency / totalTraces : 0;
 
-        // P95 latency
-        double p95Latency = 0;
-        if (!latencies.isEmpty()) {
-            Collections.sort(latencies);
-            int idx = (int) Math.ceil(latencies.size() * 0.95) - 1;
-            p95Latency = latencies.get(Math.max(0, idx));
-        }
+        double p95Latency = computeP95(latencies);
 
         // Build daily array
         List<Map<String, Object>> daily = new ArrayList<>();
@@ -304,12 +297,7 @@ public class LangfuseService {
             }
 
             double avgLatency = count > 0 ? sumLatency / count : 0;
-            double p95Latency = 0;
-            if (!latencies.isEmpty()) {
-                Collections.sort(latencies);
-                int idx = (int) Math.ceil(latencies.size() * 0.95) - 1;
-                p95Latency = latencies.get(Math.max(0, idx));
-            }
+            double p95Latency = computeP95(latencies);
 
             Map<String, Object> group = new LinkedHashMap<>();
             group.put("name", entry.getKey());
@@ -322,6 +310,13 @@ public class LangfuseService {
         }
 
         return Map.of("observations", obsGroups);
+    }
+
+    private static double computeP95(List<Double> latencies) {
+        if (latencies.isEmpty()) return 0;
+        Collections.sort(latencies);
+        int idx = (int) Math.ceil(latencies.size() * 0.95) - 1;
+        return latencies.get(Math.max(0, idx));
     }
 
     private static Map<String, Object> emptyOverview() {

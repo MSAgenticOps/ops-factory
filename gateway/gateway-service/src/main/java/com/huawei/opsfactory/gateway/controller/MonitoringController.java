@@ -1,7 +1,6 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
-import com.huawei.opsfactory.gateway.common.model.UserRole;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
@@ -186,9 +185,6 @@ public class MonitoringController {
     }
 
     private void requireAdmin(ServerWebExchange exchange) {
-        UserRole role = exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR);
-        if (role == null || !role.isAdmin()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "admin access required");
-        }
+        UserContextFilter.requireAdmin(exchange);
     }
 }

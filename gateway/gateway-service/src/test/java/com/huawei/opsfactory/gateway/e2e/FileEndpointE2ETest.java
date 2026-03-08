@@ -26,7 +26,9 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     @Before
     public void setUp() {
-        when(agentConfigService.getUsersDir()).thenReturn(USERS_DIR);
+        when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
+                .thenAnswer(inv -> USERS_DIR.resolve(inv.getArgument(0, String.class))
+                        .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
 
     // ====================== GET /agents/{agentId}/files ======================

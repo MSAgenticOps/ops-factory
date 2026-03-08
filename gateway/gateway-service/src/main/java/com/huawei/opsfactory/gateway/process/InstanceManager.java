@@ -1,5 +1,7 @@
 package com.huawei.opsfactory.gateway.process;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.ProcessUtil;
@@ -37,6 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class InstanceManager {
 
     private static final Logger log = LogManager.getLogger(InstanceManager.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
     private final PortAllocator portAllocator;
@@ -92,9 +95,8 @@ public class InstanceManager {
                 String listJson = httpGet(port, "/schedule/list");
                 // Simple parsing: extract "id" values from jobs array
                 if (listJson != null && listJson.contains("\"jobs\"")) {
-                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    Map<String, Object> parsed = mapper.readValue(listJson,
-                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    Map<String, Object> parsed = MAPPER.readValue(listJson,
+                            new TypeReference<Map<String, Object>>() {});
                     Object jobs = parsed.get("jobs");
                     if (jobs instanceof List<?> jobList) {
                         for (Object job : jobList) {
@@ -122,10 +124,9 @@ public class InstanceManager {
                     try {
                         String recipeContent = Files.readString(recipeFile, StandardCharsets.UTF_8);
                         // Parse recipe YAML/JSON
-                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                         Object recipe;
                         if (fileName.endsWith(".json")) {
-                            recipe = mapper.readValue(recipeContent, Object.class);
+                            recipe = MAPPER.readValue(recipeContent, Object.class);
                         } else {
                             Yaml yaml = new Yaml();
                             recipe = yaml.load(recipeContent);
@@ -136,7 +137,7 @@ public class InstanceManager {
                         body.put("id", scheduleId);
                         body.put("recipe", recipe);
                         body.put("cron", "0 9 * * *");
-                        String bodyJson = mapper.writeValueAsString(body);
+                        String bodyJson = MAPPER.writeValueAsString(body);
 
                         boolean created = httpPost(port, "/schedule/create", bodyJson);
                         if (!created) {
@@ -287,9 +288,8 @@ public class InstanceManager {
             if (!content.contains("\"currently_running\":true") && !content.contains("\"currently_running\": true")) {
                 return;
             }
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            List<Map<String, Object>> jobs = mapper.readValue(content,
-                    new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            List<Map<String, Object>> jobs = MAPPER.readValue(content,
+                    new TypeReference<List<Map<String, Object>>>() {});
             boolean modified = false;
             for (Map<String, Object> job : jobs) {
                 if (Boolean.TRUE.equals(job.get("currently_running"))) {
@@ -300,7 +300,7 @@ public class InstanceManager {
                 }
             }
             if (modified) {
-                Files.writeString(scheduleFile, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jobs),
+                Files.writeString(scheduleFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(jobs),
                         StandardCharsets.UTF_8);
                 log.info("Reset stuck currently_running flags in {}", scheduleFile);
             }
