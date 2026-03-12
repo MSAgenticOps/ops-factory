@@ -1,5 +1,8 @@
 package com.huawei.opsfactory.gateway.common.model;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class ManagedInstance {
 
     public enum Status {
@@ -66,5 +69,17 @@ public class ManagedInstance {
 
     public static String buildKey(String agentId, String userId) {
         return agentId + ":" + userId;
+    }
+
+    public String toJson() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("agentId", agentId);
+        map.put("userId", userId);
+        map.put("port", port);
+        map.put("pid", pid);
+        map.put("status", status);
+        map.put("lastActivity", lastActivity);
+        map.put("processAlive", process != null && process.isAlive());
+        return map.toString();
     }
 }

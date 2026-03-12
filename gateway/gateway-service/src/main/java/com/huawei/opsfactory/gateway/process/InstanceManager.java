@@ -248,6 +248,7 @@ public class InstanceManager {
 
         ManagedInstance existing = instances.get(key);
         if (existing != null && existing.getStatus() == ManagedInstance.Status.RUNNING) {
+            log.warn("Checking instance status for userId={}, agentId={}, existing={}", userId, agentId, existing.toJson());
             if (!existing.getProcess().isAlive()) {
                 log.warn("Instance {}:{} process died (port={}), removing stale entry",
                         agentId, userId, existing.getPort());
