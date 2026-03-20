@@ -1,4 +1,5 @@
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import ToolCallDisplay from './ToolCallDisplay'
@@ -6,49 +7,13 @@ import CitationMark from './CitationMark'
 import ReferenceList from './ReferenceList'
 import { usePreview } from '../contexts/PreviewContext'
 import { parseCitations, type Citation } from '../utils/citationParser'
+import { getDisplayTextContent, getFullTextContent, getReasoningContent, getThinkingContent } from '../utils/messageContent'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
-
-export interface MessageContent {
-    type: string
-    text?: string
-    id?: string
-    name?: string
-    input?: Record<string, unknown>
-    // For toolRequest - contains the tool call details
-    toolCall?: {
-        status?: string
-        value?: {
-            name?: string
-            arguments?: Record<string, unknown>
-        }
-    }
-    // For toolResponse - contains the tool result
-    toolResult?: {
-        status?: string
-        value?: unknown
-    }
-}
-
-export interface AttachedFile {
-    name: string        // display name ("dependencies.pdf")
-    path: string        // basename for download URL
-    ext: string         // extension without dot
-    serverPath?: string // full server path (for API text, transient)
-}
-
-export interface MessageMetadata {
-    userVisible?: boolean
-    agentVisible?: boolean
-    attachedFiles?: AttachedFile[]
-}
-
-export interface ChatMessage {
-    id?: string
-    role: 'user' | 'assistant'
-    content: MessageContent[]
-    created?: number
-    metadata?: MessageMetadata
-}
+import type {
+    ChatMessage,
+    DetectedFile,
+    ToolResponseMap,
+} from '../types/message'
 
 interface MessageProps {
     message: ChatMessage
@@ -60,14 +25,6 @@ interface MessageProps {
     sourceDocuments?: Citation[]
     outputFiles?: DetectedFile[]
     showFileCapsules?: boolean
-}
-
-export type ToolResponseMap = Map<string, { result?: unknown; isError: boolean }>
-
-export interface DetectedFile {
-    path: string
-    name: string
-    ext: string
 }
 
 // Represents a paired tool call with its request and response
@@ -156,17 +113,19 @@ function MessageInner({
     outputFiles = [],
     showFileCapsules = true
 }: MessageProps) {
+    const { t } = useTranslation()
     const isUser = message.role === 'user'
 
-    // Extract text content and tool calls
-    const textContent: string[] = []
+    const fullText = getFullTextContent(message)
+    const reasoningText = getReasoningContent(message)
+    const thinkingText = getThinkingContent(message)
+    const displayTextFromContent = getDisplayTextContent(message)
+
     const toolRequests: Map<string, { name: string; args?: Record<string, unknown>; status?: string }> = new Map()
 
     // Collect content from current message
     for (const content of message.content) {
-        if (content.type === 'text' && content.text) {
-            textContent.push(content.text)
-        } else if (content.type === 'toolRequest' && content.id) {
+        if (content.type === 'toolRequest' && content.id) {
             // toolRequest contains toolCall.value.name and toolCall.value.arguments
             const toolCall = content.toolCall
             toolRequests.set(content.id, {
@@ -247,23 +206,6 @@ function MessageInner({
         )
     }
 
-
-    const fullText = textContent.join('\n')
-
-    // Split thinking blocks from visible text
-    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi
-    const thinkingParts: string[] = []
-    const visibleText = fullText.replace(thinkRegex, (_match, content) => {
-        thinkingParts.push(content.trim())
-        return ''
-    }).trim()
-    const thinkingText = thinkingParts.join('\n\n')
-
-    // Check for unclosed thinking block (still thinking)
-    const unclosedThinkMatch = fullText.match(/<think>([\s\S]*)$/i)
-    const isThinking = !!unclosedThinkMatch
-    const unclosedThinkingText = unclosedThinkMatch ? unclosedThinkMatch[1].trim() : ''
-
     // Detect empty assistant response (model truly returned nothing — empty content array)
     const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
 
@@ -275,13 +217,93 @@ function MessageInner({
     // Skip assistant messages with only non-renderable content (e.g. reasoning, redactedThinking).
     // These are intermediate chain-of-thought messages that get accumulated during live streaming
     // but appear as separate messages when loading from session history.
-    const hasThinking = !isUser && (thinkingText || isThinking)
-    if (!isUser && !fullText && toolCalls.length === 0 && !hasThinking && !isStreaming && !isEmptyAssistantResponse) {
+    const hasThinking = !isUser && !!thinkingText
+    const hasReasoning = !isUser && !!reasoningText
+    const [isReasoningOpen, setIsReasoningOpen] = useState(isStreaming && hasReasoning)
+    const [isThinkingOpen, setIsThinkingOpen] = useState(isStreaming && hasThinking)
+    const [reasoningTouched, setReasoningTouched] = useState(false)
+    const [thinkingTouched, setThinkingTouched] = useState(false)
+    const [lastReasoningText, setLastReasoningText] = useState(reasoningText || '')
+    const [lastThinkingText, setLastThinkingText] = useState(thinkingText || '')
+    const [isReasoningActive, setIsReasoningActive] = useState(isStreaming && hasReasoning)
+    const [isThinkingActive, setIsThinkingActive] = useState(isStreaming && hasThinking)
+
+    useEffect(() => {
+        if (!hasReasoning) {
+            setIsReasoningOpen(false)
+            setReasoningTouched(false)
+            setLastReasoningText('')
+            setIsReasoningActive(false)
+            return
+        }
+
+        const nextReasoning = reasoningText || ''
+        const reasoningChanged = nextReasoning !== lastReasoningText
+
+        if (reasoningChanged) {
+            setLastReasoningText(nextReasoning)
+            setIsReasoningActive(true)
+            if (!reasoningTouched) {
+                setIsReasoningOpen(true)
+            }
+            return
+        }
+
+        if (!reasoningTouched && isReasoningOpen) {
+            const timer = window.setTimeout(() => {
+                setIsReasoningActive(false)
+                setIsReasoningOpen(false)
+            }, 800)
+            return () => window.clearTimeout(timer)
+        }
+    }, [hasReasoning, isReasoningOpen, lastReasoningText, reasoningText, reasoningTouched])
+
+    useEffect(() => {
+        if (!hasThinking) {
+            setIsThinkingOpen(false)
+            setThinkingTouched(false)
+            setLastThinkingText('')
+            setIsThinkingActive(false)
+            return
+        }
+
+        const nextThinking = thinkingText || ''
+        const thinkingChanged = nextThinking !== lastThinkingText
+
+        if (thinkingChanged) {
+            setLastThinkingText(nextThinking)
+            setIsThinkingActive(true)
+            if (!thinkingTouched) {
+                setIsThinkingOpen(true)
+            }
+            return
+        }
+
+        if (!thinkingTouched && isThinkingOpen) {
+            const timer = window.setTimeout(() => {
+                setIsThinkingActive(false)
+                setIsThinkingOpen(false)
+            }, 800)
+            return () => window.clearTimeout(timer)
+        }
+    }, [hasThinking, isThinkingOpen, lastThinkingText, thinkingText, thinkingTouched])
+
+    if (!isUser && !fullText && toolCalls.length === 0 && !hasThinking && !hasReasoning && !isStreaming && !isEmptyAssistantResponse) {
         return null
     }
 
+    const toggleReasoning = () => {
+        setReasoningTouched(true)
+        setIsReasoningOpen(prev => !prev)
+    }
+
+    const toggleThinking = () => {
+        setThinkingTouched(true)
+        setIsThinkingOpen(prev => !prev)
+    }
+
     // Determine which text to display for assistant messages
-    const rawDisplayText = !isUser ? (visibleText || fullText) : fullText
+    const rawDisplayText = !isUser ? (displayTextFromContent || fullText) : fullText
 
     // Citation processing — only for assistant text content
     const citations: Citation[] = !isUser && rawDisplayText ? parseCitations(rawDisplayText) : []
@@ -324,14 +346,43 @@ function MessageInner({
                 )}
 
                 {/* Thinking block (collapsible) */}
-                {hasThinking && (
-                    <details className="thinking-block">
-                        <summary className="thinking-block-summary">
-                            {isThinking ? 'Thinking...' : 'Show thinking'}
+                {hasReasoning && (
+                    <details
+                        className={`thinking-block ${isReasoningOpen ? 'open' : ''}`}
+                        open={isReasoningOpen}
+                    >
+                        <summary className="thinking-block-summary" onClick={(event) => {
+                            event.preventDefault()
+                            toggleReasoning()
+                        }}>
+                            <span className="thinking-block-label">
+                                {isReasoningActive ? t('chat.reasoningInProgress') : t('chat.reasoning')}
+                            </span>
                         </summary>
                         <div className="thinking-block-content">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {thinkingText || unclosedThinkingText}
+                                {reasoningText || ''}
+                            </ReactMarkdown>
+                        </div>
+                    </details>
+                )}
+
+                {hasThinking && (
+                    <details
+                        className={`thinking-block ${isThinkingOpen ? 'open' : ''}`}
+                        open={isThinkingOpen}
+                    >
+                        <summary className="thinking-block-summary" onClick={(event) => {
+                            event.preventDefault()
+                            toggleThinking()
+                        }}>
+                            <span className="thinking-block-label">
+                                {isThinkingActive ? t('chat.thinkingInProgress') : t('chat.thinkingLabel')}
+                            </span>
+                        </summary>
+                        <div className="thinking-block-content">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {thinkingText || ''}
                             </ReactMarkdown>
                         </div>
                     </details>

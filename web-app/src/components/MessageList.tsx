@@ -1,11 +1,12 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Message, { ChatMessage, type DetectedFile } from './Message'
-import type { ToolResponseMap } from './Message'
+import Message from './Message'
 import { ChatState, type OutputFilesEvent } from '../hooks/useChat'
 import { extractSourceDocuments, type Citation } from '../utils/citationParser'
+import { getReasoningContent, getThinkingContent, hasTextContent, hasToolContent } from '../utils/messageContent'
 import { useUser } from '../contexts/UserContext'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
+import type { ChatMessage, DetectedFile, ToolResponseMap } from '../types/message'
 
 interface MessageListProps {
     messages: ChatMessage[]
@@ -32,10 +33,28 @@ export default function MessageList({ messages, isLoading = false, chatState = C
         }
     }, [messages])
 
-    const visibleMessages = useMemo(
-        () => messages.filter(msg => !msg.metadata || msg.metadata.userVisible !== false),
-        [messages]
-    )
+    const visibleMessages = useMemo(() => {
+        const userVisibleMessages = messages.filter(msg => !msg.metadata || msg.metadata.userVisible !== false)
+
+        return userVisibleMessages.filter((msg, index) => {
+            if (msg.role !== 'assistant') {
+                return true
+            }
+
+            const hasPrimaryContent = hasTextContent(msg) || hasToolContent(msg)
+            if (hasPrimaryContent) {
+                return true
+            }
+
+            const hasReasoningOnly = !!getReasoningContent(msg) || !!getThinkingContent(msg)
+            if (!hasReasoningOnly) {
+                return true
+            }
+
+            const isLastMessage = index === userVisibleMessages.length - 1
+            return isLastMessage
+        })
+    }, [messages])
 
     const finalAssistantTextMessageId = useMemo(() => {
         for (let i = visibleMessages.length - 1; i >= 0; i--) {

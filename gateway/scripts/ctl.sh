@@ -126,6 +126,25 @@ log_fail()  { echo -e "${RED}[FAIL]${NC}  $1"; }
 # --- Utilities ---
 check_port() { lsof -ti:"$1" >/dev/null 2>&1; }
 
+generate_gateway_api_password() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex 24
+        return
+    fi
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - <<'EOF'
+import secrets
+print(secrets.token_hex(24))
+EOF
+        return
+    fi
+    if command -v uuidgen >/dev/null 2>&1; then
+        uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-'
+        return
+    fi
+    date +%s | shasum | awk '{print $1}'
+}
+
 stop_port() {
     local port=$1 name=$2
     if lsof -ti:"${port}" >/dev/null 2>&1; then
@@ -297,16 +316,11 @@ do_startup() {
         fi
     fi
 
-    # Prompt for password if not provided
-    GATEWAY_API_PASSWORD=""
+    # Internal password used by goosed child processes when they call back into the
+    # gateway. Generate one automatically unless the caller explicitly provides it.
     if [ -z "${GATEWAY_API_PASSWORD:-}" ]; then
-        echo -n "Enter API password for gateway REST interface: "
-        read -s GATEWAY_API_PASSWORD
-        echo
-        if [ -z "${GATEWAY_API_PASSWORD}" ]; then
-            log_error "Password cannot be empty"
-            return 1
-        fi
+        GATEWAY_API_PASSWORD="$(generate_gateway_api_password)"
+        log_info "Generated random internal gateway API password for child processes"
     fi
 
     log_info "Starting gateway at ${GATEWAY_SCHEME}://${GATEWAY_HOST}:${GATEWAY_PORT}"
