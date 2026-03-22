@@ -44,6 +44,20 @@ interface ScrollFadeState {
     hasBottomFade: boolean
 }
 
+function ThinkingStatusIcon({ isStreaming, isOpen }: { isStreaming: boolean; isOpen: boolean }) {
+    if (isStreaming) {
+        return (
+            <span className="process-thinking-status process-thinking-status-spinning" aria-hidden="true">
+                <span className="process-thinking-spinner-ring" />
+            </span>
+        )
+    }
+
+    return (
+        <span className={`process-thinking-status process-thinking-status-chevron${isOpen ? ' open' : ''}`} aria-hidden="true" />
+    )
+}
+
 function parseTodoContent(content: string) {
     const lines = content.split('\n').map(line => line.trim()).filter(Boolean)
     const tasks: Array<{ done: boolean; text: string }> = []
@@ -248,18 +262,47 @@ function MessageInner({
     const [openState, setOpenState] = useState<Record<string, boolean>>({})
     const [fadeState, setFadeState] = useState<Record<string, ScrollFadeState>>({})
     const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
+    const wasStreamingRef = useRef(isStreaming)
 
     useEffect(() => {
         setOpenState(current => {
             const next = { ...current }
             for (const entry of processEntries) {
                 if ((entry.kind === 'reasoning' || entry.kind === 'thinking') && !(entry.key in next)) {
-                    next[entry.key] = true
+                    next[entry.key] = isStreaming
                 }
             }
             return next
         })
-    }, [processEntries])
+    }, [isStreaming, processEntries])
+
+    useEffect(() => {
+        if (isStreaming) {
+            setOpenState(current => {
+                const next = { ...current }
+                for (const entry of processEntries) {
+                    if (entry.kind !== 'reasoning' && entry.kind !== 'thinking') continue
+                    next[entry.key] = true
+                }
+                return next
+            })
+        }
+    }, [isStreaming, processEntries])
+
+    useEffect(() => {
+        const wasStreaming = wasStreamingRef.current
+        if (wasStreaming && !isStreaming) {
+            setOpenState(current => {
+                const next = { ...current }
+                for (const entry of processEntries) {
+                    if (entry.kind !== 'reasoning' && entry.kind !== 'thinking') continue
+                    next[entry.key] = false
+                }
+                return next
+            })
+        }
+        wasStreamingRef.current = isStreaming
+    }, [isStreaming, processEntries])
 
     useEffect(() => {
         const computeFadeState = (element: HTMLDivElement | null): ScrollFadeState => {
@@ -288,6 +331,7 @@ function MessageInner({
     }, [processEntries, openState])
 
     const toggleEntry = (key: string) => {
+        if (isStreaming) return
         setOpenState(current => ({ ...current, [key]: !current[key] }))
     }
 
@@ -303,6 +347,29 @@ function MessageInner({
             }
         }))
     }
+
+    useEffect(() => {
+        if (!isStreaming) return
+
+        setFadeState(current => {
+            const next = { ...current }
+
+            for (const entry of processEntries) {
+                if ((entry.kind !== 'reasoning' && entry.kind !== 'thinking') || !openState[entry.key]) continue
+
+                const element = contentRefs.current[entry.key]
+                if (!element) continue
+
+                element.scrollTop = element.scrollHeight
+                next[entry.key] = {
+                    hasTopFade: element.scrollTop > 2,
+                    hasBottomFade: false,
+                }
+            }
+
+            return next
+        })
+    }, [isStreaming, openState, processEntries])
 
     const TodoToolCard = ({ toolCall }: { toolCall: ToolCallPair }) => {
         const raw = typeof toolCall.args?.content === 'string' ? toolCall.args.content : ''
@@ -410,9 +477,12 @@ function MessageInner({
                                         <div className="process-step-content">
                                             <button
                                                 type="button"
-                                                className={`process-thinking-header${isOpen ? ' open' : ''}`}
+                                                className={`process-thinking-header${isOpen ? ' open' : ''}${isStreaming ? ' is-streaming' : ''}`}
                                                 onClick={() => toggleEntry(entry.key)}
+                                                disabled={isStreaming}
+                                                aria-expanded={isOpen}
                                             >
+                                                <ThinkingStatusIcon isStreaming={isStreaming} isOpen={isOpen} />
                                                 <span className="process-thinking-label">{entry.label}</span>
                                             </button>
                                             {isOpen && (

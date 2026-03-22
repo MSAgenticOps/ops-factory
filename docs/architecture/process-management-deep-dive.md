@@ -283,7 +283,7 @@ goosed 内部使用 Rust 的 tracing subscriber，所有日志同时写入文件
 
 排空线程持续读取并丢弃管道内容，确保缓冲区不会满。此线程设为 daemon，随 JVM 退出自动结束。
 
-> 详细的排查过程见 [goosed 管道死锁问题排查](best-practice-goosed-pipe-deadlock-debug-postmortem.md)
+> 详细的排查过程见 [goosed 管道死锁问题排查](../operations/goosed-pipe-deadlock-postmortem.md)
 
 ## 4. 请求路由与代理
 

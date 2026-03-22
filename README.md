@@ -51,7 +51,16 @@ Gateway (Node.js :3000)
     +-- Routes: /agents/:id/config -> agent config CRUD
 ```
 
-See [docs/architecture.md](./docs/architecture.md) for the full architecture documentation (in Chinese).
+See [docs/architecture/overview.md](./docs/architecture/overview.md) for the architecture overview and [docs/README.md](./docs/README.md) for the full documentation map.
+
+## Documentation
+
+Use these documents as the main entry points for collaboration:
+
+- [AGENTS.md](./AGENTS.md): short contributor rules and cross-team constraints
+- [docs/README.md](./docs/README.md): documentation map
+- [docs/architecture/overview.md](./docs/architecture/overview.md): system boundaries and module responsibilities
+- [docs/development/review-checklist.md](./docs/development/review-checklist.md): pull request and review checklist
 
 ## Components
 
