@@ -3124,7 +3124,7 @@ textarea {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: width 240ms ease, flex-basis 240ms ease, opacity 240ms ease;
+    transition: opacity 180ms ease;
     position: sticky;
     top: 0;
     opacity: 0;
@@ -3157,7 +3157,7 @@ textarea {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: width 240ms ease, flex-basis 240ms ease, opacity 240ms ease;
+    transition: opacity 180ms ease;
     position: sticky;
     top: 0;
     box-shadow: -8px 0 24px rgba(15, 23, 42, 0.04);
@@ -9376,6 +9376,66 @@ textarea {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.file-preview-transition-loading-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-secondary);
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.file-preview-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 12px;
+}
+
+.file-preview-skeleton-line {
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #edf2f7 0%, #f8fafc 50%, #edf2f7 100%);
+    background-size: 200% 100%;
+    animation: file-preview-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.file-preview-skeleton-line.w-95 { width: 95%; }
+.file-preview-skeleton-line.w-90 { width: 90%; }
+.file-preview-skeleton-line.w-96 { width: 96%; }
+.file-preview-skeleton-line.w-92 { width: 92%; }
+.file-preview-skeleton-line.w-88 { width: 88%; }
+.file-preview-skeleton-line.w-84 { width: 84%; }
+.file-preview-skeleton-line.w-85 { width: 85%; }
+.file-preview-skeleton-line.w-70 { width: 70%; }
+.file-preview-skeleton-line.w-60 { width: 60%; }
+.file-preview-skeleton-line.w-72 { width: 72%; }
+
+.file-preview-loading-shell {
+    padding: 24px 24px 12px;
+    background: var(--color-bg-primary);
+}
+
+.file-preview-skeleton-inline {
+    max-width: 680px;
+}
+
+.file-preview-loading-spinner {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+@keyframes file-preview-skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .knowledge-retrieval-range-row.is-disabled {

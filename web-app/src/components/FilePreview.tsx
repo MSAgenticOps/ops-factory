@@ -179,6 +179,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
     const canCopyContent = !!previewFile?.content
     const canDownload = !!getDownloadUrl()
     const displayType = previewFile ? inferFileType(previewFile) : ''
+    const showLoadingOverlay = isLoading || (previewKind === 'markdown' && previewFile?.content === '')
 
     const content = isOpen && previewFile ? (
                 <>
@@ -256,10 +257,20 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                     </div>
 
                     <div className="file-preview-content">
-                        {isLoading && (
-                            <div className="file-preview-loading">
-                                <div className="loading-spinner" />
-                                <p>Loading file...</p>
+                        {showLoadingOverlay && (
+                            <div className="file-preview-loading-shell" aria-live="polite">
+                                <div className="file-preview-transition-loading-row">
+                                    <div className="loading-spinner file-preview-loading-spinner" />
+                                    <p>Loading document...</p>
+                                </div>
+                                <div className="file-preview-skeleton file-preview-skeleton-inline">
+                                    <div className="file-preview-skeleton-line w-60" />
+                                    <div className="file-preview-skeleton-line w-92" />
+                                    <div className="file-preview-skeleton-line w-84" />
+                                    <div className="file-preview-skeleton-line w-96" />
+                                    <div className="file-preview-skeleton-line w-88" />
+                                    <div className="file-preview-skeleton-line w-72" />
+                                </div>
                             </div>
                         )}
 
@@ -274,7 +285,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                             </div>
                         )}
 
-                        {!isLoading && !error && previewFile && (
+                        {!showLoadingOverlay && !error && previewFile && (
                             <>
                                 {previewKind === 'image' && (
                                     <div className="file-preview-media-wrapper">
@@ -344,7 +355,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                                 )}
 
                                 {/* Markdown: render or show source */}
-                                {previewKind === 'markdown' && !showSource && previewFile.content !== undefined && (
+                                {previewKind === 'markdown' && !showSource && previewFile.content !== undefined && previewFile.content !== '' && (
                                     <div className="file-preview-markdown">
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                             {previewFile.content}

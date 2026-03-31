@@ -34,7 +34,7 @@ interface DirectPreviewRequest {
     name: string
     path: string
     type: string
-    content: string
+    content?: string
     downloadUrl?: string
     previewKind?: PreviewKind
 }
