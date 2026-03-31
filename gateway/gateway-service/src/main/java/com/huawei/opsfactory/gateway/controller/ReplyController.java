@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/ops-gateway/agents/{agentId}")
@@ -49,6 +50,7 @@ public class ReplyController {
     private final HookPipeline hookPipeline;
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
+    private final ConcurrentHashMap<String, Mono<String>> inFlightResumes = new ConcurrentHashMap<>();
 
     public ReplyController(InstanceManager instanceManager,
                            SseRelayService sseRelayService,
@@ -158,24 +160,37 @@ public class ReplyController {
             log.debug("[REPLY] session {} already resumed or null, skipping resume", sessionId);
             return Mono.empty();
         }
-        long resumeStart = System.currentTimeMillis();
-        log.info("[REPLY] session {} not yet resumed on instance {}:{} (port={}), calling /agent/resume",
-                sessionId, instance.getAgentId(), instance.getUserId(), instance.getPort());
         String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";
-        return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120, instance.getSecretKey())
-                .doOnNext(r -> {
-                    long resumeMs = System.currentTimeMillis() - resumeStart;
-                    instance.markSessionResumed(sessionId);
-                    log.info("[REPLY] session {} resumed in {}ms on instance {}:{}", sessionId,
-                            resumeMs, instance.getAgentId(), instance.getUserId());
-                })
+        return resumeSession(instance, sessionId, resumeBody, "[REPLY]")
                 .onErrorResume(e -> {
-                    long resumeMs = System.currentTimeMillis() - resumeStart;
-                    log.warn("[REPLY] session {} resume failed after {}ms on instance {}:{}: {} (will retry next request)",
-                            sessionId, resumeMs, instance.getAgentId(), instance.getUserId(), e.getMessage());
+                    log.warn("[REPLY] session {} resume failed on instance {}:{}: {} (will retry next request)",
+                            sessionId, instance.getAgentId(), instance.getUserId(), e.getMessage());
                     return Mono.empty();
                 })
                 .then();
+    }
+
+    private Mono<String> resumeSession(ManagedInstance instance, String sessionId, String body, String logPrefix) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120, instance.getSecretKey());
+        }
+
+        String dedupeKey = instance.getKey() + ":" + sessionId;
+        return inFlightResumes.computeIfAbsent(dedupeKey, ignored -> {
+            long resumeStart = System.currentTimeMillis();
+            log.info("{} session {} not yet resumed on instance {}:{} (port={}), calling /agent/resume",
+                    logPrefix, sessionId, instance.getAgentId(), instance.getUserId(), instance.getPort());
+            return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120, instance.getSecretKey())
+                    .doOnNext(r -> {
+                        long resumeMs = System.currentTimeMillis() - resumeStart;
+                        instance.markSessionResumed(sessionId);
+                        log.info("{} session {} resumed in {}ms on instance {}:{}",
+                                logPrefix, sessionId, resumeMs, instance.getAgentId(), instance.getUserId());
+                    })
+                    .doOnSubscribe(sub -> log.debug("{} joining in-flight resume key={}", logPrefix, dedupeKey))
+                    .doFinally(signalType -> inFlightResumes.remove(dedupeKey))
+                    .cache();
+        });
     }
 
     @PostMapping(value = {"/resume", "/agent/resume"}, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -183,9 +198,9 @@ public class ReplyController {
                                @RequestBody String body,
                                ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
+        String sessionId = JsonUtil.extractSessionId(body);
         return instanceManager.getOrSpawn(agentId, userId)
-                .flatMap(instance -> goosedProxy.fetchJson(
-                        instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120, instance.getSecretKey()))
+                .flatMap(instance -> resumeSession(instance, sessionId, body, "[RESUME]"))
                 .onErrorResume(WebClientResponseException.class, e -> {
                     if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
                         return Mono.error(new ResponseStatusException(

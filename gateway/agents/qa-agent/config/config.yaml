@@ -107,9 +107,9 @@ extensions:
     type: stdio
     name: knowledge-service
     description: Knowledge-service MCP for agentic RAG over OpsFactory knowledge chunks
-    cmd: npx
+    cmd: node
     args:
-    - tsx
+    - config/mcp/knowledge-service/node_modules/tsx/dist/cli.mjs
     - config/mcp/knowledge-service/src/index.ts
     envs: {}
     env_keys:
