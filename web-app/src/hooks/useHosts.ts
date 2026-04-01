@@ -98,7 +98,7 @@ export function useHosts(tags?: string[]) {
         }
     }, [userId, fetchHosts, fetchTags])
 
-    const testConnection = useCallback(async (id: string): Promise<HostTestResult> => {
+    const testConnection = useCallback(async (id: string): Promise<HostTestResult | null> => {
         try {
             const res = await fetch(`${GATEWAY_URL}/hosts/${id}/test`, {
                 method: 'POST',

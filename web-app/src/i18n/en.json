@@ -40,7 +40,6 @@
     "files": "Files",
     "scheduler": "Scheduler",
     "monitoring": "Monitoring",
-    "businessIntelligence": "Business Intelligence",
     "remoteDiagnosis": "Remote Diagnosis",
     "faultDiagnosis": "Remote Diagnosis",
     "hosts": "Hosts",
@@ -55,12 +54,6 @@
     "subtitle": "Enter your name to get started",
     "placeholder": "Your name",
     "submit": "Enter"
-  },
-  "businessIntelligence": {
-    "title": "Business Intelligence",
-    "subtitle": "An entry point for business analysis and insights. This area is reserved for upcoming capabilities.",
-    "placeholderTitle": "Business Intelligence Is Coming Soon",
-    "placeholderDescription": "This page will host business analysis, insight, and decision-support capabilities. The entry is available now as a placeholder."
   },
   "chat": {
     "loadingSession": "Loading conversation...",
@@ -635,7 +628,6 @@
     "lastRun": "Last run",
     "never": "Never",
     "source": "Source",
-    "summaryUnavailable": "No task summary is available yet.",
     "resume": "Resume",
     "pause": "Pause",
     "runNow": "Run now",

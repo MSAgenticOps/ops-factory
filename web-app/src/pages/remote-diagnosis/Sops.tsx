@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSops } from '../../hooks/useSops'
+import { useHosts } from '../../hooks/useHosts'
 import { useCommandWhitelist } from '../../hooks/useCommandWhitelist'
 import { useToast } from '../../contexts/ToastContext'
 import type { Sop, SopNode, SopCreateRequest } from '../../types/sop'
@@ -16,7 +17,6 @@ function createEmptyNode(index: number): SopNode {
         type: 'start',
         hostTags: [],
         command: '',
-        commandVariables: {},
         variables: [],
         outputFormat: '',
         analysisInstruction: '',
@@ -32,8 +32,8 @@ function VariableEditor({
     variables,
     onChange,
 }: {
-    variables: NonNullable<SopNode['variables']>
-    onChange: (v: NonNullable<SopNode['variables']>) => void
+    variables: SopNode['variables']
+    onChange: (v: SopNode['variables']) => void
 }) {
     const { t } = useTranslation()
 
@@ -43,7 +43,7 @@ function VariableEditor({
 
     const removeVar = useCallback(
         (index: number) => {
-            onChange(variables.filter((_, i: number) => i !== index))
+            onChange(variables.filter((_, i) => i !== index))
         },
         [variables, onChange],
     )
@@ -67,7 +67,7 @@ function VariableEditor({
                     + {t('remoteDiagnosis.sops.addNode')}
                 </button>
             </div>
-            {variables.map((v, i: number) => (
+            {variables.map((v, i) => (
                 <div key={i} style={{ display: 'flex', gap: 'var(--spacing-2)', marginBottom: 'var(--spacing-2)', alignItems: 'center' }}>
                     <input
                         className="form-input"
@@ -235,10 +235,12 @@ function TransitionEditor({
 
 function SopFormModal({
     sop,
+    allHostTags,
     onClose,
     onSave,
 }: {
     sop: Sop | null
+    allHostTags: string[]
     onClose: () => void
     onSave: (data: SopCreateRequest) => Promise<void>
 }) {
@@ -425,7 +427,7 @@ function SopFormModal({
                                         placeholder="tag1, tag2"
                                         value={node.hostTags?.join(', ') ?? ''}
                                         onChange={e => {
-                                            const tags = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean)
+                                            const tags = e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                                             handleNodeChange(idx, 'hostTags', tags)
                                         }}
                                     />
@@ -659,6 +661,7 @@ function SopExpandableRow({ sop, onEdit, onDelete }: {
 export function SopsTab() {
     const { t } = useTranslation()
     const { sops, isLoading, error, fetchSops, createSop, updateSop, deleteSop } = useSops()
+    const { hosts } = useHosts()
     const { showToast } = useToast()
 
     const [editingSop, setEditingSop] = useState<Sop | null>(null)
@@ -668,6 +671,12 @@ export function SopsTab() {
     useEffect(() => {
         fetchSops()
     }, [fetchSops])
+
+    const allHostTags = useMemo(() => {
+        const set = new Set<string>()
+        hosts.forEach(h => h.tags?.forEach(tag => set.add(tag)))
+        return Array.from(set).sort()
+    }, [hosts])
 
     const handleSaveSop = useCallback(
         async (data: SopCreateRequest) => {
@@ -767,7 +776,7 @@ export function SopsTab() {
 
             {error && (
                 <div className="conn-banner conn-banner-error">
-                    {error}
+                    {typeof error === 'string' ? error : error.message}
                 </div>
             )}
 
@@ -815,6 +824,7 @@ export function SopsTab() {
             {(showAddModal || editingSop) && (
                 <SopFormModal
                     sop={editingSop}
+                    allHostTags={allHostTags}
                     onClose={() => {
                         setShowAddModal(false)
                         setEditingSop(null)
