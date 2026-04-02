@@ -4,7 +4,7 @@ set -euo pipefail
 # ==============================================================================
 # Java Gateway service control (includes goosed agent management)
 #
-# Usage: ./ctl.sh <action> [--background]
+# Usage: ./ctl.sh <action> [--foreground|--background]
 #   action: startup | shutdown | status | restart
 # ==============================================================================
 
@@ -495,7 +495,7 @@ do_restart() {
 # --- Main ---
 usage() {
     cat <<EOF
-Usage: $(basename "$0") <action> [--background]
+Usage: $(basename "$0") <action> [--foreground|--background]
 
 Actions:
   startup     Build and start Java gateway (goosed agents spawn on demand)
@@ -510,10 +510,11 @@ ACTION="${1:-}"
 [ -z "${ACTION}" ] && usage
 shift
 
-MODE="foreground"
+MODE="background"
 for arg in "$@"; do
     case "${arg}" in
         --background) MODE="background" ;;
+        --foreground) MODE="foreground" ;;
     esac
 done
 

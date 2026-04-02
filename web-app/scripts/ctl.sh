@@ -132,7 +132,7 @@ do_restart() {
 # --- Main ---
 usage() {
     cat <<EOF
-Usage: $(basename "$0") <action> [--background]
+Usage: $(basename "$0") <action> [--foreground|--background]
 
 Actions:
   startup     Start webapp (Vite dev server)
@@ -147,10 +147,11 @@ ACTION="${1:-}"
 [ -z "${ACTION}" ] && usage
 shift
 
-MODE="foreground"
+MODE="background"
 for arg in "$@"; do
     case "${arg}" in
         --background) MODE="background" ;;
+        --foreground) MODE="foreground" ;;
     esac
 done
 

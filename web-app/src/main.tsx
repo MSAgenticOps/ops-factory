@@ -10,41 +10,51 @@ import { initializeRuntimeConfig } from './config/runtime'
 import './i18n'
 import './App.css'
 
-function renderStartupError(error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown startup error'
-    ReactDOM.createRoot(document.getElementById('root')!).render(
-        <React.StrictMode>
-            <div style={{ padding: '24px', fontFamily: 'monospace', lineHeight: 1.5 }}>
-                <h1>Web App startup failed</h1>
-                <p>{message}</p>
-                <p>Please verify /config.json on the deployment host.</p>
-            </div>
-        </React.StrictMode>,
-    )
-}
+const root = ReactDOM.createRoot(document.getElementById('root')!)
 
 async function bootstrap() {
     try {
         await initializeRuntimeConfig()
-        ReactDOM.createRoot(document.getElementById('root')!).render(
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('Failed to initialize runtime config:', error)
+        root.render(
             <React.StrictMode>
-                <ErrorBoundary>
-                    <HashRouter>
-                        <ToastProvider>
-                            <UserProvider>
-                                <GoosedProvider>
-                                    <App />
-                                </GoosedProvider>
-                            </UserProvider>
-                        </ToastProvider>
-                    </HashRouter>
-                </ErrorBoundary>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '100vh',
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: 'var(--color-text-primary, #32353b)',
+                }}
+                >
+                    <div>
+                        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Failed to initialize app</h1>
+                        <p style={{ color: 'var(--color-text-secondary, #606c7a)' }}>{message}</p>
+                    </div>
+                </div>
             </React.StrictMode>,
         )
-    } catch (error) {
-        console.error('Failed to initialize runtime config', error)
-        renderStartupError(error)
+        return
     }
+
+    root.render(
+        <React.StrictMode>
+            <ErrorBoundary>
+                <HashRouter>
+                    <ToastProvider>
+                        <UserProvider>
+                            <GoosedProvider>
+                                <App />
+                            </GoosedProvider>
+                        </UserProvider>
+                    </ToastProvider>
+                </HashRouter>
+            </ErrorBoundary>
+        </React.StrictMode>,
+    )
 }
 
 void bootstrap()

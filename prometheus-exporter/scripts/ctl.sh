@@ -137,7 +137,7 @@ do_restart() {
 
 usage() {
     cat <<EOF_USAGE
-Usage: $(basename "$0") <action> [--background]
+Usage: $(basename "$0") <action> [--foreground|--background]
 
 Actions:
   startup     Start Prometheus Exporter
@@ -152,10 +152,11 @@ ACTION="${1:-}"
 [ -z "${ACTION}" ] && usage
 shift
 
-MODE="foreground"
+MODE="background"
 for arg in "$@"; do
     case "${arg}" in
         --background) MODE="background" ;;
+        --foreground) MODE="foreground" ;;
     esac
 done
 

@@ -1,0 +1,15 @@
+server:
+  port: 8093
+
+spring:
+  application:
+    name: business-intelligence
+  config:
+    import: optional:file:./config.yaml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+

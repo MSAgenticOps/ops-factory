@@ -10,8 +10,8 @@ yaml_val() {
     node -e "const y=require('yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.parse(f);const keys='${key}'.split('.');let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" 2>/dev/null || true
 }
 
-KNOWLEDGE_PORT="${KNOWLEDGE_PORT:-$(yaml_val server.port)}"
-KNOWLEDGE_PORT="${KNOWLEDGE_PORT:-8092}"
+BI_PORT="${BI_PORT:-$(yaml_val server.port)}"
+BI_PORT="${BI_PORT:-8093}"
 MVN="${MVN:-mvn}"
 
 if ! command -v "${MVN}" &>/dev/null; then
@@ -67,17 +67,17 @@ start_detached() {
 }
 
 build_service() {
-    local jar="${SERVICE_DIR}/target/knowledge-service.jar"
+    local jar="${SERVICE_DIR}/target/business-intelligence.jar"
     if [ -f "${jar}" ]; then
         local newest_src
         newest_src="$(find "${SERVICE_DIR}/src" -type f \( -name '*.java' -o -name '*.yaml' -o -name '*.yml' \) -newer "${jar}" 2>/dev/null | head -1)"
-        if [ -z "${newest_src}" ]; then
+        if [ -z "${newest_src}" ] && [ ! "${SERVICE_DIR}/config.yaml" -nt "${jar}" ]; then
             log_info "JAR is up-to-date, skipping build"
             return 0
         fi
     fi
 
-    log_info "Building knowledge-service..."
+    log_info "Building business-intelligence..."
     cd "${SERVICE_DIR}"
     "${MVN}" package -DskipTests -q || {
         log_error "Maven build failed"
@@ -89,43 +89,43 @@ SERVICE_PID=""
 
 do_startup() {
     local mode="${1:-foreground}"
-    stop_port "${KNOWLEDGE_PORT}" "knowledge-service"
+    stop_port "${BI_PORT}" "business-intelligence"
 
     build_service
-    local jar="${SERVICE_DIR}/target/knowledge-service.jar"
+    local jar="${SERVICE_DIR}/target/business-intelligence.jar"
     [ -f "${jar}" ] || { log_error "JAR not found: ${jar}"; return 1; }
 
-    log_info "Starting knowledge-service at http://127.0.0.1:${KNOWLEDGE_PORT}"
+    log_info "Starting business-intelligence at http://127.0.0.1:${BI_PORT}"
     cd "${SERVICE_DIR}"
 
     if [ "${mode}" = "background" ]; then
-        local log_file="${LOG_DIR}/knowledge-service.log"
-        SERVICE_PID="$(start_detached "${log_file}" env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java -Dserver.port="${KNOWLEDGE_PORT}" -jar "${jar}")"
+        local log_file="${LOG_DIR}/business-intelligence.log"
+        SERVICE_PID="$(start_detached "${log_file}" env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java -Dserver.port="${BI_PORT}" -jar "${jar}")"
         if ! kill -0 "${SERVICE_PID}" 2>/dev/null; then
-            log_error "Failed to start knowledge-service"
+            log_error "Failed to start business-intelligence"
             return 1
         fi
-        wait_http_ok "knowledge-service" "http://127.0.0.1:${KNOWLEDGE_PORT}/actuator/health" 40 1
-        log_info "knowledge-service started (PID: ${SERVICE_PID}, log: ${log_file})"
+        wait_http_ok "business-intelligence" "http://127.0.0.1:${BI_PORT}/actuator/health" 40 1
+        log_info "business-intelligence started (PID: ${SERVICE_PID}, log: ${log_file})"
     else
-        exec env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java -Dserver.port="${KNOWLEDGE_PORT}" -jar "${jar}"
+        exec env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java -Dserver.port="${BI_PORT}" -jar "${jar}"
     fi
 }
 
 do_shutdown() {
-    stop_port "${KNOWLEDGE_PORT}" "knowledge-service"
+    stop_port "${BI_PORT}" "business-intelligence"
 }
 
 do_status() {
-    if check_port "${KNOWLEDGE_PORT}"; then
-        if curl -fsS "http://127.0.0.1:${KNOWLEDGE_PORT}/actuator/health" >/dev/null 2>&1; then
-            log_ok "knowledge-service running (http://localhost:${KNOWLEDGE_PORT})"
+    if check_port "${BI_PORT}"; then
+        if curl -fsS "http://127.0.0.1:${BI_PORT}/actuator/health" >/dev/null 2>&1; then
+            log_ok "business-intelligence running (http://localhost:${BI_PORT})"
         else
-            log_warn "knowledge-service port open but health check failed"
+            log_warn "business-intelligence port open but health check failed"
             return 1
         fi
     else
-        log_fail "knowledge-service not running on port ${KNOWLEDGE_PORT}"
+        log_fail "business-intelligence not running on port ${BI_PORT}"
         return 1
     fi
 }
@@ -140,10 +140,10 @@ usage() {
 Usage: $(basename "$0") <action> [--foreground|--background]
 
 Actions:
-  startup     Start knowledge-service
-  shutdown    Stop knowledge-service
-  status      Check knowledge-service status
-  restart     Restart knowledge-service
+  startup     Start business-intelligence
+  shutdown    Stop business-intelligence
+  status      Check business-intelligence status
+  restart     Restart business-intelligence
 EOF_USAGE
     exit 1
 }

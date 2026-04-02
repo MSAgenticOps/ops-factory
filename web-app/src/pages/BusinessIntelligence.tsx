@@ -122,7 +122,7 @@ function ExecutiveSummaryPanel({ summary }: { summary: ExecutiveSummary; cards: 
             </div>
 
             <div className="business-intelligence-dashboard-grid">
-                <section className="mon-chart-block mon-chart-card business-intelligence-dashboard-panel business-intelligence-dashboard-panel-primary">
+                <section className="mon-kpi-card business-intelligence-dashboard-panel business-intelligence-dashboard-panel-primary">
                     <div className="mon-chart-card-head business-intelligence-dashboard-panel-header">
                         <div className="mon-chart-card-meta">
                             <h3>概览结论</h3>
@@ -133,7 +133,7 @@ function ExecutiveSummaryPanel({ summary }: { summary: ExecutiveSummary; cards: 
                 </section>
 
                 <div className="business-intelligence-dashboard-side">
-                    <section className="mon-chart-block mon-chart-card business-intelligence-dashboard-panel">
+                    <section className="mon-kpi-card business-intelligence-dashboard-panel">
                         <div className="mon-chart-card-head business-intelligence-dashboard-panel-header">
                             <div className="mon-chart-card-meta">
                                 <h3>核心证据</h3>
@@ -143,7 +143,7 @@ function ExecutiveSummaryPanel({ summary }: { summary: ExecutiveSummary; cards: 
                         <div className="business-intelligence-dashboard-panel-body" />
                     </section>
 
-                    <section className="mon-chart-block mon-chart-card business-intelligence-dashboard-panel">
+                    <section className="mon-kpi-card business-intelligence-dashboard-panel">
                         <div className="mon-chart-card-head business-intelligence-dashboard-panel-header">
                             <div className="mon-chart-card-meta">
                                 <h3>重点风险</h3>
@@ -155,7 +155,7 @@ function ExecutiveSummaryPanel({ summary }: { summary: ExecutiveSummary; cards: 
                 </div>
             </div>
 
-            <section className="mon-chart-block mon-chart-card business-intelligence-dashboard-panel business-intelligence-dashboard-panel-wide">
+            <section className="mon-kpi-card business-intelligence-dashboard-panel business-intelligence-dashboard-panel-wide">
                 <div className="mon-chart-card-head business-intelligence-dashboard-panel-header">
                     <div className="mon-chart-card-meta">
                         <h3>治理优先级</h3>
@@ -189,9 +189,23 @@ export default function BusinessIntelligence() {
             const response = await fetch(`${BUSINESS_INTELLIGENCE_SERVICE_URL}/${forceRefresh ? 'refresh' : 'overview'}`, {
                 method: forceRefresh ? 'POST' : 'GET',
             })
+
+            const contentType = response.headers.get('content-type') || ''
+            const isJson = contentType.includes('application/json')
+
             if (!response.ok) {
-                throw new Error(`${response.status} ${response.statusText}`)
+                if (!isJson) {
+                    throw new Error(`Business intelligence service is unavailable or misconfigured (${response.status} ${response.statusText}).`)
+                }
+
+                const errorPayload = await response.json().catch(() => null) as { message?: string } | null
+                throw new Error(errorPayload?.message || `${response.status} ${response.statusText}`)
             }
+
+            if (!isJson) {
+                throw new Error('Business intelligence endpoint returned HTML instead of JSON. Check businessIntelligenceServiceUrl or dev proxy settings.')
+            }
+
             const data = await response.json() as OverviewResponse
             setOverview(data)
             setActiveTabId(current => (data.tabs.length > 0 && !data.tabs.some(tab => tab.id === current) ? data.tabs[0].id : current))
