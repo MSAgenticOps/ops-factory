@@ -55,6 +55,22 @@
     "placeholder": "你的名字",
     "submit": "进入"
   },
+  "businessIntelligence": {
+    "title": "业务智能",
+    "subtitle": "面向业务分析与运营洞察的工作台，当前基于固定数据源提供分析结果。",
+    "refresh": "刷新数据",
+    "refreshing": "刷新中...",
+    "refreshSuccess": "业务智能数据已刷新",
+    "refreshFailed": "刷新失败：{{error}}",
+    "download": "下载 Excel",
+    "lastUpdated": "最近更新时间",
+    "reportingPeriod": "统计周期",
+    "loadingDescription": "首次进入时会计算并缓存分析结果，请稍候。",
+    "emptyTitle": "暂无业务智能数据",
+    "emptyDescription": "请确认服务已启动且 data 目录中存在可用的 Excel 数据文件。",
+    "noChartData": "暂无图表数据",
+    "noTableData": "暂无表格数据"
+  },
   "chat": {
     "loadingSession": "正在加载对话...",
     "failedToLoadSession": "加载会话失败",

@@ -14,7 +14,7 @@ public class GatewayProperties {
     private static final Logger log = LogManager.getLogger(GatewayProperties.class);
 
     private String secretKey = "test";
-    private String corsOrigin = "http://127.0.0.1:5173";
+    private String corsOrigin = "*";
     private String goosedBin = "goosed";
     private boolean gooseTls = true;
 

@@ -19,6 +19,7 @@ Use this checklist for PR review, especially when multiple teams or AI contribut
 
 ## Configuration And Ops
 - New config keys are added to the correct config example file.
+- The config example file uses the same key path and nesting shape that the code actually consumes.
 - Startup or runtime behavior changes are reflected in scripts and docs where needed.
 - Optional services remain optional unless the design intentionally changes that contract.
 

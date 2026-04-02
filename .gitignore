@@ -64,6 +64,15 @@ knowledge-service/config.yaml
 knowledge-service/data/
 knowledge-service/data/**
 knowledge-service/logs/
+
+# Business intelligence runtime / local assets
+business-intelligence/config.yaml
+business-intelligence/data/
+business-intelligence/data/**
+business-intelligence/scripts/
+business-intelligence/output/
+business-intelligence/target/
+
 # Agents runtime artifacts
 gateway/agents/*/artifacts/
 gateway/agents/*/state/logs/

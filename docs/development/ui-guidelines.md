@@ -19,6 +19,7 @@ Choose the closest existing pattern before designing a new one.
 - Keep i18n support in mind when introducing user-facing text.
 - Errors should use the established error-handling and toast patterns rather than bespoke banners per page.
 - Responsive behavior is required for any new top-level page or major workflow.
+- All charts and data visualizations must use ECharts. Do not hand-roll charts with SVG, CSS bars, canvas, or ad hoc DOM structures unless the work is not a chart or ECharts cannot satisfy a reviewed requirement.
 - Before adding a new class family, check whether the behavior can be expressed by extending an existing shared component, utility class, or variant.
 - Prefer shared primitives for cards, pills/tags, banners, empty states, split layouts, and detail panels. Feature-specific classes should only describe domain-specific content, not restate common card chrome.
 - New controls should preserve the existing button hierarchy, form spacing, border treatment, and selection states.

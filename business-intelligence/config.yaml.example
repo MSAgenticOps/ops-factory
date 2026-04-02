@@ -1,0 +1,7 @@
+business-intelligence:
+  # Comma-delimited origin patterns for browser access.
+  corsOrigin: "*"
+  # Base directory for source Excel files.
+  baseDir: "./data"
+  # Cache aggregated snapshot data in memory between requests.
+  cacheEnabled: true

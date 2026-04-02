@@ -55,6 +55,22 @@
     "placeholder": "Your name",
     "submit": "Enter"
   },
+  "businessIntelligence": {
+    "title": "Business Intelligence",
+    "subtitle": "A workbench for business analysis and operational insights based on fixed data sources.",
+    "refresh": "Refresh Data",
+    "refreshing": "Refreshing...",
+    "refreshSuccess": "Business intelligence data refreshed.",
+    "refreshFailed": "Refresh failed: {{error}}",
+    "download": "Download Excel",
+    "lastUpdated": "Last updated",
+    "reportingPeriod": "Reporting period",
+    "loadingDescription": "The first load computes and caches the analysis result. Please wait.",
+    "emptyTitle": "No business intelligence data",
+    "emptyDescription": "Make sure the service is running and the data directory contains valid Excel files.",
+    "noChartData": "No chart data yet",
+    "noTableData": "No table data yet"
+  },
   "chat": {
     "loadingSession": "Loading conversation...",
     "failedToLoadSession": "Failed to load session",

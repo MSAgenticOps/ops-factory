@@ -12,6 +12,7 @@ knowledge:
       min-idle: 1
 
 ops-knowledge:
+  corsOrigin: "*"
   ingest:
     max-file-size-mb: 100
     allowed-content-types:

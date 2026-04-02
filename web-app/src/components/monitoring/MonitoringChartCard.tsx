@@ -2,6 +2,7 @@ import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 
 interface MonitoringChartCardProps {
+    className?: string
     title: string
     subtitle?: string
     summary?: string
@@ -15,6 +16,7 @@ interface MonitoringChartCardProps {
 }
 
 export default function MonitoringChartCard({
+    className,
     title,
     subtitle,
     summary,
@@ -27,7 +29,7 @@ export default function MonitoringChartCard({
     loadingText,
 }: MonitoringChartCardProps) {
     return (
-        <div className="mon-chart-block mon-chart-card">
+        <div className={`mon-chart-block mon-chart-card ${className ?? ''}`.trim()}>
             <div className="mon-chart-card-head">
                 <div className="mon-chart-card-meta">
                     <span className="mon-chart-title">{title}</span>
