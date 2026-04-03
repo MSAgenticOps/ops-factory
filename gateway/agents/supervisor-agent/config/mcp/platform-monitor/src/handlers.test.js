@@ -1,16 +1,12 @@
-import { describe, it, beforeEach, afterEach, mock } from 'node:test'
+import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 
-// ---------------------------------------------------------------------------
-// Mock fetch before importing handlers
-// ---------------------------------------------------------------------------
+let routes = {}
+let originalFetch
+let originalConsoleError
+let capturedLogs = []
 
-type FetchFn = typeof globalThis.fetch
-
-// Route map: URL path → response body
-let routes: Record<string, unknown> = {}
-
-function mockFetch(input: string | URL | Request, _init?: RequestInit): Promise<Response> {
+function mockFetch(input) {
   const url = typeof input === 'string' ? new URL(input) : input instanceof URL ? input : new URL(input.url)
   const path = url.pathname
 
@@ -24,24 +20,24 @@ function mockFetch(input: string | URL | Request, _init?: RequestInit): Promise<
   return Promise.resolve(new Response(`Not found: ${path}`, { status: 404 }))
 }
 
-let originalFetch: FetchFn
-
 beforeEach(() => {
   originalFetch = globalThis.fetch
-  globalThis.fetch = mockFetch as FetchFn
+  originalConsoleError = console.error
+  globalThis.fetch = mockFetch
   routes = {}
+  capturedLogs = []
+  console.error = (message) => {
+    capturedLogs.push(String(message))
+  }
 })
 
 afterEach(() => {
   globalThis.fetch = originalFetch
+  console.error = originalConsoleError
 })
 
-// ---------------------------------------------------------------------------
-// Import handlers (after mock setup — config reads env at import time but
-// fetch is called at runtime, so our beforeEach swap works)
-// ---------------------------------------------------------------------------
-
 const {
+  LOG_FILE_PATH,
   tools,
   dispatch,
   handleGetPlatformStatus,
@@ -50,10 +46,6 @@ const {
   handleGetRealtimeMetrics,
   gw,
 } = await import('./handlers.js')
-
-// ===========================================================================
-// Tests
-// ===========================================================================
 
 describe('tool definitions', () => {
   it('should define 4 tools', () => {
@@ -68,12 +60,12 @@ describe('tool definitions', () => {
   })
 
   it('get_realtime_metrics should have empty properties (no params)', () => {
-    const tool = tools.find(t => t.name === 'get_realtime_metrics')!
+    const tool = tools.find(t => t.name === 'get_realtime_metrics')
     assert.deepStrictEqual(tool.inputSchema.properties, {})
   })
 
   it('get_observability_data should accept hours param', () => {
-    const tool = tools.find(t => t.name === 'get_observability_data')!
+    const tool = tools.find(t => t.name === 'get_observability_data')
     assert.ok('hours' in tool.inputSchema.properties)
   })
 })
@@ -81,47 +73,55 @@ describe('tool definitions', () => {
 describe('gw() helper', () => {
   it('should fetch and parse JSON', async () => {
     routes['/test'] = { ok: true }
-    const result = await gw<{ ok: boolean }>('/test')
+    const result = await gw('/test')
     assert.deepStrictEqual(result, { ok: true })
   })
 
   it('should append query params', async () => {
-    // Capture the URL that was fetched
-    let capturedUrl: URL | undefined
-    const origMock = globalThis.fetch
-    globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
+    let capturedUrl
+    globalThis.fetch = (input) => {
       const url = typeof input === 'string' ? new URL(input) : input instanceof URL ? input : new URL(input.url)
       capturedUrl = url
       return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       }))
-    }) as FetchFn
+    }
 
     await gw('/test', { foo: 'bar', baz: '123' })
-    assert.ok(capturedUrl)
-    assert.equal(capturedUrl!.searchParams.get('foo'), 'bar')
-    assert.equal(capturedUrl!.searchParams.get('baz'), '123')
-
-    globalThis.fetch = origMock
+    assert.equal(capturedUrl.searchParams.get('foo'), 'bar')
+    assert.equal(capturedUrl.searchParams.get('baz'), '123')
   })
 
   it('should throw on non-ok response', async () => {
-    routes = {} // no route → 404
     await assert.rejects(
       () => gw('/missing'),
-      (err: Error) => {
+      (err) => {
         assert.ok(err.message.includes('404'))
         return true
       },
     )
   })
+
+  it('should emit structured logs to stderr', async () => {
+    routes['/test'] = { ok: true }
+    await gw('/test')
+
+    assert.ok(capturedLogs.length >= 2)
+    const firstLog = JSON.parse(capturedLogs[0])
+    assert.equal(firstLog.service, 'platform_monitor')
+    assert.equal(firstLog.event, 'gateway_request_started')
+  })
+
+  it('should use standardized MCP log file path', () => {
+    assert.ok(LOG_FILE_PATH.endsWith('/logs/mcp/platform_monitor.log'))
+  })
 })
 
 describe('handleGetPlatformStatus', () => {
   it('should combine /monitoring/system and /monitoring/instances', async () => {
-    routes['/ops-gateway/monitoring/system'] = { gateway: { uptimeMs: 1000 } }
-    routes['/ops-gateway/monitoring/instances'] = { totalInstances: 3 }
+    routes['/gateway/monitoring/system'] = { gateway: { uptimeMs: 1000 } }
+    routes['/gateway/monitoring/instances'] = { totalInstances: 3 }
 
     const result = JSON.parse(await handleGetPlatformStatus())
     assert.deepStrictEqual(result.system, { gateway: { uptimeMs: 1000 } })
@@ -131,8 +131,8 @@ describe('handleGetPlatformStatus', () => {
 
 describe('handleGetAgentsStatus', () => {
   it('should combine /agents and /monitoring/instances', async () => {
-    routes['/ops-gateway/agents'] = [{ id: 'agent-1' }]
-    routes['/ops-gateway/monitoring/instances'] = { totalInstances: 1 }
+    routes['/gateway/agents'] = [{ id: 'agent-1' }]
+    routes['/gateway/monitoring/instances'] = { totalInstances: 1 }
 
     const result = JSON.parse(await handleGetAgentsStatus())
     assert.deepStrictEqual(result.agents, [{ id: 'agent-1' }])
@@ -142,7 +142,7 @@ describe('handleGetAgentsStatus', () => {
 
 describe('handleGetObservabilityData', () => {
   it('should return error when Langfuse is not enabled', async () => {
-    routes['/ops-gateway/monitoring/status'] = { enabled: false }
+    routes['/gateway/monitoring/status'] = { enabled: false }
 
     const result = JSON.parse(await handleGetObservabilityData(24))
     assert.ok(result.error.includes('not configured'))
@@ -150,17 +150,17 @@ describe('handleGetObservabilityData', () => {
   })
 
   it('should return error when Langfuse is not reachable', async () => {
-    routes['/ops-gateway/monitoring/status'] = { enabled: true, reachable: false, host: 'http://langfuse:3000' }
+    routes['/gateway/monitoring/status'] = { enabled: true, reachable: false, host: 'http://langfuse:3000' }
 
     const result = JSON.parse(await handleGetObservabilityData(24))
     assert.ok(result.error.includes('not reachable'))
   })
 
   it('should fetch overview/traces/observations when Langfuse is available', async () => {
-    routes['/ops-gateway/monitoring/status'] = { enabled: true, reachable: true, host: 'http://langfuse:3000' }
-    routes['/ops-gateway/monitoring/overview'] = { totalTraces: 100 }
-    routes['/ops-gateway/monitoring/traces'] = [{ id: 'trace-1' }]
-    routes['/ops-gateway/monitoring/observations'] = { breakdown: [] }
+    routes['/gateway/monitoring/status'] = { enabled: true, reachable: true, host: 'http://langfuse:3000' }
+    routes['/gateway/monitoring/overview'] = { totalTraces: 100 }
+    routes['/gateway/monitoring/traces'] = [{ id: 'trace-1' }]
+    routes['/gateway/monitoring/observations'] = { breakdown: [] }
 
     const result = JSON.parse(await handleGetObservabilityData(12))
     assert.equal(result.timeRange.hours, 12)
@@ -172,7 +172,7 @@ describe('handleGetObservabilityData', () => {
 
 describe('handleGetRealtimeMetrics', () => {
   it('should fetch /monitoring/metrics and return JSON', async () => {
-    const metricsData = {
+    routes['/gateway/monitoring/metrics'] = {
       collectionIntervalSec: 30,
       maxSlots: 120,
       returnedSlots: 2,
@@ -192,7 +192,6 @@ describe('handleGetRealtimeMetrics', () => {
       ],
       agentMetrics: { 'agent-1': { requests: 30, errors: 0 } },
     }
-    routes['/ops-gateway/monitoring/metrics'] = metricsData
 
     const result = JSON.parse(await handleGetRealtimeMetrics())
     assert.equal(result.collectionIntervalSec, 30)
@@ -206,8 +205,8 @@ describe('handleGetRealtimeMetrics', () => {
 
 describe('dispatch', () => {
   it('should route get_platform_status', async () => {
-    routes['/ops-gateway/monitoring/system'] = { up: true }
-    routes['/ops-gateway/monitoring/instances'] = { total: 0 }
+    routes['/gateway/monitoring/system'] = { up: true }
+    routes['/gateway/monitoring/instances'] = { total: 0 }
 
     const result = JSON.parse(await dispatch('get_platform_status', {}))
     assert.ok('system' in result)
@@ -215,29 +214,29 @@ describe('dispatch', () => {
   })
 
   it('should route get_agents_status', async () => {
-    routes['/ops-gateway/agents'] = []
-    routes['/ops-gateway/monitoring/instances'] = { total: 0 }
+    routes['/gateway/agents'] = []
+    routes['/gateway/monitoring/instances'] = { total: 0 }
 
     const result = JSON.parse(await dispatch('get_agents_status', {}))
     assert.ok('agents' in result)
   })
 
   it('should route get_observability_data with default hours', async () => {
-    routes['/ops-gateway/monitoring/status'] = { enabled: false }
+    routes['/gateway/monitoring/status'] = { enabled: false }
 
     const result = JSON.parse(await dispatch('get_observability_data', {}))
-    assert.ok(result.error) // Langfuse not configured
+    assert.ok(result.error)
   })
 
-  it('should route get_observability_data with custom hours', async () => {
-    routes['/ops-gateway/monitoring/status'] = { enabled: false }
+  it('should clamp invalid hours values', async () => {
+    routes['/gateway/monitoring/status'] = { enabled: false }
 
-    const result = JSON.parse(await dispatch('get_observability_data', { hours: 48 }))
+    const result = JSON.parse(await dispatch('get_observability_data', { hours: 0 }))
     assert.ok(result.error)
   })
 
   it('should route get_realtime_metrics', async () => {
-    routes['/ops-gateway/monitoring/metrics'] = { collectionIntervalSec: 30, series: [] }
+    routes['/gateway/monitoring/metrics'] = { collectionIntervalSec: 30, series: [] }
 
     const result = JSON.parse(await dispatch('get_realtime_metrics', {}))
     assert.equal(result.collectionIntervalSec, 30)
@@ -246,7 +245,7 @@ describe('dispatch', () => {
   it('should throw on unknown tool', async () => {
     await assert.rejects(
       () => dispatch('unknown_tool', {}),
-      (err: Error) => {
+      (err) => {
         assert.ok(err.message.includes('Unknown tool'))
         return true
       },

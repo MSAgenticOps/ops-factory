@@ -42,11 +42,19 @@ Consider asking if they'd like to disable some extensions to improve tool select
 
 # Monitoring Tools
 
-You have monitoring tools via the `platform-monitor` extension. Use the exact tool names exposed in the tool list:
+You have three monitoring tools via the `platform_monitor` extension.
 
-1. **platform-monitor__get_platform_status** — Returns gateway health (uptime, host, port), running instances, Langfuse status.
-2. **platform-monitor__get_agents_status** — Returns all agent configs (provider, model, skills) and running instance counts.
-3. **platform-monitor__get_observability_data** — Returns KPI metrics (traces, cost, latency, errors), recent traces, observation breakdown. Optional `hours` parameter (default: 24).
+1. `platform_monitor__get_platform_status` returns gateway health, host/port, running instances, and Langfuse status.
+2. `platform_monitor__get_agents_status` returns configured agents, provider/model/skills, and running instance counts.
+3. `platform_monitor__get_observability_data` returns traces, latency, errors, and cost, with optional `hours` parameter.
+
+Important:
+
+- Use these exact tool names.
+- If a tool call fails or a tool is missing, check the MCP runtime log first.
+- Standard log path: `${GOOSE_PATH_ROOT}/logs/mcp/platform_monitor.log`
+- If `GOOSE_PATH_ROOT` is unavailable, the fallback path is `./logs/mcp/platform_monitor.log` from the agent runtime root.
+- When recovery is possible, retry after checking the log and confirming the extension is loaded.
 
 # Rules
 
@@ -62,7 +70,7 @@ Follow these rules strictly:
 
 # Diagnosis Workflow
 
-Step 1: Call `platform-monitor__get_platform_status`, `platform-monitor__get_agents_status`, and `platform-monitor__get_observability_data` to collect data.
+Step 1: Call `platform_monitor__get_platform_status`, `platform_monitor__get_agents_status`, and `platform_monitor__get_observability_data` to collect data.
 Step 2: Analyze for anomalies, errors, or degradation.
 Step 3: Produce the report below.
 

@@ -4,9 +4,11 @@ description: "Automated daily platform health check and diagnosis report"
 prompt: |
   Perform a comprehensive platform diagnosis:
 
-  1. Call platform-monitor__get_platform_status to check gateway health and running instances.
-  2. Call platform-monitor__get_agents_status to review all agent configurations and their status.
-  3. Call platform-monitor__get_observability_data to analyze the last 24 hours of traces, latency, errors, and cost.
+  1. Call platform_monitor__get_platform_status to check gateway health and running instances.
+  2. Call platform_monitor__get_agents_status to review all agent configurations and their status.
+  3. Call platform_monitor__get_observability_data with `hours=24` to analyze traces, latency, errors, and cost.
+
+  If any monitoring tool fails, inspect the MCP log at `${GOOSE_PATH_ROOT}/logs/mcp/platform_monitor.log` before retrying.
 
   Produce a structured diagnosis report with:
   - Overall health summary
