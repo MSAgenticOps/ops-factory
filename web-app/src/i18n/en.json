@@ -719,6 +719,7 @@
     "openSession": "Open Session",
     "manageTitle": "Manage Schedule",
     "recentRuns": "Recent Runs",
+    "basicInfoTitle": "Basic Information",
     "name": "Name",
     "instruction": "Instruction",
     "instructionPlaceholderNew": "Tell me to summarize today's progress and pending risks.",

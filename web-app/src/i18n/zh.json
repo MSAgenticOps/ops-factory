@@ -719,6 +719,7 @@
     "openSession": "打开会话",
     "manageTitle": "任务操作",
     "recentRuns": "最近运行记录",
+    "basicInfoTitle": "基本信息",
     "name": "名称",
     "instruction": "指令",
     "instructionPlaceholderNew": "告诉我总结今天的进展和待处理的风险。",
