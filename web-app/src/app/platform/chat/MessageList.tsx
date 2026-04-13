@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Message from './Message'
 import { ChatState, type OutputFilesEvent } from './useChat'
+import GooseAvatarIcon from './GooseAvatarIcon'
 import { extractFetchedDocuments, extractSourceDocuments, type Citation } from '../../../utils/citationParser'
 import { getReasoningContent, getThinkingContent, hasDisplayTextContent, hasTextContent, hasToolContent } from '../../../utils/messageContent'
 import { useUser } from '../providers/UserContext'
@@ -375,7 +376,9 @@ export default function MessageList({
             {isLoading && displayMessages[displayMessages.length - 1]?.role !== 'assistant' && (
                 <div data-message-id="loading-placeholder">
                     <div className="message assistant animate-fade-in">
-                        <div className="message-avatar">G</div>
+                        <div className="message-avatar">
+                            <GooseAvatarIcon className="message-avatar-icon" />
+                        </div>
                         <div className="message-body">
                             <div className="message-content">
                                 <div className="loading-dots">

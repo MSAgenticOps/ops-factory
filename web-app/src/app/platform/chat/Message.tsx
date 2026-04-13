@@ -15,6 +15,8 @@ import { parseFileCitations, replaceFileCitationsWithPlaceholders, type FileCita
 import { getDisplayTextContent, getFullTextContent, getReasoningContent, getThinkingContent } from '../../../utils/messageContent'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../../../config/runtime'
 import type { ChatMessage, DetectedFile, ToolResponseMap } from '../../../types/message'
+import GooseAvatarIcon from './GooseAvatarIcon'
+import UserAvatarIcon from './UserAvatarIcon'
 
 interface MessageProps {
     message: ChatMessage
@@ -486,7 +488,7 @@ function MessageInner({
     return (
         <div className={`message ${isUser ? 'user' : 'assistant'} animate-slide-in`}>
             <div className="message-avatar">
-                {isUser ? 'U' : 'G'}
+                {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
             </div>
             <div className="message-body">
                 <div className="message-content">
