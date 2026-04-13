@@ -91,6 +91,12 @@ Use these documents as the main entry points for collaboration:
 
 This starts OnlyOffice, Langfuse, Gateway, and Web App in order. The web app is available at `http://127.0.0.1:5173`.
 
+To pass a gateway API password through the orchestrator (defaults to empty):
+
+```bash
+./scripts/ctl.sh startup --apipwd mypass
+```
+
 ### Start Individual Components
 
 ```bash

@@ -12,6 +12,12 @@ Use the root orchestrator for local development:
 ./scripts/ctl.sh shutdown all
 ```
 
+To set `GATEWAY_API_PASSWORD` through the orchestrator (defaults to empty):
+
+```bash
+./scripts/ctl.sh startup --apipwd mypass
+```
+
 Targeted workflows:
 
 ```bash

@@ -4,11 +4,13 @@ set -euo pipefail
 # ==============================================================================
 # ops-factory unified service orchestrator
 #
-# Usage: ./ctl.sh <action> [component ...]
+# Usage: ./ctl.sh <action> [options] [component ...]
 #
 #   action:    startup | shutdown | status | restart
 #   component: onlyoffice | langfuse | gateway | knowledge | business-intelligence | exporter | control-center | webapp | all (default)
 #              Multiple components can be specified.
+#   options:
+#     --apipwd <value>   Set GATEWAY_API_PASSWORD for gateway and child tools (default: empty)
 #
 # Examples:
 #   ./ctl.sh startup                    # start all services
@@ -246,7 +248,7 @@ do_restart() {
 # === Usage & Main ===
 usage() {
     cat <<'EOF'
-Usage: ctl.sh <action> [component ...]
+Usage: ctl.sh <action> [options] [component ...]
 
 Actions:
   startup     Start service(s)
@@ -276,6 +278,9 @@ Service toggles (env vars):
   ENABLE_LANGFUSE=true|false    (default: true)
   ENABLE_BUSINESS_INTELLIGENCE=true|false  (default: true)
   ENABLE_EXPORTER=true|false    (default: true)
+
+Options:
+  --apipwd <value>   Set GATEWAY_API_PASSWORD (default: empty)
 EOF
     exit 1
 }
@@ -283,6 +288,39 @@ EOF
 ACTION="${1:-}"
 [ -z "${ACTION}" ] && usage
 shift
+
+GATEWAY_API_PASSWORD="${GATEWAY_API_PASSWORD:-}"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --apipwd)
+            shift
+            if [[ $# -eq 0 ]]; then
+                log_error "--apipwd requires a value"
+                usage
+            fi
+            GATEWAY_API_PASSWORD="$1"
+            shift
+            ;;
+        --apipwd=*)
+            GATEWAY_API_PASSWORD="${1#*=}"
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            log_error "Unknown option: $1"
+            usage
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+export GATEWAY_API_PASSWORD
 
 # Remaining args are components (default: all)
 if [[ $# -eq 0 ]]; then

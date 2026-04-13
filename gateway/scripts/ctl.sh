@@ -313,16 +313,9 @@ do_startup() {
     fi
 
     if [ -z "${GATEWAY_API_PASSWORD:-}" ]; then
-        if read_gateway_api_password; then
-            log_info "Using user-provided gateway API password"
-        else
-            local password_status=$?
-            if [ "${password_status}" -ne 2 ]; then
-                return 1
-            fi
-            GATEWAY_API_PASSWORD="$(generate_gateway_api_password)"
-            log_info "Generated random internal gateway API password for child processes"
-        fi
+        log_info "GATEWAY_API_PASSWORD is empty"
+    else
+        log_info "Using provided GATEWAY_API_PASSWORD"
     fi
 
     log_info "Starting gateway at ${GATEWAY_SCHEME}://${GATEWAY_HOST}:${GATEWAY_PORT}"
@@ -332,8 +325,10 @@ do_startup() {
     local java_cmd="java"
     local java_opts=(
         "-Dloader.path=${lib_dir}"
-        "-Dgateway.api.password=${GATEWAY_API_PASSWORD}"
     )
+    if [ -n "${GATEWAY_API_PASSWORD:-}" ]; then
+        java_opts+=("-Dgateway.api.password=${GATEWAY_API_PASSWORD}")
+    fi
 
     add_java_opt_from_env GATEWAY_PORT server.port
     add_java_opt_from_env GATEWAY_HOST server.address

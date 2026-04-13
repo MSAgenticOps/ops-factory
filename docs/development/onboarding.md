@@ -15,6 +15,12 @@ Use the root orchestrator for normal development:
 ./scripts/ctl.sh status
 ```
 
+If you need to set `GATEWAY_API_PASSWORD` for gateway and child tools (defaults to empty):
+
+```bash
+./scripts/ctl.sh startup --apipwd mypass
+```
+
 For a lighter loop, start only the required services:
 
 ```bash
