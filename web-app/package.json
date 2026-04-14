@@ -1,22 +1,29 @@
 {
-  "name": "goose-web",
+  "name": "home",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.20",
   "type": "module",
+  "description": "home",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "check:boundaries": "node ./scripts/check-module-boundaries.mjs",
+    "ci:local": "npm run check:boundaries && npm run build",
+    "ci:strict": "npm ci && npm run ci:local",
     "test": "vitest",
-    "test:basic": "vitest run src/__tests__/App.test.tsx src/__tests__/runtimeConfig.test.ts src/__tests__/filePreview.test.ts src/__tests__/PreviewContext.test.tsx"
+    "test:basic": "vitest run src/__tests__/App.test.tsx src/__tests__/filePreview.test.ts src/__tests__/connectionError.test.ts src/__tests__/hookErrorFriendly.test.ts"
   },
   "dependencies": {
     "@goosed/sdk": "file:../typescript-sdk",
     "archiver": "^7.0.1",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "highlight.js": "^11.11.1",
     "i18next": "^25.8.13",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^0.563.0",
+    "mermaid": "^10.9.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^16.5.4",

@@ -54,7 +54,7 @@ extensions:
     bundled: true
     available_tools: []
   memory:
-    enabled: false
+    enabled: true
     type: builtin
     name: memory
     description: Teach goose your preferences as you go.
@@ -122,14 +122,45 @@ extensions:
     enabled: true
     type: stdio
     name: sop-executor
-    description: ''
+    description: SOP workflow executor - list/run SOPs, query hosts, execute remote commands
     cmd: node
     args:
-    - D:/ss/code/ops-factory-main/ops-factory-main/gateway/agents/qos-agent/config/mcp/sop-executor/dist/index.js
+    - config/mcp/sop-executor/dist/index.js
     envs:
       GATEWAY_URL: http://127.0.0.1:3000
       GATEWAY_SECRET_KEY: test
+      OUTPUT_DIR: ./output
     env_keys: []
-    timeout: null
+    timeout: 300
     bundled: null
+    available_tools: []
+  browser-use:
+    enabled: true
+    type: stdio
+    name: browser-use
+    description: Browser automation via browser-use official MCP - navigate, click, type, extract, screenshot, tabs and more
+    cmd: python
+    args:
+    - -m
+    - browser_use.mcp.server
+    envs: {}
+    env_keys: []
+    timeout: 120
+    bundled: null
+    available_tools: []
+  orchestrator:
+    enabled: false
+    type: platform
+    name: orchestrator
+    description: 'Manage agent sessions: list, view, start, send messages, interrupt, and stop agents'
+    display_name: Orchestrator
+    bundled: true
+    available_tools: []
+  summarize:
+    enabled: false
+    type: platform
+    name: summarize
+    description: Load files/directories and get an LLM summary in a single call
+    display_name: Summarize
+    bundled: true
     available_tools: []

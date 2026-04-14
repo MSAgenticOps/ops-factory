@@ -4,11 +4,13 @@ set -euo pipefail
 # ==============================================================================
 # ops-factory unified service orchestrator
 #
-# Usage: ./ctl.sh <action> [component ...]
+# Usage: ./ctl.sh <action> [options] [component ...]
 #
 #   action:    startup | shutdown | status | restart
-#   component: onlyoffice | langfuse | gateway | knowledge | exporter | webapp | all (default)
+#   component: onlyoffice | langfuse | gateway | knowledge | business-intelligence | exporter | control-center | webapp | all (default)
 #              Multiple components can be specified.
+#   options:
+#     --apipwd <value>   Set GATEWAY_API_PASSWORD for gateway and child tools (default: empty)
 #
 # Examples:
 #   ./ctl.sh startup                    # start all services
@@ -21,6 +23,7 @@ set -euo pipefail
 # Service toggles (env vars):
 #   ENABLE_ONLYOFFICE=false ./ctl.sh startup   # skip OnlyOffice
 #   ENABLE_LANGFUSE=false   ./ctl.sh startup   # skip Langfuse
+#   ENABLE_BUSINESS_INTELLIGENCE=false ./ctl.sh startup   # skip Business Intelligence
 #   ENABLE_EXPORTER=false   ./ctl.sh startup   # skip Exporter
 # ==============================================================================
 
@@ -30,12 +33,15 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 # === Service toggles (optional services, set to false to skip) ===
 ENABLE_ONLYOFFICE="${ENABLE_ONLYOFFICE:-true}"
 ENABLE_LANGFUSE="${ENABLE_LANGFUSE:-true}"
+ENABLE_BUSINESS_INTELLIGENCE="${ENABLE_BUSINESS_INTELLIGENCE:-true}"
 ENABLE_EXPORTER="${ENABLE_EXPORTER:-true}"
 # gateway and webapp are mandatory — no toggles
 
 # === Sub-script paths ===
 CTL_GATEWAY="${ROOT_DIR}/gateway/scripts/ctl.sh"
 CTL_KNOWLEDGE="${ROOT_DIR}/knowledge-service/scripts/ctl.sh"
+CTL_BUSINESS_INTELLIGENCE="${ROOT_DIR}/business-intelligence/scripts/ctl.sh"
+CTL_CONTROL_CENTER="${ROOT_DIR}/control-center/scripts/ctl.sh"
 CTL_WEBAPP="${ROOT_DIR}/web-app/scripts/ctl.sh"
 CTL_LANGFUSE="${ROOT_DIR}/langfuse/scripts/ctl.sh"
 CTL_ONLYOFFICE="${ROOT_DIR}/onlyoffice/scripts/ctl.sh"
@@ -60,24 +66,8 @@ run_if_enabled() {
     fi
 }
 
-# === Cleanup trap for background processes ===
-GATEWAY_BG_PID=""
-KNOWLEDGE_BG_PID=""
-EXPORTER_BG_PID=""
-WEBAPP_BG_PID=""
-
-cleanup() {
-    for pid_var in WEBAPP_BG_PID EXPORTER_BG_PID KNOWLEDGE_BG_PID GATEWAY_BG_PID; do
-        local pid="${!pid_var}"
-        if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
-            kill "${pid}" 2>/dev/null || true
-            wait "${pid}" 2>/dev/null || true
-        fi
-    done
-}
-
 # === Component validation ===
-VALID_COMPONENTS="onlyoffice langfuse gateway knowledge exporter webapp"
+VALID_COMPONENTS="onlyoffice langfuse gateway knowledge business-intelligence exporter control-center webapp"
 
 validate_component() {
     local comp="$1"
@@ -98,7 +88,9 @@ startup_one() {
         langfuse)   run_if_enabled "${ENABLE_LANGFUSE}" "Langfuse" "${CTL_LANGFUSE}" startup ${bg_flag} ;;
         gateway)    "${CTL_GATEWAY}" startup ${bg_flag} ;;
         knowledge)  "${CTL_KNOWLEDGE}" startup ${bg_flag} ;;
+        business-intelligence) run_if_enabled "${ENABLE_BUSINESS_INTELLIGENCE}" "Business Intelligence" "${CTL_BUSINESS_INTELLIGENCE}" startup ${bg_flag} ;;
         exporter)   run_if_enabled "${ENABLE_EXPORTER}" "Exporter" "${CTL_EXPORTER}" startup ${bg_flag} ;;
+        control-center) "${CTL_CONTROL_CENTER}" startup ${bg_flag} ;;
         webapp)     "${CTL_WEBAPP}" startup ${bg_flag} ;;
     esac
 }
@@ -109,7 +101,9 @@ shutdown_one() {
         langfuse)   "${CTL_LANGFUSE}" shutdown ;;
         gateway)    "${CTL_GATEWAY}" shutdown ;;
         knowledge)  "${CTL_KNOWLEDGE}" shutdown ;;
+        business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" shutdown ;;
         exporter)   "${CTL_EXPORTER}" shutdown ;;
+        control-center) "${CTL_CONTROL_CENTER}" shutdown ;;
         webapp)     "${CTL_WEBAPP}" shutdown ;;
     esac
 }
@@ -126,10 +120,15 @@ status_one() {
             fi ;;
         gateway)  "${CTL_GATEWAY}" status  || return 1 ;;
         knowledge) "${CTL_KNOWLEDGE}" status || return 1 ;;
+        business-intelligence)
+            if [ "${ENABLE_BUSINESS_INTELLIGENCE}" = "true" ]; then
+                "${CTL_BUSINESS_INTELLIGENCE}" status || return 1
+            fi ;;
         exporter)
             if [ "${ENABLE_EXPORTER}" = "true" ]; then
                 "${CTL_EXPORTER}" status || return 1
             fi ;;
+        control-center) "${CTL_CONTROL_CENTER}" status || return 1 ;;
         webapp)   "${CTL_WEBAPP}" status   || return 1 ;;
     esac
 }
@@ -142,8 +141,7 @@ do_startup() {
         # Shutdown everything first
         do_shutdown all
 
-        log_info "Starting all services..."
-        trap cleanup EXIT INT TERM
+        log_info "Starting all services in background..."
 
         # 1. OnlyOffice (optional)
         run_if_enabled "${ENABLE_ONLYOFFICE}" "OnlyOffice" "${CTL_ONLYOFFICE}" startup
@@ -157,11 +155,17 @@ do_startup() {
         # 4. Knowledge-service (mandatory, background)
         "${CTL_KNOWLEDGE}" startup --background
 
-        # 5. Exporter (optional, background)
+        # 5. Business Intelligence (optional, background)
+        run_if_enabled "${ENABLE_BUSINESS_INTELLIGENCE}" "Business Intelligence" "${CTL_BUSINESS_INTELLIGENCE}" startup --background
+
+        # 6. Exporter (optional, background)
         run_if_enabled "${ENABLE_EXPORTER}" "Exporter" "${CTL_EXPORTER}" startup --background
 
-        # 6. Webapp (mandatory, foreground — blocking)
-        "${CTL_WEBAPP}" startup
+        # 7. Control Center (mandatory, background)
+        "${CTL_CONTROL_CENTER}" startup --background
+
+        # 8. Webapp (mandatory, background)
+        "${CTL_WEBAPP}" startup --background
     else
         for comp in "${components[@]}"; do
             validate_component "${comp}"
@@ -170,16 +174,9 @@ do_startup() {
         for comp in "${components[@]}"; do
             shutdown_one "${comp}"
         done
-        log_info "Starting: ${components[*]}..."
-        trap cleanup EXIT INT TERM
-        local last_idx=$(( ${#components[@]} - 1 ))
-        for i in "${!components[@]}"; do
-            if [[ $i -lt $last_idx ]]; then
-                startup_one "${components[$i]}" --background
-            else
-                # Last component runs in foreground (blocking)
-                startup_one "${components[$i]}"
-            fi
+        log_info "Starting in background: ${components[*]}..."
+        for comp in "${components[@]}"; do
+            startup_one "${comp}" --background
         done
     fi
 }
@@ -189,6 +186,8 @@ do_shutdown() {
 
     if [[ ${#components[@]} -eq 0 || "${components[0]}" == "all" ]]; then
         "${CTL_EXPORTER}" shutdown
+        "${CTL_CONTROL_CENTER}" shutdown
+        "${CTL_BUSINESS_INTELLIGENCE}" shutdown
         "${CTL_KNOWLEDGE}" shutdown
         "${CTL_WEBAPP}" shutdown
         "${CTL_GATEWAY}" shutdown
@@ -218,7 +217,9 @@ do_status() {
         status_one langfuse   || has_fail=1
         status_one gateway    || has_fail=1
         status_one knowledge  || has_fail=1
+        status_one business-intelligence || has_fail=1
         status_one exporter   || has_fail=1
+        status_one control-center || has_fail=1
         status_one webapp     || has_fail=1
         echo
         if [ "${has_fail}" -eq 0 ]; then
@@ -247,7 +248,7 @@ do_restart() {
 # === Usage & Main ===
 usage() {
     cat <<'EOF'
-Usage: ctl.sh <action> [component ...]
+Usage: ctl.sh <action> [options] [component ...]
 
 Actions:
   startup     Start service(s)
@@ -261,7 +262,9 @@ Components (multiple allowed):
   langfuse    Langfuse observability platform (Docker) [optional]
   gateway     Gateway + goosed agents                  [mandatory]
   knowledge   Knowledge ingestion / retrieval service  [mandatory]
+  business-intelligence  Business intelligence service [optional]
   exporter    Prometheus metrics exporter              [optional]
+  control-center  Control Center service               [mandatory]
   webapp      Web application (Vite dev server)        [mandatory]
 
 Examples:
@@ -273,7 +276,11 @@ Examples:
 Service toggles (env vars):
   ENABLE_ONLYOFFICE=true|false  (default: true)
   ENABLE_LANGFUSE=true|false    (default: true)
+  ENABLE_BUSINESS_INTELLIGENCE=true|false  (default: true)
   ENABLE_EXPORTER=true|false    (default: true)
+
+Options:
+  --apipwd <value>   Set GATEWAY_API_PASSWORD (default: empty)
 EOF
     exit 1
 }
@@ -281,6 +288,39 @@ EOF
 ACTION="${1:-}"
 [ -z "${ACTION}" ] && usage
 shift
+
+GATEWAY_API_PASSWORD="${GATEWAY_API_PASSWORD:-}"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --apipwd)
+            shift
+            if [[ $# -eq 0 ]]; then
+                log_error "--apipwd requires a value"
+                usage
+            fi
+            GATEWAY_API_PASSWORD="$1"
+            shift
+            ;;
+        --apipwd=*)
+            GATEWAY_API_PASSWORD="${1#*=}"
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            log_error "Unknown option: $1"
+            usage
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+export GATEWAY_API_PASSWORD
 
 # Remaining args are components (default: all)
 if [[ $# -eq 0 ]]; then

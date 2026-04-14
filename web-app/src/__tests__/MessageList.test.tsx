@@ -1,288 +1,266 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import MessageList from '../components/MessageList'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
+import { render, waitFor } from '@testing-library/react'
+import { I18nextProvider } from 'react-i18next'
+import type { ComponentProps } from 'react'
+import MessageList from '../app/platform/chat/MessageList'
+import { UserProvider } from '../app/platform/providers/UserContext'
+import i18n from '../i18n'
 import type { ChatMessage } from '../types/message'
 
-Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: vi.fn(),
-})
+function renderMessageList(messages: ChatMessage[], props: Partial<ComponentProps<typeof MessageList>> = {}) {
+    return render(
+        <I18nextProvider i18n={i18n}>
+            <UserProvider>
+                <MessageList messages={messages} {...props} />
+            </UserProvider>
+        </I18nextProvider>
+    )
+}
 
-vi.mock('react-i18next', () => ({
-    useTranslation: () => ({
-        t: (key: string) => key,
-    }),
-}))
+describe('MessageList tool error rendering', () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView
+    const originalRequestAnimationFrame = window.requestAnimationFrame
+    const originalCancelAnimationFrame = window.cancelAnimationFrame
 
-vi.mock('../contexts/UserContext', () => ({
-    useUser: () => ({
-        userId: 'admin',
-    }),
-}))
-
-vi.mock('../contexts/PreviewContext', () => ({
-    usePreview: () => ({
-        openPreview: vi.fn(),
-        isPreviewable: () => false,
-    }),
-}))
-
-describe('MessageList tool chain rendering', () => {
-    it('merges consecutive assistant tool messages into a single rendered chain', () => {
-        const messages: ChatMessage[] = [
-            {
-                id: 'user-1',
-                role: 'user',
-                content: [{ type: 'text', text: '诊断一下当前系统的健康状态' }],
-            },
-            {
-                id: 'assistant-plan',
-                role: 'assistant',
-                content: [{ type: 'reasoning', text: '我需要先检查平台状态。' }],
-            },
-            {
-                id: 'assistant-tool-1',
-                role: 'assistant',
-                content: [
-                    { type: 'reasoning', text: '先调用平台状态工具。' },
-                    {
-                        type: 'toolRequest',
-                        id: 'tool-1',
-                        toolCall: {
-                            status: 'success',
-                            value: { name: 'platform-monitor__get_platform_status', arguments: {} },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'tool-response-1',
-                role: 'user',
-                content: [
-                    {
-                        type: 'toolResponse',
-                        id: 'tool-1',
-                        toolResult: {
-                            status: 'success',
-                            value: { content: [{ type: 'text', text: '{"ok":true}' }] },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'assistant-tool-2',
-                role: 'assistant',
-                content: [
-                    { type: 'reasoning', text: '再调用代理状态工具。' },
-                    {
-                        type: 'toolRequest',
-                        id: 'tool-2',
-                        toolCall: {
-                            status: 'success',
-                            value: { name: 'platform-monitor__get_agents_status', arguments: {} },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'tool-response-2',
-                role: 'user',
-                content: [
-                    {
-                        type: 'toolResponse',
-                        id: 'tool-2',
-                        toolResult: {
-                            status: 'success',
-                            value: { content: [{ type: 'text', text: '{"agents":[]}' }] },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'assistant-final',
-                role: 'assistant',
-                content: [{ type: 'text', text: '诊断完成。' }],
-            },
-        ]
-
-        const { container } = render(<MessageList messages={messages} />)
-
-        expect(container.querySelectorAll('.message.user')).toHaveLength(1)
-        expect(container.querySelectorAll('.message.assistant')).toHaveLength(2)
-        expect(screen.getAllByText('推理过程')).toHaveLength(2)
-        expect(screen.getByText('Get platform status')).toBeInTheDocument()
-        expect(screen.getByText('Get agents status')).toBeInTheDocument()
-        expect(screen.getByText('诊断完成。')).toBeInTheDocument()
+    beforeEach(() => {
+        Element.prototype.scrollIntoView = () => {}
+        window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+            callback(0)
+            return 1
+        }) as typeof window.requestAnimationFrame
+        window.cancelAnimationFrame = (() => {}) as typeof window.cancelAnimationFrame
     })
 
-    it('shows retrieved documents when inline citations are missing', () => {
+    afterEach(() => {
+        Element.prototype.scrollIntoView = originalScrollIntoView
+        window.requestAnimationFrame = originalRequestAnimationFrame
+        window.cancelAnimationFrame = originalCancelAnimationFrame
+    })
+
+    it('renders tool steps as error when toolResult.isError is true', () => {
+
         const messages: ChatMessage[] = [
             {
-                id: 'user-1',
-                role: 'user',
-                content: [{ type: 'text', text: '什么是记录系统？' }],
-            },
-            {
-                id: 'assistant-tool',
+                id: 'assistant-tool-request',
                 role: 'assistant',
                 content: [
-                    { type: 'reasoning', text: '先查知识库。' },
                     {
                         type: 'toolRequest',
                         id: 'tool-1',
                         toolCall: {
-                            status: 'success',
-                            value: { name: 'knowledge-service__fetch', arguments: { chunkId: 'chk_001' } },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'tool-response',
-                role: 'user',
-                content: [
-                    {
-                        type: 'toolResponse',
-                        id: 'tool-1',
-                        toolResult: {
-                            status: 'success',
+                            status: 'completed',
                             value: {
-                                content: [{
-                                    type: 'text',
-                                    text: JSON.stringify({
-                                        chunkId: 'chk_001',
-                                        documentId: 'doc_001',
-                                        sourceId: 'src_001',
-                                        title: '系统定义.pdf',
-                                        text: 'System of record is the canonical source of truth.',
-                                        pageFrom: 2,
-                                        pageTo: 2,
-                                    }),
-                                }],
+                                name: 'developer__extension_manager',
+                                arguments: {
+                                    action: 'enable',
+                                    extension_name: 'control_center',
+                                },
                             },
                         },
                     },
                 ],
             },
             {
-                id: 'assistant-final',
+                id: 'assistant-tool-response',
                 role: 'assistant',
-                content: [{ type: 'text', text: '记录系统是企业中的权威数据来源。' }],
+                content: [
+                    {
+                        type: 'toolResponse',
+                        id: 'tool-1',
+                        toolResult: {
+                            isError: true,
+                            value: {
+                                content: [
+                                    {
+                                        type: 'text',
+                                        text: 'Extension operation failed',
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                ],
             },
         ]
 
-        render(<MessageList messages={messages} />)
-
-        expect(screen.getByText('记录系统是企业中的权威数据来源。')).toBeInTheDocument()
-        expect(screen.getByText('本轮检索过的资料 (1)')).toBeInTheDocument()
-        expect(screen.getByText('系统定义.pdf')).toBeInTheDocument()
-        expect(screen.getByText('1 chunks · p.2')).toBeInTheDocument()
-        expect(screen.queryByText('检索')).not.toBeInTheDocument()
+        const { container } = renderMessageList(messages)
+        const errorNode = container.querySelector('.process-step-node.error')
+        expect(errorNode).toBeTruthy()
     })
 
-    it('shows both cited and retrieved document groups when inline citations are present', () => {
+    it('scrolls to bottom again when a resumed session changes with the same message count', async () => {
+        const scrollContainer = document.createElement('div')
+        Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 600 })
+        Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 200 })
+        Object.defineProperty(scrollContainer, 'scrollTop', {
+            configurable: true,
+            get: () => 0,
+        })
+        scrollContainer.scrollTo = vi.fn()
+
+        const firstSessionMessages: ChatMessage[] = [
+            {
+                id: 'user-1',
+                role: 'user',
+                content: [{ type: 'text', text: 'First session' }],
+            },
+            {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Reply one' }],
+            },
+        ]
+
+        const secondSessionMessages: ChatMessage[] = [
+            {
+                id: 'user-2',
+                role: 'user',
+                content: [{ type: 'text', text: 'Second session' }],
+            },
+            {
+                id: 'assistant-2',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Reply two' }],
+            },
+        ]
+
+        const view = renderMessageList(firstSessionMessages, {
+            agentId: 'agent-a',
+            sessionId: 'session-a',
+            scrollContainerRef: { current: scrollContainer },
+        })
+
+        await waitFor(() => {
+            expect(scrollContainer.scrollTo).toHaveBeenCalledTimes(1)
+        })
+
+        view.rerender(
+            <I18nextProvider i18n={i18n}>
+                <UserProvider>
+                    <MessageList
+                        messages={secondSessionMessages}
+                        agentId="agent-a"
+                        sessionId="session-b"
+                        scrollContainerRef={{ current: scrollContainer }}
+                    />
+                </UserProvider>
+            </I18nextProvider>
+        )
+
+        await waitFor(() => {
+            expect(scrollContainer.scrollTo).toHaveBeenCalledTimes(2)
+        })
+    })
+
+    it('falls back to the document scroll root when the provided message container does not overflow', async () => {
+        const scrollContainer = document.createElement('div')
+        Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 600 })
+        Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 600 })
+        Object.defineProperty(scrollContainer, 'scrollTop', {
+            configurable: true,
+            get: () => 0,
+        })
+        scrollContainer.scrollTo = vi.fn()
+
+        const scrollRoot = document.createElement('div')
+        Object.defineProperty(scrollRoot, 'scrollHeight', { configurable: true, value: 1200 })
+        Object.defineProperty(scrollRoot, 'clientHeight', { configurable: true, value: 600 })
+        let rootScrollTop = 0
+        Object.defineProperty(scrollRoot, 'scrollTop', {
+            configurable: true,
+            get: () => rootScrollTop,
+            set: (value: number) => { rootScrollTop = value },
+        })
+        scrollRoot.scrollTo = vi.fn(({ top }: ScrollToOptions) => {
+            rootScrollTop = Number(top ?? 0)
+        })
+
+        const originalScrollingElement = Object.getOwnPropertyDescriptor(document, 'scrollingElement')
+        Object.defineProperty(document, 'scrollingElement', {
+            configurable: true,
+            value: scrollRoot,
+        })
+
         const messages: ChatMessage[] = [
             {
                 id: 'user-1',
                 role: 'user',
-                content: [{ type: 'text', text: '总结一下' }],
+                content: [{ type: 'text', text: 'Hello' }],
             },
             {
-                id: 'assistant-tool',
+                id: 'assistant-1',
                 role: 'assistant',
-                content: [
-                    { type: 'reasoning', text: '先查知识库。' },
-                    {
-                        type: 'toolRequest',
-                        id: 'tool-0',
-                        toolCall: {
-                            status: 'success',
-                            value: { name: 'knowledge-service__search', arguments: { query: '记录系统', topK: 10 } },
-                        },
-                    },
-                    {
-                        type: 'toolRequest',
-                        id: 'tool-1',
-                        toolCall: {
-                            status: 'success',
-                            value: { name: 'knowledge-service__fetch', arguments: { chunkId: 'chk_001' } },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'tool-response',
-                role: 'user',
-                content: [
-                    {
-                        type: 'toolResponse',
-                        id: 'tool-0',
-                        toolResult: {
-                            status: 'success',
-                            value: {
-                                content: [{
-                                    type: 'text',
-                                    text: JSON.stringify({
-                                        hits: [
-                                            {
-                                                chunkId: 'chk_001',
-                                                documentId: 'doc_001',
-                                                sourceId: 'src_001',
-                                                title: '系统定义.pdf',
-                                                snippet: 'System of record is the canonical source of truth.',
-                                                pageFrom: 2,
-                                                pageTo: 2,
-                                            },
-                                            {
-                                                chunkId: 'chk_002',
-                                                documentId: 'doc_002',
-                                                sourceId: 'src_002',
-                                                title: '扩展资料.pdf',
-                                                snippet: 'Additional retrieved context.',
-                                                pageFrom: 5,
-                                                pageTo: 5,
-                                            },
-                                        ],
-                                    }),
-                                }],
-                            },
-                        },
-                    },
-                    {
-                        type: 'toolResponse',
-                        id: 'tool-1',
-                        toolResult: {
-                            status: 'success',
-                            value: {
-                                content: [{
-                                    type: 'text',
-                                    text: JSON.stringify({
-                                        chunkId: 'chk_001',
-                                        documentId: 'doc_001',
-                                        sourceId: 'src_001',
-                                        title: '系统定义.pdf',
-                                        text: 'System of record is the canonical source of truth.',
-                                        pageFrom: 2,
-                                        pageTo: 2,
-                                    }),
-                                }],
-                            },
-                        },
-                    },
-                ],
-            },
-            {
-                id: 'assistant-final',
-                role: 'assistant',
-                content: [{ type: 'text', text: '记录系统是权威数据来源。{{cite:chk_001}}' }],
+                content: [{ type: 'text', text: 'Hi there' }],
             },
         ]
 
-        render(<MessageList messages={messages} />)
+        renderMessageList(messages, {
+            agentId: 'agent-a',
+            sessionId: 'session-a',
+            scrollContainerRef: { current: scrollContainer },
+        })
 
-        expect(screen.getByText('回答中引用的资料 (1)')).toBeInTheDocument()
-        expect(screen.getByText('本轮检索过的资料 (2)')).toBeInTheDocument()
-        expect(screen.getAllByText('系统定义.pdf')).toHaveLength(2)
-        expect(screen.getByText('扩展资料.pdf')).toBeInTheDocument()
+        await waitFor(() => {
+            expect(scrollContainer.scrollTo).not.toHaveBeenCalled()
+            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+        })
+
+        if (originalScrollingElement) {
+            Object.defineProperty(document, 'scrollingElement', originalScrollingElement)
+        } else {
+            // @ts-expect-error test cleanup for configurable property
+            delete document.scrollingElement
+        }
     })
+
+    it('falls back to the document scroll root when no message container is provided', async () => {
+        const scrollRoot = document.createElement('div')
+        Object.defineProperty(scrollRoot, 'scrollHeight', { configurable: true, value: 1200 })
+        Object.defineProperty(scrollRoot, 'clientHeight', { configurable: true, value: 600 })
+        let rootScrollTop = 0
+        Object.defineProperty(scrollRoot, 'scrollTop', {
+            configurable: true,
+            get: () => rootScrollTop,
+            set: (value: number) => { rootScrollTop = value },
+        })
+        scrollRoot.scrollTo = vi.fn(({ top }: ScrollToOptions) => {
+            rootScrollTop = Number(top ?? 0)
+        })
+
+        const originalScrollingElement = Object.getOwnPropertyDescriptor(document, 'scrollingElement')
+        Object.defineProperty(document, 'scrollingElement', {
+            configurable: true,
+            value: scrollRoot,
+        })
+
+        const messages: ChatMessage[] = [
+            {
+                id: 'user-1',
+                role: 'user',
+                content: [{ type: 'text', text: 'Hello' }],
+            },
+            {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Hi there' }],
+            },
+        ]
+
+        renderMessageList(messages, {
+            agentId: 'agent-a',
+            sessionId: 'session-a',
+        })
+
+        await waitFor(() => {
+            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+        })
+
+        if (originalScrollingElement) {
+            Object.defineProperty(document, 'scrollingElement', originalScrollingElement)
+        } else {
+            // @ts-expect-error test cleanup for configurable property
+            delete document.scrollingElement
+        }
+    })
+
 })

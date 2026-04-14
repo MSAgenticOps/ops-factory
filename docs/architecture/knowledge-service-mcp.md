@@ -42,8 +42,8 @@
 
 实现位于：
 
-- `gateway/agents/qa-agent/config/mcp/knowledge-service/src/index.ts`
-- `gateway/agents/qa-agent/config/mcp/knowledge-service/src/handlers.ts`
+- `gateway/agents/qa-agent/config/mcp/knowledge-service/src/index.js`
+- `gateway/agents/qa-agent/config/mcp/knowledge-service/src/handlers.js`
 
 注册配置位于：
 
@@ -61,8 +61,7 @@
 
 - `type: stdio`
 - `cmd: node`
-- 启动脚本：`config/mcp/knowledge-service/node_modules/tsx/dist/cli.mjs`
-- 入口：`config/mcp/knowledge-service/src/index.ts`
+- 入口：`config/mcp/knowledge-service/src/index.js`
 
 这意味着：
 
@@ -87,7 +86,7 @@ qa-agent process
     |
     +-- start stdio extension: knowledge-service
             |
-            +-- node tsx src/index.ts
+            +-- node src/index.js
                     |
                     +-- register tools: search, fetch
 ```
@@ -122,14 +121,23 @@ MCP 依赖以下环境变量：
 - QA Agent 默认绑定一个知识源，不要求每次检索都显式传 `sourceIds`
 - `fetch` 的邻居扩展被刻意限制在很小窗口内，避免 Agent 一次抓取过多上下文
 
+## 5.4 运行日志
+
+`knowledge-service` MCP 会将运行日志写入独立文件：
+
+- 标准路径：`${GOOSE_PATH_ROOT}/logs/mcp/knowledge_service.log`
+- 如果 `GOOSE_PATH_ROOT` 不可用，则回退到 Agent 运行目录下的 `./logs/mcp/knowledge_service.log`
+
+日志同时输出到 stderr，便于宿主进程接管与集中收集。
+
 ## 6. 工具设计
 
 ```text
 MCP tools
    |
-   +-- search --> POST /ops-knowledge/search
+   +-- search --> POST /knowledge/search
    |
-   +-- fetch  --> GET  /ops-knowledge/fetch/{chunkId}
+   +-- fetch  --> GET  /knowledge/fetch/{chunkId}
 ```
 
 ## 6.1 `search`
@@ -141,7 +149,7 @@ search(query, sourceIds?, documentIds?, topK?)
  normalizeSourceIds()
               |
               v
- POST /ops-knowledge/search
+ POST /knowledge/search
               |
               v
    JSON string response
@@ -164,7 +172,7 @@ search(query, sourceIds?, documentIds?, topK?)
 
 MCP `search` 会映射到：
 
-- `POST /ops-knowledge/search`
+- `POST /knowledge/search`
 
 请求体结构：
 
@@ -219,7 +227,7 @@ fetch(chunkId, includeNeighbors?, neighborWindow?)
  validate neighborWindow in [1,2]
               |
               v
- GET /ops-knowledge/fetch/{chunkId}
+ GET /knowledge/fetch/{chunkId}
    ?includeNeighbors=...
    &neighborWindow=...
    &includeMarkdown=true
@@ -246,7 +254,7 @@ fetch(chunkId, includeNeighbors?, neighborWindow?)
 
 MCP `fetch` 会映射到：
 
-- `GET /ops-knowledge/fetch/{chunkId}`
+- `GET /knowledge/fetch/{chunkId}`
 
 请求参数固定包含：
 
@@ -357,7 +365,7 @@ MCP 调用 HTTP 时使用 `AbortSignal.timeout(...)`，默认超时为 `15000ms`
 3. 错误格式类似：
 
 ```text
-Knowledge service /ops-knowledge/search returned 500: ...
+Knowledge service /knowledge/search returned 500: ...
 ```
 
 这保证 Agent 至少能知道是哪个底层接口失败，而不是只得到一个模糊错误。

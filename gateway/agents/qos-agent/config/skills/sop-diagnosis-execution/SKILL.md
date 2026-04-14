@@ -1,95 +1,263 @@
 ---
 name: sop-diagnosis-execution
-description: 当QoS智能体完成根因分析后，根据故障类型匹配SOP流程，自动登录目标主机执行诊断命令，收集信息并分析，最终出具环境实时诊断报告。当用户要求"环境诊断"、"执行SOP"、"实时诊断"、"环境排查"时使用。
-version: 1.0.0
+description: 根据用户输入的告警文本、根因分析结果或指定主机，自动匹配并执行SOP进行远程环境诊断。支持三种触发场景：衔接根因分析、告警驱动诊断、直接主机诊断，统一走共享执行管道完成SOP匹配→执行→推荐→报告全流程。
+version: 8.0.0
 ---
 
 # SOP 环境实时诊断
 
-## 概述
-根据故障根因匹配预定义的 SOP 流程，自动在目标主机上执行诊断命令，收集并分析结果，生成环境实时诊断报告。
+## 组网拓扑
 
-## 执行流程
-
-### 步骤1：匹配SOP
-根据当前故障根因分析的结果，调用 `sop-executor__list_sops` 获取可用SOP列表。
-根据 `triggerCondition` 字段匹配最适合的SOP，记录 `sopId`。
-如无匹配SOP，告知用户当前无对应SOP，结束流程。
-
-### 步骤2：获取SOP详情
-调用 `sop-executor__get_sop_detail(sopId)` 获取完整SOP流程定义。
-
-### 步骤3：按SOP流程逐步执行
-从 type=start 的节点开始，对每个节点执行以下操作：
-
-#### 对每个SOP节点：
-
-1. **获取目标主机**：调用 `sop-executor__get_hosts(tags=node.hostTags)` 获取匹配标签的目标主机列表
-
-2. **构造命令（泛化机制）**：
-   - 读取节点的 `command` 模板和 `commandVariables` 定义
-   - **优先使用上下文推断**：根据当前诊断上下文（根因分析结果、环境信息等）推断变量值
-   - **其次使用默认值**：对无法推断的变量使用 `commandVariables` 中的 `defaultValue`
-   - **允许自主调整**：可根据实际情况适当调整命令参数（如增大 tail 行数、修改过滤条件），但**命令主体必须在白名单内**
-   - 替换 `{{变量名}}` 占位符，生成最终命令
-
-3. **执行命令**：对每台匹配主机调用 `sop-executor__execute_remote_command(hostId, command)`
-
-4. **收集输出**：汇总所有主机的命令执行结果
-   - 每次调用 `execute_remote_command` 的原始输出会自动保存为附件文件，用户可在聊天中直接下载查看
-   - 你无需手动保存每条命令的原始输出，但需要在分析中引用关键信息
-
-5. **分析输出**：根据节点的 `analysisInstruction` 和 `outputFormat` 分析命令输出
-   - 可结合上下文中已有的诊断信息进行综合分析
-
-6. **分支判断**：根据分析结果和节点的 `transitions` 条件，决定下一个执行节点
-   - 如果 `transitions` 中有多个 nextNodes 匹配，这些节点应依次执行
-   - 可根据实际情况**跳过不必要的节点**或**补充额外检查**（体现泛化能力）
-
-### 步骤4：生成诊断报告
-将所有节点的执行结果和分析汇总，按模板生成环境实时诊断报告。
-
-## 输出报告格式
-报告保存为: `./output/sop-diagnosis-report-{yyyyMMddHHmmss}.md`
-
-报告结构：
-```markdown
-# SOP环境实时诊断报告
-
-## 诊断概述
-- **SOP名称**：{sopName}
-- **触发原因**：{triggerReason}
-- **诊断时间**：{timestamp}
-- **涉及主机**：{hostList}
-
-## 节点执行结果
-
-### 节点1：{nodeName}
-- **目标主机**：{hostName} ({ip})
-- **执行命令**：`{command}`
-- **命令输出**：
-  ```
-  {output}
-  ```
-- **分析结论**：{analysis}
-
-### 节点2：{nodeName}
-...
-
-## 综合分析
-{overallAnalysis}
-
-## 处理建议
-{suggestions}
+```
+haproxy → RCPA → RCPADB / GMDB / KAFKA
 ```
 
-## 安全约束
-- 所有执行的命令必须在命令白名单内，白名单外的命令将被系统拒绝
-- 只执行只读类诊断命令（ps, tail, grep, cat, ls, df, free, netstat, top等）
-- 不执行任何修改类命令（rm, mv, chmod, reboot, service等）
+| category | 说明 |
+|----------|------|
+| haproxy | 负载均衡 |
+| RCPA | 应用层 |
+| RCPADB / GMDB / KAFKA | 数据层 |
 
-## 异常处理
-- 主机连接失败：记录失败信息，继续执行其他主机
-- 命令执行超时：标记超时，继续执行其他节点
-- 命令被白名单拒绝：记录拒绝原因，尝试使用替代命令
-- SOP匹配失败：告知用户，建议手动排查
+## MCP 工具
+
+| 工具 | 用途 |
+|------|------|
+| `list_sops(tags?)` | 列出SOP，可通过标签过滤 |
+| `get_sop_detail(sopId)` | 获取SOP完整定义（含mermaid流程图） |
+| `get_hosts(tags?)` | 查询主机列表 |
+| `execute_remote_command(hostId, command, timeout?)` | 远程执行命令（输出自动保存为附件） |
+| `execute_remote_command_batch(hostIds, command, timeout?)` | 多台主机并行执行同一命令，返回聚合结果 |
+| `check_command_risk(command)` | 检查命令风险等级（low/medium/high） |
+| browser-use 系列 | 浏览器操作（navigate/click/type/screenshot/extract_content 等） |
+
+### 工具访问控制
+
+匹配到 SOP 后，检查其 `requiredTools` 字段：
+- 若包含 `"sop-executor"` → 可使用所有 sop-executor 工具
+- 若包含 `"browser-use"` → 可使用浏览器自动化工具
+- 若缺失 → 默认推断：含 browser 类型节点则加入 `"browser-use"`，始终包含 `"sop-executor"`
+
+**严格约束**：执行该 SOP 期间只能使用 `requiredTools` 中声明的工具。
+
+## 触发场景与入口
+
+根据上下文状态判断进入以下三个场景之一，各场景最终产出统一的 `{targetIPs, hostTags, alarmContext}` 后进入「共享执行流程」。
+
+### 场景一：衔接根因分析后的环境诊断
+
+- **触发条件**：上下文中已有根因分析结果（rootAlarm），用户要求进行环境诊断
+- **输入来源**：root-cause-analysis skill 的输出
+- **入口流程**：
+  1. 直接从 rootAlarm 提取告警涉及的目标 IP 列表
+  2. 从 rootAlarm 提取集群类别（haproxy / RCPA / RCPADB / GMDB / KAFKA）
+  3. 调用 `get_hosts()` 按 IP 精确定位目标主机及其 tags
+  4. 产出 `{targetIPs, hostTags, alarmContext=rootAlarm摘要}`
+- **关键**：无缝衔接 root-cause-analysis skill 的输出，无需重新询问用户
+
+### 场景二：基于告警的实时诊断
+
+- **触发条件**：用户直接提供告警文本，上下文中无根因分析结果
+- **输入来源**：用户消息中的告警文本
+- **入口流程**：
+  1. 从告警文本中提取 IP 地址和告警关键词
+  2. 若提取到 IP → 调用 `get_hosts()` 按 IP 找到对应主机及其 tags
+  3. 若无 IP 但有关键词 → 从关键词推断类别（如提及"RCPA"→查 RCPA 主机，提及"数据库"/"DB"→查 RCPADB/GMDB），调用 `get_hosts(tags)` 获取主机列表
+  4. 若无法推断类别 → 向用户确认目标主机类别，格式：
+     ```
+     请确认需要诊断的目标主机类别：
+     - 负载均衡（haproxy）
+     - 应用层（RCPA）
+     - 数据层（RCPADB / GMDB / KAFKA）
+     ```
+  5. 产出 `{targetIPs, hostTags, alarmContext=告警文本摘要}`
+
+### 场景三：直接主机诊断
+
+- **触发条件**：用户指定 IP 或主机类别（如"检查所有RCPA主机"、"诊断10.0.0.1"），无告警上下文
+- **输入来源**：用户消息中的主机/类别指定
+- **入口流程**：
+  1. 解析用户输入：提取 IP 列表 或 类别关键词
+  2. 类别映射参考：
+     - 负载均衡 → haproxy / NSLB
+     - 应用层 → RCPA
+     - 数据层 → RCPADB / GMDB / KAFKA
+  3. 若为类别关键词 → 调用 `get_hosts(tags)` 获取该类别所有主机
+  4. 若为 IP → 调用 `get_hosts()` 获取全部主机后按 IP 过滤
+  5. 确认目标主机列表，产出 `{targetIPs, hostTags, alarmContext=null}`
+
+## 共享执行流程
+
+各场景入口产出 `{targetIPs, hostTags, alarmContext}` 后，统一进入以下流程：
+
+### 1. 信息准备
+
+- 基于各场景产出的 `{targetIPs, hostTags, alarmContext}`，确认最终的目标主机列表
+- 若目标主机为空，向用户说明并终止
+
+### 1.5 回忆Memory知识
+
+在进入SOP匹配与执行之前，检索 memory 中与目标主机类别相关的运维知识（如日志路径、配置文件位置、常见问题模式等），并在后续步骤中主动运用：
+
+- **命令构造**：用 memory 中的路径信息补充 SOP 命令模板的变量（如日志目录、配置文件路径）
+- **输出分析**：结合 memory 中的运维背景分析远程命令的执行结果
+- **自然语言模式**：利用 memory 知识将步骤描述转化为更精确的诊断命令
+
+### 2. 匹配SOP（增强版）
+
+调用 `list_sops()` 建立 `tags → sopId` 映射，按以下优先级匹配 **一个最相关的SOP**：
+
+- **优先（场景一、二）**：告警内容 vs SOP 的 `triggerCondition` 语义匹配
+- **其次（场景三）**：主机 tags vs SOP 的 `tags`/`hostTags` 交集匹配
+- **综合**：两者结合选最佳 SOP
+
+若无法匹配任何 SOP，告知用户并终止。
+
+### 2.5 生成执行计划（预演模式）
+
+匹配到 SOP 后、执行任何远程命令之前，必须生成执行计划并等待用户确认：
+
+1. 调用 `get_sop_detail(sopId)` 获取完整 SOP 定义
+2. 对每个节点的命令调用 `check_command_risk(command)` 确定风险等级
+3. 整理以下信息并输出给用户：
+
+```
+## 执行计划
+**SOP**: {name} ({id})
+**模式**: {structured | natural_language}
+**目标主机**: {IP 列表及主机名}
+**可用工具**: {requiredTools 列表}
+**预计步骤**: {N} 个节点
+
+### 执行序列
+| # | 节点名称 | 类型 | 命令模板 | 风险等级 | 需确认 |
+|---|---------|------|---------|---------|--------|
+| 1 | ...     | ...  | ...     | low/medium/high | 是/否 |
+
+### 分支条件
+{列出每个 transition 的 condition 和目标节点}
+```
+
+4. ⛔ **立即停止，结束本轮对话**。输出确认提示：
+
+```
+⏸️ 请确认是否执行此计划？回复「执行」继续，「取消」终止，或调整目标主机。
+```
+
+**严格约束**：
+- 用户明确回复「执行」前，⛔ 禁止调用 `execute_remote_command` 或 `execute_remote_command_batch`
+- 必须结束本轮对话，等待用户下一轮回复后才可继续执行
+- 用户回复「取消」→ 终止流程
+- 用户调整目标主机 → 更新计划后重新展示并再次等待确认
+
+### 3. 执行SOP
+
+**每个SOP按其 nodes 数组中配置的节点依次执行，严格遵循节点定义的 transitions 分支逻辑。**
+
+#### 准备
+- 根据SOP的 `tags` 调用 `get_hosts`，**仅保留 IP 匹配目标主机列表的主机**
+- 无匹配主机则跳过该SOP
+
+#### 每个节点的执行
+
+#### 风险分级执行策略
+
+执行节点命令前，调用 `check_command_risk(command)` 确定风险等级：
+
+| 风险等级 | 策略 | 示例命令 |
+|---------|------|---------|
+| **low** | 自动执行，直接报告结果 | ps, cat, grep, ls, df, free, tail, head, find, wc |
+| **medium** | 自动执行，标注提示 | netstat, top, iostat, ping |
+| **high** | **必须暂停**，展示命令和风险说明，等用户确认后才执行 | 白名单外的命令 |
+
+**覆盖规则**：`requireHumanConfirm: true` 的 transition 无论风险等级，一律需用户确认。
+
+**type=start 或 analysis：**
+1. 读取 `command` 模板，替换 `{{变量}}`（优先用上下文推断，其次用 `defaultValue`）
+2. 若目标主机 > 1 且命令相同 → 调用 `execute_remote_command_batch(hostIds, command)` 并行执行
+3. 若目标主机 = 1 或命令因变量替换不同 → 分别调用 `execute_remote_command`
+4. 根据 `analysisInstruction` 和 `outputFormat` 分析输出
+5. 分支判断 → 见下方"分支判断规则"
+
+**type=browser：**
+1. `browser_navigate` 打开 `browserUrl` → 立即 `browser_screenshot`
+2. `browser_get_state` 获取元素列表
+3. 根据 `browserAction` 描述逐步操作（click/type/scroll等），每步完成后 `browser_screenshot`
+4. `browser_extract_content` 提取数据 → `browser_screenshot`
+5. `browser_close_all` 关闭浏览器
+6. 根据 `analysisInstruction` 分析结果
+7. 分支判断 → 同上
+
+**type=end：** 该分支立即终止，标记"流程正常结束"。
+
+#### 分支判断规则
+
+评估当前节点的 `transitions`，逐条严格匹配：
+- **条件满足 + `requireHumanConfirm: true`** → ⛔ **立即停止**，输出确认消息后结束本轮对话：
+  ```
+  ⏸️ 请确认是否继续检查「{后续节点名称}」？回复「继续」或「否」。
+  ```
+  用户回复后继续执行对应 nextNodes。
+- **条件满足 + 无确认标记** → 执行对应 `nextNodes`
+- **所有条件不满足** → 该分支终止
+- **禁止**条件不满足时自行继续
+
+#### 自然语言模式
+
+当 `get_sop_detail` 返回自然语言模式 SOP（mode=natural_language）时：
+1. 阅读 stepsDescription 中的步骤描述
+2. 根据 SOP 的 tags 调用 `get_hosts`，仅保留 IP 匹配目标主机列表的主机
+3. 逐步将描述转化为具体的 shell 诊断命令（只读命令，符合白名单）
+4. 若目标主机 > 1 且命令相同 → 调用 `execute_remote_command_batch(hostIds, command)` 并行执行；若目标主机 = 1 或命令不同 → 分别调用 `execute_remote_command`
+5. 分析输出，判断是否异常
+6. 不需要生成 mermaid 流程图
+
+### 4. 诊断结果处理与下一步推荐
+
+SOP执行完成后，**必须停下来向用户反馈结果并推荐下一步操作**：
+
+- **发现异常**：输出异常详情，生成诊断报告（步骤5），流程结束。
+- **未发现异常（healthy）**：向用户展示当前SOP的诊断结论，结合告警信息、诊断结果和组网拓扑，判断是否有值得继续检查的SOP。推荐时应明确指出建议执行的SOP名称和目标主机IP，格式：
+  ```
+  ✅ 「{当前SOP名称}」执行完成，{涉及主机}未发现异常。
+
+  根据告警和当前诊断结果，建议执行「{推荐的下一个SOP名称}」对 {目标主机IP} 进行诊断。
+
+  是否继续？回复「继续」或指定其他检查项。
+  ```
+
+  如果根据当前诊断结果找不到合适的下一步SOP，则不强制推荐，直接告知用户当前诊断结论即可：
+  ```
+  ✅ 「{当前SOP名称}」执行完成，{涉及主机}未发现异常。
+
+  根据当前诊断结果，暂无明确的下一步检查建议。如需继续请指定检查项。
+  ```
+
+  用户确认后，回到步骤2匹配下一个SOP并执行。
+
+### 5. 生成诊断报告
+
+当发现异常或用户要求结束时，保存报告为 `./output/sop-diagnosis-report-{yyyyMMddHHmmss}.md`，结构：
+
+```markdown
+# SOP环境实时诊断报告
+## 诊断概述
+- 触发场景（场景一/二/三）、告警摘要或目标主机说明
+- 已执行SOP列表、异常SOP
+
+## SOP执行结果
+### {category}环境诊断
+- 执行状态：healthy / 异常
+- 涉及主机
+- 每个节点的：执行命令、日志附件路径、分析结论
+
+## 综合分析
+## 附件清单（必须填写实际文件路径）
+## 处理建议
+```
+
+附件必须包含所有 `sop-exec-*.log` 和浏览器截图文件路径。
+
+## 安全约束
+- 命令必须在白名单内（ps/tail/grep/cat/ls/df/free/netstat/top/iostat/ping等只读命令）
+- 禁止执行修改类命令（rm/mv/chmod/reboot/service等）
+- 主机连接失败或命令超时：记录并继续

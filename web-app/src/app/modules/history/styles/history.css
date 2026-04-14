@@ -1,0 +1,124 @@
+.session-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.session-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-5);
+    padding: var(--spacing-5);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.session-item:hover {
+    border-color: #d7deea;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.session-info {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.session-name {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: var(--spacing-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.session-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: var(--spacing-2);
+    column-gap: var(--spacing-4);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-align: left;
+    line-height: 1.5;
+}
+
+.session-meta-tags,
+.session-meta-details {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+}
+
+.session-meta-details {
+    gap: var(--spacing-3);
+}
+
+.session-actions {
+    display: flex;
+    gap: var(--spacing-2);
+    justify-content: flex-end;
+    flex: 0 0 88px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.session-item:hover .session-actions {
+    opacity: 1;
+}
+
+.session-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.session-action-btn:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.session-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--color-error);
+}
+
+.session-schedule-id {
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+    .session-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-4);
+        padding: var(--spacing-4);
+    }
+
+    .session-actions {
+        width: 100%;
+        flex: none;
+        justify-content: flex-start;
+        opacity: 1;
+    }
+
+    .session-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-2);
+    }
+
+    .session-meta-details {
+        gap: var(--spacing-2);
+    }
+}

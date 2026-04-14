@@ -3,8 +3,8 @@ package com.huawei.opsfactory.gateway.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -20,12 +20,23 @@ import java.util.Map;
 @Service
 public class CommandWhitelistService {
 
-    private static final Logger log = LogManager.getLogger(CommandWhitelistService.class);
+    private static final Logger log = LoggerFactory.getLogger(CommandWhitelistService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final List<String> DEFAULT_COMMANDS = List.of(
             "ps", "tail", "grep", "cat", "ls", "df", "free", "netstat",
-            "top", "cd", "find", "wc", "head", "date", "uptime"
+            "top", "cd", "find", "wc", "head", "date", "uptime",
+            "iostat", "ping"
+    );
+
+    private static final Map<String, String> DEFAULT_RISK_LEVELS = Map.ofEntries(
+            Map.entry("ps", "low"), Map.entry("tail", "low"), Map.entry("grep", "low"),
+            Map.entry("cat", "low"), Map.entry("ls", "low"), Map.entry("df", "low"),
+            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("date", "low"),
+            Map.entry("uptime", "low"), Map.entry("cd", "low"), Map.entry("find", "low"),
+            Map.entry("wc", "low"),
+            Map.entry("netstat", "medium"), Map.entry("top", "medium"),
+            Map.entry("iostat", "medium"), Map.entry("ping", "medium")
     );
 
     private final GatewayProperties properties;
@@ -38,8 +49,7 @@ public class CommandWhitelistService {
 
     @PostConstruct
     public void init() {
-        this.gatewayRoot = Path.of(properties.getPaths().getProjectRoot())
-                .toAbsolutePath().normalize().resolve("gateway");
+        this.gatewayRoot = properties.getGatewayRootPath();
         this.whitelistFile = gatewayRoot.resolve("data").resolve("command-whitelist.json");
 
         initializeDefaultIfNeeded();
@@ -164,6 +174,34 @@ public class CommandWhitelistService {
         return rejected;
     }
 
+    /**
+     * Determine the risk level of a command string.
+     * Returns "high" if any sub-command is not in the whitelist,
+     * "medium" if any sub-command is medium, otherwise "low".
+     */
+    public String getRiskLevel(String command) {
+        String highestRisk = "low";
+        Map<String, Object> whitelist = readWhitelistFile();
+        List<Map<String, Object>> commands = ensureCommandsList(whitelist.get("commands"));
+        Map<String, String> riskMap = new LinkedHashMap<>();
+        for (Map<String, Object> cmd : commands) {
+            Object p = cmd.get("pattern");
+            Object r = cmd.get("riskLevel");
+            if (p != null) riskMap.put(p.toString(), r != null ? r.toString() : "high");
+        }
+        for (String sub : command.split("[|;]")) {
+            String trimmed = sub.trim();
+            if (trimmed.isEmpty()) continue;
+            String[] parts = trimmed.split("\\s+", 2);
+            String name = parts[0].trim();
+            if (name.isEmpty()) continue;
+            String risk = riskMap.getOrDefault(name, "high");
+            if ("high".equals(risk)) return "high";
+            if ("medium".equals(risk) && "low".equals(highestRisk)) highestRisk = "medium";
+        }
+        return highestRisk;
+    }
+
     // ── Default Initialization ───────────────────────────────────────
 
     private void initializeDefaultIfNeeded() {
@@ -180,6 +218,7 @@ public class CommandWhitelistService {
                 entry.put("pattern", cmd);
                 entry.put("description", "");
                 entry.put("enabled", true);
+                entry.put("riskLevel", DEFAULT_RISK_LEVELS.getOrDefault(cmd, "high"));
                 commands.add(entry);
             }
 

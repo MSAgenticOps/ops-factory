@@ -11,8 +11,8 @@ import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.proxy.SseRelayService;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.FileService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpMethod;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @RequestMapping("/gateway/agents/{agentId}")
 public class ReplyController {
 
-    private static final Logger log = LogManager.getLogger(ReplyController.class);
+    private static final Logger log = LoggerFactory.getLogger(ReplyController.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final InstanceManager instanceManager;
@@ -116,10 +116,11 @@ public class ReplyController {
                                         instanceReadyAt - spawnStart, instanceReadyAt - requestStart);
                                 instance.touch();
                                 instanceManager.touchAllForUser(userId);
-                                boolean resumeRequired = sessionId != null && !instance.isSessionResumed(sessionId);
+                                boolean resumeRequired = sessionId != null;
                                 AtomicLong relayReadyAt = new AtomicLong(instanceReadyAt);
                                 AtomicBoolean firstChunkSeen = new AtomicBoolean(false);
 
+                                AtomicBoolean providerRetried = new AtomicBoolean(false);
                                 Flux<DataBuffer> upstream = ensureSessionResumed(instance, sessionId)
                                         .doOnSuccess(ignored -> {
                                             long now = System.currentTimeMillis();
@@ -130,6 +131,19 @@ public class ReplyController {
                                         })
                                         .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
                                                 processedBody, agentId, userId, instance.getSecretKey()))
+                                        .onErrorResume(SseRelayService.ProviderNotSetException.class, e -> {
+                                            if (sessionId == null || providerRetried.getAndSet(true)) {
+                                                return sseErrorEvent("Provider not set");
+                                            }
+                                            instance.unmarkSessionResumed(sessionId);
+                                            String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";
+                                            return resumeSession(instance, sessionId, resumeBody, "[REPLY-RECOVER]")
+                                                    .onErrorResume(err -> Mono.empty())
+                                                    .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
+                                                            processedBody, agentId, userId, instance.getSecretKey()))
+                                                    .onErrorResume(SseRelayService.ProviderNotSetException.class,
+                                                            err -> sseErrorEvent("Provider not set"));
+                                        })
                                         .doOnNext(buf -> {
                                             if (firstChunkSeen.compareAndSet(false, true)) {
                                                 long now = System.currentTimeMillis();
@@ -166,7 +180,7 @@ public class ReplyController {
      */
     private List<Map<String, Object>> snapshotFiles(Path workingDir) {
         try {
-            return fileService.listFiles(workingDir);
+            return fileService.listTopLevelFiles(workingDir);
         } catch (Exception e) {
             log.debug("[REPLY] file snapshot failed (best-effort): {}", e.getMessage());
             return Collections.emptyList();
@@ -180,7 +194,7 @@ public class ReplyController {
     private Mono<DataBuffer> buildOutputFilesEvent(Path workingDir, String sessionId,
                                                     List<Map<String, Object>> beforeFiles) {
         try {
-            List<Map<String, Object>> afterFiles = fileService.listFiles(workingDir);
+            List<Map<String, Object>> afterFiles = fileService.listTopLevelFiles(workingDir);
             List<Map<String, String>> changed = fileService.diffFiles(beforeFiles, afterFiles);
             if (changed.isEmpty()) {
                 return Mono.empty();
@@ -202,15 +216,30 @@ public class ReplyController {
         }
     }
 
+    private Flux<DataBuffer> sseErrorEvent(String reason) {
+        try {
+            String json = MAPPER.writeValueAsString(Map.of("type", "Error", "error", reason));
+            String ssePayload = "data: " + json + "\n\n";
+            DataBuffer buf = DefaultDataBufferFactory.sharedInstance
+                    .wrap(ssePayload.getBytes(StandardCharsets.UTF_8));
+            return Flux.just(buf);
+        } catch (Exception e) {
+            return Flux.empty();
+        }
+    }
+
     /**
-     * Ensure that the session referenced in the reply body has been resumed on this
-     * goosed instance (provider + extensions loaded). This is a no-op when the session
-     * was already resumed (normal flow). After a force-recycle, the goosed process is
-     * brand-new and needs an explicit /agent/resume call before it can handle /reply.
+     * Ensure that any follow-up reply against an existing session first restores that
+     * session on the current goosed instance (provider + extensions loaded).
+     *
+     * We intentionally do not trust the gateway's local resumed-session cache here:
+     * stop/recycle/page-switch flows can leave the cache and goosed's real state out
+     * of sync. Treating resume as the standard precondition for session continuation
+     * keeps "continue chatting" aligned with the explicit history/resume entrypoint.
      */
     private Mono<Void> ensureSessionResumed(ManagedInstance instance, String sessionId) {
-        if (sessionId == null || instance.isSessionResumed(sessionId)) {
-            log.debug("[REPLY] session {} already resumed or null, skipping resume", sessionId);
+        if (sessionId == null) {
+            log.debug("[REPLY] session id missing, skipping pre-reply resume");
             return Mono.empty();
         }
         String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";

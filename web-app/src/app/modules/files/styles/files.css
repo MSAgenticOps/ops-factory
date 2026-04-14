@@ -1,0 +1,210 @@
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-5);
+    padding: var(--spacing-5);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.file-item:hover {
+    border-color: #d7deea;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.file-item.is-deleting {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+.file-icon {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: rgba(148, 163, 184, 0.10);
+    color: #64748b;
+    flex-shrink: 0;
+    transition: transform var(--transition-fast), background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.file-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.file-item:hover .file-icon {
+    transform: translateY(-1px);
+}
+
+.file-icon-document {
+    background: rgba(59, 130, 246, 0.10);
+    border-color: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+}
+
+.file-icon-sheet {
+    background: rgba(16, 185, 129, 0.10);
+    border-color: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+
+.file-icon-slide {
+    background: rgba(249, 115, 22, 0.10);
+    border-color: rgba(249, 115, 22, 0.12);
+    color: #ea580c;
+}
+
+.file-icon-markdown,
+.file-icon-code,
+.file-icon-html {
+    background: rgba(99, 102, 241, 0.10);
+    border-color: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+}
+
+.file-icon-image {
+    background: rgba(168, 85, 247, 0.10);
+    border-color: rgba(168, 85, 247, 0.12);
+    color: #9333ea;
+}
+
+.file-icon-default {
+    background: rgba(148, 163, 184, 0.10);
+    border-color: rgba(148, 163, 184, 0.14);
+    color: #64748b;
+}
+
+.file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-name {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: var(--spacing-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: var(--spacing-2);
+    column-gap: var(--spacing-4);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+.file-meta-tags,
+.file-meta-details {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+}
+
+.file-meta-details {
+    gap: var(--spacing-3);
+}
+
+.file-agent-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.file-actions {
+    display: flex;
+    gap: var(--spacing-2);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 120px;
+}
+
+.file-item:hover .file-actions {
+    opacity: 1;
+}
+
+.file-download-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.file-download-btn:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.file-delete-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.file-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-error);
+}
+
+@media (max-width: 768px) {
+    .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-4);
+        padding: var(--spacing-4);
+    }
+
+    .file-actions {
+        width: 100%;
+        flex: none;
+        justify-content: flex-start;
+        opacity: 1;
+    }
+
+    .file-meta {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-2);
+    }
+
+    .file-meta-details {
+        gap: var(--spacing-2);
+    }
+}

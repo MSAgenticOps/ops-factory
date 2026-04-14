@@ -1,0 +1,83 @@
+.seg-filter {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 6px;
+    margin-bottom: 0;
+    padding: 0;
+    min-height: 36px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.seg-filter::-webkit-scrollbar {
+    display: none;
+}
+
+.seg-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+    white-space: nowrap;
+}
+
+.seg-filter-btn:hover:not(.active) {
+    color: var(--color-text-primary);
+    background: rgba(15, 23, 42, 0.035);
+}
+
+.seg-filter-btn.active {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: #dde3ec;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.seg-filter-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.seg-filter.seg-filter-compact {
+    margin-bottom: 0;
+}
+
+.seg-filter-compact .seg-filter-btn {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: var(--font-size-xs);
+}
+
+.seg-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    background: rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--color-text-secondary);
+}
+
+.seg-filter-btn.active .seg-filter-count {
+    background: rgba(15, 23, 42, 0.08);
+    color: var(--color-text-primary);
+}
