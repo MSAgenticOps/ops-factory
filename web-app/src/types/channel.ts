@@ -92,3 +92,11 @@ export interface ChannelLoginState {
     lastError: string
     qrCodeDataUrl?: string | null
 }
+
+export interface ChannelSelfTestResult {
+    channelId: string
+    selfPhone: string
+    agentId: string
+    sessionId: string
+    replyText: string
+}

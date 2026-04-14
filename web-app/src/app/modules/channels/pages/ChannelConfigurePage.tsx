@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import PageBackLink from '../../../platform/ui/primitives/PageBackLink'
 import Button from '../../../platform/ui/primitives/Button'
+import ActionMenu, { type ActionMenuItem } from '../../../platform/ui/primitives/ActionMenu'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import { useChannels } from '../hooks/useChannels'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
-import type { ChannelDetail, ChannelLoginState, ChannelUpsertRequest, WhatsAppChannelConfig } from '../../../../types/channel'
+import type { ChannelDetail, ChannelLoginState, ChannelSelfTestResult, ChannelUpsertRequest, WhatsAppChannelConfig } from '../../../../types/channel'
 import '../styles/channels.css'
 
 type ChannelConfigTab = 'overview' | 'connection' | 'runtime'
@@ -87,6 +88,7 @@ export default function ChannelConfigurePage() {
         startLogin,
         fetchLoginState,
         logoutChannel,
+        runSelfTest,
     } = useChannels()
 
     const defaultAgentId = useMemo(() => {
@@ -100,8 +102,8 @@ export default function ChannelConfigurePage() {
     const [loginState, setLoginState] = useState<ChannelLoginState | null>(null)
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<ChannelConfigTab>('overview')
-    const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
-    const actionsMenuRef = useRef<HTMLDivElement | null>(null)
+    const [selfTestInput, setSelfTestInput] = useState('Introduce yourself in one short paragraph.')
+    const [selfTestResult, setSelfTestResult] = useState<ChannelSelfTestResult | null>(null)
 
     useEffect(() => {
         if (channelId) {
@@ -151,16 +153,6 @@ export default function ChannelConfigurePage() {
         return undefined
     }, [isLoginModalOpen, loginState])
 
-    useEffect(() => {
-        const handlePointerDown = (event: MouseEvent) => {
-            if (!actionsMenuRef.current?.contains(event.target as Node)) {
-                setIsActionsMenuOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handlePointerDown)
-        return () => document.removeEventListener('mousedown', handlePointerDown)
-    }, [])
-
     const updateConfigField = (field: keyof WhatsAppChannelConfig, value: string) => {
         setForm(current => ({
             ...current,
@@ -208,7 +200,6 @@ export default function ChannelConfigurePage() {
             return
         }
 
-        setIsActionsMenuOpen(false)
         if (result.verification.ok) {
             showToast('success', t('channels.verifySuccess'))
         } else {
@@ -220,7 +211,6 @@ export default function ChannelConfigurePage() {
     const handleToggleEnabled = async () => {
         if (!channelId) {
             setForm(current => ({ ...current, enabled: !current.enabled }))
-            setIsActionsMenuOpen(false)
             return
         }
         const result = await setChannelEnabled(channelId, !form.enabled)
@@ -228,7 +218,6 @@ export default function ChannelConfigurePage() {
             showToast('error', result.error || t('channels.statusUpdateFailed'))
             return
         }
-        setIsActionsMenuOpen(false)
         setForm(toFormState(result.channel))
         showToast('success', result.channel.enabled ? t('channels.enabledSuccess') : t('channels.disabledSuccess'))
     }
@@ -253,7 +242,6 @@ export default function ChannelConfigurePage() {
             showToast('error', result.error || t('channels.loginStateFailed'))
             return
         }
-        setIsActionsMenuOpen(false)
         setLoginState(result.state)
         showToast('success', result.state.message)
     }
@@ -267,6 +255,22 @@ export default function ChannelConfigurePage() {
         }
         setLoginState(result.state)
         showToast('success', t('channels.logoutSuccess'))
+        await fetchChannel(channelId)
+    }
+
+    const handleRunSelfTest = async () => {
+        if (!channelId) return
+        if (!selfTestInput.trim()) {
+            showToast('error', t('channels.selfTestValidation'))
+            return
+        }
+        const result = await runSelfTest(channelId, selfTestInput.trim())
+        if (!result.success || !result.result) {
+            showToast('error', result.error || t('channels.selfTestFailed'))
+            return
+        }
+        setSelfTestResult(result.result)
+        showToast('success', t('channels.selfTestSuccess'))
         await fetchChannel(channelId)
     }
 
@@ -324,6 +328,28 @@ export default function ChannelConfigurePage() {
         { key: 'connection', label: t('channels.connectionTab') },
         { key: 'runtime', label: t('channels.runtimeTab') },
     ]
+    const actionMenuItems: ActionMenuItem[] = [
+        {
+            key: 'refresh-status',
+            label: t('channels.refreshStatus'),
+            description: t('channels.refreshStatusDescription'),
+            onSelect: () => { void handleRefreshLoginState() },
+        },
+        {
+            key: 'check-status',
+            label: t('channels.checkStatus'),
+            description: t('channels.checkStatusDescription'),
+            onSelect: () => { void handleVerify() },
+        },
+        {
+            key: 'toggle-enabled',
+            label: form.enabled ? t('channels.disable') : t('channels.enable'),
+            description: form.enabled ? t('channels.disableDescription') : t('channels.enableDescription'),
+            onSelect: () => { void handleToggleEnabled() },
+            tone: form.enabled ? 'danger' : 'default',
+            dividerBefore: true,
+        },
+    ]
 
     return (
         <div className="channel-configure-scroll-area">
@@ -351,29 +377,12 @@ export default function ChannelConfigurePage() {
                             <Button variant="secondary" onClick={() => void handleLogout()} disabled={loginActionsDisabled}>
                                 {t('channels.logout')}
                             </Button>
-                            <div className="channel-actions-menu" ref={actionsMenuRef}>
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => setIsActionsMenuOpen(current => !current)}
-                                    disabled={isSaving}
-                                    aria-expanded={isActionsMenuOpen}
-                                >
-                                    {t('channels.moreActions')}
-                                </Button>
-                                {isActionsMenuOpen && (
-                                    <div className="channel-actions-menu-panel">
-                                        <button type="button" onClick={() => void handleRefreshLoginState()}>
-                                            {t('channels.refreshStatus')}
-                                        </button>
-                                        <button type="button" onClick={() => void handleVerify()}>
-                                            {t('channels.checkStatus')}
-                                        </button>
-                                        <button type="button" onClick={() => void handleToggleEnabled()}>
-                                            {form.enabled ? t('channels.disable') : t('channels.enable')}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            <ActionMenu
+                                label={t('channels.moreActions')}
+                                items={actionMenuItems}
+                                disabled={isSaving}
+                                ariaLabel={t('channels.moreActions')}
+                            />
                             <Button variant="primary" onClick={() => void handleSave()} disabled={isSaving}>
                                 {isSaving ? t('common.saving') : t('common.save')}
                             </Button>
@@ -497,6 +506,55 @@ export default function ChannelConfigurePage() {
                                     <p className="channel-webhook-hint">
                                         {loginState?.message || form.config.lastError || t('channels.connectionHint')}
                                     </p>
+                                </div>
+                            </section>
+
+                            <section className="channel-configure-section">
+                                <div className="channel-configure-section-header">
+                                    <div>
+                                        <h2 className="channel-configure-section-title">{t('channels.selfTestTitle')}</h2>
+                                        <p className="channel-configure-section-desc">{t('channels.selfTestDesc')}</p>
+                                    </div>
+                                </div>
+                                <div className="channel-self-test-card">
+                                    <label className="channel-form-field">
+                                        <span>{t('channels.selfTestPrompt')}</span>
+                                        <textarea
+                                            className="channel-self-test-textarea"
+                                            value={selfTestInput}
+                                            onChange={(event) => setSelfTestInput(event.target.value)}
+                                            placeholder={t('channels.selfTestPlaceholder')}
+                                        />
+                                    </label>
+                                    <div className="channel-self-test-actions">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => void handleRunSelfTest()}
+                                            disabled={loginActionsDisabled || loginStatus !== 'connected'}
+                                        >
+                                            {t('channels.runSelfTest')}
+                                        </Button>
+                                        {selfTestResult && (
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => navigate(`/chat?sessionId=${selfTestResult.sessionId}&agent=${selfTestResult.agentId}`)}
+                                            >
+                                                {t('channels.openSession')}
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {selfTestResult && (
+                                        <div className="channel-self-test-result">
+                                            <div className="channel-self-test-meta">
+                                                <span>{t('channels.selfTestPhone')}: {selfTestResult.selfPhone}</span>
+                                                <span>{t('channels.selfTestSession')}: {selfTestResult.sessionId}</span>
+                                            </div>
+                                            <div className="channel-self-test-reply">
+                                                <strong>{t('channels.selfTestReply')}</strong>
+                                                <p>{selfTestResult.replyText}</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         </>

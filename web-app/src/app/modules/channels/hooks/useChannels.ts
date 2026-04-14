@@ -6,6 +6,7 @@ import type {
     ChannelDetail,
     ChannelLoginState,
     ChannelMutationResponse,
+    ChannelSelfTestResult,
     ChannelSummary,
     ChannelUpsertRequest,
     ChannelVerificationResult,
@@ -27,6 +28,7 @@ interface UseChannelsResult {
     startLogin: (channelId: string) => Promise<{ success: boolean; state?: ChannelLoginState; error?: string }>
     fetchLoginState: (channelId: string) => Promise<{ success: boolean; state?: ChannelLoginState; error?: string }>
     logoutChannel: (channelId: string) => Promise<{ success: boolean; state?: ChannelLoginState; error?: string }>
+    runSelfTest: (channelId: string, text: string) => Promise<{ success: boolean; result?: ChannelSelfTestResult; error?: string }>
 }
 
 function defaultMutationError(message: string): ChannelMutationResponse {
@@ -298,6 +300,32 @@ export function useChannels(): UseChannelsResult {
         }
     }, [userId])
 
+    const runSelfTest = useCallback(async (channelId: string, text: string) => {
+        setIsSaving(true)
+        setError(null)
+        try {
+            const response = await fetch(`${GATEWAY_URL}/channels/${channelId}/self-test`, {
+                method: 'POST',
+                headers: gatewayHeaders(userId),
+                body: JSON.stringify({ text }),
+                signal: AbortSignal.timeout(10_000),
+            })
+            const data = await response.json() as { success: boolean; result?: ChannelSelfTestResult; error?: string }
+            if (!response.ok || !data.success) {
+                const message = data.error || 'Failed to run self-test'
+                setError(message)
+                return { success: false, error: message }
+            }
+            return data
+        } catch (err) {
+            const message = getErrorMessage(err)
+            setError(message)
+            return { success: false, error: message }
+        } finally {
+            setIsSaving(false)
+        }
+    }, [userId])
+
     return {
         channels,
         channel,
@@ -314,5 +342,6 @@ export function useChannels(): UseChannelsResult {
         startLogin,
         fetchLoginState,
         logoutChannel,
+        runSelfTest,
     }
 }
