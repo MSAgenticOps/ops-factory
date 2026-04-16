@@ -1,5 +1,7 @@
 business-intelligence:
-  corsOrigin: "*"
-  runtime:
-    base-dir: "./data"
-    cache-enabled: true
+  # Comma-delimited origin patterns for browser access.
+  corsOrigin: "http://localhost:5173,*"
+  # Base directory for source Excel files.
+  baseDir: "./data"
+  # Cache aggregated snapshot data in memory between requests.
+  cacheEnabled: true
