@@ -12,57 +12,43 @@
 ## System Diagram
 
 ```text
-+--------------------------------------------------------------+
-|                           Clients                            |
-|--------------------------------------------------------------|
-| Browser (web-app)                     | TypeScript SDK       |
-| chat / files / history / settings     | programmatic access  |
-+---------------------------------------+----------------------+
-                    |                              |
-                    | HTTP / SSE                   | HTTP
-                    +------------------------------+
-                                                   |
-                                                   v
-                                +--------------------------------------+
-                                |               gateway                |
-                                |--------------------------------------|
-                                | auth / routing / session orchestration|
-                                | file APIs / config CRUD / SSE relay   |
-                                | process management / channel adapters |
-                                +------------------+-------------------+
-                                                   |
-                 +---------------------------------+----------------------------------+
-                 |                                 |                                  |
-                 | spawn / route                   | service integration              | service control / observation
-                 v                                 v                                  v
-       +--------------------------------+   +----------------------+       +----------------------+
-       | Agent Runtime Pool             |   | Domain Services      |       | control-center       |
-       |--------------------------------|   |----------------------|       |----------------------|
-       | isolated by (agentId, userId)  |   | knowledge-service    |       | health / logs /      |
-       | goosed process per runtime     |   | business-intelligence|       | config / actions     |
-       | runtime data under             |   +----------------------+       +----------------------+
-       | gateway/users/<user>/agents/*  |
-       +----------------+---------------+
-                        |
-                        | shared agent config / prompts / skills / memory
-                        v
-       +-----------------------------------------------+
-       | gateway/agents/<agent-id>/config + skills     |
-       +-----------------------------------------------+
-
-       +---------------------------+        +---------------------------+
-       | External Channels         |        | Optional Platform Services|
-       |---------------------------|        |---------------------------|
-       | WhatsApp bridge           |        | langfuse                 |
-       | WeChat bridge             |        | onlyoffice               |
-       | channel events / media    |        | prometheus-exporter      |
-       +-------------+-------------+        +-------------+-------------+
-                     |                                    |
-                     | bridge events / media              | observability / preview / metrics
-                     +-------------------+----------------+
-                                         |
-                                         v
-                                      gateway
++--------------------------------------------------------------------------------------------------+
+|                                          Ops Factory                                             |
++--------------------------------------------------------------------------------------------------+
+| Access Layer                                                                                     |
+|--------------------------------------------------------------------------------------------------|
+| Browser (web-app)                 | TypeScript SDK             | External Channels              |
+| chat / files / history / settings | programmatic gateway access| WhatsApp / WeChat / media     |
++-----------------------------------+----------------------------+--------------------------------+
+                  |                                   |                              |
+                  | HTTP / SSE                        | HTTP                         | bridge events / media
+                  +-----------------------------------+------------------------------+
+                                                      |
+                                                      v
++--------------------------------------------------------------------------------------------------+
+| gateway                                                                                          |
+|--------------------------------------------------------------------------------------------------|
+| auth / routing / session orchestration / file APIs / config CRUD / SSE relay / channel adapters  |
+| process management / runtime lifecycle / service integration                                      |
++-----------------------------+---------------------------+----------------------+----------------------+
+                              |                           |                      |                      |
+                              | spawn / route             | service calls        | service control      | platform integration
+                              v                           v                      v                      v
+          +--------------------------------+  +---------------------------+  +----------------------+  +----------------------+
+          | Agent Runtime Pool             |  | Domain Services           |  | control-center       |  | Platform Services    |
+          |--------------------------------|  |---------------------------|  |----------------------|  |----------------------|
+          | isolated by (agentId, userId)  |  | knowledge-service         |  | health / logs /      |  | langfuse             |
+          | goosed process per runtime     |  | business-intelligence     |  | config / actions     |  | onlyoffice           |
+          | runtime data under             |  +---------------------------+  +----------------------+  | prometheus-exporter  |
+          | gateway/users/<user>/agents/*  |                                                           | observability /      |
+          +----------------+---------------+                                                           | preview / metrics    |
+                           |                                                                           +----------------------+
+                           |
+                           | shared config / prompts / skills / memory
+                           v
+          +---------------------------------------------------+
+          | gateway/agents/<agent-id>/config + skills         |
+          +---------------------------------------------------+
 ```
 
 ## Key Architecture Information
