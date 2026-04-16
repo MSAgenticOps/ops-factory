@@ -5,11 +5,27 @@
     gap: var(--spacing-6);
 }
 
+.business-intelligence-header-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
 .business-intelligence-toolbar-actions {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: flex-end;
     gap: var(--spacing-2);
+    flex-wrap: nowrap;
     flex-shrink: 0;
+}
+
+.business-intelligence-page .page-header-action {
+    align-items: flex-end;
+}
+
+.business-intelligence-page .page-header-action .business-intelligence-refresh-button {
+    min-width: 32px;
 }
 
 .business-intelligence-header-meta {
@@ -58,6 +74,69 @@
 
 .business-intelligence-section {
     margin-bottom: var(--spacing-6);
+}
+
+.business-intelligence-tab-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-6);
+}
+
+.business-intelligence-section-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.business-intelligence-section-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.business-intelligence-section-title {
+    margin: 0;
+    font-size: var(--ui-section-title-size);
+    font-weight: var(--ui-section-title-weight);
+    color: var(--color-text-primary);
+    line-height: var(--ui-section-title-line-height);
+}
+
+.business-intelligence-snapshot-body {
+    padding-top: 0;
+}
+
+.business-intelligence-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.business-intelligence-stat-grid-snapshot {
+    padding: 0;
+}
+
+.business-intelligence-distribution-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr);
+    gap: var(--spacing-3);
+    align-items: stretch;
+}
+
+.business-intelligence-chart-surface {
+    min-width: 0;
+}
+
+.business-intelligence-chart-surface-line,
+.business-intelligence-chart-surface-combo,
+.business-intelligence-chart-surface-grouped-bar,
+.business-intelligence-chart-surface-heatmap,
+.business-intelligence-chart-surface-bubble {
+    width: 100%;
+}
+
+.business-intelligence-chart-surface-line,
+.business-intelligence-chart-surface-combo {
+    padding-top: var(--spacing-1);
 }
 
 .business-intelligence-content-card {
@@ -335,12 +414,13 @@
 .business-intelligence-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .business-intelligence-table th,
 .business-intelligence-table td {
     text-align: left;
-    padding: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-4);
     border-bottom: 1px solid var(--color-border);
     font-size: var(--font-size-sm);
     vertical-align: middle;
@@ -351,6 +431,10 @@
     font-weight: 600;
     background: var(--color-bg-secondary);
     white-space: nowrap;
+}
+
+.business-intelligence-table tbody tr:hover {
+    background: rgba(244, 246, 247, 0.68);
 }
 
 .business-intelligence-table-number {
@@ -393,6 +477,10 @@
     width: 96px;
 }
 
+.business-intelligence-table-status {
+    text-align: center !important;
+}
+
 .business-intelligence-executive-stack {
     display: flex;
     flex-direction: column;
@@ -406,13 +494,14 @@
 }
 
 @media (max-width: 900px) {
-    .business-intelligence-toolbar {
-        flex-direction: column;
+    .business-intelligence-header-controls {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .business-intelligence-toolbar-actions {
         width: 100%;
-        justify-content: space-between;
+        justify-content: flex-start;
         flex-wrap: wrap;
     }
 
@@ -420,6 +509,8 @@
         min-width: max-content;
     }
 
+    .business-intelligence-stat-grid,
+    .business-intelligence-distribution-grid,
     .business-intelligence-dashboard-stats,
     .business-intelligence-dashboard-grid {
         grid-template-columns: 1fr;
@@ -433,6 +524,12 @@
     .business-intelligence-dashboard-panel-body-wide {
         min-height: 220px;
     }
+
+    .business-intelligence-period-field,
+    .reporting-period-selector {
+        flex-wrap: wrap;
+    }
+
 }
 
 /* Granularity Selector */
@@ -491,48 +588,40 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-3);
+    flex-wrap: nowrap;
 }
 
 .reporting-period-selector-label {
+    white-space: nowrap;
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.business-intelligence-period-field {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--spacing-3);
+    min-width: 0;
     white-space: nowrap;
 }
 
 .reporting-period-select {
-    padding: 6px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-    min-width: 100px;
-}
-
-.reporting-period-select:hover:not(:disabled) {
-    border-color: var(--color-accent);
-}
-
-.reporting-period-select:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.reporting-period-select:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(91, 141, 184, 0.2);
+    min-width: 144px;
 }
 
 .reporting-period-custom-dates {
     display: flex;
     align-items: center;
     gap: var(--spacing-2);
+    flex-wrap: wrap;
 }
 
 .reporting-period-date-input {
-    padding: 6px 10px;
+    min-height: 40px;
+    padding: 0 12px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-bg-primary);
@@ -559,74 +648,6 @@
 .reporting-period-date-separator {
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
-}
-
-/* Pie Chart */
-.pie-chart-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-6);
-    min-height: 200px;
-}
-
-.pie-chart-svg-wrapper {
-    width: 180px;
-    height: 180px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pie-chart-svg {
-    width: 100%;
-    height: 100%;
-}
-
-.pie-chart-legend {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-2);
-}
-
-.pie-legend-row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-    font-size: var(--font-size-sm);
-    padding: var(--spacing-1) 0;
-}
-
-.pie-legend-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-    flex-shrink: 0;
-}
-
-.pie-legend-label {
-    flex: 1;
-    color: var(--color-text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.pie-legend-value {
-    font-weight: 600;
-    color: var(--color-text-primary);
-    min-width: 50px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
-.pie-legend-percent {
-    color: var(--color-text-secondary);
-    min-width: 45px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
 }
 
 /* Line Chart */
@@ -664,8 +685,10 @@
 .line-chart-legend {
     display: flex;
     justify-content: center;
+    margin-top: var(--spacing-4);
     gap: var(--spacing-4);
     font-size: var(--font-size-sm);
+    flex-wrap: wrap;
 }
 
 .line-chart-legend-item {

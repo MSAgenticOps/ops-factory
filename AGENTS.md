@@ -42,10 +42,16 @@ When implementing or extending frontend features, do not start from page-specifi
 
 - Treat the route shell, section cards, toolbar/form blocks, result lists, and right-panel/detail-panel flows as the default building blocks for new UI work.
 - Prefer extending `app/platform/*` capabilities before adding new page-specific wrappers or class families.
+- KPI overview cards, analytics chart headers, pie/distribution cards, and status/icon table cells should be standardized in `app/platform/*` and reused across modules instead of being reimplemented per page.
 - If a feature needs a new interaction pattern, document the reason in the relevant UI or architecture doc and keep the first implementation narrow and reusable.
 - Avoid inventing a new visual language per feature. Reuse the established spacing, border, radius, empty-state, banner, tag, and button treatments unless the product explicitly calls for a new shared pattern.
 - For comparison, testing, or inspection workflows, default to the existing workbench model: controls and context in the main area, results in structured cards or grids, and detail inspection in the right panel or modal fallback on smaller screens.
 - Frontend handoffs and PRs should call out which existing patterns were reused, which new shared primitives were introduced, and include screenshots or GIFs for validation.
+- For analytics work, prefer the shared `StatCard` + `ui-metric-grid`, `ChartHeaderLegend`, `PieDistributionCard`, and `StatusCell` patterns before introducing module-local chart or legend chrome.
+- All user-facing frontend copy must go through the existing i18n flow. Do not hardcode visible strings in components, page configs, toast messages, table headers, chart legends, empty states, or button labels.
+- When adding or changing copy, update both `web-app/src/i18n/en.json` and `web-app/src/i18n/zh.json` in the same change, keep the key structure aligned, and prefer stable namespace-style keys over ad hoc one-off names.
+- If the backend or static config returns display labels in a fixed language, add a frontend localization mapping layer at the rendering boundary instead of leaking mixed-language text into the UI.
+- New frontend work should be checked in both Chinese and English modes when it touches user-visible content, especially for tab labels, section titles, form options, charts, tables, banners, and status text.
 - New frontend code must respect the platform/modules boundary:
   - shared shell, providers, navigation, chat, preview, renderers, panels, runtime helpers, and reusable UI primitives belong in `web-app/src/app/platform/*`
   - feature-specific pages, components, hooks, and styles belong in `web-app/src/app/modules/<module>/*`

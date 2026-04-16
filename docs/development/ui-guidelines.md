@@ -19,11 +19,16 @@ Choose the closest existing pattern before designing a new one.
   - `web-app/src/app/platform/*` for shared shell, navigation, providers, chat, preview, renderers, panels, runtime helpers, styles, and reusable UI primitives/patterns
   - `web-app/src/app/modules/<module>/*` for feature-local pages, components, hooks, and styles
   - root-level `web-app/src` only for entrypoints and cross-cutting assets such as `App.tsx`, `main.tsx`, `assets`, `config`, `i18n`, `types`, and `utils`
-- Keep i18n support in mind when introducing user-facing text.
+- User-facing text must be localized through the existing i18n mechanism; do not hardcode visible strings in components, configs, charts, tables, empty states, banners, or toasts.
+- Add or change i18n copy in both `web-app/src/i18n/en.json` and `web-app/src/i18n/zh.json` together, and keep the key structure symmetric across languages.
+- Prefer stable namespace-style keys that describe UI intent and ownership, for example `businessIntelligence.incidents.cards.total`, instead of repeating raw copy or using page-local temporary keys.
+- If an API response, static module config, or computed dataset exposes display labels in a fixed language, translate them in a rendering adapter or view-model layer before they reach shared UI primitives.
 - Errors should use the established error-handling and toast patterns rather than bespoke banners per page.
 - Responsive behavior is required for any new top-level page or major workflow.
 - Before adding a new class family, check whether the behavior can be expressed by extending an existing shared component, utility class, or variant.
 - Prefer shared primitives for cards, pills/tags, banners, empty states, split layouts, and detail panels. Feature-specific classes should only describe domain-specific content, not restate common card chrome.
+- Analytics and reporting pages should be composed from multiple section cards or grids of cards, not a single oversized card that mixes KPIs, charts, and tables into one undifferentiated surface.
+- KPI overviews, chart-card header legends, pie/distribution cards, and icon-based status cells are shared analytics patterns and should be implemented through `app/platform/*` primitives before introducing feature-local variants.
 - New controls should preserve the existing button hierarchy, form spacing, border treatment, and selection states.
 - When a new shared visual pattern is introduced, extract it intentionally and document where it should be reused.
 - Do not recreate root-level `src/pages`, `src/components`, `src/hooks`, or `src/contexts`.
@@ -34,6 +39,9 @@ Choose the closest existing pattern before designing a new one.
 - Reuse the established spacing scale, radius tokens, border colors, muted text treatment, and hover/selected affordances already used across the app.
 - Keep section headers concise: title first, optional one-sentence description second, actions aligned with the section rather than embedded deep in content blocks.
 - Use tags/pills for compact metadata, banners for actionable warnings or errors, and key-value grids for dense inspection details.
+- Status semantics should use shared icon and badge primitives with the project tone scale (`success`, `warning`, `danger`, `neutral`, `info`) rather than emojis, plain glyphs such as `×`, or feature-local color stories.
+- Distribution cards should use the shared pie/distribution pattern: fixed-height cards when paired, `Top N + Other` summarization for large category sets, and aligned legend rows for label, value, and percentage.
+- Trend and comparison charts should place series legends in the card header via the shared chart-header legend pattern rather than repeating legends at the bottom when space is constrained.
 - Keep action density low. Prefer one primary action per section or workbench, with secondary actions visually subordinate.
 - Secondary menus should collect low-frequency actions behind a shared trigger, keep items compact and scan-friendly, and visually separate destructive actions from refresh or inspection actions.
 - Overflow menu items may include a one-line description when the action is operationally specific; do not use secondary menus as a replacement for primary task flow.
@@ -50,6 +58,8 @@ Before considering a frontend task complete, confirm:
 - The feature matches an existing page pattern or documents why a new one was necessary.
 - Shared layout and visual primitives were reused from `app/platform/*` before adding page-specific wrappers.
 - User-facing text is localized and consistent with nearby features.
+- Both English and Chinese resources were updated together when copy changed, with matching keys and no silent fallback to a single language.
+- Any backend-provided or derived labels shown in the UI were normalized through a localization mapping layer when needed.
 - Empty, loading, error, and responsive states were implemented with existing patterns.
 - New code was placed in `app/platform/*` or the owning `app/modules/<module>/*` directory instead of a new root-level implementation folder.
 - `cd web-app && npm run check:boundaries` passes after structural changes.

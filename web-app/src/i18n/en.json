@@ -15,6 +15,7 @@
     "close": "Close",
     "search": "Search...",
     "loading": "Loading...",
+    "other": "Other",
     "noResults": "No results found",
     "gatewayLabel": "Gateway",
     "serviceUnavailableTitle": "{{service}} is unavailable",
@@ -75,6 +76,16 @@
     "download": "Download Excel",
     "lastUpdated": "Last updated",
     "reportingPeriod": "Reporting period",
+    "reportingPeriods": {
+      "last7days": "Last 7 days",
+      "last30days": "Last 30 days",
+      "last90days": "Last 90 days",
+      "thisMonth": "This month",
+      "lastMonth": "Last month",
+      "thisQuarter": "This quarter",
+      "custom": "Custom"
+    },
+    "dateRangeSeparator": "to",
     "tabsLabel": "Business intelligence analysis tabs",
     "tabs": {
       "executiveSummary": "Overview",
@@ -90,6 +101,12 @@
     "emptyTitle": "No business intelligence data",
     "emptyDescription": "Make sure the service is running and the data directory contains valid Excel files.",
     "notImplemented": "Coming soon",
+    "sections": {
+      "incidentSnapshot": "Incident Snapshot",
+      "incidentTrends": "Incident Trends",
+      "distribution": "Distribution",
+      "operationalTables": "Operational Tables"
+    },
     "dashboard": {
       "healthScoreLabel": "Health score",
       "healthScoreDescription": "The overall health indicator for the current executive summary.",
@@ -104,6 +121,64 @@
       "risksDescription": "Reserved for the highest-priority risks and governance direction.",
       "governanceTitle": "Governance priorities",
       "governanceDescription": "Reserved for governance actions, ownership, and current focus items."
+    },
+    "incidents": {
+      "cards": {
+        "total": "Total Incidents",
+        "p1p2": "P1/P2 Incidents",
+        "open": "Open Incidents",
+        "sla": "SLA Compliance",
+        "p1p2Mttr": "P1/P2 MTTR",
+        "mttr": "Average MTTR"
+      },
+      "charts": {
+        "volumeTrend": "Incident Volume Trend",
+        "volumeSeries": "Incident Volume",
+        "slaSeries": "SLA Compliance (%)",
+        "mttrTrend": "Resolution Duration Trend",
+        "mttrSeries": "Average MTTR",
+        "p1p2MttrSeries": "P1/P2 MTTR",
+        "priorityDistribution": "Priority Distribution",
+        "typeDistribution": "Incident Type Distribution",
+        "changeDensity": "Change Density",
+        "incidentHotspots": "Incident Hotspots",
+        "averageBacklogDays": "Average Backlog Days",
+        "openProblemCount": "Open Problem Count"
+      },
+      "tables": {
+        "resolverTop10": "Resolver Workload Top 10",
+        "samples": "Incident Samples"
+      },
+      "columns": {
+        "resolver": "Resolver",
+        "incidentCount": "Incident Count",
+        "id": "ID",
+        "title": "Title",
+        "priority": "Priority",
+        "duration": "Duration",
+        "sla": "SLA"
+      },
+      "weekdays": {
+        "monday": "Mon",
+        "tuesday": "Tue",
+        "wednesday": "Wed",
+        "thursday": "Thu",
+        "friday": "Fri",
+        "saturday": "Sat",
+        "sunday": "Sun"
+      },
+      "fallbacks": {
+        "unlabeled": "Unlabeled"
+      },
+      "units": {
+        "daysShort": "d"
+      }
+    },
+    "slaStatus": {
+      "breached": "SLA breached",
+      "met": "SLA met",
+      "atRisk": "SLA at risk",
+      "unknown": "SLA unknown"
     },
     "noChartData": "No chart data yet",
     "noTableData": "No table data yet"

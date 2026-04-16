@@ -71,6 +71,24 @@ describe('repository basic smoke checks', () => {
     expect(content).toContain('ENABLE_EXPORTER')
   })
 
+  it('business intelligence reporting presets avoid UTC date serialization shortcuts', async () => {
+    const content = await readFile(
+      join(
+        PROJECT_ROOT,
+        'web-app',
+        'src',
+        'app',
+        'modules',
+        'business-intelligence',
+        'pages',
+        'BusinessIntelligencePage.tsx',
+      ),
+      'utf-8',
+    )
+
+    expect(content).not.toMatch(/toISOString\(\)\.split\('T'\)\[0\]/)
+  })
+
   it('docker helper compose files render with defaults when docker is available', async () => {
     const { code: dockerCode } = await run('bash', ['-lc', 'command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1'])
     if (dockerCode !== 0) {

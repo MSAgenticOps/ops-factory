@@ -15,6 +15,7 @@
     "close": "关闭",
     "search": "搜索...",
     "loading": "加载中...",
+    "other": "其他",
     "noResults": "未找到结果",
     "gatewayLabel": "Gateway",
     "serviceUnavailableTitle": "{{service}} 不可用",
@@ -75,6 +76,16 @@
     "download": "下载 Excel",
     "lastUpdated": "最近更新时间",
     "reportingPeriod": "统计周期",
+    "reportingPeriods": {
+      "last7days": "近7天",
+      "last30days": "近30天",
+      "last90days": "近90天",
+      "thisMonth": "本月",
+      "lastMonth": "上月",
+      "thisQuarter": "本季度",
+      "custom": "自定义"
+    },
+    "dateRangeSeparator": "至",
     "tabsLabel": "业务智能分析标签",
     "tabs": {
       "executiveSummary": "执行摘要",
@@ -90,6 +101,12 @@
     "emptyTitle": "暂无业务智能数据",
     "emptyDescription": "请确认服务已启动且 data 目录中存在可用的 Excel 数据文件。",
     "notImplemented": "待建设",
+    "sections": {
+      "incidentSnapshot": "事件快照",
+      "incidentTrends": "事件趋势",
+      "distribution": "分布分析",
+      "operationalTables": "样本与榜单"
+    },
     "dashboard": {
       "healthScoreLabel": "健康分",
       "healthScoreDescription": "当前执行摘要的总览健康指标。",
@@ -104,6 +121,64 @@
       "risksDescription": "用于收敛优先关注的风险与治理方向。",
       "governanceTitle": "治理优先级",
       "governanceDescription": "用于布局治理动作、责任分工和当前关注事项。"
+    },
+    "incidents": {
+      "cards": {
+        "total": "事件总数",
+        "p1p2": "P1/P2 事件",
+        "open": "未解决事件",
+        "sla": "SLA 达成率",
+        "p1p2Mttr": "P1/P2 MTTR",
+        "mttr": "平均 MTTR"
+      },
+      "charts": {
+        "volumeTrend": "事件单量趋势",
+        "volumeSeries": "事件单量",
+        "slaSeries": "SLA达成率(%)",
+        "mttrTrend": "处理时长趋势",
+        "mttrSeries": "平均MTTR",
+        "p1p2MttrSeries": "P1/P2 MTTR",
+        "priorityDistribution": "优先级分布",
+        "typeDistribution": "事件类型分布",
+        "changeDensity": "变更密度",
+        "incidentHotspots": "事件热点",
+        "averageBacklogDays": "平均积压天数",
+        "openProblemCount": "未关闭问题数"
+      },
+      "tables": {
+        "resolverTop10": "处理人工作量 TOP10",
+        "samples": "事件样本"
+      },
+      "columns": {
+        "resolver": "处理人",
+        "incidentCount": "事件数",
+        "id": "编号",
+        "title": "标题",
+        "priority": "优先级",
+        "duration": "时长",
+        "sla": "SLA"
+      },
+      "weekdays": {
+        "monday": "周一",
+        "tuesday": "周二",
+        "wednesday": "周三",
+        "thursday": "周四",
+        "friday": "周五",
+        "saturday": "周六",
+        "sunday": "周日"
+      },
+      "fallbacks": {
+        "unlabeled": "未标注"
+      },
+      "units": {
+        "daysShort": "天"
+      }
+    },
+    "slaStatus": {
+      "breached": "SLA 未达成",
+      "met": "SLA 已达成",
+      "atRisk": "SLA 风险中",
+      "unknown": "SLA 未知"
     },
     "noChartData": "暂无图表数据",
     "noTableData": "暂无表格数据"

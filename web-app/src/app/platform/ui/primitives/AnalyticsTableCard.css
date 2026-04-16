@@ -1,0 +1,8 @@
+.analytics-table-card-shell {
+    overflow-x: auto;
+    min-width: 0;
+}
+
+.analytics-table-card-body {
+    min-width: 0;
+}

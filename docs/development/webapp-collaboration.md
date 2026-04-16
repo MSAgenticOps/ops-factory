@@ -198,7 +198,16 @@ app/modules/example/
 - 模块可以依赖根级 `config`、`types`、`utils`、`i18n`
 - 模块不能直接依赖其他模块
 
-### 4.3 边界检查
+### 4.3 国际化开发约定
+
+- 所有面向用户的前端文案都必须走现有 i18n 机制，不要在组件、模块配置、toast、表头、图例、空状态、按钮或提示文案里直接写死展示文本。
+- 文案变更必须同时更新 `web-app/src/i18n/en.json` 和 `web-app/src/i18n/zh.json`，同一组 key 结构保持一致，不允许只补单语后依赖 fallback 混过去。
+- i18n key 应优先使用稳定的命名空间结构，按模块和用途组织，例如 `knowledge.configure.emptyTitle`、`businessIntelligence.incidents.tables.samples`，不要用临时 key 或直接把英文句子当 key。
+- 如果后端接口、静态配置或图表数据源直接返回固定语言的显示标签，前端要在渲染边界增加映射层，把它们转换成当前语言后再传给页面组件和共享 UI 原子件。
+- 国际化不只是页面标题。tab、section title、筛选项、tooltip、图例、表格列名、状态文案、错误提示、空态和按钮文案都在约束范围内。
+- 涉及用户可见文案的改动，默认至少切换一次中英文界面自查，确认没有混语、缺 key、错 key 或布局被长英文撑坏。
+
+### 4.4 边界检查
 
 前端结构边界由：
 

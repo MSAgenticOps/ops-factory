@@ -3,6 +3,16 @@ import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { BUSINESS_INTELLIGENCE_SERVICE_URL } from '../../../../config/runtime'
 import { useToast } from '../../../platform/providers/ToastContext'
+import FilterInlineGroup from '../../../platform/ui/filters/FilterInlineGroup'
+import AnalyticsTableCard from '../../../platform/ui/primitives/AnalyticsTableCard'
+import Button from '../../../platform/ui/primitives/Button'
+import ChartHeaderLegend from '../../../platform/ui/primitives/ChartHeaderLegend'
+import PageHeader from '../../../platform/ui/primitives/PageHeader'
+import PieDistributionCard from '../../../platform/ui/primitives/PieDistributionCard'
+import SectionCard from '../../../platform/ui/primitives/SectionCard'
+import StatCard from '../../../platform/ui/primitives/StatCard'
+import StatusIcon, { type StatusTone } from '../../../platform/ui/primitives/StatusIcon'
+import StatusCell from '../../../platform/ui/primitives/StatusCell'
 import '../styles/business-intelligence.css'
 
 interface TabMeta {
@@ -112,6 +122,8 @@ interface OverviewResponse {
     tabContents: Record<string, TabContent>
 }
 
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string
+
 const BUSINESS_INTELLIGENCE_TAB_LABEL_KEYS: Record<string, string> = {
     'executive-summary': 'businessIntelligence.tabs.executiveSummary',
     'sla-analysis': 'businessIntelligence.tabs.slaAnalysis',
@@ -134,6 +146,101 @@ const BUSINESS_INTELLIGENCE_TAB_LABEL_FALLBACK_KEYS: Record<string, string> = {
     '问题分析': 'businessIntelligence.tabs.problemAnalysis',
     '跨流程关联': 'businessIntelligence.tabs.crossProcessCorrelation',
     '人员与效率': 'businessIntelligence.tabs.personnelEfficiency',
+}
+
+const INCIDENT_ANALYSIS_TAB_IDS = new Set(['event-analysis', 'incident-analysis'])
+const INCIDENT_CARD_LABEL_KEYS: Record<string, string> = {
+    'incident-total': 'businessIntelligence.incidents.cards.total',
+    'incident-p1p2': 'businessIntelligence.incidents.cards.p1p2',
+    'incident-open': 'businessIntelligence.incidents.cards.open',
+    'incident-sla': 'businessIntelligence.incidents.cards.sla',
+    'incident-p1p2-mttr': 'businessIntelligence.incidents.cards.p1p2Mttr',
+    'incident-mttr': 'businessIntelligence.incidents.cards.mttr',
+}
+
+const INCIDENT_CHART_TITLE_KEYS: Record<string, string> = {
+    'incident-volume-trend': 'businessIntelligence.incidents.charts.volumeTrend',
+    'incident-mttr-trend': 'businessIntelligence.incidents.charts.mttrTrend',
+    'incident-priority-pie': 'businessIntelligence.incidents.charts.priorityDistribution',
+    'incident-category-pie': 'businessIntelligence.incidents.charts.typeDistribution',
+}
+
+const INCIDENT_CHART_SERIES_KEYS: Record<string, string[]> = {
+    'incident-volume-trend': [
+        'businessIntelligence.incidents.charts.volumeSeries',
+        'businessIntelligence.incidents.charts.slaSeries',
+    ],
+    'incident-mttr-trend': [
+        'businessIntelligence.incidents.charts.mttrSeries',
+        'businessIntelligence.incidents.charts.p1p2MttrSeries',
+    ],
+}
+
+const INCIDENT_TABLE_TITLE_KEYS: Record<string, string> = {
+    'incident-resolver-table': 'businessIntelligence.incidents.tables.resolverTop10',
+    'incident-recent-table': 'businessIntelligence.incidents.tables.samples',
+}
+
+const INCIDENT_TABLE_COLUMN_KEYS: Record<string, string> = {
+    '处理人': 'businessIntelligence.incidents.columns.resolver',
+    '事件数': 'businessIntelligence.incidents.columns.incidentCount',
+    '编号': 'businessIntelligence.incidents.columns.id',
+    '标题': 'businessIntelligence.incidents.columns.title',
+    '优先级': 'businessIntelligence.incidents.columns.priority',
+    '时长': 'businessIntelligence.incidents.columns.duration',
+    'SLA': 'businessIntelligence.incidents.columns.sla',
+}
+
+function localizeIncidentCard(card: MetricCard, t: TranslateFn): MetricCard {
+    const labelKey = INCIDENT_CARD_LABEL_KEYS[card.id]
+    if (!labelKey) {
+        return card
+    }
+
+    return {
+        ...card,
+        label: t(labelKey),
+    }
+}
+
+function localizeIncidentChart(chart: ChartSection, t: TranslateFn): ChartSection {
+    const titleKey = INCIDENT_CHART_TITLE_KEYS[chart.id]
+    const seriesKeys = INCIDENT_CHART_SERIES_KEYS[chart.id]
+
+    if (!titleKey && !seriesKeys) {
+        return chart
+    }
+
+    return {
+        ...chart,
+        title: titleKey ? t(titleKey) : chart.title,
+        config: {
+            ...chart.config,
+            series: seriesKeys ? seriesKeys.map(key => t(key)) : chart.config?.series,
+        },
+    }
+}
+
+function localizeIncidentTable(table: TableSection, t: TranslateFn): TableSection {
+    const titleKey = INCIDENT_TABLE_TITLE_KEYS[table.id]
+
+    return {
+        ...table,
+        title: titleKey ? t(titleKey) : table.title,
+        columns: table.columns.map(column => {
+            const key = INCIDENT_TABLE_COLUMN_KEYS[column]
+            return key ? t(key) : column
+        }),
+    }
+}
+
+function localizeIncidentTab(tab: TabContent, t: TranslateFn): TabContent {
+    return {
+        ...tab,
+        cards: tab.cards.map(card => localizeIncidentCard(card, t)),
+        charts: tab.charts.map(chart => localizeIncidentChart(chart, t)),
+        tables: tab.tables.map(table => localizeIncidentTable(table, t)),
+    }
 }
 
 // Predefined period options
@@ -165,14 +272,15 @@ function ReportingPeriodSelector({
     onChange: (value: ReportingPeriod) => void
     disabled?: boolean
 }) {
+    const { t } = useTranslation()
     const presetLabels: Record<PeriodPreset, string> = {
-        'last7days': '近7天',
-        'last30days': '近30天',
-        'last90days': '近90天',
-        'thisMonth': '本月',
-        'lastMonth': '上月',
-        'thisQuarter': '本季度',
-        'custom': '自定义',
+        'last7days': t('businessIntelligence.reportingPeriods.last7days'),
+        'last30days': t('businessIntelligence.reportingPeriods.last30days'),
+        'last90days': t('businessIntelligence.reportingPeriods.last90days'),
+        'thisMonth': t('businessIntelligence.reportingPeriods.thisMonth'),
+        'lastMonth': t('businessIntelligence.reportingPeriods.lastMonth'),
+        'thisQuarter': t('businessIntelligence.reportingPeriods.thisQuarter'),
+        'custom': t('businessIntelligence.reportingPeriods.custom'),
     }
 
     const handlePresetChange = (preset: PeriodPreset) => {
@@ -234,17 +342,19 @@ function ReportingPeriodSelector({
 
     return (
         <div className="reporting-period-selector">
-            <span className="reporting-period-selector-label">统计周期:</span>
-            <select
-                className="reporting-period-select"
-                value={value.preset}
-                onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}
-                disabled={disabled}
-            >
-                {Object.entries(presetLabels).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                ))}
-            </select>
+            <div className="business-intelligence-period-field">
+                <span className="reporting-period-selector-label">{t('businessIntelligence.reportingPeriod')}:</span>
+                <select
+                    className="filter-select reporting-period-select"
+                    value={value.preset}
+                    onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}
+                    disabled={disabled}
+                >
+                    {Object.entries(presetLabels).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
+            </div>
             {value.preset === 'custom' && (
                 <div className="reporting-period-custom-dates">
                     <input
@@ -255,7 +365,7 @@ function ReportingPeriodSelector({
                         disabled={disabled}
                         max={value.endDate || new Date().toISOString().split('T')[0]}
                     />
-                    <span className="reporting-period-date-separator">至</span>
+                    <span className="reporting-period-date-separator">{t('businessIntelligence.dateRangeSeparator')}</span>
                     <input
                         type="date"
                         className="reporting-period-date-input"
@@ -358,17 +468,172 @@ function ExecutiveSummaryPanel({
     )
 }
 
-function getToneClass(tone: string): string {
+function getMetricTone(tone: string): 'neutral' | 'success' | 'warning' | 'danger' {
     switch (tone) {
         case 'success':
-            return 'tone-success'
+            return 'success'
         case 'warning':
-            return 'tone-warning'
+            return 'warning'
         case 'danger':
-            return 'tone-danger'
+            return 'danger'
         default:
-            return ''
+            return 'neutral'
     }
+}
+
+function getToneClass(tone: string): string {
+    const mappedTone = getMetricTone(tone)
+    return mappedTone === 'neutral' ? '' : `tone-${mappedTone}`
+}
+
+function isIncidentAnalysisTab(tab: TabContent): boolean {
+    return INCIDENT_ANALYSIS_TAB_IDS.has(tab.id)
+}
+
+function getTableColumnClassName(column: string): string {
+    const normalized = column.trim().toLowerCase()
+
+    if (normalized.includes('title') || normalized.includes('标题')) {
+        return 'business-intelligence-col-order-title'
+    }
+
+    if (normalized.includes('编号') || normalized.includes('id') || normalized.includes('单号')) {
+        return 'business-intelligence-col-order-number'
+    }
+
+    if (normalized.includes('priority') || normalized.includes('优先级')) {
+        return 'business-intelligence-col-priority'
+    }
+
+    if (normalized.includes('category') || normalized.includes('类型')) {
+        return 'business-intelligence-col-category'
+    }
+
+    if (normalized.includes('resolver') || normalized.includes('处理人') || normalized.includes('assignee')) {
+        return 'business-intelligence-col-resolver'
+    }
+
+    if (normalized.includes('duration') || normalized.includes('时长') || normalized.includes('mttr')) {
+        return 'business-intelligence-col-duration'
+    }
+
+    if (normalized.includes('sla')) {
+        return 'business-intelligence-col-violation-type'
+    }
+
+    return ''
+}
+
+function getSlaStatus(cell: string, t: TranslateFn): { tone: StatusTone; label: string } | null {
+    const normalized = cell.trim().toLowerCase()
+
+    if (!normalized) {
+        return null
+    }
+
+    if (
+        normalized === '×' ||
+        normalized === 'x' ||
+        normalized === '✕' ||
+        normalized === '✖' ||
+        normalized.includes('violat') ||
+        normalized.includes('breach') ||
+        normalized.includes('超时') ||
+        normalized.includes('未达成')
+    ) {
+        return { tone: 'danger', label: t('businessIntelligence.slaStatus.breached') }
+    }
+
+    if (
+        normalized === '√' ||
+        normalized === '✓' ||
+        normalized === '✔' ||
+        normalized.includes('met') ||
+        normalized.includes('达成') ||
+        normalized.includes('满足') ||
+        normalized.includes('通过')
+    ) {
+        return { tone: 'success', label: t('businessIntelligence.slaStatus.met') }
+    }
+
+    if (normalized.includes('risk') || normalized.includes('warning') || normalized.includes('临界') || normalized.includes('预警')) {
+        return { tone: 'warning', label: t('businessIntelligence.slaStatus.atRisk') }
+    }
+
+    if (normalized === '-' || normalized === '--' || normalized === 'n/a' || normalized.includes('unknown') || normalized.includes('未知')) {
+        return { tone: 'neutral', label: t('businessIntelligence.slaStatus.unknown') }
+    }
+
+    return null
+}
+
+function shouldRenderAxisLabel(index: number, total: number, maxVisible: number): boolean {
+    if (total <= maxVisible) {
+        return true
+    }
+
+    const interval = Math.ceil(total / maxVisible)
+    return index === total - 1 || index % interval === 0
+}
+
+function splitAxisLabel(label: string, wrap: boolean): string[] {
+    if (!wrap) {
+        return [label]
+    }
+
+    const dashIdx = label.indexOf('-')
+    if (dashIdx > 0) {
+        return [label.slice(0, dashIdx), label.slice(dashIdx)]
+    }
+
+    return [label]
+}
+
+function containsCjk(value: string): boolean {
+    return /[\u3400-\u9fff]/.test(value)
+}
+
+function getIncidentSectionTitle(
+    key: 'incidentSnapshot' | 'incidentTrends' | 'distribution' | 'operationalTables',
+    _tab: TabContent,
+    t: TranslateFn,
+): string {
+    return t(`businessIntelligence.sections.${key}`)
+}
+
+function getChartLegendItems(chart: ChartSection, t: TranslateFn): Array<{ label: string; color: string; dashed?: boolean }> {
+    if (chart.type === 'line') {
+        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
+        const seriesNames = chart.config?.series || [t('businessIntelligence.incidents.charts.volumeSeries')]
+        return seriesNames.map((label, idx) => ({
+            label,
+            color: colors[idx] || '#5b8db8',
+        }))
+    }
+
+    if (chart.type === 'combo') {
+        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
+        const seriesNames = chart.config?.series || [
+            t('businessIntelligence.incidents.charts.volumeSeries'),
+            t('businessIntelligence.incidents.charts.slaSeries'),
+        ]
+        return seriesNames.map((label, idx) => ({
+            label,
+            color: colors[idx] || (idx === 2 ? '#ef4444' : '#5b8db8'),
+            dashed: idx === 2,
+        }))
+    }
+
+    if (chart.type === 'grouped-bar' || chart.type === 'stacked-bar') {
+        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
+        const seriesNames = chart.config?.series || ['Series 1', 'Series 2']
+        return seriesNames.map((label, idx) => ({
+            label,
+            color: colors[idx] || '#5b8db8',
+        }))
+    }
+
+    return []
 }
 
 function GenericTabPanel({
@@ -378,79 +643,12 @@ function GenericTabPanel({
     tab: TabContent
     t: (key: string, options?: Record<string, unknown>) => string
 }) {
+    const localizedTab = isIncidentAnalysisTab(tab) ? localizeIncidentTab(tab, _t) : tab
     const maxValue = (items: ChartDatum[]) => Math.max(...items.map(item => item.value), 1)
 
-    const renderPieChart = (chart: ChartSection) => {
-        const total = chart.items.reduce((sum, item) => sum + item.value, 0)
-        const colors = chart.config?.colors || ['#5b8db8', '#10b981', '#f59e0b', '#ef4444', '#8b7fc7', '#c97082']
-
-        // Calculate pie slice paths
-        const cx = 100, cy = 100, r = 80
-        let currentAngle = -90 // Start from top
-
-        const slices = chart.items.map((item, idx) => {
-            const percentage = total > 0 ? item.value / total : 0
-            const angle = percentage * 360
-            const startAngle = currentAngle
-            const endAngle = currentAngle + angle
-            currentAngle = endAngle
-
-            // Convert to radians
-            const startRad = (startAngle * Math.PI) / 180
-            const endRad = (endAngle * Math.PI) / 180
-
-            // Calculate arc points
-            const x1 = cx + r * Math.cos(startRad)
-            const y1 = cy + r * Math.sin(startRad)
-            const x2 = cx + r * Math.cos(endRad)
-            const y2 = cy + r * Math.sin(endRad)
-
-            // Large arc flag
-            const largeArc = angle > 180 ? 1 : 0
-
-            // Create path
-            const pathD = percentage > 0
-                ? `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
-                : ''
-
-            return { pathD, color: colors[idx % colors.length], item, percentage }
-        })
-
-        return (
-            <div className="pie-chart-container">
-                <div className="pie-chart-svg-wrapper">
-                    <svg viewBox="0 0 200 200" className="pie-chart-svg">
-                        {slices.map((slice, idx) => (
-                            slice.pathD && (
-                                <path
-                                    key={idx}
-                                    d={slice.pathD}
-                                    fill={slice.color}
-                                    stroke="white"
-                                    strokeWidth="2"
-                                    className="pie-slice"
-                                />
-                            )
-                        ))}
-                    </svg>
-                </div>
-                <div className="pie-chart-legend">
-                    {chart.items.map((item, idx) => (
-                        <div key={item.label} className="pie-legend-row">
-                            <span className="pie-legend-dot" style={{ background: colors[idx % colors.length] }} />
-                            <span className="pie-legend-label">{item.label}</span>
-                            <span className="pie-legend-value">{item.value.toLocaleString()}</span>
-                            <span className="pie-legend-percent">{((item.value / total) * 100).toFixed(1)}%</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )
-    }
-
-    const renderLineChart = (chart: ChartSection) => {
+    const renderLineChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
         const colors = chart.config?.colors || ['#5b8db8', '#10b981']
-        const seriesNames = chart.config?.series || ['数量']
+        const seriesNames = chart.config?.series || [_t('businessIntelligence.incidents.charts.volumeSeries')]
 
         // Parse multi-series data from compound labels (format: "period|value1|value2|...")
         const dataPoints = chart.items.map(item => {
@@ -467,8 +665,8 @@ function GenericTabPanel({
 
         // Use a very wide viewBox for horizontal stretching
         const vbWidth = 1000
-        const vbHeight = 320
-        const padding = { top: 20, right: 30, bottom: 80, left: 60 }
+        const vbHeight = 360
+        const padding = { top: 24, right: 30, bottom: 72, left: 60 }
         const innerWidth = vbWidth - padding.left - padding.right
         const innerHeight = vbHeight - padding.top - padding.bottom
 
@@ -489,7 +687,7 @@ function GenericTabPanel({
                 <svg
                     viewBox={`0 0 ${vbWidth} ${vbHeight}`}
                     preserveAspectRatio="none"
-                    style={{ width: '100%', height: '320px', display: 'block' }}
+                    style={{ width: '100%', height: '360px', display: 'block' }}
                 >
                     {/* Y-axis grid lines and labels */}
                     {yAxisLabels.map((label, idx) => (
@@ -544,7 +742,7 @@ function GenericTabPanel({
                                             key={idx}
                                             cx={getX(idx)}
                                             cy={getY(val)}
-                                            r="5"
+                                            r="4"
                                             fill={colors[seriesIdx] || '#5b8db8'}
                                         />
                                     )
@@ -559,15 +757,14 @@ function GenericTabPanel({
                             ? innerWidth / (dataPoints.length - 1)
                             : innerWidth
                         const maxCharsPerLine = Math.max(4, Math.floor(colWidth / 7))
-                        // If ANY label overflows, force all labels to wrap at '-'
                         const needsWrap = dataPoints.some(dp => dp.period.length > maxCharsPerLine)
                         const splitPeriod = (label: string): string[] => {
-                            if (!needsWrap) return [label]
-                            const dashIdx = label.indexOf('-')
-                            if (dashIdx > 0) return [label.slice(0, dashIdx), label.slice(dashIdx)]
-                            return [label]
+                            return splitAxisLabel(label, needsWrap)
                         }
                         return dataPoints.map((dp, idx) => {
+                            if (!shouldRenderAxisLabel(idx, dataPoints.length, 12)) {
+                                return null
+                            }
                             const lines = splitPeriod(dp.period)
                             return lines.map((line, lineIdx) => (
                                 <text
@@ -584,21 +781,23 @@ function GenericTabPanel({
                         })
                     })()}
                 </svg>
-                <div className="line-chart-legend">
-                    {seriesNames.map((name, idx) => (
-                        <span key={name} className="line-chart-legend-item">
-                            <span className="line-chart-legend-line" style={{ background: colors[idx] }} />
-                            {name}
-                        </span>
-                    ))}
-                </div>
+                {!options?.hideLegend ? (
+                    <div className="line-chart-legend">
+                        {seriesNames.map((name, idx) => (
+                            <span key={name} className="line-chart-legend-item">
+                                <span className="line-chart-legend-line" style={{ background: colors[idx] }} />
+                                {name}
+                            </span>
+                        ))}
+                    </div>
+                ) : null}
             </div>
         )
     }
 
-    const renderStackedBarChart = (chart: ChartSection) => {
+    const renderStackedBarChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
         const colors = chart.config?.colors || ['#5b8db8', '#ef4444']
-        const seriesNames = chart.config?.series || ['系列1', '系列2']
+        const seriesNames = chart.config?.series || ['Series 1', 'Series 2']
 
         // Parse compound labels: "category|val1|val2|..."
         const dataPoints = chart.items.map(item => {
@@ -694,17 +893,19 @@ function GenericTabPanel({
                         )
                     })}
                 </svg>
-                <div className="line-chart-legend">
-                    {seriesNames.map((name, idx) => (
-                        <span key={name} className="line-chart-legend-item">
-                            <span
-                                className="line-chart-legend-line"
-                                style={{ background: colors[idx], borderRadius: '2px', height: '12px' }}
-                            />
-                            {name}
-                        </span>
-                    ))}
-                </div>
+                {!options?.hideLegend ? (
+                    <div className="line-chart-legend">
+                        {seriesNames.map((name, idx) => (
+                            <span key={name} className="line-chart-legend-item">
+                                <span
+                                    className="line-chart-legend-line"
+                                    style={{ background: colors[idx], borderRadius: '2px', height: '12px' }}
+                                />
+                                {name}
+                            </span>
+                        ))}
+                    </div>
+                ) : null}
             </div>
         )
     }
@@ -825,9 +1026,9 @@ function GenericTabPanel({
         )
     }
 
-    const renderGroupedBarChart = (chart: ChartSection) => {
+    const renderGroupedBarChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
         const colors = chart.config?.colors || ['#5b8db8', '#10b981']
-        const seriesNames = chart.config?.series || ['系列1', '系列2']
+        const seriesNames = chart.config?.series || ['Series 1', 'Series 2']
 
         // Parse compound labels: "label|val1|val2|..."
         const dataPoints = chart.items.map(item => {
@@ -923,24 +1124,29 @@ function GenericTabPanel({
                         )
                     })}
                 </svg>
-                <div className="line-chart-legend">
-                    {seriesNames.map((name, idx) => (
-                        <span key={name} className="line-chart-legend-item">
-                            <span
-                                className="line-chart-legend-line"
-                                style={{ background: colors[idx], borderRadius: '2px', height: '12px' }}
-                            />
-                            {name}
-                        </span>
-                    ))}
-                </div>
+                {!options?.hideLegend ? (
+                    <div className="line-chart-legend">
+                        {seriesNames.map((name, idx) => (
+                            <span key={name} className="line-chart-legend-item">
+                                <span
+                                    className="line-chart-legend-line"
+                                    style={{ background: colors[idx], borderRadius: '2px', height: '12px' }}
+                                />
+                                {name}
+                            </span>
+                        ))}
+                    </div>
+                ) : null}
             </div>
         )
     }
 
-    const renderComboChart = (chart: ChartSection) => {
+    const renderComboChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
         const colors = chart.config?.colors || ['#5b8db8', '#10b981']
-        const seriesNames = chart.config?.series || ['数量', '百分比']
+        const seriesNames = chart.config?.series || [
+            _t('businessIntelligence.incidents.charts.volumeSeries'),
+            _t('businessIntelligence.incidents.charts.slaSeries'),
+        ]
 
         // Parse combo data: format "period|volume|completionRate" or "period|volume|completionRate|causedCount"
         const dataPoints = chart.items.map(item => {
@@ -968,8 +1174,8 @@ function GenericTabPanel({
         const maxRate = isScoreScale ? 5 : isCountScale ? Math.ceil(maxLineValue / 5) * 5 || 5 : 100
 
         const vbWidth = 1000
-        const vbHeight = 320
-        const padding = { top: 30, right: 60, bottom: 80, left: 60 }
+        const vbHeight = 360
+        const padding = { top: 28, right: 60, bottom: 72, left: 60 }
         const innerWidth = vbWidth - padding.left - padding.right
         const innerHeight = vbHeight - padding.top - padding.bottom
 
@@ -1008,7 +1214,7 @@ function GenericTabPanel({
                 <svg
                     viewBox={`0 0 ${vbWidth} ${vbHeight}`}
                     preserveAspectRatio="xMidYMid meet"
-                    style={{ width: '100%', height: '320px', display: 'block' }}
+                    style={{ width: '100%', height: '360px', display: 'block' }}
                 >
                     {/* Y-axis grid lines */}
                     {barYAxisLabels.map((label, idx) => (
@@ -1081,7 +1287,7 @@ function GenericTabPanel({
                             key={idx}
                             cx={getBarX(idx)}
                             cy={getLineY(dp.completionRate)}
-                            r="5"
+                            r="4"
                             fill={colors[1]}
                             stroke="white"
                             strokeWidth="2"
@@ -1109,7 +1315,7 @@ function GenericTabPanel({
                                         key={`c${idx}`}
                                         cx={getBarX(idx)}
                                         cy={getBarY(dp.causedCount)}
-                                        r="4"
+                                        r="3.5"
                                         fill={colors[2] || '#ef4444'}
                                         stroke="white"
                                         strokeWidth="2"
@@ -1125,12 +1331,12 @@ function GenericTabPanel({
                         const maxCharsPerLine = Math.max(4, Math.floor(colWidth / 7))
                         const needsWrap = dataPoints.some(dp => dp.period.length > maxCharsPerLine)
                         const splitPeriod = (label: string): string[] => {
-                            if (!needsWrap) return [label]
-                            const dashIdx = label.indexOf('-')
-                            if (dashIdx > 0) return [label.slice(0, dashIdx), label.slice(dashIdx)]
-                            return [label]
+                            return splitAxisLabel(label, needsWrap)
                         }
                         return dataPoints.map((dp, idx) => {
+                            if (!shouldRenderAxisLabel(idx, dataPoints.length, 12)) {
+                                return null
+                            }
                             const lines = splitPeriod(dp.period)
                             return lines.map((line, lineIdx) => (
                                 <text
@@ -1147,28 +1353,32 @@ function GenericTabPanel({
                         })
                     })()}
                 </svg>
-                <div className="line-chart-legend">
-                    {seriesNames.map((name, idx) => (
-                        <span key={name} className="line-chart-legend-item">
-                            <span
-                                className="line-chart-legend-line"
-                                style={{
-                                    background: colors[idx],
-                                    borderRadius: idx === 0 ? '2px' : '0',
-                                    height: idx === 0 ? '12px' : '3px',
-                                }}
-                            />
-                            {name}
-                        </span>
-                    ))}
-                </div>
+                {!options?.hideLegend ? (
+                    <div className="line-chart-legend">
+                        {seriesNames.map((name, idx) => (
+                            <span key={name} className="line-chart-legend-item">
+                                <span
+                                    className="line-chart-legend-line"
+                                    style={{
+                                        background: colors[idx],
+                                        borderRadius: idx === 0 ? '2px' : '0',
+                                        height: idx === 0 ? '12px' : '3px',
+                                    }}
+                                />
+                                {name}
+                            </span>
+                        ))}
+                    </div>
+                ) : null}
             </div>
         )
     }
 
     const renderHeatmapChart = (chart: ChartSection) => {
         const colors = chart.config?.colors || ['#5b8db8', '#ef4444']
-        const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        const dayLabels = containsCjk(chart.title)
+            ? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+            : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
         // Parse heatmap data: "dow|hour|changeCount|incidentCount"
         const cellMap = new Map<string, { changeCount: number; incidentCount: number }>()
@@ -1267,11 +1477,11 @@ function GenericTabPanel({
                 <div className="line-chart-legend">
                     <span className="line-chart-legend-item">
                         <span className="line-chart-legend-line" style={{ background: 'rgba(91, 141, 184, 0.6)', height: '12px', width: '20px', borderRadius: '3px' }} />
-                        变更密度
+                        {_t('businessIntelligence.incidents.charts.changeDensity')}
                     </span>
                     <span className="line-chart-legend-item">
                         <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: colors[1] }} />
-                        事件热点
+                        {_t('businessIntelligence.incidents.charts.incidentHotspots')}
                     </span>
                 </div>
             </div>
@@ -1280,15 +1490,15 @@ function GenericTabPanel({
 
     const renderBubbleChart = (chart: ChartSection) => {
         const seriesColors = chart.config?.colors || ['#5b8db8', '#10b981', '#f59e0b', '#ef4444', '#8b7fc7', '#c97082']
-        const xAxisLabel = chart.config?.xAxisLabel || '平均积压天数'
-        const yAxisLabel = chart.config?.yAxisLabel || '未关闭问题数'
+        const xAxisLabel = chart.config?.xAxisLabel || _t('businessIntelligence.incidents.charts.averageBacklogDays')
+        const yAxisLabel = chart.config?.yAxisLabel || _t('businessIntelligence.incidents.charts.openProblemCount')
         // Parse: "ciName|rootCauseCategory|avgAging|openProblemCount|totalIncidents"
         const points = chart.items
             .map(item => {
                 const parts = item.label.split('|')
                 return {
-                    ci: parts[0] || '未标注',
-                    category: parts[1] || '未标注',
+                    ci: parts[0] || _t('businessIntelligence.incidents.fallbacks.unlabeled'),
+                    category: parts[1] || _t('businessIntelligence.incidents.fallbacks.unlabeled'),
                     avgAging: parseFloat(parts[2]) || 0,
                     openCount: parseFloat(parts[3]) || 0,
                     totalIncidents: parseFloat(parts[4]) || 0,
@@ -1338,7 +1548,7 @@ function GenericTabPanel({
                             <text key={`x${ratio}`}
                                 x={getX(val)} y={vbHeight - 30}
                                 fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">
-                                {val}天
+                                {val}{_t('businessIntelligence.incidents.units.daysShort')}
                             </text>
                         )
                     })}
@@ -1383,7 +1593,29 @@ function GenericTabPanel({
             </div>
         )
     }
-    // Chart Renderer - selects appropriate component based on chart type
+    const renderChartContent = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
+        return (
+            <>
+                {chart.type === 'pie' && (
+                    <PieDistributionCard
+                        embedded
+                        items={chart.items}
+                        colors={chart.config?.colors || ['#5b8db8', '#10b981', '#f59e0b', '#ef4444', '#8b7fc7', '#c97082']}
+                        otherLabel={_t('common.other')}
+                    />
+                )}
+                {chart.type === 'line' && renderLineChart(chart, options)}
+                {chart.type === 'combo' && renderComboChart(chart, options)}
+                {chart.type === 'grouped-bar' && renderGroupedBarChart(chart, options)}
+                {chart.type === 'stacked-bar' && renderStackedBarChart(chart, options)}
+                {chart.type === 'column' && renderColumnChart(chart)}
+                {chart.type === 'heatmap' && renderHeatmapChart(chart)}
+                {chart.type === 'bubble' && renderBubbleChart(chart)}
+                {(chart.type === 'bar' || !chart.type) && renderBarChart(chart)}
+            </>
+        )
+    }
+
     const renderChart = (chart: ChartSection) => {
         const isWideChart = chart.type === 'line' || chart.type === 'combo' || chart.type === 'grouped-bar' || chart.type === 'heatmap' || chart.type === 'bubble'
         return (
@@ -1393,16 +1625,134 @@ function GenericTabPanel({
                 style={isWideChart ? { gridColumn: '1 / -1', width: '100%' } : { gridColumn: 'span 1' }}
             >
                 <h3 className="business-intelligence-content-card-title" style={{ fontSize: '1.125rem', marginBottom: 'var(--spacing-4)' }}>{chart.title}</h3>
-                {chart.type === 'pie' && renderPieChart(chart)}
-                {chart.type === 'line' && renderLineChart(chart)}
-                {chart.type === 'combo' && renderComboChart(chart)}
-                {chart.type === 'grouped-bar' && renderGroupedBarChart(chart)}
-                {chart.type === 'stacked-bar' && renderStackedBarChart(chart)}
-                {chart.type === 'column' && renderColumnChart(chart)}
-                {chart.type === 'heatmap' && renderHeatmapChart(chart)}
-                {chart.type === 'bubble' && renderBubbleChart(chart)}
-                {(chart.type === 'bar' || !chart.type) && renderBarChart(chart)}
+                {renderChartContent(chart)}
             </section>
+        )
+    }
+
+    const renderTableCell = (column: string, cell: string) => {
+        if (column.trim().toLowerCase().includes('sla')) {
+            const status = getSlaStatus(cell, _t)
+            if (status) {
+                return <StatusCell tone={status.tone} label={status.label} />
+            }
+        }
+
+        return cell
+    }
+
+    const renderTable = (table: TableSection) => (
+        <div className="business-intelligence-table-shell">
+            <table className="business-intelligence-table">
+                <thead>
+                    <tr>
+                        {table.columns.map((col, colIndex) => (
+                            <th key={colIndex} className={getTableColumnClassName(col)}>{col}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {table.rows.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                            {row.map((cell, cellIndex) => {
+                                const column = table.columns[cellIndex] || ''
+                                const cellClasses = [
+                                    getTableColumnClassName(column),
+                                    column.trim().toLowerCase().includes('sla') ? 'business-intelligence-table-status' : '',
+                                    (column.trim().toLowerCase().includes('title') || column.trim().toLowerCase().includes('标题')) ? 'business-intelligence-table-title-cell' : '',
+                                ].filter(Boolean).join(' ')
+
+                                return (
+                                    <td key={cellIndex} className={cellClasses}>
+                                        {renderTableCell(column, cell)}
+                                    </td>
+                                )
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    )
+
+    if (isIncidentAnalysisTab(localizedTab)) {
+        const trendCharts = localizedTab.charts.filter(chart => chart.type !== 'pie')
+        const distributionCharts = localizedTab.charts.filter(chart => chart.type === 'pie')
+
+        return (
+            <div className="business-intelligence-tab-layout">
+                {localizedTab.cards.length > 0 ? (
+                    <section className="business-intelligence-section-group">
+                        <h2 className="business-intelligence-section-title">{getIncidentSectionTitle('incidentSnapshot', localizedTab, _t)}</h2>
+                        <div
+                            className="business-intelligence-stat-grid business-intelligence-stat-grid-snapshot ui-metric-grid"
+                            style={{ gridTemplateColumns: `repeat(${localizedTab.cards.length % 3 === 0 ? 3 : 2}, minmax(0, 1fr))` }}
+                        >
+                            {localizedTab.cards.map(card => {
+                                const tone = getMetricTone(card.tone)
+                                return (
+                                    <StatCard
+                                        key={card.id}
+                                        label={card.label}
+                                        value={card.value}
+                                        tone={tone}
+                                        icon={tone === 'neutral' ? null : <StatusIcon tone={tone} />}
+                                    />
+                                )
+                            })}
+                        </div>
+                    </section>
+                ) : null}
+
+                {trendCharts.length > 0 ? (
+                    <section className="business-intelligence-section-group">
+                        <h2 className="business-intelligence-section-title">{getIncidentSectionTitle('incidentTrends', localizedTab, _t)}</h2>
+                        <div className="business-intelligence-section-stack">
+                            {trendCharts.map(chart => (
+                                <SectionCard
+                                    key={chart.id}
+                                    title={chart.title}
+                                    action={<ChartHeaderLegend items={getChartLegendItems(chart, _t)} />}
+                                >
+                                    <div className={`business-intelligence-chart-surface business-intelligence-chart-surface-${chart.type}`}>
+                                        {renderChartContent(chart, { hideLegend: true })}
+                                    </div>
+                                </SectionCard>
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+
+                {distributionCharts.length > 0 ? (
+                    <section className="business-intelligence-section-group">
+                        <h2 className="business-intelligence-section-title">{getIncidentSectionTitle('distribution', localizedTab, _t)}</h2>
+                        <div className="business-intelligence-distribution-grid">
+                            {distributionCharts.map(chart => (
+                                <PieDistributionCard
+                                    key={chart.id}
+                                    title={chart.title}
+                                    items={chart.items}
+                                    colors={chart.config?.colors || ['#5b8db8', '#10b981', '#f59e0b', '#ef4444', '#8b7fc7', '#c97082']}
+                                    otherLabel={_t('common.other')}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+
+                {localizedTab.tables.length > 0 ? (
+                    <section className="business-intelligence-section-group">
+                        <h2 className="business-intelligence-section-title">{getIncidentSectionTitle('operationalTables', localizedTab, _t)}</h2>
+                        <div className="business-intelligence-section-stack">
+                            {localizedTab.tables.map(table => (
+                                <AnalyticsTableCard key={table.id} title={table.title}>
+                                    {renderTable(table)}
+                                </AnalyticsTableCard>
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+            </div>
         )
     }
 
@@ -1410,17 +1760,17 @@ function GenericTabPanel({
         <div className="business-intelligence-content-card">
             <div className="business-intelligence-content-card-header">
                 <div className="business-intelligence-content-card-copy">
-                    <h2 className="business-intelligence-content-card-title">{tab.label}</h2>
-                    <p className="business-intelligence-content-card-description">{tab.description}</p>
+                    <h2 className="business-intelligence-content-card-title">{localizedTab.label}</h2>
+                    <p className="business-intelligence-content-card-description">{localizedTab.description}</p>
                 </div>
             </div>
 
             <div className="business-intelligence-content-card-body">
                 {/* Cards Section */}
-                {tab.cards.length > 0 && (
+                {localizedTab.cards.length > 0 && (
                     <div className="business-intelligence-section">
-                        <div className="business-intelligence-cards" style={{ gridTemplateColumns: `repeat(${tab.cards.length % 3 === 0 ? 3 : 2}, minmax(0, 1fr))` }}>
-                            {tab.cards.map(card => (
+                        <div className="business-intelligence-cards" style={{ gridTemplateColumns: `repeat(${localizedTab.cards.length % 3 === 0 ? 3 : 2}, minmax(0, 1fr))` }}>
+                            {localizedTab.cards.map(card => (
                                 <div key={card.id} className={`business-intelligence-card ${getToneClass(card.tone)}`}>
                                     <div className="business-intelligence-card-head">
                                         <div>
@@ -1435,40 +1785,21 @@ function GenericTabPanel({
                 )}
 
                 {/* Charts Section */}
-                {tab.charts.length > 0 && (
+                {localizedTab.charts.length > 0 && (
                     <div className="business-intelligence-section">
                         <div className="business-intelligence-content-grid">
-                            {tab.charts.map(chart => renderChart(chart))}
+                            {localizedTab.charts.map(chart => renderChart(chart))}
                         </div>
                     </div>
                 )}
 
                 {/* Tables Section */}
-                {tab.tables.length > 0 && (
+                {localizedTab.tables.length > 0 && (
                     <div className="business-intelligence-section">
-                        {tab.tables.map(table => (
+                        {localizedTab.tables.map(table => (
                             <section key={table.id} className="business-intelligence-table-section">
                                 <h3 className="business-intelligence-content-card-title" style={{ fontSize: '1.125rem', marginBottom: 'var(--spacing-3)' }}>{table.title}</h3>
-                                <div className="business-intelligence-table-shell">
-                                    <table className="business-intelligence-table">
-                                        <thead>
-                                            <tr>
-                                                {table.columns.map((col, colIndex) => (
-                                                    <th key={colIndex}>{col}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {table.rows.map((row, rowIndex) => (
-                                                <tr key={rowIndex}>
-                                                    {row.map((cell, cellIndex) => (
-                                                        <td key={cellIndex} className={cellIndex === 0 ? 'business-intelligence-table-title-cell' : ''}>{cell}</td>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                {renderTable(table)}
                             </section>
                         ))}
                     </div>
@@ -1569,31 +1900,34 @@ export default function BusinessIntelligence() {
 
     return (
         <div className="page-container sidebar-top-page page-shell-wide business-intelligence-page">
-            <div className="page-header">
-                <div className="business-intelligence-toolbar">
-                    <div>
-                        <h1 className="page-title">{t('businessIntelligence.title')}</h1>
-                        <p className="page-subtitle">{t('businessIntelligence.subtitle')}</p>
-                    </div>
-                    <div className="business-intelligence-toolbar-actions">
-                        <ReportingPeriodSelector
-                            value={reportingPeriod}
-                            onChange={setReportingPeriod}
-                            disabled={loading || refreshing}
-                        />
-                        <button
-                            type="button"
-                            className="btn btn-secondary business-intelligence-refresh-button"
+            <PageHeader
+                title={t('businessIntelligence.title')}
+                subtitle={t('businessIntelligence.subtitle')}
+                action={(
+                    <div className="business-intelligence-header-controls">
+                        <div className="business-intelligence-toolbar-actions">
+                        <FilterInlineGroup>
+                            <ReportingPeriodSelector
+                                value={reportingPeriod}
+                                onChange={setReportingPeriod}
+                                disabled={loading || refreshing}
+                            />
+                        </FilterInlineGroup>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            iconOnly
+                            className="business-intelligence-refresh-button"
                             onClick={() => void loadOverview({ forceRefresh: true })}
                             disabled={refreshing}
                             aria-label={refreshing ? t('businessIntelligence.refreshing') : t('businessIntelligence.refresh')}
                             title={refreshing ? t('businessIntelligence.refreshing') : t('businessIntelligence.refresh')}
-                        >
-                            <RefreshCw size={15} className={refreshing ? 'business-intelligence-refresh-icon spinning' : 'business-intelligence-refresh-icon'} />
-                        </button>
+                            leadingIcon={<RefreshCw size={15} className={refreshing ? 'business-intelligence-refresh-icon spinning' : 'business-intelligence-refresh-icon'} />}
+                        />
+                        </div>
                     </div>
-                </div>
-            </div>
+                )}
+            />
 
             {error ? (
                 <div className="conn-banner conn-banner-error">
