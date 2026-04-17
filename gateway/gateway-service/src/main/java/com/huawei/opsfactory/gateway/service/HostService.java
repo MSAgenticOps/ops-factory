@@ -46,6 +46,7 @@ public class HostService {
     private HostRelationService hostRelationService;
     private HostGroupService hostGroupService;
     private ClusterService clusterService;
+    private BusinessServiceService businessServiceService;
 
     public HostService(GatewayProperties properties) {
         this.properties = properties;
@@ -55,6 +56,12 @@ public class HostService {
     @org.springframework.beans.factory.annotation.Autowired
     public void setHostRelationService(HostRelationService hostRelationService) {
         this.hostRelationService = hostRelationService;
+    }
+
+    @Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setBusinessServiceService(BusinessServiceService businessServiceService) {
+        this.businessServiceService = businessServiceService;
     }
 
     @Lazy
@@ -220,6 +227,7 @@ public class HostService {
         host.put("name", body.getOrDefault("name", ""));
         host.put("hostname", body.getOrDefault("hostname", null));
         host.put("ip", body.getOrDefault("ip", ""));
+        host.put("businessIp", body.getOrDefault("businessIp", null));
         host.put("port", body.getOrDefault("port", 22));
         host.put("os", body.getOrDefault("os", null));
         host.put("location", body.getOrDefault("location", null));
@@ -304,6 +312,9 @@ public class HostService {
         if (body.containsKey("customAttributes")) {
             host.put("customAttributes", body.get("customAttributes"));
         }
+        if (body.containsKey("businessIp")) {
+            host.put("businessIp", body.get("businessIp"));
+        }
         if (body.containsKey("credential")) {
             Object credentialObj = body.get("credential");
             String rawCredential = credentialObj != null ? credentialObj.toString() : "";
@@ -333,6 +344,11 @@ public class HostService {
         // Cascade delete relations first
         if (hostRelationService != null) {
             hostRelationService.deleteRelationsByHost(id);
+        }
+
+        // Remove host from all business services' hostIds
+        if (businessServiceService != null) {
+            businessServiceService.removeHostFromAllBusinessServices(id);
         }
 
         Path file = hostsDir.resolve(id + ".json");
@@ -425,6 +441,20 @@ public class HostService {
             }
         }
         return new ArrayList<>(allTags);
+    }
+
+    /**
+     * Find a host by IP address, checking both the ip (SSH) and businessIp fields.
+     * Returns the first matching host map (with masked credential) or null.
+     */
+    public Map<String, Object> findByIp(String ip) {
+        List<Map<String, Object>> hosts = listHosts(new String[0]);
+        for (Map<String, Object> host : hosts) {
+            if (ip.equals(host.get("ip")) || ip.equals(host.get("businessIp"))) {
+                return host;
+            }
+        }
+        return null;
     }
 
     public Map<String, Object> testConnection(String id) {

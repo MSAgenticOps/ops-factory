@@ -38,7 +38,7 @@ public class RemoteExecutionService {
      * @param hostId         the host ID to connect to
      * @param command        the shell command to execute
      * @param timeoutSeconds maximum execution time in seconds
-     * @return result map with hostId, hostName, exitCode, output, error, duration
+     * @return result map with hostIp, username, hostName, exitCode, output, error, duration
      */
     public Map<String, Object> execute(String hostId, String command, int timeoutSeconds) {
         // Step 1: Get host with decrypted credential
@@ -48,6 +48,8 @@ public class RemoteExecutionService {
         } catch (IllegalArgumentException e) {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("hostId", hostId);
+            result.put("hostIp", "");
+            result.put("username", "");
             result.put("hostName", "");
             result.put("exitCode", -1);
             result.put("output", "");
@@ -68,6 +70,8 @@ public class RemoteExecutionService {
         if (!rejected.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("hostId", hostId);
+            result.put("hostIp", hostname);
+            result.put("username", username);
             result.put("hostName", hostName);
             result.put("exitCode", -1);
             result.put("output", "");
@@ -159,6 +163,8 @@ public class RemoteExecutionService {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("hostId", hostId);
+            result.put("hostIp", hostname);
+            result.put("username", username);
             result.put("hostName", hostName);
             result.put("exitCode", exitCode);
             result.put("output", output);
@@ -172,6 +178,8 @@ public class RemoteExecutionService {
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("hostId", hostId);
+            result.put("hostIp", hostname);
+            result.put("username", username);
             result.put("hostName", hostName);
             result.put("exitCode", -1);
             result.put("output", "");

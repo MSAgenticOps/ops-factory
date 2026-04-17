@@ -1,0 +1,26 @@
+.status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.status-icon-success {
+    color: var(--color-success);
+}
+
+.status-icon-warning {
+    color: var(--color-warning);
+}
+
+.status-icon-danger {
+    color: var(--color-error);
+}
+
+.status-icon-neutral {
+    color: var(--color-text-muted);
+}
+
+.status-icon-info {
+    color: #4f7ea8;
+}

@@ -6,6 +6,7 @@ import ControlCenterChartCard from '../components/ControlCenterChartCard'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
 import ResourceCard, { type ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
 import Button from '../../../platform/ui/primitives/Button'
+import StatCard from '../../../platform/ui/primitives/StatCard'
 import { useToast } from '../../../platform/providers/ToastContext'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import {
@@ -350,13 +351,14 @@ function buildLatencyOption(
 // --- Shared sub-components ------------------------------------------------
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: 'error' | 'success' }) {
-  const cls = accent ? `mon-kpi-card mon-kpi-${accent}` : 'mon-kpi-card'
+  const tone = accent === 'error' ? 'danger' : accent === 'success' ? 'success' : 'neutral'
   return (
-    <div className={cls}>
-      <span className="mon-kpi-label">{label}</span>
-      <span className="mon-kpi-value">{value}</span>
-      {sub && <span className="mon-kpi-sub">{sub}</span>}
-    </div>
+    <StatCard
+      label={label}
+      value={value}
+      meta={sub}
+      tone={tone}
+    />
   )
 }
 
@@ -583,7 +585,7 @@ function PlatformTab() {
             {t('controlCenter.runtimeUnavailable')}: {runtimeError}
           </div>
         )}
-        <div className="mon-kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="mon-kpi-row ui-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <KpiCard label={t('monitoring.platformUptime')} value={system ? system.gateway.uptimeFormatted : '—'} />
           <KpiCard label={t('monitoring.platformAgentsConfigured')} value={system ? String(system.agents.configured) : '—'} />
           <KpiCard
@@ -836,25 +838,27 @@ function PerformanceTab() {
 
   return (
     <>
-      <div className="mon-section-head">
-        <div>
-          <h2 className="mon-section-title">{t('monitoring.perfOverviewTitle')}</h2>
-          <p className="mon-section-subtitle">{t('monitoring.perfOverviewWindow')}</p>
+      <div className="mon-section">
+        <div className="mon-section-head">
+          <div>
+            <h2 className="mon-section-title">{t('monitoring.perfOverviewTitle')}</h2>
+            <p className="mon-section-subtitle">{t('monitoring.perfOverviewWindow')}</p>
+          </div>
         </div>
-      </div>
-      {/* KPI Row 1 */}
-      <div className="mon-kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <KpiCard label={t('monitoring.usageActiveInstances')} value={current ? String(current.activeInstances) : '0'} />
-        <KpiCard label={t('monitoring.usageRequests')} value={fmtNum(aggregate.totalRequests)} />
-        <KpiCard label={t('monitoring.perfErrorRate')} value={fmtPct(errorRate)} accent={errorRate > 0 ? 'error' : undefined} />
-        <KpiCard label={t('monitoring.usageAvgLatency')} value={fmtMs2(aggregate.avgLatencyMs)} />
-      </div>
-      {/* KPI Row 2 */}
-      <div className="mon-kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <KpiCard label={t('monitoring.perfP95Latency')} value={fmtMs2(aggregate.p95LatencyMs)} />
-        <KpiCard label={t('monitoring.usageAvgTtft')} value={fmtMs2(aggregate.avgTtftMs)} />
-        <KpiCard label={t('monitoring.perfThresholdRatio')} value={fmtPct(thresholdRatio)} accent={thresholdRatio > 0 ? 'error' : undefined} />
-        <KpiCard label={t('monitoring.usageTotalSessions')} value={current ? String(current.totalSessions) : '0'} />
+        {/* KPI Row 1 */}
+        <div className="mon-kpi-row ui-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <KpiCard label={t('monitoring.usageActiveInstances')} value={current ? String(current.activeInstances) : '0'} />
+          <KpiCard label={t('monitoring.usageRequests')} value={fmtNum(aggregate.totalRequests)} />
+          <KpiCard label={t('monitoring.perfErrorRate')} value={fmtPct(errorRate)} accent={errorRate > 0 ? 'error' : undefined} />
+          <KpiCard label={t('monitoring.usageAvgLatency')} value={fmtMs2(aggregate.avgLatencyMs)} />
+        </div>
+        {/* KPI Row 2 */}
+        <div className="mon-kpi-row ui-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <KpiCard label={t('monitoring.perfP95Latency')} value={fmtMs2(aggregate.p95LatencyMs)} />
+          <KpiCard label={t('monitoring.usageAvgTtft')} value={fmtMs2(aggregate.avgTtftMs)} />
+          <KpiCard label={t('monitoring.perfThresholdRatio')} value={fmtPct(thresholdRatio)} accent={thresholdRatio > 0 ? 'error' : undefined} />
+          <KpiCard label={t('monitoring.usageTotalSessions')} value={current ? String(current.totalSessions) : '0'} />
+        </div>
       </div>
 
       {/* Charts */}
@@ -1025,7 +1029,7 @@ function ObservabilityTab() {
       {/* KPI Row */}
       {overview && (
         <>
-          <div className="mon-kpi-row">
+          <div className="mon-kpi-row ui-metric-grid">
             <KpiCard label={t('monitoring.totalTraces')} value={fmtNum(overview.totalTraces)} />
             <KpiCard label={t('monitoring.totalCost')} value={fmtCost(overview.totalCost)} />
             <KpiCard label={t('monitoring.avgLatency')} value={fmtSec(overview.avgLatency)} />

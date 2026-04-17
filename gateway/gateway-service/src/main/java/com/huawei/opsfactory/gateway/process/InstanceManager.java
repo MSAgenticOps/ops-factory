@@ -481,12 +481,6 @@ public class InstanceManager {
         env.put("GOOSE_DISABLE_KEYRING", "1");
         env.put("XDG_CONFIG_HOME",
                 agentConfigService.getAgentConfigDir(agentId).toAbsolutePath().normalize().toString());
-
-        // Goose memory MCP server uses etcetera crate which resolves global memory
-        // via $XDG_CONFIG_HOME/goose/memory/ (defaults to ~/.config/goose/memory/).
-        // Set XDG_CONFIG_HOME to runtimeRoot so it finds the symlinked memory directory.
-        env.put("XDG_CONFIG_HOME", runtimeRoot.toString());
-
         boolean gooseTlsValue = properties.isGooseTls();
         env.put("GOOSE_TLS", String.valueOf(gooseTlsValue));
         log.info("buildEnvironment: properties.isGooseTls()={}, setting GOOSE_TLS={} for {}:{}",

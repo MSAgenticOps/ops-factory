@@ -3,6 +3,7 @@ export interface Host {
     name: string
     hostname?: string
     ip: string
+    businessIp?: string
     port: number
     os?: string
     location?: string
@@ -28,6 +29,7 @@ export interface HostCreateRequest {
     name: string
     hostname?: string
     ip: string
+    businessIp?: string
     port: number
     os?: string
     location?: string
@@ -51,6 +53,7 @@ export interface HostTestResult {
 export interface HostGroup {
     id: string
     name: string
+    code?: string
     parentId?: string | null
     description: string
     createdAt: string
@@ -68,8 +71,46 @@ export interface Cluster {
     updatedAt: string
 }
 
+export interface BusinessService {
+    id: string
+    name: string
+    code: string
+    groupId?: string | null
+    businessTypeId?: string | null
+    description: string
+    hostIds: string[]
+    contactInfo?: string
+    tags: string[]
+    priority: string
+    createdAt: string
+    updatedAt: string
+}
+
+export interface ClusterType {
+    id: string
+    name: string
+    code: string
+    description: string
+    color: string
+    knowledge: string
+    createdAt: string
+    updatedAt: string
+}
+
+export interface BusinessType {
+    id: string
+    name: string
+    code: string
+    description: string
+    color: string
+    knowledge: string
+    createdAt: string
+    updatedAt: string
+}
+
 export interface HostRelation {
     id: string
+    sourceType?: 'host' | 'business-service'   // defaults to 'host'
     sourceHostId: string
     targetHostId: string
     description: string
@@ -80,17 +121,20 @@ export interface HostRelation {
 export interface GraphNode {
     id: string
     name: string
-    ip: string
+    ip: string | null
+    businessIp?: string | null
     clusterType?: string | null
     clusterName?: string | null
     purpose?: string | null
     groupId?: string | null
+    nodeType?: 'host' | 'business-service'
 }
 
 export interface GraphEdge {
     source: string
     target: string
     description: string
+    type?: 'host-relation' | 'business-entry'
 }
 
 export interface GraphData {

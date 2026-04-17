@@ -1,7 +1,9 @@
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
+import com.huawei.opsfactory.gateway.service.HostService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,10 +26,15 @@ public class HostGroupController {
 
     private final HostGroupService hostGroupService;
     private final ClusterService clusterService;
+    private final BusinessServiceService businessServiceService;
+    private final HostService hostService;
 
-    public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService) {
+    public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
+                               BusinessServiceService businessServiceService, HostService hostService) {
         this.hostGroupService = hostGroupService;
         this.clusterService = clusterService;
+        this.businessServiceService = businessServiceService;
+        this.hostService = hostService;
     }
 
     @GetMapping
@@ -47,7 +54,8 @@ public class HostGroupController {
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
             List<Map<String, Object>> clusters = clusterService.listClusters(null, null);
-            return hostGroupService.getTree(groups, clusters);
+            List<Map<String, Object>> businessServices = businessServiceService.listBusinessServices(null, null);
+            return hostGroupService.getTree(groups, clusters, businessServices);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -125,11 +133,17 @@ public class HostGroupController {
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(
             @PathVariable("id") String id,
+            @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
-                boolean deleted = hostGroupService.deleteGroup(id, clusterService);
+                boolean deleted;
+                if (force) {
+                    deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
+                } else {
+                    deleted = hostGroupService.deleteGroup(id, clusterService);
+                }
                 if (!deleted) {
                     Map<String, Object> body = new LinkedHashMap<>();
                     body.put("success", false);

@@ -49,8 +49,9 @@
 
 .mon-section-title {
     margin: 0 0 var(--spacing-4);
-    font-size: var(--font-size-xl);
-    font-weight: 700;
+    font-size: var(--ui-section-title-size);
+    font-weight: var(--ui-section-title-weight);
+    line-height: var(--ui-section-title-line-height);
     color: var(--color-text-primary);
 }
 
@@ -67,7 +68,6 @@
 .mon-kpi-row {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: var(--spacing-4);
 }
 
 .mon-kpi-row + .mon-kpi-row {
@@ -91,7 +91,7 @@
 }
 
 .mon-kpi-label {
-    font-size: var(--font-size-xs);
+    font-size: var(--ui-metric-label-size);
     font-weight: 600;
     color: var(--color-text-muted);
     letter-spacing: 0.04em;
@@ -99,9 +99,9 @@
 }
 
 .mon-kpi-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    line-height: 1.2;
+    font-size: var(--ui-metric-value-size);
+    font-weight: var(--ui-metric-value-weight);
+    line-height: var(--ui-metric-value-line-height);
     color: var(--color-text-primary);
     font-variant-numeric: tabular-nums;
 }
@@ -386,32 +386,6 @@
     gap: var(--spacing-3);
     font-size: var(--font-size-xs);
     color: var(--color-text-secondary);
-}
-
-.mon-chart-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-3);
-}
-
-.mon-chart-legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-secondary);
-}
-
-.mon-chart-legend-swatch {
-    width: 18px;
-    height: 3px;
-    border-radius: 999px;
-    background: currentColor;
-}
-
-.mon-chart-legend-swatch-dashed {
-    background: none;
-    border-top: 2px dashed currentColor;
 }
 
 .mon-chart-empty {

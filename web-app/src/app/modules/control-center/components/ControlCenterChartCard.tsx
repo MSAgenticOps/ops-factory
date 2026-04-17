@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
+import ChartHeaderLegend from '../../../platform/ui/primitives/ChartHeaderLegend'
 
 interface MonitoringChartCardProps {
     title: string
@@ -35,17 +36,7 @@ export default function MonitoringChartCard({
                 </div>
                 <div className="mon-chart-card-side">
                     {legendItems && legendItems.length > 0 && (
-                        <div className="mon-chart-legend" aria-hidden="true">
-                            {legendItems.map(item => (
-                                <span key={item.label} className="mon-chart-legend-item">
-                                    <span
-                                        className={`mon-chart-legend-swatch${item.dashed ? ' mon-chart-legend-swatch-dashed' : ''}`}
-                                        style={{ color: item.color }}
-                                    />
-                                    <span>{item.label}</span>
-                                </span>
-                            ))}
-                        </div>
+                        <ChartHeaderLegend items={legendItems} />
                     )}
                     {summary && <span className="mon-chart-summary">{summary}</span>}
                 </div>

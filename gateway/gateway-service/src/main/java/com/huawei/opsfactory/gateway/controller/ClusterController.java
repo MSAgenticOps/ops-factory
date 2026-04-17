@@ -145,11 +145,17 @@ public class ClusterController {
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteCluster(
             @PathVariable("id") String id,
+            @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
-                boolean deleted = clusterService.deleteCluster(id, hostService);
+                boolean deleted;
+                if (force) {
+                    deleted = clusterService.forceDeleteCluster(id, hostService);
+                } else {
+                    deleted = clusterService.deleteCluster(id, hostService);
+                }
                 if (!deleted) {
                     Map<String, Object> body = new LinkedHashMap<>();
                     body.put("success", false);

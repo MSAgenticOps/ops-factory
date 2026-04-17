@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useTranslation } from 'react-i18next'
 import './Message.css'
 import './ToolCallDisplay.css'
 import ToolCallDisplay from './ToolCallDisplay'
@@ -15,6 +16,8 @@ import { parseFileCitations, replaceFileCitationsWithPlaceholders, type FileCita
 import { getDisplayTextContent, getFullTextContent, getReasoningContent, getThinkingContent } from '../../../utils/messageContent'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../../../config/runtime'
 import type { ChatMessage, DetectedFile, ToolResponseMap } from '../../../types/message'
+import GooseAvatarIcon from './GooseAvatarIcon'
+import UserAvatarIcon from './UserAvatarIcon'
 
 interface MessageProps {
     message: ChatMessage
@@ -174,6 +177,7 @@ function MessageInner({
     outputFiles = [],
     showFileCapsules = true,
 }: MessageProps) {
+    const { t } = useTranslation()
     const isUser = message.role === 'user'
 
     const fullText = getFullTextContent(message)
@@ -215,7 +219,7 @@ function MessageInner({
             pushProcessTextEntry({
                 key: `${message.id || 'message'}-${textBufferKind}-${items.length}`,
                 kind: textBufferKind,
-                label: textBufferKind === 'reasoning' ? '推理过程' : '思考过程',
+                label: textBufferKind === 'reasoning' ? t('chat.reasoning') : t('chat.thinkingLabel'),
                 content: textBuffer,
             })
 
@@ -276,7 +280,7 @@ function MessageInner({
                 pushProcessTextEntry({
                     key: `${message.id || 'message'}-reasoning-fallback`,
                     kind: 'reasoning',
-                    label: '推理过程',
+                    label: t('chat.reasoning'),
                     content: reasoningText,
                 })
             }
@@ -288,7 +292,7 @@ function MessageInner({
                 pushProcessTextEntry({
                     key: `${message.id || 'message'}-thinking-fallback`,
                     kind: 'thinking',
-                    label: '思考过程',
+                    label: t('chat.thinkingLabel'),
                     content: thinkingText,
                 })
             }
@@ -486,7 +490,7 @@ function MessageInner({
     return (
         <div className={`message ${isUser ? 'user' : 'assistant'} animate-slide-in`}>
             <div className="message-avatar">
-                {isUser ? 'U' : 'G'}
+                {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
             </div>
             <div className="message-body">
                 <div className="message-content">
