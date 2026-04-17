@@ -82,15 +82,10 @@ public class FileService {
             "vbs", "vbe", "wsf", "wsh", "ps1");
 
     /**
-     * List files recursively under a directory, filtering out system dirs and hidden files.
+     * List only top-level files under a directory, excluding subdirectories.
      */
     public List<Map<String, Object>> listFiles(Path dir) throws IOException {
-        List<Map<String, Object>> files = new ArrayList<>();
-        if (!Files.isDirectory(dir)) {
-            return files;
-        }
-        listFilesRecursive(dir, dir, files);
-        return files;
+        return listTopLevelFiles(dir);
     }
 
     /**
@@ -158,7 +153,6 @@ public class FileService {
 
     /**
      * Resolve and validate a file path within a base directory.
-     * If the file is not found at the direct path, performs a fallback search.
      */
     public Resource resolveFile(Path baseDir, String relativePath) {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
@@ -167,16 +161,6 @@ public class FileService {
         Path resolved = baseDir.resolve(relativePath).normalize();
         if (Files.exists(resolved) && !Files.isDirectory(resolved)) {
             return new FileSystemResource(resolved);
-        }
-        // Fallback: search for the file by name in subdirectories
-        String fileName = Path.of(relativePath).getFileName().toString();
-        try {
-            Path found = searchFile(baseDir, fileName);
-            if (found != null) {
-                return new FileSystemResource(found);
-            }
-        } catch (IOException e) {
-            // ignore search errors
         }
         return null;
     }
@@ -191,28 +175,6 @@ public class FileService {
         }
         Files.delete(resolved);
         return true;
-    }
-
-    private Path searchFile(Path dir, String fileName) throws IOException {
-        if (!Files.isDirectory(dir)) {
-            return null;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
-            for (Path entry : stream) {
-                if (Files.isDirectory(entry)) {
-                    String dirName = entry.getFileName().toString();
-                    if (!SKIP_DIRS.contains(dirName)) {
-                        Path found = searchFile(entry, fileName);
-                        if (found != null) {
-                            return found;
-                        }
-                    }
-                } else if (entry.getFileName().toString().equals(fileName)) {
-                    return entry;
-                }
-            }
-        }
-        return null;
     }
 
     /**

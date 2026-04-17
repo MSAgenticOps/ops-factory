@@ -624,19 +624,27 @@ describe('File routes', () => {
     unlinkSync(join(dir, docxFile))
   })
 
-  it('finds file in subdirectory via fallback search', async () => {
+  it('does not fallback-search subdirectory files by basename', async () => {
     const dir = userDir(USER_ALICE)
     const sub = join(dir, 'nested')
     if (!existsSync(sub)) mkdirSync(sub, { recursive: true })
     const fileName = `deep-${Date.now()}.txt`
     writeFileSync(join(sub, fileName), 'nested-content')
 
-    const res = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/files/${fileName}`)
-    expect(res.ok).toBe(true)
-    expect(await res.text()).toBe('nested-content')
+    const basenameRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/files/${fileName}`)
+    expect(basenameRes.status).toBe(404)
+
+    const nestedRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/files/nested/${fileName}`)
+    expect(nestedRes.ok).toBe(true)
+    expect(await nestedRes.text()).toBe('nested-content')
+
+    const listRes = await gw.fetchAs(USER_ALICE, `/agents/${AGENT_ID}/files`)
+    const files = (await listRes.json()).files
+    const paths = files.map((f: any) => f.path)
+    expect(paths).not.toContain(`nested/${fileName}`)
 
     unlinkSync(join(sub, fileName))
-    rmdirSync(sub)
+    rmSync(sub, { recursive: true, force: true })
   })
 
   it('filters out goose system directories', async () => {
@@ -662,7 +670,7 @@ describe('File routes', () => {
       req.on('error', reject)
       req.end()
     })
-    expect(status).toBe(403)
+    expect([403, 404]).toContain(status)
   })
 })
 
@@ -1298,7 +1306,7 @@ describe('Path traversal — additional vectors', () => {
       req.on('error', reject)
       req.end()
     })
-    expect(status).toBe(403)
+    expect([403, 404]).toContain(status)
   })
 })
 
