@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode, type SVGProps } from 'react'
+import { useState, useEffect, useMemo, useCallback, type ReactNode, type SVGProps } from 'react'
 import {
     CodeXml,
     Presentation,
@@ -230,51 +230,60 @@ export default function FilesPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(20)
 
-    useEffect(() => {
-        const loadFiles = async () => {
-            if (!isConnected || agents.length === 0) {
-                setIsLoading(false)
-                return
-            }
-
-            setIsLoading(true)
-            setError(null)
-
-            try {
-                const allFiles: AgentFile[] = []
-                const results = await Promise.allSettled(
-                    agents.map(async (agent) => {
-                        const response = await fetch(`${GATEWAY_URL}/agents/${agent.id}/files`, {
-                            headers: gatewayHeaders(userId),
-                        })
-                        if (!response.ok) return []
-                        const data = await response.json() as { files: FileInfo[] }
-                        return (data.files || []).map((file) => ({
-                            ...file,
-                            agentId: agent.id,
-                            agentName: agent.name,
-                        }))
-                    }),
-                )
-
-                for (const result of results) {
-                    if (result.status === 'fulfilled') {
-                        allFiles.push(...result.value)
-                    }
-                }
-
-                allFiles.sort((left, right) => new Date(right.modifiedAt).getTime() - new Date(left.modifiedAt).getTime())
-                setFiles(allFiles)
-            } catch (err) {
-                console.error('Failed to load files:', err)
-                setError(err instanceof Error ? err.message : 'Failed to load files')
-            } finally {
-                setIsLoading(false)
-            }
+    const loadFiles = useCallback(async () => {
+        if (!isConnected || agents.length === 0) {
+            setIsLoading(false)
+            return
         }
 
-        void loadFiles()
+        setIsLoading(true)
+        setError(null)
+
+        try {
+            const allFiles: AgentFile[] = []
+            const results = await Promise.allSettled(
+                agents.map(async (agent) => {
+                    const response = await fetch(`${GATEWAY_URL}/agents/${agent.id}/files`, {
+                        headers: gatewayHeaders(userId),
+                    })
+                    if (!response.ok) return []
+                    const data = await response.json() as { files: FileInfo[] }
+                    return (data.files || []).map((file) => ({
+                        ...file,
+                        agentId: agent.id,
+                        agentName: agent.name,
+                    }))
+                }),
+            )
+
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    allFiles.push(...result.value)
+                }
+            }
+
+            allFiles.sort((left, right) => new Date(right.modifiedAt).getTime() - new Date(left.modifiedAt).getTime())
+            setFiles(allFiles)
+        } catch (err) {
+            console.error('Failed to load files:', err)
+            setError(err instanceof Error ? err.message : 'Failed to load files')
+        } finally {
+            setIsLoading(false)
+        }
     }, [agents, isConnected, userId])
+
+    useEffect(() => {
+        void loadFiles()
+    }, [loadFiles])
+
+    useEffect(() => {
+        const handleFileUpdated = () => {
+            void loadFiles()
+        }
+
+        window.addEventListener('opsfactory:file-updated', handleFileUpdated)
+        return () => window.removeEventListener('opsfactory:file-updated', handleFileUpdated)
+    }, [loadFiles])
 
     const categoryCounts = useMemo(() => {
         const counts: Record<FileCategory, number> = {

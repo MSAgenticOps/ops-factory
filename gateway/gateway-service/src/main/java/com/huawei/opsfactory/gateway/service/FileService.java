@@ -81,6 +81,22 @@ public class FileService {
             "exe", "bat", "cmd", "com", "msi", "dll", "sys", "scr",
             "vbs", "vbe", "wsf", "wsh", "ps1");
 
+    private static final Set<String> EDITABLE_TEXT_EXTENSIONS = Set.of(
+            "txt", "log", "ini", "conf",
+            "js", "ts", "jsx", "tsx", "mjs", "cjs",
+            "py", "sh", "bash", "zsh",
+            "yaml", "yml", "json", "toml",
+            "css", "scss", "less",
+            "xml", "sql", "graphql",
+            "go", "rs", "java", "c", "cpp", "h", "hpp",
+            "rb", "php", "swift", "kt", "scala",
+            "csv", "tsv",
+            "env", "gitignore", "dockerignore", "editorconfig", "prettierrc",
+            "eslintrc", "babelrc",
+            "dockerfile", "makefile",
+            "vue", "svelte",
+            "md", "markdown", "html", "htm");
+
     /**
      * List only top-level files under a directory, excluding subdirectories.
      */
@@ -169,6 +185,22 @@ public class FileService {
         return true;
     }
 
+    public boolean updateTextFile(Path baseDir, String relativePath, String content) throws IOException {
+        if (!PathSanitizer.isSafe(baseDir, relativePath) || !isEditableTextFile(relativePath)) {
+            return false;
+        }
+        Path resolved = baseDir.resolve(relativePath).normalize();
+        if (!Files.exists(resolved) || Files.isDirectory(resolved)) {
+            return false;
+        }
+        Files.writeString(resolved, content != null ? content : "", StandardCharsets.UTF_8);
+        return true;
+    }
+
+    public boolean isEditableTextFile(String filename) {
+        return EDITABLE_TEXT_EXTENSIONS.contains(getPolicyType(filename));
+    }
+
     /**
      * Check if a file extension is allowed for upload.
      */
@@ -186,6 +218,16 @@ public class FileService {
             return "";
         }
         return filename.substring(dot + 1).toLowerCase();
+    }
+
+    private String getPolicyType(String filename) {
+        String normalized = filename == null ? "" : filename.replace('\\', '/');
+        int slash = normalized.lastIndexOf('/');
+        String baseName = slash >= 0 ? normalized.substring(slash + 1) : normalized;
+        String lowerBaseName = baseName.toLowerCase();
+        if ("dockerfile".equals(lowerBaseName)) return "dockerfile";
+        if ("makefile".equals(lowerBaseName)) return "makefile";
+        return getExtension(baseName);
     }
 
     public String getMimeType(String filename) {

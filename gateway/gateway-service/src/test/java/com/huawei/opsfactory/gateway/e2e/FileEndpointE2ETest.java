@@ -3,6 +3,7 @@ package com.huawei.opsfactory.gateway.e2e;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.when;
  * E2E tests for FileController endpoints:
  * GET /agents/{agentId}/files
  * GET /agents/{agentId}/files/**
+ * PUT /agents/{agentId}/files/**
  * DELETE /agents/{agentId}/files/**
  * POST /agents/{agentId}/files/upload
  */
@@ -166,6 +168,80 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_USER_ID, "alice")
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    // ====================== PUT /agents/{agentId}/files/** ======================
+
+    @Test
+    public void updateFile_existingTextFile_returnsUpdated() throws IOException {
+        when(fileService.isEditableTextFile("data/readme.md")).thenReturn(true);
+        when(fileService.updateTextFile(any(Path.class), eq("data/readme.md"), eq("# Updated")))
+                .thenReturn(true);
+
+        webClient.put().uri("/gateway/agents/test-agent/files/data/readme.md")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("content", "# Updated"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("updated")
+                .jsonPath("$.path").isEqualTo("data/readme.md");
+    }
+
+    @Test
+    public void updateFile_notFound_returns404() throws IOException {
+        when(fileService.isEditableTextFile("data/missing.txt")).thenReturn(true);
+        when(fileService.updateTextFile(any(Path.class), eq("data/missing.txt"), eq("Updated")))
+                .thenReturn(false);
+
+        webClient.put().uri("/gateway/agents/test-agent/files/data/missing.txt")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("content", "Updated"))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("file not found");
+    }
+
+    @Test
+    public void updateFile_unsupportedType_returns415() {
+        when(fileService.isEditableTextFile("deck.pptx")).thenReturn(false);
+
+        webClient.put().uri("/gateway/agents/test-agent/files/deck.pptx")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("content", "Updated"))
+                .exchange()
+                .expectStatus().isEqualTo(415)
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("file type is not editable");
+    }
+
+    @Test
+    public void updateFile_pathTraversal_returns403() {
+        webClient.put().uri("/gateway/agents/test-agent/files/..%2F..%2Fsecret.txt")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("content", "Updated"))
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("path traversal not allowed");
+    }
+
+    @Test
+    public void updateFile_unauthenticated_returns401() {
+        webClient.put().uri("/gateway/agents/test-agent/files/data/readme.txt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("content", "Updated"))
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     // ====================== DELETE /agents/{agentId}/files/** ======================

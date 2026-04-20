@@ -13,8 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -130,6 +132,42 @@ public class FileController {
                         new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete file"));
     }
 
+    @PutMapping(value = "/**", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<Map<String, Object>>> updateFile(@PathVariable("agentId") String agentId,
+                                                                @RequestBody FileUpdateRequest request,
+                                                                ServerWebExchange exchange) {
+        String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
+        Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+
+        String fullPath = exchange.getRequest().getPath().value();
+        String prefix = "/gateway/agents/" + agentId + "/files/";
+        String relativePath = URLDecoder.decode(fullPath.substring(prefix.length()), StandardCharsets.UTF_8);
+
+        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+            return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.<String, Object>of("error", "path traversal not allowed")));
+        }
+
+        if (!fileService.isEditableTextFile(relativePath)) {
+            return Mono.just(ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                    .body(Map.<String, Object>of("error", "file type is not editable")));
+        }
+
+        return Mono.fromCallable(() -> {
+                    boolean updated = fileService.updateTextFile(workingDir, relativePath, request.content());
+                    if (!updated) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body(Map.<String, Object>of("error", "file not found"));
+                    }
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "status", "updated",
+                            "path", relativePath
+                    ));
+                }).subscribeOn(Schedulers.boundedElastic())
+                .onErrorMap(IOException.class, e ->
+                        new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update file"));
+    }
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<Map<String, Object>> uploadFile(@PathVariable String agentId,
                                                  @RequestPart("file") FilePart filePart,
@@ -177,5 +215,8 @@ public class FileController {
     public Mono<Map<String, Object>> uploadFileNotMultipart() {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Upload requires multipart/form-data content type");
+    }
+
+    private record FileUpdateRequest(String content) {
     }
 }

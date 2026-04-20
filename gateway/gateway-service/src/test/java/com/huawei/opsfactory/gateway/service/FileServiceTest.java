@@ -10,6 +10,8 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
@@ -120,6 +122,41 @@ public class FileServiceTest {
         assertTrue(fileService.isInline("application/pdf"));
         assertFalse(fileService.isInline("application/zip"));
         assertFalse(fileService.isInline("application/octet-stream"));
+    }
+
+    @Test
+    public void testIsEditableTextFile() {
+        assertTrue(fileService.isEditableTextFile("notes.md"));
+        assertTrue(fileService.isEditableTextFile("output/config.yaml"));
+        assertTrue(fileService.isEditableTextFile("Dockerfile"));
+        assertFalse(fileService.isEditableTextFile("slides.pptx"));
+        assertFalse(fileService.isEditableTextFile("image.png"));
+    }
+
+    @Test
+    public void testUpdateTextFile_overwritesContent() throws IOException {
+        createFile("notes.md", "old");
+
+        boolean updated = fileService.updateTextFile(tempFolder.getRoot().toPath(), "notes.md", "new");
+
+        assertTrue(updated);
+        assertEquals("new", Files.readString(tempFolder.getRoot().toPath().resolve("notes.md"), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void testUpdateTextFile_missingFile() throws IOException {
+        boolean updated = fileService.updateTextFile(tempFolder.getRoot().toPath(), "missing.md", "new");
+
+        assertFalse(updated);
+    }
+
+    @Test
+    public void testUpdateTextFile_rejectsUnsupportedType() throws IOException {
+        createFile("slides.pptx", "old");
+
+        boolean updated = fileService.updateTextFile(tempFolder.getRoot().toPath(), "slides.pptx", "new");
+
+        assertFalse(updated);
     }
 
     private void createFile(String name, String content) throws IOException {
