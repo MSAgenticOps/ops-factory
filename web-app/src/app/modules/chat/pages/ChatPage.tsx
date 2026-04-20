@@ -10,7 +10,7 @@ import {
     persistChatSessionLocator,
     resolveChatRouteState,
 } from '../../../platform/chat/chatRouteState'
-import { useChat, convertBackendMessage, sortConversationMessages, isChatOrderDebugEnabled, buildChatMessageOrderDigest } from '../../../platform/chat/useChat'
+import { useChat, convertBackendMessage, isChatOrderDebugEnabled, buildChatMessageOrderDigest } from '../../../platform/chat/useChat'
 import MessageList from '../../../platform/chat/MessageList'
 import ChatInput from '../../../platform/chat/ChatInput'
 import ChatPanelShell from '../../../platform/chat/ChatPanelShell'
@@ -289,9 +289,9 @@ export default function Chat() {
                 }
 
                 if (resumedSession.conversation && Array.isArray(resumedSession.conversation)) {
-                    const historyMessages = sortConversationMessages(resumedSession.conversation.map(msg =>
+                    const historyMessages = resumedSession.conversation.map(msg =>
                         convertBackendMessage(msg as Record<string, unknown>)
-                    ))
+                    )
                     setInitialMessages(historyMessages)
                     if (isChatOrderDebugEnabled()) {
                         console.debug('[chat-order] resume.conversation', {
