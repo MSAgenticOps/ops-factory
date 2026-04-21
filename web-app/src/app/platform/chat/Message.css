@@ -46,15 +46,16 @@
     min-width: 0;
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
 }
 
 .message.user .message-body {
-    justify-content: flex-end;
+    align-items: flex-end;
 }
 
 .message.assistant .message-body {
-    justify-content: flex-start;
+    align-items: flex-start;
 }
 
 .message-content {
@@ -193,6 +194,26 @@
     min-width: 0;
     overflow-wrap: break-word;
     word-break: break-word;
+}
+
+.message-timestamp {
+    margin-bottom: 6px;
+    font-size: 12px;
+    line-height: 1.2;
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.message.user .message-timestamp {
+    text-align: right;
+}
+
+.message.assistant .message-timestamp {
+    text-align: left;
+}
+
+.message-timestamp-outside {
+    margin-bottom: 8px;
 }
 
 .message-content table {
