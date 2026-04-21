@@ -191,19 +191,38 @@ function MessageInner({
         let hasStructuredThinking = false
         let textBufferKind: 'reasoning' | 'thinking' | null = null
         let textBuffer = ''
+        const lastSeenTextByKind: Record<'reasoning' | 'thinking', string | null> = { reasoning: null, thinking: null }
         const pushProcessTextEntry = (entry: ProcessEntry) => {
-            const previous = items[items.length - 1]
             const currentText = normalizeProcessText(entry.content)
-            const previousText = normalizeProcessText(previous?.content)
+            if (entry.kind === 'reasoning' || entry.kind === 'thinking') {
+                if (currentText.length === 0) return
+                if (lastSeenTextByKind[entry.kind] === currentText) return
 
-            if (
-                previous &&
-                (previous.kind === 'reasoning' || previous.kind === 'thinking') &&
-                (entry.kind === 'reasoning' || entry.kind === 'thinking') &&
-                currentText.length > 0 &&
-                currentText === previousText
-            ) {
-                return
+                const lastIndex = (() => {
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        if (items[i].kind === entry.kind) return i
+                    }
+                    return -1
+                })()
+
+                if (lastIndex >= 0) {
+                    const previousEntry = items[lastIndex]
+                    const previousText = normalizeProcessText(previousEntry.content)
+                    if (previousText.length > 0) {
+                        if (previousText === currentText || previousText.startsWith(currentText)) {
+                            lastSeenTextByKind[entry.kind] = previousText
+                            return
+                        }
+
+                        if (currentText.startsWith(previousText)) {
+                            previousEntry.content = entry.content
+                            lastSeenTextByKind[entry.kind] = currentText
+                            return
+                        }
+                    }
+                }
+
+                lastSeenTextByKind[entry.kind] = currentText
             }
 
             items.push(entry)

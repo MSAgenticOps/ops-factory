@@ -93,7 +93,7 @@ export interface UseChatReturn {
  *   - otherwise → push to content array
  * - Different ID → append new message
  */
-function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): ChatMessage[] {
+export function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): ChatMessage[] {
     const lastMsg = currentMessages[currentMessages.length - 1]
 
     if (lastMsg?.id && lastMsg.id === incomingMsg.id) {
@@ -106,6 +106,32 @@ function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): 
             incomingMsg.content.length === 1
         ) {
             lastContent.text = (lastContent.text || '') + (newContent.text || '')
+        } else if (
+            lastContent?.type === 'reasoning' &&
+            newContent?.type === 'reasoning' &&
+            incomingMsg.content.length === 1
+        ) {
+            const lastText = lastContent.text || ''
+            const nextText = newContent.text || ''
+
+            if (nextText.startsWith(lastText)) {
+                lastContent.text = nextText
+            } else if (!lastText.startsWith(nextText)) {
+                lastContent.text = lastText + nextText
+            }
+        } else if (
+            lastContent?.type === 'thinking' &&
+            newContent?.type === 'thinking' &&
+            incomingMsg.content.length === 1
+        ) {
+            const lastText = lastContent.thinking || ''
+            const nextText = newContent.thinking || ''
+
+            if (nextText.startsWith(lastText)) {
+                lastContent.thinking = nextText
+            } else if (!lastText.startsWith(nextText)) {
+                lastContent.thinking = lastText + nextText
+            }
         } else {
             lastMsg.content.push(...incomingMsg.content)
         }
