@@ -38,6 +38,10 @@ gateway:
     file-base-url: 'http://host.docker.internal:3000'
   file-capsules:
     allowed-extensions: ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'txt', 'json', 'md', 'markdown', 'html', 'htm']
+  files:
+    scan-roots:
+      - {id: workingDir, path: '${userAgentDir}', recursive: false}
+      - {id: output, path: '${userAgentDir}/output', recursive: false}
   credential-encryption-key: 'changeit-changeit-changeit-32ch'
   remote-execution:
     default-timeout: 30

@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Map.entry;
@@ -98,10 +100,18 @@ public class FileService {
             "md", "markdown", "html", "htm");
 
     /**
-     * List only top-level files under a directory, excluding subdirectories.
+     * List files for the Files module from configured scan roots.
      */
-    public List<Map<String, Object>> listFiles(Path dir) throws IOException {
-        return listTopLevelFiles(dir);
+    public List<Map<String, Object>> listFiles(Path userAgentDir) throws IOException {
+        List<Map<String, Object>> files = new ArrayList<>();
+        for (FileScanRoot root : fileScanRoots(userAgentDir)) {
+            if (root.recursive()) {
+                listFilesRecursive(root, root.path(), files);
+            } else {
+                listRootFiles(root, files);
+            }
+        }
+        return files;
     }
 
     /**
@@ -109,17 +119,22 @@ public class FileService {
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
+        listRootFiles(new FileScanRoot("workingDir", dir, false), files);
+        return files;
+    }
+
+    private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files) throws IOException {
+        Path dir = root.path();
         if (!Files.isDirectory(dir)) {
-            return files;
+            return;
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
                 if (Files.isRegularFile(entry) && !SKIP_FILES.contains(entry.getFileName().toString())) {
-                    addFileEntry(dir, entry, files);
+                    addFileEntry(root, entry, files);
                 }
             }
         }
-        return files;
     }
 
     /**
@@ -130,33 +145,103 @@ public class FileService {
         return listTopLevelFiles(dir);
     }
 
-    private void listFilesRecursive(Path base, Path current, List<Map<String, Object>> files) throws IOException {
+    private void listFilesRecursive(FileScanRoot root, Path current, List<Map<String, Object>> files) throws IOException {
+        if (!Files.isDirectory(current)) {
+            return;
+        }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(current)) {
             for (Path entry : stream) {
                 String name = entry.getFileName().toString();
                 if (Files.isDirectory(entry)) {
                     if (!SKIP_DIRS.contains(name) && !name.startsWith(".")) {
-                        listFilesRecursive(base, entry, files);
+                        listFilesRecursive(root, entry, files);
                     }
                 } else {
                     if (!SKIP_FILES.contains(name)) {
-                        addFileEntry(base, entry, files);
+                        addFileEntry(root, entry, files);
                     }
                 }
             }
         }
     }
 
-    private void addFileEntry(Path base, Path entry, List<Map<String, Object>> files) throws IOException {
+    private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files) throws IOException {
         String name = entry.getFileName().toString();
         int dot = name.lastIndexOf('.');
         String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
-        files.add(Map.of(
-                "name", name,
-                "path", base.relativize(entry).toString(),
-                "size", Files.size(entry),
-                "type", ext,
-                "modifiedAt", Files.getLastModifiedTime(entry).toInstant().toString()));
+        String relativePath = toApiPath(root.path().relativize(entry));
+        Map<String, Object> file = new LinkedHashMap<>();
+        file.put("rootId", root.id());
+        file.put("name", name);
+        file.put("path", relativePath);
+        file.put("displayPath", displayPath(root, relativePath));
+        file.put("size", Files.size(entry));
+        file.put("type", ext);
+        file.put("modifiedAt", Files.getLastModifiedTime(entry).toInstant().toString());
+        files.add(file);
+    }
+
+    public Optional<Path> resolveFileScanRoot(Path userAgentDir, String rootId) {
+        String normalizedRootId = normalizeRootId(rootId, 0);
+        return fileScanRoots(userAgentDir).stream()
+                .filter(root -> root.id().equals(normalizedRootId))
+                .map(FileScanRoot::path)
+                .findFirst();
+    }
+
+    private List<FileScanRoot> fileScanRoots(Path userAgentDir) {
+        List<GatewayProperties.FileScanRoot> configured = gatewayProperties.getFiles() != null
+                ? gatewayProperties.getFiles().getScanRoots()
+                : null;
+        if (configured == null || configured.isEmpty()) {
+            configured = new GatewayProperties.FileBrowser().getScanRoots();
+        }
+
+        List<FileScanRoot> roots = new ArrayList<>();
+        Set<String> ids = new HashSet<>();
+        for (int i = 0; i < configured.size(); i++) {
+            GatewayProperties.FileScanRoot configuredRoot = configured.get(i);
+            if (configuredRoot == null || configuredRoot.getPath() == null || configuredRoot.getPath().isBlank()) {
+                continue;
+            }
+            String id = normalizeRootId(configuredRoot.getId(), i);
+            if (!ids.add(id)) {
+                continue;
+            }
+            roots.add(new FileScanRoot(
+                    id,
+                    resolveScanRootPath(userAgentDir, configuredRoot.getPath()),
+                    configuredRoot.isRecursive()));
+        }
+        return roots;
+    }
+
+    private String normalizeRootId(String rootId, int index) {
+        return rootId == null || rootId.isBlank() ? "root" + index : rootId.trim();
+    }
+
+    private Path resolveScanRootPath(Path userAgentDir, String configuredPath) {
+        String expanded = configuredPath.replace("${userAgentDir}", userAgentDir.toAbsolutePath().normalize().toString());
+        Path path = Path.of(expanded);
+        return path.isAbsolute() ? path.normalize() : userAgentDir.resolve(path).normalize();
+    }
+
+    private String displayPath(FileScanRoot root, String relativePath) {
+        if ("workingDir".equals(root.id())) {
+            return relativePath;
+        }
+        return root.id() + "/" + relativePath;
+    }
+
+    private String toApiPath(Path path) {
+        return path.toString().replace('\\', '/');
+    }
+
+    private record FileScanRoot(String id, Path path, boolean recursive) {
+        private FileScanRoot {
+            Objects.requireNonNull(id);
+            Objects.requireNonNull(path);
+        }
     }
 
     /**

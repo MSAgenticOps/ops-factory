@@ -27,7 +27,7 @@ extensions:
     bundled: true
     available_tools: []
   developer:
-    enabled: false
+    enabled: true
     type: builtin
     name: developer
     description: Write and edit files, and execute shell commands

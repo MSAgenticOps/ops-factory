@@ -44,6 +44,18 @@ public class GatewayPropertiesTest {
     }
 
     @Test
+    public void testFilesScanRootDefaults() {
+        GatewayProperties.FileBrowser files = new GatewayProperties.FileBrowser();
+        assertEquals(2, files.getScanRoots().size());
+        assertEquals("workingDir", files.getScanRoots().get(0).getId());
+        assertEquals("${userAgentDir}", files.getScanRoots().get(0).getPath());
+        assertFalse(files.getScanRoots().get(0).isRecursive());
+        assertEquals("output", files.getScanRoots().get(1).getId());
+        assertEquals("${userAgentDir}/output", files.getScanRoots().get(1).getPath());
+        assertFalse(files.getScanRoots().get(1).isRecursive());
+    }
+
+    @Test
     public void testOfficePreviewDefaults() {
         GatewayProperties.OfficePreview op = new GatewayProperties.OfficePreview();
         assertFalse(op.isEnabled());

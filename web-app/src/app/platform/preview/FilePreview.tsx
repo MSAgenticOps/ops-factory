@@ -130,6 +130,11 @@ function decodeFileName(name: string): string {
     }
 }
 
+function appendRootId(url: string, rootId?: string): string {
+    if (!rootId) return url
+    return `${url}${url.includes('?') ? '&' : '?'}rootId=${encodeURIComponent(rootId)}`
+}
+
 function renderLineNumberText(content: string, className: string) {
     const lines = content.split('\n')
 
@@ -206,7 +211,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         setIsKnowledgeMenuOpen(false)
         setKnowledgeImportError(null)
         setKnowledgeImportSuccess(null)
-    }, [previewFile?.path])
+    }, [previewFile?.path, previewFile?.rootId])
 
     const handleCopy = useCallback(async () => {
         if (!previewFile?.content) return
@@ -240,13 +245,15 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
             path: previewFile.path,
             type: previewFile.type,
             agentId: previewFile.agentId,
+            rootId: previewFile.rootId,
+            displayPath: previewFile.displayPath,
         }
 
         setIsSaving(true)
         setEditError(null)
 
         try {
-            const response = await fetch(`${GATEWAY_URL}/agents/${targetFile.agentId}/files/${encodeURIComponent(targetFile.path)}`, {
+            const response = await fetch(appendRootId(`${GATEWAY_URL}/agents/${targetFile.agentId}/files/${encodeURIComponent(targetFile.path)}`, targetFile.rootId), {
                 method: 'PUT',
                 headers: gatewayHeaders(userId),
                 body: JSON.stringify({ content: editDraft }),
@@ -260,7 +267,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
             setIsEditorOpen(false)
             showToast('success', t('files.editSaveSuccess'))
             window.dispatchEvent(new CustomEvent('opsfactory:file-updated', {
-                detail: { agentId: targetFile.agentId, path: targetFile.path },
+                detail: { agentId: targetFile.agentId, rootId: targetFile.rootId, path: targetFile.path },
             }))
             await openPreview(targetFile)
         } catch (err) {
@@ -282,6 +289,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
             return ''
         }
         let url = `${GATEWAY_URL}/agents/${previewFile.agentId}/files/${encodeURIComponent(previewFile.path)}?key=${GATEWAY_SECRET_KEY}`
+        if (previewFile.rootId) url += `&rootId=${encodeURIComponent(previewFile.rootId)}`
         if (userId) url += `&uid=${encodeURIComponent(userId)}`
         return url
     }, [previewFile, userId])
@@ -669,6 +677,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                                         path={previewFile.path}
                                         agentId={previewFile.agentId || ''}
                                         type={previewFile.type}
+                                        rootId={previewFile.rootId}
                                         onlyofficeUrl={previewFile.onlyofficeUrl}
                                         fileBaseUrl={previewFile.fileBaseUrl}
                                     />

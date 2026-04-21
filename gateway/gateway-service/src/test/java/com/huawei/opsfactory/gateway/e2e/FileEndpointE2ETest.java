@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -168,6 +169,29 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_USER_ID, "alice")
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    @Test
+    public void getFile_rootId_resolvesFromScanRoot() {
+        Path userAgentDir = USERS_DIR.resolve("alice").resolve("agents").resolve("test-agent");
+        Path outputDir = userAgentDir.resolve("output");
+        ByteArrayResource resource = new ByteArrayResource("output".getBytes()) {
+            @Override
+            public String getFilename() {
+                return "report.md";
+            }
+        };
+        when(fileService.resolveFileScanRoot(userAgentDir, "output")).thenReturn(Optional.of(outputDir));
+        when(fileService.resolveFile(outputDir, "report.md")).thenReturn(resource);
+        when(fileService.getMimeType("report.md")).thenReturn("text/markdown");
+        when(fileService.isInline("text/markdown")).thenReturn(true);
+
+        webClient.get().uri("/gateway/agents/test-agent/files/report.md?rootId=output")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals("Content-Type", "text/markdown");
     }
 
     // ====================== PUT /agents/{agentId}/files/** ======================

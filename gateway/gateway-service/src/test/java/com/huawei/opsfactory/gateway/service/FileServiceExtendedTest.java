@@ -255,6 +255,53 @@ public class FileServiceExtendedTest {
         assertEquals("summary.md", files.get(0).get("name"));
     }
 
+    @Test
+    public void testListFiles_defaultScanRootsIncludeOutputNonRecursive() throws IOException {
+        createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
+        File outputDir = tempFolder.newFolder("output");
+        createFile(new File(outputDir, "report.html"), "<h1>Report</h1>");
+        createFile(new File(outputDir, "assets/chart.png"), "png");
+
+        List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
+        Map<String, Map<String, Object>> byName = files.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        file -> (String) file.get("name"),
+                        file -> file));
+
+        assertEquals(2, files.size());
+        assertEquals("workingDir", byName.get("summary.md").get("rootId"));
+        assertEquals("summary.md", byName.get("summary.md").get("displayPath"));
+        assertEquals("output", byName.get("report.html").get("rootId"));
+        assertEquals("report.html", byName.get("report.html").get("path"));
+        assertEquals("output/report.html", byName.get("report.html").get("displayPath"));
+        assertFalse(byName.containsKey("chart.png"));
+    }
+
+    @Test
+    public void testListFiles_recursiveScanRootIncludesNestedFiles() throws IOException {
+        GatewayProperties properties = new GatewayProperties();
+        GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
+        filesConfig.setScanRoots(List.of(
+                new GatewayProperties.FileScanRoot("reports", "${userAgentDir}/reports", true)));
+        properties.setFiles(filesConfig);
+        FileService recursiveFileService = new FileService(properties);
+
+        createFile(new File(tempFolder.getRoot(), "reports/summary.md"), "# Summary");
+        createFile(new File(tempFolder.getRoot(), "reports/monthly/detail.md"), "# Detail");
+        createFile(new File(tempFolder.getRoot(), "reports/.hidden/secret.md"), "# Secret");
+
+        List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
+        Map<String, Map<String, Object>> byPath = files.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        file -> (String) file.get("path"),
+                        file -> file));
+
+        assertEquals(2, files.size());
+        assertTrue(byPath.containsKey("summary.md"));
+        assertTrue(byPath.containsKey("monthly/detail.md"));
+        assertFalse(byPath.containsKey(".hidden/secret.md"));
+    }
+
     private Map<String, Object> snapshot(String path, String name, String type, long size, String modifiedAt) {
         return Map.of(
                 "path", path,

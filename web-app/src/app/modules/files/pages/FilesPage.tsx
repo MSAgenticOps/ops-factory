@@ -22,6 +22,8 @@ import '../styles/files.css'
 interface FileInfo {
     name: string
     path: string
+    rootId?: string
+    displayPath?: string
     size: number
     modifiedAt: string
     type: string
@@ -210,8 +212,13 @@ function getFileVisual(type: string | undefined): { icon: FileIconComponent; ton
 
 function getDownloadUrl(file: AgentFile, userId?: string | null): string {
     let url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+    if (file.rootId) url += `&rootId=${encodeURIComponent(file.rootId)}`
     if (userId) url += `&uid=${encodeURIComponent(userId)}`
     return url
+}
+
+function getFileKey(file: AgentFile): string {
+    return `${file.agentId}-${file.rootId || 'workingDir'}-${file.path}`
 }
 
 export default function FilesPage() {
@@ -313,6 +320,7 @@ export default function FilesPage() {
             const term = searchTerm.toLowerCase()
             result = result.filter((file) =>
                 file.name?.toLowerCase().includes(term) ||
+                file.displayPath?.toLowerCase().includes(term) ||
                 file.agentName?.toLowerCase().includes(term) ||
                 (file.type || '').toLowerCase().includes(term),
             )
@@ -333,10 +341,11 @@ export default function FilesPage() {
     }, [searchTerm, activeCategory])
 
     const handleDelete = async (file: AgentFile) => {
-        const fileKey = `${file.agentId}-${file.path}`
+        const fileKey = getFileKey(file)
         setDeletingKey(fileKey)
         try {
-            const response = await fetch(`${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}`, {
+            const rootQuery = file.rootId ? `?rootId=${encodeURIComponent(file.rootId)}` : ''
+            const response = await fetch(`${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}${rootQuery}`, {
                 method: 'DELETE',
                 headers: gatewayHeaders(userId),
             })
@@ -345,8 +354,8 @@ export default function FilesPage() {
                 throw new Error(data?.error || `Failed to delete file: ${response.status}`)
             }
 
-            setFiles((prev) => prev.filter((current) => !(current.agentId === file.agentId && current.path === file.path)))
-            if (previewFile?.agentId === file.agentId && previewFile.path === file.path) {
+            setFiles((prev) => prev.filter((current) => getFileKey(current) !== fileKey))
+            if (previewFile?.agentId === file.agentId && previewFile.path === file.path && (previewFile.rootId || 'workingDir') === (file.rootId || 'workingDir')) {
                 closePreview()
             }
             setDeleteTarget(null)
@@ -437,7 +446,7 @@ export default function FilesPage() {
                 ) : (
                     <div className="file-list">
                         {paginatedFiles.map((file) => {
-                            const fileKey = `${file.agentId}-${file.path}`
+                            const fileKey = getFileKey(file)
                             const isDeleting = deletingKey === fileKey
                             const { icon: FileIcon, tone } = getFileVisual(file.type)
 
@@ -451,6 +460,9 @@ export default function FilesPage() {
                                         <div className="file-meta">
                                             <div className="file-meta-tags">
                                                 <span className="file-agent-tag">{file.agentName}</span>
+                                                {file.displayPath && file.displayPath !== file.name && (
+                                                    <span className="file-agent-tag">{file.displayPath}</span>
+                                                )}
                                             </div>
                                             <div className="file-meta-details">
                                                 <span>{formatFileSize(file.size)}</span>
@@ -468,6 +480,8 @@ export default function FilesPage() {
                                                     path: file.path,
                                                     type: file.type,
                                                     agentId: file.agentId,
+                                                    rootId: file.rootId,
+                                                    displayPath: file.displayPath,
                                                 })}
                                             >
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
@@ -526,7 +540,7 @@ export default function FilesPage() {
                                 type="button"
                                 className="btn btn-secondary"
                                 onClick={() => setDeleteTarget(null)}
-                                disabled={deletingKey === `${deleteTarget.agentId}-${deleteTarget.path}`}
+                                disabled={deletingKey === getFileKey(deleteTarget)}
                             >
                                 取消
                             </button>
@@ -534,9 +548,9 @@ export default function FilesPage() {
                                 type="button"
                                 className="btn btn-danger"
                                 onClick={() => handleDelete(deleteTarget)}
-                                disabled={deletingKey === `${deleteTarget.agentId}-${deleteTarget.path}`}
+                                disabled={deletingKey === getFileKey(deleteTarget)}
                             >
-                                {deletingKey === `${deleteTarget.agentId}-${deleteTarget.path}` ? '删除中...' : '确认删除'}
+                                {deletingKey === getFileKey(deleteTarget) ? '删除中...' : '确认删除'}
                             </button>
                         </div>
                     </div>
