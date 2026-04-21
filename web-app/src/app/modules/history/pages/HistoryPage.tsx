@@ -16,7 +16,6 @@ import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
 import { isScheduledSession } from '../../../../config/runtime'
 import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
-import '../styles/history.css'
 
 interface AgentSession extends Session {
     agentId: string

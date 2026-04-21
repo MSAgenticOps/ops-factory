@@ -37,6 +37,8 @@ const initialState: StreamState = {
     tokenState: null,
 }
 
+const createdFallbackByMessageId = new Map<string, number>()
+
 function streamReducer(state: StreamState, action: StreamAction): StreamState {
     switch (action.type) {
         case 'SET_MESSAGES':
@@ -220,11 +222,21 @@ export function buildChatMessageOrderDigest(messages: ChatMessage[], limit = 30)
 function convertBackendMessage(msg: Record<string, unknown>): ChatMessage {
     const metadata = msg.metadata as { userVisible?: boolean; agentVisible?: boolean } | undefined
     const createdCandidate = msg.created ?? msg.created_at ?? msg.createdAt
+    const id = (msg.id as string) || `msg-${Date.now()}-${Math.random()}`
+    const created = coerceEpochSeconds(createdCandidate)
+    const fallbackCreated = (() => {
+        if (created !== undefined) return created
+        const existing = createdFallbackByMessageId.get(id)
+        if (existing !== undefined) return existing
+        const next = Math.floor(Date.now() / 1000)
+        createdFallbackByMessageId.set(id, next)
+        return next
+    })()
     return {
-        id: (msg.id as string) || `msg-${Date.now()}-${Math.random()}`,
+        id,
         role: (msg.role as 'user' | 'assistant') || 'assistant',
         content: (msg.content as MessageContent[]) || [],
-        created: coerceEpochSeconds(createdCandidate),
+        created: fallbackCreated,
         metadata: metadata,
     }
 }

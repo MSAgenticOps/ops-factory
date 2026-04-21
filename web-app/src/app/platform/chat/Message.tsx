@@ -85,6 +85,12 @@ function normalizeProcessText(text: string | undefined): string {
     return (text || '').replace(/\s+/g, ' ').trim()
 }
 
+function formatMessageTime(epochSeconds: number): string {
+    const date = new Date(epochSeconds * 1000)
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 function MermaidBlock({ code }: { code: string }) {
     const iframeRef = useRef<HTMLIFrameElement>(null)
     const html = useMemo(() => createCleanMermaidHtml(code), [code])
@@ -179,6 +185,7 @@ function MessageInner({
 }: MessageProps) {
     const { t } = useTranslation()
     const isUser = message.role === 'user'
+    const timeLabel = typeof message.created === 'number' ? formatMessageTime(message.created) : null
 
     const fullText = getFullTextContent(message)
     const displayTextFromContent = getDisplayTextContent(message)
@@ -512,6 +519,10 @@ function MessageInner({
                 {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
             </div>
             <div className="message-body">
+                {timeLabel && (
+                    <div className="message-timestamp message-timestamp-outside">{timeLabel}</div>
+                )}
+
                 <div className="message-content">
                     {isEmptyAssistantResponse && (
                         <div className="message-error-banner">

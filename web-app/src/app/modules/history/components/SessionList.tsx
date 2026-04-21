@@ -1,6 +1,7 @@
 import type { Session } from '@goosed/sdk'
 import { useTranslation } from 'react-i18next'
 import SessionItem from './SessionItem'
+import '../styles/history.css'
 
 export type SessionWithAgent = Session & { agentId?: string }
 
