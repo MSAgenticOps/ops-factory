@@ -52,6 +52,7 @@ logging:
   level:
     root: INFO
     com.huawei.opsfactory.gateway: INFO
+    com.huawei.opsfactory.gateway.controller.ReplyController: DEBUG
     org.springframework: WARN
     reactor: WARN
     io.netty: WARN

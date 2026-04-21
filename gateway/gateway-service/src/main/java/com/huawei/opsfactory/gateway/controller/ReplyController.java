@@ -2,6 +2,7 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.JsonUtil;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -33,6 +34,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -98,7 +100,8 @@ public class ReplyController {
                         agentId, userId, System.currentTimeMillis() - requestStart, e.getMessage()))
                 .flatMapMany(processedBody -> {
                     log.debug("[REPLY] hooks done, getting instance for {}:{}", agentId, userId);
-                    String sessionId = JsonUtil.extractSessionId(processedBody);
+                    String relayBody = normalizeReplyUserMessageCreated(processedBody);
+                    String sessionId = JsonUtil.extractSessionId(relayBody);
                     Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
 
                     // Snapshot files before relay (best-effort, empty list on error)
@@ -132,7 +135,7 @@ public class ReplyController {
                                                     now - instanceReadyAt, now - requestStart);
                                         })
                                         .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
-                                                processedBody, agentId, userId, instance.getSecretKey()))
+                                                relayBody, agentId, userId, instance.getSecretKey()))
                                         .onErrorResume(SseRelayService.ProviderNotSetException.class, e -> {
                                             if (sessionId == null || providerRetried.getAndSet(true)) {
                                                 return sseErrorEvent("Provider not set");
@@ -142,7 +145,7 @@ public class ReplyController {
                                             return resumeSession(instance, sessionId, resumeBody, "[REPLY-RECOVER]")
                                                     .onErrorResume(err -> Mono.empty())
                                                     .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
-                                                            processedBody, agentId, userId, instance.getSecretKey()))
+                                                            relayBody, agentId, userId, instance.getSecretKey()))
                                                     .onErrorResume(SseRelayService.ProviderNotSetException.class,
                                                             err -> sseErrorEvent("Provider not set"));
                                         })
@@ -175,6 +178,43 @@ public class ReplyController {
                                                 .subscribeOn(Schedulers.boundedElastic()));
                             });
                 });
+    }
+
+    private String normalizeReplyUserMessageCreated(String body) {
+        if (body == null || body.isBlank()) {
+            return body;
+        }
+        try {
+            JsonNode rootNode = MAPPER.readTree(body);
+            if (!(rootNode instanceof ObjectNode)) {
+                return body;
+            }
+            ObjectNode root = (ObjectNode) rootNode;
+            JsonNode userMessageNode = root.get("user_message");
+            if (!(userMessageNode instanceof ObjectNode)) {
+                return body;
+            }
+            ObjectNode userMessage = (ObjectNode) userMessageNode;
+            JsonNode roleNode = userMessage.get("role");
+            if (roleNode != null && !"user".equals(roleNode.asText())) {
+                return body;
+            }
+
+            JsonNode previous = userMessage.get("created");
+            Long previousCreated = previous != null && previous.canConvertToLong() ? previous.asLong() : null;
+            long created = Instant.now().getEpochSecond();
+            userMessage.put("created", created);
+
+            if (log.isDebugEnabled()) {
+                Long delta = previousCreated != null ? created - previousCreated : null;
+                log.debug("[REPLY] normalized user_message.created old={} new={} deltaSeconds={}",
+                        previousCreated, created, delta);
+            }
+            return MAPPER.writeValueAsString(root);
+        } catch (Exception e) {
+            log.warn("[REPLY] failed to normalize user_message.created: {}", e.getMessage());
+            return body;
+        }
     }
 
     /**
