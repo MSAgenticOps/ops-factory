@@ -6,7 +6,7 @@
 - `web-app` 负责统一前端体验与业务页面编排
 - `gateway` 是浏览器、SDK 与渠道接入的主入口，负责鉴权、路由、会话编排与运行时管理
 - `gateway` 按 `(agentId, userId)` 维度托管实际 Agent Runtime
-- `knowledge-service`、`business-intelligence`、`control-center` 等服务提供独立领域能力
+- `knowledge-service`、`business-intelligence`、`skill-market`、`control-center` 等服务提供独立领域能力
 - `langfuse`、`onlyoffice`、`prometheus-exporter` 等保持为可选集成，不应成为最小可运行链路的硬依赖
 
 ## System Diagram
@@ -39,6 +39,7 @@
           |--------------------------------|  |---------------------------|  |----------------------|  |----------------------|
           | isolated by (agentId, userId)  |  | knowledge-service         |  | health / logs /      |  | langfuse             |
           | goosed process per runtime     |  | business-intelligence     |  | config / actions     |  | onlyoffice           |
+          |                                |  | skill-market              |  |                      |  |                      |
           | runtime data under             |  +---------------------------+  +----------------------+  | prometheus-exporter  |
           | gateway/users/<user>/agents/*  |                                                           | observability /      |
           +----------------+---------------+                                                           | preview / metrics    |
@@ -59,6 +60,7 @@
 - `gateway/agents/*`: Agent 级别的共享配置、提示词、skills、provider 定义与 Goose 全局配置根目录。
 - `knowledge-service/`: 知识入库、切块、索引与检索服务，提供知识相关能力。
 - `business-intelligence/`: 业务报表与分析服务，输出面向业务场景的数据分析能力。
+- `skill-market/`: 独立 Skill 包管理服务，负责创建、导入、校验、存储与下载 skill 包；不直接写入 Agent 配置目录。
 - `control-center/`: 平台控制面服务，负责健康状态、日志、配置查看与服务控制动作。
 - `typescript-sdk/`: 网关访问的类型化 SDK。
 - `test/`: 跨服务集成测试与 E2E 测试。
@@ -84,7 +86,8 @@
 
 ### Integration And Optional Services
 - 渠道接入通过 `gateway/channels/*` 与 `gateway/tools/*` 完成，不应让前端直接承担渠道协议细节。
-- `knowledge-service`、`business-intelligence`、`control-center` 是独立服务边界，应保持各自配置、日志和部署职责清晰。
+- `knowledge-service`、`business-intelligence`、`skill-market`、`control-center` 是独立服务边界，应保持各自配置、日志和部署职责清晰。
+- `skill-market` 只拥有 skill package 生命周期；将 skill 安装到 `gateway/agents/<agent-id>/config/skills` 的动作属于 `gateway` 的 Agent 配置管理职责。
 - `External Channels` 是平台外部接入面的一部分，但不属于浏览器/SDK client。
 - `langfuse`、`onlyoffice`、`prometheus-exporter` 也是方案中的显式服务，只是保持为可选增强能力，不应破坏仅运行核心链路时的开发体验。
 

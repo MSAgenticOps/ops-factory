@@ -12,6 +12,7 @@ const validIcons = new Set<IconKey>([
     'diagnosis',
     'businessIntelligence',
     'agents',
+    'skillMarket',
     'knowledge',
     'scheduler',
     'monitoring',

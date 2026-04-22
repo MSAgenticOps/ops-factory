@@ -35,6 +35,7 @@ public class GatewayProperties {
     private RemoteExecution remoteExecution = new RemoteExecution();
     private FileCapsules fileCapsules = new FileCapsules();
     private FileBrowser files = new FileBrowser();
+    private SkillMarket skillMarket = new SkillMarket();
 
     // ---- Getters / Setters ----
 
@@ -176,6 +177,14 @@ public class GatewayProperties {
 
     public void setFiles(FileBrowser files) {
         this.files = files;
+    }
+
+    public SkillMarket getSkillMarket() {
+        return skillMarket;
+    }
+
+    public void setSkillMarket(SkillMarket skillMarket) {
+        this.skillMarket = skillMarket;
     }
 
     public Path getConfigPath() {
@@ -403,6 +412,19 @@ public class GatewayProperties {
         public void setPath(String path) { this.path = path; }
         public boolean isRecursive() { return recursive; }
         public void setRecursive(boolean recursive) { this.recursive = recursive; }
+    }
+
+    public static class SkillMarket {
+        private String baseUrl = "http://127.0.0.1:8095";
+        private int requestTimeoutMs = 10000;
+        private int maxPackageSizeMb = 200;
+
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+        public int getRequestTimeoutMs() { return requestTimeoutMs; }
+        public void setRequestTimeoutMs(int requestTimeoutMs) { this.requestTimeoutMs = requestTimeoutMs; }
+        public int getMaxPackageSizeMb() { return maxPackageSizeMb; }
+        public void setMaxPackageSizeMb(int maxPackageSizeMb) { this.maxPackageSizeMb = maxPackageSizeMb; }
     }
 
     // ---- PostConstruct for logging configuration values ----

@@ -133,6 +133,20 @@ function KnowledgeIcon() {
     )
 }
 
+function SkillMarketIcon() {
+    return (
+        <IconFrame strokeWidth={1.85}>
+            <rect x="4.35" y="4.75" width="5.1" height="5.1" rx="1.25" />
+            <rect x="14.55" y="4.75" width="5.1" height="5.1" rx="1.25" />
+            <rect x="9.45" y="14.15" width="5.1" height="5.1" rx="1.25" />
+            <path d="M9.45 7.3h5.1" />
+            <path d="M7.35 9.85l3.35 4.3" />
+            <path d="M16.65 9.85l-3.35 4.3" />
+            <path d="M12 15.75v1.9" />
+        </IconFrame>
+    )
+}
+
 function SchedulerIcon() {
     return (
         <IconFrame strokeWidth={1.85}>
@@ -177,6 +191,7 @@ const ICONS: Record<IconKey, () => ReactNode> = {
     diagnosis: WorkflowIcon,
     businessIntelligence: BusinessIntelligenceIcon,
     agents: AgentsIcon,
+    skillMarket: SkillMarketIcon,
     knowledge: KnowledgeIcon,
     scheduler: SchedulerIcon,
     monitoring: MonitoringIcon,

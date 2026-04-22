@@ -56,6 +56,14 @@ public class GatewayPropertiesTest {
     }
 
     @Test
+    public void testSkillMarketDefaults() {
+        GatewayProperties.SkillMarket skillMarket = new GatewayProperties.SkillMarket();
+        assertEquals("http://127.0.0.1:8095", skillMarket.getBaseUrl());
+        assertEquals(10000, skillMarket.getRequestTimeoutMs());
+        assertEquals(200, skillMarket.getMaxPackageSizeMb());
+    }
+
+    @Test
     public void testOfficePreviewDefaults() {
         GatewayProperties.OfficePreview op = new GatewayProperties.OfficePreview();
         assertFalse(op.isEnabled());
