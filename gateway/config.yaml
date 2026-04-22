@@ -36,6 +36,12 @@ gateway:
     enabled: true
     onlyoffice-url: 'http://127.0.0.1:8080'
     file-base-url: 'http://host.docker.internal:3000'
+  file-capsules:
+    allowed-extensions: ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'txt', 'json', 'md', 'markdown', 'html', 'htm']
+  files:
+    scan-roots:
+      - {id: workingDir, path: '${userAgentDir}', recursive: false}
+      - {id: output, path: '${userAgentDir}/output', recursive: false}
   credential-encryption-key: 'changeit-changeit-changeit-32ch'
   remote-execution:
     default-timeout: 30
@@ -50,6 +56,7 @@ logging:
   level:
     root: INFO
     com.huawei.opsfactory.gateway: INFO
+    com.huawei.opsfactory.gateway.controller.ReplyController: DEBUG
     org.springframework: WARN
     reactor: WARN
     io.netty: WARN

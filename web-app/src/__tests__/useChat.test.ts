@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { pushMessage } from '../app/platform/chat/useChat'
+import type { ChatMessage } from '../types/message'
 
 /**
  * Test the streamReducer logic for STREAM_FINISH error propagation.
@@ -133,5 +135,76 @@ describe('streamReducer — STREAM_FINISH error handling', () => {
 
         expect(state.chatState).toBe('idle')
         expect(state.error).toBeNull()
+    })
+})
+
+describe('pushMessage — structured reasoning/thinking streaming merge', () => {
+    it('replaces repeated full reasoning chunk (prevents duplicate reasoning display)', () => {
+        const current: ChatMessage[] = [{
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'reasoning', text: '用户询问A。' }],
+        }]
+
+        const next = pushMessage(current, {
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'reasoning', text: '用户询问A。' }],
+        })
+
+        expect(next).toHaveLength(1)
+        expect(next[0].content).toHaveLength(1)
+        expect(next[0].content[0]).toEqual({ type: 'reasoning', text: '用户询问A。' })
+    })
+
+    it('updates reasoning when backend sends full accumulated text (startsWith)', () => {
+        const current: ChatMessage[] = [{
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'reasoning', text: '用户询问A。' }],
+        }]
+
+        const next = pushMessage(current, {
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'reasoning', text: '用户询问A。我需要先查询系统资源。' }],
+        })
+
+        expect(next[0].content).toHaveLength(1)
+        expect(next[0].content[0]).toEqual({ type: 'reasoning', text: '用户询问A。我需要先查询系统资源。' })
+    })
+
+    it('appends reasoning delta when backend sends only incremental text', () => {
+        const current: ChatMessage[] = [{
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'reasoning', text: '用户询问A。' }],
+        }]
+
+        const next = pushMessage(current, {
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'reasoning', text: ' 我需要先查询系统资源。' }],
+        })
+
+        expect(next[0].content).toHaveLength(1)
+        expect(next[0].content[0]).toEqual({ type: 'reasoning', text: '用户询问A。 我需要先查询系统资源。' })
+    })
+
+    it('applies the same merge behavior for thinking chunks', () => {
+        const current: ChatMessage[] = [{
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'thinking', thinking: 'step1' }],
+        }]
+
+        const next = pushMessage(current, {
+            id: 'assistant-1',
+            role: 'assistant',
+            content: [{ type: 'thinking', thinking: 'step1\nstep2' }],
+        })
+
+        expect(next[0].content).toHaveLength(1)
+        expect(next[0].content[0]).toEqual({ type: 'thinking', thinking: 'step1\nstep2' })
     })
 })

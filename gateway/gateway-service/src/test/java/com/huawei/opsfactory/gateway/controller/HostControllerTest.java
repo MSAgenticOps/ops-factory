@@ -5,7 +5,6 @@ import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostService;
-import com.huawei.opsfactory.gateway.service.HostDiscoveryService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,9 +42,6 @@ public class HostControllerTest {
 
     @MockBean
     private ClusterService clusterService;
-
-    @MockBean
-    private HostDiscoveryService hostDiscoveryService;
 
     // ── listHosts ────────────────────────────────────────────────
 
@@ -121,7 +117,7 @@ public class HostControllerTest {
                 .header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isNotFound();
     }
 
     // ── createHost ───────────────────────────────────────────────

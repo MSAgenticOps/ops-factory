@@ -37,6 +37,8 @@ const initialState: StreamState = {
     tokenState: null,
 }
 
+const createdFallbackByMessageId = new Map<string, number>()
+
 function streamReducer(state: StreamState, action: StreamAction): StreamState {
     switch (action.type) {
         case 'SET_MESSAGES':
@@ -69,7 +71,7 @@ interface UseChatOptions {
 
 export interface OutputFilesEvent {
     sessionId: string
-    files: OutputFile[]
+    files: Array<OutputFile & { rootId?: string; displayPath?: string }>
 }
 
 export interface UseChatReturn {
@@ -93,7 +95,7 @@ export interface UseChatReturn {
  *   - otherwise → push to content array
  * - Different ID → append new message
  */
-function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): ChatMessage[] {
+export function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): ChatMessage[] {
     const lastMsg = currentMessages[currentMessages.length - 1]
 
     if (lastMsg?.id && lastMsg.id === incomingMsg.id) {
@@ -106,6 +108,32 @@ function pushMessage(currentMessages: ChatMessage[], incomingMsg: ChatMessage): 
             incomingMsg.content.length === 1
         ) {
             lastContent.text = (lastContent.text || '') + (newContent.text || '')
+        } else if (
+            lastContent?.type === 'reasoning' &&
+            newContent?.type === 'reasoning' &&
+            incomingMsg.content.length === 1
+        ) {
+            const lastText = lastContent.text || ''
+            const nextText = newContent.text || ''
+
+            if (nextText.startsWith(lastText)) {
+                lastContent.text = nextText
+            } else if (!lastText.startsWith(nextText)) {
+                lastContent.text = lastText + nextText
+            }
+        } else if (
+            lastContent?.type === 'thinking' &&
+            newContent?.type === 'thinking' &&
+            incomingMsg.content.length === 1
+        ) {
+            const lastText = lastContent.thinking || ''
+            const nextText = newContent.thinking || ''
+
+            if (nextText.startsWith(lastText)) {
+                lastContent.thinking = nextText
+            } else if (!lastText.startsWith(nextText)) {
+                lastContent.thinking = lastText + nextText
+            }
         } else {
             lastMsg.content.push(...incomingMsg.content)
         }
@@ -138,35 +166,38 @@ function coerceEpochSeconds(value: unknown): number | undefined {
     return value
 }
 
-export function sortConversationMessages(messages: ChatMessage[]): ChatMessage[] {
-    if (messages.length < 2) return messages
-
-    const createdValues = messages.map(m => coerceEpochSeconds(m.created))
-    const createdCount = createdValues.filter(v => v !== undefined).length
-
-    if (createdCount >= Math.max(2, Math.floor(messages.length * 0.6))) {
-        return messages
-            .map((message, index) => ({ message, index }))
-            .sort((a, b) => {
-                const createdA = coerceEpochSeconds(a.message.created)
-                const createdB = coerceEpochSeconds(b.message.created)
-
-                if (createdA !== undefined && createdB !== undefined) {
-                    if (createdA !== createdB) return createdA - createdB
-
-                    const roleA = a.message.role === 'user' ? 0 : 1
-                    const roleB = b.message.role === 'user' ? 0 : 1
-                    if (roleA !== roleB) return roleA - roleB
-                }
-
-                return a.index - b.index
-            })
-            .map(item => item.message)
+function readWebFlag(key: string): string | null {
+    if (typeof window === 'undefined') return null
+    try {
+        return window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key)
+    } catch {
+        return null
     }
+}
 
-    const hasUser = messages.some(m => m.role === 'user')
-    const hasAssistant = messages.some(m => m.role === 'assistant')
-    if (!hasUser || !hasAssistant) return messages
+function readWebQueryFlag(name: string): string | null {
+    if (typeof window === 'undefined') return null
+    try {
+        return new URLSearchParams(window.location.search).get(name)
+    } catch {
+        return null
+    }
+}
+
+export function isChatOrderDebugEnabled(): boolean {
+    return readWebFlag('opsfactory:debug:chat-order') === '1' ||
+        readWebQueryFlag('debugChatOrder') === '1'
+}
+
+export function buildChatMessageOrderDigest(messages: ChatMessage[], limit = 30): Record<string, unknown> {
+    const head = messages.slice(0, Math.max(0, limit)).map((m, i) => ({
+        i,
+        id: m.id,
+        role: m.role,
+        created: m.created,
+        contentTypes: (m.content ?? []).map(c => c.type),
+        userVisible: m.metadata?.userVisible,
+    }))
 
     let inversionCount = 0
     for (let i = 0; i < messages.length - 1; i++) {
@@ -175,24 +206,37 @@ export function sortConversationMessages(messages: ChatMessage[]): ChatMessage[]
         }
     }
 
-    if (inversionCount >= Math.floor((messages.length - 1) / 2)) {
-        return [...messages].reverse()
-    }
+    const createdCount = messages.filter(m => coerceEpochSeconds(m.created) !== undefined).length
 
-    return messages
+    return {
+        total: messages.length,
+        createdCount,
+        inversionCount,
+        head,
+    }
 }
 
 /**
  * Convert backend message format to ChatMessage format.
  */
-function convertBackendMessage(msg: Record<string, unknown>): ChatMessage {
+function convertBackendMessage(msg: Record<string, unknown>, useLocalTime = false): ChatMessage {
     const metadata = msg.metadata as { userVisible?: boolean; agentVisible?: boolean } | undefined
     const createdCandidate = msg.created ?? msg.created_at ?? msg.createdAt
+    const id = (msg.id as string) || `msg-${Date.now()}-${Math.random()}`
+    const created = coerceEpochSeconds(createdCandidate)
+    const resolvedCreated = (() => {
+        if (!useLocalTime && created !== undefined) return created
+        const existing = createdFallbackByMessageId.get(id)
+        if (existing !== undefined) return existing
+        const next = Math.floor(Date.now() / 1000)
+        createdFallbackByMessageId.set(id, next)
+        return next
+    })()
     return {
-        id: (msg.id as string) || `msg-${Date.now()}-${Math.random()}`,
+        id,
         role: (msg.role as 'user' | 'assistant') || 'assistant',
         content: (msg.content as MessageContent[]) || [],
-        created: coerceEpochSeconds(createdCandidate),
+        created: resolvedCreated,
         metadata: metadata,
     }
 }
@@ -283,7 +327,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                     switch (event.type) {
                         case 'Message': {
                             if (!event.message) break
-                            const incomingMessage = convertBackendMessage(event.message as Record<string, unknown>)
+                            const incomingMessage = convertBackendMessage(event.message as Record<string, unknown>, true)
                             currentMessages = pushMessage(currentMessages, incomingMessage)
                             dispatch({ type: 'SET_MESSAGES', payload: currentMessages })
 
@@ -306,9 +350,9 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                         case 'UpdateConversation': {
                             // Context compaction: backend sends entire replacement conversation
                             if (event.conversation && Array.isArray(event.conversation)) {
-                                currentMessages = sortConversationMessages(event.conversation.map(msg =>
-                                    convertBackendMessage(msg as Record<string, unknown>)
-                                ))
+                                currentMessages = event.conversation.map(msg =>
+                                    convertBackendMessage(msg as Record<string, unknown>, true)
+                                )
                                 dispatch({ type: 'SET_MESSAGES', payload: currentMessages })
                             }
                             break

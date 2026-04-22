@@ -1,6 +1,8 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.JsonUtil;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -32,9 +34,11 @@ import reactor.core.scheduler.Schedulers;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -96,7 +100,8 @@ public class ReplyController {
                         agentId, userId, System.currentTimeMillis() - requestStart, e.getMessage()))
                 .flatMapMany(processedBody -> {
                     log.debug("[REPLY] hooks done, getting instance for {}:{}", agentId, userId);
-                    String sessionId = JsonUtil.extractSessionId(processedBody);
+                    String relayBody = normalizeReplyUserMessageCreated(processedBody);
+                    String sessionId = JsonUtil.extractSessionId(relayBody);
                     Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
 
                     // Snapshot files before relay (best-effort, empty list on error)
@@ -130,7 +135,7 @@ public class ReplyController {
                                                     now - instanceReadyAt, now - requestStart);
                                         })
                                         .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
-                                                processedBody, agentId, userId, instance.getSecretKey()))
+                                                relayBody, agentId, userId, instance.getSecretKey()))
                                         .onErrorResume(SseRelayService.ProviderNotSetException.class, e -> {
                                             if (sessionId == null || providerRetried.getAndSet(true)) {
                                                 return sseErrorEvent("Provider not set");
@@ -140,7 +145,7 @@ public class ReplyController {
                                             return resumeSession(instance, sessionId, resumeBody, "[REPLY-RECOVER]")
                                                     .onErrorResume(err -> Mono.empty())
                                                     .thenMany(sseRelayService.relay(instance.getPort(), "/reply",
-                                                            processedBody, agentId, userId, instance.getSecretKey()))
+                                                            relayBody, agentId, userId, instance.getSecretKey()))
                                                     .onErrorResume(SseRelayService.ProviderNotSetException.class,
                                                             err -> sseErrorEvent("Provider not set"));
                                         })
@@ -175,12 +180,49 @@ public class ReplyController {
                 });
     }
 
+    private String normalizeReplyUserMessageCreated(String body) {
+        if (body == null || body.isBlank()) {
+            return body;
+        }
+        try {
+            JsonNode rootNode = MAPPER.readTree(body);
+            if (!(rootNode instanceof ObjectNode)) {
+                return body;
+            }
+            ObjectNode root = (ObjectNode) rootNode;
+            JsonNode userMessageNode = root.get("user_message");
+            if (!(userMessageNode instanceof ObjectNode)) {
+                return body;
+            }
+            ObjectNode userMessage = (ObjectNode) userMessageNode;
+            JsonNode roleNode = userMessage.get("role");
+            if (roleNode != null && !"user".equals(roleNode.asText())) {
+                return body;
+            }
+
+            JsonNode previous = userMessage.get("created");
+            Long previousCreated = previous != null && previous.canConvertToLong() ? previous.asLong() : null;
+            long created = Instant.now().getEpochSecond();
+            userMessage.put("created", created);
+
+            if (log.isDebugEnabled()) {
+                Long delta = previousCreated != null ? created - previousCreated : null;
+                log.debug("[REPLY] normalized user_message.created old={} new={} deltaSeconds={}",
+                        previousCreated, created, delta);
+            }
+            return MAPPER.writeValueAsString(root);
+        } catch (Exception e) {
+            log.warn("[REPLY] failed to normalize user_message.created: {}", e.getMessage());
+            return body;
+        }
+    }
+
     /**
      * Snapshot current files in the working directory (best-effort).
      */
     private List<Map<String, Object>> snapshotFiles(Path workingDir) {
         try {
-            return fileService.listTopLevelFiles(workingDir);
+            return fileService.listCapsuleRelevantFiles(workingDir);
         } catch (Exception e) {
             log.debug("[REPLY] file snapshot failed (best-effort): {}", e.getMessage());
             return Collections.emptyList();
@@ -194,7 +236,7 @@ public class ReplyController {
     private Mono<DataBuffer> buildOutputFilesEvent(Path workingDir, String sessionId,
                                                     List<Map<String, Object>> beforeFiles) {
         try {
-            List<Map<String, Object>> afterFiles = fileService.listTopLevelFiles(workingDir);
+            List<Map<String, Object>> afterFiles = fileService.listCapsuleRelevantFiles(workingDir);
             List<Map<String, String>> changed = fileService.diffFiles(beforeFiles, afterFiles);
             if (changed.isEmpty()) {
                 return Mono.empty();
@@ -283,6 +325,7 @@ public class ReplyController {
         String sessionId = JsonUtil.extractSessionId(body);
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> resumeSession(instance, sessionId, body, "[RESUME]"))
+                .doOnNext(json -> logResumeConversationDigest(agentId, userId, sessionId, json))
                 .onErrorResume(WebClientResponseException.class, e -> {
                     if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
                         return Mono.error(new ResponseStatusException(
@@ -290,6 +333,74 @@ public class ReplyController {
                     }
                     return Mono.error(e);
                 });
+    }
+
+    private void logResumeConversationDigest(String agentId, String userId, String sessionId, String json) {
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            JsonNode sessionNode = root.get("session");
+            if (sessionNode == null || sessionNode.isNull()) {
+                log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} noSessionNode jsonLen={}",
+                        agentId, userId, sessionId, json != null ? json.length() : 0);
+                return;
+            }
+            JsonNode conv = sessionNode.get("conversation");
+            if (conv == null || !conv.isArray()) {
+                log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} noConversation jsonLen={}",
+                        agentId, userId, sessionId, json != null ? json.length() : 0);
+                return;
+            }
+
+            int total = conv.size();
+            int limit = Math.min(total, 30);
+            List<String> head = new ArrayList<>(limit);
+
+            int createdCount = 0;
+            int inversionCount = 0;
+            String prevRole = null;
+
+            for (int i = 0; i < total; i++) {
+                JsonNode m = conv.get(i);
+                String role = m.hasNonNull("role") ? m.get("role").asText() : "";
+                if ("user".equals(role) || "assistant".equals(role)) {
+                    prevRole = prevRole == null ? role : prevRole;
+                }
+                if (prevRole != null && "assistant".equals(prevRole) && "user".equals(role)) {
+                    inversionCount += 1;
+                }
+                prevRole = role;
+
+                JsonNode created = m.get("created");
+                if (created != null && created.isNumber()) {
+                    createdCount += 1;
+                } else if (created != null && created.isTextual() && !created.asText().trim().isEmpty()) {
+                    createdCount += 1;
+                } else if (m.hasNonNull("created_at") || m.hasNonNull("createdAt")) {
+                    createdCount += 1;
+                }
+
+                if (i < limit) {
+                    String id = m.hasNonNull("id") ? m.get("id").asText() : "";
+                    String createdRaw = created != null && !created.isNull() ? created.asText() : "";
+                    if (createdRaw.isEmpty() && m.hasNonNull("created_at")) {
+                        createdRaw = m.get("created_at").asText();
+                    }
+                    if (createdRaw.isEmpty() && m.hasNonNull("createdAt")) {
+                        createdRaw = m.get("createdAt").asText();
+                    }
+                    head.add(i + ":" + role + ":" + id + ":" + createdRaw);
+                }
+            }
+
+            log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} total={} createdCount={} inversionCount={} head={}",
+                    agentId, userId, sessionId, total, createdCount, inversionCount, head);
+        } catch (Exception e) {
+            log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} parseFailed err={}",
+                    agentId, userId, sessionId, e.getMessage());
+        }
     }
 
     @PostMapping({"/restart", "/agent/restart"})

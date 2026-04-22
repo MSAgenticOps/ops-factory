@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Message from './Message'
-import { ChatState, type OutputFilesEvent } from './useChat'
+import { ChatState, type OutputFilesEvent, isChatOrderDebugEnabled, buildChatMessageOrderDigest } from './useChat'
 import GooseAvatarIcon from './GooseAvatarIcon'
 import { extractFetchedDocuments, extractSourceDocuments, type Citation } from '../../../utils/citationParser'
 import { getReasoningContent, getThinkingContent, hasDisplayTextContent, hasTextContent, hasToolContent } from '../../../utils/messageContent'
@@ -10,6 +10,14 @@ import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../../../config/runtime'
 import type { ChatMessage, DetectedFile, ToolResponseMap } from '../../../types/message'
 
 const BOTTOM_THRESHOLD_PX = 24
+
+function isSameDay(a: number, b: number): boolean {
+    const da = new Date(a * 1000)
+    const db = new Date(b * 1000)
+    return da.getFullYear() === db.getFullYear() &&
+           da.getMonth() === db.getMonth() &&
+           da.getDate() === db.getDate()
+}
 
 type ScrollContainerRef = {
     current: HTMLDivElement | null
@@ -177,6 +185,17 @@ export default function MessageList({
 
     const displayMessages = useMemo(() => buildDisplayMessages(visibleMessages), [visibleMessages])
 
+    useEffect(() => {
+        if (!isChatOrderDebugEnabled()) return
+        console.debug('[chat-order] message-list', {
+            sessionId,
+            agentId,
+            raw: buildChatMessageOrderDigest(messages),
+            visible: buildChatMessageOrderDigest(visibleMessages),
+            display: buildChatMessageOrderDigest(displayMessages),
+        })
+    }, [agentId, sessionId, messages, visibleMessages, displayMessages])
+
     const finalAssistantTextMessageId = useMemo(() => {
         for (let i = displayMessages.length - 1; i >= 0; i--) {
             const msg = displayMessages[i]
@@ -246,6 +265,8 @@ export default function MessageList({
             path: f.path,
             name: f.name,
             ext: f.ext,
+            rootId: f.rootId,
+            displayPath: f.displayPath,
         }))
 
         // Update local state
@@ -352,6 +373,19 @@ export default function MessageList({
                     !!message.id &&
                     message.id === finalAssistantTextMessageId
                 const hasOutputFiles = !!message.id && messageOutputFiles.has(message.id)
+                const isContinuation =
+                    message.role === 'assistant' &&
+                    index > 0 &&
+                    displayMessages[index - 1].role === 'assistant'
+                const isLastInGroup =
+                    message.role !== 'assistant' ||
+                    index === displayMessages.length - 1 ||
+                    displayMessages[index + 1]?.role !== 'assistant'
+                const prevCreated = displayMessages[index - 1]?.created
+                const showDateInTimestamp =
+                    prevCreated != null &&
+                    message.created != null &&
+                    !isSameDay(prevCreated, message.created)
                 return (
                     <div
                         key={message.id || index}
@@ -368,6 +402,9 @@ export default function MessageList({
                             fetchedDocuments={isFinalAssistantResponse ? fetchedDocuments : undefined}
                             outputFiles={message.id ? messageOutputFiles.get(message.id) : undefined}
                             showFileCapsules={hasOutputFiles}
+                            showDateInTimestamp={showDateInTimestamp}
+                            isContinuation={isContinuation}
+                            isLastInGroup={isLastInGroup}
                         />
                     </div>
                 )

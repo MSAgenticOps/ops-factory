@@ -14,6 +14,8 @@ export interface PreviewFile {
     name: string
     path: string
     type: string
+    rootId?: string
+    displayPath?: string
     agentId?: string
     downloadUrl?: string
     previewKind: PreviewKind
@@ -28,6 +30,8 @@ interface AgentPreviewRequest {
     path: string
     type: string
     agentId: string
+    rootId?: string
+    displayPath?: string
 }
 
 interface DirectPreviewRequest {
@@ -40,6 +44,13 @@ interface DirectPreviewRequest {
 }
 
 type PreviewRequest = AgentPreviewRequest | DirectPreviewRequest
+
+function buildAgentFileUrl(agentId: string, path: string, rootId?: string, userId?: string | null): string {
+    let url = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${GATEWAY_SECRET_KEY}`
+    if (rootId) url += `&rootId=${encodeURIComponent(rootId)}`
+    if (userId) url += `&uid=${encodeURIComponent(userId)}`
+    return url
+}
 
 function isAgentPreviewRequest(file: PreviewRequest): file is AgentPreviewRequest {
     return 'agentId' in file
@@ -136,7 +147,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
                 }
 
                 if (previewKind === 'spreadsheet') {
-                    const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+                    const url = buildAgentFileUrl(file.agentId, file.path, file.rootId, userId)
                     const fetchHeaders: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
                     if (userId) fetchHeaders['x-user-id'] = userId
                     const res = await fetch(url, { headers: fetchHeaders })
@@ -152,7 +163,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
                 return
             }
 
-            const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+            const url = buildAgentFileUrl(file.agentId, file.path, file.rootId, userId)
             const fetchHeaders: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
             if (userId) fetchHeaders['x-user-id'] = userId
             const res = await fetch(url, { headers: fetchHeaders })

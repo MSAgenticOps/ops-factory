@@ -5,6 +5,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.springframework.core.io.Resource;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -36,7 +37,7 @@ public class FileServiceExtendedTest {
 
     @Before
     public void setUp() {
-        fileService = new FileService();
+        fileService = new FileService(new GatewayProperties());
     }
 
     // ====================== isAllowedExtension ======================
@@ -190,11 +191,9 @@ public class FileServiceExtendedTest {
         File subDir = tempFolder.newFolder("uploads");
         createFile(new File(subDir, "report.pdf"), "pdf-content");
 
-        // Ask for "report.pdf" at root — it doesn't exist there but should be found via search
+        // Ask for "report.pdf" at root — fallback search is not supported
         Resource resource = fileService.resolveFile(tempFolder.getRoot().toPath(), "report.pdf");
-        assertNotNull(resource);
-        assertTrue(resource.exists());
-        assertTrue(resource.getFile().getAbsolutePath().contains("uploads"));
+        assertNull(resource);
     }
 
     @Test
@@ -246,6 +245,22 @@ public class FileServiceExtendedTest {
     }
 
     @Test
+    public void testDiffFiles_keepsSameRelativePathFromDifferentRoots() {
+        List<Map<String, Object>> before = new ArrayList<>();
+        List<Map<String, Object>> after = List.of(
+                snapshotWithRoot("workingDir", "example-file.md", "example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"),
+                snapshotWithRoot("output", "example-file.md", "output/example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"));
+
+        List<Map<String, String>> changed = fileService.diffFiles(before, after);
+
+        assertEquals(2, changed.size());
+        assertEquals("workingDir", changed.get(0).get("rootId"));
+        assertEquals("example-file.md", changed.get(0).get("displayPath"));
+        assertEquals("output", changed.get(1).get("rootId"));
+        assertEquals("output/example-file.md", changed.get(1).get("displayPath"));
+    }
+
+    @Test
     public void testListTopLevelFiles_skipsFilesInSubdirectories() throws IOException {
         createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
         createFile(new File(tempFolder.newFolder("reports"), "platform-status.md"), "# Report");
@@ -256,9 +271,84 @@ public class FileServiceExtendedTest {
         assertEquals("summary.md", files.get(0).get("name"));
     }
 
+    @Test
+    public void testListFiles_defaultScanRootsIncludeOutputNonRecursive() throws IOException {
+        createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
+        File outputDir = tempFolder.newFolder("output");
+        createFile(new File(outputDir, "report.html"), "<h1>Report</h1>");
+        createFile(new File(outputDir, "assets/chart.png"), "png");
+
+        List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
+        Map<String, Map<String, Object>> byName = files.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        file -> (String) file.get("name"),
+                        file -> file));
+
+        assertEquals(2, files.size());
+        assertEquals("workingDir", byName.get("summary.md").get("rootId"));
+        assertEquals("summary.md", byName.get("summary.md").get("displayPath"));
+        assertEquals("output", byName.get("report.html").get("rootId"));
+        assertEquals("report.html", byName.get("report.html").get("path"));
+        assertEquals("output/report.html", byName.get("report.html").get("displayPath"));
+        assertFalse(byName.containsKey("chart.png"));
+    }
+
+    @Test
+    public void testListCapsuleRelevantFiles_usesFilesScanRoots() throws IOException {
+        createFile(new File(tempFolder.getRoot(), "example-file.md"), "# Root");
+        File outputDir = tempFolder.newFolder("output");
+        createFile(new File(outputDir, "example-file.md"), "# Output");
+
+        List<Map<String, Object>> files = fileService.listCapsuleRelevantFiles(tempFolder.getRoot().toPath());
+
+        assertEquals(2, files.size());
+        assertEquals("workingDir", files.get(0).get("rootId"));
+        assertEquals("example-file.md", files.get(0).get("path"));
+        assertEquals("output", files.get(1).get("rootId"));
+        assertEquals("example-file.md", files.get(1).get("path"));
+        assertEquals("output/example-file.md", files.get(1).get("displayPath"));
+    }
+
+
+    @Test
+    public void testListFiles_recursiveScanRootIncludesNestedFiles() throws IOException {
+        GatewayProperties properties = new GatewayProperties();
+        GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
+        filesConfig.setScanRoots(List.of(
+                new GatewayProperties.FileScanRoot("reports", "${userAgentDir}/reports", true)));
+        properties.setFiles(filesConfig);
+        FileService recursiveFileService = new FileService(properties);
+
+        createFile(new File(tempFolder.getRoot(), "reports/summary.md"), "# Summary");
+        createFile(new File(tempFolder.getRoot(), "reports/monthly/detail.md"), "# Detail");
+        createFile(new File(tempFolder.getRoot(), "reports/.hidden/secret.md"), "# Secret");
+
+        List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
+        Map<String, Map<String, Object>> byPath = files.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        file -> (String) file.get("path"),
+                        file -> file));
+
+        assertEquals(2, files.size());
+        assertTrue(byPath.containsKey("summary.md"));
+        assertTrue(byPath.containsKey("monthly/detail.md"));
+        assertFalse(byPath.containsKey(".hidden/secret.md"));
+    }
+
     private Map<String, Object> snapshot(String path, String name, String type, long size, String modifiedAt) {
         return Map.of(
                 "path", path,
+                "name", name,
+                "type", type,
+                "size", size,
+                "modifiedAt", modifiedAt);
+    }
+
+    private Map<String, Object> snapshotWithRoot(String rootId, String path, String displayPath, String name, String type, long size, String modifiedAt) {
+        return Map.of(
+                "rootId", rootId,
+                "path", path,
+                "displayPath", displayPath,
                 "name", name,
                 "type", type,
                 "size", size,

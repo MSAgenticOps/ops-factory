@@ -17,9 +17,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 /**
  * E2E tests for ReplyController endpoints:
@@ -89,6 +91,44 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
         verify(goosedProxy, times(1)).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
                 eq("{\"session_id\":\"session-123\",\"load_model_and_extensions\":true}"), anyInt(), anyString());
+    }
+
+    @Test
+    public void reply_normalizesUserMessageCreatedBeforeRelay() throws Exception {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(mockInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+                .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
+
+        DataBuffer buffer = new DefaultDataBufferFactory()
+                .wrap("data: {\"type\":\"Finish\"}\n\n".getBytes(StandardCharsets.UTF_8));
+        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
+                .thenReturn(Flux.just(buffer));
+
+        long before = System.currentTimeMillis() / 1000;
+        webClient.post().uri("/gateway/agents/test-agent/reply")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"session_id\":\"session-123\",\"user_message\":{\"id\":\"u1\",\"role\":\"user\",\"created\":9999999999,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}},\"override_conversation\":[{\"role\":\"user\",\"created\":123,\"content\":[{\"type\":\"text\",\"text\":\"old\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}]}")
+                .accept(MediaType.TEXT_EVENT_STREAM)
+                .exchange()
+                .expectStatus().isOk();
+        long after = System.currentTimeMillis() / 1000;
+
+        ArgumentCaptor<String> bodyCaptor = forClass(String.class);
+        verify(sseRelayService).relay(eq(9999), eq("/reply"), bodyCaptor.capture(),
+                eq("test-agent"), eq("alice"), anyString());
+
+        com.fasterxml.jackson.databind.JsonNode relayed = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(bodyCaptor.getValue());
+        long normalizedCreated = relayed.path("user_message").path("created").asLong();
+        org.junit.Assert.assertTrue(normalizedCreated >= before);
+        org.junit.Assert.assertTrue(normalizedCreated <= after);
+        org.junit.Assert.assertEquals("hello",
+                relayed.path("user_message").path("content").get(0).path("text").asText());
+        org.junit.Assert.assertEquals(123,
+                relayed.path("override_conversation").get(0).path("created").asLong());
     }
 
     @Test

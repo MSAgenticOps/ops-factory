@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useTranslation } from 'react-i18next'
 import './Message.css'
 import './ToolCallDisplay.css'
 import ToolCallDisplay from './ToolCallDisplay'
@@ -30,6 +30,9 @@ interface MessageProps {
     fetchedDocuments?: Citation[]
     outputFiles?: DetectedFile[]
     showFileCapsules?: boolean
+    showDateInTimestamp?: boolean
+    isContinuation?: boolean
+    isLastInGroup?: boolean
 }
 
 interface ToolCallPair {
@@ -85,6 +88,14 @@ function normalizeProcessText(text: string | undefined): string {
     return (text || '').replace(/\s+/g, ' ').trim()
 }
 
+function formatMessageTime(epochSeconds: number, showDate = false): string {
+    const date = new Date(epochSeconds * 1000)
+    const pad = (value: number) => String(value).padStart(2, '0')
+    const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+    if (!showDate) return time
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`
+}
+
 function MermaidBlock({ code }: { code: string }) {
     const iframeRef = useRef<HTMLIFrameElement>(null)
     const html = useMemo(() => createCleanMermaidHtml(code), [code])
@@ -115,12 +126,13 @@ function MermaidBlock({ code }: { code: string }) {
     )
 }
 
-function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
-    filePath: string; fileName: string; fileExt: string; agentId?: string; userId?: string | null
+function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId, userId }: {
+    filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
-    const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
+    const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
+    const visibleName = displayPath || fileName
 
     const handlePreview = (e: React.MouseEvent) => {
         e.preventDefault()
@@ -128,6 +140,8 @@ function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
             name: fileName,
             path: filePath,
             type: fileExt,
+            rootId,
+            displayPath,
             agentId: agentId || '',
         })
     }
@@ -143,7 +157,7 @@ function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
                     <polyline points="10 9 9 9 8 9" />
                 </svg>
             </span>
-            <span className="file-capsule-name">{fileName}</span>
+            <span className="file-capsule-name">{visibleName}</span>
             <div className="file-capsule-actions">
                 {canPreview && (
                     <button className="file-capsule-btn" onClick={handlePreview} title="Preview">
@@ -165,6 +179,23 @@ function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
     )
 }
 
+function CopyIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+    )
+}
+
+function CheckIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
+    )
+}
+
 function MessageInner({
     message,
     toolResponses = new Map(),
@@ -176,6 +207,9 @@ function MessageInner({
     fetchedDocuments,
     outputFiles = [],
     showFileCapsules = true,
+    showDateInTimestamp = false,
+    isContinuation = false,
+    isLastInGroup = true,
 }: MessageProps) {
     const { t } = useTranslation()
     const isUser = message.role === 'user'
@@ -191,19 +225,38 @@ function MessageInner({
         let hasStructuredThinking = false
         let textBufferKind: 'reasoning' | 'thinking' | null = null
         let textBuffer = ''
+        const lastSeenTextByKind: Record<'reasoning' | 'thinking', string | null> = { reasoning: null, thinking: null }
         const pushProcessTextEntry = (entry: ProcessEntry) => {
-            const previous = items[items.length - 1]
             const currentText = normalizeProcessText(entry.content)
-            const previousText = normalizeProcessText(previous?.content)
+            if (entry.kind === 'reasoning' || entry.kind === 'thinking') {
+                if (currentText.length === 0) return
+                if (lastSeenTextByKind[entry.kind] === currentText) return
 
-            if (
-                previous &&
-                (previous.kind === 'reasoning' || previous.kind === 'thinking') &&
-                (entry.kind === 'reasoning' || entry.kind === 'thinking') &&
-                currentText.length > 0 &&
-                currentText === previousText
-            ) {
-                return
+                const lastIndex = (() => {
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        if (items[i].kind === entry.kind) return i
+                    }
+                    return -1
+                })()
+
+                if (lastIndex >= 0) {
+                    const previousEntry = items[lastIndex]
+                    const previousText = normalizeProcessText(previousEntry.content)
+                    if (previousText.length > 0) {
+                        if (previousText === currentText || previousText.startsWith(currentText)) {
+                            lastSeenTextByKind[entry.kind] = previousText
+                            return
+                        }
+
+                        if (currentText.startsWith(previousText)) {
+                            previousEntry.content = entry.content
+                            lastSeenTextByKind[entry.kind] = currentText
+                            return
+                        }
+                    }
+                }
+
+                lastSeenTextByKind[entry.kind] = currentText
             }
 
             items.push(entry)
@@ -299,12 +352,21 @@ function MessageInner({
         }
 
         return items
-    }, [isUser, message.content, message.id, toolResponses])
+    }, [isUser, message.content, message.id, toolResponses, t])
 
     const [openState, setOpenState] = useState<Record<string, boolean>>({})
     const [fadeState, setFadeState] = useState<Record<string, ScrollFadeState>>({})
+    const [copied, setCopied] = useState(false)
+    const lastTimeRef = useRef<number | null>(null)
     const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const wasStreamingRef = useRef(isStreaming)
+
+    if (typeof message.created === 'number') {
+        lastTimeRef.current = message.created
+    }
+    const displayTimeLabel = lastTimeRef.current != null
+        ? formatMessageTime(lastTimeRef.current, showDateInTimestamp)
+        : null
 
     useEffect(() => {
         setOpenState(current => {
@@ -376,6 +438,15 @@ function MessageInner({
         if (isStreaming) return
         setOpenState(current => ({ ...current, [key]: !current[key] }))
     }
+
+    const handleCopyMessage = useCallback(() => {
+        const text = getFullTextContent(message)
+        if (!text) return
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }).catch((err) => { console.warn('Failed to copy message:', err) })
+    }, [message])
 
     const handleScroll = (key: string) => {
         const element = contentRefs.current[key]
@@ -488,10 +559,12 @@ function MessageInner({
     const shouldShowRetrievedReferences = !isUser && !isStreaming && retrievedDocuments.length > 0
 
     return (
-        <div className={`message ${isUser ? 'user' : 'assistant'} animate-slide-in`}>
-            <div className="message-avatar">
-                {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
-            </div>
+        <div className={`message ${isUser ? 'user' : 'assistant'}${isContinuation ? ' continuation' : ''} animate-slide-in`}>
+            {!isContinuation && (
+                <div className="message-avatar">
+                    {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
+                </div>
+            )}
             <div className="message-body">
                 <div className="message-content">
                     {isEmptyAssistantResponse && (
@@ -624,6 +697,8 @@ function MessageInner({
                                     filePath={file.path}
                                     fileName={file.name}
                                     fileExt={file.ext}
+                                    rootId={file.rootId}
+                                    displayPath={file.displayPath}
                                     agentId={agentId}
                                     userId={userId}
                                 />
@@ -635,10 +710,12 @@ function MessageInner({
                         <div className="file-capsules-container">
                             {outputFiles.map((file, idx) => (
                                 <FileCapsule
-                                    key={`${file.path}-${idx}`}
+                                    key={`${file.rootId || 'workingDir'}-${file.path}-${idx}`}
                                     filePath={file.path}
                                     fileName={file.name}
                                     fileExt={file.ext}
+                                    rootId={file.rootId}
+                                    displayPath={file.displayPath}
                                     agentId={agentId}
                                     userId={userId}
                                 />
@@ -668,6 +745,23 @@ function MessageInner({
                         </div>
                     )}
                 </div>
+
+                {displayTimeLabel && isLastInGroup && (
+                    <div className="message-meta">
+                        {!isUser && (
+                            <button
+                                type="button"
+                                className="message-copy-btn"
+                                onClick={handleCopyMessage}
+                                title={t('chat.copyMessage')}
+                                aria-label={t('chat.copyMessage')}
+                            >
+                                {copied ? <CheckIcon /> : <CopyIcon />}
+                            </button>
+                        )}
+                        <span className="message-timestamp">{displayTimeLabel}</span>
+                    </div>
+                )}
             </div>
         </div>
     )
