@@ -16,7 +16,37 @@ const MAX_FIND_LIMIT = 500
 const MAX_SEARCH_LIMIT = 200
 const MAX_READ_WINDOW = 400
 
-let searchEnginePromise
+type ToolArgs = Record<string, unknown>
+type SearchEngine = 'rg' | 'grep'
+
+interface RootDirContext {
+  rootDir: string
+  exists: boolean
+}
+
+interface ScopeContext extends RootDirContext {
+  scopePath: string
+}
+
+interface ReadableFileContext {
+  rootDir: string
+  filePath: string
+}
+
+interface CommandResult {
+  stdout: string
+  stderr: string
+  code: number
+}
+
+interface SearchHit {
+  path: string
+  line: number
+  column: number | null
+  preview: string
+}
+
+let searchEnginePromise: Promise<SearchEngine> | undefined
 
 export const tools = [
   {
@@ -98,16 +128,16 @@ export const tools = [
   },
 ]
 
-function clamp(value, min, max, fallback) {
-  const number = Number.isFinite(value) ? Math.floor(value) : fallback
+function clamp(value: unknown, min: number, max: number, fallback: number): number {
+  const number = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : fallback
   return Math.max(min, Math.min(max, number))
 }
 
-function stripYamlScalar(value) {
+function stripYamlScalar(value: string): string {
   return value.trim().replace(/^['"]|['"]$/g, '')
 }
 
-async function readConfiguredRootDir() {
+async function readConfiguredRootDir(): Promise<string> {
   if (process.env.QA_CLI_ROOT_DIR?.trim()) {
     return process.env.QA_CLI_ROOT_DIR.trim()
   }
@@ -125,7 +155,7 @@ async function readConfiguredRootDir() {
   return DEFAULT_ROOT_DIR
 }
 
-async function getRootDirContext() {
+async function getRootDirContext(): Promise<RootDirContext> {
   const configured = await readConfiguredRootDir()
   const resolved = path.isAbsolute(configured) ? configured : path.resolve(CONFIG_DIR, configured)
 
@@ -143,12 +173,12 @@ async function getRootDirContext() {
   }
 }
 
-function isWithinRoot(rootDir, candidatePath) {
+function isWithinRoot(rootDir: string, candidatePath: string): boolean {
   const relative = path.relative(rootDir, candidatePath)
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
 }
 
-async function resolveScopePath(pathPrefix) {
+async function resolveScopePath(pathPrefix: unknown): Promise<ScopeContext> {
   const root = await getRootDirContext()
   const prefix = typeof pathPrefix === 'string' ? pathPrefix.trim() : ''
   const candidate = prefix ? path.resolve(root.rootDir, prefix) : root.rootDir
@@ -176,7 +206,7 @@ async function resolveScopePath(pathPrefix) {
   }
 }
 
-async function resolveReadableFile(filePath) {
+async function resolveReadableFile(filePath: unknown): Promise<ReadableFileContext> {
   const root = await getRootDirContext()
   if (!root.exists) {
     throw new Error(`Configured rootDir does not exist: ${root.rootDir}`)
@@ -206,7 +236,7 @@ async function resolveReadableFile(filePath) {
   }
 }
 
-async function runCommand(command, args) {
+async function runCommand(command: string, args: string[]): Promise<CommandResult> {
   logInfo('command_started', { command, args })
 
   try {
@@ -215,13 +245,16 @@ async function runCommand(command, args) {
       encoding: 'utf8',
     })
     logInfo('command_succeeded', { command, args })
-    return result
+    return { stdout: result.stdout, stderr: result.stderr, code: 0 }
   } catch (error) {
-    const code = error?.code
+    const commandError = typeof error === 'object' && error !== null
+      ? error as { code?: unknown; stdout?: unknown; stderr?: unknown }
+      : null
+    const code = commandError?.code
     if (typeof code === 'number') {
       return {
-        stdout: error.stdout ?? '',
-        stderr: error.stderr ?? '',
+        stdout: typeof commandError?.stdout === 'string' ? commandError.stdout : '',
+        stderr: typeof commandError?.stderr === 'string' ? commandError.stderr : '',
         code,
       }
     }
@@ -229,7 +262,7 @@ async function runCommand(command, args) {
   }
 }
 
-async function getSearchEngine() {
+async function getSearchEngine(): Promise<SearchEngine> {
   if (!searchEnginePromise) {
     searchEnginePromise = (async () => {
       try {
@@ -244,7 +277,7 @@ async function getSearchEngine() {
   return searchEnginePromise
 }
 
-function parseRgLine(line) {
+function parseRgLine(line: string): SearchHit | null {
   const match = /^(.*?):(\d+):(\d+):(.*)$/.exec(line)
   if (!match) return null
   return {
@@ -255,7 +288,7 @@ function parseRgLine(line) {
   }
 }
 
-function parseGrepLine(line) {
+function parseGrepLine(line: string): SearchHit | null {
   const match = /^(.*?):(\d+):(.*)$/.exec(line)
   if (!match) return null
   return {
@@ -266,13 +299,17 @@ function parseGrepLine(line) {
   }
 }
 
-function formatReadContent(lines, startLine) {
+function isSearchHit(hit: SearchHit | null): hit is SearchHit {
+  return hit !== null
+}
+
+function formatReadContent(lines: string[], startLine: number): string {
   return lines
     .map((line, index) => `${String(startLine + index).padStart(4, ' ')}  ${line}`)
     .join('\n')
 }
 
-export async function handleFindFiles(args = {}) {
+export async function handleFindFiles(args: ToolArgs = {}): Promise<string> {
   const scope = await resolveScopePath(args.pathPrefix)
   const limit = clamp(args.limit, 1, MAX_FIND_LIMIT, DEFAULT_FIND_LIMIT)
 
@@ -310,7 +347,7 @@ export async function handleFindFiles(args = {}) {
   }, null, 2)
 }
 
-export async function handleSearchContent(args = {}) {
+export async function handleSearchContent(args: ToolArgs = {}): Promise<string> {
   const query = typeof args.query === 'string' ? args.query.trim() : ''
   if (!query) {
     throw new Error('search_content.query is required')
@@ -324,7 +361,7 @@ export async function handleSearchContent(args = {}) {
   }
 
   const engine = await getSearchEngine()
-  let result
+  let result: CommandResult
 
   if (engine === 'rg') {
     const commandArgs = ['-n', '--no-heading', '--with-filename', '--column']
@@ -348,7 +385,7 @@ export async function handleSearchContent(args = {}) {
   const hits = result.stdout
     .split('\n')
     .map(line => parser(line.trim()))
-    .filter(Boolean)
+    .filter(isSearchHit)
     .slice(0, limit)
 
   return JSON.stringify({
@@ -359,7 +396,7 @@ export async function handleSearchContent(args = {}) {
   }, null, 2)
 }
 
-export async function handleReadFile(args = {}) {
+export async function handleReadFile(args: ToolArgs = {}): Promise<string> {
   const { filePath } = await resolveReadableFile(args.path)
   const buffer = await readFile(filePath)
   if (buffer.includes(0)) {
@@ -386,7 +423,7 @@ export async function handleReadFile(args = {}) {
   }, null, 2)
 }
 
-export async function dispatch(name, args = {}) {
+export async function dispatch(name: string, args: ToolArgs = {}): Promise<string> {
   const startedAt = Date.now()
   logInfo('tool_dispatch_started', { tool: name, args })
 

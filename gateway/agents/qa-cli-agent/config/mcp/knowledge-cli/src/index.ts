@@ -22,7 +22,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     const result = await dispatch(name, args ?? {})
-    return { content: [{ type: 'text', text: result }] }
+    return { content: [{ type: 'text' as const, text: result }] }
   } catch (error) {
     logError('call_tool_failed', {
       tool: name,

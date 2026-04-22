@@ -5,8 +5,8 @@ import path from 'node:path'
 import { mkdtemp, mkdir, writeFile, rm, realpath } from 'node:fs/promises'
 import { handleFindFiles, handleReadFile, handleSearchContent } from './handlers.js'
 
-async function withTempRoot(run) {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'fs-qa-'))
+async function withTempRoot(run: (rootDir: string) => Promise<void>) {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'knowledge-cli-'))
   const previousRoot = process.env.QA_CLI_ROOT_DIR
 
   process.env.QA_CLI_ROOT_DIR = tempDir

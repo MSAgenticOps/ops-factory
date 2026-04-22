@@ -27,8 +27,12 @@
 
 - `gateway/agents/qa-cli-agent/AGENTS.md`
 - `gateway/agents/qa-cli-agent/config/config.yaml`
-- `gateway/agents/qa-cli-agent/config/mcp/fs-qa/src/index.js`
-- `gateway/agents/qa-cli-agent/config/mcp/fs-qa/src/handlers.js`
+- `gateway/agents/qa-cli-agent/config/mcp/knowledge-cli/src/index.ts`
+- `gateway/agents/qa-cli-agent/config/mcp/knowledge-cli/src/handlers.ts`
+
+运行入口：
+
+- `config/mcp/knowledge-cli/dist/index.js`
 
 ## 4. 配置
 
@@ -46,6 +50,12 @@
 - `find_files`
 - `search_content`
 - `read_file`
+
+在 goosed 运行时，工具名会带上扩展前缀，模型调用时应使用：
+
+- `knowledge-cli__find_files`
+- `knowledge-cli__search_content`
+- `knowledge-cli__read_file`
 
 ### 5.1 `find_files`
 

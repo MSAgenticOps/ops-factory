@@ -188,6 +188,40 @@ build_gateway() {
     log_info "Build complete"
 }
 
+build_knowledge_cli_mcp() {
+    local mcp_dir="${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli"
+    local entry="${mcp_dir}/dist/index.js"
+
+    if [ ! -f "${mcp_dir}/package.json" ]; then
+        return 0
+    fi
+
+    if [ -f "${entry}" ] && [ -d "${mcp_dir}/node_modules" ]; then
+        local newest_src
+        newest_src="$(find "${mcp_dir}/src" "${mcp_dir}/package.json" "${mcp_dir}/package-lock.json" "${mcp_dir}/tsconfig.json" -newer "${entry}" 2>/dev/null | head -1)"
+        if [ -z "${newest_src}" ]; then
+            log_info "Knowledge-Cli MCP is up-to-date, skipping build"
+            return 0
+        fi
+    fi
+
+    log_info "Building Knowledge-Cli MCP..."
+    (
+        cd "${mcp_dir}"
+        if [ ! -d "node_modules" ]; then
+            npm install || {
+                log_error "Knowledge-Cli MCP npm install failed"
+                exit 1
+            }
+        fi
+        npm run build || {
+            log_error "Knowledge-Cli MCP build failed"
+            exit 1
+        }
+    ) || return 1
+    log_info "Knowledge-Cli MCP build complete"
+}
+
 # --- Agents (goosed) helpers ---
 shutdown_agents() {
     if pgrep -f goosed >/dev/null 2>&1; then
@@ -269,6 +303,7 @@ do_startup() {
     fi
 
     build_gateway
+    build_knowledge_cli_mcp
 
     local jar="${SERVICE_DIR}/gateway-service/target/gateway-service.jar"
     local lib_dir="${SERVICE_DIR}/gateway-service/target/lib"

@@ -113,7 +113,7 @@ extensions:
     name: Knowledge-Cli
     description: File-system QA tools for a configured root directory
     cmd: node
-    args: [config/mcp/fs-qa/src/index.js]
+    args: [config/mcp/knowledge-cli/dist/index.js]
     envs: {}
     env_keys: []
     timeout: 60
