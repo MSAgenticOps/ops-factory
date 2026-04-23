@@ -87,6 +87,11 @@ export default function Chat() {
     const [showScrollToBottom, setShowScrollToBottom] = useState(false)
     const stopHintTimerRef = useRef<number | null>(null)
     const messageScrollContainerRef = useRef<HTMLDivElement>(null)
+    const emptyDraftSessionsRef = useRef<Map<string, { sessionId: string; agentId: string }>>(new Map())
+    const createSessionInFlightRef = useRef<{ agentId: string; promise: Promise<Session | null> } | null>(null)
+    const getClientRef = useRef(getClient)
+    const isChatPageMountedRef = useRef(true)
+    const activeSessionKeyRef = useRef<string | null>(null)
 
     useEffect(() => {
         setLocatorState((current) => {
@@ -130,6 +135,14 @@ export default function Chat() {
     })
 
     useEffect(() => {
+        getClientRef.current = getClient
+    }, [getClient])
+
+    useEffect(() => {
+        activeSessionKeyRef.current = activeAgentId && activeSessionId ? `${activeAgentId}:${activeSessionId}` : null
+    }, [activeAgentId, activeSessionId])
+
+    useEffect(() => {
         if (error) {
             // Map gateway timeout/connection errors to localized warning toasts
             if (/No response from agent/i.test(error)) {
@@ -148,6 +161,44 @@ export default function Chat() {
     const initialSelectedSkill = routeResolution.initialSelectedSkill
     const preferredAgentId = routeResolution.preferredAgentId
 
+    const markActiveSessionUsed = useCallback(() => {
+        if (activeAgentId && activeSessionId) {
+            emptyDraftSessionsRef.current.delete(`${activeAgentId}:${activeSessionId}`)
+        }
+    }, [activeAgentId, activeSessionId])
+
+    const cleanupEmptyDraftSessions = useCallback((reason: string) => {
+        const draftSessions = Array.from(emptyDraftSessionsRef.current.values())
+        if (draftSessions.length === 0) return
+
+        const shouldClearPersistedLocator = activeSessionKeyRef.current
+            ? emptyDraftSessionsRef.current.has(activeSessionKeyRef.current)
+            : false
+        emptyDraftSessionsRef.current.clear()
+        if (shouldClearPersistedLocator) {
+            clearPersistedChatSessionLocator()
+        }
+        for (const draftSession of draftSessions) {
+            void getClientRef.current(draftSession.agentId).cleanupEmptySession(draftSession.sessionId)
+                .catch((err) => {
+                    console.debug('Failed to clean up empty draft session:', {
+                        reason,
+                        sessionId: draftSession.sessionId,
+                        agentId: draftSession.agentId,
+                        error: err instanceof Error ? err.message : String(err),
+                    })
+                })
+        }
+    }, [])
+
+    useEffect(() => {
+        isChatPageMountedRef.current = true
+        return () => {
+            isChatPageMountedRef.current = false
+            cleanupEmptyDraftSessions('chat_unmount')
+        }
+    }, [cleanupEmptyDraftSessions])
+
     useEffect(() => {
         const fetchModelInfo = async () => {
             if (!isConnected || !client) return
@@ -164,11 +215,23 @@ export default function Chat() {
     }, [client, isConnected])
 
     const createSessionWithAgent = useCallback(async (agentId: string, options: { initialMessage?: string; initialSelectedSkill?: SelectedSkill } = {}) => {
+        if (createSessionInFlightRef.current?.agentId === agentId) {
+            return createSessionInFlightRef.current.promise
+        }
+
+        cleanupEmptyDraftSessions('replace_draft_session')
         setIsCreatingSession(true)
-        try {
+        const createPromise = (async () => {
             const agentClient = getClient(agentId)
             const newSession = await agentClient.startSession()
             const nextLocator = createSessionLocator(newSession.id, agentId)
+            emptyDraftSessionsRef.current.set(`${agentId}:${newSession.id}`, { sessionId: newSession.id, agentId })
+
+            if (!isChatPageMountedRef.current) {
+                cleanupEmptyDraftSessions('create_resolved_after_unmount')
+                return newSession
+            }
+
             setSession(newSession)
             setLocatorState({ kind: 'ready', locator: nextLocator })
             persistChatSessionLocator(nextLocator)
@@ -181,14 +244,22 @@ export default function Chat() {
                 }),
             })
             return newSession
+        })()
+        createSessionInFlightRef.current = { agentId, promise: createPromise }
+
+        try {
+            return await createPromise
         } catch (err) {
             console.error('Failed to create session:', err)
             setInitError(err instanceof Error ? err.message : 'Failed to create session')
             return null
         } finally {
+            if (createSessionInFlightRef.current?.promise === createPromise) {
+                createSessionInFlightRef.current = null
+            }
             setIsCreatingSession(false)
         }
-    }, [getClient, clearMessages, navigate])
+    }, [getClient, clearMessages, cleanupEmptyDraftSessions, navigate])
 
     const handleAgentChange = useCallback(async (agentId: string) => {
         if (agentId === activeAgentId) return
@@ -391,6 +462,7 @@ export default function Chat() {
             }
             const messageId = sendMessage(initialMessage || '', undefined, undefined, installedInitialSkill)
             if (messageId) {
+                markActiveSessionUsed()
                 setPendingUserMessageAnchorId(messageId)
             }
             navigate('/chat', {
@@ -420,9 +492,10 @@ export default function Chat() {
         setShowStopHint(false)
         const messageId = sendMessage(text, images, attachedFiles, selectedSkill)
         if (messageId) {
+            markActiveSessionUsed()
             setPendingUserMessageAnchorId(messageId)
         }
-    }, [activeSessionId, locatorState, sendMessage])
+    }, [locatorState, markActiveSessionUsed, sendMessage])
 
     const handleBrowseSkillMarket = useCallback(() => {
         navigate('/skill-market')
@@ -610,8 +683,9 @@ export default function Chat() {
             throw new Error('No active session for file upload')
         }
         const result = await client.uploadFile(file, activeSessionId)
+        emptyDraftSessionsRef.current.delete(`${activeAgentId}:${activeSessionId}`)
         return { path: result.path }
-    }, [locatorState, client, activeSessionId])
+    }, [locatorState, client, activeAgentId, activeSessionId])
 
     const handleRetry = useCallback(() => {
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -622,13 +696,14 @@ export default function Chat() {
                 if (text) {
                     const messageId = sendMessage(text, undefined, undefined, msg.metadata?.selectedSkill)
                     if (messageId) {
+                        markActiveSessionUsed()
                         setPendingUserMessageAnchorId(messageId)
                     }
                     return
                 }
             }
         }
-    }, [messages, sendMessage])
+    }, [markActiveSessionUsed, messages, sendMessage])
 
     const handleStopMessage = useCallback(async () => {
         const stopped = await stopMessage()

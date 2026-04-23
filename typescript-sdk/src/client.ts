@@ -4,6 +4,7 @@
 
 import type {
     Session,
+    CleanupEmptySessionResult,
     ToolInfo,
     CallToolResponse,
     SSEEvent,
@@ -438,6 +439,10 @@ export class GoosedClient {
 
     async deleteSession(sessionId: string): Promise<void> {
         await this.delete(`/sessions/${sessionId}`);
+    }
+
+    async cleanupEmptySession(sessionId: string): Promise<CleanupEmptySessionResult> {
+        return this.post<CleanupEmptySessionResult>(`/sessions/${sessionId}/cleanup-empty`);
     }
 
     async exportSession(sessionId: string): Promise<string> {

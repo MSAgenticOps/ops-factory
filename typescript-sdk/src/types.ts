@@ -118,6 +118,11 @@ export interface Session {
     conversation?: Record<string, unknown>[] | null;
 }
 
+export interface CleanupEmptySessionResult {
+    deleted: boolean;
+    reason: string;
+}
+
 export interface ToolInfo {
     name: string;
     description: string;
