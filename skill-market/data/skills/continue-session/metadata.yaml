@@ -1,0 +1,4 @@
+{id: continue-session, name: Continue Session, description: 'Continue the current
+    conversation from prior context when the user asks to continue, resume, or go
+    on.', path: skills/continue-session, containsScripts: false, checksum: 'sha256:e784e27327e5fa61903cfa90a4d354b7d6b55fece123de7b6ce748f15efea8d5',
+  sizeBytes: 593, fileCount: 1, createdAt: '2026-04-23T07:10:29.258607Z', updatedAt: '2026-04-23T07:10:29.258607Z'}

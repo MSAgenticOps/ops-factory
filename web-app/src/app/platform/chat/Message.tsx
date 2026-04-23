@@ -196,6 +196,18 @@ function CheckIcon() {
     )
 }
 
+function SkillChip({ name }: { name: string }) {
+    return (
+        <span className="message-skill-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14" aria-hidden="true">
+                <path d="M12 3 4.5 7.25 12 11.5l7.5-4.25L12 3Z" />
+                <path d="m4.5 12.25 7.5 4.25 7.5-4.25" />
+            </svg>
+            <span>{name}</span>
+        </span>
+    )
+}
+
 function MessageInner({
     message,
     toolResponses = new Map(),
@@ -530,8 +542,10 @@ function MessageInner({
     }
 
     const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
+    const selectedSkill = isUser ? message.metadata?.selectedSkill : undefined
+    const hasUserAttachedFiles = isUser && !!message.metadata?.attachedFiles?.length
 
-    if (isUser && !fullText) {
+    if (isUser && !fullText && !selectedSkill && !hasUserAttachedFiles) {
         return null
     }
 
@@ -646,6 +660,12 @@ function MessageInner({
                                     </div>
                                 )
                             })}
+                        </div>
+                    )}
+
+                    {selectedSkill && (
+                        <div className="message-skill-chip-row">
+                            <SkillChip name={selectedSkill.name} />
                         </div>
                     )}
 

@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect, useCallback, KeyboardEvent, ChangeEvent, DragEvent, ClipboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, KeyboardEvent, ChangeEvent, DragEvent, ClipboardEvent, SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TokenState, ImageData } from '@goosed/sdk'
 import AgentSelector from './AgentSelector'
 import { compressImageDataUrl, isImageFile, parseDataUrl, readFileAsDataUrl } from '../../../utils/imageUtils'
 import { useVoiceInput } from './useVoiceInput'
 import { useToast } from '../providers/ToastContext'
-import type { AttachedFile } from '../../../types/message'
+import type { AttachedFile, SelectedSkill } from '../../../types/message'
+import type { SkillEntry } from '../../../types/skill'
 import './ChatInput.css'
 
 // File handling constants
@@ -13,6 +14,7 @@ const MAX_IMAGES_PER_MESSAGE = 3
 const MAX_FILES_PER_MESSAGE = 5
 const MAX_FILE_SIZE_MB = 10
 const MAX_IMAGE_SIZE_MB = 5
+const MAX_VISIBLE_SKILL_OPTIONS = 25
 const SUPPORTED_FILE_TYPES = [
     // Text files
     '.txt', '.md', '.json', '.yaml', '.yml', '.xml', '.csv', '.tsv',
@@ -44,8 +46,78 @@ interface UploadedFile {
     error?: string
 }
 
+function getSkillId(skill: SkillEntry): string {
+    if (skill.id) return skill.id
+    const segments = skill.path.split('/').filter(Boolean)
+    return segments[segments.length - 1] || skill.name
+}
+
+function toSelectedSkill(skill: SkillEntry): SelectedSkill {
+    return {
+        id: getSkillId(skill),
+        name: skill.name,
+        description: skill.description,
+        path: skill.path || `skills/${getSkillId(skill)}`,
+    }
+}
+
+function getSkillSearchText(skill: SkillEntry): string {
+    return [skill.id, skill.name, skill.description, skill.path]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .join(' ')
+        .toLowerCase()
+}
+
+function getSkillTitle(skill: SkillEntry): string {
+    return [skill.name, skill.path, skill.description?.trim()]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .join('\n')
+}
+
+function isTruthyMetadata(value: unknown): boolean {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'string') {
+        return ['true', '1', 'yes', 'y'].includes(value.trim().toLowerCase())
+    }
+    return false
+}
+
+function getDisplayOrder(skill: SkillEntry): number {
+    if (typeof skill.displayOrder === 'number' && Number.isFinite(skill.displayOrder)) {
+        return skill.displayOrder
+    }
+    if (typeof skill.displayOrder === 'string') {
+        const parsed = Number(skill.displayOrder)
+        if (Number.isFinite(parsed)) return parsed
+    }
+    return 0
+}
+
+function compareSkills(a: SkillEntry, b: SkillEntry): number {
+    const pinnedDelta = Number(isTruthyMetadata(b.pinned)) - Number(isTruthyMetadata(a.pinned))
+    if (pinnedDelta !== 0) return pinnedDelta
+
+    const orderDelta = getDisplayOrder(a) - getDisplayOrder(b)
+    if (orderDelta !== 0) return orderDelta
+
+    return a.name.localeCompare(b.name)
+}
+
+function findSlashSkillToken(text: string, cursor: number): { start: number; end: number; query: string } | null {
+    const beforeCursor = text.slice(0, cursor)
+    const tokenStart = Math.max(
+        beforeCursor.lastIndexOf(' '),
+        beforeCursor.lastIndexOf('\n'),
+        beforeCursor.lastIndexOf('\t'),
+    ) + 1
+    const token = beforeCursor.slice(tokenStart)
+    if (!token.startsWith('/')) return null
+    if (token.slice(1).includes('/')) return null
+    return { start: tokenStart, end: cursor, query: token.slice(1) }
+}
+
 interface ChatInputProps {
-    onSubmit: (message: string, images?: ImageData[], attachedFiles?: AttachedFile[]) => void
+    onSubmit: (message: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill) => void
     onStopGeneration?: () => void | Promise<void>
     onUploadFile?: (file: File) => Promise<{ path: string }>
     disabled?: boolean
@@ -59,6 +131,8 @@ interface ChatInputProps {
     tokenState?: TokenState | null
     presetMessage?: string
     presetToken?: number
+    skills?: SkillEntry[]
+    onBrowseSkillMarket?: () => void
 }
 
 export default function ChatInput({
@@ -76,6 +150,8 @@ export default function ChatInput({
     tokenState,
     presetMessage,
     presetToken,
+    skills = [],
+    onBrowseSkillMarket,
 }: ChatInputProps) {
     const { t, i18n } = useTranslation()
     const { showToast } = useToast()
@@ -83,8 +159,50 @@ export default function ChatInput({
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
     const [isDragging, setIsDragging] = useState(false)
     const [isTemplateAppliedFlash, setIsTemplateAppliedFlash] = useState(false)
+    const [selectedSkill, setSelectedSkill] = useState<SelectedSkill | null>(null)
+    const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false)
+    const [skillQuery, setSkillQuery] = useState('')
+    const [skillSlashRange, setSkillSlashRange] = useState<{ start: number; end: number } | null>(null)
+    const [activeSkillIndex, setActiveSkillIndex] = useState(0)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const sortedSkills = useMemo(() => [...skills].sort(compareSkills), [skills])
+    const filteredSkills = useMemo(() => sortedSkills.filter(skill => {
+        const query = skillQuery.trim().toLowerCase()
+        if (!query) return true
+        return getSkillSearchText(skill).includes(query)
+    }), [skillQuery, sortedSkills])
+    const visibleSkills = useMemo(
+        () => filteredSkills.slice(0, MAX_VISIBLE_SKILL_OPTIONS),
+        [filteredSkills],
+    )
+    const hiddenSkillCount = Math.max(0, filteredSkills.length - visibleSkills.length)
+
+    const activeSkill = visibleSkills[activeSkillIndex]
+
+    const closeSkillPicker = useCallback(() => {
+        setIsSkillPickerOpen(false)
+        setSkillQuery('')
+        setSkillSlashRange(null)
+        setActiveSkillIndex(0)
+    }, [])
+
+    const updateSkillPickerState = useCallback((nextValue: string, cursor: number | null) => {
+        if (disabled || cursor == null) {
+            closeSkillPicker()
+            return
+        }
+        const slashToken = findSlashSkillToken(nextValue, cursor)
+        if (!slashToken) {
+            closeSkillPicker()
+            return
+        }
+        setSkillQuery(slashToken.query)
+        setSkillSlashRange({ start: slashToken.start, end: slashToken.end })
+        setIsSkillPickerOpen(true)
+        setActiveSkillIndex(0)
+    }, [closeSkillPicker, disabled])
 
     const { state: voiceState, isSupported: voiceSupported, startListening, stopListening, error: voiceError } = useVoiceInput({
         onTranscript: (text) => setValue(text),
@@ -118,10 +236,29 @@ export default function ChatInput({
         }
     }, [autoFocus])
 
+    useEffect(() => {
+        setSelectedSkill(null)
+        closeSkillPicker()
+    }, [selectedAgent, closeSkillPicker])
+
+    useEffect(() => {
+        if (activeSkillIndex < visibleSkills.length) return
+        setActiveSkillIndex(Math.max(0, visibleSkills.length - 1))
+    }, [activeSkillIndex, visibleSkills.length])
+
+    useEffect(() => {
+        if (!selectedSkill) return
+        const stillInstalled = skills.some(skill => getSkillId(skill) === selectedSkill.id)
+        if (!stillInstalled) {
+            setSelectedSkill(null)
+        }
+    }, [selectedSkill, skills])
+
     // Fill input from external template selection without submitting.
     useEffect(() => {
         if (typeof presetToken !== 'number') return
         setValue(presetMessage || '')
+        closeSkillPicker()
         setIsTemplateAppliedFlash(true)
         if (textareaRef.current) {
             textareaRef.current.focus()
@@ -132,7 +269,35 @@ export default function ChatInput({
         }, 1200)
 
         return () => window.clearTimeout(timer)
-    }, [presetToken, presetMessage])
+    }, [presetToken, presetMessage, closeSkillPicker])
+
+    const handleSelectSkill = (skill: SkillEntry) => {
+        const nextSkill = toSelectedSkill(skill)
+        setSelectedSkill(nextSkill)
+        if (skillSlashRange) {
+            const nextValue = `${value.slice(0, skillSlashRange.start)}${value.slice(skillSlashRange.end)}`
+            setValue(nextValue)
+            window.requestAnimationFrame(() => {
+                const textarea = textareaRef.current
+                if (!textarea) return
+                textarea.focus()
+                textarea.setSelectionRange(skillSlashRange.start, skillSlashRange.start)
+            })
+        } else {
+            textareaRef.current?.focus()
+        }
+        closeSkillPicker()
+    }
+
+    const handleRemoveSelectedSkill = () => {
+        setSelectedSkill(null)
+        textareaRef.current?.focus()
+    }
+
+    const handleBrowseSkillMarket = () => {
+        closeSkillPicker()
+        onBrowseSkillMarket?.()
+    }
 
     const isFileTypeSupported = (file: File): boolean => {
         const extension = '.' + file.name.split('.').pop()?.toLowerCase()
@@ -312,6 +477,7 @@ export default function ChatInput({
 
     const handleSubmit = () => {
         if (disabled) return
+        if (isSkillPickerOpen) return
 
         // Extract images as ImageData[]
         const images: ImageData[] = uploadedFiles
@@ -331,15 +497,18 @@ export default function ChatInput({
 
         const text = value.trim()
 
-        if (!text && images.length === 0 && attachedFiles.length === 0) return
+        if (!text && images.length === 0 && attachedFiles.length === 0 && !selectedSkill) return
 
         onSubmit(
             text,
             images.length > 0 ? images : undefined,
-            attachedFiles.length > 0 ? attachedFiles : undefined
+            attachedFiles.length > 0 ? attachedFiles : undefined,
+            selectedSkill || undefined
         )
         setValue('')
         setUploadedFiles([])
+        setSelectedSkill(null)
+        closeSkillPicker()
         // Reset textarea height
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
@@ -352,6 +521,31 @@ export default function ChatInput({
     }
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (isSkillPickerOpen) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setActiveSkillIndex(index => visibleSkills.length === 0 ? 0 : (index + 1) % visibleSkills.length)
+                return
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setActiveSkillIndex(index => visibleSkills.length === 0 ? 0 : (index - 1 + visibleSkills.length) % visibleSkills.length)
+                return
+            }
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault()
+                if (activeSkill) {
+                    handleSelectSkill(activeSkill)
+                    return
+                }
+                return
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault()
+                closeSkillPicker()
+                return
+            }
+        }
         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
             handleSubmit()
@@ -359,14 +553,21 @@ export default function ChatInput({
     }
 
     const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-        setValue(e.target.value)
+        const nextValue = e.target.value
+        setValue(nextValue)
+        updateSkillPickerState(nextValue, e.target.selectionStart)
+    }
+
+    const handleSelectionChange = (e: SyntheticEvent<HTMLTextAreaElement>) => {
+        const textarea = e.currentTarget
+        updateSkillPickerState(textarea.value, textarea.selectionStart)
     }
 
     const handleFileInputClick = () => {
         fileInputRef.current?.click()
     }
 
-    const hasContent = value.trim() || uploadedFiles.some(f => !f.error && !f.isLoading)
+    const hasContent = value.trim() || selectedSkill || uploadedFiles.some(f => !f.error && !f.isLoading)
     const totalFileCount = uploadedFiles.length
     const maxTotalFiles = MAX_IMAGES_PER_MESSAGE + MAX_FILES_PER_MESSAGE
     const isAnyFileLoading = uploadedFiles.some(f => f.isLoading)
@@ -405,6 +606,97 @@ export default function ChatInput({
                         </svg>
                         <p>{t('chat.dropFilesHere')}</p>
                     </div>
+                </div>
+            )}
+
+            {isSkillPickerOpen && (
+                <div className="skill-picker" role="listbox" aria-label={t('chat.skillPickerLabel')}>
+                    <div className="skill-picker-header">
+                        <span>{t('chat.skillPickerTitle')}</span>
+                        <span className="skill-picker-header-meta">
+                            {t('chat.skillPickerResultCount', { shown: visibleSkills.length, total: filteredSkills.length })}
+                            {skillQuery && <span className="skill-picker-query">/{skillQuery}</span>}
+                        </span>
+                    </div>
+                    {skills.length === 0 ? (
+                        <div className="skill-picker-empty">
+                            <p>{t('chat.skillPickerNoSkills')}</p>
+                            {onBrowseSkillMarket && (
+                                <button type="button" className="skill-picker-market-btn" onClick={handleBrowseSkillMarket}>
+                                    {t('chat.skillPickerBrowseMarket')}
+                                </button>
+                            )}
+                        </div>
+                    ) : filteredSkills.length === 0 ? (
+                        <div className="skill-picker-empty">
+                            <p>{t('chat.skillPickerNoMatches')}</p>
+                        </div>
+                    ) : (
+                        <>
+                        <div className="skill-picker-list">
+                            {visibleSkills.map((skill, index) => {
+                                const skillId = getSkillId(skill)
+                                const description = skill.description?.trim()
+                                const skillTitle = getSkillTitle(skill)
+                                return (
+                                    <button
+                                        key={skillId}
+                                        type="button"
+                                        className={`skill-picker-option ${index === activeSkillIndex ? 'active' : ''}`}
+                                        onMouseDown={event => event.preventDefault()}
+                                        onClick={() => handleSelectSkill(skill)}
+                                        title={skillTitle}
+                                        role="option"
+                                        aria-selected={index === activeSkillIndex}
+                                    >
+                                        <span className="skill-picker-option-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16">
+                                                <path d="M12 3 4.5 7.25 12 11.5l7.5-4.25L12 3Z" />
+                                                <path d="m4.5 12.25 7.5 4.25 7.5-4.25" />
+                                                <path d="m4.5 17.25 7.5 4.25 7.5-4.25" />
+                                            </svg>
+                                        </span>
+                                        <span className="skill-picker-option-body">
+                                            <span className="skill-picker-option-name">{skill.name}</span>
+                                            <span className="skill-picker-option-desc">
+                                                {description || t('skill.noDescription')}
+                                            </span>
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        {hiddenSkillCount > 0 && (
+                            <div className="skill-picker-footer">
+                                {t('chat.skillPickerMoreResults', { count: hiddenSkillCount })}
+                            </div>
+                        )}
+                        </>
+                    )}
+                </div>
+            )}
+
+            {selectedSkill && (
+                <div className="selected-skill-row">
+                    <span className="selected-skill-chip" title={[selectedSkill.name, selectedSkill.path, selectedSkill.description].filter(Boolean).join('\n')}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="15" height="15" aria-hidden="true">
+                            <path d="M12 3 4.5 7.25 12 11.5l7.5-4.25L12 3Z" />
+                            <path d="m4.5 12.25 7.5 4.25 7.5-4.25" />
+                        </svg>
+                        <span className="selected-skill-name">{selectedSkill.name}</span>
+                        <button
+                            type="button"
+                            className="selected-skill-remove"
+                            onClick={handleRemoveSelectedSkill}
+                            aria-label={t('chat.removeSelectedSkill', { name: selectedSkill.name })}
+                            title={t('chat.removeSelectedSkill', { name: selectedSkill.name })}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </span>
                 </div>
             )}
 
@@ -457,6 +749,7 @@ export default function ChatInput({
                     value={value}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
+                    onSelect={handleSelectionChange}
                     onPaste={handlePaste}
                     placeholder={placeholder}
                     disabled={disabled}

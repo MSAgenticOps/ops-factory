@@ -1,0 +1,5 @@
+{id: opsfactory-observability-analysis, name: OpsFactory Observability Analysis, description: 'Analyze
+    OpsFactory latency, errors, traces, observation breakdown, cost, and realtime
+    performance using Control Center observability tools.', path: skills/opsfactory-observability-analysis,
+  containsScripts: false, checksum: 'sha256:7762741d0448fe8b24a3058922aadc1396b5142b79122e455691caaa459bafe6',
+  sizeBytes: 759, fileCount: 1, createdAt: '2026-04-23T07:24:36.873151Z', updatedAt: '2026-04-23T07:24:36.873151Z'}

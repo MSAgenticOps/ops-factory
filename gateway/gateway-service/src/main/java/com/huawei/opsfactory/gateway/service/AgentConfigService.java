@@ -220,6 +220,8 @@ public class AgentConfigService {
                             if (frontmatter.containsKey("description")) {
                                 skill.put("description", frontmatter.get("description"));
                             }
+                            putFrontmatterAlias(skill, frontmatter, "pinned", "pinned");
+                            putFrontmatterAlias(skill, frontmatter, "displayOrder", "displayOrder", "display-order", "x-display-order");
                         } catch (Exception e) {
                             log.warn("Failed to parse SKILL.md for skill {}/{}", agentId, dirName, e);
                         }
@@ -231,6 +233,19 @@ public class AgentConfigService {
             log.error("Failed to list skills for {}", agentId, e);
         }
         return skills;
+    }
+
+    private void putFrontmatterAlias(Map<String, String> target,
+                                     Map<String, String> frontmatter,
+                                     String targetKey,
+                                     String... aliases) {
+        for (String alias : aliases) {
+            String value = frontmatter.get(alias);
+            if (value != null && !value.isBlank()) {
+                target.put(targetKey, value);
+                return;
+            }
+        }
     }
 
     /**

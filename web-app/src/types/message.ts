@@ -99,10 +99,18 @@ export interface AttachedFile {
     serverPath?: string
 }
 
+export interface SelectedSkill {
+    id: string
+    name: string
+    description?: string
+    path: string
+}
+
 export interface MessageMetadata {
     userVisible?: boolean
     agentVisible?: boolean
     attachedFiles?: AttachedFile[]
+    selectedSkill?: SelectedSkill
 }
 
 export interface ChatMessage {

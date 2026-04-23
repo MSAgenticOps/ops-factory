@@ -4,6 +4,7 @@ import { useUser } from './UserContext'
 import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../../../config/runtime'
 import { getErrorMessage } from '../../../utils/errorMessages'
 import { trackedFetch } from '../logging/requestClient'
+import type { SkillEntry } from '../../../types/skill'
 
 export interface AgentInfo {
     id: string
@@ -11,7 +12,7 @@ export interface AgentInfo {
     status: string
     provider?: string
     model?: string
-    skills: string[]
+    skills: SkillEntry[]
 }
 
 interface GoosedContextType {

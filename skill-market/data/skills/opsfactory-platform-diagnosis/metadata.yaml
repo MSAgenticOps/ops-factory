@@ -1,0 +1,5 @@
+{id: opsfactory-platform-diagnosis, name: OpsFactory Platform Diagnosis, description: 'Diagnose
+    overall OpsFactory platform health using Control Center runtime, agent, observability,
+    realtime metric, and service status tools.', path: skills/opsfactory-platform-diagnosis,
+  containsScripts: false, checksum: 'sha256:2a1cd890dec1e471161086d8a12c11e769e42e1a7dda3fc992cd376eed8c7483',
+  sizeBytes: 941, fileCount: 1, createdAt: '2026-04-23T07:24:36.810039Z', updatedAt: '2026-04-23T07:24:36.810039Z'}
