@@ -1,7 +1,7 @@
 import { useCallback, useReducer, useRef, useEffect, useState } from 'react'
 import { GoosedClient } from '@goosed/sdk'
 import type { TokenState, ImageData, OutputFile } from '@goosed/sdk'
-import type { AttachedFile, ChatMessage, MessageContent } from '../../../types/message'
+import type { AttachedFile, ChatMessage, MessageContent, MessageMetadata, SelectedSkill } from '../../../types/message'
 import { getCompactingMessage, getThinkingMessage } from '../../../utils/messageContent'
 import { normalizeChatStreamError } from '../../../utils/chatStreamError'
 
@@ -38,6 +38,8 @@ const initialState: StreamState = {
 }
 
 const createdFallbackByMessageId = new Map<string, number>()
+const SELECTED_SKILL_HEADER = '[OpsFactory selected skill]'
+const SELECTED_SKILL_USER_REQUEST_MARKER = '\n\nUser request:\n'
 
 function streamReducer(state: StreamState, action: StreamAction): StreamState {
     switch (action.type) {
@@ -81,7 +83,7 @@ export interface UseChatReturn {
     error: string | null
     tokenState: TokenState | null
     outputFilesEvent: OutputFilesEvent | null
-    sendMessage: (text: string, images?: ImageData[], attachedFiles?: AttachedFile[]) => string | null
+    sendMessage: (text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill) => string | null
     stopMessage: () => Promise<boolean>
     clearMessages: () => void
     setInitialMessages: (msgs: ChatMessage[]) => void
@@ -184,6 +186,52 @@ function readWebQueryFlag(name: string): string | null {
     }
 }
 
+function sanitizeSkillField(value: string): string {
+    return value.replace(/\r?\n/g, ' ').trim()
+}
+
+function buildSelectedSkillPrompt(selectedSkill: SelectedSkill, userRequest: string): string {
+    const skillPath = sanitizeSkillField(selectedSkill.path || `skills/${selectedSkill.id}`)
+    const header = [
+        SELECTED_SKILL_HEADER,
+        `id: ${sanitizeSkillField(selectedSkill.id)}`,
+        `name: ${sanitizeSkillField(selectedSkill.name)}`,
+        `path: ${skillPath}`,
+        '',
+        'For this turn, load and follow the installed skill above.',
+        'Use the skill as guidance for handling the user request; do not treat this instruction as user-visible content.',
+        'If the user request is blank, start the skill workflow by asking for the required input.',
+    ].join('\n')
+    return `${header}${SELECTED_SKILL_USER_REQUEST_MARKER}${userRequest}`
+}
+
+function parseSelectedSkillPrompt(text: string): { selectedSkill: SelectedSkill; userRequest: string } | null {
+    if (!text.startsWith(SELECTED_SKILL_HEADER)) return null
+    const markerIndex = text.indexOf(SELECTED_SKILL_USER_REQUEST_MARKER)
+    if (markerIndex < 0) return null
+
+    const headerText = text.slice(SELECTED_SKILL_HEADER.length, markerIndex)
+    const userRequest = text.slice(markerIndex + SELECTED_SKILL_USER_REQUEST_MARKER.length)
+    const fields = new Map<string, string>()
+    headerText.split('\n').forEach(line => {
+        const separator = line.indexOf(':')
+        if (separator <= 0) return
+        const key = line.slice(0, separator).trim()
+        const value = line.slice(separator + 1).trim()
+        if (key && value) fields.set(key, value)
+    })
+
+    const id = fields.get('id')
+    const name = fields.get('name')
+    const path = fields.get('path')
+    if (!id || !name || !path) return null
+
+    return {
+        selectedSkill: { id, name, path },
+        userRequest,
+    }
+}
+
 export function isChatOrderDebugEnabled(): boolean {
     return readWebFlag('opsfactory:debug:chat-order') === '1' ||
         readWebQueryFlag('debugChatOrder') === '1'
@@ -220,7 +268,7 @@ export function buildChatMessageOrderDigest(messages: ChatMessage[], limit = 30)
  * Convert backend message format to ChatMessage format.
  */
 function convertBackendMessage(msg: Record<string, unknown>, useLocalTime = false): ChatMessage {
-    const metadata = msg.metadata as { userVisible?: boolean; agentVisible?: boolean } | undefined
+    let metadata = msg.metadata as MessageMetadata | undefined
     const createdCandidate = msg.created ?? msg.created_at ?? msg.createdAt
     const id = (msg.id as string) || `msg-${Date.now()}-${Math.random()}`
     const created = coerceEpochSeconds(createdCandidate)
@@ -232,10 +280,26 @@ function convertBackendMessage(msg: Record<string, unknown>, useLocalTime = fals
         createdFallbackByMessageId.set(id, next)
         return next
     })()
+    let content = (msg.content as MessageContent[]) || []
+    if ((msg.role as string) === 'user') {
+        let parsedSkill: SelectedSkill | null = null
+        content = content.map(item => {
+            if (parsedSkill || item.type !== 'text' || !('text' in item) || typeof item.text !== 'string') {
+                return item
+            }
+            const parsed = parseSelectedSkillPrompt(item.text)
+            if (!parsed) return item
+            parsedSkill = parsed.selectedSkill
+            return { ...item, text: parsed.userRequest }
+        })
+        if (parsedSkill) {
+            metadata = { ...(metadata || {}), selectedSkill: parsedSkill }
+        }
+    }
     return {
         id,
         role: (msg.role as 'user' | 'assistant') || 'assistant',
-        content: (msg.content as MessageContent[]) || [],
+        content,
         created: resolvedCreated,
         metadata: metadata,
     }
@@ -268,9 +332,9 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         dispatch({ type: 'SET_MESSAGES', payload: msgs })
     }, [])
 
-    const sendMessage = useCallback((text: string, images?: ImageData[], attachedFiles?: AttachedFile[]): string | null => {
+    const sendMessage = useCallback((text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill): string | null => {
         if (!sessionId || isStreamingRef.current) return null
-        if (!text.trim() && (!images || images.length === 0) && (!attachedFiles || attachedFiles.length === 0)) return null
+        if (!text.trim() && (!images || images.length === 0) && (!attachedFiles || attachedFiles.length === 0) && !selectedSkill) return null
 
         // Clear stale OutputFiles event from previous reply
         setOutputFilesEvent(null)
@@ -295,6 +359,9 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                     : serverPaths.join(' ')
             }
         }
+        if (selectedSkill) {
+            apiText = buildSelectedSkillPrompt(selectedSkill, apiText)
+        }
 
         // Build user message content (clean text + images — no file paths)
         const userContent: MessageContent[] = []
@@ -313,7 +380,12 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
             role: 'user',
             content: userContent,
             created: Math.floor(Date.now() / 1000),
-            ...(attachedFiles && attachedFiles.length > 0 ? { metadata: { attachedFiles } } : {}),
+            ...((attachedFiles && attachedFiles.length > 0) || selectedSkill ? {
+                metadata: {
+                    ...(attachedFiles && attachedFiles.length > 0 ? { attachedFiles } : {}),
+                    ...(selectedSkill ? { selectedSkill } : {}),
+                },
+            } : {}),
         }
 
         let currentMessages = [...messagesRef.current, userMessage]

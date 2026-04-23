@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { useUser } from '../../../platform/providers/UserContext'
 import {
     buildChatSessionState,
     clearPersistedChatSessionLocator,
@@ -15,7 +16,7 @@ import MessageList from '../../../platform/chat/MessageList'
 import ChatInput from '../../../platform/chat/ChatInput'
 import ChatPanelShell from '../../../platform/chat/ChatPanelShell'
 import type { Session, ImageData } from '@goosed/sdk'
-import type { AttachedFile } from '../../../../types/message'
+import type { AttachedFile, SelectedSkill } from '../../../../types/message'
 import { isScheduledSession } from '../../../../config/runtime'
 import {
     createSessionLocator,
@@ -47,6 +48,17 @@ function isNotFoundError(error: unknown): boolean {
     return error instanceof Error && error.name === 'GoosedNotFoundError'
 }
 
+function getSkillId(skill: { id?: string; path: string; name: string }): string {
+    if (skill.id) return skill.id
+    const segments = skill.path.split('/').filter(Boolean)
+    return segments[segments.length - 1] || skill.name
+}
+
+function isSkillInstalled(selectedSkill: SelectedSkill | undefined, skills: Array<{ id?: string; path: string; name: string }>): boolean {
+    if (!selectedSkill) return false
+    return skills.some(skill => getSkillId(skill) === selectedSkill.id || skill.path === selectedSkill.path)
+}
+
 export default function Chat() {
     const { t } = useTranslation()
     const [searchParams] = useSearchParams()
@@ -55,6 +67,8 @@ export default function Chat() {
     const { getClient, agents, isConnected, error: goosedError } = useGoosed()
     const { markSessionRead } = useInbox()
     const { showToast } = useToast()
+    const { role } = useUser()
+    const isAdmin = role === 'admin'
 
     const routeResolution = useMemo(
         () => resolveChatRouteState(searchParams, location.state),
@@ -106,6 +120,9 @@ export default function Chat() {
     const activeSessionId = readyLocator?.sessionId || recoverySessionId
     const activeAgentId = readyLocator?.agentId || ''
     const client = activeAgentId ? getClient(activeAgentId) : null
+    const activeAgentSkills = useMemo(() => {
+        return agents.find(agent => agent.id === activeAgentId)?.skills || []
+    }, [activeAgentId, agents])
 
     const { messages, chatState, isLoading, error, tokenState, outputFilesEvent, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
         sessionId: activeSessionId || null,
@@ -128,6 +145,7 @@ export default function Chat() {
     }, [error, showToast, t])
 
     const initialMessage = routeResolution.initialMessage
+    const initialSelectedSkill = routeResolution.initialSelectedSkill
     const preferredAgentId = routeResolution.preferredAgentId
 
     useEffect(() => {
@@ -145,7 +163,7 @@ export default function Chat() {
         fetchModelInfo()
     }, [client, isConnected])
 
-    const createSessionWithAgent = useCallback(async (agentId: string, options: { initialMessage?: string } = {}) => {
+    const createSessionWithAgent = useCallback(async (agentId: string, options: { initialMessage?: string; initialSelectedSkill?: SelectedSkill } = {}) => {
         setIsCreatingSession(true)
         try {
             const agentClient = getClient(agentId)
@@ -157,7 +175,10 @@ export default function Chat() {
             clearMessages()
             navigate('/chat', {
                 replace: true,
-                state: buildChatSessionState(newSession.id, agentId, { initialMessage: options.initialMessage }),
+                state: buildChatSessionState(newSession.id, agentId, {
+                    initialMessage: options.initialMessage,
+                    initialSelectedSkill: options.initialSelectedSkill,
+                }),
             })
             return newSession
         } catch (err) {
@@ -229,7 +250,7 @@ export default function Chat() {
                     return
                 }
 
-                const createdSession = await createSessionWithAgent(fallbackAgentId, { initialMessage })
+                const createdSession = await createSessionWithAgent(fallbackAgentId, { initialMessage, initialSelectedSkill })
                 if (!createdSession && !cancelled) {
                     setIsInitializing(false)
                 }
@@ -343,6 +364,7 @@ export default function Chat() {
         routeLocatorState,
         preferredAgentId,
         initialMessage,
+        initialSelectedSkill,
         createSessionWithAgent,
     ])
 
@@ -356,8 +378,18 @@ export default function Chat() {
     }, [activeAgentId, activeSessionId, messages])
 
     useEffect(() => {
-        if (initialMessage && locatorState.kind === 'ready' && activeSessionId && !isInitializing && messages.length === 0) {
-            const messageId = sendMessage(initialMessage)
+        if ((initialMessage || initialSelectedSkill) && locatorState.kind === 'ready' && activeSessionId && !isInitializing && messages.length === 0) {
+            const installedInitialSkill = isSkillInstalled(initialSelectedSkill, activeAgentSkills)
+                ? initialSelectedSkill
+                : undefined
+            if (!initialMessage && !installedInitialSkill) {
+                navigate('/chat', {
+                    replace: true,
+                    state: buildChatSessionState(activeSessionId, activeAgentId),
+                })
+                return
+            }
+            const messageId = sendMessage(initialMessage || '', undefined, undefined, installedInitialSkill)
             if (messageId) {
                 setPendingUserMessageAnchorId(messageId)
             }
@@ -366,7 +398,7 @@ export default function Chat() {
                 state: buildChatSessionState(activeSessionId, activeAgentId),
             })
         }
-    }, [initialMessage, locatorState, activeSessionId, activeAgentId, isInitializing, messages.length, sendMessage, navigate])
+    }, [initialMessage, initialSelectedSkill, activeAgentSkills, locatorState, activeSessionId, activeAgentId, isInitializing, messages.length, sendMessage, navigate])
 
     useEffect(() => {
         return () => {
@@ -377,7 +409,7 @@ export default function Chat() {
         }
     }, [])
 
-    const handleSendMessage = useCallback((text: string, images?: ImageData[], attachedFiles?: AttachedFile[]) => {
+    const handleSendMessage = useCallback((text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill) => {
         if (locatorState.kind !== 'ready') {
             throw new SessionLocatorError('Session locator is not ready for sending messages', locatorState)
         }
@@ -386,11 +418,15 @@ export default function Chat() {
             stopHintTimerRef.current = null
         }
         setShowStopHint(false)
-        const messageId = sendMessage(text, images, attachedFiles)
+        const messageId = sendMessage(text, images, attachedFiles, selectedSkill)
         if (messageId) {
             setPendingUserMessageAnchorId(messageId)
         }
     }, [activeSessionId, locatorState, sendMessage])
+
+    const handleBrowseSkillMarket = useCallback(() => {
+        navigate('/skill-market')
+    }, [navigate])
 
     const resolveActiveScrollElement = useCallback((): HTMLElement => {
         const scrollContainer = messageScrollContainerRef.current
@@ -584,7 +620,7 @@ export default function Chat() {
                 const textContent = msg.content.find(c => c.type === 'text')
                 const text = textContent && 'text' in textContent ? textContent.text : undefined
                 if (text) {
-                    const messageId = sendMessage(text)
+                    const messageId = sendMessage(text, undefined, undefined, msg.metadata?.selectedSkill)
                     if (messageId) {
                         setPendingUserMessageAnchorId(messageId)
                     }
@@ -750,6 +786,8 @@ export default function Chat() {
                         showAgentSelector={true}
                         modelInfo={modelInfo}
                         tokenState={tokenState}
+                        skills={activeAgentSkills}
+                        onBrowseSkillMarket={isAdmin ? handleBrowseSkillMarket : undefined}
                     />
                 </div>
             </div>

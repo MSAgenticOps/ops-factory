@@ -205,7 +205,7 @@ public class AgentConfigServiceTest {
 
         // Add SKILL.md with frontmatter to skill-a
         Files.writeString(skillsDir.resolve("skill-a").resolve("SKILL.md"),
-                "---\nname: Skill A\ndescription: Description of skill A\n---\n# Skill A\n");
+                "---\nname: Skill A\ndescription: Description of skill A\npinned: true\ndisplay-order: -100\n---\n# Skill A\n");
 
         List<Map<String, String>> skills = service.listSkills("test-agent");
         assertEquals(2, skills.size());
@@ -219,6 +219,8 @@ public class AgentConfigServiceTest {
                 .filter(s -> "Skill A".equals(s.get("name"))).findFirst().orElseThrow();
         assertEquals("Description of skill A", skillA.get("description"));
         assertEquals("skills/skill-a", skillA.get("path"));
+        assertEquals("true", skillA.get("pinned"));
+        assertEquals("-100", skillA.get("displayOrder"));
 
         // Verify skill-b has empty description (no SKILL.md)
         Map<String, String> skillB = skills.stream()

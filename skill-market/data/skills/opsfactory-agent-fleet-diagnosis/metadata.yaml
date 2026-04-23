@@ -1,0 +1,5 @@
+{id: opsfactory-agent-fleet-diagnosis, name: OpsFactory Agent Fleet Diagnosis, description: 'Diagnose
+    OpsFactory agent configuration and runtime fleet issues such as missing skills,
+    wrong providers, idle agents, and unhealthy instance counts.', path: skills/opsfactory-agent-fleet-diagnosis,
+  containsScripts: false, checksum: 'sha256:c453231452c6a70c611d1aef801695c938d51c3f05e1e69f1774991396bb0989',
+  sizeBytes: 832, fileCount: 1, createdAt: '2026-04-23T07:24:36.856509Z', updatedAt: '2026-04-23T07:24:36.856509Z'}

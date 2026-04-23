@@ -1,0 +1,5 @@
+{id: opsfactory-service-recovery, name: OpsFactory Service Recovery, description: 'Investigate
+    and recover managed OpsFactory services through Control Center status, logs, config,
+    events, and service action tools.', path: skills/opsfactory-service-recovery,
+  containsScripts: false, checksum: 'sha256:803220a361e65dc739209b87f039aaae7f54b271af4c751f269ab1fe94dd1b4b',
+  sizeBytes: 857, fileCount: 1, createdAt: '2026-04-23T07:24:36.836465Z', updatedAt: '2026-04-23T07:24:36.836465Z'}

@@ -141,6 +141,41 @@
     margin-bottom: 0;
 }
 
+.message-skill-chip-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+}
+
+.message-skill-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: min(100%, 380px);
+    gap: 5px;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.message-skill-chip svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    opacity: 0.82;
+}
+
+.message-skill-chip span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .message-content code {
     background: #eceff3;
     padding: var(--spacing-1) var(--spacing-2);
