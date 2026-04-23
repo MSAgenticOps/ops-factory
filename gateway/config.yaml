@@ -42,6 +42,10 @@ gateway:
     scan-roots:
       - {id: workingDir, path: '${userAgentDir}', recursive: false}
       - {id: output, path: '${userAgentDir}/output', recursive: false}
+  skill-market:
+    base-url: 'http://127.0.0.1:8095'
+    request-timeout-ms: 10000
+    max-package-size-mb: 200
   credential-encryption-key: 'changeit-changeit-changeit-32ch'
   remote-execution:
     default-timeout: 30

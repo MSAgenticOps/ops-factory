@@ -17,7 +17,6 @@ jobs:
     #   github.event.pull_request.user.login == 'external-contributor' ||
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-    if: github.event.pull_request.head.repo.fork == false
 
     runs-on: ubuntu-latest
     permissions:
@@ -39,7 +38,7 @@ jobs:
           ANTHROPIC_BASE_URL: https://open.bigmodel.cn/api/anthropic
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.PAT_TOKEN }}
           track_progress: true
           prompt: |
             REPO: ${{ github.repository }}

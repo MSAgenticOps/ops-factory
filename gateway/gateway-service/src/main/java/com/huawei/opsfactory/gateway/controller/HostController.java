@@ -2,6 +2,7 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
+import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/gateway/hosts")
@@ -28,12 +30,15 @@ public class HostController {
     private final HostService hostService;
     private final ClusterService clusterService;
     private final BusinessServiceService businessServiceService;
+    private final HostGroupService hostGroupService;
 
     public HostController(HostService hostService, ClusterService clusterService,
-                          BusinessServiceService businessServiceService) {
+                          BusinessServiceService businessServiceService,
+                          HostGroupService hostGroupService) {
         this.hostService = hostService;
         this.clusterService = clusterService;
         this.businessServiceService = businessServiceService;
+        this.hostGroupService = hostGroupService;
     }
 
     @GetMapping
@@ -42,10 +47,50 @@ public class HostController {
             @RequestParam(value = "clusterId", required = false) String clusterId,
             @RequestParam(value = "groupId", required = false) String groupId,
             @RequestParam(value = "businessServiceId", required = false) String businessServiceId,
+            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
 
         return Mono.fromCallable(() -> {
+            // Resolve disabled context once when enabledOnly is requested
+            final Set<String> disabledGroupIds;
+            final Set<String> disabledClusterIds;
+            if (enabledOnly) {
+                List<Map<String, Object>> allGroups = hostGroupService.listGroups();
+                disabledGroupIds = hostGroupService.getDisabledGroupIds(allGroups);
+
+                if (groupId != null && !groupId.isEmpty() && disabledGroupIds.contains(groupId)) {
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    result.put("hosts", List.of());
+                    return result;
+                }
+                if (clusterId != null && !clusterId.isEmpty()) {
+                    try {
+                        Map<String, Object> cluster = clusterService.getCluster(clusterId);
+                        if (Boolean.FALSE.equals(cluster.get("enabled"))
+                                || disabledGroupIds.contains(cluster.get("groupId"))) {
+                            Map<String, Object> result = new LinkedHashMap<>();
+                            result.put("hosts", List.of());
+                            return result;
+                        }
+                    } catch (IllegalArgumentException e) {
+                        // Cluster not found, let normal flow handle it
+                    }
+                }
+                // Build disabledClusterIds for the "list all hosts" fallback path
+                List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
+                disabledClusterIds = new java.util.HashSet<>();
+                for (Map<String, Object> c : allClusters) {
+                    if (Boolean.FALSE.equals(c.get("enabled"))
+                            || disabledGroupIds.contains(c.get("groupId"))) {
+                        disabledClusterIds.add((String) c.get("id"));
+                    }
+                }
+            } else {
+                disabledGroupIds = Set.of();
+                disabledClusterIds = Set.of();
+            }
+
             List<Map<String, Object>> hosts;
             if (businessServiceId != null && !businessServiceId.isEmpty()) {
                 hosts = businessServiceService.getHostsForBusinessService(businessServiceId);
@@ -59,6 +104,12 @@ public class HostController {
                         : Collections.emptyList();
                 hosts = hostService.listHosts(tagList.toArray(new String[0]));
             }
+
+            // Filter out hosts belonging to disabled clusters when enabledOnly=true
+            if (enabledOnly && !disabledClusterIds.isEmpty()) {
+                hosts.removeIf(h -> disabledClusterIds.contains(h.get("clusterId")));
+            }
+
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("hosts", hosts);
             return result;

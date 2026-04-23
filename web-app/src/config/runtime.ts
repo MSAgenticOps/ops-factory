@@ -9,6 +9,7 @@ interface RuntimeConfig {
     controlCenterSecretKey?: string
     knowledgeServiceUrl?: string
     businessIntelligenceServiceUrl?: string
+    skillMarketServiceUrl?: string
     logging?: {
         level?: WebappLoggingRuntimeConfig['level']
         consoleEnabled?: boolean
@@ -23,6 +24,7 @@ const GATEWAY_PATH_PREFIX = '/gateway'
 const CONTROL_CENTER_PATH_PREFIX = '/control-center'
 const KNOWLEDGE_PATH_PREFIX = '/knowledge'
 const BUSINESS_INTELLIGENCE_PATH_PREFIX = '/business-intelligence'
+const SKILL_MARKET_PATH_PREFIX = '/skill-market'
 
 function isLoopbackHost(host: string): boolean {
     return LOOPBACK_HOSTS.has(host)
@@ -100,6 +102,24 @@ function resolveBusinessIntelligenceServiceUrl(raw: string | undefined): string 
     }
 }
 
+function resolveSkillMarketServiceUrl(raw: string | undefined): string {
+    const pageHost = window.location.hostname || '127.0.0.1'
+    const pageProtocol = window.location.protocol || 'http:'
+    const fallbackOrigin = `${pageProtocol}//${pageHost}:8095`
+
+    if (!raw) return `${SKILL_MARKET_PATH_PREFIX}`
+
+    try {
+        const url = new URL(raw)
+        if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
+            url.hostname = pageHost
+        }
+        return `${url.origin}${SKILL_MARKET_PATH_PREFIX}`
+    } catch {
+        return `${fallbackOrigin}${SKILL_MARKET_PATH_PREFIX}`
+    }
+}
+
 const DEFAULT_SECRET_KEY = 'test'
 export let GATEWAY_URL = resolveGatewayUrl(undefined)
 export let GATEWAY_SECRET_KEY = DEFAULT_SECRET_KEY
@@ -107,6 +127,7 @@ export let CONTROL_CENTER_URL = resolveControlCenterUrl(undefined)
 export let CONTROL_CENTER_SECRET_KEY = DEFAULT_SECRET_KEY
 export let KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(undefined)
 export let BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(undefined)
+export let SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(undefined)
 
 function setRuntimeConfig(config: RuntimeConfig): void {
     GATEWAY_URL = resolveGatewayUrl(config.gatewayUrl)
@@ -115,6 +136,7 @@ function setRuntimeConfig(config: RuntimeConfig): void {
     CONTROL_CENTER_SECRET_KEY = config.controlCenterSecretKey || DEFAULT_SECRET_KEY
     KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(config.knowledgeServiceUrl)
     BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(config.businessIntelligenceServiceUrl)
+    SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(config.skillMarketServiceUrl)
     configureWebappLogging(config.logging)
 }
 

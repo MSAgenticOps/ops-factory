@@ -1,0 +1,22 @@
+server:
+  port: 8095
+
+skill-market:
+  cors-origin: "*"
+  runtime:
+    base-dir: "./data"
+  package:
+    max-upload-size-mb: 50
+    max-unpacked-size-mb: 200
+    max-file-count: 1000
+    max-single-file-size-mb: 20
+    expose-file-list: true
+    allow-scripts: true
+  logging:
+    access-log-enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.huawei.opsfactory.skillmarket: INFO
+    org.springframework: WARN

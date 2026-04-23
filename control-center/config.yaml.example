@@ -41,6 +41,17 @@ control-center:
       auth:
         type: "none"
 
+    - id: skill-market
+      name: Skill Market
+      base-url: "http://127.0.0.1:8095"
+      required: true
+      health-path: "/actuator/health"
+      ctl-component: "skill-market"
+      config-path: "skill-market/config.yaml"
+      log-path: "skill-market/logs/skill-market.log"
+      auth:
+        type: "none"
+
   langfuse:
     host: ""
     public-key: ""

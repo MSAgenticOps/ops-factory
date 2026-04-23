@@ -1,6 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeCard from './TypeCard'
+import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
+import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import type { ClusterType } from '../../../../types/host'
 
 type Props = {
@@ -17,9 +19,15 @@ type FormData = {
     description: string
     color: string
     knowledge: string
+    commandPrefix: string
+    envVariables: { key: string; value: string }[]
 }
 
-const emptyForm: FormData = { name: '', code: '', description: '', color: '#10b981', knowledge: '' }
+const emptyForm: FormData = {
+    name: '', code: '', description: '', color: '#10b981', knowledge: '',
+    commandPrefix: '',
+    envVariables: [],
+}
 
 export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
@@ -27,6 +35,13 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
     const [editing, setEditing] = useState<ClusterType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
     const [saving, setSaving] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
+
+    const filteredTypes = useMemo(() => {
+        if (!searchTerm.trim()) return clusterTypes
+        const term = searchTerm.toLowerCase()
+        return clusterTypes.filter(ct => ct.name.toLowerCase().includes(term))
+    }, [clusterTypes, searchTerm])
 
     const openCreate = useCallback(() => {
         setEditing(null)
@@ -42,6 +57,8 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
             description: item.description,
             color: item.color,
             knowledge: item.knowledge,
+            commandPrefix: item.commandPrefix ?? '',
+            envVariables: item.envVariables ?? [],
         })
         setShowModal(true)
     }, [])
@@ -73,6 +90,28 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
         }
     }, [onDelete, t])
 
+    const updateEnvVar = useCallback((index: number, field: 'key' | 'value', val: string) => {
+        setForm(f => {
+            const envVariables = [...f.envVariables]
+            envVariables[index] = { ...envVariables[index], [field]: val }
+            return { ...f, envVariables }
+        })
+    }, [])
+
+    const removeEnvVar = useCallback((index: number) => {
+        setForm(f => ({
+            ...f,
+            envVariables: f.envVariables.filter((_, i) => i !== index),
+        }))
+    }, [])
+
+    const addEnvVar = useCallback(() => {
+        setForm(f => ({
+            ...f,
+            envVariables: [...f.envVariables, { key: '', value: '' }],
+        }))
+    }, [])
+
     return (
         <div className="hr-type-tab-content">
             <div className="hr-type-tab-header">
@@ -91,16 +130,30 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
                     <div className="hr-type-tab-empty-text">{t('hostResource.noClusterTypes')}</div>
                 </div>
             ) : (
-                <div className="hr-type-def-grid">
-                    {clusterTypes.map(ct => (
-                        <TypeCard
-                            key={ct.id}
-                            item={ct}
-                            onEdit={openEdit}
-                            onDelete={handleDelete}
+                <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
+                        <ListSearchInput
+                            value={searchTerm}
+                            placeholder={t('hostResource.searchClusterTypes')}
+                            onChange={setSearchTerm}
                         />
-                    ))}
-                </div>
+                        {searchTerm && (
+                            <ListResultsMeta>
+                                {t('common.resultsFound', { count: filteredTypes.length })}
+                            </ListResultsMeta>
+                        )}
+                    </div>
+                    <div className="hr-type-def-grid">
+                        {filteredTypes.map(ct => (
+                            <TypeCard
+                                key={ct.id}
+                                item={ct}
+                                onEdit={openEdit}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                </>
             )}
 
             {/* Modal */}
@@ -157,6 +210,40 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
                                     placeholder={t('hostResource.knowledgeHint')}
                                     style={{ resize: 'vertical' }}
                                 />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">{t('hostResource.commandPrefix')}</label>
+                                <input
+                                    className="form-input"
+                                    value={form.commandPrefix}
+                                    onChange={e => setForm(f => ({ ...f, commandPrefix: e.target.value }))}
+                                    placeholder={t('hostResource.commandPrefixPlaceholder')}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">{t('hostResource.envVariables')}</label>
+                                {form.envVariables.map((ev, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                                        <input
+                                            className="form-input"
+                                            value={ev.key}
+                                            placeholder={t('hostResource.varKey')}
+                                            onChange={e => updateEnvVar(i, 'key', e.target.value)}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <input
+                                            className="form-input"
+                                            value={ev.value}
+                                            placeholder={t('hostResource.varValue')}
+                                            onChange={e => updateEnvVar(i, 'value', e.target.value)}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button className="btn btn-secondary btn-sm" onClick={() => removeEnvVar(i)}>×</button>
+                                    </div>
+                                ))}
+                                <button className="btn btn-secondary btn-sm" onClick={addEnvVar}>
+                                    + {t('hostResource.addEnvVar')}
+                                </button>
                             </div>
                         </div>
                         <div className="modal-footer">

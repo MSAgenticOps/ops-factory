@@ -92,6 +92,8 @@ public class ClusterTypeService {
         ct.put("description", body.getOrDefault("description", ""));
         ct.put("color", body.getOrDefault("color", "#10b981"));
         ct.put("knowledge", body.getOrDefault("knowledge", ""));
+        ct.put("commandPrefix", body.getOrDefault("commandPrefix", null));
+        ct.put("envVariables", body.getOrDefault("envVariables", null));
         ct.put("createdAt", now);
         ct.put("updatedAt", now);
 
@@ -121,6 +123,12 @@ public class ClusterTypeService {
         }
         if (body.containsKey("knowledge")) {
             ct.put("knowledge", body.get("knowledge"));
+        }
+        if (body.containsKey("commandPrefix")) {
+            ct.put("commandPrefix", body.get("commandPrefix"));
+        }
+        if (body.containsKey("envVariables")) {
+            ct.put("envVariables", body.get("envVariables"));
         }
 
         ct.put("updatedAt", Instant.now().toString());

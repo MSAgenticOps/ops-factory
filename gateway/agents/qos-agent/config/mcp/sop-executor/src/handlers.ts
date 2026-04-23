@@ -337,7 +337,7 @@ export async function handleListSystemResources(params?: { keyword?: string; lim
     ? Math.max(1, Math.min(200, Math.floor(rawLimit)))
     : 50
 
-  const data = await gw<{ groups: Record<string, unknown>[] }>(`${API_PREFIX}/host-groups`)
+  const data = await gw<{ groups: Record<string, unknown>[] }>(`${API_PREFIX}/host-groups`, { enabledOnly: 'true' })
   const allGroups = data.groups ?? []
   const systems = allGroups.filter(g => g.parentId == null)
 
@@ -470,7 +470,7 @@ export async function handleQueryHostsByScope(params?: {
   // Resolve groupId from groupName
   let groupId: string | undefined
   if (groupName) {
-    const treeData = await gw<Record<string, unknown>>(`${API_PREFIX}/host-groups/tree`)
+    const treeData = await gw<Record<string, unknown>>(`${API_PREFIX}/host-groups/tree`, { enabledOnly: 'true' })
     const tree = (treeData.tree ?? treeData) as Record<string, unknown>[]
     const treeArray = Array.isArray(tree) ? tree : [tree]
     const matchedGroup = findGroupByName(treeArray, groupName)
@@ -484,6 +484,7 @@ export async function handleQueryHostsByScope(params?: {
   if (clusterName || clusterType) {
     const queryParams: Record<string, string> = {}
     if (clusterType) queryParams.type = clusterType
+    queryParams.enabledOnly = 'true'
     const clusterData = await gw<{ clusters: Record<string, unknown>[] }>(
       `${API_PREFIX}/clusters`,
       queryParams,
@@ -524,8 +525,7 @@ export async function handleQueryHostsByScope(params?: {
   // If we have a clusterType but couldn't resolve a clusterId,
   // and also have no groupId, we need to get all hosts and filter by cluster type
   if (!clusterId && !groupId && clusterType) {
-    const data = await gw<{ hosts: Record<string, unknown>[] }>(`${API_PREFIX}/hosts`)
-    // Filter hosts whose tags include the clusterType
+    const data = await gw<{ hosts: Record<string, unknown>[] }>(`${API_PREFIX}/hosts`, { enabledOnly: 'true' })
     const filtered = (data.hosts ?? []).filter((h: Record<string, unknown>) => {
       const tags = (h.tags ?? []) as string[]
       return tags.some(t => t.toLowerCase() === clusterType.toLowerCase())
@@ -549,7 +549,7 @@ export async function handleQueryHostsByScope(params?: {
     }, null, 2)
   }
 
-  const data = await gw<{ hosts: Record<string, unknown>[] }>(`${API_PREFIX}/hosts`, hostParams)
+  const data = await gw<{ hosts: Record<string, unknown>[] }>(`${API_PREFIX}/hosts`, { ...hostParams, enabledOnly: 'true' })
   return JSON.stringify({
     success: true,
     reason,

@@ -11,6 +11,7 @@ export type TreeNode = {
     subtitle?: string
     children?: TreeNode[]
     raw?: HostGroup | Cluster | BusinessService
+    inheritedDisabled?: boolean
 }
 
 type Props = {
@@ -45,13 +46,14 @@ export default function ResourceTree({ tree, selectedId, selectedType, onSelect,
                     onSelect={onSelect}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    inheritedDisabled={false}
                 />
             ))}
         </div>
     )
 }
 
-function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit, onDelete }: {
+function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit, onDelete, inheritedDisabled }: {
     node: TreeNode
     depth: number
     selectedId: string | null
@@ -59,10 +61,13 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
     onSelect: (id: string, type: TreeNodeType) => void
     onEdit?: (id: string, type: TreeNodeType) => void
     onDelete?: (id: string, type: TreeNodeType) => void
+    inheritedDisabled: boolean
 }) {
     const isSelected = selectedId === node.id && selectedType === node.type
     const hasChildren = node.children && node.children.length > 0
     const [expanded, setExpanded] = useState(true)
+
+    const isDisabled = inheritedDisabled === true
 
     const handleClick = () => {
         onSelect(node.id, node.type)
@@ -82,7 +87,7 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
     return (
         <div className="hr-tree-node-wrapper">
             <div
-                className={`hr-tree-node ${isSelected ? 'hr-tree-node-selected' : ''}`}
+                className={`hr-tree-node ${isSelected ? 'hr-tree-node-selected' : ''} ${isDisabled ? 'hr-tree-node-disabled' : ''}`}
                 style={{ paddingLeft: depth * 16 + 8 }}
                 onClick={handleClick}
             >
@@ -130,6 +135,7 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
                             onSelect={onSelect}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            inheritedDisabled={isDisabled}
                         />
                     ))}
                 </div>

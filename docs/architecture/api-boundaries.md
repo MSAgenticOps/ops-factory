@@ -14,6 +14,8 @@ All browser and SDK traffic enters through the gateway. Preserve the gateway as 
 ## File and Config APIs
 - File access must continue to flow through gateway services/controllers rather than direct filesystem exposure from the UI.
 - Agent config CRUD should remain centralized in gateway services and controller routes.
+- Skill package catalog operations belong to `skill-market` under `/skill-market/*`.
+- Installing a market skill into an agent belongs to `gateway` under `/gateway/agents/{agentId}/skills/install`, because it writes agent configuration.
 
 ## Review Triggers
 Request explicit cross-team review when a change affects:

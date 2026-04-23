@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,13 +24,19 @@ public class RemoteExecutionService {
     private final HostService hostService;
     private final CommandWhitelistService commandWhitelistService;
     private final GatewayProperties properties;
+    private final ClusterService clusterService;
+    private final ClusterTypeService clusterTypeService;
 
     public RemoteExecutionService(HostService hostService,
                                   CommandWhitelistService commandWhitelistService,
-                                  GatewayProperties properties) {
+                                  GatewayProperties properties,
+                                  ClusterService clusterService,
+                                  ClusterTypeService clusterTypeService) {
         this.hostService = hostService;
         this.commandWhitelistService = commandWhitelistService;
         this.properties = properties;
+        this.clusterService = clusterService;
+        this.clusterTypeService = clusterTypeService;
     }
 
     /**
@@ -65,8 +72,55 @@ public class RemoteExecutionService {
         String authType = (String) host.get("authType");
         String credential = (String) host.get("credential");
 
-        // Step 2: Validate command against whitelist
-        List<String> rejected = commandWhitelistService.validateCommand(command);
+        // Step 2: Resolve ClusterType from Host -> Cluster -> ClusterType
+        String commandPrefix = "";
+        Map<String, String> envVars = new LinkedHashMap<>();
+        Object clusterIdObj = host.get("clusterId");
+        if (clusterIdObj != null) {
+            try {
+                Map<String, Object> cluster = clusterService.getCluster(clusterIdObj.toString());
+                String typeName = cluster != null ? (String) cluster.get("type") : null;
+                if (typeName != null) {
+                    List<Map<String, Object>> allTypes = clusterTypeService.listClusterTypes();
+                    for (Map<String, Object> ct : allTypes) {
+                        if (typeName.equals(ct.get("name"))) {
+                            Object prefix = ct.get("commandPrefix");
+                            if (prefix != null && !prefix.toString().isBlank()) {
+                                commandPrefix = prefix.toString().trim();
+                            }
+                            Object vars = ct.get("envVariables");
+                            if (vars instanceof List<?> list) {
+                                for (Object item : list) {
+                                    if (item instanceof Map<?, ?> m) {
+                                        String k = m.get("key") != null ? m.get("key").toString() : null;
+                                        String v = m.get("value") != null ? m.get("value").toString() : "";
+                                        if (k != null && !k.isEmpty()) envVars.put(k, v);
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Could not resolve cluster type for host {}: {}", hostId, e.getMessage());
+            }
+        }
+
+        // Step 2a: Replace ${VAR} and $VAR placeholders (sorted longest key first to avoid partial matches)
+        String effectiveCommand = command;
+        List<String> sortedKeys = new ArrayList<>(envVars.keySet());
+        sortedKeys.sort((a, b) -> b.length() - a.length());
+        for (String key : sortedKeys) {
+            String value = envVars.get(key);
+            effectiveCommand = effectiveCommand.replace("${" + key + "}", value);
+            // Also replace $VAR when not followed by a valid identifier char
+            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key) + "(?![A-Za-z0-9_])",
+                    java.util.regex.Matcher.quoteReplacement(value));
+        }
+
+        // Step 2b: Validate resolved command against whitelist
+        List<String> rejected = commandWhitelistService.validateCommand(effectiveCommand);
         if (!rejected.isEmpty()) {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("hostId", hostId);
@@ -79,6 +133,12 @@ public class RemoteExecutionService {
             result.put("rejectedCommands", rejected);
             result.put("duration", 0L);
             return result;
+        }
+
+        // Step 2c: Apply command prefix
+        // Wrap in bash -c so the prefix applies to the entire command chain (&&, ||, ;)
+        if (!commandPrefix.isEmpty()) {
+            effectiveCommand = commandPrefix + " bash -c " + singleQuote(effectiveCommand);
         }
 
         // Step 3: Execute via SSH
@@ -101,7 +161,7 @@ public class RemoteExecutionService {
             session.connect(5000);
 
             channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("bash -l -c " + singleQuote(command));
+            channel.setCommand("bash -l -c " + singleQuote(effectiveCommand));
 
             InputStream in = channel.getInputStream();
             InputStream err = channel.getExtInputStream();
@@ -166,6 +226,8 @@ public class RemoteExecutionService {
             result.put("hostIp", hostname);
             result.put("username", username);
             result.put("hostName", hostName);
+            result.put("command", command);
+            result.put("effectiveCommand", effectiveCommand);
             result.put("exitCode", exitCode);
             result.put("output", output);
             result.put("error", errorOutput);
