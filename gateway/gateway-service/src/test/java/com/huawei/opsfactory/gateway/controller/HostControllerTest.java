@@ -4,6 +4,7 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.ClusterService;
+import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,6 +43,9 @@ public class HostControllerTest {
 
     @MockBean
     private ClusterService clusterService;
+
+    @MockBean
+    private HostGroupService hostGroupService;
 
     // ── listHosts ────────────────────────────────────────────────
 

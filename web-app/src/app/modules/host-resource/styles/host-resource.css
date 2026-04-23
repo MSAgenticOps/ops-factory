@@ -188,6 +188,12 @@
     display: flex;
 }
 
+/* ── Disabled node visual ────────────────────────────────── */
+
+.hr-tree-node-disabled {
+    opacity: 0.45;
+}
+
 .hr-tree-node-action {
     display: flex;
     align-items: center;

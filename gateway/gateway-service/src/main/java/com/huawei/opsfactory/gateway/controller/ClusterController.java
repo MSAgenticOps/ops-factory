@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.ClusterService;
+import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import reactor.core.scheduler.Schedulers;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/gateway/clusters")
@@ -24,20 +26,30 @@ public class ClusterController {
 
     private final ClusterService clusterService;
     private final HostService hostService;
+    private final HostGroupService hostGroupService;
 
-    public ClusterController(ClusterService clusterService, HostService hostService) {
+    public ClusterController(ClusterService clusterService, HostService hostService,
+                             HostGroupService hostGroupService) {
         this.clusterService = clusterService;
         this.hostService = hostService;
+        this.hostGroupService = hostGroupService;
     }
 
     @GetMapping
     public Mono<Map<String, Object>> listClusters(
             @RequestParam(value = "groupId", required = false) String groupId,
             @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> clusters = clusterService.listClusters(groupId, type);
+            if (enabledOnly) {
+                List<Map<String, Object>> allGroups = hostGroupService.listGroups();
+                Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(allGroups);
+                clusters.removeIf(c -> Boolean.FALSE.equals(c.get("enabled"))
+                        || disabledGroupIds.contains(c.get("groupId")));
+            }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("clusters", clusters);
             return result;

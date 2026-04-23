@@ -21,7 +21,18 @@ import BusinessTypeTab from '../components/BusinessTypeTab'
 import { SopsTab } from '../components/SopsTab'
 import { WhitelistTab } from '../components/WhitelistTab'
 import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService } from '../../../../types/host'
+import { parseCsvTable } from '../../../../utils/officePreview'
 import '../styles/host-resource.css'
+
+const CSV_COLUMNS = ['name', 'ip', 'port', 'username', 'authType', 'credential', 'hostname', 'businessIp', 'os', 'location', 'business', 'purpose', 'tags', 'description'] as const
+
+function escapeCsvValue(value: unknown): string {
+    const str = value == null ? '' : String(value)
+    if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+        return '"' + str.replace(/"/g, '""') + '"'
+    }
+    return str
+}
 
 type SelectedNode = {
     id: string
@@ -53,6 +64,8 @@ export default function HostResourcePage() {
     const [testingId, setTestingId] = useState<string | null>(null)
     const [testResults, setTestResults] = useState<Record<string, { ok: boolean; msg: string }>>({})
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const csvFileInputRef = useRef<HTMLInputElement>(null)
+    const [csvImporting, setCsvImporting] = useState(false)
 
     // Data hooks
     const { groups, fetchGroups, createGroup, updateGroup, deleteGroup } = useHostGroups()
@@ -200,10 +213,24 @@ export default function HostResourcePage() {
 
         // Root groups (no parentId) become top-level tree nodes
         const rootGroups = groups.filter(g => !g.parentId)
-        return rootGroups.map(g => {
+        const tree = rootGroups.map(g => {
             const node = buildGroupNode(g)
             return { ...node, type: 'group' as TreeNodeType }
         })
+
+        // Mark inheritedDisabled: a node is visually disabled if it or any ancestor group has enabled=false
+        function markInherited(nodes: TreeNode[], ancestorOff: boolean) {
+            for (const n of nodes) {
+                const isGroup = n.type === 'group' || n.type === 'subgroup'
+                const groupEnabled = isGroup && n.raw ? (n.raw as HostGroup).enabled !== false : true
+                const effective = ancestorOff || !groupEnabled
+                n.inheritedDisabled = effective
+                if (n.children) markInherited(n.children, effective)
+            }
+        }
+        markInherited(tree, false)
+
+        return tree
     }, [groups, clusters, allHosts, businessServices, t])
 
     // Build cluster lookup for HostCard
@@ -381,6 +408,102 @@ export default function HostResourcePage() {
         a.click()
         URL.revokeObjectURL(url)
     }, [groups, clusters, businessServices, allHosts, hostRelations, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops])
+
+    const handleCsvExport = useCallback(() => {
+        const header = CSV_COLUMNS.join(',')
+        const rows = hosts.map(h => {
+            const row = CSV_COLUMNS.map(col => {
+                if (col === 'credential') return ''
+                const val = (h as any)[col]
+                if (col === 'tags' && Array.isArray(val)) return escapeCsvValue(val.join(';'))
+                return escapeCsvValue(val)
+            })
+            return row.join(',')
+        })
+        const csv = '\uFEFF' + header + '\n' + rows.join('\n')
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        const clusterName = selected?.type === 'cluster' ? clusters.find(c => c.id === selected.id)?.name || selected.id : 'hosts'
+        a.download = `${clusterName}-hosts-${new Date().toISOString().slice(0, 10)}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }, [hosts, selected, clusters])
+
+    const handleCsvImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (selected?.type !== 'cluster') {
+            alert(t('hostResource.csvImportNoCluster'))
+            if (csvFileInputRef.current) csvFileInputRef.current.value = ''
+            return
+        }
+
+        try {
+            const text = await file.text()
+            // Strip BOM if present
+            const cleanText = text.replace(/^\uFEFF/, '')
+            const table = parseCsvTable(cleanText, ',')
+            if (table.length < 2) {
+                alert(t('hostResource.csvRequiredColumns'))
+                return
+            }
+
+            const headers = table[0].map(h => h.trim().toLowerCase())
+            const requiredCols = ['name', 'ip', 'username']
+            const missing = requiredCols.filter(c => !headers.includes(c))
+            if (missing.length > 0) {
+                alert(t('hostResource.csvRequiredColumns'))
+                return
+            }
+
+            setCsvImporting(true)
+            let success = 0
+            let failed = 0
+
+            for (let i = 1; i < table.length; i++) {
+                const row = table[i]
+                if (row.every(cell => !cell.trim())) continue // skip blank rows
+
+                const rowObj: Record<string, string> = {}
+                headers.forEach((h, idx) => { rowObj[h] = (row[idx] || '').trim() })
+
+                try {
+                    const req: HostCreateRequest = {
+                        name: rowObj.name,
+                        ip: rowObj.ip,
+                        port: rowObj.port ? parseInt(rowObj.port, 10) : 22,
+                        username: rowObj.username,
+                        authType: (rowObj.authtype === 'key' ? 'key' : 'password') as 'password' | 'key',
+                        credential: rowObj.credential || '',
+                        hostname: rowObj.hostname || undefined,
+                        businessIp: rowObj.businessip || undefined,
+                        os: rowObj.os || undefined,
+                        location: rowObj.location || undefined,
+                        business: rowObj.business || undefined,
+                        clusterId: selected.id,
+                        purpose: rowObj.purpose || undefined,
+                        tags: rowObj.tags ? rowObj.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
+                        description: rowObj.description || undefined,
+                    }
+                    await createHost(req)
+                    success++
+                } catch {
+                    failed++
+                }
+            }
+
+            alert(t('hostResource.csvImportSuccess', { success, failed }))
+            await fetchHosts(selected.id, undefined)
+        } catch (err) {
+            alert(t('hostResource.importFailed', { error: err instanceof Error ? err.message : String(err) }))
+        } finally {
+            setCsvImporting(false)
+            if (csvFileInputRef.current) csvFileInputRef.current.value = ''
+        }
+    }, [t, selected, createHost, fetchHosts])
 
     const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -581,21 +704,34 @@ export default function HostResourcePage() {
 
                         {/* Right: Host Cards */}
                         <div className="hr-cards-area">
+                            {selected?.type === 'cluster' && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--spacing-2, 8px)', marginBottom: 'var(--spacing-2, 8px)' }}>
+                                    <button className="btn btn-secondary btn-sm" onClick={handleCsvExport} disabled={hosts.length === 0}>
+                                        {t('hostResource.csvExport')}
+                                    </button>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => csvFileInputRef.current?.click()} disabled={csvImporting}>
+                                        {csvImporting ? t('hostResource.csvImporting') : t('hostResource.csvImport')}
+                                    </button>
+                                    <input ref={csvFileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
+                                </div>
+                            )}
                             {hosts.length === 0 ? (
                                 <div className="hr-empty">{t('hostResource.noHosts')}</div>
                             ) : (
                                 <>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
-                                        <ListSearchInput
-                                            value={hostSearch}
-                                            placeholder={t('hostResource.searchHosts')}
-                                            onChange={setHostSearch}
-                                        />
-                                        {hostSearch && (
-                                            <ListResultsMeta>
-                                                {t('common.resultsFound', { count: filteredHosts.length })}
-                                            </ListResultsMeta>
-                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2, 8px)', flex: 1 }}>
+                                            <ListSearchInput
+                                                value={hostSearch}
+                                                placeholder={t('hostResource.searchHosts')}
+                                                onChange={setHostSearch}
+                                            />
+                                            {hostSearch && (
+                                                <ListResultsMeta>
+                                                    {t('common.resultsFound', { count: filteredHosts.length })}
+                                                </ListResultsMeta>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="hr-host-grid">
                                         {paginatedHosts.map(host => (

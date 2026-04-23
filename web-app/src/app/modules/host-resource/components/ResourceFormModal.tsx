@@ -56,6 +56,7 @@ export default function ResourceFormModal({
     const [groupParentId, setGroupParentId] = useState(editingItem?.type === 'group' ? (editingItem.data.parentId ?? '') : '')
     const [groupDescription, setGroupDescription] = useState(editingItem?.type === 'group' ? editingItem.data.description : '')
     const [groupCode, setGroupCode] = useState(editingItem?.type === 'group' ? (editingItem.data.code ?? '') : '')
+    const [groupEnabled, setGroupEnabled] = useState(editingItem?.type === 'group' ? (editingItem.data.enabled !== false) : true)
 
     // ── Cluster form state ──
     const [clusterName, setClusterName] = useState(editingItem?.type === 'cluster' ? editingItem.data.name : '')
@@ -111,6 +112,13 @@ export default function ResourceFormModal({
     const [editingRelId, setEditingRelId] = useState<string | null>(null)
     const [editRelTargetId, setEditRelTargetId] = useState('')
     const [editRelDesc, setEditRelDesc] = useState('')
+
+    // Sync groupEnabled when editingItem changes (e.g. reopening same group after save)
+    useEffect(() => {
+        if (editingItem?.type === 'group') {
+            setGroupEnabled(editingItem.data.enabled !== false)
+        }
+    }, [editingItem])
 
     // Fetch relations for the host being edited
     useEffect(() => {
@@ -262,7 +270,7 @@ export default function ResourceFormModal({
         try {
             if (selectedType === 'group') {
                 if (!groupName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
-                await onSaveGroup({ name: groupName.trim(), code: groupCode.trim(), parentId: groupParentId || null, description: groupDescription.trim() })
+                await onSaveGroup({ name: groupName.trim(), code: groupCode.trim(), parentId: groupParentId || null, description: groupDescription.trim(), enabled: groupEnabled })
             } else if (selectedType === 'cluster') {
                 if (!clusterName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
                 await onSaveCluster({
@@ -316,7 +324,7 @@ export default function ResourceFormModal({
         } finally {
             setSaving(false)
         }
-    }, [selectedType, groupName, groupParentId, groupDescription, groupCode, clusterName, clusterType, clusterPurpose,
+    }, [selectedType, groupName, groupParentId, groupDescription, groupCode, groupEnabled, clusterName, clusterType, clusterPurpose,
         clusterGroupId, clusterDescription, hostName, hostname, hostIp, hostBusinessIp, hostPort, hostOs, hostLocation,
         hostUsername, hostAuthType, hostCredential, hostClusterId, hostPurpose, hostBusiness,
         hostDescription, hostCustomAttributes, sourceHostId, targetHostId, relationDescription, sourceType,
@@ -403,6 +411,21 @@ export default function ResourceFormModal({
                                         <label className="form-label">{t('hostResource.description')}</label>
                                         <input className="form-input" value={groupDescription} onChange={e => setGroupDescription(e.target.value)} />
                                     </div>
+                                    {editingItem?.type === 'group' && (
+                                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <label className="form-label" style={{ marginBottom: 0 }}>{t('hostResource.enabled')}</label>
+                                            <button
+                                                type="button"
+                                                className={`sop-workflow-switch ${groupEnabled ? 'is-on' : ''}`}
+                                                onClick={() => setGroupEnabled(prev => !prev)}
+                                            >
+                                                <span className="sop-workflow-switch-thumb" />
+                                            </button>
+                                            <span style={{ fontSize: '0.75rem', color: groupEnabled ? 'var(--color-success, #10b981)' : 'var(--text-secondary, #64748b)' }}>
+                                                {groupEnabled ? t('hostResource.enabledOn') : t('hostResource.enabledOff')}
+                                            </span>
+                                        </div>
+                                    )}
                                 </>
                             )}
 

@@ -2061,6 +2061,12 @@
     "importSuccess": "Import completed: {{groups}} groups, {{clusters}} clusters, {{hosts}} hosts, {{relations}} relations, {{sops}} SOPs",
     "importFailed": "Import failed: {{error}}",
     "invalidFile": "Invalid file format",
+    "csvExport": "Export Hosts",
+    "csvImport": "Import Hosts",
+    "csvImporting": "Importing hosts...",
+    "csvImportSuccess": "CSV import completed: {{success}} hosts created, {{failed}} failed",
+    "csvImportNoCluster": "Please select a cluster before importing hosts",
+    "csvRequiredColumns": "CSV must contain at least: name, ip, username",
     "noDataToExport": "No data to export",
     "tabOverview": "Overview",
     "tabClusterTypes": "Cluster Types",
@@ -2094,6 +2100,17 @@
     "searchClusterTypes": "Search cluster types...",
     "searchBusinessTypes": "Search business types...",
     "searchSops": "Search SOPs...",
-    "searchWhitelist": "Search commands..."
+    "searchWhitelist": "Search commands...",
+    "commandPrefix": "Command Prefix",
+    "commandPrefixPlaceholder": "Optional, e.g. sudo -u nslb",
+    "envVariables": "Environment Variables",
+    "addEnvVar": "Add Variable",
+    "varKey": "Variable Name",
+    "varValue": "Value",
+    "toggleEnabled": "Toggle enabled",
+    "disabledByParent": "Disabled by parent group",
+    "enabled": "Enabled",
+    "enabledOn": "Enabled",
+    "enabledOff": "Disabled"
   }
 }
