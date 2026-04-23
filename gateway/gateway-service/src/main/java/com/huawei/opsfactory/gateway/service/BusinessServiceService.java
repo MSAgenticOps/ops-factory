@@ -139,6 +139,7 @@ public class BusinessServiceService {
         bs.put("priority", body.getOrDefault("priority", ""));
         bs.put("contactInfo", body.getOrDefault("contactInfo", ""));
         bs.put("businessTypeId", body.getOrDefault("businessTypeId", null));
+        bs.put("enabled", body.getOrDefault("enabled", true));
         bs.put("createdAt", now);
         bs.put("updatedAt", now);
 
@@ -181,6 +182,9 @@ public class BusinessServiceService {
         }
         if (body.containsKey("businessTypeId")) {
             bs.put("businessTypeId", body.get("businessTypeId"));
+        }
+        if (body.containsKey("enabled")) {
+            bs.put("enabled", body.get("enabled"));
         }
 
         bs.put("updatedAt", Instant.now().toString());

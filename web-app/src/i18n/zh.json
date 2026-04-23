@@ -2061,6 +2061,12 @@
     "importSuccess": "导入完成：{{groups}} 个环境组，{{clusters}} 个集群，{{hosts}} 台主机，{{relations}} 条关系，{{sops}} 个SOP",
     "importFailed": "导入失败：{{error}}",
     "invalidFile": "文件格式无效",
+    "csvExport": "导出主机",
+    "csvImport": "导入主机",
+    "csvImporting": "正在导入主机...",
+    "csvImportSuccess": "CSV导入完成：成功 {{success}} 台主机，失败 {{failed}} 台",
+    "csvImportNoCluster": "请先选择一个集群再导入主机",
+    "csvRequiredColumns": "CSV必须包含至少：name, ip, username",
     "noDataToExport": "暂无数据可导出",
     "tabOverview": "总览",
     "tabClusterTypes": "集群类型",
@@ -2094,6 +2100,17 @@
     "searchClusterTypes": "搜索集群类型...",
     "searchBusinessTypes": "搜索业务类型...",
     "searchSops": "搜索SOP...",
-    "searchWhitelist": "搜索命令..."
+    "searchWhitelist": "搜索命令...",
+    "commandPrefix": "命令前缀",
+    "commandPrefixPlaceholder": "选填，如 sudo -u nslb",
+    "envVariables": "环境变量",
+    "addEnvVar": "添加变量",
+    "varKey": "变量名",
+    "varValue": "变量值",
+    "toggleEnabled": "切换启用状态",
+    "disabledByParent": "被父级组禁用",
+    "enabled": "启用状态",
+    "enabledOn": "已启用",
+    "enabledOff": "已禁用"
   }
 }

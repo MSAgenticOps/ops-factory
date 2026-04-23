@@ -19,9 +19,15 @@ type FormData = {
     description: string
     color: string
     knowledge: string
+    commandPrefix: string
+    envVariables: { key: string; value: string }[]
 }
 
-const emptyForm: FormData = { name: '', code: '', description: '', color: '#10b981', knowledge: '' }
+const emptyForm: FormData = {
+    name: '', code: '', description: '', color: '#10b981', knowledge: '',
+    commandPrefix: '',
+    envVariables: [],
+}
 
 export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
@@ -51,6 +57,8 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
             description: item.description,
             color: item.color,
             knowledge: item.knowledge,
+            commandPrefix: item.commandPrefix ?? '',
+            envVariables: item.envVariables ?? [],
         })
         setShowModal(true)
     }, [])
@@ -81,6 +89,28 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
             }
         }
     }, [onDelete, t])
+
+    const updateEnvVar = useCallback((index: number, field: 'key' | 'value', val: string) => {
+        setForm(f => {
+            const envVariables = [...f.envVariables]
+            envVariables[index] = { ...envVariables[index], [field]: val }
+            return { ...f, envVariables }
+        })
+    }, [])
+
+    const removeEnvVar = useCallback((index: number) => {
+        setForm(f => ({
+            ...f,
+            envVariables: f.envVariables.filter((_, i) => i !== index),
+        }))
+    }, [])
+
+    const addEnvVar = useCallback(() => {
+        setForm(f => ({
+            ...f,
+            envVariables: [...f.envVariables, { key: '', value: '' }],
+        }))
+    }, [])
 
     return (
         <div className="hr-type-tab-content">
@@ -180,6 +210,40 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
                                     placeholder={t('hostResource.knowledgeHint')}
                                     style={{ resize: 'vertical' }}
                                 />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">{t('hostResource.commandPrefix')}</label>
+                                <input
+                                    className="form-input"
+                                    value={form.commandPrefix}
+                                    onChange={e => setForm(f => ({ ...f, commandPrefix: e.target.value }))}
+                                    placeholder={t('hostResource.commandPrefixPlaceholder')}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">{t('hostResource.envVariables')}</label>
+                                {form.envVariables.map((ev, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                                        <input
+                                            className="form-input"
+                                            value={ev.key}
+                                            placeholder={t('hostResource.varKey')}
+                                            onChange={e => updateEnvVar(i, 'key', e.target.value)}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <input
+                                            className="form-input"
+                                            value={ev.value}
+                                            placeholder={t('hostResource.varValue')}
+                                            onChange={e => updateEnvVar(i, 'value', e.target.value)}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button className="btn btn-secondary btn-sm" onClick={() => removeEnvVar(i)}>×</button>
+                                    </div>
+                                ))}
+                                <button className="btn btn-secondary btn-sm" onClick={addEnvVar}>
+                                    + {t('hostResource.addEnvVar')}
+                                </button>
                             </div>
                         </div>
                         <div className="modal-footer">

@@ -15,9 +15,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -161,6 +163,7 @@ public class HostGroupService {
         group.put("parentId", body.get("parentId"));
         group.put("description", body.getOrDefault("description", ""));
         group.put("code", body.getOrDefault("code", ""));
+        group.put("enabled", body.getOrDefault("enabled", true));
         group.put("createdAt", now);
         group.put("updatedAt", now);
 
@@ -187,6 +190,9 @@ public class HostGroupService {
         }
         if (body.containsKey("code")) {
             group.put("code", body.get("code"));
+        }
+        if (body.containsKey("enabled")) {
+            group.put("enabled", body.get("enabled"));
         }
 
         group.put("updatedAt", Instant.now().toString());
@@ -270,6 +276,31 @@ public class HostGroupService {
     }
 
     // ── File I/O Helpers ─────────────────────────────────────────────
+
+    /**
+     * Compute the set of group IDs that are effectively disabled, either directly
+     * or by inheritance from a disabled ancestor. Uses fixed-point iteration to
+     * handle arbitrary nesting depth.
+     */
+    public Set<String> getDisabledGroupIds(List<Map<String, Object>> groups) {
+        Set<String> disabled = new HashSet<>();
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (Map<String, Object> g : groups) {
+                String id = (String) g.get("id");
+                if (disabled.contains(id)) continue;
+                boolean selfOff = Boolean.FALSE.equals(g.get("enabled"));
+                String pid = (String) g.get("parentId");
+                boolean parentOff = pid != null && disabled.contains(pid);
+                if (selfOff || parentOff) {
+                    disabled.add(id);
+                    changed = true;
+                }
+            }
+        }
+        return disabled;
+    }
 
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {

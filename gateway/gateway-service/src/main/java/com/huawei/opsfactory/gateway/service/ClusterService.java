@@ -125,6 +125,7 @@ public class ClusterService {
         cluster.put("purpose", body.getOrDefault("purpose", ""));
         cluster.put("groupId", body.getOrDefault("groupId", null));
         cluster.put("description", body.getOrDefault("description", ""));
+        cluster.put("enabled", body.getOrDefault("enabled", true));
         cluster.put("createdAt", now);
         cluster.put("updatedAt", now);
 
@@ -154,6 +155,9 @@ public class ClusterService {
         }
         if (body.containsKey("description")) {
             cluster.put("description", body.get("description"));
+        }
+        if (body.containsKey("enabled")) {
+            cluster.put("enabled", body.get("enabled"));
         }
 
         cluster.put("updatedAt", Instant.now().toString());

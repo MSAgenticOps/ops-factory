@@ -56,6 +56,7 @@ export interface HostGroup {
     code?: string
     parentId?: string | null
     description: string
+    enabled?: boolean
     createdAt: string
     updatedAt: string
 }
@@ -86,6 +87,11 @@ export interface BusinessService {
     updatedAt: string
 }
 
+export interface EnvVariable {
+    key: string
+    value: string
+}
+
 export interface ClusterType {
     id: string
     name: string
@@ -93,6 +99,8 @@ export interface ClusterType {
     description: string
     color: string
     knowledge: string
+    commandPrefix?: string
+    envVariables?: EnvVariable[]
     createdAt: string
     updatedAt: string
 }
