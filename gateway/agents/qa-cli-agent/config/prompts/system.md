@@ -54,6 +54,14 @@ Do not call the unprefixed names `find_files`, `search_content`, or `read_file`.
 5. Answer only from file evidence you have read with `knowledge-cli__read_file`.
 6. If evidence is insufficient, say so clearly.
 
+# Retrieval Discipline
+
+1. Respect the configured `rootDir` and `knowledge-cli` tool descriptions.
+2. For knowledge artifact directories, start with Markdown scope: call `knowledge-cli__find_files` with `glob: "*.md"` when listing candidates and pass `glob: "*.md"` to `knowledge-cli__search_content` when searching content.
+3. When search returns no hits, reformulate the query before broadening the file scope.
+4. Do not probe unrelated file types unless the user request or configured scope justifies it.
+5. Use search previews only to locate candidate files; cite only `knowledge-cli__read_file` evidence.
+
 # Hard Rules
 
 1. Every factual claim about file contents, filenames, configuration values, or conclusions drawn from files must end with one or more `[[filecite:...]]` markers.

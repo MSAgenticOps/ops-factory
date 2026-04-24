@@ -62,7 +62,7 @@ export const tools = [
         },
         glob: {
           type: 'string',
-          description: 'Optional file name glob such as *.yaml or *.log.',
+          description: 'Optional file name glob. Prefer the configured knowledge artifact type before probing unrelated file types.',
         },
         limit: {
           type: 'number',
@@ -86,6 +86,10 @@ export const tools = [
         pathPrefix: {
           type: 'string',
           description: 'Optional relative subdirectory under rootDir.',
+        },
+        glob: {
+          type: 'string',
+          description: 'Optional file name glob to limit searched files, for example *.md for knowledge documents.',
         },
         regex: {
           type: 'boolean',
@@ -132,6 +136,25 @@ export const tools = [
 function clamp(value: unknown, min: number, max: number, fallback: number): number {
   const number = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : fallback
   return Math.max(min, Math.min(max, number))
+}
+
+function normalizeGlob(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null
+  }
+
+  const glob = value.trim()
+  const segments = glob.split(/[\\/]+/)
+  if (
+    glob.includes('\0') ||
+    glob.startsWith('!') ||
+    path.isAbsolute(glob) ||
+    segments.includes('..')
+  ) {
+    throw new Error(`Invalid glob pattern: ${glob}`)
+  }
+
+  return glob
 }
 
 export function extractConfiguredRootDir(content: string): string | null {
@@ -362,6 +385,7 @@ export async function handleSearchContent(args: ToolArgs = {}): Promise<string> 
 
   const scope = await resolveScopePath(args.pathPrefix)
   const limit = clamp(args.limit, 1, MAX_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT)
+  const glob = normalizeGlob(args.glob)
 
   if (!scope.exists) {
     return JSON.stringify({ rootDir: scope.rootDir, hits: [], total: 0, engine: 'none' }, null, 2)
@@ -372,12 +396,14 @@ export async function handleSearchContent(args: ToolArgs = {}): Promise<string> 
 
   if (engine === 'rg') {
     const commandArgs = ['-n', '--no-heading', '--with-filename', '--column']
+    if (glob) commandArgs.push('--glob', glob)
     if (!args.caseSensitive) commandArgs.push('-i')
     if (!args.regex) commandArgs.push('-F')
     commandArgs.push(query, scope.scopePath)
     result = await runCommand('rg', commandArgs)
   } else {
     const commandArgs = ['-R', '-n', '-I']
+    if (glob) commandArgs.push(`--include=${glob}`)
     if (!args.caseSensitive) commandArgs.push('-i')
     if (!args.regex) commandArgs.push('-F')
     commandArgs.push('--', query, scope.scopePath)
