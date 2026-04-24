@@ -64,6 +64,20 @@ test('search_content finds text hits and returns absolute file paths', async () 
   })
 })
 
+test('search_content ignores repository ignore files inside the configured root', async () => {
+  await withTempRoot(async (rootDir) => {
+    const resolvedRoot = await realpath(rootDir)
+    const filePath = path.join(resolvedRoot, 'ignored.md')
+    await writeFile(path.join(rootDir, '.gitignore'), 'ignored.md\n', 'utf8')
+    await writeFile(filePath, '用户基本信息\n', 'utf8')
+
+    const result = JSON.parse(await handleSearchContent({ query: '用户基本信息' }))
+
+    assert.equal(result.total, 1)
+    assert.equal(result.hits[0].path, filePath)
+  })
+})
+
 test('read_file returns numbered content for the requested line range', async () => {
   await withTempRoot(async (rootDir) => {
     const resolvedRoot = await realpath(rootDir)

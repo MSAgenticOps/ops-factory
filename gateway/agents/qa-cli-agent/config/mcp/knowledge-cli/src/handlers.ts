@@ -62,7 +62,7 @@ export const tools = [
         },
         glob: {
           type: 'string',
-          description: 'Optional file name glob such as *.yaml or *.log.',
+          description: 'Optional file name glob. Prefer the configured knowledge artifact type before probing unrelated file types.',
         },
         limit: {
           type: 'number',
@@ -371,7 +371,7 @@ export async function handleSearchContent(args: ToolArgs = {}): Promise<string> 
   let result: CommandResult
 
   if (engine === 'rg') {
-    const commandArgs = ['-n', '--no-heading', '--with-filename', '--column']
+    const commandArgs = ['--no-ignore', '-n', '--no-heading', '--with-filename', '--column']
     if (!args.caseSensitive) commandArgs.push('-i')
     if (!args.regex) commandArgs.push('-F')
     commandArgs.push(query, scope.scopePath)
