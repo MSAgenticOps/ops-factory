@@ -13,6 +13,7 @@ export {
 } from './client.js';
 export type {
     Session,
+    CleanupEmptySessionResult,
     Message,
     MessageContent,
     MessageMetadata,
