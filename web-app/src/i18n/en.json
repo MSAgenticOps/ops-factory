@@ -533,6 +533,7 @@
     "waitingForResponse": "Waiting for response...",
     "typePlaceholder": "Type a message...",
     "quickContinue": "Continue",
+    "quickContinuePrompt": "Continue",
     "sendMessage": "Send message",
     "stopGeneration": "Stop generation",
     "jumpToBottom": "Jump to bottom",
@@ -566,6 +567,8 @@
     "skillPickerNoMatches": "No matching skills.",
     "skillPickerBrowseMarket": "Go to Skill Market",
     "removeSelectedSkill": "Remove {{name}}",
+    "emptyAssistantResponse": "The model did not return a valid response. This may be a temporary service issue.",
+    "recoverableInterruption": "This answer may be incomplete.",
     "agentNoResponse": "Agent did not respond, please try again",
     "agentIdleTimeout": "Agent stopped responding, please try again",
     "agentConnectionLost": "Agent connection lost, please try again"
