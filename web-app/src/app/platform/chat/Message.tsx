@@ -26,6 +26,7 @@ interface MessageProps {
     userId?: string | null
     isStreaming?: boolean
     onRetry?: () => void
+    onContinue?: () => void
     sourceDocuments?: Citation[]
     fetchedDocuments?: Citation[]
     outputFiles?: DetectedFile[]
@@ -215,6 +216,7 @@ function MessageInner({
     userId,
     isStreaming = false,
     onRetry,
+    onContinue,
     sourceDocuments,
     fetchedDocuments,
     outputFiles = [],
@@ -541,6 +543,7 @@ function MessageInner({
         )
     }
 
+    const isRecoverableInterruption = !isUser && message.metadata?.recoverableInterruption === true
     const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
     const selectedSkill = isUser ? message.metadata?.selectedSkill : undefined
     const hasUserAttachedFiles = isUser && !!message.metadata?.attachedFiles?.length
@@ -582,19 +585,30 @@ function MessageInner({
             <div className="message-body">
                 <div className="message-content">
                     {isEmptyAssistantResponse && (
-                        <div className="message-error-banner">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
-                            <span>The model did not return a valid response. This may be a temporary service issue.</span>
-                            {onRetry && (
-                                <button className="message-error-retry" onClick={onRetry}>
-                                    Retry
-                                </button>
-                            )}
-                        </div>
+                        isRecoverableInterruption ? (
+                            <div className="message-recoverable-response">
+                                <span>{t('chat.recoverableInterruption')}</span>
+                                {onContinue && (
+                                    <button type="button" className="message-recoverable-continue" onClick={onContinue}>
+                                        {t('chat.quickContinue')}
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="message-error-banner">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                </svg>
+                                <span>{t('chat.emptyAssistantResponse')}</span>
+                                {onRetry && (
+                                    <button className="message-error-retry" onClick={onRetry}>
+                                        {t('common.tryAgain')}
+                                    </button>
+                                )}
+                            </div>
+                        )
                     )}
 
                     {!isUser && processEntries.length > 0 && (

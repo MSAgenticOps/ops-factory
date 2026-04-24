@@ -83,6 +83,7 @@ export default function Chat() {
     const [isCreatingSession, setIsCreatingSession] = useState(false)
     const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
     const [showStopHint, setShowStopHint] = useState(false)
+    const [suppressRecoverableInterruption, setSuppressRecoverableInterruption] = useState(false)
     const [pendingUserMessageAnchorId, setPendingUserMessageAnchorId] = useState<string | null>(null)
     const [showScrollToBottom, setShowScrollToBottom] = useState(false)
     const stopHintTimerRef = useRef<number | null>(null)
@@ -128,6 +129,10 @@ export default function Chat() {
     const activeAgentSkills = useMemo(() => {
         return agents.find(agent => agent.id === activeAgentId)?.skills || []
     }, [activeAgentId, agents])
+
+    useEffect(() => {
+        setSuppressRecoverableInterruption(false)
+    }, [activeSessionId])
 
     const { messages, chatState, isLoading, error, tokenState, outputFilesEvent, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
         sessionId: activeSessionId || null,
@@ -489,6 +494,7 @@ export default function Chat() {
             window.clearTimeout(stopHintTimerRef.current)
             stopHintTimerRef.current = null
         }
+        setSuppressRecoverableInterruption(false)
         setShowStopHint(false)
         const messageId = sendMessage(text, images, attachedFiles, selectedSkill)
         if (messageId) {
@@ -694,6 +700,7 @@ export default function Chat() {
                 const textContent = msg.content.find(c => c.type === 'text')
                 const text = textContent && 'text' in textContent ? textContent.text : undefined
                 if (text) {
+                    setSuppressRecoverableInterruption(false)
                     const messageId = sendMessage(text, undefined, undefined, msg.metadata?.selectedSkill)
                     if (messageId) {
                         markActiveSessionUsed()
@@ -705,9 +712,18 @@ export default function Chat() {
         }
     }, [markActiveSessionUsed, messages, sendMessage])
 
+    const handleContinue = useCallback(() => {
+        setSuppressRecoverableInterruption(false)
+        const messageId = sendMessage(t('chat.quickContinuePrompt'))
+        if (messageId) {
+            setPendingUserMessageAnchorId(messageId)
+        }
+    }, [sendMessage, t])
+
     const handleStopMessage = useCallback(async () => {
         const stopped = await stopMessage()
         if (stopped) {
+            setSuppressRecoverableInterruption(true)
             setShowStopHint(true)
             if (stopHintTimerRef.current !== null) {
                 window.clearTimeout(stopHintTimerRef.current)
@@ -819,6 +835,8 @@ export default function Chat() {
                             sessionId={activeSessionId || undefined}
                             outputFilesEvent={outputFilesEvent}
                             onRetry={handleRetry}
+                            onContinue={handleContinue}
+                            suppressRecoverableInterruption={suppressRecoverableInterruption}
                             scrollContainerRef={messageScrollContainerRef}
                             showAnchorSpacer={!!pendingUserMessageAnchorId}
                         />

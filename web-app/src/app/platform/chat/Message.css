@@ -125,6 +125,29 @@
     opacity: 0.85;
 }
 
+.message-recoverable-response {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--text-muted, #6b7280);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+}
+
+.message-recoverable-continue {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.message-recoverable-continue:hover {
+    text-decoration: underline;
+}
+
 .message-content h1,
 .message-content h2,
 .message-content h3 {

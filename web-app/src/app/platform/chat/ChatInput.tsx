@@ -574,9 +574,9 @@ export default function ChatInput({
 
     const handleQuickContinue = useCallback(() => {
         if (disabled || isGenerating || isListening || isAnyFileLoading) return
-        onSubmit('继续')
+        onSubmit(t('chat.quickContinuePrompt'))
         textareaRef.current?.focus()
-    }, [disabled, isGenerating, isListening, isAnyFileLoading, onSubmit])
+    }, [disabled, isGenerating, isListening, isAnyFileLoading, onSubmit, t])
 
     return (
         <div
