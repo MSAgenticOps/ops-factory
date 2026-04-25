@@ -18,9 +18,10 @@
 }
 
 .page-container.host-resource-page {
-    height: 100%;
+    max-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .page-container.host-resource-page .page-header {
@@ -28,12 +29,12 @@
     flex-shrink: 0;
 }
 
-/* ── Three-Zone Layout (vertical: tree+cards on top, topology on bottom) ── */
+/* ── Tab Content Layout (tree+cards on overview tab, topology on its own tab) ── */
 
-/* Upper half: tree (left) + cards (right), fixed 40% height */
+/* Overview tab: tree (left) + cards (right), fill remaining height */
 .hr-layout-main {
     display: flex;
-    flex: 0 0 40%;
+    flex: 1;
     min-height: 0;
     overflow: hidden;
 }
@@ -42,6 +43,7 @@
 .hr-tree-sidebar {
     width: 260px;
     min-width: 240px;
+    min-height: 0;
     border-right: 1px solid var(--border-color, #e2e8f0);
     overflow-y: auto;
     padding: var(--spacing-2) 0;
@@ -54,19 +56,19 @@
     flex-shrink: 0;
 }
 
-/* Host Cards: right area, scrollable */
+/* Host Cards: right area */
 .hr-cards-area {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
+    overflow-y: visible;
     padding: var(--spacing-2, 8px);
     display: flex;
     flex-direction: column;
 }
 
-/* Topology: bottom 60% height */
+/* Topology tab: fill remaining height */
 .hr-topology-area {
-    flex: 0 0 60%;
+    flex: 1;
     min-height: 0;
     border-top: 1px solid var(--border-color, #e2e8f0);
     position: relative;
