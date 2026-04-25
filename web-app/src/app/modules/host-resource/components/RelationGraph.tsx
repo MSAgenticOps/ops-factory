@@ -24,6 +24,15 @@ function getCssVar(styles: CSSStyleDeclaration, name: string, fallback: string):
     return styles.getPropertyValue(name).trim() || fallback
 }
 
+function escapeHtml(value: string | number | null | undefined): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
+
 type Props = {
     data: GraphData | ClusterGraphData
     focusedHostId?: string | null
@@ -148,6 +157,10 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
     const [fullscreen, setFullscreen] = useState(false)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [dims, setDims] = useState({ w: 800, h: 300 })
+    const [colorScheme, setColorScheme] = useState<'light' | 'dark'>(() => {
+        if (typeof window === 'undefined') return 'light'
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    })
 
     const handleFullscreen = useCallback(() => {
         setFullscreen(prev => !prev)
@@ -170,6 +183,29 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
         return { nodes: data.nodes.filter(n => neighborIds.has(n.id)), edges: connectedEdges }
     }, [data, hopFocusId])
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        const updateColorScheme = (event: MediaQueryList | MediaQueryListEvent) => {
+            setColorScheme(event.matches ? 'dark' : 'light')
+        }
+
+        updateColorScheme(mediaQuery)
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', updateColorScheme)
+            return () => mediaQuery.removeEventListener('change', updateColorScheme)
+        }
+
+        const legacyMediaQuery = mediaQuery as MediaQueryList & {
+            addListener?: (listener: (event: MediaQueryListEvent) => void) => void
+            removeListener?: (listener: (event: MediaQueryListEvent) => void) => void
+        }
+        legacyMediaQuery.addListener?.(updateColorScheme)
+        return () => legacyMediaQuery.removeListener?.(updateColorScheme)
+    }, [])
+
     const iconPalette = useMemo(() => {
         const styles = getComputedStyle(containerRef.current ?? document.documentElement)
         return {
@@ -178,7 +214,7 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
             ink: getCssVar(styles, '--hr-topology-icon-ink', TOPOLOGY_ICON_DEFAULTS.ink),
             businessAccent: getCssVar(styles, '--hr-topology-business-accent', TOPOLOGY_ICON_DEFAULTS.accents.business),
         }
-    }, [dims.w, dims.h, fullscreen])
+    }, [dims.w, dims.h, fullscreen, colorScheme])
 
     const positionedOption = useMemo<EChartsOption>(() => {
         const nodeCount = displayData.nodes.length
@@ -258,20 +294,20 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
                 tooltip: {
                     formatter: () => {
                         if (isBs) {
-                            return `<b>${n.name}</b><br/>${t('hostResource.createBusinessService')}`
+                            return `<b>${escapeHtml(n.name)}</b><br/>${escapeHtml(t('hostResource.createBusinessService'))}`
                         }
-                        const parts = [`<b>${n.name}</b>`]
+                        const parts = [`<b>${escapeHtml(n.name)}</b>`]
                         if (isCluster) {
-                            parts.push(`${t('hostResource.createCluster')}`)
-                            if ('type' in n && n.type) parts.push(`${t('hostResource.clusterType')}: ${n.type}`)
-                            if ('hostCount' in n) parts.push(`${t('hostResource.hostCount')}: ${n.hostCount}`)
-                            if ('mode' in n && n.mode) parts.push(`Mode: ${n.mode}`)
+                            parts.push(escapeHtml(t('hostResource.createCluster')))
+                            if ('type' in n && n.type) parts.push(`${escapeHtml(t('hostResource.clusterType'))}: ${escapeHtml(n.type)}`)
+                            if ('hostCount' in n) parts.push(`${escapeHtml(t('hostResource.hostCount'))}: ${escapeHtml(n.hostCount)}`)
+                            if ('mode' in n && n.mode) parts.push(`Mode: ${escapeHtml(n.mode)}`)
                             return parts.join('<br/>')
                         }
-                        if (n.ip) parts.push(`${t('hostResource.ip')}: ${n.ip}`)
-                        if (n.clusterType) parts.push(`${t('hostResource.clusterType')}: ${n.clusterType}`)
-                        if ('clusterName' in n && n.clusterName) parts.push(`${t('hostResource.cluster')}: ${n.clusterName}`)
-                        if ('purpose' in n && n.purpose) parts.push(`${t('hostResource.purpose')}: ${n.purpose}`)
+                        if (n.ip) parts.push(`${escapeHtml(t('hostResource.ip'))}: ${escapeHtml(n.ip)}`)
+                        if (n.clusterType) parts.push(`${escapeHtml(t('hostResource.clusterType'))}: ${escapeHtml(n.clusterType)}`)
+                        if ('clusterName' in n && n.clusterName) parts.push(`${escapeHtml(t('hostResource.cluster'))}: ${escapeHtml(n.clusterName)}`)
+                        if ('purpose' in n && n.purpose) parts.push(`${escapeHtml(t('hostResource.purpose'))}: ${escapeHtml(n.purpose)}`)
                         return parts.join('<br/>')
                     },
                 },
