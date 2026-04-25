@@ -33,7 +33,8 @@
     "totalFiles": "{{count}} total file",
     "totalFiles_other": "{{count}} total files",
     "totalSessions": "{{count}} total session",
-    "totalSessions_other": "{{count}} total sessions"
+    "totalSessions_other": "{{count}} total sessions",
+    "typeToSearch": "Type to search..."
   },
   "sidebar": {
     "home": "Home",
@@ -2080,6 +2081,8 @@
     "businessIpInvalid": "Invalid business IP format",
     "hostCountUnit": "hosts",
     "noSourceRelations": "No outgoing relations",
+    "containedHosts": "Contained Hosts",
+    "containedHostsTip": "Managed via host cluster assignment",
     "export": "Export",
     "import": "Import",
     "importing": "Importing... ({{current}}/{{total}})",
@@ -2093,7 +2096,8 @@
     "csvImportNoCluster": "Please select a cluster before importing hosts",
     "csvRequiredColumns": "CSV must contain at least: name, ip, username",
     "noDataToExport": "No data to export",
-    "tabOverview": "Overview",
+    "tabOverview": "Resource Management",
+    "tabTopology": "Global Topology",
     "tabClusterTypes": "Cluster Types",
     "tabBusinessTypes": "Business Types",
     "tabSopManagement": "SOP Management",

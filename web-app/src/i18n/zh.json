@@ -33,7 +33,8 @@
     "totalFiles": "共 {{count}} 个文件",
     "totalFiles_other": "共 {{count}} 个文件",
     "totalSessions": "共 {{count}} 个会话",
-    "totalSessions_other": "共 {{count}} 个会话"
+    "totalSessions_other": "共 {{count}} 个会话",
+    "typeToSearch": "输入搜索..."
   },
   "sidebar": {
     "home": "首页",
@@ -2080,6 +2081,8 @@
     "businessIpInvalid": "业务地址格式无效",
     "hostCountUnit": "台主机",
     "noSourceRelations": "暂无出向关系",
+    "containedHosts": "包含主机",
+    "containedHostsTip": "通过主机的集群归属变更自动维护",
     "export": "导出",
     "import": "导入",
     "importing": "导入中... ({{current}}/{{total}})",
@@ -2093,7 +2096,8 @@
     "csvImportNoCluster": "请先选择一个集群再导入主机",
     "csvRequiredColumns": "CSV必须包含至少：name, ip, username",
     "noDataToExport": "暂无数据可导出",
-    "tabOverview": "总览",
+    "tabOverview": "资源管理",
+    "tabTopology": "全局拓扑",
     "tabClusterTypes": "集群类型",
     "tabBusinessTypes": "典型业务类型",
     "tabSopManagement": "SOP 管理",

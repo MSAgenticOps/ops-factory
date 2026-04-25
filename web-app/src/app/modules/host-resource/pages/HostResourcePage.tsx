@@ -40,7 +40,7 @@ type EditingItem =
     | { type: 'host'; data: Host }
     | null
 
-type TabKey = 'overview' | 'cluster-types' | 'business-types' | 'sop-management' | 'whitelist'
+type TabKey = 'overview' | 'topology' | 'cluster-types' | 'business-types' | 'sop-management' | 'whitelist'
 
 const PAGE_SIZE = 6
 
@@ -92,27 +92,7 @@ export default function HostResourcePage() {
     useEffect(() => { fetchAllHosts() }, [fetchAllHosts])
     useEffect(() => { fetchHostRelations() }, [fetchHostRelations])
     useEffect(() => { fetchBusinessServices() }, [fetchBusinessServices])
-
-    // Resolve the province-level group ID for a business service by walking up the tree
-    // until we find a group whose parent is a root group (no parentId).
-    // This works for any nesting depth: 1-level, 2-level, 3-level, etc.
-    const resolveProvinceGroupId = useCallback((bs: BusinessService): string | undefined => {
-        let current = groups.find(g => g.id === bs.groupId)
-        if (!current) return undefined
-
-        // Walk up until we find a group whose parent is a root group
-        while (current?.parentId) {
-            const parent = groups.find(g => g.id === current!.parentId)
-            if (!parent?.parentId) {
-                // current's parent is a root group → current is the province-level group
-                return current.id
-            }
-            current = parent
-        }
-
-        // BS is in a root group or group with no parent → return its own group ID
-        return current?.id
-    }, [groups])
+    useEffect(() => { fetchClusterGraph() }, [fetchClusterGraph])
 
     // Refresh host list respecting the current tree selection filter
     const refreshHostList = useCallback(() => {
@@ -131,33 +111,6 @@ export default function HostResourcePage() {
     useEffect(() => {
         refreshHostList()
     }, [refreshHostList])
-
-    // Fetch graph based on tree selection
-    useEffect(() => {
-        if (selected?.type === 'cluster') {
-            fetchClusterGraph()
-            setFocusedHostId(null)
-            setSelectedTopologyClusterId(selected.id)
-        } else if (selected?.type === 'business-service') {
-            const bs = businessServices.find(b => b.id === selected.id)
-            if (bs) {
-                const provinceId = resolveProvinceGroupId(bs)
-                fetchClusterGraph(provinceId)
-            } else {
-                fetchClusterGraph()
-            }
-            setFocusedHostId(selected.id)
-            setSelectedTopologyClusterId(null)
-        } else if (selected?.type === 'group' || selected?.type === 'subgroup') {
-            fetchClusterGraph(selected.id)
-            setFocusedHostId(null)
-            setSelectedTopologyClusterId(null)
-        } else {
-            fetchClusterGraph()
-            setFocusedHostId(null)
-            setSelectedTopologyClusterId(null)
-        }
-    }, [selected, fetchClusterGraph, businessServices, resolveProvinceGroupId])
 
     const topologyNodeMap = useMemo(() => {
         const map = new Map(clusterGraphData.nodes.map(node => [node.id, node]))
@@ -475,6 +428,7 @@ export default function HostResourcePage() {
 
     const tabs: { key: TabKey; label: string }[] = [
         { key: 'overview', label: t('hostResource.tabOverview') },
+        { key: 'topology', label: t('hostResource.tabTopology') },
         { key: 'cluster-types', label: t('hostResource.tabClusterTypes') },
         { key: 'business-types', label: t('hostResource.tabBusinessTypes') },
         { key: 'sop-management', label: t('hostResource.tabSopManagement') },
@@ -612,48 +566,42 @@ export default function HostResourcePage() {
                             )}
                         </div>
                     </div>
+                </>
+            )}
 
-                    {/* Bottom: Topology */}
-                    <div className="hr-topology-area">
-                        <div className="hr-topology-workbench">
-                            <div className="hr-topology-graph-pane">
-                                <div className="hr-topology-pane-header">
-                                    <div>
-                                        <h3 className="hr-topology-pane-title">{t('hostResource.clusterRelationsTitle')}</h3>
-                                        <p className="hr-topology-pane-subtitle">{t('hostResource.clusterRelationsSubtitle')}</p>
-                                    </div>
+            {activeTab === 'topology' && (
+                <div className="hr-topology-area">
+                    <div className="hr-topology-workbench">
+                        <div className="hr-topology-graph-pane">
+                            <div className="hr-topology-pane-header">
+                                <div>
+                                    <h3 className="hr-topology-pane-title">{t('hostResource.clusterRelationsTitle')}</h3>
+                                    <p className="hr-topology-pane-subtitle">{t('hostResource.clusterRelationsSubtitle')}</p>
                                 </div>
-                                <RelationGraph
-                                    data={topologyGraphData}
-                                    focusedHostId={focusedHostId}
-                                    onNodeClick={(nodeId) => {
-                                        const node = topologyNodeMap.get(nodeId)
-                                        if (node?.nodeType === 'cluster') {
-                                            setSelectedTopologyClusterId(prev => prev === nodeId ? null : nodeId)
-                                            setFocusedHostId(null)
-                                            return
-                                        }
-                                        setFocusedHostId(prev => prev === nodeId ? null : nodeId)
-                                    }}
-                                    onBackgroundClick={() => {
-                                        setFocusedHostId(null)
-                                    }}
-                                />
                             </div>
-                            <ClusterInsightPanel
-                                cluster={selectedTopologyCluster}
-                                hosts={selectedTopologyClusterHosts}
-                                graphData={clusterGraphData}
-                                viewingClusterHosts={selected?.type === 'cluster' && selected.id === selectedTopologyCluster?.id}
-                                onViewClusterHosts={(clusterId) => {
-                                    setSelected({ id: clusterId, type: 'cluster' })
-                                    setFocusedHostId(null)
-                                    setCurrentPage(1)
+                            <RelationGraph
+                                data={topologyGraphData}
+                                onNodeClick={(nodeId) => {
+                                    const node = topologyNodeMap.get(nodeId)
+                                    if (node?.nodeType === 'cluster') {
+                                        setSelectedTopologyClusterId(prev => prev === nodeId ? null : nodeId)
+                                    }
                                 }}
                             />
                         </div>
+                        <ClusterInsightPanel
+                            cluster={selectedTopologyCluster}
+                            hosts={selectedTopologyClusterHosts}
+                            graphData={clusterGraphData}
+                            viewingClusterHosts={selected?.type === 'cluster' && selected.id === selectedTopologyCluster?.id}
+                            onViewClusterHosts={(clusterId) => {
+                                setSelected({ id: clusterId, type: 'cluster' })
+                                setFocusedHostId(null)
+                                setCurrentPage(1)
+                            }}
+                        />
                     </div>
-                </>
+                </div>
             )}
 
             {activeTab === 'cluster-types' && (
