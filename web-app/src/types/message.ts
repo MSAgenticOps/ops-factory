@@ -109,9 +109,27 @@ export interface SelectedSkill {
 export interface MessageMetadata {
     userVisible?: boolean
     agentVisible?: boolean
-    recoverableInterruption?: boolean
     attachedFiles?: AttachedFile[]
     selectedSkill?: SelectedSkill
+    retryPayload?: {
+        text: string
+        images?: Array<{ data: string; mimeType: string }>
+        attachedFiles?: AttachedFile[]
+        selectedSkill?: SelectedSkill
+    }
+    sessionError?: {
+        layer?: string
+        code: string
+        messageKey: string
+        fallback: string
+        detail?: string
+        retryable?: boolean
+        suggestedActions?: string[]
+        traceId?: string
+        requestId?: string
+        sessionId?: string
+        agentId?: string
+    }
 }
 
 export interface ChatMessage {

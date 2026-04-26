@@ -61,11 +61,6 @@
     "expand": "Expand sidebar",
     "hostResource": "System Resources"
   },
-  "login": {
-    "subtitle": "Enter your name to get started",
-    "placeholder": "Your name",
-    "submit": "Enter"
-  },
   "businessIntelligence": {
     "title": "Business Intelligence",
     "subtitle": "A workbench for business analysis and operational insights based on fixed data sources.",
@@ -534,7 +529,6 @@
     "waitingForResponse": "Waiting for response...",
     "typePlaceholder": "Type a message...",
     "quickContinue": "Continue",
-    "quickContinuePrompt": "Continue",
     "sendMessage": "Send message",
     "stopGeneration": "Stop generation",
     "jumpToBottom": "Jump to bottom",
@@ -569,10 +563,47 @@
     "skillPickerBrowseMarket": "Go to Skill Market",
     "removeSelectedSkill": "Remove {{name}}",
     "emptyAssistantResponse": "The model did not return a valid response. This may be a temporary service issue.",
-    "recoverableInterruption": "This answer may be incomplete.",
     "agentNoResponse": "Agent did not respond, please try again",
     "agentIdleTimeout": "Agent stopped responding, please try again",
-    "agentConnectionLost": "Agent connection lost, please try again"
+    "agentConnectionLost": "Agent connection lost, please try again",
+    "sessionErrors": {
+      "frontendEventsDisconnected": "Connection to the conversation was interrupted. Reconnecting without cancelling the running task.",
+      "userCancelled": "Generation was stopped.",
+      "gatewaySubmitTimeout": "The request was not accepted before the submit timeout. Check whether the task is already running before retrying.",
+      "gatewaySubmitFailed": "Gateway could not submit the request to the agent service.",
+      "gatewayEventsFailed": "Gateway could not open the conversation event stream.",
+      "gatewayCancelFailed": "Gateway could not submit the cancellation request to the agent service.",
+      "gatewayUnauthorized": "You are not authorized to use this agent.",
+      "gatewayAgentNotFound": "This agent or session is not available.",
+      "gatewayAgentUnavailable": "The agent service is temporarily unavailable.",
+      "gatewayGoosedUnavailable": "Gateway could not connect to the agent service.",
+      "gatewayMaxDurationReached": "This task reached the platform time limit.",
+      "gatewayRateLimited": "Too many requests are being submitted. Wait and retry later.",
+      "goosedActiveRequestConflict": "Another task is already running in this session.",
+      "goosedRequestRejected": "The agent service rejected this request.",
+      "goosedError": "The agent service returned an error.",
+      "providerTimeout": "The model provider timed out.",
+      "providerRateLimited": "The model provider is rate limited. Wait and retry later.",
+      "providerAuthOrQuotaFailed": "The model provider is not configured correctly or quota is exhausted.",
+      "toolExecutionFailed": "A tool call failed while processing this request.",
+      "mcpUnavailable": "An external tool service is unavailable.",
+      "contextTooLarge": "The request or conversation context is too large.",
+      "unknown": "The task failed. Use the reference information below for troubleshooting.",
+      "reference": "Reference: trace {{traceId}}, request {{requestId}}, session {{sessionId}}, agent {{agentId}}",
+      "details": "Details",
+      "actions": {
+        "retry": "Retry",
+        "cancel": "Stop",
+        "reconnect": "Reconnect in progress",
+        "wait": "Wait before retrying",
+        "continue": "Continue in this conversation",
+        "new_request": "Start a new request",
+        "reduce_context": "Reduce the request or attachments",
+        "check_tool": "Check the tool or external service",
+        "login": "Refresh your sign-in state",
+        "contact_support": "Contact support with the reference"
+      }
+    }
   },
   "newSession": {
     "title": "New Chat Session",

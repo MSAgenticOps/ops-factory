@@ -46,6 +46,27 @@ function setScrollTop(element: ActiveScrollElement, top: number, behavior: Scrol
     element.scrollTop = top
 }
 
+const fileIdentity = (file: DetectedFile): string =>
+    `${file.rootId ?? ''}:${file.path || file.displayPath || file.name}`
+
+const fileEventSignature = (files: DetectedFile[]): string =>
+    files.map(fileIdentity).join('|')
+
+const mergeDetectedFiles = (existing: DetectedFile[], incoming: DetectedFile[]): DetectedFile[] => {
+    const order: string[] = []
+    const byKey = new Map<string, DetectedFile>()
+
+    for (const file of [...existing, ...incoming]) {
+        const key = fileIdentity(file)
+        if (!byKey.has(key)) {
+            order.push(key)
+        }
+        byKey.set(key, file)
+    }
+
+    return order.map(key => byKey.get(key)!)
+}
+
 function hasOnlyToolResponse(message: ChatMessage): boolean {
     return message.role === 'user' &&
         message.content.length > 0 &&
@@ -147,8 +168,7 @@ interface MessageListProps {
     sessionId?: string | null
     outputFilesEvent?: OutputFilesEvent | null
     onRetry?: () => void
-    onContinue?: () => void
-    suppressRecoverableInterruption?: boolean
+    onCancelRequest?: () => void
     scrollContainerRef?: ScrollContainerRef
     showAnchorSpacer?: boolean
 }
@@ -161,8 +181,7 @@ export default function MessageList({
     sessionId,
     outputFilesEvent,
     onRetry,
-    onContinue,
-    suppressRecoverableInterruption = false,
+    onCancelRequest,
     scrollContainerRef,
     showAnchorSpacer = false,
 }: MessageListProps) {
@@ -172,6 +191,7 @@ export default function MessageList({
     const bottomRef = useRef<HTMLDivElement>(null)
     const [messageOutputFiles, setMessageOutputFiles] = useState<Map<string, DetectedFile[]>>(new Map())
     const processedOutputFilesRef = useRef<Set<string>>(new Set())
+    const liveOutputFileMessageIdsRef = useRef<Set<string>>(new Set())
     const hasInitializedScrollRef = useRef(false)
 
     const visibleMessages = useMemo(() => {
@@ -198,37 +218,6 @@ export default function MessageList({
     }, [messages])
 
     const displayMessages = useMemo(() => buildDisplayMessages(visibleMessages), [visibleMessages])
-    const shouldShowRecoverableInterruption = useMemo(() => {
-        if (isLoading || suppressRecoverableInterruption || displayMessages.length === 0) return false
-
-        const lastMessage = displayMessages[displayMessages.length - 1]
-        return lastMessage.role === 'assistant' &&
-            !hasDisplayTextContent(lastMessage) &&
-            (
-                hasToolContent(lastMessage) ||
-                !!getReasoningContent(lastMessage) ||
-                !!getThinkingContent(lastMessage)
-            )
-    }, [displayMessages, isLoading, suppressRecoverableInterruption])
-
-    const renderMessages = useMemo(() => {
-        if (!shouldShowRecoverableInterruption) return displayMessages
-        const lastMessage = displayMessages[displayMessages.length - 1]
-        return [
-            ...displayMessages,
-            {
-                id: `recoverable-interruption-${lastMessage.id || displayMessages.length}`,
-                role: 'assistant' as const,
-                content: [],
-                created: lastMessage.created,
-                metadata: {
-                    recoverableInterruption: true,
-                    agentVisible: false,
-                    userVisible: true,
-                },
-            },
-        ]
-    }, [displayMessages, shouldShowRecoverableInterruption])
 
     useEffect(() => {
         if (!isChatOrderDebugEnabled()) return
@@ -237,19 +226,19 @@ export default function MessageList({
             agentId,
             raw: buildChatMessageOrderDigest(messages),
             visible: buildChatMessageOrderDigest(visibleMessages),
-            display: buildChatMessageOrderDigest(renderMessages),
+            display: buildChatMessageOrderDigest(displayMessages),
         })
-    }, [agentId, sessionId, messages, visibleMessages, renderMessages])
+    }, [agentId, sessionId, messages, visibleMessages, displayMessages])
 
     const finalAssistantTextMessageId = useMemo(() => {
-        for (let i = renderMessages.length - 1; i >= 0; i--) {
-            const msg = renderMessages[i]
+        for (let i = displayMessages.length - 1; i >= 0; i--) {
+            const msg = displayMessages[i]
             if (msg.role === 'assistant' && hasDisplayTextContent(msg)) {
                 return msg.id
             }
         }
         return undefined
-    }, [renderMessages])
+    }, [displayMessages])
 
     const toolResponses = useMemo<ToolResponseMap>(() => {
         const map: ToolResponseMap = new Map()
@@ -296,15 +285,11 @@ export default function MessageList({
     }, [scrollContainerRef])
 
     // ── Real-time: handle OutputFiles SSE event ─────────────────────
-    // When the gateway sends an OutputFiles event after a /reply completes,
+    // When the gateway sends an OutputFiles event after a session reply completes,
     // attach the files to the last assistant text message and persist the mapping.
     useEffect(() => {
         if (!outputFilesEvent || !agentId || !finalAssistantTextMessageId) return
-
-        // Deduplicate: don't process the same event twice
-        const eventKey = `${outputFilesEvent.sessionId}:${finalAssistantTextMessageId}`
-        if (processedOutputFilesRef.current.has(eventKey)) return
-        processedOutputFilesRef.current.add(eventKey)
+        if (!sessionId || outputFilesEvent.sessionId !== sessionId) return
 
         const files: DetectedFile[] = outputFilesEvent.files.map(f => ({
             path: f.path,
@@ -314,10 +299,16 @@ export default function MessageList({
             displayPath: f.displayPath,
         }))
 
-        // Update local state
+        // Deduplicate exact event re-renders while still allowing later batches for the same message.
+        const eventKey = `${outputFilesEvent.sessionId}:${finalAssistantTextMessageId}:${fileEventSignature(files)}`
+        if (processedOutputFilesRef.current.has(eventKey)) return
+        processedOutputFilesRef.current.add(eventKey)
+        liveOutputFileMessageIdsRef.current.add(finalAssistantTextMessageId)
+
+        const filesToPersist = mergeDetectedFiles(messageOutputFiles.get(finalAssistantTextMessageId) ?? [], files)
         setMessageOutputFiles(prev => {
             const next = new Map(prev)
-            next.set(finalAssistantTextMessageId, files)
+            next.set(finalAssistantTextMessageId, mergeDetectedFiles(next.get(finalAssistantTextMessageId) ?? [], files))
             return next
         })
 
@@ -328,16 +319,16 @@ export default function MessageList({
             body: JSON.stringify({
                 sessionId: outputFilesEvent.sessionId,
                 messageId: finalAssistantTextMessageId,
-                files,
+                files: filesToPersist,
             }),
         }).catch(() => { /* best-effort persistence */ })
-    }, [outputFilesEvent, agentId, finalAssistantTextMessageId, gatewayHeaders])
+    }, [outputFilesEvent, agentId, sessionId, finalAssistantTextMessageId, messageOutputFiles, gatewayHeaders])
 
     // ── Resume: load persisted file capsules from gateway ───────────
     useEffect(() => {
         if (!agentId || !sessionId || isLoading) return
         // Only fetch on initial load when we have messages but no output files yet
-        if (messageOutputFiles.size > 0 || renderMessages.length === 0) return
+        if (messageOutputFiles.size > 0 || displayMessages.length === 0) return
 
         let cancelled = false
         const loadPersistedCapsules = async () => {
@@ -357,7 +348,19 @@ export default function MessageList({
                     }
                 }
                 if (map.size > 0) {
-                    setMessageOutputFiles(map)
+                    setMessageOutputFiles(prev => {
+                        const next = new Map(map)
+                        for (const [messageId, files] of prev.entries()) {
+                            if (files.length > 0) {
+                                if (liveOutputFileMessageIdsRef.current.has(messageId)) {
+                                    next.set(messageId, files)
+                                } else {
+                                    next.set(messageId, mergeDetectedFiles(next.get(messageId) ?? [], files))
+                                }
+                            }
+                        }
+                        return next
+                    })
                 }
             } catch {
                 /* best-effort resume */
@@ -366,17 +369,18 @@ export default function MessageList({
 
         loadPersistedCapsules()
         return () => { cancelled = true }
-    }, [agentId, sessionId, isLoading, renderMessages.length, gatewayHeaders])
+    }, [agentId, sessionId, isLoading, displayMessages.length, gatewayHeaders])
 
     // Reset state when agent or session changes
     useEffect(() => {
         setMessageOutputFiles(new Map())
         processedOutputFilesRef.current = new Set()
+        liveOutputFileMessageIdsRef.current = new Set()
         hasInitializedScrollRef.current = false
     }, [agentId, sessionId])
 
     useEffect(() => {
-        if (hasInitializedScrollRef.current || renderMessages.length === 0) return
+        if (hasInitializedScrollRef.current || displayMessages.length === 0) return
 
         hasInitializedScrollRef.current = true
         const frame = window.requestAnimationFrame(() => {
@@ -384,9 +388,9 @@ export default function MessageList({
         })
 
         return () => window.cancelAnimationFrame(frame)
-    }, [agentId, sessionId, renderMessages.length, scrollToBottom])
+    }, [agentId, sessionId, displayMessages.length, scrollToBottom])
 
-    if (renderMessages.length === 0 && !isLoading) {
+    if (displayMessages.length === 0 && !isLoading) {
         return (
             <div className="empty-state">
                 <svg
@@ -408,11 +412,11 @@ export default function MessageList({
 
     return (
         <div className="chat-messages" ref={containerRef}>
-            {renderMessages.map((message, index) => {
+            {displayMessages.map((message, index) => {
                 const isLastAssistant =
                     isLoading &&
                     message.role === 'assistant' &&
-                    index === renderMessages.length - 1
+                    index === displayMessages.length - 1
                 const isFinalAssistantResponse =
                     message.role === 'assistant' &&
                     !!message.id &&
@@ -421,15 +425,12 @@ export default function MessageList({
                 const isContinuation =
                     message.role === 'assistant' &&
                     index > 0 &&
-                    renderMessages[index - 1].role === 'assistant'
+                    displayMessages[index - 1].role === 'assistant'
                 const isLastInGroup =
                     message.role !== 'assistant' ||
-                    index === renderMessages.length - 1 ||
-                    renderMessages[index + 1]?.role !== 'assistant'
-                const isRecoverableInterruption =
-                    message.role === 'assistant' &&
-                    message.metadata?.recoverableInterruption === true
-                const prevCreated = renderMessages[index - 1]?.created
+                    index === displayMessages.length - 1 ||
+                    displayMessages[index + 1]?.role !== 'assistant'
+                const prevCreated = displayMessages[index - 1]?.created
                 const showDateInTimestamp =
                     prevCreated != null &&
                     message.created != null &&
@@ -445,8 +446,8 @@ export default function MessageList({
                             agentId={agentId}
                             userId={userId}
                             isStreaming={isLastAssistant}
-                            onRetry={message.role === 'assistant' && index === renderMessages.length - 1 ? onRetry : undefined}
-                            onContinue={isRecoverableInterruption ? onContinue : undefined}
+                            onRetry={message.role === 'assistant' && index === displayMessages.length - 1 ? onRetry : undefined}
+                            onCancelRequest={message.role === 'assistant' && index === displayMessages.length - 1 ? onCancelRequest : undefined}
                             sourceDocuments={isFinalAssistantResponse ? sourceDocuments : undefined}
                             fetchedDocuments={isFinalAssistantResponse ? fetchedDocuments : undefined}
                             outputFiles={message.id ? messageOutputFiles.get(message.id) : undefined}
@@ -459,7 +460,7 @@ export default function MessageList({
                 )
             })}
 
-            {isLoading && renderMessages[renderMessages.length - 1]?.role !== 'assistant' && (
+            {isLoading && displayMessages[displayMessages.length - 1]?.role !== 'assistant' && (
                 <div data-message-id="loading-placeholder">
                     <div className="message assistant animate-fade-in">
                         <div className="message-avatar">
