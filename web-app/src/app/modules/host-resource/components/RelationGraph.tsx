@@ -1,25 +1,29 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 
-import type { GraphData, GraphNode } from '../../../../types/host'
+import type { ClusterGraphData, ClusterGraphNode, GraphData, GraphNode } from '../../../../types/host'
+import TopologyNodeIcon, { TOPOLOGY_ICON_DEFAULTS, getTopologyNodeSymbol } from './TopologyNodeIcon'
 
 const BS_NODE_COLOR = '#6366f1'    // indigo
 const BS_EDGE_COLOR = '#a5b4fc'    // light indigo
 
-const CLUSTER_TYPE_COLORS: Record<string, string> = {
-    NSLB: '#5470c6',
-    RCPA: '#91cc75',
-    RCPADB: '#fac858',
-    KAFKA: '#ee6666',
-    GWDB: '#73c0de',
-    GMDB: '#73c0de',
-    MEMDB: '#3ba272',
+function getCssVar(styles: CSSStyleDeclaration, name: string, fallback: string): string {
+    return styles.getPropertyValue(name).trim() || fallback
 }
-const DEFAULT_COLOR = '#9a60b4'
+
+function escapeHtml(value: string | number | null | undefined): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
 
 type Props = {
-    data: GraphData
+    data: GraphData | ClusterGraphData
     focusedHostId?: string | null
     hopFocusId?: string | null
     onNodeClick?: (nodeId: string) => void
@@ -27,37 +31,20 @@ type Props = {
     onBackgroundClick?: () => void
 }
 
-function FullscreenIcon() {
-    return (
-        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
-            <path d="M3 3h4v1.5H4.5V7H3V3zm10 0h4v4h-1.5V4.5H13V3zM3 13h1.5v2.5H7V17H3v-4zm13 0v4h-4v-1.5h2.5V13H16z"/>
-        </svg>
-    )
-}
+type RelationGraphNode = GraphNode | ClusterGraphNode
 
-function ExitFullscreenIcon() {
-    return (
-        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
-            <path d="M5.5 3H7v4H3V5.5h1.5V3H5.5zm9 0H13v1.5h1.5V6H16V3h-1.5zM3 13h4v4H5.5v-1.5H4V14H3v-1zm10 4h1.5v-1.5H16V14h-1.5v1.5H13V17zm-2-4H9v-2H7V9h2V7h2v2h2v2h-2v2z"/>
-        </svg>
-    )
-}
+const PAD = 40 // padding around the graph area
 
 /**
  * Compute topological layer positions: ingoing=0 nodes at the top,
  * then expand layer by layer via outgoing edges.
- * Uses fixed spacing so the graph stays compact regardless of container size.
- * First row is top-aligned (moved up) to maximize vertical space for 3 rows.
+ * Spacing adapts to fill the available container width and height.
  */
-const FIXED_NODE_GAP_X = 120   // horizontal px between sibling nodes
-const FIXED_LAYER_GAP_Y = 90   // vertical px between layers (compact for 3 rows)
-const PAD_TOP = 30             // top padding — first row starts here
-
 function computeLayerPositions(
     nodeIds: string[],
     edges: { source: string; target: string }[],
     width: number,
-    _height: number,
+    height: number,
 ): Map<string, { x: number; y: number }> {
     const nodeSet = new Set(nodeIds)
 
@@ -112,21 +99,26 @@ function computeLayerPositions(
         frontier = next
     }
 
-    // Position: top-aligned, fixed spacing, no scaling
+    // Adaptive positioning: fill the container with padding
     const result = new Map<string, { x: number; y: number }>()
-    const cx = width / 2
+    const usableW = Math.max(width - PAD * 2, 80)
+    const usableH = Math.max(height - PAD * 2, 80)
     const layerCount = layers.length
+    const maxLayerWidth = Math.max(...layers.map(l => l.length), 1)
 
-    const startY = PAD_TOP
+    // Horizontal gap spreads nodes evenly across the usable width per layer
+    const gapX = maxLayerWidth > 1 ? usableW / (maxLayerWidth - 1) : 0
+    // Vertical gap spreads layers evenly across the usable height
+    const gapY = layerCount > 1 ? usableH / (layerCount - 1) : 0
 
     for (let li = 0; li < layerCount; li++) {
         const layer = layers[li]
-        const y = startY + FIXED_LAYER_GAP_Y * li
-        const layerWidth = (layer.length - 1) * FIXED_NODE_GAP_X
-        const startX = cx - layerWidth / 2
+        const y = PAD + gapY * li
+        const layerWidth = layer.length > 1 ? gapX * (layer.length - 1) : 0
+        const startX = PAD + (usableW - layerWidth) / 2
         for (let ni = 0; ni < layer.length; ni++) {
             result.set(layer[ni], {
-                x: startX + FIXED_NODE_GAP_X * ni,
+                x: startX + gapX * ni,
                 y,
             })
         }
@@ -135,14 +127,14 @@ function computeLayerPositions(
 }
 
 export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeClick, onNodeDoubleClick, onBackgroundClick }: Props) {
+    const { t } = useTranslation()
 
-    const [fullscreen, setFullscreen] = useState(false)
-    const containerRef = useRef<HTMLDivElement>(null)
+    const containerRef = useRef<HTMLDivElement | null>(null)
     const [dims, setDims] = useState({ w: 800, h: 300 })
-
-    const handleFullscreen = useCallback(() => {
-        setFullscreen(prev => !prev)
-    }, [])
+    const [colorScheme, setColorScheme] = useState<'light' | 'dark'>(() => {
+        if (typeof window === 'undefined') return 'light'
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    })
 
     // +1 hop filtering: show the hopFocusId node and all its direct neighbors (outgoing + incoming)
     const displayData = useMemo(() => {
@@ -160,6 +152,40 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
 
         return { nodes: data.nodes.filter(n => neighborIds.has(n.id)), edges: connectedEdges }
     }, [data, hopFocusId])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        const updateColorScheme = (event: MediaQueryList | MediaQueryListEvent) => {
+            setColorScheme(event.matches ? 'dark' : 'light')
+        }
+
+        updateColorScheme(mediaQuery)
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', updateColorScheme)
+            return () => mediaQuery.removeEventListener('change', updateColorScheme)
+        }
+
+        const legacyMediaQuery = mediaQuery as MediaQueryList & {
+            addListener?: (listener: (event: MediaQueryListEvent) => void) => void
+            removeListener?: (listener: (event: MediaQueryListEvent) => void) => void
+        }
+        legacyMediaQuery.addListener?.(updateColorScheme)
+        return () => legacyMediaQuery.removeListener?.(updateColorScheme)
+    }, [])
+
+    const iconPalette = useMemo(() => {
+        const styles = getComputedStyle(containerRef.current ?? document.documentElement)
+        return {
+            surface: getCssVar(styles, '--hr-topology-icon-surface', TOPOLOGY_ICON_DEFAULTS.surface),
+            outline: getCssVar(styles, '--hr-topology-icon-outline', TOPOLOGY_ICON_DEFAULTS.outline),
+            ink: getCssVar(styles, '--hr-topology-icon-ink', TOPOLOGY_ICON_DEFAULTS.ink),
+            clusterAccent: getCssVar(styles, '--hr-topology-cluster-accent', TOPOLOGY_ICON_DEFAULTS.accents.cluster),
+            businessAccent: getCssVar(styles, '--hr-topology-business-accent', TOPOLOGY_ICON_DEFAULTS.accents.business),
+        }
+    }, [dims.w, dims.h, colorScheme])
 
     const positionedOption = useMemo<EChartsOption>(() => {
         const nodeCount = displayData.nodes.length
@@ -197,41 +223,67 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
             const pos = positions.get(n.id) ?? { x: dims.w / 2, y: dims.h / 2 }
             const isDownstream = focusedHostId ? downstreamNodes.has(n.id) : n.id === highlightId
             const isSource = n.id === focusedHostId
-            const isBs = n.nodeType === 'business-service'
+            const nodeKind = n.nodeType === 'business-service'
+                ? 'business'
+                : n.nodeType === 'cluster'
+                ? 'cluster'
+                : 'host'
+            const isBs = nodeKind === 'business'
+            const isCluster = nodeKind === 'cluster'
+            const accentColor = isBs
+                ? iconPalette.businessAccent
+                : iconPalette.clusterAccent
+            const symbolSize = isBs
+                ? (isSource ? 52 : 46)
+                : isCluster
+                ? (isSource ? 50 : isDownstream ? 44 : 40)
+                : (isSource ? 48 : isDownstream ? 42 : 38)
             return {
-            id: n.id,
-            name: n.name,
-            x: pos.x,
-            y: pos.y,
-            symbol: isBs ? 'diamond' as const : 'circle' as const,
-            symbolSize: isBs ? (isSource ? 50 : 40) : (isSource ? 46 : isDownstream ? 38 : 32),
-            fixed: false,
-            itemStyle: {
-                color: isBs ? BS_NODE_COLOR : CLUSTER_TYPE_COLORS[(n.clusterType ?? '').toUpperCase()] || DEFAULT_COLOR,
-                borderColor: isDownstream ? '#1e293b' : undefined,
-                borderWidth: isDownstream ? 2 : 0,
-                opacity: focusedHostId && !isDownstream ? 0.4 : 1,
-            },
-            label: {
-                show: true,
-                fontSize: isSource ? 12 : isDownstream ? 11 : 10,
-                fontWeight: isBs ? 'bold' as const : 'normal' as const,
-                position: 'bottom' as const,
-            },
-            tooltip: {
-                formatter: () => {
-                    if (isBs) {
-                        return `<b>${n.name}</b><br/>Business Service`
-                    }
-                    const parts = [`<b>${n.name}</b>`]
-                    if (n.ip) parts.push(`IP: ${n.ip}`)
-                    if (n.clusterType) parts.push(`Type: ${n.clusterType}`)
-                    if (n.clusterName) parts.push(`Cluster: ${n.clusterName}`)
-                    if (n.purpose) parts.push(`Purpose: ${n.purpose}`)
-                    return parts.join('<br/>')
+                id: n.id,
+                name: n.name,
+                x: pos.x,
+                y: pos.y,
+                symbol: getTopologyNodeSymbol(nodeKind, {
+                    size: symbolSize,
+                    accentColor,
+                    surfaceColor: iconPalette.surface,
+                    outlineColor: isDownstream ? '#94a3b8' : iconPalette.outline,
+                    inkColor: iconPalette.ink,
+                }),
+                symbolSize,
+                symbolKeepAspect: true,
+                fixed: false,
+                itemStyle: {
+                    opacity: focusedHostId && !isDownstream ? 0.42 : 1,
                 },
-            },
-        }})
+                label: {
+                    show: true,
+                    fontSize: isSource ? 12 : isDownstream ? 11 : 10,
+                    fontWeight: isBs ? 'bold' as const : 'normal' as const,
+                    position: 'bottom' as const,
+                },
+                tooltip: {
+                    formatter: () => {
+                        if (isBs) {
+                            return `<b>${escapeHtml(n.name)}</b><br/>${escapeHtml(t('hostResource.createBusinessService'))}`
+                        }
+                        const parts = [`<b>${escapeHtml(n.name)}</b>`]
+                        if (isCluster) {
+                            parts.push(escapeHtml(t('hostResource.createCluster')))
+                            if ('type' in n && n.type) parts.push(`${escapeHtml(t('hostResource.clusterType'))}: ${escapeHtml(n.type)}`)
+                            if ('hostCount' in n) parts.push(`${escapeHtml(t('hostResource.hostCount'))}: ${escapeHtml(n.hostCount)}`)
+                            if ('mode' in n && n.mode) parts.push(`Mode: ${escapeHtml(n.mode)}`)
+                            return parts.join('<br/>')
+                        }
+                        if (n.ip) parts.push(`${escapeHtml(t('hostResource.ip'))}: ${escapeHtml(n.ip)}`)
+                        if (n.clusterType) parts.push(`${escapeHtml(t('hostResource.clusterType'))}: ${escapeHtml(n.clusterType)}`)
+                        if ('clusterName' in n && n.clusterName) parts.push(`${escapeHtml(t('hostResource.cluster'))}: ${escapeHtml(n.clusterName)}`)
+                        if ('purpose' in n && n.purpose) parts.push(`${escapeHtml(t('hostResource.purpose'))}: ${escapeHtml(n.purpose)}`)
+                        return parts.join('<br/>')
+                    },
+                },
+            }
+        })
 
         const edges = displayData.edges.map((e, i) => {
             const isDownstream = downstreamEdges.has(i)
@@ -279,17 +331,17 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
                 } : {}),
             }],
         } as EChartsOption
-    }, [displayData, focusedHostId, hopFocusId, dims])
+    }, [displayData, focusedHostId, hopFocusId, dims, iconPalette, t])
 
     const handleEvents = useMemo(() => ({
-        click: (params: { dataType?: string; data?: GraphNode; componentType?: string }) => {
+        click: (params: { dataType?: string; data?: RelationGraphNode; componentType?: string }) => {
             if (params.componentType === 'series' && params.dataType === 'node' && params.data?.id && onNodeClick) {
                 onNodeClick(params.data.id)
             } else if (params.componentType !== 'series' && onBackgroundClick) {
                 onBackgroundClick()
             }
         },
-        dblclick: (params: { dataType?: string; data?: GraphNode; componentType?: string }) => {
+        dblclick: (params: { dataType?: string; data?: RelationGraphNode; componentType?: string }) => {
             if (params.componentType === 'series' && params.dataType === 'node' && params.data?.id && onNodeDoubleClick) {
                 onNodeDoubleClick(params.data.id)
             }
@@ -298,7 +350,7 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
 
     // Track container size via ResizeObserver to avoid infinite re-renders
     const setContainerRef = useCallback((el: HTMLDivElement | null) => {
-        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+        containerRef.current = el
     }, [])
 
     useEffect(() => {
@@ -317,36 +369,10 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
         })
         observer.observe(el)
         return () => observer.disconnect()
-    }, [fullscreen, data.nodes.length])
+    }, [data.nodes.length])
 
     if (data.nodes.length === 0) {
         return <div className="hr-graph-empty">No topology data available</div>
-    }
-
-    const chart = (
-        <ReactECharts
-            option={positionedOption}
-            style={{ height: '100%', width: '100%' }}
-            opts={{ renderer: 'svg' }}
-            notMerge
-            lazyUpdate
-            onEvents={handleEvents}
-            className={focusedHostId ? 'hr-graph-focused' : ''}
-        />
-    )
-
-    if (fullscreen) {
-        return (
-            <div
-                ref={setContainerRef}
-                className="hr-topology-fullscreen"
-            >
-                <button className="hr-topology-fullscreen-btn" onClick={handleFullscreen} title="Exit fullscreen">
-                    <ExitFullscreenIcon />
-                </button>
-                {chart}
-            </div>
-        )
     }
 
     return (
@@ -354,10 +380,28 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
             ref={setContainerRef}
             style={{ position: 'relative', width: '100%', height: '100%' }}
         >
-            <button className="hr-topology-fullscreen-btn" onClick={handleFullscreen} title="Fullscreen">
-                <FullscreenIcon />
-            </button>
-            {chart}
+            <div className="hr-topology-shell">
+                <div className="hr-topology-legend" aria-hidden="true">
+                    <div className="hr-topology-legend-item">
+                        <TopologyNodeIcon kind="cluster" size={18} />
+                        <span>{t('hostResource.createCluster')}</span>
+                    </div>
+                    <span className="hr-topology-legend-connector" />
+                    <div className="hr-topology-legend-item">
+                        <TopologyNodeIcon kind="business" size={18} />
+                        <span>{t('hostResource.createBusinessService')}</span>
+                    </div>
+                </div>
+                <ReactECharts
+                    option={positionedOption}
+                    style={{ height: '100%', width: '100%' }}
+                    opts={{ renderer: 'svg' }}
+                    notMerge
+                    lazyUpdate
+                    onEvents={handleEvents}
+                    className={focusedHostId ? 'hr-graph-focused' : ''}
+                />
+            </div>
         </div>
     )
 }
