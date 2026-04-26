@@ -26,6 +26,7 @@ interface MessageProps {
     userId?: string | null
     isStreaming?: boolean
     onRetry?: () => void
+    onCancelRequest?: () => void
     sourceDocuments?: Citation[]
     fetchedDocuments?: Citation[]
     outputFiles?: DetectedFile[]
@@ -129,6 +130,7 @@ function MermaidBlock({ code }: { code: string }) {
 function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId, userId }: {
     filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
+    const { t } = useTranslation()
     const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
@@ -160,14 +162,14 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
             <span className="file-capsule-name">{visibleName}</span>
             <div className="file-capsule-actions">
                 {canPreview && (
-                    <button className="file-capsule-btn" onClick={handlePreview} title="Preview">
+                    <button className="file-capsule-btn" onClick={handlePreview} aria-label={t('files.preview')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                             <circle cx="12" cy="12" r="3" />
                         </svg>
                     </button>
                 )}
-                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" title="Download">
+                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" aria-label={t('files.download')}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
@@ -215,6 +217,7 @@ function MessageInner({
     userId,
     isStreaming = false,
     onRetry,
+    onCancelRequest,
     sourceDocuments,
     fetchedDocuments,
     outputFiles = [],
@@ -542,6 +545,14 @@ function MessageInner({
     }
 
     const sessionError = !isUser ? message.metadata?.sessionError : undefined
+    const sessionErrorActions = sessionError?.suggestedActions ?? []
+    const canRetrySessionError = !!sessionError && sessionError.retryable !== false && sessionErrorActions.includes('retry') && !!onRetry
+    const canCancelSessionError = !!sessionError && sessionErrorActions.includes('cancel') && !!onCancelRequest
+    const passiveSessionErrorActions = sessionErrorActions.filter(action => {
+        if (action === 'retry') return !canRetrySessionError
+        if (action === 'cancel') return !canCancelSessionError
+        return true
+    })
     const isEmptyAssistantResponse = !isUser && !sessionError && message.content.length === 0 && !isStreaming
     const selectedSkill = isUser ? message.metadata?.selectedSkill : undefined
     const hasUserAttachedFiles = isUser && !!message.metadata?.attachedFiles?.length
@@ -589,20 +600,40 @@ function MessageInner({
                                 <line x1="12" y1="8" x2="12" y2="12" />
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
                             </svg>
-                            <span>
+                            <span className="message-error-body">
                                 {t(sessionError.messageKey, { defaultValue: sessionError.fallback })}
-                                {(sessionError.traceId || sessionError.requestId) && (
+                                {(sessionError.traceId || sessionError.requestId || sessionError.sessionId || sessionError.agentId) && (
                                     <small className="message-error-detail">
                                         {t('chat.sessionErrors.reference', {
                                             traceId: sessionError.traceId || '-',
                                             requestId: sessionError.requestId || '-',
+                                            sessionId: sessionError.sessionId || '-',
+                                            agentId: sessionError.agentId || '-',
                                         })}
                                     </small>
                                 )}
+                                {sessionError.detail && (
+                                    <details className="message-error-detail">
+                                        <summary>{t('chat.sessionErrors.details')}</summary>
+                                        <span>{sessionError.detail}</span>
+                                    </details>
+                                )}
+                                {passiveSessionErrorActions.length > 0 && (
+                                    <small className="message-error-actions">
+                                        {passiveSessionErrorActions
+                                            .map(action => t(`chat.sessionErrors.actions.${action}`))
+                                            .join(' / ')}
+                                    </small>
+                                )}
                             </span>
-                            {sessionError.retryable && onRetry && (
+                            {canRetrySessionError && (
                                 <button className="message-error-retry" onClick={onRetry}>
-                                    {t('common.tryAgain')}
+                                    {t('chat.sessionErrors.actions.retry')}
+                                </button>
+                            )}
+                            {canCancelSessionError && (
+                                <button className="message-error-retry" onClick={onCancelRequest}>
+                                    {t('chat.sessionErrors.actions.cancel')}
                                 </button>
                             )}
                         </div>

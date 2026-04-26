@@ -111,6 +111,12 @@ export interface MessageMetadata {
     agentVisible?: boolean
     attachedFiles?: AttachedFile[]
     selectedSkill?: SelectedSkill
+    retryPayload?: {
+        text: string
+        images?: Array<{ data: string; mimeType: string }>
+        attachedFiles?: AttachedFile[]
+        selectedSkill?: SelectedSkill
+    }
     sessionError?: {
         layer?: string
         code: string

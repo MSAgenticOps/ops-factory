@@ -192,6 +192,11 @@ export interface SessionReplyResponse {
     request_id: string;
 }
 
+export interface SessionReplyOptions {
+    signal?: AbortSignal;
+    timeoutMs?: number;
+}
+
 export interface SessionCancelRequest {
     request_id: string;
 }
@@ -219,7 +224,6 @@ export type SessionSuggestedAction =
     | 'new_request'
     | 'reduce_context'
     | 'check_tool'
-    | 'login'
     | 'contact_support';
 
 export interface SessionErrorEnvelope {
@@ -274,6 +278,7 @@ export interface GoosedClientOptions {
     baseUrl?: string;
     secretKey?: string;
     timeout?: number;
+    submitTimeout?: number;
     userId?: string;
 }
 

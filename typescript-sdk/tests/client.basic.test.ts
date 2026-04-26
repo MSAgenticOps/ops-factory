@@ -36,6 +36,7 @@ describe('GoosedClient basic smoke tests', () => {
             secretKey: 'unit-secret',
             userId: 'unit-user',
             timeout: 500,
+            submitTimeout: 30_000,
         })
 
         const result = await client.status()
@@ -106,6 +107,7 @@ describe('GoosedClient basic smoke tests', () => {
         assert.equal(init?.method, 'POST')
         assert.equal((init?.headers as Record<string, string>)['x-secret-key'], 'unit-secret')
         assert.equal((init?.headers as Record<string, string>)['x-user-id'], 'unit-user')
+        assert.equal(init?.signal instanceof AbortSignal, true)
         assert.deepEqual(JSON.parse(init?.body as string), {
             request_id: '00000000-0000-0000-0000-000000000001',
             user_message: {
@@ -139,6 +141,28 @@ describe('GoosedClient basic smoke tests', () => {
         assert.deepEqual(JSON.parse(init?.body as string), {
             request_id: '00000000-0000-0000-0000-000000000001',
         })
+    })
+
+    test('cancelSessionReply() maps AbortSignal timeout errors to cancel failure envelope', async () => {
+        globalThis.fetch = (async () => {
+            throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+        }) as typeof fetch
+
+        const client = new GoosedClient({
+            baseUrl: 'http://127.0.0.1:3002/ops-gateway',
+            secretKey: 'unit-secret',
+        })
+
+        await assert.rejects(
+            () => client.cancelSessionReply('session-1', '00000000-0000-0000-0000-000000000001'),
+            (err: unknown) => {
+                const sessionError = (err as { sessionError?: { code?: string; suggested_actions?: string[] } }).sessionError
+                assert.equal(err instanceof GoosedConnectionError, true)
+                assert.equal(sessionError?.code, 'gateway_cancel_failed')
+                assert.deepEqual(sessionError?.suggested_actions, ['retry'])
+                return true
+            }
+        )
     })
 
     test('subscribeSessionEvents() forwards Last-Event-ID and parses event ids', async () => {
@@ -247,5 +271,102 @@ describe('GoosedClient basic smoke tests', () => {
                 return true
             }
         )
+    })
+
+    test('submitSessionReply() maps goosed active request 400 to conflict actions', async () => {
+        globalThis.fetch = (async () => new Response(JSON.stringify({
+            error: 'Session already has an active request. Cancel it first.',
+        }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+        })) as typeof fetch
+
+        const client = new GoosedClient({
+            baseUrl: 'http://127.0.0.1:3002/ops-gateway',
+            secretKey: 'unit-secret',
+        })
+
+        await assert.rejects(
+            () => client.submitSessionReply('session-1', {
+                request_id: 'req-1',
+                user_message: {
+                    role: 'user',
+                    created: 1776928807,
+                    content: [{ type: 'text', text: 'hello' }],
+                    metadata: { userVisible: true, agentVisible: true },
+                },
+            }),
+            (err: unknown) => {
+                const sessionError = (err as { sessionError?: { code?: string; suggested_actions?: string[] } }).sessionError
+                assert.equal(sessionError?.code, 'goosed_active_request_conflict')
+                assert.deepEqual(sessionError?.suggested_actions, ['wait', 'cancel', 'retry'])
+                return true
+            }
+        )
+    })
+
+    test('submitSessionReply() maps AbortSignal timeout errors to submit timeout envelope', async () => {
+        globalThis.fetch = (async () => {
+            throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+        }) as typeof fetch
+
+        const client = new GoosedClient({
+            baseUrl: 'http://127.0.0.1:3002/ops-gateway',
+            secretKey: 'unit-secret',
+        })
+
+        await assert.rejects(
+            () => client.submitSessionReply('session-1', {
+                request_id: 'req-1',
+                user_message: {
+                    role: 'user',
+                    created: 1776928807,
+                    content: [{ type: 'text', text: 'hello' }],
+                    metadata: { userVisible: true, agentVisible: true },
+                },
+            }),
+            (err: unknown) => {
+                const sessionError = (err as { sessionError?: { code?: string; suggested_actions?: string[] } }).sessionError
+                assert.equal(err instanceof GoosedConnectionError, true)
+                assert.equal(sessionError?.code, 'gateway_submit_timeout')
+                assert.deepEqual(sessionError?.suggested_actions, ['retry'])
+                return true
+            }
+        )
+    })
+
+    test('submitSessionReply() combines caller signal with submit timeout signal', async () => {
+        let init: RequestInit | undefined
+
+        globalThis.fetch = (async (_input: RequestInfo | URL, options?: RequestInit) => {
+            init = options
+            return new Response(JSON.stringify({ request_id: '00000000-0000-0000-0000-000000000001' }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })
+        }) as typeof fetch
+
+        const client = new GoosedClient({
+            baseUrl: 'http://127.0.0.1:3002/ops-gateway',
+            secretKey: 'unit-secret',
+            timeout: 180_000,
+            submitTimeout: 30_000,
+        })
+        const controller = new AbortController()
+
+        await client.submitSessionReply('session-1', {
+            request_id: '00000000-0000-0000-0000-000000000001',
+            user_message: {
+                role: 'user',
+                created: 1776928807,
+                content: [{ type: 'text', text: 'hello' }],
+                metadata: { userVisible: true, agentVisible: true },
+            },
+        }, { signal: controller.signal })
+
+        assert.equal(init?.signal instanceof AbortSignal, true)
+        assert.notEqual(init?.signal, controller.signal)
+        controller.abort()
+        assert.equal((init?.signal as AbortSignal).aborted, true)
     })
 })

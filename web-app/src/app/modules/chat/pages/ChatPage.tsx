@@ -687,6 +687,20 @@ export default function Chat() {
         for (let i = messages.length - 1; i >= 0; i--) {
             const msg = messages[i]
             if (msg.role === 'user') {
+                const retryPayload = msg.metadata?.retryPayload
+                if (retryPayload) {
+                    const messageId = sendMessage(
+                        retryPayload.text,
+                        retryPayload.images,
+                        retryPayload.attachedFiles,
+                        retryPayload.selectedSkill,
+                    )
+                    if (messageId) {
+                        markActiveSessionUsed()
+                        setPendingUserMessageAnchorId(messageId)
+                    }
+                    return
+                }
                 const textContent = msg.content.find(c => c.type === 'text')
                 const text = textContent && 'text' in textContent ? textContent.text : undefined
                 if (text) {
@@ -815,6 +829,7 @@ export default function Chat() {
                             sessionId={activeSessionId || undefined}
                             outputFilesEvent={outputFilesEvent}
                             onRetry={handleRetry}
+                            onCancelRequest={handleStopMessage}
                             scrollContainerRef={messageScrollContainerRef}
                             showAnchorSpacer={!!pendingUserMessageAnchorId}
                         />

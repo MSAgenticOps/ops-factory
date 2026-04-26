@@ -46,6 +46,27 @@ function setScrollTop(element: ActiveScrollElement, top: number, behavior: Scrol
     element.scrollTop = top
 }
 
+const fileIdentity = (file: DetectedFile): string =>
+    `${file.rootId ?? ''}:${file.path || file.displayPath || file.name}`
+
+const fileEventSignature = (files: DetectedFile[]): string =>
+    files.map(fileIdentity).join('|')
+
+const mergeDetectedFiles = (existing: DetectedFile[], incoming: DetectedFile[]): DetectedFile[] => {
+    const order: string[] = []
+    const byKey = new Map<string, DetectedFile>()
+
+    for (const file of [...existing, ...incoming]) {
+        const key = fileIdentity(file)
+        if (!byKey.has(key)) {
+            order.push(key)
+        }
+        byKey.set(key, file)
+    }
+
+    return order.map(key => byKey.get(key)!)
+}
+
 function hasOnlyToolResponse(message: ChatMessage): boolean {
     return message.role === 'user' &&
         message.content.length > 0 &&
@@ -147,6 +168,7 @@ interface MessageListProps {
     sessionId?: string | null
     outputFilesEvent?: OutputFilesEvent | null
     onRetry?: () => void
+    onCancelRequest?: () => void
     scrollContainerRef?: ScrollContainerRef
     showAnchorSpacer?: boolean
 }
@@ -159,6 +181,7 @@ export default function MessageList({
     sessionId,
     outputFilesEvent,
     onRetry,
+    onCancelRequest,
     scrollContainerRef,
     showAnchorSpacer = false,
 }: MessageListProps) {
@@ -168,6 +191,7 @@ export default function MessageList({
     const bottomRef = useRef<HTMLDivElement>(null)
     const [messageOutputFiles, setMessageOutputFiles] = useState<Map<string, DetectedFile[]>>(new Map())
     const processedOutputFilesRef = useRef<Set<string>>(new Set())
+    const liveOutputFileMessageIdsRef = useRef<Set<string>>(new Set())
     const hasInitializedScrollRef = useRef(false)
 
     const visibleMessages = useMemo(() => {
@@ -265,11 +289,7 @@ export default function MessageList({
     // attach the files to the last assistant text message and persist the mapping.
     useEffect(() => {
         if (!outputFilesEvent || !agentId || !finalAssistantTextMessageId) return
-
-        // Deduplicate: don't process the same event twice
-        const eventKey = `${outputFilesEvent.sessionId}:${finalAssistantTextMessageId}`
-        if (processedOutputFilesRef.current.has(eventKey)) return
-        processedOutputFilesRef.current.add(eventKey)
+        if (!sessionId || outputFilesEvent.sessionId !== sessionId) return
 
         const files: DetectedFile[] = outputFilesEvent.files.map(f => ({
             path: f.path,
@@ -279,10 +299,16 @@ export default function MessageList({
             displayPath: f.displayPath,
         }))
 
-        // Update local state
+        // Deduplicate exact event re-renders while still allowing later batches for the same message.
+        const eventKey = `${outputFilesEvent.sessionId}:${finalAssistantTextMessageId}:${fileEventSignature(files)}`
+        if (processedOutputFilesRef.current.has(eventKey)) return
+        processedOutputFilesRef.current.add(eventKey)
+        liveOutputFileMessageIdsRef.current.add(finalAssistantTextMessageId)
+
+        const filesToPersist = mergeDetectedFiles(messageOutputFiles.get(finalAssistantTextMessageId) ?? [], files)
         setMessageOutputFiles(prev => {
             const next = new Map(prev)
-            next.set(finalAssistantTextMessageId, files)
+            next.set(finalAssistantTextMessageId, mergeDetectedFiles(next.get(finalAssistantTextMessageId) ?? [], files))
             return next
         })
 
@@ -293,10 +319,10 @@ export default function MessageList({
             body: JSON.stringify({
                 sessionId: outputFilesEvent.sessionId,
                 messageId: finalAssistantTextMessageId,
-                files,
+                files: filesToPersist,
             }),
         }).catch(() => { /* best-effort persistence */ })
-    }, [outputFilesEvent, agentId, finalAssistantTextMessageId, gatewayHeaders])
+    }, [outputFilesEvent, agentId, sessionId, finalAssistantTextMessageId, messageOutputFiles, gatewayHeaders])
 
     // ── Resume: load persisted file capsules from gateway ───────────
     useEffect(() => {
@@ -322,7 +348,19 @@ export default function MessageList({
                     }
                 }
                 if (map.size > 0) {
-                    setMessageOutputFiles(map)
+                    setMessageOutputFiles(prev => {
+                        const next = new Map(map)
+                        for (const [messageId, files] of prev.entries()) {
+                            if (files.length > 0) {
+                                if (liveOutputFileMessageIdsRef.current.has(messageId)) {
+                                    next.set(messageId, files)
+                                } else {
+                                    next.set(messageId, mergeDetectedFiles(next.get(messageId) ?? [], files))
+                                }
+                            }
+                        }
+                        return next
+                    })
                 }
             } catch {
                 /* best-effort resume */
@@ -337,6 +375,7 @@ export default function MessageList({
     useEffect(() => {
         setMessageOutputFiles(new Map())
         processedOutputFilesRef.current = new Set()
+        liveOutputFileMessageIdsRef.current = new Set()
         hasInitializedScrollRef.current = false
     }, [agentId, sessionId])
 
@@ -408,6 +447,7 @@ export default function MessageList({
                             userId={userId}
                             isStreaming={isLastAssistant}
                             onRetry={message.role === 'assistant' && index === displayMessages.length - 1 ? onRetry : undefined}
+                            onCancelRequest={message.role === 'assistant' && index === displayMessages.length - 1 ? onCancelRequest : undefined}
                             sourceDocuments={isFinalAssistantResponse ? sourceDocuments : undefined}
                             fetchedDocuments={isFinalAssistantResponse ? fetchedDocuments : undefined}
                             outputFiles={message.id ? messageOutputFiles.get(message.id) : undefined}

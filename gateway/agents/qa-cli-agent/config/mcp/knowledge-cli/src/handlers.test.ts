@@ -108,6 +108,47 @@ test('read_file returns numbered content for the requested line range', async ()
   })
 })
 
+test('read_file truncates line ranges that exceed the maximum window', async () => {
+  await withTempRoot(async (rootDir) => {
+    const resolvedRoot = await realpath(rootDir)
+    const filePath = path.join(resolvedRoot, 'large.md')
+    const content = Array.from({ length: 260 }, (_, index) => `line${index + 1}`).join('\n')
+    await writeFile(filePath, content, 'utf8')
+
+    const result = JSON.parse(await handleReadFile({ path: filePath, startLine: 10, endLine: 260 }))
+
+    assert.equal(result.path, filePath)
+    assert.equal(result.startLine, 10)
+    assert.equal(result.endLine, 209)
+    assert.equal(result.requestedEndLine, 260)
+    assert.equal(result.truncated, true)
+    assert.equal(result.truncatedReason, 'line_limit')
+    assert.equal(result.nextStartLine, 210)
+    assert.match(result.message, /内容已被截断/)
+    assert.match(result.message, /实际返回到第 209 行/)
+    assert.doesNotMatch(result.content, /210\s+line210/)
+  })
+})
+
+test('read_file truncates output that exceeds the character budget', async () => {
+  await withTempRoot(async (rootDir) => {
+    const resolvedRoot = await realpath(rootDir)
+    const filePath = path.join(resolvedRoot, 'wide.md')
+    const content = Array.from({ length: 40 }, (_, index) => `line${index + 1} ${'x'.repeat(1000)}`).join('\n')
+    await writeFile(filePath, content, 'utf8')
+
+    const result = JSON.parse(await handleReadFile({ path: filePath, startLine: 1, endLine: 40 }))
+
+    assert.equal(result.path, filePath)
+    assert.equal(result.startLine, 1)
+    assert.equal(result.truncated, true)
+    assert.equal(result.truncatedReason, 'char_limit')
+    assert.equal(result.nextStartLine, result.endLine + 1)
+    assert.ok(result.content.length <= 24_000)
+    assert.match(result.message, /内容已被截断/)
+  })
+})
+
 test('read_file rejects paths outside the configured root', async () => {
   await withTempRoot(async (rootDir) => {
     const outsideFile = path.join(path.dirname(rootDir), 'outside.txt')

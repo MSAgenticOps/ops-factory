@@ -570,12 +570,18 @@
       "frontendEventsDisconnected": "对话连接中断，正在重连；后台任务不会因此被取消。",
       "userCancelled": "生成已停止。",
       "gatewaySubmitTimeout": "提交请求超时，系统尚未确认任务是否已被接收。重试前请先确认任务是否仍在运行。",
+      "gatewaySubmitFailed": "Gateway 无法向智能体服务提交请求。",
+      "gatewayEventsFailed": "Gateway 无法建立对话事件流。",
+      "gatewayCancelFailed": "Gateway 无法向智能体服务提交取消请求。",
       "gatewayUnauthorized": "你没有权限使用该智能体。",
       "gatewayAgentNotFound": "该智能体或会话不可用。",
       "gatewayAgentUnavailable": "智能体服务暂时不可用。",
       "gatewayGoosedUnavailable": "Gateway 无法连接智能体服务。",
       "gatewayMaxDurationReached": "任务已达到平台时长上限。",
+      "gatewayRateLimited": "请求过于频繁，请稍后重试。",
       "goosedActiveRequestConflict": "该会话中已有任务正在运行。",
+      "goosedRequestRejected": "智能体服务拒绝了本次请求。",
+      "goosedError": "智能体服务返回错误。",
       "providerTimeout": "模型服务响应超时。",
       "providerRateLimited": "模型服务触发限流，请稍后重试。",
       "providerAuthOrQuotaFailed": "模型服务配置异常或额度不足。",
@@ -583,7 +589,20 @@
       "mcpUnavailable": "外部工具服务不可用。",
       "contextTooLarge": "请求或会话上下文过大。",
       "unknown": "任务失败。请使用下面的引用信息辅助排障。",
-      "reference": "引用信息：trace {{traceId}}，request {{requestId}}"
+      "reference": "引用信息：trace {{traceId}}，request {{requestId}}，session {{sessionId}}，agent {{agentId}}",
+      "details": "详情",
+      "actions": {
+        "retry": "重试",
+        "cancel": "停止",
+        "reconnect": "正在重连",
+        "wait": "稍后再试",
+        "continue": "在当前会话继续",
+        "new_request": "发起新的请求",
+        "reduce_context": "缩短请求或减少附件",
+        "check_tool": "检查工具或外部服务",
+        "login": "刷新登录状态",
+        "contact_support": "携带引用信息联系支持"
+      }
     }
   },
   "newSession": {

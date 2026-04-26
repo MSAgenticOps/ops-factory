@@ -1,7 +1,7 @@
 {
-  "name": "custom_qwen3.5-35b-a3b",
+  "name": "custom_deepseek-v4-flash",
   "engine": "openai",
-  "display_name": "qwen/qwen3.5-35b-a3b",
+  "display_name": "deepseek/deepseek-v4-flash",
   "description": "Custom OpsAgentLLM provider",
   "api_key_env": "CUSTOM_OPSAGENTLLM_API_KEY",
   "base_url": "https://openrouter.ai/api/v1/chat/completions",

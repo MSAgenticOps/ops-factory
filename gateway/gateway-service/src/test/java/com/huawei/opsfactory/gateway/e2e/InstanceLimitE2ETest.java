@@ -65,7 +65,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
-        when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), anyString(), eq("test-secret")))
                 .thenReturn(Mono.empty());
 

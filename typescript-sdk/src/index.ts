@@ -24,6 +24,7 @@ export type {
     SSEEventType,
     SessionReplyRequest,
     SessionReplyResponse,
+    SessionReplyOptions,
     SessionCancelRequest,
     SessionEventsOptions,
     SessionSSEEvent,

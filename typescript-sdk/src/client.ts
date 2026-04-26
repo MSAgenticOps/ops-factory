@@ -12,6 +12,7 @@ import type {
     Message,
     SessionReplyRequest,
     SessionReplyResponse,
+    SessionReplyOptions,
     SessionCancelRequest,
     SessionEventsOptions,
     SessionSSEEvent,
@@ -111,9 +112,47 @@ function statusToLayer(status?: number): SessionErrorLayer {
     return 'goosed';
 }
 
-function statusToCode(status?: number): string {
+function isActiveRequestConflictText(value: string | undefined): boolean {
+    return !!value && /session already has an active request/i.test(value);
+}
+
+function isAbortOrTimeoutError(error: unknown): error is DOMException {
+    return error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError');
+}
+
+function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+    const activeSignals = signals.filter((signal): signal is AbortSignal => !!signal);
+    if (activeSignals.length === 0) return undefined;
+    if (activeSignals.length === 1) return activeSignals[0];
+    const anySignal = (AbortSignal as typeof AbortSignal & {
+        any?: (signals: AbortSignal[]) => AbortSignal;
+    }).any;
+    if (typeof anySignal === 'function') {
+        return anySignal(activeSignals);
+    }
+
+    const controller = new AbortController();
+    const abort = (signal: AbortSignal) => {
+        if (!controller.signal.aborted) {
+            controller.abort(signal.reason);
+        }
+    };
+    for (const signal of activeSignals) {
+        if (signal.aborted) {
+            abort(signal);
+            break;
+        }
+        signal.addEventListener('abort', () => abort(signal), { once: true });
+    }
+    return controller.signal;
+}
+
+function statusToCode(status?: number, message?: string): string {
     switch (status) {
         case 400:
+            if (isActiveRequestConflictText(message)) {
+                return 'goosed_active_request_conflict';
+            }
             return 'goosed_request_rejected';
         case 401:
         case 403:
@@ -144,7 +183,7 @@ function codeToActions(code: string): SessionSuggestedAction[] {
         case 'goosed_request_cancelled':
             return ['new_request'];
         case 'gateway_unauthorized':
-            return ['login', 'contact_support'];
+            return ['contact_support'];
         case 'gateway_agent_not_found':
         case 'provider_auth_or_quota_failed':
         case 'gateway_internal_error':
@@ -201,15 +240,15 @@ export function normalizeSessionError(error: unknown, context: SessionErrorConte
     const status = context.httpStatus ??
         (error instanceof GoosedException ? error.statusCode : undefined) ??
         (typeof record?.http_status === 'number' ? record.http_status : undefined);
-    const inferredCode = context.code ?? (
-        typeof record?.code === 'string' ? record.code : statusToCode(status)
-    );
     const message = context.message ??
         (typeof record?.message === 'string' ? record.message : undefined) ??
         (typeof record?.error === 'string' ? record.error : undefined) ??
         (error instanceof Error ? error.message : undefined) ??
         (typeof raw === 'string' ? raw : undefined) ??
         'Agent request failed';
+    const inferredCode = context.code ?? (
+        typeof record?.code === 'string' ? record.code : statusToCode(status, message)
+    );
     const detail = context.detail ??
         (typeof record?.detail === 'string' ? record.detail : undefined) ??
         (typeof record?.error === 'string' ? record.error : undefined);
@@ -246,6 +285,7 @@ export class GoosedClient {
     private baseUrl: string;
     private secretKey: string;
     private timeout: number;
+    private submitTimeout: number;
     private userId?: string;
 
     constructor(options: GoosedClientOptions = {}) {
@@ -256,6 +296,7 @@ export class GoosedClient {
         this.baseUrl = (options.baseUrl ?? defaultBaseUrl).replace(/\/$/, '');
         this.secretKey = options.secretKey ?? defaultSecretKey;
         this.timeout = options.timeout ?? 30000;
+        this.submitTimeout = options.submitTimeout ?? 30000;
         this.userId = options.userId;
     }
 
@@ -333,7 +374,7 @@ export class GoosedClient {
                     suggestedActions: ['retry', 'contact_support'],
                 }));
             }
-            if (error instanceof DOMException && error.name === 'AbortError') {
+            if (isAbortOrTimeoutError(error)) {
                 throw new GoosedConnectionError('Request timed out', normalizeSessionError(error, {
                     layer: 'gateway',
                     code: 'gateway_submit_timeout',
@@ -364,10 +405,46 @@ export class GoosedClient {
                     suggestedActions: ['retry', 'contact_support'],
                 }));
             }
-            if (error instanceof DOMException && error.name === 'AbortError') {
+            if (isAbortOrTimeoutError(error)) {
                 throw new GoosedConnectionError('Request timed out', normalizeSessionError(error, {
                     layer: 'gateway',
                     code: 'gateway_submit_timeout',
+                    message: 'Request timed out',
+                    retryable: true,
+                    suggestedActions: ['retry'],
+                }));
+            }
+            throw error;
+        }
+    }
+
+    private async postWithSignal<T>(
+        path: string,
+        body: Record<string, unknown> | undefined,
+        signal: AbortSignal | undefined,
+        timeoutCode = 'gateway_submit_timeout'
+    ): Promise<T> {
+        try {
+            const response = await fetch(`${this.baseUrl}${path}`, {
+                method: 'POST',
+                headers: this.headers(),
+                body: body ? JSON.stringify(body) : undefined,
+                signal,
+            });
+            return this.handleResponse<T>(response);
+        } catch (error) {
+            if (error instanceof TypeError) {
+                throw new GoosedConnectionError(error.message, normalizeSessionError(error, {
+                    layer: 'gateway',
+                    code: 'gateway_goosed_unavailable',
+                    retryable: true,
+                    suggestedActions: ['retry', 'contact_support'],
+                }));
+            }
+            if (isAbortOrTimeoutError(error)) {
+                throw new GoosedConnectionError('Request timed out', normalizeSessionError(error, {
+                    layer: 'gateway',
+                    code: timeoutCode,
                     message: 'Request timed out',
                     retryable: true,
                     suggestedActions: ['retry'],
@@ -395,7 +472,7 @@ export class GoosedClient {
                     suggestedActions: ['retry', 'contact_support'],
                 }));
             }
-            if (error instanceof DOMException && error.name === 'AbortError') {
+            if (isAbortOrTimeoutError(error)) {
                 throw new GoosedConnectionError('Request timed out', normalizeSessionError(error, {
                     layer: 'gateway',
                     code: 'gateway_submit_timeout',
@@ -425,7 +502,7 @@ export class GoosedClient {
                     suggestedActions: ['retry', 'contact_support'],
                 }));
             }
-            if (error instanceof DOMException && error.name === 'AbortError') {
+            if (isAbortOrTimeoutError(error)) {
                 throw new GoosedConnectionError('Request timed out', normalizeSessionError(error, {
                     layer: 'gateway',
                     code: 'gateway_submit_timeout',
@@ -558,13 +635,31 @@ export class GoosedClient {
         yield* flushEvent();
     }
 
-    async submitSessionReply(sessionId: string, request: SessionReplyRequest): Promise<SessionReplyResponse> {
-        return this.post<SessionReplyResponse>(`/sessions/${encodeURIComponent(sessionId)}/reply`, request as unknown as Record<string, unknown>);
+    async submitSessionReply(
+        sessionId: string,
+        request: SessionReplyRequest,
+        options: SessionReplyOptions = {}
+    ): Promise<SessionReplyResponse> {
+        const timeoutMs = options.timeoutMs ?? this.submitTimeout;
+        const timeoutSignal = timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined;
+        const signal = combineSignals([options.signal, timeoutSignal]);
+        return this.postWithSignal<SessionReplyResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/reply`,
+            request as unknown as Record<string, unknown>,
+            signal,
+            'gateway_submit_timeout'
+        );
     }
 
     async cancelSessionReply(sessionId: string, requestId: string): Promise<void> {
         const request: SessionCancelRequest = { request_id: requestId };
-        await this.post(`/sessions/${encodeURIComponent(sessionId)}/cancel`, request as unknown as Record<string, unknown>);
+        const timeoutSignal = this.submitTimeout > 0 ? AbortSignal.timeout(this.submitTimeout) : undefined;
+        await this.postWithSignal(
+            `/sessions/${encodeURIComponent(sessionId)}/cancel`,
+            request as unknown as Record<string, unknown>,
+            timeoutSignal,
+            'gateway_cancel_failed'
+        );
     }
 
     async *subscribeSessionEvents(
@@ -631,7 +726,7 @@ export class GoosedClient {
             if (error instanceof TypeError) {
                 throw new GoosedConnectionError(error.message);
             }
-            if (error instanceof DOMException && error.name === 'AbortError') {
+            if (isAbortOrTimeoutError(error)) {
                 throw new GoosedConnectionError('Request timed out');
             }
             throw error;
@@ -766,6 +861,7 @@ export type {
     ImageData,
     SessionReplyRequest,
     SessionReplyResponse,
+    SessionReplyOptions,
     SessionCancelRequest,
     SessionEventsOptions,
     UploadResult,

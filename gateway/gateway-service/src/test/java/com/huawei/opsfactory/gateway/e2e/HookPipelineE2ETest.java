@@ -41,7 +41,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
-        when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), anyString(), eq("test-secret")))
                 .thenReturn(Mono.empty());
 
@@ -68,7 +68,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isEqualTo(413);
 
-        verify(goosedProxy, never()).proxyWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
+        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
     }
 
     @Test
@@ -85,7 +85,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
 
-        verify(goosedProxy, never()).proxyWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
+        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().is5xxServerError();
 
-        verify(goosedProxy, never()).proxyWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
+        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
     }
 
     @Test
@@ -113,7 +113,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
-        when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), eq("{\"modified\":true}"), eq("test-secret")))
                 .thenReturn(Mono.empty());
 
@@ -125,7 +125,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(goosedProxy).proxyWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+        verify(goosedProxy).proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), eq("{\"modified\":true}"), eq("test-secret"));
     }
 }

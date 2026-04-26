@@ -4,18 +4,14 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.hook.HookContext;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collections;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -38,19 +34,23 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
                 .thenReturn(Collections.emptyList());
         when(fileService.diffFiles(any(), any()))
                 .thenReturn(Collections.emptyList());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
+                anyString(), anyInt(), anyString()))
+                .thenReturn(Mono.just("{\"ok\":true}"));
     }
 
     @Test
-    public void reply_responseLatencyIncludesHookAndSpawnDelay() {
+    public void sessionReply_responseLatencyIncludesHookAndSpawnDelay() {
         when(hookPipeline.executeRequest(any(HookContext.class)))
                 .thenAnswer(invocation -> Mono.delay(Duration.ofMillis(80))
                         .thenReturn(((HookContext) invocation.getArgument(0)).getBody()));
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.delay(Duration.ofMillis(90)).thenReturn(mockInstance));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), anyString()))
-                .thenReturn(Flux.just(sseChunk("hook-spawn")));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.empty());
 
-        long elapsedMs = executeReplyAndMeasure("{\"message\":\"hello\"}");
+        long elapsedMs = executeSessionReplyAndMeasure(replyBody("00000000-0000-4000-8000-000000000001"));
 
         assertTrue("reply latency should include hook + spawn delays, actual=" + elapsedMs,
                 elapsedMs >= 140);
@@ -59,8 +59,8 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
     }
 
     @Test
-    public void reply_responseLatencyIncludesResumeDelay() {
-        String body = "{\"session_id\":\"session-123\",\"message\":\"hello\"}";
+    public void sessionReply_responseLatencyIncludesResumeDelay() {
+        String body = replyBody("00000000-0000-4000-8000-000000000002");
 
         when(hookPipeline.executeRequest(any(HookContext.class)))
                 .thenAnswer(invocation -> Mono.just(((HookContext) invocation.getArgument(0)).getBody()));
@@ -69,10 +69,11 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
         when(goosedProxy.fetchJson(eq(9999), eq(org.springframework.http.HttpMethod.POST), eq("/agent/resume"),
                 anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.delay(Duration.ofMillis(120)).thenReturn("{\"ok\":true}"));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), anyString()))
-                .thenReturn(Flux.just(sseChunk("resume")));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.empty());
 
-        long elapsedMs = executeReplyAndMeasure(body);
+        long elapsedMs = executeSessionReplyAndMeasure(body);
 
         verify(goosedProxy).fetchJson(eq(9999), eq(org.springframework.http.HttpMethod.POST), eq("/agent/resume"),
                 anyString(), anyInt(), anyString());
@@ -83,15 +84,16 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
     }
 
     @Test
-    public void reply_responseLatencyIncludesUpstreamFirstChunkDelay() {
+    public void sessionReply_responseLatencyIncludesUpstreamCompletionDelay() {
         when(hookPipeline.executeRequest(any(HookContext.class)))
                 .thenAnswer(invocation -> Mono.just(((HookContext) invocation.getArgument(0)).getBody()));
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), anyString()))
-                .thenReturn(Flux.just(sseChunk("upstream")).delaySubscription(Duration.ofMillis(150)));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.delay(Duration.ofMillis(150)).then());
 
-        long elapsedMs = executeReplyAndMeasure("{\"message\":\"hello\"}");
+        long elapsedMs = executeSessionReplyAndMeasure(replyBody("00000000-0000-4000-8000-000000000003"));
 
         assertTrue("reply latency should include upstream first chunk delay, actual=" + elapsedMs,
                 elapsedMs >= 130);
@@ -99,28 +101,26 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
                 elapsedMs < 5000);
     }
 
-    private long executeReplyAndMeasure(String body) {
+    private long executeSessionReplyAndMeasure(String body) {
         long startNs = System.nanoTime();
-        String responseBody = webClient.post().uri("/gateway/agents/test-agent/reply")
+        String responseBody = webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
-                .accept(MediaType.TEXT_EVENT_STREAM)
+                .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
-                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM)
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
         long elapsedMs = Duration.ofNanos(System.nanoTime() - startNs).toMillis();
-        assertNotNull(responseBody);
-        assertTrue(responseBody.contains("data:"));
         return elapsedMs;
     }
 
-    private DataBuffer sseChunk(String content) {
-        return new DefaultDataBufferFactory()
-                .wrap(("data: {\"content\":\"" + content + "\"}\n\n").getBytes(StandardCharsets.UTF_8));
+    private String replyBody(String requestId) {
+        return "{\"request_id\":\"" + requestId + "\",\"user_message\":{\"role\":\"user\",\"created\":1,"
+                + "\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],"
+                + "\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}";
     }
 }
