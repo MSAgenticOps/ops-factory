@@ -4,6 +4,7 @@ import type { HostGroup, Cluster, Host, CustomAttribute, HostCreateRequest, Busi
 import { isValidIp } from '../../../../utils/ip-validation'
 import CustomAttributeEditor from './CustomAttributeEditor'
 import TopologyNodeIcon, { type TopologyNodeKind } from './TopologyNodeIcon'
+import SearchableSelect from '../../../platform/ui/forms/SearchableSelect'
 
 type ResourceType = 'group' | 'cluster' | 'business-service' | 'host'
 
@@ -174,8 +175,26 @@ export default function ResourceFormModal({
     const clusterEditRelations = useMemo(() => {
         if (editingItem?.type !== 'cluster') return []
         const cId = editingItem.data.id
-        return clusterRelations.filter(r => r.sourceId === cId || r.targetId === cId)
-    }, [clusterRelations, editingItem])
+        const hostIdSet = new Set(hosts.map(h => h.id))
+        return clusterRelations.filter(r => {
+            if (r.sourceId !== cId && r.targetId !== cId) return false
+            // Exclude "包含" relations (cluster→host) — shown separately as read-only
+            if (r.sourceType === 'cluster' && r.sourceId === cId && hostIdSet.has(r.targetId)) return false
+            return true
+        })
+    }, [clusterRelations, editingItem, hosts])
+
+    // Read-only "包含" relations (cluster→host) for the current editing cluster
+    const clusterContainedHosts = useMemo(() => {
+        if (editingItem?.type !== 'cluster') return []
+        const cId = editingItem.data.id
+        return clusterRelations
+            .filter(r => r.sourceType === 'cluster' && r.sourceId === cId && hosts.some(h => h.id === r.targetId))
+            .map(r => {
+                const host = hosts.find(h => h.id === r.targetId)
+                return { relId: r.id, hostId: r.targetId, name: host?.name || r.targetId, ip: host?.ip || '' }
+            })
+    }, [clusterRelations, editingItem, hosts])
 
     // Cluster relations for the current editing business service
     const bsEditRelations = useMemo(() => {
@@ -461,6 +480,36 @@ export default function ResourceFormModal({
                                         <label className="form-label">{t('hostResource.description')}</label>
                                         <input className="form-input" value={clusterDescription} onChange={e => setClusterDescription(e.target.value)} />
                                     </div>
+                                    {/* ── Contained Hosts (read-only, driven by host cluster assignment) ── */}
+                                    {editingItem?.type === 'cluster' && (
+                                        <>
+                                            <h4 className="hr-section-label">
+                                                {t('hostResource.containedHosts')}
+                                                <span style={{ fontWeight: 'normal', fontSize: '0.75rem', color: 'var(--text-secondary, #64748b)', marginLeft: 6 }}>
+                                                    {t('hostResource.containedHostsTip')}
+                                                </span>
+                                            </h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                {clusterContainedHosts.length === 0 ? (
+                                                    <div style={{ color: 'var(--text-secondary, #64748b)', fontSize: '0.8125rem' }}>
+                                                        —
+                                                    </div>
+                                                ) : (
+                                                    clusterContainedHosts.map(item => (
+                                                        <div key={item.relId} style={{
+                                                            display: 'flex', alignItems: 'center', gap: 6,
+                                                            padding: '3px 8px', border: '1px solid var(--border-color, #e2e8f0)',
+                                                            borderRadius: 4, fontSize: '0.8125rem',
+                                                            background: 'var(--surface-background, #f8fafc)',
+                                                        }}>
+                                                            <span style={{ flex: 1 }}>{item.name}</span>
+                                                            {item.ip && <span style={{ color: 'var(--text-secondary, #64748b)', fontSize: '0.75rem' }}>{item.ip}</span>}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                     {/* ── Topology Relations (edit mode only) ── */}
                                     {editingItem?.type === 'cluster' && (
                                         <>
@@ -485,12 +534,14 @@ export default function ResourceFormModal({
                                                         {editingRelId === rel.id ? (
                                                             <>
                                                                 <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>{arrow}</span>
-                                                                <select className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                                    value={editRelTargetId} onChange={e => setEditRelTargetId(e.target.value)}>
-                                                                    {clusters.filter(c => c.id !== editingItem.data.id).map(c => (
-                                                                        <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
-                                                                    ))}
-                                                                </select>
+                                                                <SearchableSelect
+                                                                    value={editRelTargetId}
+                                                                    onChange={setEditRelTargetId}
+                                                                    options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({
+                                                                        value: c.id, label: `${c.name} (${c.type})`
+                                                                    }))}
+                                                                    style={{ flex: 1, fontSize: '0.75rem' }}
+                                                                />
                                                                 <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
                                                                     value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} />
                                                                 <button className="btn btn-primary btn-sm" style={{ padding: '1px 6px' }}
@@ -523,13 +574,15 @@ export default function ResourceFormModal({
                                                     borderRadius: 4, border: '1px dashed var(--border-color, #e2e8f0)',
                                                 }}>
                                                     <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '0.8125rem' }}>→</span>
-                                                    <select className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                        value={newRelTargetId} onChange={e => setNewRelTargetId(e.target.value)}>
-                                                        <option value="">{t('hostResource.selectCluster')}</option>
-                                                        {clusters.filter(c => c.id !== editingItem.data.id).map(c => (
-                                                            <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
-                                                        ))}
-                                                    </select>
+                                                    <SearchableSelect
+                                                        value={newRelTargetId}
+                                                        onChange={setNewRelTargetId}
+                                                        placeholder={t('hostResource.selectCluster')}
+                                                        options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({
+                                                            value: c.id, label: `${c.name} (${c.type})`
+                                                        }))}
+                                                        style={{ flex: 1, fontSize: '0.75rem' }}
+                                                    />
                                                     <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
                                                         placeholder={t('hostResource.relationDesc')}
                                                         value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
@@ -629,12 +682,14 @@ export default function ResourceFormModal({
                                                         {editingRelId === rel.id ? (
                                                             <>
                                                                 <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>→</span>
-                                                                <select className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                                    value={editRelTargetId} onChange={e => setEditRelTargetId(e.target.value)}>
-                                                                    {clusters.map(c => (
-                                                                        <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
-                                                                    ))}
-                                                                </select>
+                                                                <SearchableSelect
+                                                                    value={editRelTargetId}
+                                                                    onChange={setEditRelTargetId}
+                                                                    options={clusters.map(c => ({
+                                                                        value: c.id, label: `${c.name} (${c.type})`
+                                                                    }))}
+                                                                    style={{ flex: 1, fontSize: '0.75rem' }}
+                                                                />
                                                                 <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
                                                                     value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} />
                                                                 <button className="btn btn-primary btn-sm" style={{ padding: '1px 6px' }}
@@ -666,13 +721,15 @@ export default function ResourceFormModal({
                                                     borderRadius: 4, border: '1px dashed var(--border-color, #e2e8f0)',
                                                 }}>
                                                     <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '0.8125rem' }}>→</span>
-                                                    <select className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                        value={newRelTargetId} onChange={e => setNewRelTargetId(e.target.value)}>
-                                                        <option value="">{t('hostResource.selectCluster')}</option>
-                                                        {clusters.map(c => (
-                                                            <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
-                                                        ))}
-                                                    </select>
+                                                    <SearchableSelect
+                                                        value={newRelTargetId}
+                                                        onChange={setNewRelTargetId}
+                                                        placeholder={t('hostResource.selectCluster')}
+                                                        options={clusters.map(c => ({
+                                                            value: c.id, label: `${c.name} (${c.type})`
+                                                        }))}
+                                                        style={{ flex: 1, fontSize: '0.75rem' }}
+                                                    />
                                                     <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
                                                         placeholder={t('hostResource.relationDesc')}
                                                         value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />

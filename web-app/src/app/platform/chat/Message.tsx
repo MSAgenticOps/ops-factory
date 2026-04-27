@@ -26,7 +26,7 @@ interface MessageProps {
     userId?: string | null
     isStreaming?: boolean
     onRetry?: () => void
-    onContinue?: () => void
+    onCancelRequest?: () => void
     sourceDocuments?: Citation[]
     fetchedDocuments?: Citation[]
     outputFiles?: DetectedFile[]
@@ -56,6 +56,20 @@ interface ProcessEntry {
 interface ScrollFadeState {
     hasTopFade: boolean
     hasBottomFade: boolean
+}
+
+function getFileDisplayParts(fileName: string, displayPath?: string, filePath?: string): {
+    name: string
+    fullPath: string
+} {
+    const fullPath = (displayPath || filePath || fileName || '').replace(/\\/g, '/')
+    if (!fullPath) {
+        return { name: fileName || '', fullPath: '' }
+    }
+    const parts = fullPath.split('/').filter(Boolean)
+    const fallbackName = parts[parts.length - 1] || fileName || fullPath
+    const name = fileName && !fileName.includes('/') ? fileName : fallbackName
+    return { name, fullPath }
 }
 
 function ThinkingStatusIcon({ isStreaming, isOpen }: { isStreaming: boolean; isOpen: boolean }) {
@@ -130,10 +144,11 @@ function MermaidBlock({ code }: { code: string }) {
 function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId, userId }: {
     filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
+    const { t } = useTranslation()
     const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
-    const visibleName = displayPath || fileName
+    const { name: visibleName, fullPath } = getFileDisplayParts(fileName, displayPath, filePath)
 
     const handlePreview = (e: React.MouseEvent) => {
         e.preventDefault()
@@ -148,7 +163,7 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
     }
 
     return (
-        <div className="file-capsule">
+        <div className="file-capsule" title={fullPath}>
             <span className="file-capsule-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -158,17 +173,19 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
                     <polyline points="10 9 9 9 8 9" />
                 </svg>
             </span>
-            <span className="file-capsule-name">{visibleName}</span>
+            <span className="file-capsule-details">
+                <span className="file-capsule-name">{visibleName}</span>
+            </span>
             <div className="file-capsule-actions">
                 {canPreview && (
-                    <button className="file-capsule-btn" onClick={handlePreview} title="Preview">
+                    <button className="file-capsule-btn" onClick={handlePreview} aria-label={t('files.preview')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                             <circle cx="12" cy="12" r="3" />
                         </svg>
                     </button>
                 )}
-                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" title="Download">
+                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" aria-label={t('files.download')}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
@@ -216,7 +233,7 @@ function MessageInner({
     userId,
     isStreaming = false,
     onRetry,
-    onContinue,
+    onCancelRequest,
     sourceDocuments,
     fetchedDocuments,
     outputFiles = [],
@@ -543,8 +560,16 @@ function MessageInner({
         )
     }
 
-    const isRecoverableInterruption = !isUser && message.metadata?.recoverableInterruption === true
-    const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
+    const sessionError = !isUser ? message.metadata?.sessionError : undefined
+    const sessionErrorActions = sessionError?.suggestedActions ?? []
+    const canRetrySessionError = !!sessionError && sessionError.retryable !== false && sessionErrorActions.includes('retry') && !!onRetry
+    const canCancelSessionError = !!sessionError && sessionErrorActions.includes('cancel') && !!onCancelRequest
+    const passiveSessionErrorActions = sessionErrorActions.filter(action => {
+        if (action === 'retry') return !canRetrySessionError
+        if (action === 'cancel') return !canCancelSessionError
+        return true
+    })
+    const isEmptyAssistantResponse = !isUser && !sessionError && message.content.length === 0 && !isStreaming
     const selectedSkill = isUser ? message.metadata?.selectedSkill : undefined
     const hasUserAttachedFiles = isUser && !!message.metadata?.attachedFiles?.length
 
@@ -554,7 +579,7 @@ function MessageInner({
 
     const hasProcessEntries = !isUser && processEntries.length > 0
 
-    if (!isUser && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
+    if (!isUser && !sessionError && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
         return null
     }
 
@@ -584,31 +609,66 @@ function MessageInner({
             )}
             <div className="message-body">
                 <div className="message-content">
+                    {sessionError && (
+                        <div className="message-error-banner">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span className="message-error-body">
+                                {t(sessionError.messageKey, { defaultValue: sessionError.fallback })}
+                                {(sessionError.traceId || sessionError.requestId || sessionError.sessionId || sessionError.agentId) && (
+                                    <small className="message-error-detail">
+                                        {t('chat.sessionErrors.reference', {
+                                            traceId: sessionError.traceId || '-',
+                                            requestId: sessionError.requestId || '-',
+                                            sessionId: sessionError.sessionId || '-',
+                                            agentId: sessionError.agentId || '-',
+                                        })}
+                                    </small>
+                                )}
+                                {sessionError.detail && (
+                                    <details className="message-error-detail">
+                                        <summary>{t('chat.sessionErrors.details')}</summary>
+                                        <span>{sessionError.detail}</span>
+                                    </details>
+                                )}
+                                {passiveSessionErrorActions.length > 0 && (
+                                    <small className="message-error-actions">
+                                        {passiveSessionErrorActions
+                                            .map(action => t(`chat.sessionErrors.actions.${action}`))
+                                            .join(' / ')}
+                                    </small>
+                                )}
+                            </span>
+                            {canRetrySessionError && (
+                                <button className="message-error-retry" onClick={onRetry}>
+                                    {t('chat.sessionErrors.actions.retry')}
+                                </button>
+                            )}
+                            {canCancelSessionError && (
+                                <button className="message-error-retry" onClick={onCancelRequest}>
+                                    {t('chat.sessionErrors.actions.cancel')}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {isEmptyAssistantResponse && (
-                        isRecoverableInterruption ? (
-                            <div className="message-recoverable-response">
-                                <span>{t('chat.recoverableInterruption')}</span>
-                                {onContinue && (
-                                    <button type="button" className="message-recoverable-continue" onClick={onContinue}>
-                                        {t('chat.quickContinue')}
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="message-error-banner">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
-                                <span>{t('chat.emptyAssistantResponse')}</span>
-                                {onRetry && (
-                                    <button className="message-error-retry" onClick={onRetry}>
-                                        {t('common.tryAgain')}
-                                    </button>
-                                )}
-                            </div>
-                        )
+                        <div className="message-error-banner">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span>{t('chat.emptyAssistantResponse')}</span>
+                            {onRetry && (
+                                <button className="message-error-retry" onClick={onRetry}>
+                                    {t('common.tryAgain')}
+                                </button>
+                            )}
+                        </div>
                     )}
 
                     {!isUser && processEntries.length > 0 && (

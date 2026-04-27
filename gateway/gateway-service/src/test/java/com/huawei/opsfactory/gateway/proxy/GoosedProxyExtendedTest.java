@@ -4,12 +4,20 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
+import reactor.netty.DisposableServer;
+import reactor.netty.http.server.HttpServer;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -26,6 +34,7 @@ public class GoosedProxyExtendedTest {
     public void setUp() {
         GatewayProperties properties = new GatewayProperties();
         properties.setSecretKey("my-secret");
+        properties.setGooseTls(false);
         proxy = new GoosedProxy(properties);
     }
 
@@ -123,5 +132,31 @@ public class GoosedProxyExtendedTest {
         // Construction-level test: verifies Mono is created
         assertNotNull(proxy.proxyWithBody(null, 99999, "/test",
                 org.springframework.http.HttpMethod.POST, "{}", "test-secret"));
+    }
+
+    @Test
+    public void testProxySessionCommandWithBody_non2xxThrowsUpstreamErrorWithoutCommittingResponse() {
+        DisposableServer server = HttpServer.create()
+                .host("127.0.0.1")
+                .port(0)
+                .route(routes -> routes.post("/sessions/session-123/reply", (request, response) ->
+                        response.status(400)
+                                .header(HttpHeaders.CONTENT_TYPE, "text/plain")
+                                .sendString(Mono.just("Session already has an active request. Cancel it first."))))
+                .bindNow();
+
+        try {
+            MockServerHttpResponse response = new MockServerHttpResponse();
+            WebClientResponseException error = assertThrows(WebClientResponseException.class, () ->
+                    proxy.proxySessionCommandWithBody(response, server.port(), "/sessions/session-123/reply",
+                            HttpMethod.POST, "{}", "test-secret")
+                            .block(Duration.ofSeconds(5)));
+
+            assertEquals(400, error.getRawStatusCode());
+            assertEquals("Session already has an active request. Cancel it first.", error.getResponseBodyAsString());
+            assertFalse(response.isCommitted());
+        } finally {
+            server.disposeNow();
+        }
     }
 }
