@@ -16,7 +16,8 @@ class BusinessIntelligenceLoggingTest {
     @Test
     void shouldWriteRefreshAndExportSummaryLogs() {
         AtomicInteger loads = new AtomicInteger();
-        BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true));
+        BusinessIntelligenceMetricsService metricsService = new BusinessIntelligenceMetricsService(new CountingProvider(loads), runtimeProperties(true));
+        BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true), metricsService);
 
         try (TestLogAppender appender = TestLogAppender.attachTo(BusinessIntelligenceService.class)) {
             service.refresh(null, null);

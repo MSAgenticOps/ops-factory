@@ -20,7 +20,8 @@ class BusinessIntelligenceServiceTest {
     @Test
     void shouldCacheOverviewWhenCacheEnabled() {
         AtomicInteger loads = new AtomicInteger();
-        BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true));
+        BusinessIntelligenceMetricsService metricsService = new BusinessIntelligenceMetricsService(new CountingProvider(loads), runtimeProperties(true));
+        BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true), metricsService);
 
         Snapshot first = service.getOverview(null, null);
         Snapshot second = service.getOverview(null, null);
@@ -34,7 +35,8 @@ class BusinessIntelligenceServiceTest {
     @Test
     void shouldRefreshAndExportWorkbook() throws Exception {
         AtomicInteger loads = new AtomicInteger();
-        BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true));
+        BusinessIntelligenceMetricsService metricsService = new BusinessIntelligenceMetricsService(new CountingProvider(loads), runtimeProperties(true));
+        BusinessIntelligenceService service = new BusinessIntelligenceService(new CountingProvider(loads), runtimeProperties(true), metricsService);
 
         Snapshot refreshed = service.refresh(null, null);
         byte[] workbookBytes = service.exportCurrentWorkbook();

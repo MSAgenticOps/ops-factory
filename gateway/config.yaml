@@ -45,3 +45,4 @@ agents:
 - {id: qos-agent, name: QoS Agent}
 - {id: qa-agent, name: QA Agent}
 - {id: qa-cli-agent, name: QA CLI Agent}
+- {id: report-agent, name: Report Agent}
