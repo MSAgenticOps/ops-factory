@@ -3,6 +3,7 @@ package com.huawei.opsfactory.businessintelligence.service;
 import com.huawei.opsfactory.businessintelligence.config.BusinessIntelligenceRuntimeProperties;
 import com.huawei.opsfactory.businessintelligence.datasource.BiDataProvider;
 import com.huawei.opsfactory.businessintelligence.datasource.BiRawData;
+import com.huawei.opsfactory.businessintelligence.model.BiColumns;
 import com.huawei.opsfactory.businessintelligence.model.BiModels;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.ChartConfig;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.ChartDatum;
@@ -180,7 +181,7 @@ public class BusinessIntelligenceService {
 
         // Filter incidents
         List<Map<String, String>> filteredIncidents = rawData.incidents().stream()
-            .filter(row -> isWithinDateRange(row.get("Begin Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.BEGIN_DATE), start, end))
             .collect(Collectors.toList());
 
         // Filter incident SLA criteria (keep all, as they are reference data)
@@ -188,17 +189,17 @@ public class BusinessIntelligenceService {
 
         // Filter changes
         List<Map<String, String>> filteredChanges = rawData.changes().stream()
-            .filter(row -> isWithinDateRange(row.get("Requested Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.REQUESTED_DATE), start, end))
             .collect(Collectors.toList());
 
         // Filter requests
         List<Map<String, String>> filteredRequests = rawData.requests().stream()
-            .filter(row -> isWithinDateRange(row.get("Requested Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.REQUESTED_DATE), start, end))
             .collect(Collectors.toList());
 
         // Filter problems
         List<Map<String, String>> filteredProblems = rawData.problems().stream()
-            .filter(row -> isWithinDateRange(row.get("Logged Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.LOGGED_DATE), start, end))
             .collect(Collectors.toList());
 
         return new BiRawData(filteredIncidents, filteredIncidentSlaCriteria, filteredChanges, filteredRequests, filteredProblems);
@@ -305,8 +306,8 @@ public class BusinessIntelligenceService {
 
         long incidentSlaBreached = incident.totalCount() - Math.round(incident.slaRate() * incident.totalCount());
         long changeFailures = change.totalCount() - Math.round(change.successRate() * change.totalCount());
-        long requestOpen = rawData.requests().stream().filter(row -> !"Fulfilled".equalsIgnoreCase(clean(row.get("Status")))).count();
-        long problemOpen = rawData.problems().stream().filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count();
+        long requestOpen = rawData.requests().stream().filter(row -> !"Fulfilled".equalsIgnoreCase(clean(row.get(BiColumns.STATUS)))).count();
+        long problemOpen = rawData.problems().stream().filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed"))).count();
 
         return new TabContent(
             "executive-summary",
@@ -445,21 +446,21 @@ public class BusinessIntelligenceService {
                     List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082", "#5e9bb5", "#7ca65a"))
             ),
             List.of(
-                table("incident-resolver-table", "处理人工作量 TOP10", List.of("处理人", "事件数"), rowsFromChart(topCounts(incidents, "Resolver", 10))),
+                table("incident-resolver-table", "处理人工作量 TOP10", List.of("处理人", "事件数"), rowsFromChart(topCounts(incidents, BiColumns.RESOLVER, 10))),
                 table("incident-recent-table", "事件样本", List.of("编号", "标题", "优先级", "处理人", "时长", "SLA"), incidents.stream()
                     .sorted((a, b) -> {
-                        int priorityCompare = priorityIndex(clean(a.get("Priority"))) - priorityIndex(clean(b.get("Priority")));
+                        int priorityCompare = priorityIndex(clean(a.get(BiColumns.PRIORITY))) - priorityIndex(clean(b.get(BiColumns.PRIORITY)));
                         if (priorityCompare != 0) return priorityCompare;
-                        return Double.compare(parseDouble(b.get("Resolution Time(m)")), parseDouble(a.get("Resolution Time(m)")));
+                        return Double.compare(parseDouble(b.get(BiColumns.RESOLUTION_TIME_M)), parseDouble(a.get(BiColumns.RESOLUTION_TIME_M)));
                     })
                     .limit(15)
                     .<List<String>>map(row -> List.of(
-                        defaultLabel(row.get("Order Number"), "—"),
+                        defaultLabel(row.get(BiColumns.ORDER_NUMBER), "—"),
                         defaultLabel(row.get("Order Name"), "—"),
-                        defaultLabel(row.get("Priority"), "—"),
-                        defaultLabel(row.get("Resolver"), "—"),
-                        formatMinutes(parseDouble(row.get("Resolution Time(m)"))),
-                        isYes(row.get("SLA Compliant")) ? "✓" : "✗"
+                        defaultLabel(row.get(BiColumns.PRIORITY), "—"),
+                        defaultLabel(row.get(BiColumns.RESOLVER), "—"),
+                        formatMinutes(parseDouble(row.get(BiColumns.RESOLUTION_TIME_M))),
+                        isYes(row.get(BiColumns.SLA_COMPLIANT)) ? "✓" : "✗"
                     )).toList())
             )
         );
@@ -607,13 +608,13 @@ public class BusinessIntelligenceService {
             ),
             List.of(
                 table("change-failed-table", "失败或回退样本", List.of("编号", "标题", "状态", "是否成功", "是否回退"), changes.stream()
-                    .filter(row -> !isYes(row.get("Success")) || isYes(row.get("Backout Performed")))
+                    .filter(row -> !isYes(row.get(BiColumns.SUCCESS)) || isYes(row.get("Backout Performed")))
                     .limit(10)
                     .map(row -> List.of(
-                        defaultLabel(row.get("Change Number"), "—"),
+                        defaultLabel(row.get(BiColumns.CHANGE_NUMBER), "—"),
                         defaultLabel(row.get("Change Title"), "—"),
-                        defaultLabel(row.get("Status"), "—"),
-                        defaultLabel(row.get("Success"), "—"),
+                        defaultLabel(row.get(BiColumns.STATUS), "—"),
+                        defaultLabel(row.get(BiColumns.SUCCESS), "—"),
                         defaultLabel(row.get("Backout Performed"), "—")
                     )).toList())
             )
@@ -630,13 +631,13 @@ public class BusinessIntelligenceService {
     private List<ChartDatum> buildChangeCategoryDistribution(List<Map<String, String>> changes) {
         return changes.stream()
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("Category"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.CATEGORY), "未标注"),
                 LinkedHashMap::new, Collectors.toList()))
             .entrySet().stream()
             .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
             .limit(8)
             .map(entry -> {
-                long success = entry.getValue().stream().filter(row -> isYes(row.get("Success"))).count();
+                long success = entry.getValue().stream().filter(row -> isYes(row.get(BiColumns.SUCCESS))).count();
                 long failure = entry.getValue().size() - success;
                 return new ChartDatum(entry.getKey() + "|" + success + "|" + failure, success);
             })
@@ -645,7 +646,7 @@ public class BusinessIntelligenceService {
 
     private List<ChartDatum> buildRiskLevelDistribution(List<Map<String, String>> changes) {
         return changes.stream()
-            .filter(row -> isYes(row.get("Incident Caused")))
+            .filter(row -> isYes(row.get(BiColumns.INCIDENT_CAUSED)))
             .collect(Collectors.groupingBy(
                 row -> defaultLabel(row.get("Risk Level"), "未标注"),
                 LinkedHashMap::new, Collectors.counting()))
@@ -664,7 +665,7 @@ public class BusinessIntelligenceService {
                 return plannedEnd != null && !plannedEnd.isBlank() && actualEnd != null && !actualEnd.isBlank();
             })
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("Change Type"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.CHANGE_TYPE), "未标注"),
                 LinkedHashMap::new, Collectors.toList()))
             .entrySet().stream()
             .limit(6)
@@ -707,30 +708,30 @@ public class BusinessIntelligenceService {
                 comboChart("request-sla-time", "SLA达成率与平均耗时", buildRequestSlaByCategoryData(requests),
                     List.of("平均耗时(h)", "SLA达成率"), List.of("#5b8db8", "#10b981")),
                 // Row 3 left: pie chart - request type distribution
-                pieChart("request-type-pie", "请求类型分布", topCounts(requests, "Request Type", 6),
+                pieChart("request-type-pie", "请求类型分布", topCounts(requests, BiColumns.REQUEST_TYPE, 6),
                     List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
                 // Row 3 right: bar chart - department consumption ranking
-                new ChartSection("request-dept-ranking", "部门请求单数排名", "column", topCounts(requests, "Requester Dept", 8), new ChartConfig(null, null, List.of("#5b8db8"), "部门", "请求数")),
+                new ChartSection("request-dept-ranking", "部门请求单数排名", "column", topCounts(requests, BiColumns.REQUESTER_DEPT, 8), new ChartConfig(null, null, List.of("#5b8db8"), "部门", "请求数")),
                 // Row 4 left: pie chart - satisfaction distribution
                 pieChart("request-satisfaction-pie", "满意度分布", buildSatisfactionDistribution(requests),
                     List.of("#ef4444", "#f59e0b", "#10b981", "#5b8db8")),
                 // Row 4 right: bar chart - high-frequency request category TOP8
-                new ChartSection("request-category-top", "高频请求目录", "column", topCounts(requests, "Category", 8), new ChartConfig(null, null, List.of("#5b8db8"), "类别", "数量"))
+                new ChartSection("request-category-top", "高频请求目录", "column", topCounts(requests, BiColumns.CATEGORY, 8), new ChartConfig(null, null, List.of("#5b8db8"), "类别", "数量"))
             ),
             List.of(
                 table("request-low-csat-table", "低满意度样本", List.of("编号", "标题", "类别", "满足时间", "满意度", "反馈"), requests.stream()
                     .filter(row -> {
-                        double score = parseDouble(row.get("Satisfaction Score"));
+                        double score = parseDouble(row.get(BiColumns.SATISFACTION_SCORE));
                         return score > 0 && score <= 3;
                     })
-                    .sorted((a, b) -> Double.compare(parseDouble(a.get("Satisfaction Score")), parseDouble(b.get("Satisfaction Score"))))
+                    .sorted((a, b) -> Double.compare(parseDouble(a.get(BiColumns.SATISFACTION_SCORE)), parseDouble(b.get(BiColumns.SATISFACTION_SCORE))))
                     .limit(15)
                     .map(row -> List.of(
-                        defaultLabel(row.get("Request Number"), "—"),
+                        defaultLabel(row.get(BiColumns.REQUEST_NUMBER), "—"),
                         defaultLabel(row.get("Request Title"), "—"),
-                        defaultLabel(row.get("Category"), "—"),
-                        defaultLabel(row.get("Fulfillment Time(h)"), "—"),
-                        defaultLabel(row.get("Satisfaction Score"), "—"),
+                        defaultLabel(row.get(BiColumns.CATEGORY), "—"),
+                        defaultLabel(row.get(BiColumns.FULFILLMENT_TIME_H), "—"),
+                        defaultLabel(row.get(BiColumns.SATISFACTION_SCORE), "—"),
                         defaultLabel(row.get("Feedback"), "—")
                     )).toList())
             )
@@ -746,17 +747,17 @@ public class BusinessIntelligenceService {
     private List<ChartDatum> buildRequestSlaByCategoryData(List<Map<String, String>> requests) {
         return requests.stream()
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("Category"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.CATEGORY), "未标注"),
                 LinkedHashMap::new, Collectors.toList()))
             .entrySet().stream()
             .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
             .limit(8)
             .map(entry -> {
                 List<Map<String, String>> rows = entry.getValue();
-                long slaCount = rows.stream().filter(row -> isYes(row.get("SLA Met"))).count();
+                long slaCount = rows.stream().filter(row -> isYes(row.get(BiColumns.SLA_MET))).count();
                 double slaRate = percentageValue(slaCount, rows.size()) * 100.0;
                 double avgTime = rows.stream()
-                    .mapToDouble(row -> parseDouble(row.get("Fulfillment Time(h)")))
+                    .mapToDouble(row -> parseDouble(row.get(BiColumns.FULFILLMENT_TIME_H)))
                     .filter(v -> v > 0)
                     .average().orElse(0);
                 return new ChartDatum(
@@ -774,7 +775,7 @@ public class BusinessIntelligenceService {
         dist.put("非常满意(5)", 0L);
 
         for (Map<String, String> row : requests) {
-            double score = parseDouble(row.get("Satisfaction Score"));
+            double score = parseDouble(row.get(BiColumns.SATISFACTION_SCORE));
             if (score <= 2) dist.merge("非常不满意(1-2)", 1L, Long::sum);
             else if (score <= 3) dist.merge("不满意(3)", 1L, Long::sum);
             else if (score <= 4) dist.merge("满意(4)", 1L, Long::sum);
@@ -808,14 +809,14 @@ public class BusinessIntelligenceService {
                 comboChart("problem-volume-trend", "问题单量趋势", buildProblemWeeklyTrendData(problems),
                     List.of("问题单量", "累积未解决"), List.of("#5b8db8", "#ef4444")),
                 // Row 2 left: pie chart - root cause category distribution
-                pieChart("problem-root-cause-pie", "问题根因类型分布", topCounts(problems, "Root Cause Category", 6),
+                pieChart("problem-root-cause-pie", "问题根因类型分布", topCounts(problems, BiColumns.ROOT_CAUSE_CATEGORY, 6),
                     List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
                 // Row 2 right: column chart - incident count by root cause category
                 new ChartSection("problem-incident-ranking", "问题引发故障数排名", "column",
                     buildProblemIncidentRanking(problems),
                     new ChartConfig(null, null, List.of("#5b8db8"), "根因类别", "故障数")),
                 // Row 3 left: pie chart - status distribution
-                pieChart("problem-status-pie", "问题状态分布", topCounts(problems, "Status", 6),
+                pieChart("problem-status-pie", "问题状态分布", topCounts(problems, BiColumns.STATUS, 6),
                     List.of("#10b981", "#5b8db8", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
                 // Row 3 right: stacked bar - resolution health
                 new ChartSection("problem-resolution-health", "已关闭问题单的解决方案健康度分析", "stacked-bar",
@@ -828,12 +829,12 @@ public class BusinessIntelligenceService {
             ),
             List.of(
                 table("problem-open-table", "未关闭问题", List.of("编号", "标题", "状态", "关联事件"), problems.stream()
-                    .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+                    .filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
                     .limit(10)
                     .map(row -> List.of(
-                        defaultLabel(row.get("Problem Number"), "—"),
+                        defaultLabel(row.get(BiColumns.PROBLEM_NUMBER), "—"),
                         defaultLabel(row.get("Problem Title"), "—"),
-                        defaultLabel(row.get("Status"), "—"),
+                        defaultLabel(row.get(BiColumns.STATUS), "—"),
                         defaultLabel(row.get("Related Incidents"), "0")
                     )).toList())
             )
@@ -844,8 +845,8 @@ public class BusinessIntelligenceService {
         // Group by week: count total and track cumulative unresolved
         List<Map<String, String>> sorted = new ArrayList<>(problems);
         sorted.sort((a, b) -> {
-            LocalDateTime da = parseDate(a.get("Logged Date"));
-            LocalDateTime db = parseDate(b.get("Logged Date"));
+            LocalDateTime da = parseDate(a.get(BiColumns.LOGGED_DATE));
+            LocalDateTime db = parseDate(b.get(BiColumns.LOGGED_DATE));
             if (da == null && db == null) return 0;
             if (da == null) return 1;
             if (db == null) return -1;
@@ -856,11 +857,11 @@ public class BusinessIntelligenceService {
         Map<String, Long> resolvedByPeriod = new LinkedHashMap<>();
 
         for (Map<String, String> row : sorted) {
-            LocalDateTime date = parseDate(row.get("Logged Date"));
+            LocalDateTime date = parseDate(row.get(BiColumns.LOGGED_DATE));
             if (date == null) continue;
             String period = formatPeriodLabel(date, "weekly");
             totalByPeriod.merge(period, 1L, Long::sum);
-            if (matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))) {
+            if (matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed"))) {
                 resolvedByPeriod.merge(period, 1L, Long::sum);
             }
         }
@@ -881,7 +882,7 @@ public class BusinessIntelligenceService {
         return problems.stream()
             .filter(row -> !clean(row.get("Related Incidents")).isBlank())
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("Root Cause Category"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"),
                 LinkedHashMap::new, Collectors.toList()))
             .entrySet().stream()
             .map(entry -> {
@@ -897,16 +898,16 @@ public class BusinessIntelligenceService {
 
     private List<ChartDatum> buildResolutionHealth(List<Map<String, String>> problems) {
         return problems.stream()
-            .filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .filter(row -> matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("Root Cause Category"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"),
                 LinkedHashMap::new, Collectors.toList()))
             .entrySet().stream()
             .limit(6)
             .map(entry -> {
                 long green = 0, blue = 0, red = 0;
                 for (Map<String, String> row : entry.getValue()) {
-                    boolean workaround = isYes(row.get("Workaround Available"));
+                    boolean workaround = isYes(row.get(BiColumns.WORKAROUND_AVAILABLE));
                     boolean permanentFix = isYes(row.get("Permanent Fix Implemented"));
                     if (workaround && permanentFix) green++;
                     else if (workaround && !permanentFix) blue++;
@@ -919,7 +920,7 @@ public class BusinessIntelligenceService {
 
     private List<String> topCategories(List<Map<String, String>> problems, int limit) {
         return problems.stream()
-            .map(row -> defaultLabel(row.get("Category"), "未标注"))
+            .map(row -> defaultLabel(row.get(BiColumns.CATEGORY), "未标注"))
             .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()))
             .entrySet().stream()
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -930,7 +931,7 @@ public class BusinessIntelligenceService {
 
     private List<String> topRootCauseCategories(List<Map<String, String>> problems, int limit) {
         return problems.stream()
-            .map(row -> defaultLabel(row.get("Root Cause Category"), "未标注"))
+            .map(row -> defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"))
             .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()))
             .entrySet().stream()
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -947,10 +948,10 @@ public class BusinessIntelligenceService {
             .map(cat -> {
                 long[] counts = new long[rccSeries.size()];
                 List<Map<String, String>> matching = problems.stream()
-                    .filter(row -> defaultLabel(row.get("Category"), "未标注").equals(cat))
+                    .filter(row -> defaultLabel(row.get(BiColumns.CATEGORY), "未标注").equals(cat))
                     .toList();
                 for (Map<String, String> row : matching) {
-                    String rcc = defaultLabel(row.get("Root Cause Category"), "未标注");
+                    String rcc = defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注");
                     int idx = rccSeries.indexOf(rcc);
                     if (idx >= 0) counts[idx]++;
                 }
@@ -1006,17 +1007,17 @@ public class BusinessIntelligenceService {
                 table("cross-change-incident-detail", "变更致事件关联明细",
                     List.of("变更编号", "变更标题", "完成时间", "48h内P1/P2事件", "风险等级"),
                     changes.stream()
-                        .filter(ch -> isYes(ch.get("Incident Caused")))
+                        .filter(ch -> isYes(ch.get(BiColumns.INCIDENT_CAUSED)))
                         .limit(15)
                         .map(ch -> {
                             LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
                             String linkedIncidents = findIncidentsWithin48h(incidents, actualEnd).stream()
-                                .map(inc -> defaultLabel(inc.get("Order Number"), ""))
+                                .map(inc -> defaultLabel(inc.get(BiColumns.ORDER_NUMBER), ""))
                                 .filter(s -> !s.isBlank())
                                 .reduce((a, b) -> a + "," + b)
                                 .orElse("—");
                             return List.of(
-                                defaultLabel(ch.get("Change Number"), "—"),
+                                defaultLabel(ch.get(BiColumns.CHANGE_NUMBER), "—"),
                                 defaultLabel(ch.get("Change Title"), "—"),
                                 actualEnd != null ? actualEnd.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "—",
                                 linkedIncidents,
@@ -1027,7 +1028,7 @@ public class BusinessIntelligenceService {
                     List.of("问题编号", "根因类别", "老化天数", "关联事件数", "优先级", "状态"),
                     problems.stream()
                         .map(row -> {
-                            LocalDateTime logged = parseDate(row.get("Logged Date"));
+                            LocalDateTime logged = parseDate(row.get(BiColumns.LOGGED_DATE));
                             long agingDays = 0;
                             if (logged != null) {
                                 LocalDateTime resolved = parseDate(row.get("Resolution Date"));
@@ -1042,12 +1043,12 @@ public class BusinessIntelligenceService {
                             Map<String, String> row = (Map<String, String>) obj[0];
                             long agingDays = (long) obj[1];
                             return List.of(
-                                defaultLabel(row.get("Problem Number"), "—"),
-                                defaultLabel(row.get("Root Cause Category"), "未标注"),
+                                defaultLabel(row.get(BiColumns.PROBLEM_NUMBER), "—"),
+                                defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"),
                                 String.valueOf(agingDays),
                                 defaultLabel(row.get("Related Incidents"), "0"),
-                                defaultLabel(row.get("Priority"), "—"),
-                                defaultLabel(row.get("Status"), "—")
+                                defaultLabel(row.get(BiColumns.PRIORITY), "—"),
+                                defaultLabel(row.get(BiColumns.STATUS), "—")
                             );
                         }).toList()),
                 table("cross-request-surge", "请求激增预警",
@@ -1061,9 +1062,9 @@ public class BusinessIntelligenceService {
         if (changeEnd == null) return List.of();
         return incidents.stream()
             .filter(inc -> {
-                LocalDateTime incBegin = parseDate(inc.get("Begin Date"));
+                LocalDateTime incBegin = parseDate(inc.get(BiColumns.BEGIN_DATE));
                 if (incBegin == null) return false;
-                String priority = clean(inc.get("Priority"));
+                String priority = clean(inc.get(BiColumns.PRIORITY));
                 if (!"P1".equalsIgnoreCase(priority) && !"P2".equalsIgnoreCase(priority)) return false;
                 long hours = java.time.Duration.between(changeEnd, incBegin).toHours();
                 return hours > 0 && hours <= 48;
@@ -1079,12 +1080,12 @@ public class BusinessIntelligenceService {
         Map<String, Long> causedByWeek = new LinkedHashMap<>();
 
         for (Map<String, String> ch : changes) {
-            LocalDateTime date = parseDate(ch.get("Requested Date"));
+            LocalDateTime date = parseDate(ch.get(BiColumns.REQUESTED_DATE));
             if (date == null) date = parseDate(ch.get("Actual End"));
             if (date == null) continue;
             String week = formatPeriodLabel(date, "weekly");
             changeByWeek.merge(week, 1L, Long::sum);
-            if (isYes(ch.get("Incident Caused"))) {
+            if (isYes(ch.get(BiColumns.INCIDENT_CAUSED))) {
                 LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
                 long p1p2 = findIncidentsWithin48h(incidents, actualEnd).size();
                 causedByWeek.merge(week, p1p2, Long::sum);
@@ -1120,11 +1121,11 @@ public class BusinessIntelligenceService {
             int hour = date.getHour();
             String key = dow + "|" + hour;
             grid.get(key)[0]++;
-            if (isYes(ch.get("Incident Caused"))) {
+            if (isYes(ch.get(BiColumns.INCIDENT_CAUSED))) {
                 LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
                 List<Map<String, String>> linked = findIncidentsWithin48h(incidents, actualEnd);
                 for (Map<String, String> inc : linked) {
-                    LocalDateTime incBegin = parseDate(inc.get("Begin Date"));
+                    LocalDateTime incBegin = parseDate(inc.get(BiColumns.BEGIN_DATE));
                     if (incBegin == null) continue;
                     int incDow = incBegin.getDayOfWeek().getValue();
                     int incHour = incBegin.getHour();
@@ -1146,7 +1147,7 @@ public class BusinessIntelligenceService {
         // Group problems by CI Affected
         Map<String, List<Map<String, String>>> byCi = problems.stream()
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("CI Affected"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.CI_AFFECTED), "未标注"),
                 LinkedHashMap::new, Collectors.toList()));
 
         List<ChartDatum> result = new ArrayList<>();
@@ -1156,12 +1157,12 @@ public class BusinessIntelligenceService {
 
             // Count open problems and compute average aging for open ones
             long openCount = probs.stream()
-                .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+                .filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
                 .count();
             double avgAging = probs.stream()
-                .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+                .filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
                 .mapToLong(row -> {
-                    LocalDateTime logged = parseDate(row.get("Logged Date"));
+                    LocalDateTime logged = parseDate(row.get(BiColumns.LOGGED_DATE));
                     if (logged == null) return 0;
                     LocalDateTime resolved = parseDate(row.get("Resolution Date"));
                     LocalDateTime end = resolved != null ? resolved : LocalDateTime.now();
@@ -1175,7 +1176,7 @@ public class BusinessIntelligenceService {
 
             // Dominant root cause category
             String dominantRcc = probs.stream()
-                .collect(Collectors.groupingBy(r -> defaultLabel(r.get("Root Cause Category"), "未标注"), Collectors.counting()))
+                .collect(Collectors.groupingBy(r -> defaultLabel(r.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"), Collectors.counting()))
                 .entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey).orElse("未标注");
@@ -1193,7 +1194,7 @@ public class BusinessIntelligenceService {
     private List<ChartDatum> buildRequestIncidentOverlap(BiRawData rawData) {
         Map<String, Long> requestByWeek = new LinkedHashMap<>();
         for (Map<String, String> req : rawData.requests()) {
-            LocalDateTime date = parseDate(req.get("Requested Date"));
+            LocalDateTime date = parseDate(req.get(BiColumns.REQUESTED_DATE));
             if (date == null) continue;
             String week = formatPeriodLabel(date, "weekly");
             requestByWeek.merge(week, 1L, Long::sum);
@@ -1201,7 +1202,7 @@ public class BusinessIntelligenceService {
 
         Map<String, Long> incidentByWeek = new LinkedHashMap<>();
         for (Map<String, String> inc : rawData.incidents()) {
-            LocalDateTime date = parseDate(inc.get("Begin Date"));
+            LocalDateTime date = parseDate(inc.get(BiColumns.BEGIN_DATE));
             if (date == null) continue;
             String week = formatPeriodLabel(date, "weekly");
             incidentByWeek.merge(week, 1L, Long::sum);
@@ -1226,15 +1227,15 @@ public class BusinessIntelligenceService {
         String lastWeek = formatPeriodLabel(now.minusDays(7), "weekly");
 
         Map<String, Long> thisWeekReqs = rawData.requests().stream()
-            .filter(r -> parseDate(r.get("Requested Date")) != null && formatPeriodLabel(parseDate(r.get("Requested Date")), "weekly").equals(thisWeek))
-            .collect(Collectors.groupingBy(r -> defaultLabel(r.get("Category"), "未标注"), Collectors.counting()));
+            .filter(r -> parseDate(r.get(BiColumns.REQUESTED_DATE)) != null && formatPeriodLabel(parseDate(r.get(BiColumns.REQUESTED_DATE)), "weekly").equals(thisWeek))
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.get(BiColumns.CATEGORY), "未标注"), Collectors.counting()));
 
         Map<String, Long> lastWeekReqs = rawData.requests().stream()
-            .filter(r -> parseDate(r.get("Requested Date")) != null && formatPeriodLabel(parseDate(r.get("Requested Date")), "weekly").equals(lastWeek))
-            .collect(Collectors.groupingBy(r -> defaultLabel(r.get("Category"), "未标注"), Collectors.counting()));
+            .filter(r -> parseDate(r.get(BiColumns.REQUESTED_DATE)) != null && formatPeriodLabel(parseDate(r.get(BiColumns.REQUESTED_DATE)), "weekly").equals(lastWeek))
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.get(BiColumns.CATEGORY), "未标注"), Collectors.counting()));
 
         long thisWeekIncidents = rawData.incidents().stream()
-            .filter(inc -> parseDate(inc.get("Begin Date")) != null && formatPeriodLabel(parseDate(inc.get("Begin Date")), "weekly").equals(thisWeek))
+            .filter(inc -> parseDate(inc.get(BiColumns.BEGIN_DATE)) != null && formatPeriodLabel(parseDate(inc.get(BiColumns.BEGIN_DATE)), "weekly").equals(thisWeek))
             .count();
 
         Set<String> allCats = new TreeSet<>(thisWeekReqs.keySet());
@@ -1329,13 +1330,13 @@ public class BusinessIntelligenceService {
 
         // Collect raw time data: person → category → [cumulativeHours, count]
         Map<String, Map<String, double[]>> cellMap = new LinkedHashMap<>();
-        // Incidents: Resolution Time(m) → hours, cap at 72h to suppress outliers
+        // Incidents: Resolution Time(m) -> hours, cap at 72h to suppress outliers
         for (var row : rawData.incidents()) {
-            String person = defaultLabel(row.get("Resolver"), "未标注");
+            String person = defaultLabel(row.get(BiColumns.RESOLVER), "未标注");
             if (!topPersonSet.contains(person)) continue;
-            String cat = clean(row.get("Category"));
+            String cat = clean(row.get(BiColumns.CATEGORY));
             if (cat.isBlank()) continue;
-            double hours = Math.min(parseDouble(row.get("Resolution Time(m)")) / 60.0, 72.0);
+            double hours = Math.min(parseDouble(row.get(BiColumns.RESOLUTION_TIME_M)) / 60.0, 72.0);
             if (hours <= 0) continue;
             cellMap.computeIfAbsent(person, k -> new LinkedHashMap<>())
                 .computeIfAbsent(cat, k -> new double[2]);
@@ -1346,9 +1347,9 @@ public class BusinessIntelligenceService {
         for (var row : rawData.requests()) {
             String person = defaultLabel(row.get("Assignee"), "未标注");
             if (!topPersonSet.contains(person)) continue;
-            String cat = clean(row.get("Category"));
+            String cat = clean(row.get(BiColumns.CATEGORY));
             if (cat.isBlank()) continue;
-            double hours = Math.min(parseDouble(row.get("Fulfillment Time(h)")), 72.0);
+            double hours = Math.min(parseDouble(row.get(BiColumns.FULFILLMENT_TIME_H)), 72.0);
             if (hours <= 0) continue;
             cellMap.computeIfAbsent(person, k -> new LinkedHashMap<>())
                 .computeIfAbsent(cat, k -> new double[2]);
@@ -1449,14 +1450,14 @@ public class BusinessIntelligenceService {
         Map<String, long[]> stats = new LinkedHashMap<>();
         Map<String, Set<String>> ciSets = new LinkedHashMap<>();
         for (var row : rawData.incidents()) {
-            if (!matchesAny(clean(row.get("Priority")), List.of("P1", "P2"))) continue;
-            String resolver = defaultLabel(row.get("Resolver"), "未标注");
+            if (!matchesAny(clean(row.get(BiColumns.PRIORITY)), List.of("P1", "P2"))) continue;
+            String resolver = defaultLabel(row.get(BiColumns.RESOLVER), "未标注");
             long[] s = stats.computeIfAbsent(resolver, k -> new long[4]);
             s[0]++;
-            double rt = parseDouble(row.get("Resolution Time(m)"));
+            double rt = parseDouble(row.get(BiColumns.RESOLUTION_TIME_M));
             if (rt > 0) { s[1] += (long) rt; s[2]++; }
-            if (isYes(row.get("SLA Compliant"))) s[3]++;
-            String ci = clean(row.get("CI Affected"));
+            if (isYes(row.get(BiColumns.SLA_COMPLIANT))) s[3]++;
+            String ci = clean(row.get(BiColumns.CI_AFFECTED));
             if (!ci.isBlank()) ciSets.computeIfAbsent(resolver, k -> new HashSet<>()).add(ci);
         }
         List<List<String>> rows = stats.entrySet().stream()
@@ -1477,13 +1478,13 @@ public class BusinessIntelligenceService {
         Map<String, long[]> stats = new LinkedHashMap<>();
         Map<String, String> mainRootCause = new LinkedHashMap<>();
         for (var row : rawData.problems()) {
-            if (!matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))) continue;
-            String resolver = defaultLabel(row.get("Resolver"), "未标注");
+            if (!matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed"))) continue;
+            String resolver = defaultLabel(row.get(BiColumns.RESPONDER), "未标注");
             long[] s = stats.computeIfAbsent(resolver, k -> new long[3]);
             s[1]++;
             if (isYes(row.get("Permanent Fix Implemented"))) s[0]++;
             s[2] += (long) parseDouble(row.get("Related Incidents"));
-            String rc = clean(row.get("Root Cause Category"));
+            String rc = clean(row.get(BiColumns.ROOT_CAUSE_CATEGORY));
             if (!rc.isBlank()) mainRootCause.merge(resolver, rc, (a, b) -> a);
         }
         List<List<String>> rows = stats.entrySet().stream()
@@ -1502,15 +1503,15 @@ public class BusinessIntelligenceService {
     private BiModels.TableSection buildHighRiskChangeTable(BiRawData rawData) {
         Map<String, long[]> stats = new LinkedHashMap<>();
         for (var row : rawData.changes()) {
-            String type = clean(row.get("Change Type"));
+            String type = clean(row.get(BiColumns.CHANGE_TYPE));
             String risk = clean(row.get("Risk Level"));
             if (!"Emergency".equalsIgnoreCase(type) && !"High".equalsIgnoreCase(risk)) continue;
             String impl = defaultLabel(row.get("Implementer"), "未标注");
             long[] s = stats.computeIfAbsent(impl, k -> new long[4]);
             s[0]++;
-            if (isYes(row.get("Success"))) s[1]++;
+            if (isYes(row.get(BiColumns.SUCCESS))) s[1]++;
             if (isYes(row.get("Backout Performed"))) s[2]++;
-            if (isYes(row.get("Incident Caused"))) s[3]++;
+            if (isYes(row.get(BiColumns.INCIDENT_CAUSED))) s[3]++;
         }
         List<List<String>> rows = stats.entrySet().stream()
             .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))

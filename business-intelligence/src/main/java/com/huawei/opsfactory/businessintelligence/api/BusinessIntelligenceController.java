@@ -6,6 +6,7 @@ import com.huawei.opsfactory.businessintelligence.model.MetricsModels.DataQueryR
 import com.huawei.opsfactory.businessintelligence.service.BusinessIntelligenceMetricsService;
 import com.huawei.opsfactory.businessintelligence.service.BusinessIntelligenceService;
 import java.time.Instant;
+import java.util.Map;
 import java.time.format.DateTimeFormatter;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
@@ -67,43 +68,43 @@ public class BusinessIntelligenceController {
     }
 
     @GetMapping("/metrics/{domain}")
-    public Object getMetrics(
+    public ResponseEntity<?> getMetrics(
         @PathVariable("domain") String domain,
         @RequestParam(value = "startDate", required = false) String startDate,
         @RequestParam(value = "endDate", required = false) String endDate,
         @RequestParam(value = "personLimit", required = false) Integer personLimit
     ) {
         return switch (domain) {
-            case "executive" -> metricsService.getExecutiveMetrics(startDate, endDate);
-            case "sla" -> metricsService.getSlaMetrics(startDate, endDate);
-            case "incidents" -> metricsService.getIncidentMetrics(startDate, endDate);
-            case "changes" -> metricsService.getChangeMetrics(startDate, endDate);
-            case "requests" -> metricsService.getRequestMetrics(startDate, endDate);
-            case "problems" -> metricsService.getProblemMetrics(startDate, endDate);
-            case "cross-process" -> metricsService.getCrossProcessMetrics(startDate, endDate);
-            case "workforce" -> metricsService.getWorkforceMetrics(startDate, endDate, personLimit != null ? personLimit : 10);
-            default -> throw new IllegalArgumentException("Unknown metrics domain: " + domain);
+            case "executive" -> ResponseEntity.ok(metricsService.getExecutiveMetrics(startDate, endDate));
+            case "sla" -> ResponseEntity.ok(metricsService.getSlaMetrics(startDate, endDate));
+            case "incidents" -> ResponseEntity.ok(metricsService.getIncidentMetrics(startDate, endDate));
+            case "changes" -> ResponseEntity.ok(metricsService.getChangeMetrics(startDate, endDate));
+            case "requests" -> ResponseEntity.ok(metricsService.getRequestMetrics(startDate, endDate));
+            case "problems" -> ResponseEntity.ok(metricsService.getProblemMetrics(startDate, endDate));
+            case "cross-process" -> ResponseEntity.ok(metricsService.getCrossProcessMetrics(startDate, endDate));
+            case "workforce" -> ResponseEntity.ok(metricsService.getWorkforceMetrics(startDate, endDate, personLimit != null ? personLimit : 10));
+            default -> ResponseEntity.badRequest().body(Map.of("error", "Unknown metrics domain"));
         };
     }
 
     @PostMapping("/data/{domain}/query")
-    public Object queryData(
+    public ResponseEntity<?> queryData(
         @PathVariable("domain") String domain,
         @RequestBody DataQueryRequest request
     ) {
-        return metricsService.query(domain, request);
+        return ResponseEntity.ok(metricsService.query(domain, request));
     }
 
     @GetMapping("/data/{domain}/lineage")
-    public Object traceLineage(
+    public ResponseEntity<?> traceLineage(
         @PathVariable("domain") String domain,
         @RequestParam("ticketId") String ticketId
     ) {
-        return metricsService.traceLineage(domain, ticketId);
+        return ResponseEntity.ok(metricsService.traceLineage(domain, ticketId));
     }
 
     @GetMapping("/data/{domain}/trends")
-    public Object getTrends(
+    public ResponseEntity<?> getTrends(
         @PathVariable("domain") String domain,
         @RequestParam("metric") String metric,
         @RequestParam("interval") String interval,
@@ -111,6 +112,6 @@ public class BusinessIntelligenceController {
         @RequestParam(value = "startDate", required = false) String startDate,
         @RequestParam(value = "endDate", required = false) String endDate
     ) {
-        return metricsService.getTrends(domain, metric, interval, timeRange, startDate, endDate);
+        return ResponseEntity.ok(metricsService.getTrends(domain, metric, interval, timeRange, startDate, endDate));
     }
 }

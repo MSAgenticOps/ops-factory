@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.businessintelligence.datasource;
 
 import com.huawei.opsfactory.businessintelligence.config.BusinessIntelligenceRuntimeProperties;
+import com.huawei.opsfactory.businessintelligence.model.BiColumns;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -127,16 +128,22 @@ public class ExcelBiDataProvider implements BiDataProvider {
             List.of("Resolution （hours）", "Resolution (hours)", "Resolution"));
 
         for (Map<String, String> row : incidents) {
-            String priority = row.getOrDefault("Priority", "").trim();
+            String priority = row.getOrDefault(BiColumns.PRIORITY, "").trim();
             Double respTarget = responseTargets.get(priority);
             Double resolTarget = resolutionTargets.get(priority);
             if (priority.isEmpty() || respTarget == null || resolTarget == null) {
-                row.put("SLA Compliant", "");
+                row.put(BiColumns.SLA_COMPLIANT, "");
             } else {
-                double respMinutes = parseDouble(row.getOrDefault("Response Time(m)", ""));
-                double resolMinutes = parseDouble(row.getOrDefault("Resolution Time(m)", ""));
-                boolean met = respMinutes <= respTarget && resolMinutes / 60.0 <= resolTarget;
-                row.put("SLA Compliant", met ? "Yes" : "No");
+                String respRaw = row.getOrDefault(BiColumns.RESPONSE_TIME_M, "").trim();
+                String resolRaw = row.getOrDefault(BiColumns.RESOLUTION_TIME_M, "").trim();
+                if (respRaw.isEmpty() || resolRaw.isEmpty()) {
+                    row.put(BiColumns.SLA_COMPLIANT, "");
+                } else {
+                    double respMinutes = parseDouble(respRaw);
+                    double resolMinutes = parseDouble(resolRaw);
+                    boolean met = respMinutes <= respTarget && resolMinutes / 60.0 <= resolTarget;
+                    row.put(BiColumns.SLA_COMPLIANT, met ? "Yes" : "No");
+                }
             }
         }
         return incidents;
@@ -146,7 +153,7 @@ public class ExcelBiDataProvider implements BiDataProvider {
                                                   List<String> candidateKeys) {
         Map<String, Double> map = new LinkedHashMap<>();
         for (Map<String, String> row : criteria) {
-            String priority = row.getOrDefault("Priority", "").trim();
+            String priority = row.getOrDefault(BiColumns.PRIORITY, "").trim();
             if (priority.isEmpty()) continue;
             for (String key : candidateKeys) {
                 String val = row.getOrDefault(key, "").trim();

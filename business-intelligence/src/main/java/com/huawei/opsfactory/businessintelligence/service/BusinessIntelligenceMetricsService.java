@@ -3,6 +3,7 @@ package com.huawei.opsfactory.businessintelligence.service;
 import com.huawei.opsfactory.businessintelligence.config.BusinessIntelligenceRuntimeProperties;
 import com.huawei.opsfactory.businessintelligence.datasource.BiDataProvider;
 import com.huawei.opsfactory.businessintelligence.datasource.BiRawData;
+import com.huawei.opsfactory.businessintelligence.model.BiColumns;
 import com.huawei.opsfactory.businessintelligence.model.BiModels;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.ChartDatum;
 import com.huawei.opsfactory.businessintelligence.model.MetricsModels;
@@ -41,6 +42,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -51,6 +53,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -62,13 +65,21 @@ import org.springframework.stereotype.Service;
  * Pure-computation metrics service for the 8 ITSM domains.
  * <p>
  * Extracts computation logic from {@link BusinessIntelligenceService} and returns
- * compact metric DTOs from {@link MetricsModels}. This service does not cache;
- * each call loads fresh raw data via {@link BiDataProvider}.
+ * compact metric DTOs from {@link MetricsModels}. Raw data is cached with a
+ * configurable TTL (default 5 minutes) to avoid re-parsing Excel on every request.
  */
 @Service
 public class BusinessIntelligenceMetricsService {
 
     private static final Logger log = LoggerFactory.getLogger(BusinessIntelligenceMetricsService.class);
+
+    private static final long CACHE_TTL_MS = TimeUnit.MINUTES.toMillis(5);
+
+    private record CachedData(BiRawData data, long loadedAt) {
+        boolean isExpired() {
+            return System.currentTimeMillis() - loadedAt > CACHE_TTL_MS;
+        }
+    }
 
     // ── Constants ──────────────────────────────────────────────────────────
 
@@ -108,11 +119,22 @@ public class BusinessIntelligenceMetricsService {
 
     private final BiDataProvider dataProvider;
     private final BusinessIntelligenceRuntimeProperties runtimeProperties;
+    private final AtomicReference<CachedData> rawDataCache = new AtomicReference<>();
 
     public BusinessIntelligenceMetricsService(BiDataProvider dataProvider,
                                                BusinessIntelligenceRuntimeProperties runtimeProperties) {
         this.dataProvider = dataProvider;
         this.runtimeProperties = runtimeProperties;
+    }
+
+    private BiRawData loadCached() {
+        CachedData cached = rawDataCache.get();
+        if (cached != null && !cached.isExpired() && runtimeProperties.isCacheEnabled()) {
+            return cached.data();
+        }
+        BiRawData fresh = dataProvider.load();
+        rawDataCache.set(new CachedData(fresh, System.currentTimeMillis()));
+        return fresh;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -122,7 +144,7 @@ public class BusinessIntelligenceMetricsService {
     // ── 1. Executive ───────────────────────────────────────────────────────
 
     public ExecutiveMetrics getExecutiveMetrics(String startDate, String endDate) {
-        return getExecutiveMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getExecutiveMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public ExecutiveMetrics getExecutiveMetrics(BiRawData rawData) {
@@ -132,36 +154,40 @@ public class BusinessIntelligenceMetricsService {
         boolean hasRequests = !rawData.requests().isEmpty();
         boolean hasProblems = !rawData.problems().isEmpty();
 
+        long incidentSlaTotal = hasIncidents
+            ? rawData.incidents().stream().filter(r -> !r.getOrDefault(BiColumns.SLA_COMPLIANT, "").isEmpty()).count()
+            : 0;
         double incidentSlaRate = hasIncidents
-            ? percentageValue(countByValue(rawData.incidents(), "SLA Compliant", "Yes"), rawData.incidents().size())
+            ? percentageValue(countByValue(rawData.incidents(), BiColumns.SLA_COMPLIANT, "Yes"),
+                              incidentSlaTotal > 0 ? incidentSlaTotal : rawData.incidents().size())
             : 0;
         double incidentMttrHours = hasIncidents
-            ? average(rawData.incidents(), "Resolution Time(m)") / 60.0
+            ? average(rawData.incidents(), BiColumns.RESOLUTION_TIME_M) / 60.0
             : 0;
         double changeSuccessRate = hasChanges
-            ? percentageValue(countByValue(rawData.changes(), "Success", "Yes"), rawData.changes().size())
+            ? percentageValue(countByValue(rawData.changes(), BiColumns.SUCCESS, "Yes"), rawData.changes().size())
             : 0;
         double changeIncidentRate = hasChanges
-            ? percentageValue(countByValue(rawData.changes(), "Incident Caused", "Yes"), rawData.changes().size())
+            ? percentageValue(countByValue(rawData.changes(), BiColumns.INCIDENT_CAUSED, "Yes"), rawData.changes().size())
             : 0;
         double requestSlaRate = hasRequests
-            ? percentageValue(countByValue(rawData.requests(), "SLA Met", "Yes"), rawData.requests().size())
+            ? percentageValue(countByValue(rawData.requests(), BiColumns.SLA_MET, "Yes"), rawData.requests().size())
             : 0;
         double requestCsat = hasRequests
-            ? average(rawData.requests(), "Satisfaction Score")
+            ? average(rawData.requests(), BiColumns.SATISFACTION_SCORE)
             : 0;
         long problemClosedCount = rawData.problems().stream()
-            .filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .filter(row -> matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
             .count();
         double problemClosureRate = hasProblems
             ? percentageValue(problemClosedCount, rawData.problems().size())
             : 0;
 
         long requestOpen = rawData.requests().stream()
-            .filter(row -> !"Fulfilled".equalsIgnoreCase(clean(row.get("Status"))))
+            .filter(row -> !"Fulfilled".equalsIgnoreCase(clean(row.get(BiColumns.STATUS))))
             .count();
         long problemOpen = rawData.problems().stream()
-            .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
             .count();
         double backlogRate = (hasProblems || hasRequests)
             ? percentageValue(problemOpen + requestOpen, rawData.problems().size() + rawData.requests().size())
@@ -172,7 +198,7 @@ public class BusinessIntelligenceMetricsService {
             scoreLowerBetter(incidentMttrHours, 12, 24),
             scoreLowerBetter(percentageValue(
                 rawData.incidents().stream()
-                    .filter(row -> isP1P2(row.get("Priority")))
+                    .filter(row -> isP1P2(row.get(BiColumns.PRIORITY)))
                     .count(),
                 rawData.incidents().size()), 0.12, 0.22)
         )) : 0;
@@ -211,9 +237,9 @@ public class BusinessIntelligenceMetricsService {
             new ProcessHealthScore("problem", problemHealth, toneFromNormalizedScore(problemHealth))
         );
 
-        long incidentSlaBreached = countByValue(rawData.incidents(), "SLA Compliant", "No");
+        long incidentSlaBreached = countByValue(rawData.incidents(), BiColumns.SLA_COMPLIANT, "No");
         long changeFailures = rawData.changes().stream()
-            .filter(row -> !isYes(row.get("Success"))).count();
+            .filter(row -> !isYes(row.get(BiColumns.SUCCESS))).count();
 
         List<RiskItem> risks = buildExecutiveRiskItems(
             incidentSlaBreached, changeFailures, requestOpen, problemOpen,
@@ -224,10 +250,10 @@ public class BusinessIntelligenceMetricsService {
         long warningCount = risks.stream().filter(r -> "Warning".equals(r.priority())).count();
         long attentionCount = risks.stream().filter(r -> "Attention".equals(r.priority())).count();
 
-        Map<YearMonth, List<Map<String, String>>> incidentsByMonth = groupByMonth(rawData.incidents(), "Begin Date");
-        Map<YearMonth, List<Map<String, String>>> changesByMonth = groupByMonth(rawData.changes(), "Requested Date");
-        Map<YearMonth, List<Map<String, String>>> requestsByMonth = groupByMonth(rawData.requests(), "Requested Date");
-        Map<YearMonth, List<Map<String, String>>> problemsByMonth = groupByMonth(rawData.problems(), "Logged Date");
+        Map<YearMonth, List<Map<String, String>>> incidentsByMonth = groupByMonth(rawData.incidents(), BiColumns.BEGIN_DATE);
+        Map<YearMonth, List<Map<String, String>>> changesByMonth = groupByMonth(rawData.changes(), BiColumns.REQUESTED_DATE);
+        Map<YearMonth, List<Map<String, String>>> requestsByMonth = groupByMonth(rawData.requests(), BiColumns.REQUESTED_DATE);
+        Map<YearMonth, List<Map<String, String>>> problemsByMonth = groupByMonth(rawData.problems(), BiColumns.LOGGED_DATE);
 
         List<YearMonth> allMonths = new ArrayList<>();
         allMonths.addAll(incidentsByMonth.keySet());
@@ -243,22 +269,26 @@ public class BusinessIntelligenceMetricsService {
                 List<Map<String, String>> monthChanges = changesByMonth.getOrDefault(month, List.of());
                 List<Map<String, String>> monthRequests = requestsByMonth.getOrDefault(month, List.of());
                 List<Map<String, String>> monthProblems = problemsByMonth.getOrDefault(month, List.of());
+                long monthSlaTotal = monthIncidents.stream()
+                    .filter(r -> !r.getOrDefault(BiColumns.SLA_COMPLIANT, "").isEmpty()).count();
+                double monthSlaRate = percentageValue(countByValue(monthIncidents, BiColumns.SLA_COMPLIANT, "Yes"),
+                    monthSlaTotal > 0 ? monthSlaTotal : monthIncidents.size());
                 double score = weightedScore(Map.of(
                     "incident", weightedAverage(List.of(
-                        scoreHigherBetter(percentageValue(countByValue(monthIncidents, "SLA Compliant", "Yes"), monthIncidents.size()), 0.95, 0.85),
-                        scoreLowerBetter(average(monthIncidents, "Resolution Time(m)") / 60.0, 12, 24)
+                        scoreHigherBetter(monthSlaRate, 0.95, 0.85),
+                        scoreLowerBetter(average(monthIncidents, BiColumns.RESOLUTION_TIME_M) / 60.0, 12, 24)
                     )),
                     "change", weightedAverage(List.of(
-                        scoreHigherBetter(percentageValue(countByValue(monthChanges, "Success", "Yes"), monthChanges.size()), 0.95, 0.85),
-                        scoreLowerBetter(percentageValue(countByValue(monthChanges, "Incident Caused", "Yes"), monthChanges.size()), 0.05, 0.12)
+                        scoreHigherBetter(percentageValue(countByValue(monthChanges, BiColumns.SUCCESS, "Yes"), monthChanges.size()), 0.95, 0.85),
+                        scoreLowerBetter(percentageValue(countByValue(monthChanges, BiColumns.INCIDENT_CAUSED, "Yes"), monthChanges.size()), 0.05, 0.12)
                     )),
                     "request", weightedAverage(List.of(
-                        scoreHigherBetter(percentageValue(countByValue(monthRequests, "SLA Met", "Yes"), monthRequests.size()), 0.9, 0.75),
-                        scoreHigherBetter(average(monthRequests, "Satisfaction Score") / 5.0, 0.82, 0.7)
+                        scoreHigherBetter(percentageValue(countByValue(monthRequests, BiColumns.SLA_MET, "Yes"), monthRequests.size()), 0.9, 0.75),
+                        scoreHigherBetter(average(monthRequests, BiColumns.SATISFACTION_SCORE) / 5.0, 0.82, 0.7)
                     )),
                     "problem", scoreHigherBetter(percentageValue(
                         monthProblems.stream()
-                            .filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+                            .filter(row -> matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
                             .count(),
                         monthProblems.size()), 0.75, 0.55)
                 ));
@@ -280,7 +310,7 @@ public class BusinessIntelligenceMetricsService {
     // ── 2. SLA ─────────────────────────────────────────────────────────────
 
     public SlaMetrics getSlaMetrics(String startDate, String endDate) {
-        return getSlaMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getSlaMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public SlaMetrics getSlaMetrics(BiRawData rawData) {
@@ -346,7 +376,7 @@ public class BusinessIntelligenceMetricsService {
     // ── 3. Incident ────────────────────────────────────────────────────────
 
     public IncidentMetrics getIncidentMetrics(String startDate, String endDate) {
-        return getIncidentMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getIncidentMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public IncidentMetrics getIncidentMetrics(BiRawData rawData) {
@@ -354,26 +384,26 @@ public class BusinessIntelligenceMetricsService {
 
         long totalCount = incidents.size();
         long p1p2Count = incidents.stream()
-            .filter(row -> isP1P2(row.get("Priority")))
+            .filter(row -> isP1P2(row.get(BiColumns.PRIORITY)))
             .count();
         long openCount = incidents.stream()
-            .filter(row -> !isClosedOrResolved(row.get("Order Status")))
+            .filter(row -> !isClosedOrResolved(row.get(BiColumns.ORDER_STATUS)))
             .count();
 
-        long slaMetCount = countByValue(incidents, "SLA Compliant", "Yes");
+        long slaMetCount = countByValue(incidents, BiColumns.SLA_COMPLIANT, "Yes");
         long slaTotalCount = incidents.stream()
-            .filter(r -> !r.getOrDefault("SLA Compliant", "").isEmpty()).count();
+            .filter(r -> !r.getOrDefault(BiColumns.SLA_COMPLIANT, "").isEmpty()).count();
         double slaRate = percentageValue(slaMetCount, slaTotalCount > 0 ? slaTotalCount : totalCount);
 
-        double mttrHours = average(incidents, "Resolution Time(m)") / 60.0;
+        double mttrHours = average(incidents, BiColumns.RESOLUTION_TIME_M) / 60.0;
         double p1p2MttrHours = incidents.stream()
-            .filter(row -> isP1P2(row.get("Priority")))
-            .mapToDouble(row -> parseDouble(row.get("Resolution Time(m)")))
+            .filter(row -> isP1P2(row.get(BiColumns.PRIORITY)))
+            .mapToDouble(row -> parseDouble(row.get(BiColumns.RESOLUTION_TIME_M)))
             .filter(v -> v > 0)
             .average().orElse(0) / 60.0;
 
-        List<DistributionItem> priorityDistribution = toDistributionItems(topCounts(incidents, "Priority", 4), totalCount);
-        List<DistributionItem> categoryDistribution = toDistributionItems(topCounts(incidents, "Category", 8), totalCount);
+        List<DistributionItem> priorityDistribution = toDistributionItems(topCounts(incidents, BiColumns.PRIORITY, 4), totalCount);
+        List<DistributionItem> categoryDistribution = toDistributionItems(topCounts(incidents, BiColumns.CATEGORY, 8), totalCount);
 
         log.debug("Computed incident metrics totalCount={} slaRate={}", totalCount, slaRate);
 
@@ -387,20 +417,20 @@ public class BusinessIntelligenceMetricsService {
     // ── 4. Change ──────────────────────────────────────────────────────────
 
     public ChangeMetrics getChangeMetrics(String startDate, String endDate) {
-        return getChangeMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getChangeMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public ChangeMetrics getChangeMetrics(BiRawData rawData) {
         List<Map<String, String>> changes = rawData.changes();
 
         long totalCount = changes.size();
-        long successCount = countByValue(changes, "Success", "Yes");
+        long successCount = countByValue(changes, BiColumns.SUCCESS, "Yes");
         double successRate = percentageValue(successCount, totalCount);
-        long emergencyCount = countByValue(changes, "Change Type", "Emergency");
-        long incidentCausedCount = countByValue(changes, "Incident Caused", "Yes");
+        long emergencyCount = countByValue(changes, BiColumns.CHANGE_TYPE, "Emergency");
+        long incidentCausedCount = countByValue(changes, BiColumns.INCIDENT_CAUSED, "Yes");
 
-        List<DistributionItem> typeDistribution = toDistributionItems(topCounts(changes, "Change Type", 6), totalCount);
-        List<DistributionItem> categoryDistribution = toDistributionItems(topCounts(changes, "Category", 8), totalCount);
+        List<DistributionItem> typeDistribution = toDistributionItems(topCounts(changes, BiColumns.CHANGE_TYPE, 6), totalCount);
+        List<DistributionItem> categoryDistribution = toDistributionItems(topCounts(changes, BiColumns.CATEGORY, 8), totalCount);
         List<DistributionItem> riskLevelDistribution = toDistributionItems(topCounts(changes, "Risk Level", 6), totalCount);
 
         log.debug("Computed change metrics totalCount={} successRate={}", totalCount, successRate);
@@ -415,21 +445,21 @@ public class BusinessIntelligenceMetricsService {
     // ── 5. Request ─────────────────────────────────────────────────────────
 
     public RequestMetrics getRequestMetrics(String startDate, String endDate) {
-        return getRequestMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getRequestMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public RequestMetrics getRequestMetrics(BiRawData rawData) {
         List<Map<String, String>> requests = rawData.requests();
 
         long totalCount = requests.size();
-        long fulfilledCount = countByValue(requests, "Status", "Fulfilled");
-        long slaMetCount = countByValue(requests, "SLA Met", "Yes");
+        long fulfilledCount = countByValue(requests, BiColumns.STATUS, "Fulfilled");
+        long slaMetCount = countByValue(requests, BiColumns.SLA_MET, "Yes");
         double slaRate = percentageValue(slaMetCount, totalCount);
-        double avgCsat = average(requests, "Satisfaction Score");
-        double avgFulfillmentHours = average(requests, "Fulfillment Time(h)");
+        double avgCsat = average(requests, BiColumns.SATISFACTION_SCORE);
+        double avgFulfillmentHours = average(requests, BiColumns.FULFILLMENT_TIME_H);
 
-        List<DistributionItem> typeDistribution = toDistributionItems(topCounts(requests, "Request Type", 6), totalCount);
-        List<DistributionItem> deptDistribution = toDistributionItems(topCounts(requests, "Requester Dept", 8), totalCount);
+        List<DistributionItem> typeDistribution = toDistributionItems(topCounts(requests, BiColumns.REQUEST_TYPE, 6), totalCount);
+        List<DistributionItem> deptDistribution = toDistributionItems(topCounts(requests, BiColumns.REQUESTER_DEPT, 8), totalCount);
 
         log.debug("Computed request metrics totalCount={} avgCsat={}", totalCount, avgCsat);
 
@@ -443,7 +473,7 @@ public class BusinessIntelligenceMetricsService {
     // ── 6. Problem ─────────────────────────────────────────────────────────
 
     public ProblemMetrics getProblemMetrics(String startDate, String endDate) {
-        return getProblemMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getProblemMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public ProblemMetrics getProblemMetrics(BiRawData rawData) {
@@ -451,7 +481,7 @@ public class BusinessIntelligenceMetricsService {
 
         long totalCount = problems.size();
         long closedCount = problems.stream()
-            .filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .filter(row -> matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
             .count();
         double closureRate = percentageValue(closedCount, totalCount);
 
@@ -460,11 +490,11 @@ public class BusinessIntelligenceMetricsService {
             .count();
         double rcaRate = percentageValue(rcaCount, totalCount);
 
-        long knownErrorCount = countByValue(problems, "Known Error", "No");
+        long knownErrorCount = countByValue(problems, BiColumns.KNOWN_ERROR, "No");
 
-        List<DistributionItem> statusDistribution = toDistributionItems(topCounts(problems, "Status", 6), totalCount);
+        List<DistributionItem> statusDistribution = toDistributionItems(topCounts(problems, BiColumns.STATUS, 6), totalCount);
         List<DistributionItem> rootCauseCategoryDistribution = toDistributionItems(
-            topCounts(problems, "Root Cause Category", 6), totalCount);
+            topCounts(problems, BiColumns.ROOT_CAUSE_CATEGORY, 6), totalCount);
 
         log.debug("Computed problem metrics totalCount={} closureRate={}", totalCount, closureRate);
 
@@ -478,7 +508,7 @@ public class BusinessIntelligenceMetricsService {
     // ── 7. Cross-Process ───────────────────────────────────────────────────
 
     public CrossProcessMetrics getCrossProcessMetrics(String startDate, String endDate) {
-        return getCrossProcessMetrics(filterByDateRange(dataProvider.load(), startDate, endDate));
+        return getCrossProcessMetrics(filterByDateRange(loadCached(), startDate, endDate));
     }
 
     public CrossProcessMetrics getCrossProcessMetrics(BiRawData rawData) {
@@ -490,13 +520,13 @@ public class BusinessIntelligenceMetricsService {
         int totalChanges = changes.size();
         int totalIncidents = incidents.size();
 
-        long causedCount = countByValue(changes, "Incident Caused", "Yes");
+        long causedCount = countByValue(changes, BiColumns.INCIDENT_CAUSED, "Yes");
         double changeCausedIncidentRate = totalChanges > 0 ? (causedCount * 100.0 / totalChanges) : 0;
 
         long p1p2Within48h = changes.stream()
-            .filter(ch -> isYes(ch.get("Incident Caused")))
+            .filter(ch -> isYes(ch.get(BiColumns.INCIDENT_CAUSED)))
             .flatMap(ch -> findIncidentsWithin48h(incidents, parseDate(ch.get("Actual End"))).stream())
-            .map(inc -> inc.get("Order Number"))
+            .map(inc -> inc.get(BiColumns.ORDER_NUMBER))
             .distinct()
             .count();
 
@@ -506,9 +536,9 @@ public class BusinessIntelligenceMetricsService {
 
         double changeFailureWeight = (changeCausedIncidentRate / 100.0) * 40;
         double avgAging = problems.stream()
-            .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
+            .filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed")))
             .mapToLong(row -> {
-                LocalDateTime logged = parseDate(row.get("Logged Date"));
+                LocalDateTime logged = parseDate(row.get(BiColumns.LOGGED_DATE));
                 return logged != null ? java.time.Duration.between(logged, LocalDateTime.now()).toDays() : 0;
             }).average().orElse(0);
         double agingWeight = Math.min(avgAging / 90.0, 1.0) * 30;
@@ -519,12 +549,12 @@ public class BusinessIntelligenceMetricsService {
         Map<String, Long> causedByMonth = new LinkedHashMap<>();
 
         for (Map<String, String> ch : changes) {
-            LocalDateTime date = parseDate(ch.get("Requested Date"));
+            LocalDateTime date = parseDate(ch.get(BiColumns.REQUESTED_DATE));
             if (date == null) date = parseDate(ch.get("Actual End"));
             if (date == null) continue;
             String month = date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
             changeByMonth.merge(month, 1L, Long::sum);
-            if (isYes(ch.get("Incident Caused"))) {
+            if (isYes(ch.get(BiColumns.INCIDENT_CAUSED))) {
                 LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
                 long p1p2 = findIncidentsWithin48h(incidents, actualEnd).size();
                 causedByMonth.merge(month, p1p2, Long::sum);
@@ -541,8 +571,8 @@ public class BusinessIntelligenceMetricsService {
 
         Map<String, Long> openByCi = new LinkedHashMap<>();
         for (Map<String, String> row : problems) {
-            if (matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))) continue;
-            String ci = defaultLabel(row.get("CI Affected"), "Unknown");
+            if (matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed"))) continue;
+            String ci = defaultLabel(row.get(BiColumns.CI_AFFECTED), "Unknown");
             openByCi.merge(ci, 1L, Long::sum);
         }
         long totalProblems = problems.size();
@@ -567,7 +597,7 @@ public class BusinessIntelligenceMetricsService {
     // ── 8. Workforce ───────────────────────────────────────────────────────
 
     public WorkforceMetrics getWorkforceMetrics(String startDate, String endDate, Integer personLimit) {
-        return getWorkforceMetrics(filterByDateRange(dataProvider.load(), startDate, endDate), personLimit);
+        return getWorkforceMetrics(filterByDateRange(loadCached(), startDate, endDate), personLimit);
     }
 
     public WorkforceMetrics getWorkforceMetrics(BiRawData rawData, Integer personLimit) {
@@ -583,10 +613,10 @@ public class BusinessIntelligenceMetricsService {
         double avgThroughput = activeCount > 0 ? (double) totalOrders / activeCount : 0;
 
         long backlog = rawData.incidents().stream()
-            .filter(r -> !matchesAny(clean(r.get("Order Status")), List.of("Closed", "Resolved", "Completed")))
+            .filter(r -> !matchesAny(clean(r.get(BiColumns.ORDER_STATUS)), List.of("Closed", "Resolved", "Completed")))
             .count()
             + rawData.requests().stream()
-            .filter(r -> !matchesAny(clean(r.get("Status")), List.of("Fulfilled", "Closed", "Completed")))
+            .filter(r -> !matchesAny(clean(r.get(BiColumns.STATUS)), List.of("Fulfilled", "Closed", "Completed")))
             .count();
 
         double avgDeliveryHours = activeMetrics.stream()
@@ -749,7 +779,7 @@ public class BusinessIntelligenceMetricsService {
     // ── Lineage ────────────────────────────────────────────────────────────
 
     public LineageResult traceLineage(String domain, String ticketId) {
-        BiRawData raw = dataProvider.load();
+        BiRawData raw = loadCached();
         String normalizedId = ticketId.trim().toLowerCase();
 
         List<Map<String, String>> sourceData = getDomainData(raw, domain);
@@ -780,48 +810,48 @@ public class BusinessIntelligenceMetricsService {
     }
 
     private void traceFromIncident(Map<String, String> src, String srcId, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault("CI Affected", "").trim().toLowerCase();
-        String category = src.getOrDefault("Category", "").trim().toLowerCase();
-        LocalDateTime beginDate = parseDate(src.get("Begin Date"));
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+        String category = src.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
+        LocalDateTime beginDate = parseDate(src.get(BiColumns.BEGIN_DATE));
 
         for (var c : raw.changes()) {
-            String changeCi = c.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String changeCi = c.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (!ci.isEmpty() && ci.equals(changeCi)) {
-                related.add(new RelatedTicket(c.get("Change Number"), "changes", "same_ci", "high"));
+                related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "same_ci", "high"));
             }
             if (beginDate != null) {
                 LocalDateTime actualEnd = parseDate(c.get("Actual End"));
                 if (actualEnd != null && Math.abs(ChronoUnit.SECONDS.between(beginDate, actualEnd)) < 48 * 3600) {
-                    related.add(new RelatedTicket(c.get("Change Number"), "changes", "time_window_48h", "medium"));
+                    related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "time_window_48h", "medium"));
                 }
             }
         }
 
         for (var p : raw.problems()) {
-            String problemCi = p.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String problemCi = p.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (!ci.isEmpty() && ci.equals(problemCi)) {
-                related.add(new RelatedTicket(p.get("Problem Number"), "problems", "same_ci", "high"));
+                related.add(new RelatedTicket(p.get(BiColumns.PROBLEM_NUMBER), "problems", "same_ci", "high"));
             }
-            String problemCat = p.getOrDefault("Category", "").trim().toLowerCase();
+            String problemCat = p.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
             if (!category.isEmpty() && category.equals(problemCat)) {
-                related.add(new RelatedTicket(p.get("Problem Number"), "problems", "same_category", "medium"));
+                related.add(new RelatedTicket(p.get(BiColumns.PROBLEM_NUMBER), "problems", "same_category", "medium"));
             }
         }
     }
 
     private void traceFromChange(Map<String, String> src, String srcId, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault("CI Affected", "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
         LocalDateTime actualEnd = parseDate(src.get("Actual End"));
-        boolean caused = "yes".equalsIgnoreCase(src.getOrDefault("Incident Caused", "").trim());
+        boolean caused = "yes".equalsIgnoreCase(src.getOrDefault(BiColumns.INCIDENT_CAUSED, "").trim());
         String relatedInc = src.getOrDefault("Related Incidents", "");
 
         for (var inc : raw.incidents()) {
-            String incOrderNum = inc.getOrDefault("Order Number", "").trim();
+            String incOrderNum = inc.getOrDefault(BiColumns.ORDER_NUMBER, "").trim();
             if (!relatedInc.isEmpty() && relatedInc.contains(incOrderNum)) {
                 related.add(new RelatedTicket(incOrderNum, "incidents", "referenced_in_change", "high"));
             }
             if (caused && actualEnd != null) {
-                LocalDateTime incBegin = parseDate(inc.get("Begin Date"));
+                LocalDateTime incBegin = parseDate(inc.get(BiColumns.BEGIN_DATE));
                 if (incBegin != null) {
                     long diff = ChronoUnit.SECONDS.between(actualEnd, incBegin);
                     if (diff > 0 && diff < 48 * 3600) {
@@ -829,51 +859,51 @@ public class BusinessIntelligenceMetricsService {
                     }
                 }
             }
-            String incCi = inc.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (!ci.isEmpty() && ci.equals(incCi)) {
                 related.add(new RelatedTicket(incOrderNum, "incidents", "same_ci", "medium"));
             }
         }
 
         for (var p : raw.problems()) {
-            String problemCi = p.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String problemCi = p.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (!ci.isEmpty() && ci.equals(problemCi)) {
-                related.add(new RelatedTicket(p.get("Problem Number"), "problems", "same_ci", "medium"));
+                related.add(new RelatedTicket(p.get(BiColumns.PROBLEM_NUMBER), "problems", "same_ci", "medium"));
             }
         }
     }
 
     private void traceFromProblem(Map<String, String> src, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault("CI Affected", "").trim().toLowerCase();
-        String category = src.getOrDefault("Category", "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+        String category = src.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
 
         for (var inc : raw.incidents()) {
-            String incCi = inc.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (!ci.isEmpty() && ci.equals(incCi)) {
-                related.add(new RelatedTicket(inc.get("Order Number"), "incidents", "same_ci", "high"));
+                related.add(new RelatedTicket(inc.get(BiColumns.ORDER_NUMBER), "incidents", "same_ci", "high"));
             }
-            String incCat = inc.getOrDefault("Category", "").trim().toLowerCase();
+            String incCat = inc.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
             if (!category.isEmpty() && category.equals(incCat)) {
-                related.add(new RelatedTicket(inc.get("Order Number"), "incidents", "same_category", "medium"));
+                related.add(new RelatedTicket(inc.get(BiColumns.ORDER_NUMBER), "incidents", "same_category", "medium"));
             }
         }
 
         for (var c : raw.changes()) {
-            String changeCi = c.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String changeCi = c.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (!ci.isEmpty() && ci.equals(changeCi)) {
-                related.add(new RelatedTicket(c.get("Change Number"), "changes", "same_ci", "medium"));
+                related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "same_ci", "medium"));
             }
         }
     }
 
     private void traceFromRequest(Map<String, String> src, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault("CI Affected", "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
         if (ci.isEmpty()) return;
 
         for (var inc : raw.incidents()) {
-            String incCi = inc.getOrDefault("CI Affected", "").trim().toLowerCase();
+            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
             if (ci.equals(incCi)) {
-                related.add(new RelatedTicket(inc.get("Order Number"), "incidents", "same_ci", "medium"));
+                related.add(new RelatedTicket(inc.get(BiColumns.ORDER_NUMBER), "incidents", "same_ci", "medium"));
             }
         }
     }
@@ -882,7 +912,7 @@ public class BusinessIntelligenceMetricsService {
 
     public TrendResult getTrends(String domain, String metric, String interval, String timeRange,
                                   String startDate, String endDate) {
-        return getTrends(dataProvider.load(), domain, metric, interval, timeRange, startDate, endDate);
+        return getTrends(loadCached(), domain, metric, interval, timeRange, startDate, endDate);
     }
 
     public TrendResult getTrends(BiRawData rawData, String domain, String metric, String interval,
@@ -950,38 +980,38 @@ public class BusinessIntelligenceMetricsService {
 
         return switch (metric) {
             case "count" -> rows.size();
-            case "avg_resolution_time" -> avgPositive(rows, "Resolution Time(m)");
-            case "avg_response_time" -> avgPositive(rows, "Response Time(m)");
+            case "avg_resolution_time" -> avgPositive(rows, BiColumns.RESOLUTION_TIME_M);
+            case "avg_response_time" -> avgPositive(rows, BiColumns.RESPONSE_TIME_M);
             case "sla_rate" -> {
-                String field = "incidents".equals(domain) ? "SLA Compliant" : "SLA Met";
+                String field = "incidents".equals(domain) ? BiColumns.SLA_COMPLIANT : BiColumns.SLA_MET;
                 long met = rows.stream()
                     .filter(r -> "yes".equalsIgnoreCase(r.getOrDefault(field, "").trim()))
                     .count();
                 yield Math.round((double) met / rows.size() * 100.0) / 1.0;
             }
             case "p12_count" -> rows.stream()
-                .filter(r -> isP1P2(r.get("Priority")))
+                .filter(r -> isP1P2(r.get(BiColumns.PRIORITY)))
                 .count();
-            case "csat" -> avgPositive(rows, "Satisfaction Score");
+            case "csat" -> avgPositive(rows, BiColumns.SATISFACTION_SCORE);
             case "success_rate" -> {
                 long met = rows.stream()
-                    .filter(r -> "yes".equalsIgnoreCase(r.getOrDefault("Success", "").trim()))
+                    .filter(r -> "yes".equalsIgnoreCase(r.getOrDefault(BiColumns.SUCCESS, "").trim()))
                     .count();
                 yield Math.round((double) met / rows.size() * 100.0) / 1.0;
             }
             case "p12_avg_resolution_time" -> {
                 List<Map<String, String>> p12 = rows.stream()
-                    .filter(r -> isP1P2(r.get("Priority")))
+                    .filter(r -> isP1P2(r.get(BiColumns.PRIORITY)))
                     .toList();
-                yield p12.isEmpty() ? 0 : avgPositive(p12, "Resolution Time(m)");
+                yield p12.isEmpty() ? 0 : avgPositive(p12, BiColumns.RESOLUTION_TIME_M);
             }
             case "response_sla_rate" -> {
                 if (responseCriteria == null) yield 0;
                 long met = rows.stream()
                     .filter(r -> {
-                        String priority = clean(r.get("Priority"));
+                        String priority = clean(r.get(BiColumns.PRIORITY));
                         Double target = responseCriteria.get(priority);
-                        return target != null && parseDouble(r.get("Response Time(m)")) <= target;
+                        return target != null && parseDouble(r.get(BiColumns.RESPONSE_TIME_M)) <= target;
                     }).count();
                 yield Math.round((double) met / rows.size() * 100.0) / 1.0;
             }
@@ -989,25 +1019,25 @@ public class BusinessIntelligenceMetricsService {
                 if (resolutionCriteria == null) yield 0;
                 long met = rows.stream()
                     .filter(r -> {
-                        String priority = clean(r.get("Priority"));
+                        String priority = clean(r.get(BiColumns.PRIORITY));
                         Double target = resolutionCriteria.get(priority);
-                        return target != null && parseDouble(r.get("Resolution Time(m)")) / 60.0 <= target;
+                        return target != null && parseDouble(r.get(BiColumns.RESOLUTION_TIME_M)) / 60.0 <= target;
                     }).count();
                 yield Math.round((double) met / rows.size() * 100.0) / 1.0;
             }
             case "p12_sla_rate" -> {
                 List<Map<String, String>> p12 = rows.stream()
-                    .filter(r -> isP1P2(r.get("Priority")))
+                    .filter(r -> isP1P2(r.get(BiColumns.PRIORITY)))
                     .toList();
                 if (p12.isEmpty()) yield 0;
-                String field = "incidents".equals(domain) ? "SLA Compliant" : "SLA Met";
+                String field = "incidents".equals(domain) ? BiColumns.SLA_COMPLIANT : BiColumns.SLA_MET;
                 long met = p12.stream()
                     .filter(r -> "yes".equalsIgnoreCase(r.getOrDefault(field, "").trim()))
                     .count();
                 yield Math.round((double) met / p12.size() * 100.0) / 1.0;
             }
             case "incident_caused_count" -> rows.stream()
-                .filter(r -> "yes".equalsIgnoreCase(r.getOrDefault("Incident Caused", "").trim()))
+                .filter(r -> "yes".equalsIgnoreCase(r.getOrDefault(BiColumns.INCIDENT_CAUSED, "").trim()))
                 .count();
             default -> 0;
         };
@@ -1037,7 +1067,7 @@ public class BusinessIntelligenceMetricsService {
     // ── Data access helpers ────────────────────────────────────────────────
 
     private List<Map<String, String>> getDomainData(String domain) {
-        return getDomainData(dataProvider.load(), domain);
+        return getDomainData(loadCached(), domain);
     }
 
     private List<Map<String, String>> getDomainData(BiRawData raw, String domain) {
@@ -1052,11 +1082,11 @@ public class BusinessIntelligenceMetricsService {
 
     private String idField(String domain) {
         return switch (domain) {
-            case "incidents" -> "Order Number";
-            case "changes" -> "Change Number";
-            case "requests" -> "Request Number";
-            case "problems" -> "Problem Number";
-            default -> "Order Number";
+            case "incidents" -> BiColumns.ORDER_NUMBER;
+            case "changes" -> BiColumns.CHANGE_NUMBER;
+            case "requests" -> BiColumns.REQUEST_NUMBER;
+            case "problems" -> BiColumns.PROBLEM_NUMBER;
+            default -> BiColumns.ORDER_NUMBER;
         };
     }
 
@@ -1349,21 +1379,21 @@ public class BusinessIntelligenceMetricsService {
         LocalDate end = endDate != null ? parseLocalDate(endDate) : null;
 
         List<Map<String, String>> filteredIncidents = rawData.incidents().stream()
-            .filter(row -> isWithinDateRange(row.get("Begin Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.BEGIN_DATE), start, end))
             .collect(Collectors.toList());
 
         List<Map<String, String>> filteredIncidentSlaCriteria = rawData.incidentSlaCriteria();
 
         List<Map<String, String>> filteredChanges = rawData.changes().stream()
-            .filter(row -> isWithinDateRange(row.get("Requested Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.REQUESTED_DATE), start, end))
             .collect(Collectors.toList());
 
         List<Map<String, String>> filteredRequests = rawData.requests().stream()
-            .filter(row -> isWithinDateRange(row.get("Requested Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.REQUESTED_DATE), start, end))
             .collect(Collectors.toList());
 
         List<Map<String, String>> filteredProblems = rawData.problems().stream()
-            .filter(row -> isWithinDateRange(row.get("Logged Date"), start, end))
+            .filter(row -> isWithinDateRange(row.get(BiColumns.LOGGED_DATE), start, end))
             .collect(Collectors.toList());
 
         return new BiRawData(filteredIncidents, filteredIncidentSlaCriteria,
@@ -1456,21 +1486,21 @@ public class BusinessIntelligenceMetricsService {
             RESOLUTION_CRITERIA_KEYS);
         return rawData.incidents().stream()
             .map(row -> {
-                String priority = clean(row.get("Priority"));
+                String priority = clean(row.get(BiColumns.PRIORITY));
                 Double responseTarget = responseCriteria.get(priority);
                 Double resolutionTarget = resolutionCriteria.get(priority);
                 if (priority.isBlank() || responseTarget == null || resolutionTarget == null) {
                     return null;
                 }
-                double responseMinutes = parseDouble(row.get("Response Time(m)"));
-                double resolutionMinutes = parseDouble(row.get("Resolution Time(m)"));
+                double responseMinutes = parseDouble(row.get(BiColumns.RESPONSE_TIME_M));
+                double resolutionMinutes = parseDouble(row.get(BiColumns.RESOLUTION_TIME_M));
                 return new IncidentSlaRecord(
-                    row.get("Order Number"),
+                    row.get(BiColumns.ORDER_NUMBER),
                     row.get("Order Name"),
                     priority,
-                    row.get("Category"),
-                    row.get("Resolver"),
-                    parseDate(row.get("Begin Date")),
+                    row.get(BiColumns.CATEGORY),
+                    row.get(BiColumns.RESOLVER),
+                    parseDate(row.get(BiColumns.BEGIN_DATE)),
                     responseMinutes,
                     resolutionMinutes,
                     responseMinutes <= responseTarget,
@@ -1484,9 +1514,9 @@ public class BusinessIntelligenceMetricsService {
     private Map<String, Double> buildIncidentCriteriaMap(List<Map<String, String>> rows,
                                                           List<String> candidateKeys) {
         return rows.stream()
-            .filter(row -> !clean(row.get("Priority")).isBlank())
+            .filter(row -> !clean(row.get(BiColumns.PRIORITY)).isBlank())
             .collect(Collectors.toMap(
-                row -> clean(row.get("Priority")),
+                row -> clean(row.get(BiColumns.PRIORITY)),
                 row -> parseDouble(findFirstValue(row, candidateKeys)),
                 (left, right) -> right,
                 LinkedHashMap::new
@@ -1572,36 +1602,36 @@ public class BusinessIntelligenceMetricsService {
     private Map<String, PersonMetrics> collectPersonMetrics(BiRawData rawData) {
         Map<String, PersonMetricsBuilder> builders = new LinkedHashMap<>();
         for (var row : rawData.incidents()) {
-            String resolver = defaultLabel(row.get("Resolver"), "未标注");
+            String resolver = defaultLabel(row.get(BiColumns.RESOLVER), "未标注");
             var b = builders.computeIfAbsent(resolver, k -> new PersonMetricsBuilder());
-            double rt = parseDouble(row.get("Resolution Time(m)"));
-            String slaValue = row.getOrDefault("SLA Compliant", "").trim();
+            double rt = parseDouble(row.get(BiColumns.RESOLUTION_TIME_M));
+            String slaValue = row.getOrDefault(BiColumns.SLA_COMPLIANT, "").trim();
             boolean hasSla = !slaValue.isEmpty();
             boolean sla = "yes".equalsIgnoreCase(slaValue);
-            boolean p1p2 = isP1P2(row.get("Priority"));
+            boolean p1p2 = isP1P2(row.get(BiColumns.PRIORITY));
             b.addIncident(rt, sla, hasSla, p1p2);
         }
         for (var row : rawData.changes()) {
             String impl = defaultLabel(row.get("Implementer"), "未标注");
             var b = builders.computeIfAbsent(impl, k -> new PersonMetricsBuilder());
-            boolean success = isYes(row.get("Success"));
+            boolean success = isYes(row.get(BiColumns.SUCCESS));
             boolean backout = isYes(row.get("Backout Performed"));
-            boolean emergency = "Emergency".equalsIgnoreCase(clean(row.get("Change Type")));
+            boolean emergency = "Emergency".equalsIgnoreCase(clean(row.get(BiColumns.CHANGE_TYPE)));
             double dur = parseDurationMinutes(row.get("Actual Start"), row.get("Actual End"));
-            boolean caused = isYes(row.get("Incident Caused"));
+            boolean caused = isYes(row.get(BiColumns.INCIDENT_CAUSED));
             boolean highRisk = "High".equalsIgnoreCase(clean(row.get("Risk Level")));
             b.addChange(success, backout, emergency, dur, caused, highRisk);
         }
         for (var row : rawData.requests()) {
             String assignee = defaultLabel(row.get("Assignee"), "未标注");
             var b = builders.computeIfAbsent(assignee, k -> new PersonMetricsBuilder());
-            double ft = parseDouble(row.get("Fulfillment Time(h)")) * 60;
-            boolean sla = isYes(row.get("SLA Met"));
-            double sat = parseDouble(row.get("Satisfaction Score"));
+            double ft = parseDouble(row.get(BiColumns.FULFILLMENT_TIME_H)) * 60;
+            boolean sla = isYes(row.get(BiColumns.SLA_MET));
+            double sat = parseDouble(row.get(BiColumns.SATISFACTION_SCORE));
             b.addRequest(ft, sla, sat);
         }
         for (var row : rawData.problems()) {
-            String resolver = defaultLabel(row.get("Resolver"), "未标注");
+            String resolver = defaultLabel(row.get(BiColumns.RESOLVER), "未标注");
             var b = builders.computeIfAbsent(resolver, k -> new PersonMetricsBuilder());
             boolean fix = isYes(row.get("Permanent Fix Implemented"));
             int rel = (int) parseDouble(row.get("Related Incidents"));
@@ -1619,9 +1649,9 @@ public class BusinessIntelligenceMetricsService {
         if (changeEnd == null) return List.of();
         return incidents.stream()
             .filter(inc -> {
-                LocalDateTime incBegin = parseDate(inc.get("Begin Date"));
+                LocalDateTime incBegin = parseDate(inc.get(BiColumns.BEGIN_DATE));
                 if (incBegin == null) return false;
-                String priority = clean(inc.get("Priority"));
+                String priority = clean(inc.get(BiColumns.PRIORITY));
                 if (!"P1".equalsIgnoreCase(priority) && !"P2".equalsIgnoreCase(priority)) return false;
                 long hours = java.time.Duration.between(changeEnd, incBegin).toHours();
                 return hours > 0 && hours <= 48;
