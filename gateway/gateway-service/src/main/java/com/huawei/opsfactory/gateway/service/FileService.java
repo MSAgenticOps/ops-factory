@@ -104,11 +104,13 @@ public class FileService {
      */
     public List<Map<String, Object>> listFiles(Path userAgentDir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
+        Set<String> allowedExtensions = fileCapsuleAllowedExtensions();
         for (FileScanRoot root : fileScanRoots(userAgentDir)) {
             if (root.recursive()) {
-                listFilesRecursive(root, root.path(), files);
+                long deadlineNanos = scanDeadlineNanos(root.scanTimeoutMs());
+                listFilesRecursive(root, root.path(), files, allowedExtensions, 0, deadlineNanos, files.size());
             } else {
-                listRootFiles(root, files);
+                listRootFiles(root, files, allowedExtensions);
             }
         }
         return files;
@@ -119,11 +121,12 @@ public class FileService {
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
-        listRootFiles(new FileScanRoot("workingDir", dir, false), files);
+        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6, 1000, 2000),
+                files, fileCapsuleAllowedExtensions());
         return files;
     }
 
-    private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files) throws IOException {
+    private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
         Path dir = root.path();
         if (!Files.isDirectory(dir)) {
             return;
@@ -131,7 +134,7 @@ public class FileService {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
                 if (Files.isRegularFile(entry) && !SKIP_FILES.contains(entry.getFileName().toString())) {
-                    addFileEntry(root, entry, files);
+                    addFileEntry(root, entry, files, allowedExtensions);
                 }
             }
         }
@@ -145,30 +148,55 @@ public class FileService {
         return listFiles(dir);
     }
 
-    private void listFilesRecursive(FileScanRoot root, Path current, List<Map<String, Object>> files) throws IOException {
+    private void listFilesRecursive(FileScanRoot root, Path current, List<Map<String, Object>> files,
+                                    Set<String> allowedExtensions, int depth, long deadlineNanos,
+                                    int rootStartCount) throws IOException {
         if (!Files.isDirectory(current)) {
+            return;
+        }
+        if (isScanLimitReached(root, files, depth, deadlineNanos, rootStartCount)) {
             return;
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(current)) {
             for (Path entry : stream) {
+                if (isScanLimitReached(root, files, depth, deadlineNanos, rootStartCount)) {
+                    return;
+                }
                 String name = entry.getFileName().toString();
                 if (Files.isDirectory(entry)) {
-                    if (!SKIP_DIRS.contains(name) && !name.startsWith(".")) {
-                        listFilesRecursive(root, entry, files);
+                    if (depth < root.maxDepth() && !root.excludeDirs().contains(name) && !name.startsWith(".")) {
+                        listFilesRecursive(root, entry, files, allowedExtensions, depth + 1, deadlineNanos, rootStartCount);
                     }
                 } else {
                     if (!SKIP_FILES.contains(name)) {
-                        addFileEntry(root, entry, files);
+                        addFileEntry(root, entry, files, allowedExtensions);
                     }
                 }
             }
         }
     }
 
-    private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files) throws IOException {
+    private boolean isScanLimitReached(FileScanRoot root, List<Map<String, Object>> files, int depth, long deadlineNanos,
+                                       int rootStartCount) {
+        return depth > root.maxDepth()
+                || (root.maxFiles() > 0 && files.size() - rootStartCount >= root.maxFiles())
+                || (deadlineNanos > 0 && System.nanoTime() > deadlineNanos);
+    }
+
+    private long scanDeadlineNanos(long timeoutMs) {
+        if (timeoutMs <= 0) {
+            return 0;
+        }
+        return System.nanoTime() + timeoutMs * 1_000_000L;
+    }
+
+    private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
         String name = entry.getFileName().toString();
         int dot = name.lastIndexOf('.');
         String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
+        if (!allowedExtensions.isEmpty() && !allowedExtensions.contains(ext)) {
+            return;
+        }
         String relativePath = toApiPath(root.path().relativize(entry));
         Map<String, Object> file = new LinkedHashMap<>();
         file.put("rootId", root.id());
@@ -179,6 +207,24 @@ public class FileService {
         file.put("type", ext);
         file.put("modifiedAt", Files.getLastModifiedTime(entry).toInstant().toString());
         files.add(file);
+    }
+
+    private Set<String> fileCapsuleAllowedExtensions() {
+        Set<String> allowed = new HashSet<>();
+        List<String> configured = gatewayProperties.getFileCapsules() != null
+                ? gatewayProperties.getFileCapsules().getAllowedExtensions()
+                : null;
+        if (configured == null) {
+            return allowed;
+        }
+        for (String ext : configured) {
+            if (ext == null) continue;
+            String normalized = ext.trim().toLowerCase();
+            if (!normalized.isEmpty()) {
+                allowed.add(normalized);
+            }
+        }
+        return allowed;
     }
 
     public Optional<Path> resolveFileScanRoot(Path userAgentDir, String rootId) {
@@ -211,9 +257,35 @@ public class FileService {
             roots.add(new FileScanRoot(
                     id,
                     resolveScanRootPath(userAgentDir, configuredRoot.getPath()),
-                    configuredRoot.isRecursive()));
+                    configuredRoot.isRecursive(),
+                    excludeDirs(configuredRoot.getExcludeDirs()),
+                    positiveOrDefault(configuredRoot.getMaxDepth(), 6),
+                    positiveOrDefault(configuredRoot.getMaxFiles(), 1000),
+                    positiveOrDefault(configuredRoot.getScanTimeoutMs(), 2000)));
         }
         return roots;
+    }
+
+    private Set<String> excludeDirs(List<String> configuredExcludeDirs) {
+        Set<String> excludeDirs = new HashSet<>(SKIP_DIRS);
+        if (configuredExcludeDirs != null) {
+            for (String dir : configuredExcludeDirs) {
+                if (dir == null) continue;
+                String normalized = dir.trim();
+                if (!normalized.isEmpty()) {
+                    excludeDirs.add(normalized);
+                }
+            }
+        }
+        return excludeDirs;
+    }
+
+    private int positiveOrDefault(int value, int defaultValue) {
+        return value > 0 ? value : defaultValue;
+    }
+
+    private long positiveOrDefault(long value, long defaultValue) {
+        return value > 0 ? value : defaultValue;
     }
 
     private String normalizeRootId(String rootId, int index) {
@@ -237,10 +309,12 @@ public class FileService {
         return path.toString().replace('\\', '/');
     }
 
-    private record FileScanRoot(String id, Path path, boolean recursive) {
+    private record FileScanRoot(String id, Path path, boolean recursive, Set<String> excludeDirs,
+                                int maxDepth, int maxFiles, long scanTimeoutMs) {
         private FileScanRoot {
             Objects.requireNonNull(id);
             Objects.requireNonNull(path);
+            Objects.requireNonNull(excludeDirs);
         }
     }
 

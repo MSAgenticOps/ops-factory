@@ -124,7 +124,7 @@ public class FileServiceExtendedTest {
     public void testListFiles_skipsDirs_nodeModules() throws IOException {
         File nodeModules = tempFolder.newFolder("node_modules");
         createFile(new File(nodeModules, "package.json"), "{}");
-        createFile(new File(tempFolder.getRoot(), "index.js"), "console.log()");
+        createFile(new File(tempFolder.getRoot(), "index.txt"), "hello");
 
         List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
         assertEquals(1, files.size());
@@ -134,7 +134,7 @@ public class FileServiceExtendedTest {
     public void testListFiles_skipsDirs_dotGoose() throws IOException {
         File gooseDir = tempFolder.newFolder(".goose");
         createFile(new File(gooseDir, "session.json"), "{}");
-        createFile(new File(tempFolder.getRoot(), "main.py"), "print()");
+        createFile(new File(tempFolder.getRoot(), "main.txt"), "hello");
 
         List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
         assertEquals(1, files.size());
@@ -178,7 +178,7 @@ public class FileServiceExtendedTest {
     @Test
     public void testListFiles_skipsGitkeep() throws IOException {
         createFile(new File(tempFolder.getRoot(), ".gitkeep"), "");
-        createFile(new File(tempFolder.getRoot(), "code.py"), "pass");
+        createFile(new File(tempFolder.getRoot(), "code.txt"), "pass");
 
         List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
         assertEquals(1, files.size());
@@ -333,6 +333,75 @@ public class FileServiceExtendedTest {
         assertTrue(byPath.containsKey("summary.md"));
         assertTrue(byPath.containsKey("monthly/detail.md"));
         assertFalse(byPath.containsKey(".hidden/secret.md"));
+    }
+
+    @Test
+    public void testListFiles_recursiveScanRootHonorsConfiguredExcludeDirs() throws IOException {
+        GatewayProperties properties = new GatewayProperties();
+        GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        root.setExcludeDirs(List.of("tmp-output"));
+        filesConfig.setScanRoots(List.of(root));
+        properties.setFiles(filesConfig);
+        FileService recursiveFileService = new FileService(properties);
+
+        createFile(new File(tempFolder.getRoot(), "docs/visible.md"), "# Visible");
+        createFile(new File(tempFolder.getRoot(), "tmp-output/hidden.md"), "# Hidden");
+
+        List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
+        Map<String, Map<String, Object>> byPath = files.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        file -> (String) file.get("path"),
+                        file -> file));
+
+        assertEquals(1, files.size());
+        assertTrue(byPath.containsKey("docs/visible.md"));
+        assertFalse(byPath.containsKey("tmp-output/hidden.md"));
+    }
+
+    @Test
+    public void testListFiles_recursiveScanRootHonorsMaxDepth() throws IOException {
+        GatewayProperties properties = new GatewayProperties();
+        GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        root.setMaxDepth(1);
+        filesConfig.setScanRoots(List.of(root));
+        properties.setFiles(filesConfig);
+        FileService recursiveFileService = new FileService(properties);
+
+        createFile(new File(tempFolder.getRoot(), "top.md"), "# Top");
+        createFile(new File(tempFolder.getRoot(), "level-one/visible.md"), "# Visible");
+        createFile(new File(tempFolder.getRoot(), "level-one/level-two/hidden.md"), "# Hidden");
+
+        List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
+        Map<String, Map<String, Object>> byPath = files.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        file -> (String) file.get("path"),
+                        file -> file));
+
+        assertEquals(2, files.size());
+        assertTrue(byPath.containsKey("top.md"));
+        assertTrue(byPath.containsKey("level-one/visible.md"));
+        assertFalse(byPath.containsKey("level-one/level-two/hidden.md"));
+    }
+
+    @Test
+    public void testListFiles_recursiveScanRootHonorsMaxFiles() throws IOException {
+        GatewayProperties properties = new GatewayProperties();
+        GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        root.setMaxFiles(2);
+        filesConfig.setScanRoots(List.of(root));
+        properties.setFiles(filesConfig);
+        FileService recursiveFileService = new FileService(properties);
+
+        createFile(new File(tempFolder.getRoot(), "one.md"), "# One");
+        createFile(new File(tempFolder.getRoot(), "two.md"), "# Two");
+        createFile(new File(tempFolder.getRoot(), "three.md"), "# Three");
+
+        List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
+
+        assertEquals(2, files.size());
     }
 
     private Map<String, Object> snapshot(String path, String name, String type, long size, String modifiedAt) {

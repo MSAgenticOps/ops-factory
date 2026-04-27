@@ -104,8 +104,20 @@
     opacity: 0.8;
 }
 
-.message-error-banner span {
+.message-error-banner .message-error-body {
     flex: 1;
+}
+
+.message-error-detail,
+.message-error-actions {
+    display: block;
+    margin-top: var(--spacing-1);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+}
+
+.message-error-actions {
+    font-weight: 500;
 }
 
 .message-error-retry {
@@ -139,6 +151,41 @@
 
 .message-content p:last-child {
     margin-bottom: 0;
+}
+
+.message-skill-chip-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+}
+
+.message-skill-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: min(100%, 380px);
+    gap: 5px;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.message-skill-chip svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    opacity: 0.82;
+}
+
+.message-skill-chip span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .message-content code {
@@ -580,43 +627,58 @@
 }
 
 .file-capsules-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-2);
-    margin-top: var(--spacing-3);
+    display: grid;
+    grid-template-columns: max-content;
+    gap: 6px;
+    margin-top: 12px;
+    max-width: 100%;
 }
 
 .file-capsule {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: var(--spacing-2);
-    padding: 6px 10px;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
-    border-radius: 20px;
-    transition: all var(--transition-fast);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    gap: 8px;
+    min-height: 36px;
+    width: fit-content;
+    min-width: min(100%, 176px);
+    max-width: min(100%, 520px);
+    padding: 4px 7px 4px 9px;
+    background: var(--surface-1, #fff);
+    border: 1px solid var(--border-soft, #e4e8ee);
+    border-radius: var(--radius-full, 9999px);
+    color: var(--text-body, #3a4452);
+    transition: border-color 0.16s ease, background 0.16s ease;
 }
 
-.file-capsule:hover {
-    border-color: var(--color-accent);
-    background: var(--color-accent-subtle);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+.file-capsule:hover,
+.file-capsule:focus-within {
+    border-color: #cfd6e1;
+    background: var(--surface-2, #f7f8fa);
 }
 
 .file-capsule-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-soft);
+    color: var(--text-soft, #6d7786);
     line-height: 1;
+    flex-shrink: 0;
+}
+
+.file-capsule-details {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 8px;
 }
 
 .file-capsule-name {
     font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    max-width: 260px;
+    line-height: 1.25;
+    font-weight: 600;
+    color: var(--text-body, #3a4452);
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -624,25 +686,32 @@
 
 .file-capsule-actions {
     display: flex;
+    align-items: center;
     gap: 2px;
 }
 
 .file-capsule-btn {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    color: var(--color-text-tertiary);
+    border-radius: var(--radius-full, 9999px);
+    color: var(--text-soft, #6d7786);
     background: transparent;
     border: none;
     cursor: pointer;
     text-decoration: none;
-    transition: all var(--transition-fast);
+    transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.file-capsule-btn:hover {
-    background: var(--color-accent);
-    color: white;
+.file-capsule-btn:hover,
+.file-capsule-btn:focus-visible {
+    background: var(--surface-3, #f1f3f6);
+    color: var(--text-strong, #24292f);
+}
+
+.file-capsule-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(50, 53, 59, 0.14);
 }

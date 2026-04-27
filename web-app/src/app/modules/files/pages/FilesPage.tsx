@@ -12,7 +12,6 @@ import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListCard from '../../../platform/ui/list/ListCard'
 import ListFooter from '../../../platform/ui/list/ListFooter'
-import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
@@ -34,13 +33,16 @@ interface AgentFile extends FileInfo {
     agentName: string
 }
 
-type FileCategory = 'all' | 'doc' | 'sheet' | 'slide' | 'markdown' | 'html' | 'others'
+type FileCategory = 'all' | 'doc' | 'sheet' | 'slide' | 'csv' | 'json' | 'txt' | 'markdown' | 'html' | 'others'
 
 const FILE_CATEGORIES: { key: FileCategory; labelKey: string; types: string[] }[] = [
     { key: 'all', labelKey: 'files.categories.all', types: [] },
     { key: 'doc', labelKey: 'files.categories.doc', types: ['docx', 'doc'] },
-    { key: 'sheet', labelKey: 'files.categories.sheet', types: ['xlsx', 'xls', 'csv', 'tsv'] },
+    { key: 'sheet', labelKey: 'files.categories.sheet', types: ['xlsx', 'xls'] },
     { key: 'slide', labelKey: 'files.categories.slide', types: ['pptx', 'ppt'] },
+    { key: 'csv', labelKey: 'files.categories.csv', types: ['csv'] },
+    { key: 'json', labelKey: 'files.categories.json', types: ['json'] },
+    { key: 'txt', labelKey: 'files.categories.txt', types: ['txt'] },
     { key: 'markdown', labelKey: 'files.categories.markdown', types: ['md', 'markdown'] },
     { key: 'html', labelKey: 'files.categories.html', types: ['html', 'htm'] },
 ]
@@ -298,6 +300,9 @@ export default function FilesPage() {
             doc: 0,
             sheet: 0,
             slide: 0,
+            csv: 0,
+            json: 0,
+            txt: 0,
             markdown: 0,
             html: 0,
             others: 0,
@@ -404,7 +409,6 @@ export default function FilesPage() {
                                 </div>
                             </>
                         )}
-                        secondary={(searchTerm || activeCategory !== 'all') ? <ListResultsMeta>{t('common.resultsFound', { count: filteredFiles.length })}</ListResultsMeta> : undefined}
                     />
                 )}
                 footer={filteredFiles.length > 0 ? (

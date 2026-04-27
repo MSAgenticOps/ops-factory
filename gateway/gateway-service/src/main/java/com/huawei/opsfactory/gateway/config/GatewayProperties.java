@@ -36,6 +36,7 @@ public class GatewayProperties {
     private FileCapsules fileCapsules = new FileCapsules();
     private FileBrowser files = new FileBrowser();
     private SkillMarket skillMarket = new SkillMarket();
+    private Knowledge knowledge = new Knowledge();
 
     // ---- Getters / Setters ----
 
@@ -185,6 +186,14 @@ public class GatewayProperties {
 
     public void setSkillMarket(SkillMarket skillMarket) {
         this.skillMarket = skillMarket;
+    }
+
+    public Knowledge getKnowledge() {
+        return knowledge;
+    }
+
+    public void setKnowledge(Knowledge knowledge) {
+        this.knowledge = knowledge;
     }
 
     public Path getConfigPath() {
@@ -396,6 +405,10 @@ public class GatewayProperties {
         private String id = "";
         private String path = "";
         private boolean recursive = false;
+        private List<String> excludeDirs = List.of();
+        private int maxDepth = 6;
+        private int maxFiles = 1000;
+        private long scanTimeoutMs = 2000;
 
         public FileScanRoot() {
         }
@@ -412,6 +425,14 @@ public class GatewayProperties {
         public void setPath(String path) { this.path = path; }
         public boolean isRecursive() { return recursive; }
         public void setRecursive(boolean recursive) { this.recursive = recursive; }
+        public List<String> getExcludeDirs() { return excludeDirs; }
+        public void setExcludeDirs(List<String> excludeDirs) { this.excludeDirs = excludeDirs; }
+        public int getMaxDepth() { return maxDepth; }
+        public void setMaxDepth(int maxDepth) { this.maxDepth = maxDepth; }
+        public int getMaxFiles() { return maxFiles; }
+        public void setMaxFiles(int maxFiles) { this.maxFiles = maxFiles; }
+        public long getScanTimeoutMs() { return scanTimeoutMs; }
+        public void setScanTimeoutMs(long scanTimeoutMs) { this.scanTimeoutMs = scanTimeoutMs; }
     }
 
     public static class SkillMarket {
@@ -425,6 +446,13 @@ public class GatewayProperties {
         public void setRequestTimeoutMs(int requestTimeoutMs) { this.requestTimeoutMs = requestTimeoutMs; }
         public int getMaxPackageSizeMb() { return maxPackageSizeMb; }
         public void setMaxPackageSizeMb(int maxPackageSizeMb) { this.maxPackageSizeMb = maxPackageSizeMb; }
+    }
+
+    public static class Knowledge {
+        private String artifactsRoot = "../knowledge-service/data/artifacts";
+
+        public String getArtifactsRoot() { return artifactsRoot; }
+        public void setArtifactsRoot(String artifactsRoot) { this.artifactsRoot = artifactsRoot; }
     }
 
     // ---- PostConstruct for logging configuration values ----

@@ -5,6 +5,8 @@ export interface SkillEntry {
     name: string
     description: string
     path: string  // relative path in agent workspace
+    pinned?: boolean | string
+    displayOrder?: number | string
 }
 
 export interface SkillsResponse {

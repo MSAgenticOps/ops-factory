@@ -1,13 +1,13 @@
-GOOSE_PROVIDER: custom_qwen3.5-27b
-GOOSE_MODEL: qwen/qwen3.5-27b
+GOOSE_PROVIDER: custom_qwen3.5-35b-a3b
+GOOSE_MODEL: qwen/qwen3.5-35b-a3b
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
-GOOSE_CONTEXT_LIMIT: '65536'
+GOOSE_CONTEXT_LIMIT: '128000'
 GOOSE_MAX_TOKENS: '4096'
 GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
-GOOSE_AUTO_COMPACT_THRESHOLD: '0.8'
+GOOSE_AUTO_COMPACT_THRESHOLD: '0.7'
 GOOSE_MAX_TURNS: '50'
 extensions:
   extensionmanager:
@@ -117,7 +117,8 @@ extensions:
     available_tools: []
     x-opsfactory:
       scope:
-        rootDir: ../data
+        rootDir: ../../../../knowledge-service/data/artifacts/src_285c13458d3a
+        sourceId: src_285c13458d3a
   analyze:
     enabled: false
     type: platform

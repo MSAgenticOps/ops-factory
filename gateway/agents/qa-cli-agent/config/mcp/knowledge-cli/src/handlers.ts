@@ -3,6 +3,7 @@ import { readFile, realpath, stat } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import YAML from 'yaml'
 import { logError, logInfo } from './logger.js'
 
 const execFile = promisify(execFileCallback)
@@ -11,10 +12,11 @@ const CONFIG_DIR = path.dirname(CONFIG_FILE_PATH)
 const DEFAULT_ROOT_DIR = '../data'
 const DEFAULT_FIND_LIMIT = 100
 const DEFAULT_SEARCH_LIMIT = 50
-const DEFAULT_READ_WINDOW = 200
+const DEFAULT_READ_WINDOW = 120
 const MAX_FIND_LIMIT = 500
 const MAX_SEARCH_LIMIT = 200
-const MAX_READ_WINDOW = 400
+const MAX_READ_WINDOW = 200
+const MAX_READ_OUTPUT_CHARS = 24_000
 
 type ToolArgs = Record<string, unknown>
 type SearchEngine = 'rg' | 'grep'
@@ -61,7 +63,7 @@ export const tools = [
         },
         glob: {
           type: 'string',
-          description: 'Optional file name glob such as *.yaml or *.log.',
+          description: 'Optional file name glob. Prefer the configured knowledge artifact type before probing unrelated file types.',
         },
         limit: {
           type: 'number',
@@ -86,6 +88,10 @@ export const tools = [
           type: 'string',
           description: 'Optional relative subdirectory under rootDir.',
         },
+        glob: {
+          type: 'string',
+          description: 'Optional file name glob to limit searched files, for example *.md for knowledge documents.',
+        },
         regex: {
           type: 'boolean',
           description: 'Whether query should be treated as a regex.',
@@ -106,7 +112,7 @@ export const tools = [
   },
   {
     name: 'read_file',
-    description: 'Read a file or a specific line range under the configured root directory.',
+    description: 'Read a file or a specific line range under the configured root directory. Results are capped to keep context small; truncated responses include the returned end line and next startLine.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -133,8 +139,33 @@ function clamp(value: unknown, min: number, max: number, fallback: number): numb
   return Math.max(min, Math.min(max, number))
 }
 
-function stripYamlScalar(value: string): string {
-  return value.trim().replace(/^['"]|['"]$/g, '')
+function normalizeGlob(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null
+  }
+
+  const glob = value.trim()
+  const segments = glob.split(/[\\/]+/)
+  if (
+    glob.includes('\0') ||
+    glob.startsWith('!') ||
+    path.isAbsolute(glob) ||
+    segments.includes('..')
+  ) {
+    throw new Error(`Invalid glob pattern: ${glob}`)
+  }
+
+  return glob
+}
+
+export function extractConfiguredRootDir(content: string): string | null {
+  const parsed = YAML.parse(content)
+  const rootDir = parsed?.extensions?.['knowledge-cli']?.['x-opsfactory']?.scope?.rootDir
+  if (typeof rootDir === 'string' && rootDir.trim()) {
+    return rootDir.trim()
+  }
+
+  return null
 }
 
 async function readConfiguredRootDir(): Promise<string> {
@@ -144,9 +175,9 @@ async function readConfiguredRootDir(): Promise<string> {
 
   try {
     const content = await readFile(CONFIG_FILE_PATH, 'utf8')
-    const match = content.match(/^\s*rootDir:\s*(.+)\s*$/m)
-    if (match?.[1]) {
-      return stripYamlScalar(match[1])
+    const rootDir = extractConfiguredRootDir(content)
+    if (rootDir) {
+      return rootDir
     }
   } catch {
     // fall through to default
@@ -309,6 +340,33 @@ function formatReadContent(lines: string[], startLine: number): string {
     .join('\n')
 }
 
+function fitReadContentToCharLimit(lines: string[], startLine: number): {
+  content: string
+  lines: string[]
+  truncatedByChars: boolean
+} {
+  let selected = lines
+  let content = formatReadContent(selected, startLine)
+  let truncatedByChars = false
+
+  while (selected.length > 1 && content.length > MAX_READ_OUTPUT_CHARS) {
+    selected = selected.slice(0, -1)
+    content = formatReadContent(selected, startLine)
+    truncatedByChars = true
+  }
+
+  if (content.length > MAX_READ_OUTPUT_CHARS) {
+    content = content.slice(0, MAX_READ_OUTPUT_CHARS)
+    truncatedByChars = true
+  }
+
+  return {
+    content,
+    lines: selected,
+    truncatedByChars,
+  }
+}
+
 export async function handleFindFiles(args: ToolArgs = {}): Promise<string> {
   const scope = await resolveScopePath(args.pathPrefix)
   const limit = clamp(args.limit, 1, MAX_FIND_LIMIT, DEFAULT_FIND_LIMIT)
@@ -355,6 +413,7 @@ export async function handleSearchContent(args: ToolArgs = {}): Promise<string> 
 
   const scope = await resolveScopePath(args.pathPrefix)
   const limit = clamp(args.limit, 1, MAX_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT)
+  const glob = normalizeGlob(args.glob)
 
   if (!scope.exists) {
     return JSON.stringify({ rootDir: scope.rootDir, hits: [], total: 0, engine: 'none' }, null, 2)
@@ -365,12 +424,14 @@ export async function handleSearchContent(args: ToolArgs = {}): Promise<string> 
 
   if (engine === 'rg') {
     const commandArgs = ['-n', '--no-heading', '--with-filename', '--column']
+    if (glob) commandArgs.push('--glob', glob)
     if (!args.caseSensitive) commandArgs.push('-i')
     if (!args.regex) commandArgs.push('-F')
     commandArgs.push(query, scope.scopePath)
     result = await runCommand('rg', commandArgs)
   } else {
     const commandArgs = ['-R', '-n', '-I']
+    if (glob) commandArgs.push(`--include=${glob}`)
     if (!args.caseSensitive) commandArgs.push('-i')
     if (!args.regex) commandArgs.push('-F')
     commandArgs.push('--', query, scope.scopePath)
@@ -413,13 +474,35 @@ export async function handleReadFile(args: ToolArgs = {}): Promise<string> {
     : Math.min(totalLines, requestedStart + DEFAULT_READ_WINDOW - 1)
   const cappedEnd = Math.min(requestedEnd, requestedStart + MAX_READ_WINDOW - 1)
   const selected = lines.slice(requestedStart - 1, cappedEnd)
+  const fitted = fitReadContentToCharLimit(selected, requestedStart)
+  const returnedEndLine = requestedStart + fitted.lines.length - 1
+  const truncatedByLines = cappedEnd < requestedEnd
+  const truncatedByChars = fitted.truncatedByChars
+  const truncated = truncatedByLines || truncatedByChars
+  const truncatedReason = truncatedByLines
+    ? 'line_limit'
+    : truncatedByChars
+      ? 'char_limit'
+      : null
+  const nextStartLine = truncated && returnedEndLine < totalLines ? returnedEndLine + 1 : null
+  const message = truncated
+    ? [
+        `内容已被截断：请求到第 ${requestedEnd} 行，实际返回到第 ${returnedEndLine} 行。`,
+        nextStartLine ? `如需继续读取，请用 startLine=${nextStartLine}。` : null,
+      ].filter(Boolean).join(' ')
+    : undefined
 
   return JSON.stringify({
     path: filePath,
     startLine: requestedStart,
-    endLine: requestedStart + selected.length - 1,
+    endLine: returnedEndLine,
+    requestedEndLine: requestedEnd,
     totalLines,
-    content: formatReadContent(selected, requestedStart),
+    truncated,
+    truncatedReason,
+    nextStartLine,
+    message,
+    content: fitted.content,
   }, null, 2)
 }
 

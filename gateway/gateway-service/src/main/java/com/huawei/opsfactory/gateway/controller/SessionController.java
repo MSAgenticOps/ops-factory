@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -27,6 +28,7 @@ import reactor.core.scheduler.Schedulers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -270,6 +272,48 @@ public class SessionController {
                         agentId, userId, sessionId)));
     }
 
+    @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable String agentId,
+                                                          @PathVariable String sessionId,
+                                                          ServerWebExchange exchange) {
+        String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
+        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
+        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-CLEANUP-EMPTY] begin agentId={} userId={} sessionId={}",
+                agentId, userId, sessionId));
+
+        return instanceManager.getOrSpawn(agentId, userId)
+                .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey())
+                        .flatMap(json -> {
+                            EmptySessionDecision decision = shouldDeleteEmptySession(json);
+                            if (!decision.delete()) {
+                                GatewayLogContext.run(requestId, userId, () -> log.info(
+                                        "[SESSION-CLEANUP-EMPTY] skip agentId={} userId={} sessionId={} reason={}",
+                                        agentId, userId, sessionId, decision.reason()));
+                                return Mono.just(cleanupResult(false, decision.reason()));
+                            }
+
+                            return goosedProxy.fetchJson(
+                                            instance.getPort(),
+                                            HttpMethod.DELETE,
+                                            "/sessions/" + sessionId,
+                                            null,
+                                            30,
+                                            instance.getSecretKey())
+                                    .then(Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
+                                            .subscribeOn(Schedulers.boundedElastic()))
+                                    .thenReturn(cleanupResult(true, "empty_session_deleted"))
+                                    .doOnSuccess(result -> GatewayLogContext.run(requestId, userId, () -> log.info(
+                                            "[SESSION-CLEANUP-EMPTY] deleted agentId={} userId={} sessionId={}",
+                                            agentId, userId, sessionId)));
+                        }))
+                .onErrorResume(WebClientResponseException.class, e -> {
+                    if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                        return Mono.just(cleanupResult(false, "session_not_found"));
+                    }
+                    return Mono.error(e);
+                });
+    }
+
     /**
      * Inject agentId into a session JSON response.
      */
@@ -298,6 +342,67 @@ public class SessionController {
         } catch (Exception e) {
             log.warn("Failed to clean up uploads for session {}: {}", sessionId, e.getMessage());
         }
+    }
+
+    private EmptySessionDecision shouldDeleteEmptySession(String json) {
+        try {
+            JsonNode session = MAPPER.readTree(json);
+            String sessionType = textValue(session.get("session_type"));
+            if (sessionType != null && !"user".equals(sessionType)) {
+                return new EmptySessionDecision(false, "not_user_session");
+            }
+            if (hasText(session.get("schedule_id"))) {
+                return new EmptySessionDecision(false, "scheduled_session");
+            }
+            if (session.path("user_set_name").asBoolean(false)) {
+                return new EmptySessionDecision(false, "user_named_session");
+            }
+
+            JsonNode conversation = session.get("conversation");
+            if (conversation != null && conversation.isArray()) {
+                if (!conversation.isEmpty()) {
+                    return new EmptySessionDecision(false, "has_conversation");
+                }
+            }
+
+            JsonNode messageCount = session.get("message_count");
+            if (messageCount != null && messageCount.canConvertToInt()) {
+                return messageCount.asInt() == 0
+                        ? new EmptySessionDecision(true, "empty_message_count")
+                        : new EmptySessionDecision(false, "has_messages");
+            }
+
+            if (conversation != null && conversation.isArray()) {
+                return new EmptySessionDecision(true, "empty_conversation");
+            }
+
+            return new EmptySessionDecision(false, "message_count_unknown");
+        } catch (Exception e) {
+            log.warn("Failed to inspect session for empty cleanup: {}", e.getMessage());
+            return new EmptySessionDecision(false, "invalid_session_payload");
+        }
+    }
+
+    private Map<String, Object> cleanupResult(boolean deleted, String reason) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", deleted);
+        result.put("reason", reason);
+        return result;
+    }
+
+    private boolean hasText(JsonNode node) {
+        return node != null && !node.isNull() && !node.asText("").isBlank();
+    }
+
+    private String textValue(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        String value = node.asText("");
+        return value.isBlank() ? null : value;
+    }
+
+    private record EmptySessionDecision(boolean delete, String reason) {
     }
 
     /**

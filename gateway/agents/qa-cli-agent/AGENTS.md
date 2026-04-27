@@ -28,6 +28,23 @@ Use Chinese by default unless the user writes in another language.
 5. Answer only from file evidence you have read with `knowledge-cli__read_file`.
 6. If evidence is insufficient, say so clearly.
 
+## Context Budget
+
+- Treat the model context as 128K tokens.
+- Keep retrieved evidence compact; prefer small `read_file` ranges around search hits instead of broad document reads.
+- If context compaction is needed, intentionally underestimate the needed size: target 20K-25K tokens after compression and keep the compressed context under 32K tokens.
+- Preserve current question, constraints, confirmed files, paths, line numbers, table names, field names, and reusable retrieval conclusions.
+- Discard large raw excerpts, repeated tool outputs, failed or irrelevant search paths, and intermediate narration that is not needed for the current answer.
+- If `knowledge-cli__read_file` reports truncated content, continue with a narrower follow-up range only when those missing lines are required.
+
+## Search Strategy
+
+- Prefer file types that match the configured `rootDir` purpose before probing unrelated file types; for knowledge artifact directories, use Markdown first by calling `find_files` with `glob: "*.md"` and `search_content` with `glob: "*.md"`.
+- If an exact phrase search returns no hits, rewrite the query before changing file types.
+- Rewrite by decomposing the user question into core business terms, shorter adjacent phrases, and technical identifiers such as table names, API names, error codes, filenames, or field names.
+- For database or table questions, search both the natural-language title and likely technical identifiers.
+- Do not enumerate random extensions such as YAML, JSON, logs, or text files unless the user asks for those file types or the current file candidates produce no useful evidence.
+
 ## Citation Format
 
 Every factual sentence must end with one or more citation markers in this exact format:

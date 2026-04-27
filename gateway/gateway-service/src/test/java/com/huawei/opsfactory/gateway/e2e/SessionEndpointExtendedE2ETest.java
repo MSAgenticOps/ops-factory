@@ -10,8 +10,10 @@ import reactor.core.publisher.Mono;
 import java.nio.file.Path;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +86,91 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         webClient.delete().uri("/gateway/sessions/session-xyz?agentId=test-agent")
                 .exchange()
                 .expectStatus().isUnauthorized();
+    }
+
+    // ====================== POST /agents/{agentId}/sessions/{sessionId}/cleanup-empty ======================
+
+    @Test
+    public void cleanupEmptySession_emptyUserSession_deletesSession() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(runningInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-empty"), anyString()))
+                .thenReturn(Mono.just("{\"id\":\"session-empty\",\"session_type\":\"user\",\"message_count\":0,\"conversation\":[]}"));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-empty"),
+                eq(null), anyInt(), anyString()))
+                .thenReturn(Mono.empty());
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-empty/cleanup-empty")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.deleted").isEqualTo(true)
+                .jsonPath("$.reason").isEqualTo("empty_session_deleted");
+
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-empty"),
+                eq(null), anyInt(), anyString());
+    }
+
+    @Test
+    public void cleanupEmptySession_sessionWithMessages_skipsDelete() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(runningInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-used"), anyString()))
+                .thenReturn(Mono.just("{\"id\":\"session-used\",\"session_type\":\"user\",\"message_count\":2}"));
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-used/cleanup-empty")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.deleted").isEqualTo(false)
+                .jsonPath("$.reason").isEqualTo("has_messages");
+
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-used"),
+                eq(null), anyInt(), anyString());
+    }
+
+    @Test
+    public void cleanupEmptySession_nonEmptyConversationWithZeroMessageCount_skipsDelete() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(runningInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-conversation"), anyString()))
+                .thenReturn(Mono.just("{\"id\":\"session-conversation\",\"session_type\":\"user\",\"message_count\":0,\"conversation\":[{\"role\":\"user\"}]}"));
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-conversation/cleanup-empty")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.deleted").isEqualTo(false)
+                .jsonPath("$.reason").isEqualTo("has_conversation");
+
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-conversation"),
+                eq(null), anyInt(), anyString());
+    }
+
+    @Test
+    public void cleanupEmptySession_scheduledSession_skipsDelete() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(runningInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-scheduled"), anyString()))
+                .thenReturn(Mono.just("{\"id\":\"session-scheduled\",\"session_type\":\"scheduled\",\"message_count\":0,\"conversation\":[]}"));
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-scheduled/cleanup-empty")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.deleted").isEqualTo(false)
+                .jsonPath("$.reason").isEqualTo("not_user_session");
+
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-scheduled"),
+                eq(null), anyInt(), anyString());
     }
 
     // ====================== PUT /agents/{agentId}/sessions/{sessionId}/name ======================
