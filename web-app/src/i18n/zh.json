@@ -267,7 +267,10 @@
       "breached": "SLA 未达成",
       "met": "SLA 已达成",
       "atRisk": "SLA 风险中",
-      "unknown": "SLA 未知"
+      "unknown": "SLA 未知",
+      "bothBreached": "双违约",
+      "responseBreached": "响应违约",
+      "resolutionBreached": "解决违约"
     },
     "noChartData": "暂无图表数据",
     "noTableData": "暂无表格数据",

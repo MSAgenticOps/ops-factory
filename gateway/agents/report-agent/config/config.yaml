@@ -1,10 +1,10 @@
-GOOSE_PROVIDER: custom_glm
-GOOSE_MODEL: GLM-4.7
+GOOSE_PROVIDER: custom_qwen3.5-27b
+GOOSE_MODEL: qwen/qwen3.5-27b
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
 GOOSE_CONTEXT_LIMIT: '65536'
-GOOSE_MAX_TOKENS: '4096'
+GOOSE_MAX_TOKENS: '32768'
 GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
 GOOSE_AUTO_COMPACT_THRESHOLD: '0.8'
@@ -27,7 +27,7 @@ extensions:
     bundled: true
     available_tools: []
   developer:
-    enabled: false
+    enabled: true
     type: builtin
     name: developer
     description: Write and edit files, and execute shell commands
@@ -54,7 +54,7 @@ extensions:
     bundled: true
     available_tools: []
   memory:
-    enabled: false
+    enabled: true
     type: builtin
     name: memory
     description: Teach goose your preferences as you go.
@@ -133,4 +133,19 @@ extensions:
     description: Load files/directories and get an LLM summary in a single call
     display_name: Summarize
     bundled: true
+    available_tools: []
+  bi-data-service:
+    enabled: true
+    type: stdio
+    name: bi-data-service
+    description: Business intelligence data service for ITSM operations reporting
+    cmd: python3
+    args:
+    - config/mcp/bi-data-service/server.py
+    envs:
+      BI_SERVICE_URL: http://127.0.0.1:8093
+      OUTPUT_DIR: .
+    env_keys: []
+    timeout: 60
+    bundled: null
     available_tools: []

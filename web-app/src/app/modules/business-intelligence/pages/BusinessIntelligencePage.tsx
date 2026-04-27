@@ -2944,12 +2944,24 @@ function GenericTabPanel({
         )
     }
 
+    const VIOLATION_TYPE_MAP: Record<string, string> = {
+        both_breached: _t('businessIntelligence.slaStatus.bothBreached'),
+        response_breached: _t('businessIntelligence.slaStatus.responseBreached'),
+        resolution_breached: _t('businessIntelligence.slaStatus.resolutionBreached'),
+        met: _t('businessIntelligence.slaStatus.met'),
+    }
+
     const renderTableCell = (column: string, cell: string) => {
         if (column.trim().toLowerCase().includes('sla')) {
             const status = getSlaStatus(cell, _t)
             if (status) {
                 return <StatusCell tone={status.tone} label={status.label} />
             }
+        }
+
+        if (VIOLATION_TYPE_MAP[cell]) {
+            const tone = cell === 'met' ? 'success' : 'danger'
+            return <StatusCell tone={tone} label={VIOLATION_TYPE_MAP[cell]} />
         }
 
         return cell

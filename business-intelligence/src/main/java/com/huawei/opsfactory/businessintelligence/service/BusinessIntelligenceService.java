@@ -11,8 +11,12 @@ import com.huawei.opsfactory.businessintelligence.model.BiModels.MetricCard;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.Snapshot;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.TabContent;
 import com.huawei.opsfactory.businessintelligence.model.BiModels.TabMeta;
+import com.huawei.opsfactory.businessintelligence.model.MetricsModels;
+import com.huawei.opsfactory.businessintelligence.model.MetricsModels.TrendResult;
+import com.huawei.opsfactory.businessintelligence.model.MetricsModels.TrendPoint;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -24,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -69,6 +72,7 @@ public class BusinessIntelligenceService {
 
     private final BiDataProvider dataProvider;
     private final BusinessIntelligenceRuntimeProperties runtimeProperties;
+    private final BusinessIntelligenceMetricsService metricsService;
     private final AtomicReference<Snapshot> cache = new AtomicReference<>();
 
     private record IncidentSlaRecord(
@@ -93,21 +97,24 @@ public class BusinessIntelligenceService {
 
         private String violationType() {
             if (!responseMet && !resolutionMet) {
-                return "双违约";
+                return "both_breached";
             }
             if (!responseMet) {
-                return "响应违约";
+                return "response_breached";
             }
             if (!resolutionMet) {
-                return "解决违约";
+                return "resolution_breached";
             }
-            return "达标";
+            return "met";
         }
     }
 
-    public BusinessIntelligenceService(BiDataProvider dataProvider, BusinessIntelligenceRuntimeProperties runtimeProperties) {
+    public BusinessIntelligenceService(BiDataProvider dataProvider,
+                                        BusinessIntelligenceRuntimeProperties runtimeProperties,
+                                        BusinessIntelligenceMetricsService metricsService) {
         this.dataProvider = dataProvider;
         this.runtimeProperties = runtimeProperties;
+        this.metricsService = metricsService;
     }
 
     public Snapshot getOverview(String startDate, String endDate) {
@@ -133,7 +140,7 @@ public class BusinessIntelligenceService {
             BiRawData rawData = dataProvider.load();
             // Filter data by date range if specified
             BiRawData filteredData = filterByDateRange(rawData, startDate, endDate);
-            Snapshot snapshot = buildSnapshot(filteredData);
+            Snapshot snapshot = buildSnapshot(filteredData, startDate, endDate);
             // Only cache if no date filter is applied
             if (startDate == null && endDate == null) {
                 cache.set(snapshot);
@@ -181,7 +188,7 @@ public class BusinessIntelligenceService {
 
         // Filter changes
         List<Map<String, String>> filteredChanges = rawData.changes().stream()
-            .filter(row -> isWithinDateRange(row.get("Planned Start"), start, end))
+            .filter(row -> isWithinDateRange(row.get("Requested Date"), start, end))
             .collect(Collectors.toList());
 
         // Filter requests
@@ -216,10 +223,9 @@ public class BusinessIntelligenceService {
     }
 
     public TabContent getTab(String tabId, String granularity) {
-        // For incident-analysis with granularity, rebuild dynamically
         if ("incident-analysis".equals(tabId) && granularity != null) {
             BiRawData rawData = dataProvider.load();
-            return buildIncidentAnalysis(rawData, granularity, buildIncidentSlaRecords(rawData));
+            return buildIncidentAnalysis(rawData, null, null, granularity);
         }
         // For other tabs or default granularity, use cached snapshot
         Snapshot snapshot = getOverview(null, null);
@@ -277,14 +283,13 @@ public class BusinessIntelligenceService {
         }
     }
 
-    private Snapshot buildSnapshot(BiRawData rawData) {
-        List<IncidentSlaRecord> slaRecords = buildIncidentSlaRecords(rawData);
+    private Snapshot buildSnapshot(BiRawData rawData, String startDate, String endDate) {
         Map<String, TabContent> contents = new LinkedHashMap<>();
         contents.put("executive-summary", buildExecutiveSummary(rawData));
-        contents.put("sla-analysis", buildSlaAnalysis(rawData, slaRecords));
-        contents.put("incident-analysis", buildIncidentAnalysis(rawData, slaRecords));
-        contents.put("change-analysis", buildChangeAnalysis(rawData));
-        contents.put("request-analysis", buildRequestAnalysis(rawData));
+        contents.put("sla-analysis", buildSlaAnalysis(rawData, startDate, endDate));
+        contents.put("incident-analysis", buildIncidentAnalysis(rawData, startDate, endDate, "weekly"));
+        contents.put("change-analysis", buildChangeAnalysis(rawData, startDate, endDate));
+        contents.put("request-analysis", buildRequestAnalysis(rawData, startDate, endDate));
         contents.put("problem-analysis", buildProblemAnalysis(rawData));
         contents.put("cross-process", buildCrossProcess(rawData));
         contents.put("workforce", buildWorkforce(rawData));
@@ -292,36 +297,43 @@ public class BusinessIntelligenceService {
     }
 
     private TabContent buildExecutiveSummary(BiRawData rawData) {
-        long incidentSlaBreached = countByValue(rawData.incidents(), "SLA Compliant", "No");
-        long changeFailures = rawData.changes().stream().filter(row -> !isYes(row.get("Success"))).count();
+        var exec = metricsService.getExecutiveMetrics(rawData);
+        var incident = metricsService.getIncidentMetrics(rawData);
+        var change = metricsService.getChangeMetrics(rawData);
+        var request = metricsService.getRequestMetrics(rawData);
+        var problem = metricsService.getProblemMetrics(rawData);
+
+        long incidentSlaBreached = incident.totalCount() - Math.round(incident.slaRate() * incident.totalCount());
+        long changeFailures = change.totalCount() - Math.round(change.successRate() * change.totalCount());
         long requestOpen = rawData.requests().stream().filter(row -> !"Fulfilled".equalsIgnoreCase(clean(row.get("Status")))).count();
         long problemOpen = rawData.problems().stream().filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count();
-
-        long incidentSlaYes = countByValue(rawData.incidents(), "SLA Compliant", "Yes");
-        double avgResolutionHours = average(rawData.incidents(), "Resolution Time(m)") / 60.0;
-        long changeSuccessYes = countByValue(rawData.changes(), "Success", "Yes");
-        long changeCausedYes = countByValue(rawData.changes(), "Incident Caused", "Yes");
-        double avgCsat = average(rawData.requests(), "Satisfaction Score");
-        long problemClosed = rawData.problems().size() - problemOpen;
 
         return new TabContent(
             "executive-summary",
             "执行摘要",
             "聚合四类 ITIL 数据的核心规模与风险摘要。",
-            buildExecutiveSummaryContent(rawData, incidentSlaBreached, changeFailures, requestOpen, problemOpen),
+            buildExecutiveSummaryContent(exec, incident, change, request, problem, rawData),
             null,
             List.of(
-                card("incident-sla-rate", "事件 SLA 达成率", percentage(incidentSlaYes, rawData.incidents().size()), rawData.incidents().isEmpty() ? "neutral" : toneFromScore(percentageValue(incidentSlaYes, rawData.incidents().size()), 0.9, 0.75)),
-                card("incident-mttr", "MTTR", formatHours(avgResolutionHours), rawData.incidents().isEmpty() ? "neutral" : toneFromInverse(avgResolutionHours, 12, 24)),
-                card("change-success-rate", "变更成功率", percentage(changeSuccessYes, rawData.changes().size()), rawData.changes().isEmpty() ? "neutral" : toneFromScore(percentageValue(changeSuccessYes, rawData.changes().size()), 0.9, 0.8)),
-                card("change-incident-rate", "变更致事件率", percentage(changeCausedYes, rawData.changes().size()), rawData.changes().isEmpty() ? "neutral" : toneFromInverse(percentageValue(changeCausedYes, rawData.changes().size()), 0.05, 0.1)),
-                card("request-csat", "请求满意度", formatNumber(avgCsat), rawData.requests().isEmpty() ? "neutral" : toneFromScore(avgCsat / 5.0, 0.8, 0.7)),
-                card("problem-closure-rate", "问题关闭率", percentage(problemClosed, rawData.problems().size()), rawData.problems().isEmpty() ? "neutral" : toneFromScore(percentageValue(problemClosed, rawData.problems().size()), 0.75, 0.55))
+                card("incident-sla-rate", "事件 SLA 达成率", percentage(incident.slaRate()),
+                    rawData.incidents().isEmpty() ? "neutral" : toneFromScore(incident.slaRate(), 0.9, 0.75)),
+                card("incident-mttr", "MTTR", formatHours(incident.mttrHours()),
+                    rawData.incidents().isEmpty() ? "neutral" : toneFromInverse(incident.mttrHours(), 12, 24)),
+                card("change-success-rate", "变更成功率", percentage(change.successRate()),
+                    rawData.changes().isEmpty() ? "neutral" : toneFromScore(change.successRate(), 0.9, 0.8)),
+                card("change-incident-rate", "变更致事件率",
+                    percentage(change.totalCount() > 0 ? (double) change.incidentCausedCount() / change.totalCount() : 0),
+                    rawData.changes().isEmpty() ? "neutral" : toneFromInverse(
+                        change.totalCount() > 0 ? (double) change.incidentCausedCount() / change.totalCount() : 0, 0.05, 0.1)),
+                card("request-csat", "请求满意度", formatNumber(request.avgCsat()),
+                    rawData.requests().isEmpty() ? "neutral" : toneFromScore(request.avgCsat() / 5.0, 0.8, 0.7)),
+                card("problem-closure-rate", "问题关闭率", percentage(problem.closureRate()),
+                    rawData.problems().isEmpty() ? "neutral" : toneFromScore(problem.closureRate(), 0.75, 0.55))
             ),
             List.of(),
             List.of(
                 table("summary-risks", "关键关注项", List.of("指标", "当前值", "说明"), List.of(
-                    List.of("事件 SLA 违约", String.valueOf(incidentSlaBreached), "基于 incidents 数据中的 SLA Compliant=No"),
+                    List.of("事件 SLA 违约", String.valueOf(incidentSlaBreached), "基于 incidents 数据中的 SLA 违约"),
                     List.of("失败变更", String.valueOf(changeFailures), "基于 changes 数据中的 Success!=Yes"),
                     List.of("未完成请求", String.valueOf(requestOpen), "基于 requests 的非 Fulfilled 状态"),
                     List.of("未关闭问题", String.valueOf(problemOpen), "基于 problems 的非 Resolved/Closed 状态")
@@ -330,7 +342,8 @@ public class BusinessIntelligenceService {
         );
     }
 
-    private TabContent buildSlaAnalysis(BiRawData rawData, List<IncidentSlaRecord> slaRecords) {
+    private TabContent buildSlaAnalysis(BiRawData rawData, String startDate, String endDate) {
+        List<IncidentSlaRecord> slaRecords = buildIncidentSlaRecords(rawData);
         BiModels.SlaAnalysisSummary summary = buildSlaAnalysisSummary(slaRecords);
         return new TabContent(
             "sla-analysis",
@@ -347,7 +360,7 @@ public class BusinessIntelligenceService {
                 card("sla-resolution-breached", "解决违约数", summary.violationBreakdown().resolutionBreached(), summary.violationBreakdown().resolutionBreached() > 0 ? "warning" : "success")
             ),
             List.of(
-                lineChart("sla-trend", "SLA达成率趋势", buildSlaWeeklyTrendData(slaRecords),
+                lineChart("sla-trend", "SLA达成率趋势", buildSlaWeeklyTrendData(rawData, startDate, endDate),
                     List.of("响应达成率", "解决达成率", "P1/P2达成率"),
                     List.of("#10b981", "#5b8db8", "#f59e0b")),
                 new ChartSection("priority-comparison", "优先级SLA达成率对比", "grouped-bar",
@@ -393,29 +406,17 @@ public class BusinessIntelligenceService {
         );
     }
 
-    private TabContent buildIncidentAnalysis(BiRawData rawData, List<IncidentSlaRecord> slaRecords) {
-        return buildIncidentAnalysis(rawData, "weekly", slaRecords);
+    private TabContent buildIncidentAnalysis(BiRawData rawData, String startDate, String endDate) {
+        return buildIncidentAnalysis(rawData, startDate, endDate, "weekly");
     }
 
-    private TabContent buildIncidentAnalysis(BiRawData rawData, String granularity, List<IncidentSlaRecord> slaRecords) {
+    private TabContent buildIncidentAnalysis(BiRawData rawData, String startDate, String endDate, String granularity) {
+        var m = metricsService.getIncidentMetrics(rawData);
+        List<IncidentSlaRecord> slaRecords = buildIncidentSlaRecords(rawData);
         List<Map<String, String>> incidents = rawData.incidents();
-        long totalCount = incidents.size();
-        long p1p2Count = incidents.stream().filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2"))).count();
-        long openCount = incidents.stream().filter(row -> !matchesAny(clean(row.get("Order Status")), List.of("Completed", "Resolved", "Closed"))).count();
 
-        long slaMetCount = slaRecords.stream().filter(IncidentSlaRecord::overallMet).count();
-        long slaTotalCount = slaRecords.size();
-
-        double avgMttrHours = average(incidents, "Resolution Time(m)") / 60.0;
-        double avgP1p2MttrHours = incidents.stream()
-            .filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2")))
-            .mapToDouble(row -> parseDouble(row.get("Resolution Time(m)")))
-            .filter(v -> v > 0)
-            .average().orElse(0) / 60.0;
-
-        // Build trend data based on granularity
-        List<ChartDatum> volumeTrend = buildVolumeTrend(incidents, slaRecords, granularity);
-        List<ChartDatum> mttrTrend = buildMttrTrend(incidents, granularity);
+        List<ChartDatum> volumeTrend = buildVolumeTrend(rawData, startDate, endDate, granularity);
+        List<ChartDatum> mttrTrend = buildMttrTrend(rawData, startDate, endDate, granularity);
 
         return new TabContent(
             "incident-analysis",
@@ -424,21 +425,23 @@ public class BusinessIntelligenceService {
             null,
             null,
             List.of(
-                card("incident-total", "事件总数", formatNumber(totalCount), "neutral"),
-                card("incident-p1p2", "P1/P2 事件", formatNumber(p1p2Count), p1p2Count > totalCount * 0.15 ? "warning" : "success"),
-                card("incident-open", "未解决事件", formatNumber(openCount), openCount > totalCount * 0.3 ? "warning" : "success"),
-                card("incident-sla", "SLA 达成率", percentage(slaMetCount, slaTotalCount), toneFromScore(percentageValue(slaMetCount, slaTotalCount), 0.9, 0.75)),
-                card("incident-p1p2-mttr", "P1/P2 MTTR", formatHours(avgP1p2MttrHours), toneFromInverse(avgP1p2MttrHours, 8, 24)),
-                card("incident-mttr", "平均 MTTR", formatHours(avgMttrHours), toneFromInverse(avgMttrHours, 24, 48))
+                card("incident-total", "事件总数", formatNumber(m.totalCount()), "neutral"),
+                card("incident-p1p2", "P1/P2 事件", formatNumber(m.p1p2Count()), m.p1p2Count() > m.totalCount() * 0.15 ? "warning" : "success"),
+                card("incident-open", "未解决事件", formatNumber(m.openCount()), m.openCount() > m.totalCount() * 0.3 ? "warning" : "success"),
+                card("incident-sla", "SLA 达成率", percentage(m.slaRate()), toneFromScore(m.slaRate(), 0.9, 0.75)),
+                card("incident-p1p2-mttr", "P1/P2 MTTR", formatHours(m.p1p2MttrHours()), toneFromInverse(m.p1p2MttrHours(), 8, 24)),
+                card("incident-mttr", "平均 MTTR", formatHours(m.mttrHours()), toneFromInverse(m.mttrHours(), 24, 48))
             ),
             List.of(
                 comboChart("incident-volume-trend", "事件单量趋势", volumeTrend,
                     List.of("事件单量", "SLA达成率(%)"), List.of("#5b8db8", "#10b981")),
                 lineChart("incident-mttr-trend", "处理时长趋势", mttrTrend,
                     List.of("平均MTTR", "P1/P2 MTTR"), List.of("#5b8db8", "#ef4444")),
-                pieChart("incident-priority-pie", "优先级分布", topCounts(incidents, "Priority", 4),
+                pieChart("incident-priority-pie", "优先级分布",
+                    m.priorityDistribution().stream().map(d -> new ChartDatum(d.label(), d.count())).toList(),
                     List.of("#ef4444", "#f59e0b", "#eab308", "#10b981")),
-                pieChart("incident-category-pie", "事件类型分布", topCounts(incidents, "Category", 8),
+                pieChart("incident-category-pie", "事件类型分布",
+                    m.categoryDistribution().stream().map(d -> new ChartDatum(d.label(), d.count())).toList(),
                     List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082", "#5e9bb5", "#7ca65a"))
             ),
             List.of(
@@ -472,72 +475,77 @@ public class BusinessIntelligenceService {
         };
     }
 
-    private List<ChartDatum> buildVolumeTrend(List<Map<String, String>> incidents, List<IncidentSlaRecord> slaRecords, String granularity) {
-        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
-        Map<String, Long> slaMetByPeriod = new LinkedHashMap<>();
-
-        for (Map<String, String> row : incidents) {
-            LocalDateTime beginDate = parseDate(row.get("Begin Date"));
-            if (beginDate == null) continue;
-
-            String periodLabel = formatPeriodLabel(beginDate, granularity);
-            totalByPeriod.merge(periodLabel, 1L, Long::sum);
+    /**
+     * Merges multiple TrendResult series into pipe-delimited ChartDatum items.
+     * Each TrendResult contributes one value column per period. The resulting
+     * ChartDatum label is "period|val1|val2|..." and the value is taken from
+     * the first series.
+     */
+    private List<ChartDatum> mergeTrendSeries(List<TrendResult> results) {
+        if (results.isEmpty()) {
+            return List.of();
         }
 
-        for (IncidentSlaRecord record : slaRecords) {
-            if (record.beginDate() == null) continue;
-            String periodLabel = formatPeriodLabel(record.beginDate(), granularity);
-            if (record.overallMet()) {
-                slaMetByPeriod.merge(periodLabel, 1L, Long::sum);
+        // Collect all periods across all series
+        Set<String> allPeriods = new TreeSet<>();
+        for (TrendResult result : results) {
+            for (TrendPoint point : result.dataPoints()) {
+                allPeriods.add(point.period());
             }
         }
 
-        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
+        // Build period -> value map for each series
+        List<Map<String, Object>> seriesValues = results.stream()
+            .map(result -> result.dataPoints().stream()
+                .collect(Collectors.<TrendPoint, String, Object, LinkedHashMap<String, Object>>toMap(
+                    TrendPoint::period, TrendPoint::value, (a, b) -> b, LinkedHashMap::new)))
+            .map(m -> (Map<String, Object>) m)
+            .toList();
 
-        List<ChartDatum> result = new ArrayList<>();
+        List<ChartDatum> merged = new ArrayList<>();
         for (String period : allPeriods) {
-            long total = totalByPeriod.getOrDefault(period, 0L);
-            long slaMet = slaMetByPeriod.getOrDefault(period, 0L);
-            double slaRate = total > 0 ? (slaMet * 100.0 / total) : 0;
-            result.add(new ChartDatum(period + "|" + total + "|" + String.format("%.1f", slaRate), total));
+            StringBuilder label = new StringBuilder(formatTrendLabel(period));
+            double primaryValue = 0;
+            for (int i = 0; i < seriesValues.size(); i++) {
+                Object raw = seriesValues.get(i).get(period);
+                double val = raw instanceof Number n ? n.doubleValue() : 0;
+                label.append("|").append(String.format("%.1f", val));
+                if (i == 0) {
+                    primaryValue = val;
+                }
+            }
+            merged.add(new ChartDatum(label.toString(), primaryValue));
         }
-        return result;
+        return merged;
     }
 
-    private List<ChartDatum> buildMttrTrend(List<Map<String, String>> incidents, String granularity) {
-        Map<String, List<Double>> mttrByPeriod = new LinkedHashMap<>();
-        Map<String, List<Double>> p1p2MttrByPeriod = new LinkedHashMap<>();
-
-        for (Map<String, String> row : incidents) {
-            LocalDateTime beginDate = parseDate(row.get("Begin Date"));
-            if (beginDate == null) continue;
-
-            String periodLabel = formatPeriodLabel(beginDate, granularity);
-            double resolutionMinutes = parseDouble(row.get("Resolution Time(m)"));
-            if (resolutionMinutes <= 0) continue;
-
-            String priority = clean(row.get("Priority"));
-            boolean isP1P2 = "P1".equalsIgnoreCase(priority) || "P2".equalsIgnoreCase(priority);
-
-            mttrByPeriod.computeIfAbsent(periodLabel, k -> new ArrayList<>()).add(resolutionMinutes);
-            if (isP1P2) {
-                p1p2MttrByPeriod.computeIfAbsent(periodLabel, k -> new ArrayList<>()).add(resolutionMinutes);
+    private String formatTrendLabel(String period) {
+        // "2024-01-01" (week start date) → "01月-1", "2025-01" (month) → "2025-01"
+        try {
+            if (period.length() == 10 && period.charAt(4) == '-') {
+                LocalDate date = LocalDate.parse(period);
+                int month = date.getMonthValue();
+                int dayOfMonth = date.getDayOfMonth();
+                int weekInMonth = (dayOfMonth - 1) / 7 + 1;
+                return String.format("%02d月-%d", month, weekInMonth);
             }
+        } catch (DateTimeException ignored) {
         }
+        return period;
+    }
 
-        Set<String> allPeriods = new TreeSet<>();
-        allPeriods.addAll(mttrByPeriod.keySet());
-        allPeriods.addAll(p1p2MttrByPeriod.keySet());
+    private List<ChartDatum> buildVolumeTrend(BiRawData rawData, String startDate, String endDate, String granularity) {
+        String interval = "monthly".equals(granularity) ? "month" : "week";
+        TrendResult countTrend = metricsService.getTrends(rawData, "incidents", "count", interval, null, startDate, endDate);
+        TrendResult slaTrend = metricsService.getTrends(rawData, "incidents", "sla_rate", interval, null, startDate, endDate);
+        return mergeTrendSeries(List.of(countTrend, slaTrend));
+    }
 
-        List<ChartDatum> result = new ArrayList<>();
-        for (String period : allPeriods) {
-            List<Double> mttrs = mttrByPeriod.getOrDefault(period, List.of());
-            List<Double> p1p2Mttrs = p1p2MttrByPeriod.getOrDefault(period, List.of());
-            double avgMttr = mttrs.isEmpty() ? 0 : mttrs.stream().mapToDouble(Double::doubleValue).average().orElse(0) / 60.0;
-            double avgP1p2Mttr = p1p2Mttrs.isEmpty() ? 0 : p1p2Mttrs.stream().mapToDouble(Double::doubleValue).average().orElse(0) / 60.0;
-            result.add(new ChartDatum(period + "|" + String.format("%.1f", avgMttr) + "|" + String.format("%.1f", avgP1p2Mttr), avgMttr));
-        }
-        return result;
+    private List<ChartDatum> buildMttrTrend(BiRawData rawData, String startDate, String endDate, String granularity) {
+        String interval = "monthly".equals(granularity) ? "month" : "week";
+        TrendResult mttrTrend = metricsService.getTrends(rawData, "incidents", "avg_resolution_time", interval, null, startDate, endDate);
+        TrendResult p12Trend = metricsService.getTrends(rawData, "incidents", "p12_avg_resolution_time", interval, null, startDate, endDate);
+        return mergeTrendSeries(List.of(mttrTrend, p12Trend));
     }
 
     private String formatPeriodLabel(LocalDateTime dateTime, String granularity) {
@@ -563,12 +571,9 @@ public class BusinessIntelligenceService {
         return new ChartSection(id, title, "pie", items, new ChartConfig(null, null, colors, null, null));
     }
 
-    private TabContent buildChangeAnalysis(BiRawData rawData) {
+    private TabContent buildChangeAnalysis(BiRawData rawData, String startDate, String endDate) {
+        var m = metricsService.getChangeMetrics(rawData);
         List<Map<String, String>> changes = rawData.changes();
-        long successCount = countByValue(changes, "Success", "Yes");
-        long emergencyCount = countByValue(changes, "Change Type", "Emergency");
-        long incidentCount = countByValue(changes, "Incident Caused", "Yes");
-        int total = changes.size();
 
         return new TabContent(
             "change-analysis",
@@ -577,17 +582,16 @@ public class BusinessIntelligenceService {
             null,
             null,
             List.of(
-                card("change-total", "变更总数", total, "neutral"),
-                card("change-success", "成功率", percentage(successCount, total), "success"),
-                card("change-emergency", "紧急变更", emergencyCount, emergencyCount > 0 ? "warning" : "success"),
-                card("change-incident", "引发事件的变更", incidentCount, incidentCount > 0 ? "warning" : "success")
+                card("change-total", "变更总数", m.totalCount(), "neutral"),
+                card("change-success", "成功率", percentage(m.successRate()), "success"),
+                card("change-emergency", "紧急变更", m.emergencyCount(), m.emergencyCount() > 0 ? "warning" : "success"),
+                card("change-incident", "引发事件的变更", m.incidentCausedCount(), m.incidentCausedCount() > 0 ? "warning" : "success")
             ),
             List.of(
-                // Row 1: combo chart - weekly change success rate trend
-                comboChart("change-success-trend", "变更成功率趋势", buildChangeWeeklyTrendData(changes),
+                comboChart("change-success-trend", "变更成功率趋势", buildChangeWeeklyTrendData(rawData, startDate, endDate),
                     List.of("变更数量", "成功率", "引发事件变更"), List.of("#5b8db8", "#10b981", "#ef4444")),
-                // Row 2: pie chart (change type distribution)
-                pieChart("change-type-pie", "变更等级分布", topCounts(changes, "Change Type", 6),
+                pieChart("change-type-pie", "变更等级分布",
+                    m.typeDistribution().stream().map(d -> new ChartDatum(d.label(), d.count())).toList(),
                     List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082")),
                 // Row 2: stacked bar (category success/failure distribution)
                 new ChartSection("change-category-stacked", "变更类别分布", "stacked-bar",
@@ -616,39 +620,11 @@ public class BusinessIntelligenceService {
         );
     }
 
-    private List<ChartDatum> buildChangeWeeklyTrendData(List<Map<String, String>> changes) {
-        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
-        Map<String, Long> successByPeriod = new LinkedHashMap<>();
-        Map<String, Long> causedByPeriod = new LinkedHashMap<>();
-
-        for (Map<String, String> row : changes) {
-            LocalDateTime date = parseDate(row.get("Planned Start"));
-            if (date == null) {
-                date = parseDate(row.get("Requested Date"));
-            }
-            if (date == null) continue;
-
-            String periodLabel = formatPeriodLabel(date, "weekly");
-            totalByPeriod.merge(periodLabel, 1L, Long::sum);
-            if (isYes(row.get("Success"))) {
-                successByPeriod.merge(periodLabel, 1L, Long::sum);
-            }
-            if (isYes(row.get("Incident Caused"))) {
-                causedByPeriod.merge(periodLabel, 1L, Long::sum);
-            }
-        }
-
-        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
-
-        List<ChartDatum> result = new ArrayList<>();
-        for (String period : allPeriods) {
-            long total = totalByPeriod.getOrDefault(period, 0L);
-            long success = successByPeriod.getOrDefault(period, 0L);
-            double successRate = total > 0 ? (success * 100.0 / total) : 0;
-            long caused = causedByPeriod.getOrDefault(period, 0L);
-            result.add(new ChartDatum(period + "|" + total + "|" + String.format("%.1f", successRate) + "|" + caused, total));
-        }
-        return result;
+    private List<ChartDatum> buildChangeWeeklyTrendData(BiRawData rawData, String startDate, String endDate) {
+        TrendResult countTrend = metricsService.getTrends(rawData, "changes", "count", "week", null, startDate, endDate);
+        TrendResult successTrend = metricsService.getTrends(rawData, "changes", "success_rate", "week", null, startDate, endDate);
+        TrendResult causedTrend = metricsService.getTrends(rawData, "changes", "incident_caused_count", "week", null, startDate, endDate);
+        return mergeTrendSeries(List.of(countTrend, successTrend, causedTrend));
     }
 
     private List<ChartDatum> buildChangeCategoryDistribution(List<Map<String, String>> changes) {
@@ -708,12 +684,9 @@ public class BusinessIntelligenceService {
             .toList();
     }
 
-    private TabContent buildRequestAnalysis(BiRawData rawData) {
+    private TabContent buildRequestAnalysis(BiRawData rawData, String startDate, String endDate) {
+        var m = metricsService.getRequestMetrics(rawData);
         List<Map<String, String>> requests = rawData.requests();
-        long fulfilled = countByValue(requests, "Status", "Fulfilled");
-        long slaMet = countByValue(requests, "SLA Met", "Yes");
-        double averageCsat = average(requests, "Satisfaction Score");
-        int total = requests.size();
 
         return new TabContent(
             "request-analysis",
@@ -722,14 +695,13 @@ public class BusinessIntelligenceService {
             null,
             null,
             List.of(
-                card("request-total", "请求总数", total, "neutral"),
-                card("request-fulfilled", "已完成请求", fulfilled, "success"),
-                card("request-sla", "SLA 达成率", percentage(slaMet, total), "success"),
-                card("request-csat", "平均满意度", formatNumber(averageCsat), averageCsat >= 4 ? "success" : "warning")
+                card("request-total", "请求总数", m.totalCount(), "neutral"),
+                card("request-fulfilled", "已完成请求", m.fulfilledCount(), "success"),
+                card("request-sla", "SLA 达成率", percentage(m.slaRate()), "success"),
+                card("request-csat", "平均满意度", formatNumber(m.avgCsat()), m.avgCsat() >= 4 ? "success" : "warning")
             ),
             List.of(
-                // Row 1: combo chart - weekly request volume trend
-                comboChart("request-volume-trend", "请求单量趋势", buildRequestWeeklyTrendData(requests),
+                comboChart("request-volume-trend", "请求单量趋势", buildRequestWeeklyTrendData(rawData, startDate, endDate),
                     List.of("请求单量", "平均满意度"), List.of("#5b8db8", "#10b981")),
                 // Row 2: combo chart - SLA rate & avg fulfillment time by category
                 comboChart("request-sla-time", "SLA达成率与平均耗时", buildRequestSlaByCategoryData(requests),
@@ -765,33 +737,10 @@ public class BusinessIntelligenceService {
         );
     }
 
-    private List<ChartDatum> buildRequestWeeklyTrendData(List<Map<String, String>> requests) {
-        Map<String, Long> totalByPeriod = new LinkedHashMap<>();
-        Map<String, List<Double>> csatByPeriod = new LinkedHashMap<>();
-
-        for (Map<String, String> row : requests) {
-            LocalDateTime date = parseDate(row.get("Requested Date"));
-            if (date == null) continue;
-
-            String periodLabel = formatPeriodLabel(date, "weekly");
-            totalByPeriod.merge(periodLabel, 1L, Long::sum);
-
-            double score = parseDouble(row.get("Satisfaction Score"));
-            if (score > 0) {
-                csatByPeriod.computeIfAbsent(periodLabel, k -> new ArrayList<>()).add(score);
-            }
-        }
-
-        Set<String> allPeriods = new TreeSet<>(totalByPeriod.keySet());
-
-        List<ChartDatum> result = new ArrayList<>();
-        for (String period : allPeriods) {
-            long total = totalByPeriod.getOrDefault(period, 0L);
-            List<Double> scores = csatByPeriod.getOrDefault(period, List.of());
-            double avgCsat = scores.isEmpty() ? 0 : scores.stream().mapToDouble(Double::doubleValue).average().orElse(0);
-            result.add(new ChartDatum(period + "|" + total + "|" + String.format("%.2f", avgCsat), total));
-        }
-        return result;
+    private List<ChartDatum> buildRequestWeeklyTrendData(BiRawData rawData, String startDate, String endDate) {
+        TrendResult countTrend = metricsService.getTrends(rawData, "requests", "count", "week", null, startDate, endDate);
+        TrendResult csatTrend = metricsService.getTrends(rawData, "requests", "csat", "week", null, startDate, endDate);
+        return mergeTrendSeries(List.of(countTrend, csatTrend));
     }
 
     private List<ChartDatum> buildRequestSlaByCategoryData(List<Map<String, String>> requests) {
@@ -839,11 +788,8 @@ public class BusinessIntelligenceService {
     }
 
     private TabContent buildProblemAnalysis(BiRawData rawData) {
+        var m = metricsService.getProblemMetrics(rawData);
         List<Map<String, String>> problems = rawData.problems();
-        long closed = problems.stream().filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count();
-        long rcaComplete = problems.stream().filter(row -> !clean(row.get("Root Cause")).isBlank()).count();
-        long knownError = countByValue(problems, "Known Error", "No");
-        int total = problems.size();
 
         return new TabContent(
             "problem-analysis",
@@ -852,10 +798,10 @@ public class BusinessIntelligenceService {
             null,
             null,
             List.of(
-                card("problem-total", "问题总数", total, "neutral"),
-                card("problem-closed", "已关闭问题", closed, "success"),
-                card("problem-rca", "已完成 RCA", rcaComplete, "success"),
-                card("problem-known-error", "未知错误", knownError, "warning")
+                card("problem-total", "问题总数", m.totalCount(), "neutral"),
+                card("problem-closed", "已关闭问题", m.closedCount(), "success"),
+                card("problem-rca", "已完成 RCA", (long) (m.rcaRate() * m.totalCount()), "success"),
+                card("problem-known-error", "未知错误", m.knownErrorCount(), "warning")
             ),
             List.of(
                 // Row 1: combo chart - weekly problem volume + cumulative unresolved
@@ -1018,47 +964,17 @@ public class BusinessIntelligenceService {
     }
 
     private TabContent buildCrossProcess(BiRawData rawData) {
+        var cm = metricsService.getCrossProcessMetrics(rawData);
         List<Map<String, String>> changes = rawData.changes();
         List<Map<String, String>> incidents = rawData.incidents();
         List<Map<String, String>> problems = rawData.problems();
-        List<Map<String, String>> requests = rawData.requests();
 
-        boolean hasData = !changes.isEmpty() || !incidents.isEmpty() || !problems.isEmpty() || !requests.isEmpty();
+        boolean hasData = !changes.isEmpty() || !incidents.isEmpty() || !problems.isEmpty() || !rawData.requests().isEmpty();
 
-        int totalChanges = changes.size();
-        int totalIncidents = incidents.size();
-
-        // KPI 1: Change-Caused Incident Rate
-        long causedCount = countByValue(changes, "Incident Caused", "Yes");
-        double causedRate = totalChanges > 0 ? (causedCount * 100.0 / totalChanges) : 0;
-
-        // KPI 2: P1/P2 incidents within 48h post-change
-        long p1p2Count = changes.stream()
-            .filter(ch -> isYes(ch.get("Incident Caused")))
-            .flatMap(ch -> findIncidentsWithin48h(incidents, parseDate(ch.get("Actual End"))).stream())
-            .map(inc -> inc.get("Order Number"))
-            .distinct()
-            .count();
-
-        // KPI 3: Request-to-Incident Ratio
-        double requestRatio = totalIncidents > 0 ? (double) requests.size() / totalIncidents : 0;
-
-        // KPI 4: System Fragility Score (0-100, higher=healthier)
-        double changeFailureWeight = (causedRate / 100.0) * 40;
-        double avgAging = problems.stream()
-            .filter(row -> !matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed")))
-            .mapToLong(row -> {
-                LocalDateTime logged = parseDate(row.get("Logged Date"));
-                return logged != null ? java.time.Duration.between(logged, LocalDateTime.now()).toDays() : 0;
-            }).average().orElse(0);
-        double agingWeight = Math.min(avgAging / 90.0, 1.0) * 30;
-        double ratioWeight = Math.min(requestRatio / 8.0, 1.0) * 30;
-        double fragilityScore = Math.round(100 - (changeFailureWeight + agingWeight + ratioWeight));
-
-        String causedTone = hasData && causedRate < 5 ? "success" : hasData && causedRate < 10 ? "warning" : hasData ? "danger" : "neutral";
-        String p1p2Tone = hasData && p1p2Count == 0 ? "success" : hasData ? "warning" : "neutral";
-        String ratioTone = hasData && requestRatio < 3 ? "success" : hasData && requestRatio < 5 ? "warning" : hasData ? "danger" : "neutral";
-        String fragTone = hasData && fragilityScore > 75 ? "success" : hasData && fragilityScore > 50 ? "warning" : hasData ? "danger" : "neutral";
+        String causedTone = hasData && cm.changeCausedIncidentRate() < 5 ? "success" : hasData && cm.changeCausedIncidentRate() < 10 ? "warning" : hasData ? "danger" : "neutral";
+        String p1p2Tone = hasData && cm.p1p2Within48h() == 0 ? "success" : hasData ? "warning" : "neutral";
+        String ratioTone = hasData && cm.requestIncidentRatio() < 3 ? "success" : hasData && cm.requestIncidentRatio() < 5 ? "warning" : hasData ? "danger" : "neutral";
+        String fragTone = hasData && cm.fragilityScore() > 75 ? "success" : hasData && cm.fragilityScore() > 50 ? "warning" : hasData ? "danger" : "neutral";
 
         return new TabContent(
             "cross-process",
@@ -1067,10 +983,10 @@ public class BusinessIntelligenceService {
             null,
             null,
             List.of(
-                card("cross-change-incident-rate", "变更致事件率", formatNumber(causedRate) + "%", causedTone),
-                card("cross-48h-p1p2", "48h窗口P1/P2事件", String.valueOf(p1p2Count), p1p2Tone),
-                card("cross-request-incident-ratio", "请求-事件比", formatNumber(requestRatio), ratioTone),
-                card("cross-fragility-score", "系统脆弱性评分", String.valueOf((int) fragilityScore), fragTone)
+                card("cross-change-incident-rate", "变更致事件率", formatNumber(cm.changeCausedIncidentRate()) + "%", causedTone),
+                card("cross-48h-p1p2", "48h窗口P1/P2事件", String.valueOf(cm.p1p2Within48h()), p1p2Tone),
+                card("cross-request-incident-ratio", "请求-事件比", formatNumber(cm.requestIncidentRatio()), ratioTone),
+                card("cross-fragility-score", "系统脆弱性评分", String.valueOf((int) cm.fragilityScore()), fragTone)
             ),
             List.of(
                 comboChart("cross-change-incident-trend", "变更致事件趋势",
@@ -1163,7 +1079,7 @@ public class BusinessIntelligenceService {
         Map<String, Long> causedByWeek = new LinkedHashMap<>();
 
         for (Map<String, String> ch : changes) {
-            LocalDateTime date = parseDate(ch.get("Planned Start"));
+            LocalDateTime date = parseDate(ch.get("Requested Date"));
             if (date == null) date = parseDate(ch.get("Actual End"));
             if (date == null) continue;
             String week = formatPeriodLabel(date, "weekly");
@@ -1337,73 +1253,32 @@ public class BusinessIntelligenceService {
     }
 
     private TabContent buildWorkforce(BiRawData rawData) {
-        var allMetrics = collectPersonMetrics(rawData);
-        var activeMetrics = allMetrics.values().stream()
-            .filter(m -> m.totalCount() > 0)
-            .sorted(Comparator.comparingInt(PersonMetrics::totalCount).reversed())
-            .toList();
+        var wm = metricsService.getWorkforceMetrics(rawData, 0);
 
-        int activeCount = activeMetrics.size();
-        int totalOrders = activeMetrics.stream().mapToInt(PersonMetrics::totalCount).sum();
-        double avgThroughput = activeCount > 0 ? (double) totalOrders / activeCount : 0;
-
-        long backlog = rawData.incidents().stream().filter(r -> !matchesAny(clean(r.get("Order Status")), List.of("Closed", "Resolved", "Completed"))).count()
-            + rawData.requests().stream().filter(r -> !matchesAny(clean(r.get("Status")), List.of("Fulfilled", "Closed", "Completed"))).count();
-
-        double avgDeliveryTime = activeMetrics.stream()
-            .filter(m -> m.avgResolutionTime() > 0 || m.avgFulfillmentTime() > 0)
-            .mapToDouble(m -> m.avgResolutionTime() > 0 ? m.avgResolutionTime() / 60.0 : m.avgFulfillmentTime())
-            .average().orElse(0);
-        int incidentSlaYes = activeMetrics.stream().mapToInt(PersonMetrics::incidentSlaYes).sum();
-        int incidentSlaTotal = activeMetrics.stream().mapToInt(PersonMetrics::incidentSlaTotal).sum();
-        int requestSlaYes = activeMetrics.stream().mapToInt(PersonMetrics::requestSlaYes).sum();
-        int requestSlaTotal = activeMetrics.stream().mapToInt(PersonMetrics::requestSlaTotal).sum();
-        int totalSlaBase = incidentSlaTotal + requestSlaTotal;
-        double overallSlaRate = totalSlaBase > 0 ? (double) (incidentSlaYes + requestSlaYes) / totalSlaBase : 0;
-
-        double avgChangeSpeed = activeMetrics.stream()
-            .filter(m -> m.changeDurationCount() > 0)
-            .mapToDouble(m -> m.totalChangeDuration() / m.changeDurationCount() / 60.0)
-            .average().orElse(0);
-
-        int totalChanges = activeMetrics.stream().mapToInt(PersonMetrics::changeCount).sum();
-        int totalChangeSuccess = activeMetrics.stream().mapToInt(PersonMetrics::changeSuccessCount).sum();
-        int totalBackout = activeMetrics.stream().mapToInt(PersonMetrics::changeBackoutCount).sum();
-        double firstTimeSuccessRate = totalChanges > 0 ? (double) (totalChangeSuccess - totalBackout) / totalChanges : 0;
-
-        double avgSatisfaction = activeMetrics.stream()
-            .filter(m -> m.satisfactionCount() > 0)
-            .mapToDouble(PersonMetrics::avgSatisfaction)
-            .average().orElse(0);
-
-        int totalProblems = activeMetrics.stream().mapToInt(PersonMetrics::problemCount).sum();
-        int totalFixes = activeMetrics.stream().mapToInt(PersonMetrics::permanentFixCount).sum();
-        double fixRate = totalProblems > 0 ? (double) totalFixes / totalProblems : 0;
-
-        String slaTone = toneFromScore(overallSlaRate, 0.8);
-        String deliveryTone = avgDeliveryTime > 0 ? toneFromScore(1.0 - Math.min(avgDeliveryTime / 48.0, 1.0), 0.5) : "neutral";
-        String changeSpeedTone = avgChangeSpeed > 0 ? toneFromScore(1.0 - Math.min(avgChangeSpeed / 8.0, 1.0), 0.5) : "neutral";
-        String ftTone = toneFromScore(firstTimeSuccessRate, 0.8);
-        String satTone = toneFromScore(avgSatisfaction / 5.0, 0.7);
-        String prTone = toneFromScore(fixRate, 0.5);
-        String backlogTone = backlog > 50 ? "danger" : backlog > 20 ? "warning" : "success";
+        String slaTone = toneFromScore(wm.overallSlaRate(), 0.8);
+        String deliveryTone = wm.avgDeliveryHours() > 0 ? toneFromScore(1.0 - Math.min(wm.avgDeliveryHours() / 48.0, 1.0), 0.5) : "neutral";
+        String changeSpeedTone = wm.avgChangeSpeedHours() > 0 ? toneFromScore(1.0 - Math.min(wm.avgChangeSpeedHours() / 8.0, 1.0), 0.5) : "neutral";
+        String ftTone = toneFromScore(wm.firstTimeSuccessRate(), 0.8);
+        String satTone = toneFromScore(wm.avgSatisfaction() / 5.0, 0.7);
+        String prTone = toneFromScore(wm.problemFixRate(), 0.5);
+        String backlogTone = wm.backlog() > 50 ? "danger" : wm.backlog() > 20 ? "warning" : "success";
 
         List<MetricCard> cards = List.of(
-            card("wf-avg-throughput", "人均处理量", String.format("%.1f", avgThroughput), "neutral"),
-            card("wf-backlog", "积压工单数", String.valueOf(backlog), backlogTone),
-            card("wf-avg-delivery-time", "平均交付耗时", formatHours(avgDeliveryTime), deliveryTone),
-            card("wf-sla-rate", "SLA达标率", percentage(overallSlaRate), slaTone),
-            card("wf-change-speed", "变更实施速度", formatHours(avgChangeSpeed), changeSpeedTone),
-            card("wf-first-time-success", "一次性成功率", percentage(firstTimeSuccessRate), ftTone),
-            card("wf-avg-satisfaction", "用户满意度", String.format("%.1f / 5", avgSatisfaction), satTone),
-            card("wf-problem-fix-rate", "问题根治率", percentage(fixRate), prTone)
+            card("wf-avg-throughput", "人均处理量", String.format("%.1f", wm.avgThroughput()), "neutral"),
+            card("wf-backlog", "积压工单数", String.valueOf(wm.backlog()), backlogTone),
+            card("wf-avg-delivery-time", "平均交付耗时", formatHours(wm.avgDeliveryHours()), deliveryTone),
+            card("wf-sla-rate", "SLA达标率", percentage(wm.overallSlaRate()), slaTone),
+            card("wf-change-speed", "变更实施速度", formatHours(wm.avgChangeSpeedHours()), changeSpeedTone),
+            card("wf-first-time-success", "一次性成功率", percentage(wm.firstTimeSuccessRate()), ftTone),
+            card("wf-avg-satisfaction", "用户满意度", String.format("%.1f / 5", wm.avgSatisfaction()), satTone),
+            card("wf-problem-fix-rate", "问题根治率", percentage(wm.problemFixRate()), prTone)
         );
 
         List<BiModels.ChartSection> charts = List.of(
-            buildWorkloadDistribution(activeMetrics),
-            buildEfficiencyHeatmap(rawData, activeMetrics),
-            buildPerformanceMatrix(activeMetrics),
-            buildPersonRadar(activeMetrics)
+            buildWorkloadDistribution(wm.persons()),
+            buildEfficiencyHeatmap(rawData, wm.persons()),
+            buildPerformanceMatrix(wm.persons()),
+            buildPersonRadar(wm.persons())
         );
 
         List<BiModels.TableSection> tables = List.of(
@@ -1427,118 +1302,6 @@ public class BusinessIntelligenceService {
         return "danger";
     }
 
-    // ── PersonMetrics ──────────────────────────────────────────────────
-
-    record PersonMetrics(
-        String name,
-        int incidentCount, double totalResolutionTime, int incidentSlaYes, int incidentSlaTotal, int p1p2Count,
-        int changeCount, int changeSuccessCount, int changeBackoutCount, int emergencyCount,
-        double totalChangeDuration, int changeDurationCount, int changeCausedCount, int highRiskCount,
-        int requestCount, double totalFulfillmentTime, int requestSlaYes, int requestSlaTotal,
-        double totalSatisfaction, int satisfactionCount,
-        int problemCount, int permanentFixCount, int relatedIncidents
-    ) {
-        double avgResolutionTime() { return incidentCount > 0 ? totalResolutionTime / incidentCount : 0; }
-        double avgFulfillmentTime() { return requestCount > 0 ? totalFulfillmentTime / requestCount : 0; }
-        double avgSatisfaction() { return satisfactionCount > 0 ? totalSatisfaction / satisfactionCount : 0; }
-        int totalCount() { return incidentCount + changeCount + requestCount + problemCount; }
-        double slaRate() { int t = incidentSlaTotal + requestSlaTotal; return t > 0 ? (double)(incidentSlaYes + requestSlaYes) / t : 0; }
-        double changeSuccessRate() { return changeCount > 0 ? (double)changeSuccessCount / changeCount : 0; }
-        double permanentFixRate() { return problemCount > 0 ? (double)permanentFixCount / problemCount : 0; }
-    }
-
-    private class PersonMetricsBuilder {
-        int incidentCount; double totalResolutionTime; int incidentSlaYes, incidentSlaTotal, p1p2Count;
-        int changeCount, changeSuccessCount, changeBackoutCount, emergencyCount;
-        double totalChangeDuration; int changeDurationCount, changeCausedCount, highRiskCount;
-        int requestCount; double totalFulfillmentTime; int requestSlaYes, requestSlaTotal;
-        double totalSatisfaction; int satisfactionCount;
-        int problemCount, permanentFixCount, relatedIncidents;
-
-        void addIncident(double resolutionTime, boolean sla, boolean hasSla, boolean isP1P2) {
-            incidentCount++;
-            totalResolutionTime += resolutionTime;
-            if (hasSla) {
-                incidentSlaTotal++;
-                if (sla) incidentSlaYes++;
-            }
-            if (isP1P2) p1p2Count++;
-        }
-        void addChange(boolean success, boolean backout, boolean emergency, double duration, boolean caused, boolean highRisk) {
-            changeCount++;
-            if (success) changeSuccessCount++;
-            if (backout) changeBackoutCount++;
-            if (emergency) emergencyCount++;
-            if (duration > 0) { totalChangeDuration += duration; changeDurationCount++; }
-            if (caused) changeCausedCount++;
-            if (highRisk) highRiskCount++;
-        }
-        void addRequest(double fulfillmentTime, boolean sla, double satisfaction) {
-            requestCount++;
-            totalFulfillmentTime += fulfillmentTime;
-            requestSlaTotal++;
-            if (sla) requestSlaYes++;
-            if (satisfaction > 0) { totalSatisfaction += satisfaction; satisfactionCount++; }
-        }
-        void addProblem(boolean permanentFix, int related) {
-            problemCount++;
-            if (permanentFix) permanentFixCount++;
-            relatedIncidents += related;
-        }
-        PersonMetrics build(String name) {
-            return new PersonMetrics(name,
-                incidentCount, totalResolutionTime, incidentSlaYes, incidentSlaTotal, p1p2Count,
-                changeCount, changeSuccessCount, changeBackoutCount, emergencyCount,
-                totalChangeDuration, changeDurationCount, changeCausedCount, highRiskCount,
-                requestCount, totalFulfillmentTime, requestSlaYes, requestSlaTotal,
-                totalSatisfaction, satisfactionCount,
-                problemCount, permanentFixCount, relatedIncidents);
-        }
-    }
-
-    private Map<String, PersonMetrics> collectPersonMetrics(BiRawData rawData) {
-        Map<String, PersonMetricsBuilder> builders = new LinkedHashMap<>();
-        for (var row : rawData.incidents()) {
-            String resolver = defaultLabel(row.get("Resolver"), "未标注");
-            var b = builders.computeIfAbsent(resolver, k -> new PersonMetricsBuilder());
-            double rt = parseDouble(row.get("Resolution Time(m)"));
-            String slaVal = clean(row.get("SLA Compliant"));
-            boolean hasSla = !slaVal.isEmpty();
-            boolean sla = "Yes".equalsIgnoreCase(slaVal);
-            boolean p1p2 = matchesAny(clean(row.get("Priority")), List.of("P1", "P2"));
-            b.addIncident(rt, sla, hasSla, p1p2);
-        }
-        for (var row : rawData.changes()) {
-            String impl = defaultLabel(row.get("Implementer"), "未标注");
-            var b = builders.computeIfAbsent(impl, k -> new PersonMetricsBuilder());
-            boolean success = isYes(row.get("Success"));
-            boolean backout = isYes(row.get("Backout Performed"));
-            boolean emergency = "Emergency".equalsIgnoreCase(clean(row.get("Change Type")));
-            double dur = parseDurationMinutes(row.get("Actual Start"), row.get("Actual End"));
-            boolean caused = isYes(row.get("Incident Caused"));
-            boolean highRisk = "High".equalsIgnoreCase(clean(row.get("Risk Level")));
-            b.addChange(success, backout, emergency, dur, caused, highRisk);
-        }
-        for (var row : rawData.requests()) {
-            String assignee = defaultLabel(row.get("Assignee"), "未标注");
-            var b = builders.computeIfAbsent(assignee, k -> new PersonMetricsBuilder());
-            double ft = parseDouble(row.get("Fulfillment Time(h)")) * 60;
-            boolean sla = isYes(row.get("SLA Met"));
-            double sat = parseDouble(row.get("Satisfaction Score"));
-            b.addRequest(ft, sla, sat);
-        }
-        for (var row : rawData.problems()) {
-            String resolver = defaultLabel(row.get("Resolver"), "未标注");
-            var b = builders.computeIfAbsent(resolver, k -> new PersonMetricsBuilder());
-            boolean fix = isYes(row.get("Permanent Fix Implemented"));
-            int rel = (int) parseDouble(row.get("Related Incidents"));
-            b.addProblem(fix, rel);
-        }
-        Map<String, PersonMetrics> result = new LinkedHashMap<>();
-        builders.forEach((name, b) -> result.put(name, b.build(name)));
-        return result;
-    }
-
     private double parseDurationMinutes(String startStr, String endStr) {
         LocalDateTime start = parseDate(startStr);
         LocalDateTime end = parseDate(endStr);
@@ -1548,21 +1311,20 @@ public class BusinessIntelligenceService {
 
     // ── Workforce chart builders ───────────────────────────────────────
 
-    private BiModels.ChartSection buildWorkloadDistribution(List<PersonMetrics> metrics) {
-        var top = metrics.stream().sorted(Comparator.comparingInt(PersonMetrics::totalCount).reversed()).limit(10).toList();
+    private BiModels.ChartSection buildWorkloadDistribution(List<MetricsModels.PersonMetricsSummary> persons) {
+        var top = persons.stream().limit(10).toList();
         List<ChartDatum> items = top.stream()
             .map(m -> new ChartDatum(
                 m.name() + "|" + m.incidentCount() + "|" + m.changeCount() + "|" + m.requestCount() + "|" + m.problemCount(),
-                m.totalCount()))
+                m.incidentCount() + m.changeCount() + m.requestCount() + m.problemCount()))
             .toList();
         return new BiModels.ChartSection("wf-workload-distribution", "团队工作负载分布", "grouped-bar", items,
             new BiModels.ChartConfig(List.of("事件", "变更", "请求", "问题"), null,
                 List.of("#5b8db8", "#10b981", "#f59e0b", "#8b7fc7"), "人员", "工单数"));
     }
 
-    private BiModels.ChartSection buildEfficiencyHeatmap(BiRawData rawData, List<PersonMetrics> metrics) {
-        // TOP 8 persons by total work order count
-        var topPersons = metrics.stream().limit(8).map(PersonMetrics::name).toList();
+    private BiModels.ChartSection buildEfficiencyHeatmap(BiRawData rawData, List<MetricsModels.PersonMetricsSummary> persons) {
+        var topPersons = persons.stream().limit(8).map(MetricsModels.PersonMetricsSummary::name).toList();
         var topPersonSet = new HashSet<>(topPersons);
 
         // Collect raw time data: person → category → [cumulativeHours, count]
@@ -1637,37 +1399,35 @@ public class BusinessIntelligenceService {
             new BiModels.ChartConfig(null, null, null, "分类", "人员"));
     }
 
-    private BiModels.ChartSection buildPerformanceMatrix(List<PersonMetrics> metrics) {
-        List<ChartDatum> items = metrics.stream()
-            .filter(m -> m.requestSlaTotal() > 0 || m.satisfactionCount() > 0)
+    private BiModels.ChartSection buildPerformanceMatrix(List<MetricsModels.PersonMetricsSummary> persons) {
+        List<ChartDatum> items = persons.stream()
+            .filter(m -> m.requestSlaRate() > 0 || m.avgCsat() > 0)
             .limit(15)
             .map(m -> new ChartDatum(
-                m.name() + "|" + String.format("%.1f", m.slaRate() * 100) + "|" + String.format("%.1f", m.avgSatisfaction()),
+                m.name() + "|" + String.format("%.1f", m.requestSlaRate() * 100) + "|" + String.format("%.1f", m.avgCsat()),
                 m.requestCount()))
             .toList();
         return new BiModels.ChartSection("wf-performance-matrix", "SLA达标率 vs 满意度", "bubble", items,
             new BiModels.ChartConfig(null, null, List.of("#5b8db8"), "SLA达标率(%)", "满意度"));
     }
 
-    private BiModels.ChartSection buildPersonRadar(List<PersonMetrics> metrics) {
-        var top = metrics.stream()
-            .sorted(Comparator.comparingInt(PersonMetrics::totalCount).reversed())
-            .limit(5).toList();
+    private BiModels.ChartSection buildPersonRadar(List<MetricsModels.PersonMetricsSummary> persons) {
+        var top = persons.stream().limit(5).toList();
         if (top.isEmpty()) {
             return new BiModels.ChartSection("wf-person-radar", "个人综合素质雷达图", "radar", List.of(),
                 new BiModels.ChartConfig(List.of(), Map.of(), List.of("#5b8db8"), null, null));
         }
-        double maxCount = top.stream().mapToInt(PersonMetrics::totalCount).max().orElse(1);
-        double maxP1p2 = top.stream().mapToInt(PersonMetrics::p1p2Count).max().orElse(1);
-        List<String> names = top.stream().map(PersonMetrics::name).toList();
+        double maxCount = top.stream().mapToInt(m -> m.incidentCount() + m.changeCount() + m.requestCount() + m.problemCount()).max().orElse(1);
+        List<String> names = top.stream().map(MetricsModels.PersonMetricsSummary::name).toList();
         Map<String, List<ChartDatum>> seriesData = new LinkedHashMap<>();
         List<String> dims = List.of("速度", "产量", "质量", "满意度", "难度");
         for (var m : top) {
-            double speed = m.slaRate() * 100;
-            double volume = maxCount > 0 ? (double) m.totalCount() / maxCount * 100 : 0;
+            double speed = m.incidentSlaRate() * 100;
+            int total = m.incidentCount() + m.changeCount() + m.requestCount() + m.problemCount();
+            double volume = maxCount > 0 ? total / maxCount * 100 : 0;
             double quality = m.changeSuccessRate() * 100;
-            double satisfaction = m.avgSatisfaction() / 5.0 * 100;
-            double difficulty = maxP1p2 > 0 ? (double) m.p1p2Count() / maxP1p2 * 100 : 0;
+            double satisfaction = m.avgCsat() / 5.0 * 100;
+            double difficulty = 50;
             List<ChartDatum> scores = new ArrayList<>();
             String[] dimArr = dims.toArray(new String[0]);
             double[] valArr = {speed, volume, quality, satisfaction, difficulty};
@@ -1770,69 +1530,68 @@ public class BusinessIntelligenceService {
         return new MetricCard(id, label, String.valueOf(value), tone);
     }
 
-    private BiModels.ExecutiveSummary buildExecutiveSummaryContent(BiRawData rawData, long incidentSlaBreached, long changeFailures, long requestOpen, long problemOpen) {
+    private BiModels.ExecutiveSummary buildExecutiveSummaryContent(
+            MetricsModels.ExecutiveMetrics exec,
+            MetricsModels.IncidentMetrics incident,
+            MetricsModels.ChangeMetrics change,
+            MetricsModels.RequestMetrics request,
+            MetricsModels.ProblemMetrics problem,
+            BiRawData rawData) {
+
         boolean hasIncidents = !rawData.incidents().isEmpty();
         boolean hasChanges = !rawData.changes().isEmpty();
         boolean hasRequests = !rawData.requests().isEmpty();
         boolean hasProblems = !rawData.problems().isEmpty();
 
-        double incidentSlaRate = hasIncidents ? percentageValue(countByValue(rawData.incidents(), "SLA Compliant", "Yes"), rawData.incidents().size()) : 0;
-        double incidentMttrHours = hasIncidents ? average(rawData.incidents(), "Resolution Time(m)") / 60.0 : 0;
-        double changeSuccessRate = hasChanges ? percentageValue(countByValue(rawData.changes(), "Success", "Yes"), rawData.changes().size()) : 0;
-        double changeIncidentRate = hasChanges ? percentageValue(countByValue(rawData.changes(), "Incident Caused", "Yes"), rawData.changes().size()) : 0;
-        double requestSlaRate = hasRequests ? percentageValue(countByValue(rawData.requests(), "SLA Met", "Yes"), rawData.requests().size()) : 0;
-        double requestCsat = hasRequests ? average(rawData.requests(), "Satisfaction Score") : 0;
-        double problemClosureRate = hasProblems ? percentageValue(rawData.problems().stream().filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count(), rawData.problems().size()) : 0;
-        double backlogRate = (hasProblems || hasRequests) ? percentageValue(problemOpen + requestOpen, rawData.problems().size() + rawData.requests().size()) : 0;
+        List<BiModels.ExecutiveRisk> risks = exec.topRisks().stream()
+            .map(r -> new BiModels.ExecutiveRisk(r.id(), r.priority(), r.title(), r.impact(), "", ""))
+            .toList();
 
-        double incidentHealth = hasIncidents ? weightedAverage(List.of(
-            scoreHigherBetter(incidentSlaRate, 0.95, 0.85),
-            scoreLowerBetter(incidentMttrHours, 12, 24),
-            scoreLowerBetter(percentageValue(rawData.incidents().stream().filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2"))).count(), rawData.incidents().size()), 0.12, 0.22)
-        )) : 0;
-        double changeHealth = hasChanges ? weightedAverage(List.of(
-            scoreHigherBetter(changeSuccessRate, 0.95, 0.85),
-            scoreLowerBetter(changeIncidentRate, 0.05, 0.12)
-        )) : 0;
-        double requestHealth = hasRequests ? weightedAverage(List.of(
-            scoreHigherBetter(requestSlaRate, 0.9, 0.75),
-            scoreHigherBetter(requestCsat / 5.0, 0.82, 0.7)
-        )) : 0;
-        double problemHealth = hasProblems ? weightedAverage(List.of(
-            scoreHigherBetter(problemClosureRate, 0.75, 0.55),
-            scoreLowerBetter(backlogRate, 0.25, 0.45)
-        )) : 0;
-
-        double healthScore = weightedScoreFiltered(Map.of(
-            "incident", incidentHealth,
-            "change", changeHealth,
-            "request", requestHealth,
-            "problem", problemHealth
-        ), hasIncidents, hasChanges, hasRequests, hasProblems);
-        String grade = gradeForScore(healthScore);
-
-        List<BiModels.ExecutiveRisk> risks = buildExecutiveRisks(incidentSlaBreached, changeFailures, requestOpen, problemOpen, changeIncidentRate, requestCsat, problemClosureRate);
         BiModels.RiskSummary riskSummary = new BiModels.RiskSummary(
-            (int) risks.stream().filter(risk -> "Critical".equals(risk.priority())).count(),
-            (int) risks.stream().filter(risk -> "Warning".equals(risk.priority())).count(),
-            (int) risks.stream().filter(risk -> "Attention".equals(risk.priority())).count(),
+            (int) exec.criticalCount(),
+            (int) exec.warningCount(),
+            (int) exec.attentionCount(),
             risks.stream().limit(5).toList()
         );
 
-        List<BiModels.ProcessHealth> processHealths = List.of(
-            new BiModels.ProcessHealth("incident", "事件", formatScore(incidentHealth), hasIncidents ? toneFromNormalizedScore(incidentHealth) : "neutral", incidentHealthSummary(incidentSlaRate, incidentMttrHours)),
-            new BiModels.ProcessHealth("change", "变更", formatScore(changeHealth), hasChanges ? toneFromNormalizedScore(changeHealth) : "neutral", "成功率 " + percentage(changeSuccessRate) + "，致事件率 " + percentage(changeIncidentRate)),
-            new BiModels.ProcessHealth("request", "请求", formatScore(requestHealth), hasRequests ? toneFromNormalizedScore(requestHealth) : "neutral", "SLA " + percentage(requestSlaRate) + "，满意度 " + formatNumber(requestCsat)),
-            new BiModels.ProcessHealth("problem", "问题", formatScore(problemHealth), hasProblems ? toneFromNormalizedScore(problemHealth) : "neutral", "关闭率 " + percentage(problemClosureRate) + "，积压 " + (requestOpen + problemOpen))
-        );
+        List<BiModels.ProcessHealth> processHealths = exec.processScores().stream()
+            .map(ps -> {
+                String label = switch (ps.process()) {
+                    case "incident" -> "事件";
+                    case "change" -> "变更";
+                    case "request" -> "请求";
+                    case "problem" -> "问题";
+                    default -> ps.process();
+                };
+                String summaryText = switch (ps.process()) {
+                    case "incident" -> incidentHealthSummary(incident.slaRate(), incident.mttrHours());
+                    case "change" -> "成功率 " + percentage(change.successRate()) + "，致事件率 " + percentage(change.totalCount() > 0 ? (double) change.incidentCausedCount() / change.totalCount() : 0);
+                    case "request" -> "SLA " + percentage(request.slaRate()) + "，满意度 " + formatNumber(request.avgCsat());
+                    case "problem" -> "关闭率 " + percentage(problem.closureRate());
+                    default -> "";
+                };
+                boolean hasDomain = switch (ps.process()) {
+                    case "incident" -> hasIncidents;
+                    case "change" -> hasChanges;
+                    case "request" -> hasRequests;
+                    case "problem" -> hasProblems;
+                    default -> false;
+                };
+                return new BiModels.ProcessHealth(ps.process(), label, formatScore(ps.score()),
+                    hasDomain ? ps.tone() : "neutral", summaryText);
+            })
+            .toList();
 
-        List<BiModels.TrendPoint> trendPoints = buildTrendPoints(rawData);
-        String summary = buildExecutiveSummarySentence(grade, riskSummary, processHealths);
+        List<BiModels.TrendPoint> trendPoints = exec.monthlyTrend().stream()
+            .map(tp -> new BiModels.TrendPoint(tp.period(), tp.value(), 0))
+            .toList();
+
+        String summary = buildExecutiveSummarySentence(exec.grade(), riskSummary, processHealths);
         String changeHint = buildTrendHint(trendPoints);
         String periodLabel = buildPeriodLabel(rawData);
 
         return new BiModels.ExecutiveSummary(
-            new BiModels.ExecutiveHero(formatScore(healthScore), grade, summary, changeHint, periodLabel),
+            new BiModels.ExecutiveHero(formatScore(exec.overallScore()), exec.grade(), summary, changeHint, periodLabel),
             processHealths,
             riskSummary,
             new BiModels.TrendSection("月度健康趋势", "健康分与高优先级事件同步观察。", trendPoints)
@@ -2030,25 +1789,11 @@ public class BusinessIntelligenceService {
             .toList();
     }
 
-    private List<ChartDatum> buildSlaWeeklyTrendData(List<IncidentSlaRecord> incidents) {
-        return incidents.stream()
-            .filter(record -> record.beginDate() != null)
-            .collect(Collectors.groupingBy(
-                record -> formatPeriodLabel(record.beginDate(), "weekly"),
-                LinkedHashMap::new, Collectors.toList()))
-            .entrySet().stream()
-            .sorted(Map.Entry.comparingByKey())
-            .map(entry -> {
-                List<IncidentSlaRecord> rows = entry.getValue();
-                List<IncidentSlaRecord> p1p2Rows = rows.stream().filter(r -> matchesAny(r.priority(), List.of("P1", "P2"))).toList();
-                double p1p2Rate = percentageValue(p1p2Rows.stream().filter(IncidentSlaRecord::overallMet).count(), p1p2Rows.size()) * 100.0;
-                double responseRate = percentageValue(rows.stream().filter(IncidentSlaRecord::responseMet).count(), rows.size()) * 100.0;
-                double resolutionRate = percentageValue(rows.stream().filter(IncidentSlaRecord::resolutionMet).count(), rows.size()) * 100.0;
-                return new ChartDatum(
-                    entry.getKey() + "|" + String.format("%.1f", responseRate) + "|" + String.format("%.1f", resolutionRate) + "|" + String.format("%.1f", p1p2Rate),
-                    responseRate
-                );
-            }).toList();
+    private List<ChartDatum> buildSlaWeeklyTrendData(BiRawData rawData, String startDate, String endDate) {
+        TrendResult responseTrend = metricsService.getTrends(rawData, "incidents", "response_sla_rate", "week", null, startDate, endDate);
+        TrendResult resolutionTrend = metricsService.getTrends(rawData, "incidents", "resolution_sla_rate", "week", null, startDate, endDate);
+        TrendResult p12Trend = metricsService.getTrends(rawData, "incidents", "p12_sla_rate", "week", null, startDate, endDate);
+        return mergeTrendSeries(List.of(responseTrend, resolutionTrend, p12Trend));
     }
 
     private String buildSlaSummarySentence(double responseRate, double resolutionRate, List<BiModels.SlaPriorityRow> priorityRows, List<BiModels.SlaRiskRow> categoryRisks) {
@@ -2078,20 +1823,10 @@ public class BusinessIntelligenceService {
             .toList();
     }
 
-    private List<ChartDatum> topCharts(Map<String, Double> values) {
-        return values.entrySet().stream()
-            .map(entry -> new ChartDatum(entry.getKey(), entry.getValue()))
-            .toList();
-    }
-
     private List<List<String>> rowsFromChart(List<ChartDatum> items) {
         return items.stream()
             .map(item -> List.of(item.label(), formatNumber(item.value())))
             .toList();
-    }
-
-    private long distinctCount(List<Map<String, String>> rows, String key) {
-        return rows.stream().map(row -> clean(row.get(key))).filter(value -> !value.isBlank()).distinct().count();
     }
 
     private long countByValue(List<Map<String, String>> rows, String key, String value) {
@@ -2214,36 +1949,6 @@ public class BusinessIntelligenceService {
             + scores.getOrDefault("problem", 0.0) * 0.2;
     }
 
-    private double weightedScoreFiltered(Map<String, Double> scores, boolean hasIncidents, boolean hasChanges, boolean hasRequests, boolean hasProblems) {
-        double totalWeight = 0;
-        double totalScore = 0;
-        if (hasIncidents) { totalScore += scores.getOrDefault("incident", 0.0) * 0.35; totalWeight += 0.35; }
-        if (hasChanges)   { totalScore += scores.getOrDefault("change", 0.0) * 0.25; totalWeight += 0.25; }
-        if (hasRequests)  { totalScore += scores.getOrDefault("request", 0.0) * 0.2; totalWeight += 0.2; }
-        if (hasProblems)  { totalScore += scores.getOrDefault("problem", 0.0) * 0.2; totalWeight += 0.2; }
-        return totalWeight > 0 ? totalScore / totalWeight * (0.35 + 0.25 + 0.2 + 0.2) : 0;
-    }
-
-    private String gradeForScore(double score) {
-        if (score >= 85) {
-            return "Stable";
-        }
-        if (score >= 70) {
-            return "Watch";
-        }
-        return "Risk";
-    }
-
-    private String toneFromNormalizedScore(double score) {
-        if (score >= 85) {
-            return "success";
-        }
-        if (score >= 70) {
-            return "warning";
-        }
-        return "danger";
-    }
-
     private String toneFromScore(double score, double goodThreshold, double warningThreshold) {
         if (score >= goodThreshold) {
             return "success";
@@ -2265,9 +1970,9 @@ public class BusinessIntelligenceService {
 
     private int violationSeverity(String violationType) {
         return switch (violationType) {
-        case "双违约" -> 0;
-        case "解决违约" -> 1;
-        case "响应违约" -> 2;
+        case "both_breached" -> 0;
+        case "resolution_breached" -> 1;
+        case "response_breached" -> 2;
         default -> 3;
         };
     }
@@ -2284,40 +1989,6 @@ public class BusinessIntelligenceService {
 
     private String incidentHealthSummary(double slaRate, double mttrHours) {
         return "SLA " + percentage(slaRate) + "，MTTR " + formatHours(mttrHours);
-    }
-
-    private List<BiModels.ExecutiveRisk> buildExecutiveRisks(long incidentSlaBreached, long changeFailures, long requestOpen, long problemOpen, double changeIncidentRate, double requestCsat, double problemClosureRate) {
-        List<BiModels.ExecutiveRisk> risks = new ArrayList<>();
-        if (changeFailures >= 5) {
-            risks.add(new BiModels.ExecutiveRisk("change-failure", "Critical", "变更失败率偏高", "发布稳定性下降，需优先排查高风险变更。", "变更", String.valueOf(changeFailures)));
-        }
-        if (problemClosureRate < 0.55) {
-            risks.add(new BiModels.ExecutiveRisk("problem-closure", "Warning", "问题关闭率不足", "根因与永久修复积压，风险会持续放大。", "问题", percentage(problemClosureRate)));
-        }
-        if (requestOpen >= 15) {
-            risks.add(new BiModels.ExecutiveRisk("request-open", "Warning", "未完成请求积压", "履约体验承压，用户等待时间会拉长。", "请求", String.valueOf(requestOpen)));
-        }
-        if (changeIncidentRate >= 0.1) {
-            risks.add(new BiModels.ExecutiveRisk("change-incident", "Warning", "变更引发事件偏多", "上线质量与变更验证存在薄弱点。", "变更", percentage(changeIncidentRate)));
-        }
-        if (requestCsat > 0 && requestCsat < 3.8) {
-            risks.add(new BiModels.ExecutiveRisk("request-csat", "Attention", "请求满意度下滑", "服务体验有波动，建议复盘高频诉求。", "请求", formatNumber(requestCsat)));
-        }
-        if (incidentSlaBreached > 0) {
-            risks.add(new BiModels.ExecutiveRisk("incident-sla", "Attention", "事件 SLA 出现违约", "核心事件响应存在超时情况。", "事件", String.valueOf(incidentSlaBreached)));
-        }
-        if (problemOpen >= 20) {
-            risks.add(new BiModels.ExecutiveRisk("problem-open", "Attention", "未关闭问题偏多", "问题池持续扩大，会拖累稳定性治理。", "问题", String.valueOf(problemOpen)));
-        }
-        return risks.stream().sorted(Comparator.comparingInt(this::riskPriorityOrder)).toList();
-    }
-
-    private int riskPriorityOrder(BiModels.ExecutiveRisk risk) {
-        return switch (risk.priority()) {
-        case "Critical" -> 0;
-        case "Warning" -> 1;
-        default -> 2;
-        };
     }
 
     private String buildExecutiveSummarySentence(String grade, BiModels.RiskSummary riskSummary, List<BiModels.ProcessHealth> processHealths) {
@@ -2355,62 +2026,6 @@ public class BusinessIntelligenceService {
         LocalDate min = dates.stream().min(LocalDateTime::compareTo).orElseThrow().toLocalDate();
         LocalDate max = dates.stream().max(LocalDateTime::compareTo).orElseThrow().toLocalDate();
         return min + " 至 " + max;
-    }
-
-    private List<BiModels.TrendPoint> buildTrendPoints(BiRawData rawData) {
-        Map<YearMonth, List<Map<String, String>>> incidentsByMonth = groupByMonth(rawData.incidents(), "Begin Date");
-        Map<YearMonth, List<Map<String, String>>> changesByMonth = groupByMonth(rawData.changes(), "Requested Date");
-        Map<YearMonth, List<Map<String, String>>> requestsByMonth = groupByMonth(rawData.requests(), "Requested Date");
-        Map<YearMonth, List<Map<String, String>>> problemsByMonth = groupByMonth(rawData.problems(), "Logged Date");
-
-        List<YearMonth> months = new ArrayList<>();
-        months.addAll(incidentsByMonth.keySet());
-        months.addAll(changesByMonth.keySet());
-        months.addAll(requestsByMonth.keySet());
-        months.addAll(problemsByMonth.keySet());
-
-        return months.stream()
-            .distinct()
-            .sorted()
-            .limit(Math.max(months.size(), 6))
-            .map(month -> {
-                List<Map<String, String>> monthIncidents = incidentsByMonth.getOrDefault(month, List.of());
-                List<Map<String, String>> monthChanges = changesByMonth.getOrDefault(month, List.of());
-                List<Map<String, String>> monthRequests = requestsByMonth.getOrDefault(month, List.of());
-                List<Map<String, String>> monthProblems = problemsByMonth.getOrDefault(month, List.of());
-                double score = weightedScore(Map.of(
-                    "incident", weightedAverage(List.of(
-                        scoreHigherBetter(percentageValue(countByValue(monthIncidents, "SLA Compliant", "Yes"), monthIncidents.size()), 0.95, 0.85),
-                        scoreLowerBetter(average(monthIncidents, "Resolution Time(m)") / 60.0, 12, 24)
-                    )),
-                    "change", weightedAverage(List.of(
-                        scoreHigherBetter(percentageValue(countByValue(monthChanges, "Success", "Yes"), monthChanges.size()), 0.95, 0.85),
-                        scoreLowerBetter(percentageValue(countByValue(monthChanges, "Incident Caused", "Yes"), monthChanges.size()), 0.05, 0.12)
-                    )),
-                    "request", weightedAverage(List.of(
-                        scoreHigherBetter(percentageValue(countByValue(monthRequests, "SLA Met", "Yes"), monthRequests.size()), 0.9, 0.75),
-                        scoreHigherBetter(average(monthRequests, "Satisfaction Score") / 5.0, 0.82, 0.7)
-                    )),
-                    "problem", scoreHigherBetter(percentageValue(monthProblems.stream().filter(row -> matchesAny(clean(row.get("Status")), List.of("Resolved", "Closed"))).count(), monthProblems.size()), 0.75, 0.55)
-                ));
-                double signal = monthIncidents.stream().filter(row -> matchesAny(clean(row.get("Priority")), List.of("P1", "P2"))).count();
-                return new BiModels.TrendPoint(month.toString(), score, signal);
-            })
-            .sorted(Comparator.comparing(BiModels.TrendPoint::label))
-            .toList();
-    }
-
-    private Map<YearMonth, List<Map<String, String>>> groupByMonth(List<Map<String, String>> rows, String key) {
-        return rows.stream()
-            .map(row -> {
-                LocalDateTime parsedDate = parseDate(row.get(key));
-                if (parsedDate == null) {
-                    return null;
-                }
-                return Map.entry(parsedDate, row);
-            })
-            .filter(Objects::nonNull)
-            .collect(Collectors.groupingBy(entry -> YearMonth.from(entry.getKey()), LinkedHashMap::new, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
     }
 
     private List<LocalDateTime> collectDates(BiRawData rawData) {
