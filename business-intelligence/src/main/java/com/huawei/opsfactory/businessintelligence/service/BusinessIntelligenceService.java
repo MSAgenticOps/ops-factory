@@ -1584,7 +1584,7 @@ public class BusinessIntelligenceService {
             .toList();
 
         List<BiModels.TrendPoint> trendPoints = exec.monthlyTrend().stream()
-            .map(tp -> new BiModels.TrendPoint(tp.period(), tp.value(), 0))
+            .map(tp -> new BiModels.TrendPoint(tp.period(), tp.value(), tp.sampleCount()))
             .toList();
 
         String summary = buildExecutiveSummarySentence(exec.grade(), riskSummary, processHealths);

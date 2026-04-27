@@ -292,9 +292,9 @@ public class BusinessIntelligenceMetricsService {
                             .count(),
                         monthProblems.size()), 0.75, 0.55)
                 ));
-                long sampleCount = monthIncidents.size() + monthChanges.size()
-                    + monthRequests.size() + monthProblems.size();
-                return new MetricsTrendPoint(month.toString(), score, sampleCount);
+                long p1p2Count = monthIncidents.stream()
+                    .filter(row -> isP1P2(row.get(BiColumns.PRIORITY))).count();
+                return new MetricsTrendPoint(month.toString(), score, p1p2Count);
             })
             .toList();
 
