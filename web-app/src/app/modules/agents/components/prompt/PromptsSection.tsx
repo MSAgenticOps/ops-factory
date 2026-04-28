@@ -29,7 +29,6 @@ export default function PromptsSection({ agentId }: PromptsSectionProps) {
     const [editContent, setEditContent] = useState('')
     const [promptData, setPromptData] = useState<SystemPromptContent | null>(null)
     const [isSaving, setIsSaving] = useState(false)
-    const [isResetting, setIsResetting] = useState(false)
     const [isLoadingPrompt, setIsLoadingPrompt] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
 
@@ -70,13 +69,20 @@ export default function PromptsSection({ agentId }: PromptsSectionProps) {
         if (!expandedName) return
         setIsSaving(true)
 
-        const success = await savePrompt(expandedName, editContent)
+        const shouldResetToDefault = promptData?.is_customized && editContent === promptData.default_content
+        const success = shouldResetToDefault
+            ? await resetPrompt(expandedName)
+            : await savePrompt(expandedName, editContent)
         if (success) {
-            showToast('success', t('prompts.saved'))
-            setPromptData(prev => prev ? { ...prev, content: editContent, is_customized: true } : prev)
+            showToast('success', shouldResetToDefault ? t('prompts.resetSuccess') : t('prompts.saved'))
+            setPromptData(prev => prev ? {
+                ...prev,
+                content: editContent,
+                is_customized: shouldResetToDefault ? false : true,
+            } : prev)
             setHasChanges(false)
         } else {
-            showToast('error', t('prompts.saveFailed'))
+            showToast('error', shouldResetToDefault ? t('prompts.resetFailed') : t('prompts.saveFailed'))
         }
 
         setIsSaving(false)
@@ -87,25 +93,6 @@ export default function PromptsSection({ agentId }: PromptsSectionProps) {
             setEditContent(promptData.default_content)
             setHasChanges(promptData.default_content !== promptData.content)
         }
-    }
-
-    const handleReset = async () => {
-        if (!expandedName) return
-        setIsResetting(true)
-
-        const success = await resetPrompt(expandedName)
-        if (success) {
-            showToast('success', t('prompts.resetSuccess'))
-            if (promptData) {
-                setEditContent(promptData.default_content)
-                setPromptData({ ...promptData, content: promptData.default_content, is_customized: false })
-                setHasChanges(false)
-            }
-        } else {
-            showToast('error', t('prompts.resetFailed'))
-        }
-
-        setIsResetting(false)
     }
 
     const handleResetAll = async () => {
@@ -128,6 +115,7 @@ export default function PromptsSection({ agentId }: PromptsSectionProps) {
     if (!agentId) return null
 
     const customizedCount = templates.filter(t => t.is_customized).length
+    const hasPendingDefaultReset = Boolean(promptData?.is_customized && editContent === promptData.default_content)
 
     return (
         <div className="prompts-section">
@@ -214,17 +202,6 @@ export default function PromptsSection({ agentId }: PromptsSectionProps) {
                                                         >
                                                             {t('prompts.restoreDefault')}
                                                         </Button>
-                                                        {promptData?.is_customized && (
-                                                            <Button
-                                                                variant="danger"
-                                                                tone="quiet"
-                                                                size="sm"
-                                                                onClick={handleReset}
-                                                                disabled={isResetting}
-                                                            >
-                                                                {isResetting ? t('common.loading') : t('prompts.resetToDefault')}
-                                                            </Button>
-                                                        )}
                                                     </div>
                                                     <div className="prompts-editor-actions-right">
                                                         <Button
@@ -236,7 +213,7 @@ export default function PromptsSection({ agentId }: PromptsSectionProps) {
                                                         <Button
                                                             variant="primary"
                                                             onClick={handleSave}
-                                                            disabled={isSaving || !hasChanges}
+                                                            disabled={isSaving || (!hasChanges && !hasPendingDefaultReset)}
                                                         >
                                                             {isSaving ? t('agentConfigure.saving') : t('common.save')}
                                                         </Button>

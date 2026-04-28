@@ -43,10 +43,45 @@
 
 .sidebar-nav {
     flex: 1;
+    min-height: 0;
     padding: var(--spacing-4);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.sidebar:hover .sidebar-nav,
+.sidebar-nav:focus-within,
+.sidebar-nav:active {
+    scrollbar-color: rgba(158, 167, 179, 0.34) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+}
+
+.sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb,
+.sidebar-nav:focus-within::-webkit-scrollbar-thumb,
+.sidebar-nav:active::-webkit-scrollbar-thumb {
+    background: rgba(158, 167, 179, 0.34);
+}
+
+.sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(129, 140, 153, 0.42);
 }
 
 .sidebar-nav-group {
@@ -165,6 +200,7 @@
     padding: var(--spacing-3) var(--spacing-4);
     border-top: 1px solid var(--color-border);
     margin-top: auto;
+    flex-shrink: 0;
 }
 
 .sidebar-user-avatar {

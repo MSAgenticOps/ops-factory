@@ -19,12 +19,15 @@ type Props = {
     host: Host
     cluster?: Cluster
     selected?: boolean
+    testing?: boolean
+    testResult?: { ok: boolean; msg: string } | null
     onClick: () => void
     onEdit: () => void
     onDelete: () => void
+    onTest?: () => void
 }
 
-export default function HostCard({ host, cluster, selected, onClick, onEdit, onDelete }: Props) {
+export default function HostCard({ host, cluster, selected, testing, testResult, onClick, onEdit, onDelete, onTest }: Props) {
     const { t } = useTranslation()
 
     return (
@@ -45,7 +48,18 @@ export default function HostCard({ host, cluster, selected, onClick, onEdit, onD
                 <div className="hr-host-card-meta-field">
                     <span className="hr-host-card-meta-label">{t('hostResource.ipPort')}</span>
                     <span className="hr-host-card-meta-value hr-host-card-mono">{host.ip}:{host.port}</span>
+                    {testResult && (
+                        <span className={`hr-test-badge ${testResult.ok ? 'hr-test-ok' : 'hr-test-fail'}`}>
+                            {testResult.ok ? 'OK' : 'FAIL'}
+                        </span>
+                    )}
                 </div>
+                {host.businessIp && (
+                    <div className="hr-host-card-meta-field">
+                        <span className="hr-host-card-meta-label">{t('hostResource.businessIp')}</span>
+                        <span className="hr-host-card-meta-value hr-host-card-mono">{host.businessIp}</span>
+                    </div>
+                )}
                 {host.os && (
                     <div className="hr-host-card-meta-field">
                         <span className="hr-host-card-meta-label">{t('hostResource.os')}</span>
@@ -62,6 +76,19 @@ export default function HostCard({ host, cluster, selected, onClick, onEdit, onD
                     <div className="hr-host-card-meta-field">
                         <span className="hr-host-card-meta-label">{t('hostResource.clusterName')}</span>
                         <span className="hr-host-card-meta-value">{cluster.name}</span>
+                        {host.role && (
+                            <span className="hr-role-badge" style={{
+                                marginLeft: 6,
+                                fontSize: '0.7rem',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: host.role === 'primary' ? '#dcfce7' : '#fee2e2',
+                                color: host.role === 'primary' ? '#166534' : '#991b1b',
+                                border: `1px solid ${host.role === 'primary' ? '#bbf7d0' : '#fecaca'}`,
+                            }}>
+                                {host.role === 'primary' ? t('hostResource.hostRolePrimary') : t('hostResource.hostRoleBackup')}
+                            </span>
+                        )}
                     </div>
                 )}
                 {host.purpose && (
@@ -79,6 +106,11 @@ export default function HostCard({ host, cluster, selected, onClick, onEdit, onD
             </div>
 
             <div className="hr-host-card-footer" onClick={e => e.stopPropagation()}>
+                {onTest && (
+                    <button className="btn btn-subtle btn-sm" onClick={onTest} disabled={testing}>
+                        {testing ? t('remoteDiagnosis.hosts.testing') : t('remoteDiagnosis.hosts.testConnection')}
+                    </button>
+                )}
                 <button className="btn btn-subtle btn-sm" onClick={onEdit}>
                     {t('common.edit')}
                 </button>

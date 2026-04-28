@@ -1,0 +1,25 @@
+.status-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.status-cell .status-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(96, 108, 122, 0.08);
+}
+
+.status-cell .status-icon-success {
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.status-cell .status-icon-warning {
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.status-cell .status-icon-danger {
+    background: rgba(239, 68, 68, 0.12);
+}

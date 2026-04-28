@@ -5,6 +5,7 @@
     "controlCenterSecretKey": "change-me",
     "knowledgeServiceUrl": "http://127.0.0.1:8092",
     "businessIntelligenceServiceUrl": "http://127.0.0.1:8093",
+    "skillMarketServiceUrl": "http://127.0.0.1:8095",
     "logging": {
         "level": "info",
         "consoleEnabled": true,

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 @Component
 @ConfigurationProperties(prefix = "gateway")
@@ -32,6 +33,11 @@ public class GatewayProperties {
     private Logging logging = new Logging();
     private String credentialEncryptionKey = "changeit-changeit-changeit-32";
     private RemoteExecution remoteExecution = new RemoteExecution();
+    private FileCapsules fileCapsules = new FileCapsules();
+    private FileBrowser files = new FileBrowser();
+    private SkillMarket skillMarket = new SkillMarket();
+    private Knowledge knowledge = new Knowledge();
+    private List<String> adminUsers = List.of("admin");
 
     // ---- Getters / Setters ----
 
@@ -157,6 +163,46 @@ public class GatewayProperties {
 
     public void setRemoteExecution(RemoteExecution remoteExecution) {
         this.remoteExecution = remoteExecution;
+    }
+
+    public FileCapsules getFileCapsules() {
+        return fileCapsules;
+    }
+
+    public void setFileCapsules(FileCapsules fileCapsules) {
+        this.fileCapsules = fileCapsules;
+    }
+
+    public FileBrowser getFiles() {
+        return files;
+    }
+
+    public void setFiles(FileBrowser files) {
+        this.files = files;
+    }
+
+    public SkillMarket getSkillMarket() {
+        return skillMarket;
+    }
+
+    public void setSkillMarket(SkillMarket skillMarket) {
+        this.skillMarket = skillMarket;
+    }
+
+    public Knowledge getKnowledge() {
+        return knowledge;
+    }
+
+    public void setKnowledge(Knowledge knowledge) {
+        this.knowledge = knowledge;
+    }
+
+    public List<String> getAdminUsers() {
+        return adminUsers;
+    }
+
+    public void setAdminUsers(List<String> adminUsers) {
+        this.adminUsers = adminUsers;
     }
 
     public Path getConfigPath() {
@@ -336,6 +382,86 @@ public class GatewayProperties {
         public void setDefaultTimeout(int defaultTimeout) { this.defaultTimeout = defaultTimeout; }
         public int getMaxTimeout() { return maxTimeout; }
         public void setMaxTimeout(int maxTimeout) { this.maxTimeout = maxTimeout; }
+    }
+
+    public static class FileCapsules {
+        private List<String> allowedExtensions = List.of(
+                "doc", "docx",
+                "xls", "xlsx",
+                "ppt", "pptx",
+                "csv",
+                "txt",
+                "json",
+                "md", "markdown",
+                "html", "htm");
+
+        public List<String> getAllowedExtensions() { return allowedExtensions; }
+
+        public void setAllowedExtensions(List<String> allowedExtensions) { this.allowedExtensions = allowedExtensions; }
+    }
+
+    public static class FileBrowser {
+        private List<FileScanRoot> scanRoots = List.of(
+                new FileScanRoot("workingDir", "${userAgentDir}", false),
+                new FileScanRoot("output", "${userAgentDir}/output", false));
+
+        public List<FileScanRoot> getScanRoots() { return scanRoots; }
+
+        public void setScanRoots(List<FileScanRoot> scanRoots) { this.scanRoots = scanRoots; }
+    }
+
+    public static class FileScanRoot {
+        private String id = "";
+        private String path = "";
+        private boolean recursive = false;
+        private List<String> excludeDirs = List.of();
+        private int maxDepth = 6;
+        private int maxFiles = 1000;
+        private long scanTimeoutMs = 2000;
+
+        public FileScanRoot() {
+        }
+
+        public FileScanRoot(String id, String path, boolean recursive) {
+            this.id = id;
+            this.path = path;
+            this.recursive = recursive;
+        }
+
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getPath() { return path; }
+        public void setPath(String path) { this.path = path; }
+        public boolean isRecursive() { return recursive; }
+        public void setRecursive(boolean recursive) { this.recursive = recursive; }
+        public List<String> getExcludeDirs() { return excludeDirs; }
+        public void setExcludeDirs(List<String> excludeDirs) { this.excludeDirs = excludeDirs; }
+        public int getMaxDepth() { return maxDepth; }
+        public void setMaxDepth(int maxDepth) { this.maxDepth = maxDepth; }
+        public int getMaxFiles() { return maxFiles; }
+        public void setMaxFiles(int maxFiles) { this.maxFiles = maxFiles; }
+        public long getScanTimeoutMs() { return scanTimeoutMs; }
+        public void setScanTimeoutMs(long scanTimeoutMs) { this.scanTimeoutMs = scanTimeoutMs; }
+    }
+
+    public static class SkillMarket {
+        private String baseUrl = "http://127.0.0.1:8095";
+        private int requestTimeoutMs = 10000;
+        private int maxPackageSizeMb = 200;
+
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+        public int getRequestTimeoutMs() { return requestTimeoutMs; }
+        public void setRequestTimeoutMs(int requestTimeoutMs) { this.requestTimeoutMs = requestTimeoutMs; }
+        public int getMaxPackageSizeMb() { return maxPackageSizeMb; }
+        public void setMaxPackageSizeMb(int maxPackageSizeMb) { this.maxPackageSizeMb = maxPackageSizeMb; }
+    }
+
+    public static class Knowledge {
+        private String artifactsRoot = "../knowledge-service/data/artifacts";
+
+        public String getArtifactsRoot() { return artifactsRoot; }
+        public void setArtifactsRoot(String artifactsRoot) { this.artifactsRoot = artifactsRoot; }
     }
 
     // ---- PostConstruct for logging configuration values ----

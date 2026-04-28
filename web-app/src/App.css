@@ -25,6 +25,17 @@
     --color-success: #10b981;
     --color-warning: #f59e0b;
     --color-error: #ef4444;
+
+    /* Chart palette - harmonized with charcoal-neutral design */
+    --chart-1: #5b8db8;     /* Steel blue - primary data series */
+    --chart-2: #10b981;     /* = --color-success */
+    --chart-3: #f59e0b;     /* = --color-warning */
+    --chart-4: #ef4444;     /* = --color-error */
+    --chart-5: #8b7fc7;     /* Muted purple */
+    --chart-6: #c97082;     /* Muted rose */
+    --chart-7: #5e9bb5;     /* Muted teal */
+    --chart-8: #7ca65a;     /* Muted olive */
+
     --surface-1: #ffffff;
     --surface-2: #f7f8fa;
     --surface-3: #f1f3f6;
@@ -382,6 +393,11 @@ textarea {
     max-width: 45%;
 }
 
+.main-wrapper.with-right-panel.panel-preview-fullscreen .main-content {
+    flex: 1;
+    max-width: 100%;
+}
+
 .main-wrapper.with-right-panel.panel-drawer .main-content {
     flex: 0 0 55%;
     max-width: 55%;
@@ -422,6 +438,17 @@ textarea {
 .right-panel-host.open.preview {
     flex: 0 0 55%;
     width: 55%;
+}
+
+.right-panel-host.open.preview.fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 160;
+    flex: none;
+    width: 100vw;
+    height: 100vh;
+    border-left: none;
+    box-shadow: none;
 }
 
 .right-panel-host.open.drawer {

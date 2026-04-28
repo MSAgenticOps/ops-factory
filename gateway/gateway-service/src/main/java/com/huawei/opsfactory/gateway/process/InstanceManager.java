@@ -479,10 +479,10 @@ public class InstanceManager {
         env.put("GOOSE_SERVER__SECRET_KEY", hexSecret.toString());
         env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
         env.put("GOOSE_DISABLE_KEYRING", "1");
+        env.put("HOME", runtimeRoot.resolve("home").toString());
+        env.put("USERPROFILE", runtimeRoot.resolve("home").toString());
         env.put("XDG_CONFIG_HOME",
                 agentConfigService.getAgentConfigDir(agentId).toAbsolutePath().normalize().toString());
-
-        env.put("XDG_CONFIG_HOME", runtimeRoot.toString());
         boolean gooseTlsValue = properties.isGooseTls();
         env.put("GOOSE_TLS", String.valueOf(gooseTlsValue));
         log.info("buildEnvironment: properties.isGooseTls()={}, setting GOOSE_TLS={} for {}:{}",
@@ -584,7 +584,7 @@ public class InstanceManager {
 
     /**
      * Kill a hung instance asynchronously so the next getOrSpawn() will create a fresh one.
-     * Called by SseRelayService when a timeout is detected (goosed is deadlocked).
+     * Called by gateway health and timeout handlers when goosed is considered unrecoverable.
      */
     public void forceRecycle(String agentId, String userId) {
         String key = ManagedInstance.buildKey(agentId, userId);

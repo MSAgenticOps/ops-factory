@@ -4,6 +4,45 @@
     gap: var(--spacing-3);
 }
 
+.history-toolbar-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.history-toolbar-controls::-webkit-scrollbar {
+    display: none;
+}
+
+.history-toolbar-controls .list-search {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.history-toolbar-controls .list-search-input-wrapper:focus-within {
+    border-color: var(--color-border);
+    box-shadow: none;
+}
+
+.history-toolbar-controls .filter-select-field {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
+.history-toolbar-controls .filter-select {
+    min-width: 260px;
+}
+
+.history-toolbar-controls .seg-filter {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
 .session-item {
     display: flex;
     align-items: center;
@@ -59,11 +98,31 @@
     gap: var(--spacing-3);
 }
 
+.session-agent-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(148, 163, 184, 0.16);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+}
+
+.history-page .session-type-badge.user {
+    padding: 4px 10px;
+    background: rgba(148, 163, 184, 0.16);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
 .session-actions {
     display: flex;
     gap: var(--spacing-2);
     justify-content: flex-end;
-    flex: 0 0 88px;
+    flex: 0 0 auto;
+    min-width: 128px;
     opacity: 0;
     transition: opacity var(--transition-fast);
 }
@@ -97,7 +156,49 @@
     color: var(--color-text-secondary);
 }
 
+.session-meta-id {
+    color: var(--color-text-muted);
+    opacity: 0.68;
+    font-size: 0.92em;
+    letter-spacing: 0.01em;
+}
+
+.history-rename-help {
+    margin: var(--spacing-2) 0 0;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
 @media (max-width: 768px) {
+    .history-toolbar-controls {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .history-toolbar-controls .list-search {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .history-toolbar-controls .filter-select-field {
+        align-self: center;
+    }
+
+    .history-toolbar-controls .filter-select {
+        min-width: 200px;
+    }
+
+    .history-toolbar-controls .seg-filter {
+        align-self: center;
+    }
+
+    .history-toolbar-controls .seg-filter-btn {
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: var(--font-size-xs);
+    }
+
     .session-item {
         flex-direction: column;
         align-items: flex-start;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode, type SVGProps } from 'react'
+import { useState, useEffect, useMemo, useCallback, type ReactNode, type SVGProps } from 'react'
 import {
     CodeXml,
     Presentation,
@@ -12,7 +12,6 @@ import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListCard from '../../../platform/ui/list/ListCard'
 import ListFooter from '../../../platform/ui/list/ListFooter'
-import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
@@ -22,6 +21,8 @@ import '../styles/files.css'
 interface FileInfo {
     name: string
     path: string
+    rootId?: string
+    displayPath?: string
     size: number
     modifiedAt: string
     type: string
@@ -32,13 +33,16 @@ interface AgentFile extends FileInfo {
     agentName: string
 }
 
-type FileCategory = 'all' | 'doc' | 'sheet' | 'slide' | 'markdown' | 'html' | 'others'
+type FileCategory = 'all' | 'doc' | 'sheet' | 'slide' | 'csv' | 'json' | 'txt' | 'markdown' | 'html' | 'others'
 
 const FILE_CATEGORIES: { key: FileCategory; labelKey: string; types: string[] }[] = [
     { key: 'all', labelKey: 'files.categories.all', types: [] },
     { key: 'doc', labelKey: 'files.categories.doc', types: ['docx', 'doc'] },
-    { key: 'sheet', labelKey: 'files.categories.sheet', types: ['xlsx', 'xls', 'csv', 'tsv'] },
+    { key: 'sheet', labelKey: 'files.categories.sheet', types: ['xlsx', 'xls'] },
     { key: 'slide', labelKey: 'files.categories.slide', types: ['pptx', 'ppt'] },
+    { key: 'csv', labelKey: 'files.categories.csv', types: ['csv'] },
+    { key: 'json', labelKey: 'files.categories.json', types: ['json'] },
+    { key: 'txt', labelKey: 'files.categories.txt', types: ['txt'] },
     { key: 'markdown', labelKey: 'files.categories.markdown', types: ['md', 'markdown'] },
     { key: 'html', labelKey: 'files.categories.html', types: ['html', 'htm'] },
 ]
@@ -210,8 +214,13 @@ function getFileVisual(type: string | undefined): { icon: FileIconComponent; ton
 
 function getDownloadUrl(file: AgentFile, userId?: string | null): string {
     let url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+    if (file.rootId) url += `&rootId=${encodeURIComponent(file.rootId)}`
     if (userId) url += `&uid=${encodeURIComponent(userId)}`
     return url
+}
+
+function getFileKey(file: AgentFile): string {
+    return `${file.agentId}-${file.rootId || 'workingDir'}-${file.path}`
 }
 
 export default function FilesPage() {
@@ -230,51 +239,60 @@ export default function FilesPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(20)
 
-    useEffect(() => {
-        const loadFiles = async () => {
-            if (!isConnected || agents.length === 0) {
-                setIsLoading(false)
-                return
-            }
-
-            setIsLoading(true)
-            setError(null)
-
-            try {
-                const allFiles: AgentFile[] = []
-                const results = await Promise.allSettled(
-                    agents.map(async (agent) => {
-                        const response = await fetch(`${GATEWAY_URL}/agents/${agent.id}/files`, {
-                            headers: gatewayHeaders(userId),
-                        })
-                        if (!response.ok) return []
-                        const data = await response.json() as { files: FileInfo[] }
-                        return (data.files || []).map((file) => ({
-                            ...file,
-                            agentId: agent.id,
-                            agentName: agent.name,
-                        }))
-                    }),
-                )
-
-                for (const result of results) {
-                    if (result.status === 'fulfilled') {
-                        allFiles.push(...result.value)
-                    }
-                }
-
-                allFiles.sort((left, right) => new Date(right.modifiedAt).getTime() - new Date(left.modifiedAt).getTime())
-                setFiles(allFiles)
-            } catch (err) {
-                console.error('Failed to load files:', err)
-                setError(err instanceof Error ? err.message : 'Failed to load files')
-            } finally {
-                setIsLoading(false)
-            }
+    const loadFiles = useCallback(async () => {
+        if (!isConnected || agents.length === 0) {
+            setIsLoading(false)
+            return
         }
 
-        void loadFiles()
+        setIsLoading(true)
+        setError(null)
+
+        try {
+            const allFiles: AgentFile[] = []
+            const results = await Promise.allSettled(
+                agents.map(async (agent) => {
+                    const response = await fetch(`${GATEWAY_URL}/agents/${agent.id}/files`, {
+                        headers: gatewayHeaders(userId),
+                    })
+                    if (!response.ok) return []
+                    const data = await response.json() as { files: FileInfo[] }
+                    return (data.files || []).map((file) => ({
+                        ...file,
+                        agentId: agent.id,
+                        agentName: agent.name,
+                    }))
+                }),
+            )
+
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    allFiles.push(...result.value)
+                }
+            }
+
+            allFiles.sort((left, right) => new Date(right.modifiedAt).getTime() - new Date(left.modifiedAt).getTime())
+            setFiles(allFiles)
+        } catch (err) {
+            console.error('Failed to load files:', err)
+            setError(err instanceof Error ? err.message : 'Failed to load files')
+        } finally {
+            setIsLoading(false)
+        }
     }, [agents, isConnected, userId])
+
+    useEffect(() => {
+        void loadFiles()
+    }, [loadFiles])
+
+    useEffect(() => {
+        const handleFileUpdated = () => {
+            void loadFiles()
+        }
+
+        window.addEventListener('opsfactory:file-updated', handleFileUpdated)
+        return () => window.removeEventListener('opsfactory:file-updated', handleFileUpdated)
+    }, [loadFiles])
 
     const categoryCounts = useMemo(() => {
         const counts: Record<FileCategory, number> = {
@@ -282,6 +300,9 @@ export default function FilesPage() {
             doc: 0,
             sheet: 0,
             slide: 0,
+            csv: 0,
+            json: 0,
+            txt: 0,
             markdown: 0,
             html: 0,
             others: 0,
@@ -304,6 +325,7 @@ export default function FilesPage() {
             const term = searchTerm.toLowerCase()
             result = result.filter((file) =>
                 file.name?.toLowerCase().includes(term) ||
+                file.displayPath?.toLowerCase().includes(term) ||
                 file.agentName?.toLowerCase().includes(term) ||
                 (file.type || '').toLowerCase().includes(term),
             )
@@ -324,10 +346,11 @@ export default function FilesPage() {
     }, [searchTerm, activeCategory])
 
     const handleDelete = async (file: AgentFile) => {
-        const fileKey = `${file.agentId}-${file.path}`
+        const fileKey = getFileKey(file)
         setDeletingKey(fileKey)
         try {
-            const response = await fetch(`${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}`, {
+            const rootQuery = file.rootId ? `?rootId=${encodeURIComponent(file.rootId)}` : ''
+            const response = await fetch(`${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}${rootQuery}`, {
                 method: 'DELETE',
                 headers: gatewayHeaders(userId),
             })
@@ -336,8 +359,8 @@ export default function FilesPage() {
                 throw new Error(data?.error || `Failed to delete file: ${response.status}`)
             }
 
-            setFiles((prev) => prev.filter((current) => !(current.agentId === file.agentId && current.path === file.path)))
-            if (previewFile?.agentId === file.agentId && previewFile.path === file.path) {
+            setFiles((prev) => prev.filter((current) => getFileKey(current) !== fileKey))
+            if (previewFile?.agentId === file.agentId && previewFile.path === file.path && (previewFile.rootId || 'workingDir') === (file.rootId || 'workingDir')) {
                 closePreview()
             }
             setDeleteTarget(null)
@@ -386,7 +409,6 @@ export default function FilesPage() {
                                 </div>
                             </>
                         )}
-                        secondary={(searchTerm || activeCategory !== 'all') ? <ListResultsMeta>{t('common.resultsFound', { count: filteredFiles.length })}</ListResultsMeta> : undefined}
                     />
                 )}
                 footer={filteredFiles.length > 0 ? (
@@ -428,7 +450,7 @@ export default function FilesPage() {
                 ) : (
                     <div className="file-list">
                         {paginatedFiles.map((file) => {
-                            const fileKey = `${file.agentId}-${file.path}`
+                            const fileKey = getFileKey(file)
                             const isDeleting = deletingKey === fileKey
                             const { icon: FileIcon, tone } = getFileVisual(file.type)
 
@@ -442,6 +464,9 @@ export default function FilesPage() {
                                         <div className="file-meta">
                                             <div className="file-meta-tags">
                                                 <span className="file-agent-tag">{file.agentName}</span>
+                                                {file.displayPath && file.displayPath !== file.name && (
+                                                    <span className="file-agent-tag">{file.displayPath}</span>
+                                                )}
                                             </div>
                                             <div className="file-meta-details">
                                                 <span>{formatFileSize(file.size)}</span>
@@ -459,6 +484,8 @@ export default function FilesPage() {
                                                     path: file.path,
                                                     type: file.type,
                                                     agentId: file.agentId,
+                                                    rootId: file.rootId,
+                                                    displayPath: file.displayPath,
                                                 })}
                                             >
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
@@ -517,7 +544,7 @@ export default function FilesPage() {
                                 type="button"
                                 className="btn btn-secondary"
                                 onClick={() => setDeleteTarget(null)}
-                                disabled={deletingKey === `${deleteTarget.agentId}-${deleteTarget.path}`}
+                                disabled={deletingKey === getFileKey(deleteTarget)}
                             >
                                 取消
                             </button>
@@ -525,9 +552,9 @@ export default function FilesPage() {
                                 type="button"
                                 className="btn btn-danger"
                                 onClick={() => handleDelete(deleteTarget)}
-                                disabled={deletingKey === `${deleteTarget.agentId}-${deleteTarget.path}`}
+                                disabled={deletingKey === getFileKey(deleteTarget)}
                             >
-                                {deletingKey === `${deleteTarget.agentId}-${deleteTarget.path}` ? '删除中...' : '确认删除'}
+                                {deletingKey === getFileKey(deleteTarget) ? '删除中...' : '确认删除'}
                             </button>
                         </div>
                     </div>

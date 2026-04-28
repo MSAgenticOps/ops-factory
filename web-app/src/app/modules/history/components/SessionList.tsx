@@ -1,6 +1,7 @@
 import type { Session } from '@goosed/sdk'
 import { useTranslation } from 'react-i18next'
 import SessionItem from './SessionItem'
+import '../styles/history.css'
 
 export type SessionWithAgent = Session & { agentId?: string }
 
@@ -8,9 +9,11 @@ interface SessionListProps {
     sessions: SessionWithAgent[]
     isLoading?: boolean
     onResume: (session: SessionWithAgent) => void
+    onRename: (session: SessionWithAgent) => void
     onDelete: (session: SessionWithAgent) => void
     deletingSessionKeys?: Set<string>
     getSessionKey?: (session: SessionWithAgent) => string
+    agentNameById?: Record<string, string>
     onMarkUnread?: (session: SessionWithAgent) => void
 }
 
@@ -18,9 +21,11 @@ export default function SessionList({
     sessions,
     isLoading = false,
     onResume,
+    onRename,
     onDelete,
     deletingSessionKeys,
     getSessionKey,
+    agentNameById,
     onMarkUnread,
 }: SessionListProps) {
     const { t } = useTranslation()
@@ -85,7 +90,9 @@ export default function SessionList({
                 <SessionItem
                     key={`${session.agentId || 'unknown'}:${session.id}`}
                     session={session}
+                    agentName={session.agentId ? agentNameById?.[session.agentId] : undefined}
                     onResume={onResume}
+                    onRename={onRename}
                     onDelete={onDelete}
                     isDeleting={deletingSessionKeys?.has(getSessionKey ? getSessionKey(session) : session.id)}
                     onMarkUnread={onMarkUnread}

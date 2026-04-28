@@ -8,13 +8,14 @@ import { useToast } from '../../../platform/providers/ToastContext'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListFooter from '../../../platform/ui/list/ListFooter'
-import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
+import FilterSelect from '../../../platform/ui/filters/FilterSelect'
+import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
 import { isScheduledSession } from '../../../../config/runtime'
+import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
-import '../styles/history.css'
 
 interface AgentSession extends Session {
     agentId: string
@@ -25,6 +26,14 @@ type HistoryFilter = 'user' | 'scheduled' | 'all'
 function parseHistoryFilter(raw: string | null): HistoryFilter {
     if (raw === 'scheduled' || raw === 'all' || raw === 'user') return raw
     return 'user'
+}
+
+const ALL_AGENTS = '__all__'
+
+function hasSessionMessages(session: Session): boolean {
+    if (typeof session.message_count === 'number') return session.message_count > 0
+    if (Array.isArray(session.conversation)) return session.conversation.length > 0
+    return true
 }
 
 export default function HistoryPage() {
@@ -39,15 +48,31 @@ export default function HistoryPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [deletingSessionKeys, setDeletingSessionKeys] = useState<Set<string>>(new Set())
+    const [renamingSession, setRenamingSession] = useState<SessionWithAgent | null>(null)
+    const [isRenaming, setIsRenaming] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(20)
     const historyFilter = parseHistoryFilter(searchParams.get('type'))
+    const selectedAgent = useMemo(() => {
+        const raw = searchParams.get('agent')
+        if (!raw || raw === ALL_AGENTS) return ALL_AGENTS
+        return agents.some((agent) => agent.id === raw) ? raw : ALL_AGENTS
+    }, [agents, searchParams])
     const setHistoryFilter = useCallback((filter: HistoryFilter) => {
         const nextParams = new URLSearchParams(searchParams)
         if (filter === 'user') {
             nextParams.delete('type')
         } else {
             nextParams.set('type', filter)
+        }
+        setSearchParams(nextParams, { replace: true })
+    }, [searchParams, setSearchParams])
+    const setSelectedAgent = useCallback((agentId: string) => {
+        const nextParams = new URLSearchParams(searchParams)
+        if (!agentId || agentId === ALL_AGENTS) {
+            nextParams.delete('agent')
+        } else {
+            nextParams.set('agent', agentId)
         }
         setSearchParams(nextParams, { replace: true })
     }, [searchParams, setSearchParams])
@@ -83,7 +108,7 @@ export default function HistoryPage() {
                     }
                 }
 
-                allSessions.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                allSessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 if (!cancelled) {
                     setSessions(allSessions)
                 }
@@ -105,13 +130,20 @@ export default function HistoryPage() {
         }
     }, [getClient, agents, isConnected])
 
+    const nonEmptySessions = useMemo(() => sessions.filter(hasSessionMessages), [sessions])
+
+    const filteredByAgent = useMemo(() => {
+        if (selectedAgent === ALL_AGENTS) return nonEmptySessions
+        return nonEmptySessions.filter((session) => session.agentId === selectedAgent)
+    }, [nonEmptySessions, selectedAgent])
+
     const filteredByType = useMemo(() => {
-        if (historyFilter === 'all') return sessions
+        if (historyFilter === 'all') return filteredByAgent
         if (historyFilter === 'scheduled') {
-            return sessions.filter((session) => isScheduledSession(session))
+            return filteredByAgent.filter((session) => isScheduledSession(session))
         }
-        return sessions.filter((session) => (session.session_type || 'user') === 'user' && !session.schedule_id)
-    }, [sessions, historyFilter])
+        return filteredByAgent.filter((session) => (session.session_type || 'user') === 'user' && !session.schedule_id)
+    }, [filteredByAgent, historyFilter])
 
     const filteredSessions = useMemo(() => {
         if (!searchTerm.trim()) return filteredByType
@@ -132,14 +164,16 @@ export default function HistoryPage() {
 
     useEffect(() => {
         setCurrentPage(1)
-    }, [historyFilter, searchTerm])
+    }, [historyFilter, searchTerm, selectedAgent])
 
     const handleResumeSession = (session: SessionWithAgent) => {
         const resolvedAgentId = session.agentId || agents[0]?.id || ''
         if (resolvedAgentId && isScheduledSession(session)) {
             markSessionRead(resolvedAgentId, session.id)
         }
-        navigate(`/chat?sessionId=${session.id}&agent=${resolvedAgentId}`)
+        navigate('/chat', {
+            state: buildChatSessionState(session.id, resolvedAgentId),
+        })
     }
 
     const handleMarkUnread = (session: SessionWithAgent) => {
@@ -148,6 +182,37 @@ export default function HistoryPage() {
         if (!agentId) return
         markSessionUnread(agentId, session.id)
     }
+
+    const handleRenameSession = useCallback((session: SessionWithAgent) => {
+        setRenamingSession(session)
+    }, [])
+
+    const handleRenameSave = useCallback(async (nextTitle: string) => {
+        if (!renamingSession) return
+
+        const resolvedAgentId = renamingSession.agentId || agents[0]?.id || ''
+        if (!resolvedAgentId) {
+            showToast('error', t('history.renameSessionFailed'))
+            return
+        }
+
+        setIsRenaming(true)
+        try {
+            await getClient(resolvedAgentId).updateSessionName(renamingSession.id, nextTitle)
+            setSessions((prev) => prev.map((session) => (
+                session.id === renamingSession.id && session.agentId === renamingSession.agentId
+                    ? { ...session, name: nextTitle }
+                    : session
+            )))
+            setRenamingSession(null)
+            showToast('success', t('history.renameSessionSuccess'))
+        } catch (err) {
+            console.error('Failed to rename session:', err)
+            showToast('error', t('history.renameSessionFailed'))
+        } finally {
+            setIsRenaming(false)
+        }
+    }, [agents, getClient, renamingSession, showToast, t])
 
     const handleDeleteSession = async (session: SessionWithAgent) => {
         const resolvedAgentId = session.agentId || agents[0]?.id
@@ -224,11 +289,24 @@ export default function HistoryPage() {
                 controls={(
                     <ListToolbar
                         primary={(
-                            <>
+                            <div className="history-toolbar-controls">
                                 <ListSearchInput
                                     value={searchTerm}
                                     placeholder={t('history.searchPlaceholder')}
                                     onChange={setSearchTerm}
+                                />
+
+                                <FilterSelect
+                                    value={selectedAgent}
+                                    options={[
+                                        { value: ALL_AGENTS, label: t('history.allAgents') },
+                                        ...agents.map((agent) => ({
+                                            value: agent.id,
+                                            label: agent.name,
+                                        })),
+                                    ]}
+                                    onChange={setSelectedAgent}
+                                    disabled={agents.length === 0}
                                 />
 
                                 <div className="seg-filter" role="tablist" aria-label="Session type filter">
@@ -242,9 +320,9 @@ export default function HistoryPage() {
                                         {t('history.filterAll')}
                                     </button>
                                 </div>
-                            </>
+                            </div>
                         )}
-                        secondary={searchTerm ? <ListResultsMeta>{t('common.resultsFound', { count: filteredSessions.length })}</ListResultsMeta> : undefined}
+                        secondary={undefined}
                     />
                 )}
                 footer={filteredSessions.length > 0 ? (
@@ -280,13 +358,27 @@ export default function HistoryPage() {
                         sessions={paginatedSessions}
                         isLoading={isLoading}
                         onResume={handleResumeSession}
+                        onRename={handleRenameSession}
                         onDelete={handleDeleteSession}
                         deletingSessionKeys={deletingSessionKeys}
                         getSessionKey={getSessionKey}
+                        agentNameById={Object.fromEntries(agents.map((agent) => [agent.id, agent.name]))}
                         onMarkUnread={historyFilter !== 'user' ? handleMarkUnread : undefined}
                     />
                 )}
             </ListWorkbench>
+
+            {renamingSession && (
+                <RenameSessionDialog
+                    initialTitle={renamingSession.name || ''}
+                    isSaving={isRenaming}
+                    onClose={() => {
+                        if (isRenaming) return
+                        setRenamingSession(null)
+                    }}
+                    onSave={handleRenameSave}
+                />
+            )}
         </div>
     )
 }

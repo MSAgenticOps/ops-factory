@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import './Message.css'
@@ -25,10 +26,14 @@ interface MessageProps {
     userId?: string | null
     isStreaming?: boolean
     onRetry?: () => void
+    onCancelRequest?: () => void
     sourceDocuments?: Citation[]
     fetchedDocuments?: Citation[]
     outputFiles?: DetectedFile[]
     showFileCapsules?: boolean
+    showDateInTimestamp?: boolean
+    isContinuation?: boolean
+    isLastInGroup?: boolean
 }
 
 interface ToolCallPair {
@@ -51,6 +56,20 @@ interface ProcessEntry {
 interface ScrollFadeState {
     hasTopFade: boolean
     hasBottomFade: boolean
+}
+
+function getFileDisplayParts(fileName: string, displayPath?: string, filePath?: string): {
+    name: string
+    fullPath: string
+} {
+    const fullPath = (displayPath || filePath || fileName || '').replace(/\\/g, '/')
+    if (!fullPath) {
+        return { name: fileName || '', fullPath: '' }
+    }
+    const parts = fullPath.split('/').filter(Boolean)
+    const fallbackName = parts[parts.length - 1] || fileName || fullPath
+    const name = fileName && !fileName.includes('/') ? fileName : fallbackName
+    return { name, fullPath }
 }
 
 function ThinkingStatusIcon({ isStreaming, isOpen }: { isStreaming: boolean; isOpen: boolean }) {
@@ -84,6 +103,14 @@ function normalizeProcessText(text: string | undefined): string {
     return (text || '').replace(/\s+/g, ' ').trim()
 }
 
+function formatMessageTime(epochSeconds: number, showDate = false): string {
+    const date = new Date(epochSeconds * 1000)
+    const pad = (value: number) => String(value).padStart(2, '0')
+    const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+    if (!showDate) return time
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`
+}
+
 function MermaidBlock({ code }: { code: string }) {
     const iframeRef = useRef<HTMLIFrameElement>(null)
     const html = useMemo(() => createCleanMermaidHtml(code), [code])
@@ -114,12 +141,14 @@ function MermaidBlock({ code }: { code: string }) {
     )
 }
 
-function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
-    filePath: string; fileName: string; fileExt: string; agentId?: string; userId?: string | null
+function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId, userId }: {
+    filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
-    const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
+    const { t } = useTranslation()
+    const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
+    const { name: visibleName, fullPath } = getFileDisplayParts(fileName, displayPath, filePath)
 
     const handlePreview = (e: React.MouseEvent) => {
         e.preventDefault()
@@ -127,12 +156,14 @@ function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
             name: fileName,
             path: filePath,
             type: fileExt,
+            rootId,
+            displayPath,
             agentId: agentId || '',
         })
     }
 
     return (
-        <div className="file-capsule">
+        <div className="file-capsule" title={fullPath}>
             <span className="file-capsule-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -142,17 +173,19 @@ function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
                     <polyline points="10 9 9 9 8 9" />
                 </svg>
             </span>
-            <span className="file-capsule-name">{fileName}</span>
+            <span className="file-capsule-details">
+                <span className="file-capsule-name">{visibleName}</span>
+            </span>
             <div className="file-capsule-actions">
                 {canPreview && (
-                    <button className="file-capsule-btn" onClick={handlePreview} title="Preview">
+                    <button className="file-capsule-btn" onClick={handlePreview} aria-label={t('files.preview')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                             <circle cx="12" cy="12" r="3" />
                         </svg>
                     </button>
                 )}
-                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" title="Download">
+                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" aria-label={t('files.download')}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
@@ -164,6 +197,35 @@ function FileCapsule({ filePath, fileName, fileExt, agentId, userId }: {
     )
 }
 
+function CopyIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+    )
+}
+
+function CheckIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
+    )
+}
+
+function SkillChip({ name }: { name: string }) {
+    return (
+        <span className="message-skill-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14" aria-hidden="true">
+                <path d="M12 3 4.5 7.25 12 11.5l7.5-4.25L12 3Z" />
+                <path d="m4.5 12.25 7.5 4.25 7.5-4.25" />
+            </svg>
+            <span>{name}</span>
+        </span>
+    )
+}
+
 function MessageInner({
     message,
     toolResponses = new Map(),
@@ -171,11 +233,16 @@ function MessageInner({
     userId,
     isStreaming = false,
     onRetry,
+    onCancelRequest,
     sourceDocuments,
     fetchedDocuments,
     outputFiles = [],
     showFileCapsules = true,
+    showDateInTimestamp = false,
+    isContinuation = false,
+    isLastInGroup = true,
 }: MessageProps) {
+    const { t } = useTranslation()
     const isUser = message.role === 'user'
 
     const fullText = getFullTextContent(message)
@@ -189,19 +256,38 @@ function MessageInner({
         let hasStructuredThinking = false
         let textBufferKind: 'reasoning' | 'thinking' | null = null
         let textBuffer = ''
+        const lastSeenTextByKind: Record<'reasoning' | 'thinking', string | null> = { reasoning: null, thinking: null }
         const pushProcessTextEntry = (entry: ProcessEntry) => {
-            const previous = items[items.length - 1]
             const currentText = normalizeProcessText(entry.content)
-            const previousText = normalizeProcessText(previous?.content)
+            if (entry.kind === 'reasoning' || entry.kind === 'thinking') {
+                if (currentText.length === 0) return
+                if (lastSeenTextByKind[entry.kind] === currentText) return
 
-            if (
-                previous &&
-                (previous.kind === 'reasoning' || previous.kind === 'thinking') &&
-                (entry.kind === 'reasoning' || entry.kind === 'thinking') &&
-                currentText.length > 0 &&
-                currentText === previousText
-            ) {
-                return
+                const lastIndex = (() => {
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        if (items[i].kind === entry.kind) return i
+                    }
+                    return -1
+                })()
+
+                if (lastIndex >= 0) {
+                    const previousEntry = items[lastIndex]
+                    const previousText = normalizeProcessText(previousEntry.content)
+                    if (previousText.length > 0) {
+                        if (previousText === currentText || previousText.startsWith(currentText)) {
+                            lastSeenTextByKind[entry.kind] = previousText
+                            return
+                        }
+
+                        if (currentText.startsWith(previousText)) {
+                            previousEntry.content = entry.content
+                            lastSeenTextByKind[entry.kind] = currentText
+                            return
+                        }
+                    }
+                }
+
+                lastSeenTextByKind[entry.kind] = currentText
             }
 
             items.push(entry)
@@ -217,7 +303,7 @@ function MessageInner({
             pushProcessTextEntry({
                 key: `${message.id || 'message'}-${textBufferKind}-${items.length}`,
                 kind: textBufferKind,
-                label: textBufferKind === 'reasoning' ? '推理过程' : '思考过程',
+                label: textBufferKind === 'reasoning' ? t('chat.reasoning') : t('chat.thinkingLabel'),
                 content: textBuffer,
             })
 
@@ -278,7 +364,7 @@ function MessageInner({
                 pushProcessTextEntry({
                     key: `${message.id || 'message'}-reasoning-fallback`,
                     kind: 'reasoning',
-                    label: '推理过程',
+                    label: t('chat.reasoning'),
                     content: reasoningText,
                 })
             }
@@ -290,19 +376,28 @@ function MessageInner({
                 pushProcessTextEntry({
                     key: `${message.id || 'message'}-thinking-fallback`,
                     kind: 'thinking',
-                    label: '思考过程',
+                    label: t('chat.thinkingLabel'),
                     content: thinkingText,
                 })
             }
         }
 
         return items
-    }, [isUser, message.content, message.id, toolResponses])
+    }, [isUser, message.content, message.id, toolResponses, t])
 
     const [openState, setOpenState] = useState<Record<string, boolean>>({})
     const [fadeState, setFadeState] = useState<Record<string, ScrollFadeState>>({})
+    const [copied, setCopied] = useState(false)
+    const lastTimeRef = useRef<number | null>(null)
     const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const wasStreamingRef = useRef(isStreaming)
+
+    if (typeof message.created === 'number') {
+        lastTimeRef.current = message.created
+    }
+    const displayTimeLabel = lastTimeRef.current != null
+        ? formatMessageTime(lastTimeRef.current, showDateInTimestamp)
+        : null
 
     useEffect(() => {
         setOpenState(current => {
@@ -374,6 +469,15 @@ function MessageInner({
         if (isStreaming) return
         setOpenState(current => ({ ...current, [key]: !current[key] }))
     }
+
+    const handleCopyMessage = useCallback(() => {
+        const text = getFullTextContent(message)
+        if (!text) return
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }).catch((err) => { console.warn('Failed to copy message:', err) })
+    }, [message])
 
     const handleScroll = (key: string) => {
         const element = contentRefs.current[key]
@@ -456,15 +560,26 @@ function MessageInner({
         )
     }
 
-    const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
+    const sessionError = !isUser ? message.metadata?.sessionError : undefined
+    const sessionErrorActions = sessionError?.suggestedActions ?? []
+    const canRetrySessionError = !!sessionError && sessionError.retryable !== false && sessionErrorActions.includes('retry') && !!onRetry
+    const canCancelSessionError = !!sessionError && sessionErrorActions.includes('cancel') && !!onCancelRequest
+    const passiveSessionErrorActions = sessionErrorActions.filter(action => {
+        if (action === 'retry') return !canRetrySessionError
+        if (action === 'cancel') return !canCancelSessionError
+        return true
+    })
+    const isEmptyAssistantResponse = !isUser && !sessionError && message.content.length === 0 && !isStreaming
+    const selectedSkill = isUser ? message.metadata?.selectedSkill : undefined
+    const hasUserAttachedFiles = isUser && !!message.metadata?.attachedFiles?.length
 
-    if (isUser && !fullText) {
+    if (isUser && !fullText && !selectedSkill && !hasUserAttachedFiles) {
         return null
     }
 
     const hasProcessEntries = !isUser && processEntries.length > 0
 
-    if (!isUser && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
+    if (!isUser && !sessionError && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
         return null
     }
 
@@ -486,12 +601,60 @@ function MessageInner({
     const shouldShowRetrievedReferences = !isUser && !isStreaming && retrievedDocuments.length > 0
 
     return (
-        <div className={`message ${isUser ? 'user' : 'assistant'} animate-slide-in`}>
-            <div className="message-avatar">
-                {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
-            </div>
+        <div className={`message ${isUser ? 'user' : 'assistant'}${isContinuation ? ' continuation' : ''} animate-slide-in`}>
+            {!isContinuation && (
+                <div className="message-avatar">
+                    {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
+                </div>
+            )}
             <div className="message-body">
                 <div className="message-content">
+                    {sessionError && (
+                        <div className="message-error-banner">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span className="message-error-body">
+                                {t(sessionError.messageKey, { defaultValue: sessionError.fallback })}
+                                {(sessionError.traceId || sessionError.requestId || sessionError.sessionId || sessionError.agentId) && (
+                                    <small className="message-error-detail">
+                                        {t('chat.sessionErrors.reference', {
+                                            traceId: sessionError.traceId || '-',
+                                            requestId: sessionError.requestId || '-',
+                                            sessionId: sessionError.sessionId || '-',
+                                            agentId: sessionError.agentId || '-',
+                                        })}
+                                    </small>
+                                )}
+                                {sessionError.detail && (
+                                    <details className="message-error-detail">
+                                        <summary>{t('chat.sessionErrors.details')}</summary>
+                                        <span>{sessionError.detail}</span>
+                                    </details>
+                                )}
+                                {passiveSessionErrorActions.length > 0 && (
+                                    <small className="message-error-actions">
+                                        {passiveSessionErrorActions
+                                            .map(action => t(`chat.sessionErrors.actions.${action}`))
+                                            .join(' / ')}
+                                    </small>
+                                )}
+                            </span>
+                            {canRetrySessionError && (
+                                <button className="message-error-retry" onClick={onRetry}>
+                                    {t('chat.sessionErrors.actions.retry')}
+                                </button>
+                            )}
+                            {canCancelSessionError && (
+                                <button className="message-error-retry" onClick={onCancelRequest}>
+                                    {t('chat.sessionErrors.actions.cancel')}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {isEmptyAssistantResponse && (
                         <div className="message-error-banner">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -499,10 +662,10 @@ function MessageInner({
                                 <line x1="12" y1="8" x2="12" y2="12" />
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
                             </svg>
-                            <span>The model did not return a valid response. This may be a temporary service issue.</span>
+                            <span>{t('chat.emptyAssistantResponse')}</span>
                             {onRetry && (
                                 <button className="message-error-retry" onClick={onRetry}>
-                                    Retry
+                                    {t('common.tryAgain')}
                                 </button>
                             )}
                         </div>
@@ -574,6 +737,12 @@ function MessageInner({
                         </div>
                     )}
 
+                    {selectedSkill && (
+                        <div className="message-skill-chip-row">
+                            <SkillChip name={selectedSkill.name} />
+                        </div>
+                    )}
+
                     {displayText && (
                         <div className="message-text">
                             <ReactMarkdown
@@ -622,6 +791,8 @@ function MessageInner({
                                     filePath={file.path}
                                     fileName={file.name}
                                     fileExt={file.ext}
+                                    rootId={file.rootId}
+                                    displayPath={file.displayPath}
                                     agentId={agentId}
                                     userId={userId}
                                 />
@@ -633,10 +804,12 @@ function MessageInner({
                         <div className="file-capsules-container">
                             {outputFiles.map((file, idx) => (
                                 <FileCapsule
-                                    key={`${file.path}-${idx}`}
+                                    key={`${file.rootId || 'workingDir'}-${file.path}-${idx}`}
                                     filePath={file.path}
                                     fileName={file.name}
                                     fileExt={file.ext}
+                                    rootId={file.rootId}
+                                    displayPath={file.displayPath}
                                     agentId={agentId}
                                     userId={userId}
                                 />
@@ -666,6 +839,23 @@ function MessageInner({
                         </div>
                     )}
                 </div>
+
+                {displayTimeLabel && isLastInGroup && (
+                    <div className="message-meta">
+                        {!isUser && (
+                            <button
+                                type="button"
+                                className="message-copy-btn"
+                                onClick={handleCopyMessage}
+                                title={t('chat.copyMessage')}
+                                aria-label={t('chat.copyMessage')}
+                            >
+                                {copied ? <CheckIcon /> : <CopyIcon />}
+                            </button>
+                        )}
+                        <span className="message-timestamp">{displayTimeLabel}</span>
+                    </div>
+                )}
             </div>
         </div>
     )

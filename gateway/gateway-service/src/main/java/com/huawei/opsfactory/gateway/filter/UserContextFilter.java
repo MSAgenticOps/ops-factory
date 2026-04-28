@@ -2,6 +2,7 @@ package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.UserRole;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.Logger;
@@ -16,19 +17,39 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 @Component
 @Order(3)
 public class UserContextFilter implements WebFilter {
 
     private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
+    private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     public static final String USER_ID_ATTR = "userId";
     public static final String USER_ROLE_ATTR = "userRole";
 
     private final PrewarmService prewarmService;
+    private final GatewayProperties gatewayProperties;
 
-    public UserContextFilter(PrewarmService prewarmService) {
+    // Cached set for fast lookup; refreshed when the underlying list changes.
+    private volatile Set<String> adminUserSet = Set.of();
+    private volatile List<String> cachedAdminList = List.of();
+
+    public UserContextFilter(PrewarmService prewarmService, GatewayProperties gatewayProperties) {
         this.prewarmService = prewarmService;
+        this.gatewayProperties = gatewayProperties;
+    }
+
+    private Set<String> resolveAdminUserSet() {
+        List<String> current = gatewayProperties.getAdminUsers();
+        if (current != cachedAdminList) {
+            cachedAdminList = current;
+            adminUserSet = current == null ? Set.of() : new HashSet<>(current);
+        }
+        return adminUserSet;
     }
 
     private static boolean isSystemEndpoint(String path) {
@@ -40,6 +61,10 @@ public class UserContextFilter implements WebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().value();
+
+        if (path.startsWith(CHANNEL_WEBHOOK_PREFIX)) {
+            return chain.filter(exchange);
+        }
 
         String userId = request.getHeaders().getFirst(GatewayConstants.HEADER_USER_ID);
         if (userId == null || userId.isBlank()) {
@@ -55,7 +80,7 @@ public class UserContextFilter implements WebFilter {
             return exchange.getResponse().setComplete();
         }
 
-        UserRole role = UserRole.fromUserId(userId);
+        UserRole role = UserRole.fromUserId(userId, resolveAdminUserSet());
 
         exchange.getAttributes().put(USER_ID_ATTR, userId);
         exchange.getAttributes().put(USER_ROLE_ATTR, role);

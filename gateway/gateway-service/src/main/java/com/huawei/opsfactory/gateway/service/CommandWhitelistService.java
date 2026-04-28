@@ -25,14 +25,15 @@ public class CommandWhitelistService {
 
     private static final List<String> DEFAULT_COMMANDS = List.of(
             "ps", "tail", "grep", "cat", "ls", "df", "free", "netstat",
-            "top", "cd", "find", "wc", "head", "date", "uptime",
+            "top", "cd", "find", "wc", "head", "date", "uptime", "echo",
             "iostat", "ping"
     );
 
     private static final Map<String, String> DEFAULT_RISK_LEVELS = Map.ofEntries(
             Map.entry("ps", "low"), Map.entry("tail", "low"), Map.entry("grep", "low"),
             Map.entry("cat", "low"), Map.entry("ls", "low"), Map.entry("df", "low"),
-            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("date", "low"),
+            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("echo", "low"),
+            Map.entry("date", "low"),
             Map.entry("uptime", "low"), Map.entry("cd", "low"), Map.entry("find", "low"),
             Map.entry("wc", "low"),
             Map.entry("netstat", "medium"), Map.entry("top", "medium"),
@@ -128,8 +129,12 @@ public class CommandWhitelistService {
 
     /**
      * Validate a command string by splitting on pipe and semicolon delimiters,
-     * extracting the first word of each subcommand, and checking if all are
-     * in the whitelist and enabled.
+     * normalizing each subcommand (stripping path prefixes), and checking
+     * against enabled patterns using two matching modes:
+     * <ul>
+     *   <li>Simple mode (no spaces in pattern) — matches the command name only</li>
+     *   <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
+     * </ul>
      *
      * @return a list of rejected command names (empty if all pass)
      */
@@ -141,33 +146,42 @@ public class CommandWhitelistService {
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
 
-        Map<String, Boolean> enabledPatterns = new LinkedHashMap<>();
+        List<String> enabledPatterns = new ArrayList<>();
         for (Map<String, Object> cmd : commands) {
             Object patternObj = cmd.get("pattern");
             Object enabledObj = cmd.get("enabled");
             if (patternObj != null) {
                 boolean enabled = !(enabledObj instanceof Boolean b) || b;
-                enabledPatterns.put(patternObj.toString(), enabled);
+                if (enabled) {
+                    enabledPatterns.add(patternObj.toString());
+                }
             }
         }
 
-        // Split command by | and ;
-        String[] subcommands = command.split("[|;]");
+        // Split command by | and ; (shell-aware: respects quoting)
+        List<String> subcommands = splitShellPipe(command);
         for (String sub : subcommands) {
             String trimmed = sub.trim();
             if (trimmed.isEmpty()) {
                 continue;
             }
-            // Extract first word (the command name)
-            String[] parts = trimmed.split("\\s+", 2);
-            String cmdName = parts[0].trim();
-            if (cmdName.isEmpty()) {
+
+            String normalized = normalizeSubcommand(trimmed);
+            if (normalized.isEmpty()) {
                 continue;
             }
 
-            Boolean enabled = enabledPatterns.get(cmdName);
-            if (enabled == null || !enabled) {
-                rejected.add(cmdName);
+            boolean matched = false;
+            for (String pattern : enabledPatterns) {
+                if (matchesPattern(normalized, pattern)) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                // Report the original first word for clarity
+                String[] parts = trimmed.split("\\s+", 2);
+                rejected.add(parts[0].trim());
             }
         }
 
@@ -178,28 +192,127 @@ public class CommandWhitelistService {
      * Determine the risk level of a command string.
      * Returns "high" if any sub-command is not in the whitelist,
      * "medium" if any sub-command is medium, otherwise "low".
+     * When multiple patterns match, the longest (most specific) pattern's risk level wins.
      */
     public String getRiskLevel(String command) {
         String highestRisk = "low";
         Map<String, Object> whitelist = readWhitelistFile();
         List<Map<String, Object>> commands = ensureCommandsList(whitelist.get("commands"));
-        Map<String, String> riskMap = new LinkedHashMap<>();
+
+        // Build list of (pattern, riskLevel) pairs
+        List<Map.Entry<String, String>> patternRisks = new ArrayList<>();
         for (Map<String, Object> cmd : commands) {
             Object p = cmd.get("pattern");
             Object r = cmd.get("riskLevel");
-            if (p != null) riskMap.put(p.toString(), r != null ? r.toString() : "high");
+            if (p != null) patternRisks.add(Map.entry(p.toString(), r != null ? r.toString() : "high"));
         }
-        for (String sub : command.split("[|;]")) {
+
+        for (String sub : splitShellPipe(command)) {
             String trimmed = sub.trim();
             if (trimmed.isEmpty()) continue;
-            String[] parts = trimmed.split("\\s+", 2);
-            String name = parts[0].trim();
-            if (name.isEmpty()) continue;
-            String risk = riskMap.getOrDefault(name, "high");
+            String normalized = normalizeSubcommand(trimmed);
+            if (normalized.isEmpty()) continue;
+
+            // Find the longest matching pattern
+            String bestRisk = null;
+            int bestLen = -1;
+            for (Map.Entry<String, String> pr : patternRisks) {
+                if (matchesPattern(normalized, pr.getKey())) {
+                    if (pr.getKey().length() > bestLen) {
+                        bestLen = pr.getKey().length();
+                        bestRisk = pr.getValue();
+                    }
+                }
+            }
+            String risk = bestRisk != null ? bestRisk : "high";
             if ("high".equals(risk)) return "high";
             if ("medium".equals(risk) && "low".equals(highestRisk)) highestRisk = "medium";
         }
         return highestRisk;
+    }
+
+    // ── Subcommand Normalization & Pattern Matching ─────────────────
+
+    /**
+     * Strip path prefix from the first word of a subcommand.
+     * {@code /home/nslb list -v} → {@code nslb list -v}
+     * {@code ./nslb collect} → {@code nslb collect}
+     * {@code ps -ef} → {@code ps -ef} (no path, unchanged)
+     */
+    private String normalizeSubcommand(String sub) {
+        String[] parts = sub.trim().split("\\s+", 2);
+        String firstWord = parts[0].trim();
+        if (firstWord.isEmpty()) return "";
+        // Strip path prefix from first word
+        if (firstWord.contains("/")) {
+            firstWord = firstWord.substring(firstWord.lastIndexOf('/') + 1);
+        }
+        if (parts.length == 1) return firstWord;
+        return firstWord + " " + parts[1].trim();
+    }
+
+    /**
+     * Check if a normalized subcommand matches a whitelist pattern.
+     * <ul>
+     *   <li>Simple mode (pattern has no spaces): compare only the first word</li>
+     *   <li>Prefix mode (pattern has spaces): subcommand must equal pattern
+     *       or start with {@code pattern + " "} (word-boundary safe)</li>
+     * </ul>
+     */
+    private boolean matchesPattern(String normalizedSub, String pattern) {
+        if (!pattern.contains(" ")) {
+            // Simple mode: compare first word
+            String[] parts = normalizedSub.split("\\s+", 2);
+            return parts[0].equals(pattern);
+        }
+        // Prefix mode: exact match or starts with pattern + space
+        return normalizedSub.equals(pattern) || normalizedSub.startsWith(pattern + " ");
+    }
+
+    // ── Shell-Aware Pipe/Semicolon Splitter ─────────────────────────
+
+    /**
+     * Split a command string on unquoted {@code |}, {@code ||}, {@code &&}, and {@code ;} delimiters,
+     * respecting single quotes, double quotes, and backslash escaping.
+     */
+    private List<String> splitShellPipe(String command) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inSingle = false, inDouble = false;
+        for (int i = 0; i < command.length(); i++) {
+            char c = command.charAt(i);
+            if (c == '\\' && !inSingle && i + 1 < command.length()) {
+                current.append(c).append(command.charAt(++i));
+                continue;
+            }
+            if (c == '\'' && !inDouble) { inSingle = !inSingle; current.append(c); continue; }
+            if (c == '"'  && !inSingle) { inDouble = !inDouble; current.append(c); continue; }
+            if (!inSingle && !inDouble) {
+                // Handle || (logical OR)
+                if (c == '|' && i + 1 < command.length() && command.charAt(i + 1) == '|') {
+                    parts.add(current.toString());
+                    current.setLength(0);
+                    i++; // skip second |
+                    continue;
+                }
+                // Handle && (logical AND)
+                if (c == '&' && i + 1 < command.length() && command.charAt(i + 1) == '&') {
+                    parts.add(current.toString());
+                    current.setLength(0);
+                    i++; // skip second &
+                    continue;
+                }
+                // Handle | (pipe) and ; (semicolon)
+                if (c == '|' || c == ';') {
+                    parts.add(current.toString());
+                    current.setLength(0);
+                    continue;
+                }
+            }
+            current.append(c);
+        }
+        if (current.length() > 0) parts.add(current.toString());
+        return parts;
     }
 
     // ── Default Initialization ───────────────────────────────────────

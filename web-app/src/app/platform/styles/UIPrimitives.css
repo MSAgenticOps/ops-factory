@@ -1,3 +1,69 @@
+.ui-section-title {
+    margin: 0;
+    font-size: var(--ui-section-title-size);
+    font-weight: var(--ui-section-title-weight);
+    line-height: var(--ui-section-title-line-height);
+    color: var(--color-text-primary);
+}
+
+.ui-card-title {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--ui-card-title-size);
+    font-weight: var(--ui-card-title-weight);
+    line-height: var(--ui-card-title-line-height);
+}
+
+.ui-chart-card-title {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--ui-chart-card-title-size);
+    font-weight: var(--ui-chart-card-title-weight);
+    line-height: var(--ui-chart-card-title-line-height);
+}
+
+.ui-metric-label {
+    color: var(--color-text-secondary);
+    font-size: var(--ui-metric-label-size);
+    font-weight: var(--ui-metric-label-weight);
+    line-height: var(--ui-metric-label-line-height);
+}
+
+.ui-metric-value {
+    color: var(--color-text-primary);
+    font-size: var(--ui-metric-value-size);
+    font-weight: var(--ui-metric-value-weight);
+    line-height: var(--ui-metric-value-line-height);
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-metric-grid {
+    display: grid;
+    gap: var(--spacing-4);
+}
+
+:root {
+    --ui-section-title-size: var(--font-size-xl);
+    --ui-section-title-weight: 700;
+    --ui-section-title-line-height: 1.35;
+
+    --ui-card-title-size: 1.0625rem;
+    --ui-card-title-weight: 600;
+    --ui-card-title-line-height: 1.35;
+
+    --ui-chart-card-title-size: var(--font-size-sm);
+    --ui-chart-card-title-weight: 700;
+    --ui-chart-card-title-line-height: 1.4;
+
+    --ui-metric-label-size: var(--font-size-xs);
+    --ui-metric-label-weight: 600;
+    --ui-metric-label-line-height: 1.5;
+
+    --ui-metric-value-size: 1.5rem;
+    --ui-metric-value-weight: 700;
+    --ui-metric-value-line-height: 1.2;
+}
+
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -137,6 +203,8 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     color: var(--color-text-primary);
+    font: inherit;
+    line-height: 1.5;
     transition: all var(--transition-fast);
 }
 

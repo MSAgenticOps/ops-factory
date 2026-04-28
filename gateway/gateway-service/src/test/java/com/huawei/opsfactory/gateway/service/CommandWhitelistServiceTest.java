@@ -233,4 +233,207 @@ public class CommandWhitelistServiceTest {
         assertTrue(rejected.contains("reboot"));
         assertTrue(rejected.contains("shutdown"));
     }
+
+    // ── validateCommand – pipes inside quotes (bug fix) ──────────
+
+    @Test
+    public void testValidateCommand_pipeInsideSingleQuotes() {
+        List<String> rejected = whitelistService.validateCommand(
+                "tail -100 /var/log/syslog | grep -E 'ERROR|WARN|Exception|Timeout' | tail -30");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testValidateCommand_pipeInsideDoubleQuotes() {
+        List<String> rejected = whitelistService.validateCommand(
+                "grep \"ERROR|WARN\" /var/log/syslog | tail -20");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testValidateCommand_escapedPipe() {
+        List<String> rejected = whitelistService.validateCommand(
+                "grep 'a\\|b' /var/log/syslog | tail -20");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testValidateCommand_mixedQuotesAndPipes() {
+        List<String> rejected = whitelistService.validateCommand(
+                "grep -E 'ERROR|WARN' /var/log/syslog | rm -rf /");
+        assertEquals(1, rejected.size());
+        assertEquals("rm", rejected.get(0));
+    }
+
+    // ── getRiskLevel – pipes inside quotes ────────────────────────
+
+    @Test
+    public void testGetRiskLevel_pipeInsideQuotes() {
+        String risk = whitelistService.getRiskLevel(
+                "tail -100 /var/log/syslog | grep -E 'ERROR|WARN' | tail -30");
+        assertEquals("low", risk);
+    }
+
+    // ── validateCommand – || and && operators ────────────────────
+
+    @Test
+    public void testValidateCommand_logicalOr() {
+        List<String> rejected = whitelistService.validateCommand(
+                "ps -ef || echo \"failed\"");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testValidateCommand_logicalAnd() {
+        List<String> rejected = whitelistService.validateCommand(
+                "cd /home && ls -la");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testValidateCommand_logicalOrWithRejected() {
+        List<String> rejected = whitelistService.validateCommand(
+                "ps -ef || rm -rf /");
+        assertEquals(1, rejected.size());
+        assertEquals("rm", rejected.get(0));
+    }
+
+    @Test
+    public void testValidateCommand_logicalAndWithRejected() {
+        List<String> rejected = whitelistService.validateCommand(
+                "cd /home && rm -rf /");
+        assertEquals(1, rejected.size());
+        assertEquals("rm", rejected.get(0));
+    }
+
+    @Test
+    public void testValidateCommand_orOrNotSplitAsTwoPipes() {
+        // || should split into exactly 2 parts, not 3
+        List<String> rejected = whitelistService.validateCommand(
+                "ps -ef || echo done");
+        // If || were split as two |, echo would be in a separate segment but gmstat/echo both pass
+        // The key is that || produces exactly 2 subcommands, not 3
+        assertTrue(rejected.isEmpty());
+    }
+
+    // ── validateCommand – echo in default whitelist ──────────────
+
+    @Test
+    public void testValidateCommand_echoInDefault() {
+        List<String> rejected = whitelistService.validateCommand("echo hello");
+        assertTrue(rejected.isEmpty());
+    }
+
+    // ── Prefix matching mode (command body + arguments) ─────────
+
+    @Test
+    public void testPrefixMode_simpleWithAbsolutePath() {
+        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("/home/nslb");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_simpleWithAbsolutePathAndArgs() {
+        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("/home/nslb list -v");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_simpleWithRelativePath() {
+        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("./nslb collect");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_exactMatch() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("nslb list");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_withExtraArgs() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("nslb list -v");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_differentArgs_rejected() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("nslb collect");
+        assertEquals(1, rejected.size());
+        assertEquals("nslb", rejected.get(0));
+    }
+
+    @Test
+    public void testPrefixMode_wordBoundary_rejected() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("nslb listx");
+        assertEquals(1, rejected.size());
+        assertEquals("nslb", rejected.get(0));
+    }
+
+    @Test
+    public void testPrefixMode_withPath() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("/home/nslb list");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_withPathDifferentArgs_rejected() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        List<String> rejected = whitelistService.validateCommand("/home/nslb collect");
+        assertEquals(1, rejected.size());
+        assertEquals("/home/nslb", rejected.get(0));
+    }
+
+    @Test
+    public void testPrefixMode_simpleAndPrefixCoexist() {
+        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "medium"));
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        // nslb collect matches the simple pattern "nslb"
+        List<String> rejected = whitelistService.validateCommand("nslb collect");
+        assertTrue(rejected.isEmpty());
+    }
+
+    @Test
+    public void testPrefixMode_onlyPrefix_noSimple() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        // nslb collect does NOT match prefix pattern "nslb list"
+        List<String> rejected = whitelistService.validateCommand("nslb collect");
+        assertEquals(1, rejected.size());
+    }
+
+    // ── getRiskLevel – prefix matching ──────────────────────────
+
+    @Test
+    public void testGetRiskLevel_prefixModeLow() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        assertEquals("low", whitelistService.getRiskLevel("nslb list"));
+    }
+
+    @Test
+    public void testGetRiskLevel_prefixModeNoMatch() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        assertEquals("high", whitelistService.getRiskLevel("nslb collect"));
+    }
+
+    @Test
+    public void testGetRiskLevel_longerPatternWins() {
+        // When both "nslb"(medium) and "nslb list"(low) match, the longer pattern wins → low
+        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "medium"));
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        assertEquals("low", whitelistService.getRiskLevel("nslb list"));
+    }
+
+    @Test
+    public void testGetRiskLevel_prefixModeWithPath() {
+        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        assertEquals("low", whitelistService.getRiskLevel("/home/nslb list"));
+    }
 }

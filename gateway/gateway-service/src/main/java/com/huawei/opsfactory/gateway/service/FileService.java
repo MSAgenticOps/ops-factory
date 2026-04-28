@@ -2,6 +2,7 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.common.util.PathSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,15 +17,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Map.entry;
 
 @Service
 public class FileService {
+
+    private final GatewayProperties gatewayProperties;
+
+    public FileService(GatewayProperties gatewayProperties) {
+        this.gatewayProperties = gatewayProperties;
+    }
 
     private static final Map<String, String> MIME_TYPES = Map.ofEntries(
             entry("json", "application/json"),
@@ -73,15 +83,36 @@ public class FileService {
             "exe", "bat", "cmd", "com", "msi", "dll", "sys", "scr",
             "vbs", "vbe", "wsf", "wsh", "ps1");
 
+    private static final Set<String> EDITABLE_TEXT_EXTENSIONS = Set.of(
+            "txt", "log", "ini", "conf",
+            "js", "ts", "jsx", "tsx", "mjs", "cjs",
+            "py", "sh", "bash", "zsh",
+            "yaml", "yml", "json", "toml",
+            "css", "scss", "less",
+            "xml", "sql", "graphql",
+            "go", "rs", "java", "c", "cpp", "h", "hpp",
+            "rb", "php", "swift", "kt", "scala",
+            "csv", "tsv",
+            "env", "gitignore", "dockerignore", "editorconfig", "prettierrc",
+            "eslintrc", "babelrc",
+            "dockerfile", "makefile",
+            "vue", "svelte",
+            "md", "markdown", "html", "htm");
+
     /**
-     * List files recursively under a directory, filtering out system dirs and hidden files.
+     * List files for the Files module from configured scan roots.
      */
-    public List<Map<String, Object>> listFiles(Path dir) throws IOException {
+    public List<Map<String, Object>> listFiles(Path userAgentDir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
-        if (!Files.isDirectory(dir)) {
-            return files;
+        Set<String> allowedExtensions = fileCapsuleAllowedExtensions();
+        for (FileScanRoot root : fileScanRoots(userAgentDir)) {
+            if (root.recursive()) {
+                long deadlineNanos = scanDeadlineNanos(root.scanTimeoutMs());
+                listFilesRecursive(root, root.path(), files, allowedExtensions, 0, deadlineNanos, files.size());
+            } else {
+                listRootFiles(root, files, allowedExtensions);
+            }
         }
-        listFilesRecursive(dir, dir, files);
         return files;
     }
 
@@ -90,51 +121,205 @@ public class FileService {
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
+        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6, 1000, 2000),
+                files, fileCapsuleAllowedExtensions());
+        return files;
+    }
+
+    private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
+        Path dir = root.path();
         if (!Files.isDirectory(dir)) {
-            return files;
+            return;
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
                 if (Files.isRegularFile(entry) && !SKIP_FILES.contains(entry.getFileName().toString())) {
-                    addFileEntry(dir, entry, files);
+                    addFileEntry(root, entry, files, allowedExtensions);
                 }
             }
         }
-        return files;
     }
 
-    private void listFilesRecursive(Path base, Path current, List<Map<String, Object>> files) throws IOException {
+    /**
+     * List "user-facing" output files for chat file capsules:
+     * - Same scan roots as the Files module
+     */
+    public List<Map<String, Object>> listCapsuleRelevantFiles(Path dir) throws IOException {
+        return listFiles(dir);
+    }
+
+    private void listFilesRecursive(FileScanRoot root, Path current, List<Map<String, Object>> files,
+                                    Set<String> allowedExtensions, int depth, long deadlineNanos,
+                                    int rootStartCount) throws IOException {
+        if (!Files.isDirectory(current)) {
+            return;
+        }
+        if (isScanLimitReached(root, files, depth, deadlineNanos, rootStartCount)) {
+            return;
+        }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(current)) {
             for (Path entry : stream) {
+                if (isScanLimitReached(root, files, depth, deadlineNanos, rootStartCount)) {
+                    return;
+                }
                 String name = entry.getFileName().toString();
                 if (Files.isDirectory(entry)) {
-                    if (!SKIP_DIRS.contains(name) && !name.startsWith(".")) {
-                        listFilesRecursive(base, entry, files);
+                    if (depth < root.maxDepth() && !root.excludeDirs().contains(name) && !name.startsWith(".")) {
+                        listFilesRecursive(root, entry, files, allowedExtensions, depth + 1, deadlineNanos, rootStartCount);
                     }
                 } else {
                     if (!SKIP_FILES.contains(name)) {
-                        addFileEntry(base, entry, files);
+                        addFileEntry(root, entry, files, allowedExtensions);
                     }
                 }
             }
         }
     }
 
-    private void addFileEntry(Path base, Path entry, List<Map<String, Object>> files) throws IOException {
+    private boolean isScanLimitReached(FileScanRoot root, List<Map<String, Object>> files, int depth, long deadlineNanos,
+                                       int rootStartCount) {
+        return depth > root.maxDepth()
+                || (root.maxFiles() > 0 && files.size() - rootStartCount >= root.maxFiles())
+                || (deadlineNanos > 0 && System.nanoTime() > deadlineNanos);
+    }
+
+    private long scanDeadlineNanos(long timeoutMs) {
+        if (timeoutMs <= 0) {
+            return 0;
+        }
+        return System.nanoTime() + timeoutMs * 1_000_000L;
+    }
+
+    private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
         String name = entry.getFileName().toString();
         int dot = name.lastIndexOf('.');
         String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
-        files.add(Map.of(
-                "name", name,
-                "path", base.relativize(entry).toString(),
-                "size", Files.size(entry),
-                "type", ext,
-                "modifiedAt", Files.getLastModifiedTime(entry).toInstant().toString()));
+        if (!allowedExtensions.isEmpty() && !allowedExtensions.contains(ext)) {
+            return;
+        }
+        String relativePath = toApiPath(root.path().relativize(entry));
+        Map<String, Object> file = new LinkedHashMap<>();
+        file.put("rootId", root.id());
+        file.put("name", name);
+        file.put("path", relativePath);
+        file.put("displayPath", displayPath(root, relativePath));
+        file.put("size", Files.size(entry));
+        file.put("type", ext);
+        file.put("modifiedAt", Files.getLastModifiedTime(entry).toInstant().toString());
+        files.add(file);
+    }
+
+    private Set<String> fileCapsuleAllowedExtensions() {
+        Set<String> allowed = new HashSet<>();
+        List<String> configured = gatewayProperties.getFileCapsules() != null
+                ? gatewayProperties.getFileCapsules().getAllowedExtensions()
+                : null;
+        if (configured == null) {
+            return allowed;
+        }
+        for (String ext : configured) {
+            if (ext == null) continue;
+            String normalized = ext.trim().toLowerCase();
+            if (!normalized.isEmpty()) {
+                allowed.add(normalized);
+            }
+        }
+        return allowed;
+    }
+
+    public Optional<Path> resolveFileScanRoot(Path userAgentDir, String rootId) {
+        String normalizedRootId = normalizeRootId(rootId, 0);
+        return fileScanRoots(userAgentDir).stream()
+                .filter(root -> root.id().equals(normalizedRootId))
+                .map(FileScanRoot::path)
+                .findFirst();
+    }
+
+    private List<FileScanRoot> fileScanRoots(Path userAgentDir) {
+        List<GatewayProperties.FileScanRoot> configured = gatewayProperties.getFiles() != null
+                ? gatewayProperties.getFiles().getScanRoots()
+                : null;
+        if (configured == null || configured.isEmpty()) {
+            configured = new GatewayProperties.FileBrowser().getScanRoots();
+        }
+
+        List<FileScanRoot> roots = new ArrayList<>();
+        Set<String> ids = new HashSet<>();
+        for (int i = 0; i < configured.size(); i++) {
+            GatewayProperties.FileScanRoot configuredRoot = configured.get(i);
+            if (configuredRoot == null || configuredRoot.getPath() == null || configuredRoot.getPath().isBlank()) {
+                continue;
+            }
+            String id = normalizeRootId(configuredRoot.getId(), i);
+            if (!ids.add(id)) {
+                continue;
+            }
+            roots.add(new FileScanRoot(
+                    id,
+                    resolveScanRootPath(userAgentDir, configuredRoot.getPath()),
+                    configuredRoot.isRecursive(),
+                    excludeDirs(configuredRoot.getExcludeDirs()),
+                    positiveOrDefault(configuredRoot.getMaxDepth(), 6),
+                    positiveOrDefault(configuredRoot.getMaxFiles(), 1000),
+                    positiveOrDefault(configuredRoot.getScanTimeoutMs(), 2000)));
+        }
+        return roots;
+    }
+
+    private Set<String> excludeDirs(List<String> configuredExcludeDirs) {
+        Set<String> excludeDirs = new HashSet<>(SKIP_DIRS);
+        if (configuredExcludeDirs != null) {
+            for (String dir : configuredExcludeDirs) {
+                if (dir == null) continue;
+                String normalized = dir.trim();
+                if (!normalized.isEmpty()) {
+                    excludeDirs.add(normalized);
+                }
+            }
+        }
+        return excludeDirs;
+    }
+
+    private int positiveOrDefault(int value, int defaultValue) {
+        return value > 0 ? value : defaultValue;
+    }
+
+    private long positiveOrDefault(long value, long defaultValue) {
+        return value > 0 ? value : defaultValue;
+    }
+
+    private String normalizeRootId(String rootId, int index) {
+        return rootId == null || rootId.isBlank() ? "root" + index : rootId.trim();
+    }
+
+    private Path resolveScanRootPath(Path userAgentDir, String configuredPath) {
+        String expanded = configuredPath.replace("${userAgentDir}", userAgentDir.toAbsolutePath().normalize().toString());
+        Path path = Path.of(expanded);
+        return path.isAbsolute() ? path.normalize() : userAgentDir.resolve(path).normalize();
+    }
+
+    private String displayPath(FileScanRoot root, String relativePath) {
+        if ("workingDir".equals(root.id())) {
+            return relativePath;
+        }
+        return root.id() + "/" + relativePath;
+    }
+
+    private String toApiPath(Path path) {
+        return path.toString().replace('\\', '/');
+    }
+
+    private record FileScanRoot(String id, Path path, boolean recursive, Set<String> excludeDirs,
+                                int maxDepth, int maxFiles, long scanTimeoutMs) {
+        private FileScanRoot {
+            Objects.requireNonNull(id);
+            Objects.requireNonNull(path);
+            Objects.requireNonNull(excludeDirs);
+        }
     }
 
     /**
      * Resolve and validate a file path within a base directory.
-     * If the file is not found at the direct path, performs a fallback search.
      */
     public Resource resolveFile(Path baseDir, String relativePath) {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
@@ -143,16 +328,6 @@ public class FileService {
         Path resolved = baseDir.resolve(relativePath).normalize();
         if (Files.exists(resolved) && !Files.isDirectory(resolved)) {
             return new FileSystemResource(resolved);
-        }
-        // Fallback: search for the file by name in subdirectories
-        String fileName = Path.of(relativePath).getFileName().toString();
-        try {
-            Path found = searchFile(baseDir, fileName);
-            if (found != null) {
-                return new FileSystemResource(found);
-            }
-        } catch (IOException e) {
-            // ignore search errors
         }
         return null;
     }
@@ -169,26 +344,20 @@ public class FileService {
         return true;
     }
 
-    private Path searchFile(Path dir, String fileName) throws IOException {
-        if (!Files.isDirectory(dir)) {
-            return null;
+    public boolean updateTextFile(Path baseDir, String relativePath, String content) throws IOException {
+        if (!PathSanitizer.isSafe(baseDir, relativePath) || !isEditableTextFile(relativePath)) {
+            return false;
         }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
-            for (Path entry : stream) {
-                if (Files.isDirectory(entry)) {
-                    String dirName = entry.getFileName().toString();
-                    if (!SKIP_DIRS.contains(dirName)) {
-                        Path found = searchFile(entry, fileName);
-                        if (found != null) {
-                            return found;
-                        }
-                    }
-                } else if (entry.getFileName().toString().equals(fileName)) {
-                    return entry;
-                }
-            }
+        Path resolved = baseDir.resolve(relativePath).normalize();
+        if (!Files.exists(resolved) || Files.isDirectory(resolved)) {
+            return false;
         }
-        return null;
+        Files.writeString(resolved, content != null ? content : "", StandardCharsets.UTF_8);
+        return true;
+    }
+
+    public boolean isEditableTextFile(String filename) {
+        return EDITABLE_TEXT_EXTENSIONS.contains(getPolicyType(filename));
     }
 
     /**
@@ -208,6 +377,16 @@ public class FileService {
             return "";
         }
         return filename.substring(dot + 1).toLowerCase();
+    }
+
+    private String getPolicyType(String filename) {
+        String normalized = filename == null ? "" : filename.replace('\\', '/');
+        int slash = normalized.lastIndexOf('/');
+        String baseName = slash >= 0 ? normalized.substring(slash + 1) : normalized;
+        String lowerBaseName = baseName.toLowerCase();
+        if ("dockerfile".equals(lowerBaseName)) return "dockerfile";
+        if ("makefile".equals(lowerBaseName)) return "makefile";
+        return getExtension(baseName);
     }
 
     public String getMimeType(String filename) {
@@ -241,9 +420,26 @@ public class FileService {
      */
     public List<Map<String, String>> diffFiles(List<Map<String, Object>> before,
                                                 List<Map<String, Object>> after) {
+        Set<String> allowedExtensions = new HashSet<>();
+        List<String> configuredAllowed = gatewayProperties.getFileCapsules() != null
+                ? gatewayProperties.getFileCapsules().getAllowedExtensions()
+                : null;
+        if (configuredAllowed != null) {
+            for (String ext : configuredAllowed) {
+                if (ext == null) continue;
+                String normalized = ext.trim().toLowerCase();
+                if (!normalized.isEmpty()) {
+                    allowedExtensions.add(normalized);
+                }
+            }
+        }
+        if (allowedExtensions.isEmpty()) {
+            return List.of();
+        }
+
         Map<String, Map<String, Object>> beforeMap = new HashMap<>();
         for (Map<String, Object> f : before) {
-            beforeMap.put((String) f.get("path"), f);
+            beforeMap.put(fileIdentity(f), f);
         }
 
         List<Map<String, String>> changed = new ArrayList<>();
@@ -252,18 +448,32 @@ public class FileService {
             if (isInternalRuntimeArtifact(path)) {
                 continue;
             }
-            Map<String, Object> prev = beforeMap.get(path);
+            String ext = (String) f.get("type");
+            String normalizedExt = ext != null ? ext.toLowerCase() : "";
+            if (!allowedExtensions.contains(normalizedExt)) {
+                continue;
+            }
+            Map<String, Object> prev = beforeMap.get(fileIdentity(f));
             boolean isNew = prev == null;
             boolean isUpdated = prev != null && (
                     !prev.get("modifiedAt").equals(f.get("modifiedAt"))
                             || !prev.get("size").equals(f.get("size")));
             if (isNew || isUpdated) {
                 String name = (String) f.get("name");
-                String ext = (String) f.get("type");
-                changed.add(Map.of("path", path, "name", name, "ext", ext != null ? ext : ""));
+                Map<String, String> entry = new LinkedHashMap<>();
+                entry.put("path", path);
+                entry.put("name", name);
+                entry.put("ext", ext != null ? ext : "");
+                entry.put("rootId", String.valueOf(f.getOrDefault("rootId", "workingDir")));
+                entry.put("displayPath", String.valueOf(f.getOrDefault("displayPath", path)));
+                changed.add(entry);
             }
         }
         return changed;
+    }
+
+    private String fileIdentity(Map<String, Object> file) {
+        return String.valueOf(file.getOrDefault("rootId", "workingDir")) + ":" + file.get("path");
     }
 
     private boolean isInternalRuntimeArtifact(String path) {

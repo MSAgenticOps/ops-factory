@@ -28,9 +28,9 @@
     margin: 0;
     min-width: 0;
     color: var(--color-text-primary);
-    font-size: 1.0625rem;
-    font-weight: 600;
-    line-height: 1.35;
+    font-size: var(--ui-card-title-size);
+    font-weight: var(--ui-card-title-weight);
+    line-height: var(--ui-card-title-line-height);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;

@@ -1,5 +1,5 @@
-GOOSE_PROVIDER: custom_op-qwen3.5-35b-a3b
-GOOSE_MODEL: qwen/Qwen3.5-35B-A3B
+GOOSE_PROVIDER: custom_qwen3.5-27b
+GOOSE_MODEL: qwen/qwen3.5-27b
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
@@ -110,14 +110,6 @@ extensions:
     display_name: Analyze
     bundled: true
     available_tools: []
-  skills:
-    enabled: true
-    type: platform
-    name: skills
-    description: Load and use skills from relevant directories
-    display_name: Skills
-    bundled: true
-    available_tools: []
   sop-executor:
     enabled: true
     type: stdio
@@ -128,14 +120,14 @@ extensions:
     - config/mcp/sop-executor/dist/index.js
     envs:
       GATEWAY_URL: http://127.0.0.1:3000
+      OUTPUT_DIR: .
       GATEWAY_SECRET_KEY: test
-      OUTPUT_DIR: ./output
     env_keys: []
     timeout: 300
     bundled: null
     available_tools: []
   browser-use:
-    enabled: true
+    enabled: false
     type: stdio
     name: browser-use
     description: Browser automation via browser-use official MCP - navigate, click, type, extract, screenshot, tabs and more
@@ -146,6 +138,29 @@ extensions:
     envs: {}
     env_keys: []
     timeout: 120
+    bundled: null
+    available_tools: []
+  system-health-analysis:
+    enabled: true
+    type: stdio
+    name: system-health-analysis
+    description: QoS system health analysis MCP - query health score, alarms, topology, and sub-topology
+    cmd: python
+    args:
+    - config/mcp/system-health-analysis/server.py
+    envs:
+      QOS_BASE_URL: http://127.0.0.1:18080
+      QOS_USERNAME: mock_user
+      QOS_PASSWORD: mock_password
+      GATEWAY_API_PASSWORD: mock_password
+      QOS_VERIFY_TLS: 'false'
+      OUTPUT_DIR: .
+    env_keys:
+    - QOS_BASE_URL
+    - QOS_USERNAME
+    - QOS_PASSWORD
+    - GATEWAY_API_PASSWORD
+    timeout: 60
     bundled: null
     available_tools: []
   orchestrator:
@@ -162,5 +177,13 @@ extensions:
     name: summarize
     description: Load files/directories and get an LLM summary in a single call
     display_name: Summarize
+    bundled: true
+    available_tools: []
+  skills:
+    enabled: false
+    type: platform
+    name: skills
+    description: Discover and provide skill instructions from filesystem and builtins
+    display_name: Skills
     bundled: true
     available_tools: []

@@ -31,6 +31,12 @@ public class RemoteExecutionServiceTest {
     @Mock
     private CommandWhitelistService commandWhitelistService;
 
+    @Mock
+    private ClusterService clusterService;
+
+    @Mock
+    private ClusterTypeService clusterTypeService;
+
     private RemoteExecutionService remoteExecutionService;
     private GatewayProperties properties;
 
@@ -38,7 +44,8 @@ public class RemoteExecutionServiceTest {
     public void setUp() {
         properties = new GatewayProperties();
         remoteExecutionService = new RemoteExecutionService(
-                hostService, commandWhitelistService, properties);
+                hostService, commandWhitelistService, properties,
+                clusterService, clusterTypeService);
     }
 
     // ── execute: host not found ──────────────────────────────────
@@ -202,5 +209,155 @@ public class RemoteExecutionServiceTest {
 
         Map<String, Object> result = remoteExecutionService.execute("host-1", "", 5);
         assertNotNull(result);
+    }
+
+    // ── env variable replacement + command prefix ─────────────────
+
+    @Test
+    public void testExecute_hostWithoutCluster_noPrefixNoVars() {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("name", "Host");
+        host.put("ip", "10.0.0.1");
+        host.put("port", 22);
+        host.put("username", "root");
+        host.put("authType", "password");
+        host.put("credential", "secret");
+        // no clusterId
+        when(hostService.getHostWithCredential("host-1")).thenReturn(host);
+
+        // Command should pass through unchanged (whitelist gets original command)
+        when(commandWhitelistService.validateCommand("ls")).thenReturn(List.of());
+
+        Map<String, Object> result = remoteExecutionService.execute("host-1", "ls", 5);
+        assertNotNull(result);
+        // SSH will fail but command was processed without prefix/vars
+    }
+
+    @Test
+    public void testExecute_envVarsReplacedBeforeWhitelistCheck() {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("name", "Host");
+        host.put("ip", "10.0.0.1");
+        host.put("port", 22);
+        host.put("username", "root");
+        host.put("authType", "password");
+        host.put("credential", "secret");
+        host.put("clusterId", "cluster-1");
+        when(hostService.getHostWithCredential("host-1")).thenReturn(host);
+
+        // Cluster -> type = "NSLB"
+        Map<String, Object> cluster = new LinkedHashMap<>();
+        cluster.put("type", "NSLB");
+        when(clusterService.getCluster("cluster-1")).thenReturn(cluster);
+
+        // ClusterType NSLB with env vars
+        Map<String, Object> nslbType = new LinkedHashMap<>();
+        nslbType.put("name", "NSLB");
+        nslbType.put("commandPrefix", "sudo -u nslb");
+        List<Map<String, String>> envVars = new ArrayList<>();
+        envVars.add(Map.of("key", "NSLB_HOME", "value", "/opt/nslb"));
+        nslbType.put("envVariables", envVars);
+        when(clusterTypeService.listClusterTypes()).thenReturn(List.of(nslbType));
+
+        // Whitelist should see the RESOLVED command (after variable replacement, before prefix)
+        // "cd ${NSLB_HOME} && ls" -> "cd /opt/nslb && ls"
+        when(commandWhitelistService.validateCommand("cd /opt/nslb && ls"))
+                .thenReturn(List.of("cd"));
+
+        Map<String, Object> result = remoteExecutionService.execute("host-1", "cd ${NSLB_HOME} && ls", 30);
+
+        // Should be rejected by whitelist on the resolved command
+        assertEquals(-1, result.get("exitCode"));
+        assertNotNull(result.get("rejectedCommands"));
+        assertTrue(((List<?>) result.get("rejectedCommands")).contains("cd"));
+    }
+
+    @Test
+    public void testExecute_withClusterTypePrefix_appliedToSshCommand() {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("name", "Host");
+        host.put("ip", "10.0.0.1");
+        host.put("port", 22);
+        host.put("username", "root");
+        host.put("authType", "password");
+        host.put("credential", "secret");
+        host.put("clusterId", "cluster-1");
+        when(hostService.getHostWithCredential("host-1")).thenReturn(host);
+
+        Map<String, Object> cluster = new LinkedHashMap<>();
+        cluster.put("type", "NSLB");
+        when(clusterService.getCluster("cluster-1")).thenReturn(cluster);
+
+        Map<String, Object> nslbType = new LinkedHashMap<>();
+        nslbType.put("name", "NSLB");
+        nslbType.put("commandPrefix", "sudo -u nslb");
+        List<Map<String, String>> envVars = new ArrayList<>();
+        envVars.add(Map.of("key", "NSLB_HOME", "value", "/opt/nslb"));
+        nslbType.put("envVariables", envVars);
+        when(clusterTypeService.listClusterTypes()).thenReturn(List.of(nslbType));
+
+        // After replacement: "cd /opt/nslb && ls" - whitelisted
+        // After prefix: "sudo -u nslb cd /opt/nslb && ls"
+        when(commandWhitelistService.validateCommand("cd /opt/nslb && ls"))
+                .thenReturn(List.of());
+
+        Map<String, Object> result = remoteExecutionService.execute("host-1", "cd ${NSLB_HOME} && ls", 5);
+
+        // SSH will fail but the command was processed with prefix + vars
+        assertNotNull(result);
+        assertEquals(-1, result.get("exitCode"));
+        // Verify whitelist was called with the replaced (not original) command
+        verify(commandWhitelistService).validateCommand("cd /opt/nslb && ls");
+    }
+
+    @Test
+    public void testExecute_noMatchingClusterType_noPrefixNoVars() {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("name", "Host");
+        host.put("ip", "10.0.0.1");
+        host.put("port", 22);
+        host.put("username", "root");
+        host.put("authType", "password");
+        host.put("credential", "secret");
+        host.put("clusterId", "cluster-1");
+        when(hostService.getHostWithCredential("host-1")).thenReturn(host);
+
+        Map<String, Object> cluster = new LinkedHashMap<>();
+        cluster.put("type", "UNKNOWN_TYPE");
+        when(clusterService.getCluster("cluster-1")).thenReturn(cluster);
+
+        // Return types that don't match
+        Map<String, Object> otherType = new LinkedHashMap<>();
+        otherType.put("name", "OTHER");
+        when(clusterTypeService.listClusterTypes()).thenReturn(List.of(otherType));
+
+        // Command should pass through unchanged
+        when(commandWhitelistService.validateCommand("ls")).thenReturn(List.of());
+
+        Map<String, Object> result = remoteExecutionService.execute("host-1", "ls", 5);
+        assertNotNull(result);
+    }
+
+    @Test
+    public void testExecute_clusterServiceThrows_handledGracefully() {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("name", "Host");
+        host.put("ip", "10.0.0.1");
+        host.put("port", 22);
+        host.put("username", "root");
+        host.put("authType", "password");
+        host.put("credential", "secret");
+        host.put("clusterId", "cluster-1");
+        when(hostService.getHostWithCredential("host-1")).thenReturn(host);
+
+        when(clusterService.getCluster("cluster-1"))
+                .thenThrow(new IllegalArgumentException("Cluster not found"));
+
+        // Command should still work without prefix/vars
+        when(commandWhitelistService.validateCommand("ls")).thenReturn(List.of());
+
+        Map<String, Object> result = remoteExecutionService.execute("host-1", "ls", 5);
+        assertNotNull(result);
+        // Should have attempted SSH (will fail due to fake host), but not crashed
     }
 }

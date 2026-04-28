@@ -13,8 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -63,6 +65,7 @@ public class FileController {
                                             ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        Path rootDir = resolveRootOrThrow(workingDir, exchange);
 
         // Extract the file path after /gateway/agents/{agentId}/files/
         // getPath().value() returns the raw percent-encoded URI; decode so that
@@ -72,13 +75,13 @@ public class FileController {
         String relativePath = URLDecoder.decode(fullPath.substring(prefix.length()), StandardCharsets.UTF_8);
 
         // Check for path traversal — return 403
-        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+        if (!PathSanitizer.isSafe(rootDir, relativePath)) {
             return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "path traversal not allowed")));
         }
 
         return Mono.<ResponseEntity<?>>fromCallable(() -> {
-            Resource resource = fileService.resolveFile(workingDir, relativePath);
+            Resource resource = fileService.resolveFile(rootDir, relativePath);
             if (resource == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("error", "file not found"));
@@ -105,18 +108,19 @@ public class FileController {
                                                                 ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        Path rootDir = resolveRootOrThrow(workingDir, exchange);
 
         String fullPath = exchange.getRequest().getPath().value();
         String prefix = "/gateway/agents/" + agentId + "/files/";
         String relativePath = URLDecoder.decode(fullPath.substring(prefix.length()), StandardCharsets.UTF_8);
 
-        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+        if (!PathSanitizer.isSafe(rootDir, relativePath)) {
             return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.<String, Object>of("error", "path traversal not allowed")));
         }
 
         return Mono.fromCallable(() -> {
-                    boolean deleted = fileService.deleteFile(workingDir, relativePath);
+                    boolean deleted = fileService.deleteFile(rootDir, relativePath);
                     if (!deleted) {
                         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                                 .body(Map.<String, Object>of("error", "file not found"));
@@ -128,6 +132,43 @@ public class FileController {
                 }).subscribeOn(Schedulers.boundedElastic())
                 .onErrorMap(IOException.class, e ->
                         new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete file"));
+    }
+
+    @PutMapping(value = "/**", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<Map<String, Object>>> updateFile(@PathVariable("agentId") String agentId,
+                                                                @RequestBody FileUpdateRequest request,
+                                                                ServerWebExchange exchange) {
+        String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
+        Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        Path rootDir = resolveRootOrThrow(workingDir, exchange);
+
+        String fullPath = exchange.getRequest().getPath().value();
+        String prefix = "/gateway/agents/" + agentId + "/files/";
+        String relativePath = URLDecoder.decode(fullPath.substring(prefix.length()), StandardCharsets.UTF_8);
+
+        if (!PathSanitizer.isSafe(rootDir, relativePath)) {
+            return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.<String, Object>of("error", "path traversal not allowed")));
+        }
+
+        if (!fileService.isEditableTextFile(relativePath)) {
+            return Mono.just(ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                    .body(Map.<String, Object>of("error", "file type is not editable")));
+        }
+
+        return Mono.fromCallable(() -> {
+                    boolean updated = fileService.updateTextFile(rootDir, relativePath, request.content());
+                    if (!updated) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body(Map.<String, Object>of("error", "file not found"));
+                    }
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "status", "updated",
+                            "path", relativePath
+                    ));
+                }).subscribeOn(Schedulers.boundedElastic())
+                .onErrorMap(IOException.class, e ->
+                        new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update file"));
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -177,5 +218,18 @@ public class FileController {
     public Mono<Map<String, Object>> uploadFileNotMultipart() {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Upload requires multipart/form-data content type");
+    }
+
+    private record FileUpdateRequest(String content) {
+    }
+
+    private Path resolveRootOrThrow(Path workingDir, ServerWebExchange exchange) {
+        String requestedRootId = exchange.getRequest().getQueryParams().getFirst("rootId");
+        if (requestedRootId == null || requestedRootId.isBlank()) {
+            return workingDir;
+        }
+        String rootId = requestedRootId.trim();
+        return fileService.resolveFileScanRoot(workingDir, rootId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown file root: " + rootId));
     }
 }

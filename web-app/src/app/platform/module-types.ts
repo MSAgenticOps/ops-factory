@@ -10,9 +10,11 @@ export type IconKey =
     | 'history'
     | 'inbox'
     | 'files'
+    | 'channels'
     | 'diagnosis'
     | 'businessIntelligence'
     | 'agents'
+    | 'skillMarket'
     | 'knowledge'
     | 'scheduler'
     | 'monitoring'
@@ -83,4 +85,3 @@ export type SidebarGroupModel = {
     key: NavGroupKey
     items: SidebarItemModel[]
 }
-

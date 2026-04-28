@@ -1,9 +1,9 @@
-GOOSE_PROVIDER: custom_qwen3.5-27b
-GOOSE_MODEL: qwen/qwen3.5-27b
+GOOSE_PROVIDER: custom_qwen3.5-35b-a3b
+GOOSE_MODEL: qwen/qwen3.5-35b-a3b
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
-GOOSE_CONTEXT_LIMIT: '65536'
+GOOSE_CONTEXT_LIMIT: '128000'
 GOOSE_MAX_TOKENS: '4096'
 GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
@@ -140,5 +140,13 @@ extensions:
     name: orchestrator
     description: 'Manage agent sessions: list, view, start, send messages, interrupt, and stop agents'
     display_name: Orchestrator
+    bundled: true
+    available_tools: []
+  skills:
+    enabled: true
+    type: platform
+    name: skills
+    description: Discover and provide skill instructions from filesystem and builtins
+    display_name: Skills
     bundled: true
     available_tools: []

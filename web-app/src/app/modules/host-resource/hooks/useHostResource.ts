@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { GATEWAY_URL, gatewayHeaders } from '../../../../config/runtime'
 import { useUser } from '../../../platform/providers/UserContext'
-import type { Host, HostCreateRequest, DiscoveryPlan, DiscoveryCommand, HostDiscoveryResult } from '../../../../types/host'
+import type { Host, HostCreateRequest } from '../../../../types/host'
 
 function apiBase() { return `${GATEWAY_URL}/hosts` }
 
@@ -11,11 +11,12 @@ export function useHostResource() {
     const [allHosts, setAllHosts] = useState<Host[]>([])
     const [loading, setLoading] = useState(false)
 
-    const fetchHosts = useCallback(async (clusterId?: string, groupId?: string) => {
+    const fetchHosts = useCallback(async (clusterId?: string, groupId?: string, businessServiceId?: string) => {
         setLoading(true)
         try {
             const params = new URLSearchParams()
-            if (clusterId) params.set('clusterId', clusterId)
+            if (businessServiceId) params.set('businessServiceId', businessServiceId)
+            else if (clusterId) params.set('clusterId', clusterId)
             else if (groupId) params.set('groupId', groupId)
             const qs = params.toString()
             const res = await fetch(`${apiBase()}${qs ? '?' + qs : ''}`, { headers: gatewayHeaders(userId) })
@@ -46,11 +47,11 @@ export function useHostResource() {
         })
         const data = await res.json()
         if (data.success) {
-            await Promise.all([fetchHosts(), fetchAllHosts()])
+            await fetchAllHosts()
             return data.host
         }
         throw new Error(data.error || 'Failed to create host')
-    }, [userId, fetchHosts, fetchAllHosts])
+    }, [userId, fetchAllHosts])
 
     const updateHost = useCallback(async (id: string, body: Partial<Host>) => {
         const res = await fetch(`${apiBase()}/${id}`, {
@@ -60,11 +61,11 @@ export function useHostResource() {
         })
         const data = await res.json()
         if (data.success) {
-            await Promise.all([fetchHosts(), fetchAllHosts()])
+            await fetchAllHosts()
             return data.host
         }
         throw new Error(data.error || 'Failed to update host')
-    }, [userId, fetchHosts, fetchAllHosts])
+    }, [userId, fetchAllHosts])
 
     const deleteHost = useCallback(async (id: string) => {
         const res = await fetch(`${apiBase()}/${id}`, {
@@ -73,11 +74,11 @@ export function useHostResource() {
         })
         const data = await res.json()
         if (data.success) {
-            await Promise.all([fetchHosts(), fetchAllHosts()])
+            await fetchAllHosts()
             return true
         }
         throw new Error(data.error || 'Failed to delete host')
-    }, [userId, fetchHosts, fetchAllHosts])
+    }, [userId, fetchAllHosts])
 
     const testConnection = useCallback(async (id: string) => {
         const res = await fetch(`${apiBase()}/${id}/test`, {
@@ -87,22 +88,5 @@ export function useHostResource() {
         return res.json()
     }, [userId])
 
-    const discoverPlan = useCallback(async (id: string): Promise<DiscoveryPlan> => {
-        const res = await fetch(`${apiBase()}/${id}/discover-plan`, {
-            method: 'POST',
-            headers: gatewayHeaders(userId),
-        })
-        return res.json()
-    }, [userId])
-
-    const discoverExecute = useCallback(async (id: string, commands: DiscoveryCommand[]): Promise<HostDiscoveryResult> => {
-        const res = await fetch(`${apiBase()}/${id}/discover-execute`, {
-            method: 'POST',
-            headers: gatewayHeaders(userId),
-            body: JSON.stringify({ commands }),
-        })
-        return res.json()
-    }, [userId])
-
-    return { hosts, allHosts, loading, fetchHosts, fetchAllHosts, createHost, updateHost, deleteHost, testConnection, discoverPlan, discoverExecute }
+    return { hosts, allHosts, loading, fetchHosts, fetchAllHosts, createHost, updateHost, deleteHost, testConnection }
 }

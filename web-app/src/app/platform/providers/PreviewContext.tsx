@@ -14,6 +14,8 @@ export interface PreviewFile {
     name: string
     path: string
     type: string
+    rootId?: string
+    displayPath?: string
     agentId?: string
     downloadUrl?: string
     previewKind: PreviewKind
@@ -28,6 +30,8 @@ interface AgentPreviewRequest {
     path: string
     type: string
     agentId: string
+    rootId?: string
+    displayPath?: string
 }
 
 interface DirectPreviewRequest {
@@ -41,6 +45,13 @@ interface DirectPreviewRequest {
 
 type PreviewRequest = AgentPreviewRequest | DirectPreviewRequest
 
+function buildAgentFileUrl(agentId: string, path: string, rootId?: string, userId?: string | null): string {
+    let url = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${GATEWAY_SECRET_KEY}`
+    if (rootId) url += `&rootId=${encodeURIComponent(rootId)}`
+    if (userId) url += `&uid=${encodeURIComponent(userId)}`
+    return url
+}
+
 function isAgentPreviewRequest(file: PreviewRequest): file is AgentPreviewRequest {
     return 'agentId' in file
 }
@@ -49,8 +60,11 @@ interface PreviewContextType {
     previewFile: PreviewFile | null
     isLoading: boolean
     error: string | null
+    isPreviewFullscreen: boolean
     openPreview: (file: PreviewRequest) => Promise<void>
     closePreview: () => void
+    togglePreviewFullscreen: () => void
+    exitPreviewFullscreen: () => void
     isPreviewable: (type: string, name?: string, path?: string) => boolean
 }
 
@@ -61,6 +75,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false)
     const [officePreview, setOfficePreview] = useState<OfficePreviewConfig>({
         enabled: false,
         onlyofficeUrl: '',
@@ -136,7 +151,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
                 }
 
                 if (previewKind === 'spreadsheet') {
-                    const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+                    const url = buildAgentFileUrl(file.agentId, file.path, file.rootId, userId)
                     const fetchHeaders: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
                     if (userId) fetchHeaders['x-user-id'] = userId
                     const res = await fetch(url, { headers: fetchHeaders })
@@ -152,7 +167,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
                 return
             }
 
-            const url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+            const url = buildAgentFileUrl(file.agentId, file.path, file.rootId, userId)
             const fetchHeaders: Record<string, string> = { 'x-secret-key': GATEWAY_SECRET_KEY }
             if (userId) fetchHeaders['x-user-id'] = userId
             const res = await fetch(url, { headers: fetchHeaders })
@@ -167,6 +182,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
             console.error('Failed to load file for preview:', err)
             setError(err instanceof Error ? err.message : 'Failed to load file')
             setPreviewFile(null)
+            setIsPreviewFullscreen(false)
         } finally {
             setIsLoading(false)
         }
@@ -175,6 +191,15 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     const closePreview = useCallback(() => {
         setPreviewFile(null)
         setError(null)
+        setIsPreviewFullscreen(false)
+    }, [])
+
+    const togglePreviewFullscreen = useCallback(() => {
+        setIsPreviewFullscreen(current => !current)
+    }, [])
+
+    const exitPreviewFullscreen = useCallback(() => {
+        setIsPreviewFullscreen(false)
     }, [])
 
     return (
@@ -182,8 +207,11 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
             previewFile,
             isLoading,
             error,
+            isPreviewFullscreen,
             openPreview,
             closePreview,
+            togglePreviewFullscreen,
+            exitPreviewFullscreen,
             isPreviewable,
         }}>
             {children}

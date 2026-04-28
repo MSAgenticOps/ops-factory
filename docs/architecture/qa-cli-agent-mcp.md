@@ -27,8 +27,12 @@
 
 - `gateway/agents/qa-cli-agent/AGENTS.md`
 - `gateway/agents/qa-cli-agent/config/config.yaml`
-- `gateway/agents/qa-cli-agent/config/mcp/fs-qa/src/index.js`
-- `gateway/agents/qa-cli-agent/config/mcp/fs-qa/src/handlers.js`
+- `gateway/agents/qa-cli-agent/config/mcp/knowledge-cli/src/index.ts`
+- `gateway/agents/qa-cli-agent/config/mcp/knowledge-cli/src/handlers.ts`
+
+运行入口：
+
+- `config/mcp/knowledge-cli/dist/index.js`
 
 ## 4. 配置
 
@@ -39,6 +43,36 @@
 
 当环境变量未设置时，MCP 从 `config.yaml` 中读取 `rootDir`；如果仍未配置，则默认使用 `../data`。
 
+在前端 Agent MCP 配置页中，`knowledge-cli` 的配置体验与 `knowledge-service` 保持一致：用户从知识库下拉框选择一个知识库。保存时网关会把所选 `sourceId` 解析为该知识库的 Markdown 产物根目录，并写回：
+
+```yaml
+extensions:
+  knowledge-cli:
+    x-opsfactory:
+      scope:
+        sourceId: src_285c13458d3a
+        rootDir: ../../../../knowledge-service/data/artifacts/src_285c13458d3a
+```
+
+其中：
+
+- `sourceId` 用于前端回显当前选择的知识库。
+- `rootDir` 是 `knowledge-cli` 运行时真正读取的文件系统范围。
+- 网关使用 `gateway.knowledge.artifacts-root` 作为 Markdown 产物根目录，最终范围为 `<artifacts-root>/<sourceId>`。
+- 当知识库产物目录位于当前仓库内时，`rootDir` 优先写成相对 `gateway/agents/<agentId>/config` 的路径，便于仓库整体迁移。
+
+### 4.1 上下文预算
+
+`qa-cli-agent` 使用 128K 上下文配置：
+
+- `GOOSE_CONTEXT_LIMIT: 128000`
+- `GOOSE_CONTEXT_STRATEGY: summarize`
+- `GOOSE_AUTO_COMPACT_THRESHOLD: 0.7`
+
+自动压缩后的摘要目标为 20K-25K tokens，硬上限为 32K tokens。该值刻意低估，因为下一轮请求还会叠加 system prompt、工具定义、当前用户消息和新的 `read_file` 结果；这个预算为后续检索保留空间，避免压缩刚完成又被新的文件证据撑爆上下文。
+
+`config/prompts/compaction.md` 覆盖 goose 内置压缩提示词。ops-factory 启动 goosed 时会设置 `GOOSE_PATH_ROOT`，goose 优先从 `<GOOSE_PATH_ROOT>/config/prompts/compaction.md` 读取用户模板；QA CLI Agent 运行目录中的 `config` 指向 `gateway/agents/qa-cli-agent/config`，因此该文件会作为本 agent 的专属压缩提示词生效。
+
 ## 5. 工具
 
 当前只暴露 3 个工具：
@@ -46,6 +80,12 @@
 - `find_files`
 - `search_content`
 - `read_file`
+
+在 goosed 运行时，工具名会带上扩展前缀，模型调用时应使用：
+
+- `knowledge-cli__find_files`
+- `knowledge-cli__search_content`
+- `knowledge-cli__read_file`
 
 ### 5.1 `find_files`
 
@@ -69,12 +109,16 @@
 
 ### 5.3 `read_file`
 
-读取指定文件的全文或行范围，返回：
+读取指定文件的默认窗口或指定行范围，返回：
 
 - 文件绝对路径
 - 起止行号
+- 请求的结束行号
 - 总行数
+- 是否发生截断、截断原因和下一次建议读取的起始行
 - 带行号的文本内容
+
+`read_file` 会限制单次返回内容，默认读取 120 行，最多返回 200 行，并将文本输出控制在约 24,000 字符以内。如果请求范围或输出字符数超过限制，工具会强制截断，并在响应中说明“内容已被截断”、实际返回到第几行以及需要继续读取时应使用的 `startLine`。
 
 ## 6. 安全约束
 

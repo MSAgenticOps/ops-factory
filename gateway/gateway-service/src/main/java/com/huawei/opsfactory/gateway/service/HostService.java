@@ -46,6 +46,9 @@ public class HostService {
     private HostRelationService hostRelationService;
     private HostGroupService hostGroupService;
     private ClusterService clusterService;
+    private BusinessServiceService businessServiceService;
+    private ClusterTypeService clusterTypeService;
+    private ClusterRelationService clusterRelationService;
 
     public HostService(GatewayProperties properties) {
         this.properties = properties;
@@ -59,6 +62,12 @@ public class HostService {
 
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
+    public void setBusinessServiceService(BusinessServiceService businessServiceService) {
+        this.businessServiceService = businessServiceService;
+    }
+
+    @Lazy
+    @org.springframework.beans.factory.annotation.Autowired
     public void setHostGroupService(HostGroupService hostGroupService) {
         this.hostGroupService = hostGroupService;
     }
@@ -67,6 +76,18 @@ public class HostService {
     @org.springframework.beans.factory.annotation.Autowired
     public void setClusterService(ClusterService clusterService) {
         this.clusterService = clusterService;
+    }
+
+    @Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setClusterTypeService(ClusterTypeService clusterTypeService) {
+        this.clusterTypeService = clusterTypeService;
+    }
+
+    @Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setClusterRelationService(ClusterRelationService clusterRelationService) {
+        this.clusterRelationService = clusterRelationService;
     }
 
     @PostConstruct
@@ -91,6 +112,52 @@ public class HostService {
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
+
+    /**
+     * Validate host role against the cluster type mode.
+     * - If cluster type mode is "peer", role must be null.
+     * - If cluster type mode is "primary-backup", role must be "primary", "backup", or null.
+     */
+    private void validateHostRole(Map<String, Object> host) {
+        Object roleObj = host.get("role");
+        String role = roleObj != null ? roleObj.toString() : null;
+        if (role == null || role.isEmpty()) return; // null role is always valid
+
+        Object clusterIdObj = host.get("clusterId");
+        if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
+            throw new IllegalArgumentException("Host role requires a cluster assignment.");
+        }
+
+        String clusterId = clusterIdObj.toString();
+        String mode = resolveClusterMode(clusterId);
+        if ("peer".equals(mode)) {
+            throw new IllegalArgumentException("Host role is not allowed in peer cluster mode. Cluster ID: " + clusterId);
+        }
+        if ("primary-backup".equals(mode)) {
+            if (!"primary".equals(role) && !"backup".equals(role)) {
+                throw new IllegalArgumentException("Invalid host role '" + role + "'. Must be 'primary' or 'backup' for primary-backup cluster.");
+            }
+        }
+    }
+
+    /**
+     * Resolve the mode of a cluster by looking up its type -> ClusterType.
+     */
+    private String resolveClusterMode(String clusterId) {
+        try {
+            Map<String, Object> cluster = clusterService.getCluster(clusterId);
+            String typeName = cluster.get("type") != null ? cluster.get("type").toString() : null;
+            if (typeName == null || typeName.isEmpty() || clusterTypeService == null) return "peer";
+            for (Map<String, Object> ct : clusterTypeService.listClusterTypes()) {
+                String ctName = ct.get("name") != null ? ct.get("name").toString() : "";
+                if (typeName.equals(ctName)) {
+                    Object modeObj = ct.get("mode");
+                    return modeObj != null ? modeObj.toString() : "peer";
+                }
+            }
+        } catch (Exception ignored) {}
+        return "peer";
+    }
 
     /**
      * Sync cluster type into the host's tags.
@@ -212,6 +279,13 @@ public class HostService {
     }
 
     public Map<String, Object> createHost(Map<String, Object> body) {
+        String name = body.getOrDefault("name", "").toString();
+        for (Map<String, Object> existing : listHosts(null)) {
+            if (name.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
+                throw new IllegalArgumentException("Host name already exists: " + name);
+            }
+        }
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
@@ -220,6 +294,7 @@ public class HostService {
         host.put("name", body.getOrDefault("name", ""));
         host.put("hostname", body.getOrDefault("hostname", null));
         host.put("ip", body.getOrDefault("ip", ""));
+        host.put("businessIp", body.getOrDefault("businessIp", null));
         host.put("port", body.getOrDefault("port", 22));
         host.put("os", body.getOrDefault("os", null));
         host.put("location", body.getOrDefault("location", null));
@@ -231,6 +306,7 @@ public class HostService {
         host.put("tags", body.getOrDefault("tags", List.of()));
         host.put("description", body.getOrDefault("description", ""));
         host.put("customAttributes", body.getOrDefault("customAttributes", List.of()));
+        host.put("role", body.getOrDefault("role", null));
         host.put("createdAt", now);
         host.put("updatedAt", now);
 
@@ -245,8 +321,15 @@ public class HostService {
         }
 
         syncClusterTypeToTags(host);
+        validateHostRole(host);
         writeHostFile(id, host);
         log.info("Created host: id={}, name={}", id, host.get("name"));
+
+        // Sync cluster→host 包含 relation
+        if (clusterRelationService != null) {
+            String cid = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
+            clusterRelationService.syncHostClusterRelation(id, cid);
+        }
 
         // Return with masked credential
         Map<String, Object> result = new LinkedHashMap<>(host);
@@ -259,6 +342,16 @@ public class HostService {
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
             throw new IllegalArgumentException("Host not found: " + id);
+        }
+
+        // Check name uniqueness if name is being updated
+        if (body.containsKey("name")) {
+            String newName = String.valueOf(body.get("name"));
+            for (Map<String, Object> existing : listHosts(null)) {
+                if (!id.equals(existing.get("id")) && newName.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
+                    throw new IllegalArgumentException("Host name already exists: " + newName);
+                }
+            }
         }
 
         // Update mutable fields
@@ -304,6 +397,12 @@ public class HostService {
         if (body.containsKey("customAttributes")) {
             host.put("customAttributes", body.get("customAttributes"));
         }
+        if (body.containsKey("businessIp")) {
+            host.put("businessIp", body.get("businessIp"));
+        }
+        if (body.containsKey("role")) {
+            host.put("role", body.get("role"));
+        }
         if (body.containsKey("credential")) {
             Object credentialObj = body.get("credential");
             String rawCredential = credentialObj != null ? credentialObj.toString() : "";
@@ -320,8 +419,15 @@ public class HostService {
 
         host.put("updatedAt", Instant.now().toString());
         syncClusterTypeToTags(host);
+        validateHostRole(host);
         writeHostFile(id, host);
         log.info("Updated host: id={}", id);
+
+        // Sync cluster→host 包含 relation if clusterId changed
+        if (body.containsKey("clusterId") && clusterRelationService != null) {
+            String cid = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
+            clusterRelationService.syncHostClusterRelation(id, cid);
+        }
 
         // Return with masked credential
         Map<String, Object> result = new LinkedHashMap<>(host);
@@ -333,6 +439,16 @@ public class HostService {
         // Cascade delete relations first
         if (hostRelationService != null) {
             hostRelationService.deleteRelationsByHost(id);
+        }
+
+        // Delete cluster→host 包含 relation
+        if (clusterRelationService != null) {
+            clusterRelationService.deleteConstituteRelationByHost(id);
+        }
+
+        // Remove host from all business services' hostIds
+        if (businessServiceService != null) {
+            businessServiceService.removeHostFromAllBusinessServices(id);
         }
 
         Path file = hostsDir.resolve(id + ".json");
@@ -425,6 +541,20 @@ public class HostService {
             }
         }
         return new ArrayList<>(allTags);
+    }
+
+    /**
+     * Find a host by IP address, checking both the ip (SSH) and businessIp fields.
+     * Returns the first matching host map (with masked credential) or null.
+     */
+    public Map<String, Object> findByIp(String ip) {
+        List<Map<String, Object>> hosts = listHosts(new String[0]);
+        for (Map<String, Object> host : hosts) {
+            if (ip.equals(host.get("ip")) || ip.equals(host.get("businessIp"))) {
+                return host;
+            }
+        }
+        return null;
     }
 
     public Map<String, Object> testConnection(String id) {

@@ -19,6 +19,8 @@ Gateway runtime configuration is loaded directly by Spring Boot from `gateway/co
 ## Runtime Directory Contract
 The gateway prepares runtime directories under `gateway/users/<userId>/agents/<agentId>/`. Shared agent config is linked in, while mutable runtime state remains user-local. New features should respect that split instead of writing directly into shared agent config trees.
 
+The Files page scans user-visible files from `gateway.files.scan-roots`. The default roots are the runtime directory and its `output/` child, both non-recursive. Each root has a stable `id` so file preview, download, edit, and delete actions can resolve same-named files from different roots.
+
 When spawning `goosed`, the gateway also injects `XDG_CONFIG_HOME` to the shared agent config directory so Goose builtin global-config consumers resolve under `gateway/agents/<agentId>/config/goose/*` instead of the host user's home directory. Agent-scoped Goose global memory therefore lives in `gateway/agents/<agentId>/config/goose/memory/`.
 
 ## Health And Recovery

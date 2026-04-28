@@ -1,7 +1,9 @@
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
+import com.huawei.opsfactory.gateway.service.HostService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,7 @@ import reactor.core.scheduler.Schedulers;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/gateway/host-groups")
@@ -24,17 +27,28 @@ public class HostGroupController {
 
     private final HostGroupService hostGroupService;
     private final ClusterService clusterService;
+    private final BusinessServiceService businessServiceService;
+    private final HostService hostService;
 
-    public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService) {
+    public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
+                               BusinessServiceService businessServiceService, HostService hostService) {
         this.hostGroupService = hostGroupService;
         this.clusterService = clusterService;
+        this.businessServiceService = businessServiceService;
+        this.hostService = hostService;
     }
 
     @GetMapping
-    public Mono<Map<String, Object>> listGroups(ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listGroups(
+            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+            ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
+            if (enabledOnly) {
+                Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
+                groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
+            }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("groups", groups);
             return result;
@@ -42,12 +56,23 @@ public class HostGroupController {
     }
 
     @GetMapping("/tree")
-    public Mono<Map<String, Object>> getTree(ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> getTree(
+            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+            ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
             List<Map<String, Object>> clusters = clusterService.listClusters(null, null);
-            return hostGroupService.getTree(groups, clusters);
+            List<Map<String, Object>> businessServices = businessServiceService.listBusinessServices(null, null);
+            if (enabledOnly) {
+                Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
+                groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
+                clusters.removeIf(c -> Boolean.FALSE.equals(c.get("enabled"))
+                        || disabledGroupIds.contains(c.get("groupId")));
+                businessServices.removeIf(bs -> Boolean.FALSE.equals(bs.get("enabled"))
+                        || disabledGroupIds.contains(bs.get("groupId")));
+            }
+            return hostGroupService.getTree(groups, clusters, businessServices);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -125,11 +150,17 @@ public class HostGroupController {
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(
             @PathVariable("id") String id,
+            @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
-                boolean deleted = hostGroupService.deleteGroup(id, clusterService);
+                boolean deleted;
+                if (force) {
+                    deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
+                } else {
+                    deleted = hostGroupService.deleteGroup(id, clusterService);
+                }
                 if (!deleted) {
                     Map<String, Object> body = new LinkedHashMap<>();
                     body.put("success", false);

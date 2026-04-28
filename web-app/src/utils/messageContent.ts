@@ -3,6 +3,10 @@ import type { ChatMessage, MessageContent } from '../types/message'
 const THINK_BLOCK_REGEX = /<think>([\s\S]*?)<\/think>/gi
 const UNCLOSED_THINK_REGEX = /<think>([\s\S]*)$/i
 
+function normalizeProcessText(text: string): string {
+    return text.replace(/\s+/g, ' ').trim()
+}
+
 function getTextItems(message: ChatMessage): string[] {
     return message.content.flatMap(content => {
         if (content.type === 'text' && typeof content.text === 'string') {
@@ -34,26 +38,68 @@ export function hasDisplayTextContent(message: ChatMessage): boolean {
 }
 
 export function getReasoningContent(message: ChatMessage): string | null {
-    const reasoning = message.content.flatMap(content => {
-        if (content.type === 'reasoning' && typeof content.text === 'string' && content.text.length > 0) {
-            return [content.text]
-        }
-        return []
-    })
+    let assembled = ''
+    let assembledNormalized = ''
 
-    return reasoning.length > 0 ? reasoning.join('') : null
+    for (const content of message.content) {
+        if (content.type !== 'reasoning' || typeof content.text !== 'string' || content.text.length === 0) continue
+        const normalized = normalizeProcessText(content.text)
+        if (!normalized) continue
+
+        if (!assembledNormalized) {
+            assembled = content.text
+            assembledNormalized = normalized
+            continue
+        }
+
+        if (normalized === assembledNormalized || assembledNormalized.startsWith(normalized)) {
+            continue
+        }
+
+        if (normalized.startsWith(assembledNormalized)) {
+            assembled = content.text
+            assembledNormalized = normalized
+            continue
+        }
+
+        assembled += content.text
+        assembledNormalized = normalizeProcessText(assembled)
+    }
+
+    return assembledNormalized ? assembled : null
 }
 
 export function getThinkingContent(message: ChatMessage): string | null {
-    const structuredThinking = message.content.flatMap(content => {
-        if (content.type === 'thinking' && typeof content.thinking === 'string' && content.thinking.length > 0) {
-            return [content.thinking]
-        }
-        return []
-    })
+    let assembled = ''
+    let assembledNormalized = ''
 
-    if (structuredThinking.length > 0) {
-        return structuredThinking.join('')
+    for (const content of message.content) {
+        if (content.type !== 'thinking' || typeof content.thinking !== 'string' || content.thinking.length === 0) continue
+        const normalized = normalizeProcessText(content.thinking)
+        if (!normalized) continue
+
+        if (!assembledNormalized) {
+            assembled = content.thinking
+            assembledNormalized = normalized
+            continue
+        }
+
+        if (normalized === assembledNormalized || assembledNormalized.startsWith(normalized)) {
+            continue
+        }
+
+        if (normalized.startsWith(assembledNormalized)) {
+            assembled = content.thinking
+            assembledNormalized = normalized
+            continue
+        }
+
+        assembled += content.thinking
+        assembledNormalized = normalizeProcessText(assembled)
+    }
+
+    if (assembledNormalized) {
+        return assembled
     }
 
     const fullText = getFullTextContent(message)

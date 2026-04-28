@@ -205,7 +205,7 @@ public class AgentConfigServiceTest {
 
         // Add SKILL.md with frontmatter to skill-a
         Files.writeString(skillsDir.resolve("skill-a").resolve("SKILL.md"),
-                "---\nname: Skill A\ndescription: Description of skill A\n---\n# Skill A\n");
+                "---\nname: Skill A\ndescription: Description of skill A\npinned: true\ndisplay-order: -100\n---\n# Skill A\n");
 
         List<Map<String, String>> skills = service.listSkills("test-agent");
         assertEquals(2, skills.size());
@@ -219,6 +219,8 @@ public class AgentConfigServiceTest {
                 .filter(s -> "Skill A".equals(s.get("name"))).findFirst().orElseThrow();
         assertEquals("Description of skill A", skillA.get("description"));
         assertEquals("skills/skill-a", skillA.get("path"));
+        assertEquals("true", skillA.get("pinned"));
+        assertEquals("-100", skillA.get("displayOrder"));
 
         // Verify skill-b has empty description (no SKILL.md)
         Map<String, String> skillB = skills.stream()
@@ -564,6 +566,65 @@ public class AgentConfigServiceTest {
         List<Map<String, String>> remaining = service.listMemoryFiles("test-agent");
         assertEquals(1, remaining.size());
         assertEquals("b", remaining.get(0).get("category"));
+    }
+
+    @Test
+    public void testWriteKnowledgeCliSettings_storesSourceIdAndRelativeArtifactsRoot() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
+        Files.createDirectories(configDir);
+        Files.writeString(configDir.resolve("config.yaml"),
+                "extensions:\n"
+                        + "  knowledge-cli:\n"
+                        + "    x-opsfactory:\n"
+                        + "      scope:\n"
+                        + "        rootDir: ../data\n");
+
+        service.writeMcpSettings("qa-cli-agent", "knowledge-cli", Map.of("sourceId", "src_123"));
+
+        Map<String, Object> settings = service.readMcpSettings("qa-cli-agent", "knowledge-cli");
+        assertEquals("src_123", settings.get("sourceId"));
+        assertEquals("../../../../knowledge-service/data/artifacts/src_123", settings.get("rootDir"));
+        assertEquals(configDir.resolve("../../../../knowledge-service/data/artifacts/src_123").normalize(),
+                service.getKnowledgeCliRootDir("qa-cli-agent"));
+    }
+
+    @Test
+    public void testWriteKnowledgeCliSettings_usesConfiguredArtifactsRoot() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
+        Files.createDirectories(configDir);
+        Files.writeString(configDir.resolve("config.yaml"),
+                "extensions:\n"
+                        + "  knowledge-cli:\n"
+                        + "    x-opsfactory:\n"
+                        + "      scope:\n"
+                        + "        rootDir: ../data\n");
+        Path externalArtifactsRoot = tempFolder.getRoot().toPath().getParent().resolve("external-artifacts");
+        properties.getKnowledge().setArtifactsRoot(externalArtifactsRoot.toString());
+
+        service.writeMcpSettings("qa-cli-agent", "knowledge-cli", Map.of("sourceId", "src_external"));
+
+        Map<String, Object> settings = service.readMcpSettings("qa-cli-agent", "knowledge-cli");
+        assertEquals("src_external", settings.get("sourceId"));
+        assertEquals(externalArtifactsRoot.resolve("src_external").normalize().toString(), settings.get("rootDir"));
+    }
+
+    @Test
+    public void testWriteKnowledgeCliSettings_clearResetsDefaultRoot() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
+        Files.createDirectories(configDir);
+        Files.writeString(configDir.resolve("config.yaml"),
+                "extensions:\n"
+                        + "  knowledge-cli:\n"
+                        + "    x-opsfactory:\n"
+                        + "      scope:\n"
+                        + "        sourceId: src_old\n"
+                        + "        rootDir: ../../../../knowledge-service/data/artifacts/src_old\n");
+
+        service.writeMcpSettings("qa-cli-agent", "knowledge-cli", Map.of("sourceId", ""));
+
+        Map<String, Object> settings = service.readMcpSettings("qa-cli-agent", "knowledge-cli");
+        assertNull(settings.get("sourceId"));
+        assertEquals("../data", settings.get("rootDir"));
     }
 
     @Test
