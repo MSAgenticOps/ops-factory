@@ -45,6 +45,7 @@ public class GoosedProxy {
 
     private static final Logger log = LoggerFactory.getLogger(GoosedProxy.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Duration EVENT_AUGMENT_TIMEOUT = Duration.ofSeconds(3);
 
     private final WebClient webClient;
     private final GatewayProperties properties;
@@ -250,15 +251,17 @@ public class GoosedProxy {
                 ? Mono.empty()
                 : beforeTerminalEventFactory.apply(data);
 
-        return injected.defaultIfEmpty("")
-                .flatMapMany(extraPayload -> {
-                    List<DataBuffer> outputs = new ArrayList<>();
-                    if (extraPayload != null && !extraPayload.isBlank()) {
-                        outputs.add(bufferFactory.wrap(extraPayload.getBytes(StandardCharsets.UTF_8)));
-                    }
-                    outputs.add(bufferFactory.wrap((frame + "\n\n").getBytes(StandardCharsets.UTF_8)));
-                    return Flux.fromIterable(outputs);
-                });
+        Mono<DataBuffer> originalFrame = Mono.just(bufferFactory.wrap((frame + "\n\n").getBytes(StandardCharsets.UTF_8)));
+        Mono<DataBuffer> extraFrame = injected
+                .timeout(EVENT_AUGMENT_TIMEOUT)
+                .onErrorResume(err -> {
+                    log.warn("[SESSION-EVENTS] skipped supplemental event after original frame: {}", err.getMessage());
+                    return Mono.empty();
+                })
+                .filter(extraPayload -> extraPayload != null && !extraPayload.isBlank())
+                .map(extraPayload -> bufferFactory.wrap(extraPayload.getBytes(StandardCharsets.UTF_8)));
+
+        return Flux.concat(originalFrame, extraFrame);
     }
 
     private String extractSseData(String frame) {

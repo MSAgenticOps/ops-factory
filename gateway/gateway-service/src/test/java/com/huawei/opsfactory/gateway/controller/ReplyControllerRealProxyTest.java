@@ -148,7 +148,7 @@ public class ReplyControllerRealProxyTest {
     }
 
     @Test
-    public void sessionEvents_activeRequestsDrainedEmitsOutputFilesFromPendingReplySnapshot() throws Exception {
+    public void sessionEvents_activeRequestsDrainedEmitsOutputFilesAfterOriginalEvent() throws Exception {
         DisposableServer server = HttpServer.create()
                 .host("127.0.0.1")
                 .port(0)
@@ -223,7 +223,7 @@ public class ReplyControllerRealProxyTest {
                         org.junit.Assert.assertTrue(body.contains("\"sessionId\":\"session-123\""));
                         org.junit.Assert.assertTrue(body.contains("\"chat_request_id\":\"00000000-0000-0000-0000-000000000001\""));
                         org.junit.Assert.assertTrue(body.contains("\"displayPath\":\"goose-intro.md\""));
-                        org.junit.Assert.assertTrue(body.indexOf("\"type\":\"OutputFiles\"") < body.indexOf("\"type\":\"ActiveRequests\""));
+                        org.junit.Assert.assertTrue(body.indexOf("\"type\":\"ActiveRequests\"") < body.indexOf("\"type\":\"OutputFiles\""));
                     });
         } finally {
             server.disposeNow();

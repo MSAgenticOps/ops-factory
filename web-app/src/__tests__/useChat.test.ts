@@ -558,6 +558,47 @@ describe('useChat — session event state machine', () => {
         })
     })
 
+    it('handles OutputFiles that arrive after Finish as a session-level event', async () => {
+        let submittedRequestId = ''
+        const client = {
+            submitSessionReply: async (_sessionId: string, request: { request_id: string }) => {
+                submittedRequestId = request.request_id
+                return { request_id: request.request_id }
+            },
+            subscribeSessionEvents: async function *(_sessionId: string, options: { signal?: AbortSignal } = {}): AsyncGenerator<SessionSSEEvent> {
+                while (!submittedRequestId && !options.signal?.aborted) {
+                    await delay()
+                }
+                if (options.signal?.aborted) return
+
+                yield { event: { type: 'ActiveRequests', request_ids: [submittedRequestId] } }
+                yield { event: { type: 'Finish', chat_request_id: submittedRequestId, token_state: tokenState } }
+                yield {
+                    event: {
+                        type: 'OutputFiles',
+                        sessionId: 'session-1',
+                        chat_request_id: submittedRequestId,
+                        files: [{ path: 'report.md', name: 'report.md', ext: 'md' }],
+                    },
+                }
+            },
+            getSession: async () => ({ conversation: [] }),
+        } as unknown as GoosedClient
+
+        const { result } = renderHook(() => useChat({ sessionId: 'session-1', client }))
+
+        act(() => {
+            result.current.sendMessage('hello')
+        })
+
+        await waitFor(() => {
+            expect(result.current.chatState).toBe(ChatState.Idle)
+        })
+        await waitFor(() => {
+            expect(result.current.outputFilesEvent?.files[0]?.path).toBe('report.md')
+        })
+    })
+
     it('restores an active request and waits for Finish after ActiveRequests becomes empty', async () => {
         let subscriptionCount = 0
         const client = {

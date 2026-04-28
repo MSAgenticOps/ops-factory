@@ -83,6 +83,7 @@ interface UseChatOptions {
 
 export interface OutputFilesEvent {
     sessionId: string
+    requestId?: string
     files: Array<OutputFile & { rootId?: string; displayPath?: string }>
 }
 
@@ -582,6 +583,13 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
             case 'Message': {
                 if (!event.message) break
                 const incomingMessage = convertBackendMessage(event.message as Record<string, unknown>, true)
+                const requestId = getEventRequestId(event)
+                if (requestId && incomingMessage.role === 'assistant') {
+                    incomingMessage.metadata = {
+                        ...(incomingMessage.metadata || {}),
+                        requestId,
+                    }
+                }
                 const nextMessages = pushMessage(messagesRef.current, incomingMessage)
                 messagesRef.current = nextMessages
                 dispatch({ type: 'SET_MESSAGES', payload: nextMessages })
@@ -627,9 +635,11 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                 return true
             }
             case 'OutputFiles': {
+                const requestId = getEventRequestId(event)
                 if (event.files && event.files.length > 0 && event.sessionId) {
                     setOutputFilesEvent({
                         sessionId: event.sessionId,
+                        requestId,
                         files: event.files,
                     })
                 }
@@ -773,6 +783,10 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                                 broadcastRequestEvent(item.event)
                                 continue
                             }
+                            if (item.event.type === 'OutputFiles') {
+                                processSessionEvent(item.event)
+                                continue
+                            }
 
                             const requestId = getEventRequestId(item.event)
                             if (requestId) {
@@ -806,7 +820,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                 sessionEventsControllerRef.current = null
             }
         }
-    }, [broadcastRequestEvent, client, emitRequestEvent, handleActiveRequests, sessionId])
+    }, [broadcastRequestEvent, client, emitRequestEvent, handleActiveRequests, processSessionEvent, sessionId])
 
     const buildPayloadText = useCallback((payload: SendMessagePayload): string => {
         let apiText = payload.text.trim()

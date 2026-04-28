@@ -109,6 +109,7 @@ export interface SelectedSkill {
 export interface MessageMetadata {
     userVisible?: boolean
     agentVisible?: boolean
+    requestId?: string
     attachedFiles?: AttachedFile[]
     selectedSkill?: SelectedSkill
     retryPayload?: {
