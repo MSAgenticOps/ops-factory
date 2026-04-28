@@ -3,16 +3,23 @@ package com.huawei.opsfactory.gateway.proxy;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
+import reactor.test.StepVerifier;
 
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -158,5 +165,35 @@ public class GoosedProxyExtendedTest {
         } finally {
             server.disposeNow();
         }
+    }
+
+    @Test
+    public void testEmitTransformedFrame_emitsOriginalBeforeSupplementalEventCompletes() throws Exception {
+        Method emitTransformedFrame = GoosedProxy.class.getDeclaredMethod(
+                "emitTransformedFrame",
+                String.class,
+                org.springframework.core.io.buffer.DataBufferFactory.class,
+                Function.class);
+        emitTransformedFrame.setAccessible(true);
+
+        String frame = "id: 42\ndata: {\"type\":\"Finish\",\"chat_request_id\":\"req-1\"}";
+        @SuppressWarnings("unchecked")
+        Flux<DataBuffer> result = (Flux<DataBuffer>) emitTransformedFrame.invoke(
+                proxy,
+                frame,
+                new DefaultDataBufferFactory(),
+                (Function<String, Mono<String>>) ignored -> Mono.never());
+
+        StepVerifier.create(result.map(this::dataBufferToString))
+                .expectNext(frame + "\n\n")
+                .thenCancel()
+                .verify(Duration.ofSeconds(1));
+    }
+
+    private String dataBufferToString(DataBuffer buffer) {
+        byte[] bytes = new byte[buffer.readableByteCount()];
+        buffer.read(bytes);
+        DataBufferUtils.release(buffer);
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 }

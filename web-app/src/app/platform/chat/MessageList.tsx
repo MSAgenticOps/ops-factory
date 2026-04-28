@@ -240,6 +240,21 @@ export default function MessageList({
         return undefined
     }, [displayMessages])
 
+    const outputFilesTargetMessageId = useMemo(() => {
+        if (!outputFilesEvent?.requestId) return finalAssistantTextMessageId
+        for (let i = displayMessages.length - 1; i >= 0; i--) {
+            const msg = displayMessages[i]
+            if (
+                msg.role === 'assistant' &&
+                hasDisplayTextContent(msg) &&
+                msg.metadata?.requestId === outputFilesEvent.requestId
+            ) {
+                return msg.id
+            }
+        }
+        return undefined
+    }, [displayMessages, finalAssistantTextMessageId, outputFilesEvent?.requestId])
+
     const toolResponses = useMemo<ToolResponseMap>(() => {
         const map: ToolResponseMap = new Map()
         for (const msg of visibleMessages) {
@@ -286,9 +301,9 @@ export default function MessageList({
 
     // ── Real-time: handle OutputFiles SSE event ─────────────────────
     // When the gateway sends an OutputFiles event after a session reply completes,
-    // attach the files to the last assistant text message and persist the mapping.
+    // attach the files to the matching assistant message and persist the mapping.
     useEffect(() => {
-        if (!outputFilesEvent || !agentId || !finalAssistantTextMessageId) return
+        if (!outputFilesEvent || !agentId || !outputFilesTargetMessageId) return
         if (!sessionId || outputFilesEvent.sessionId !== sessionId) return
 
         const files: DetectedFile[] = outputFilesEvent.files.map(f => ({
@@ -300,15 +315,15 @@ export default function MessageList({
         }))
 
         // Deduplicate exact event re-renders while still allowing later batches for the same message.
-        const eventKey = `${outputFilesEvent.sessionId}:${finalAssistantTextMessageId}:${fileEventSignature(files)}`
+        const eventKey = `${outputFilesEvent.sessionId}:${outputFilesTargetMessageId}:${fileEventSignature(files)}`
         if (processedOutputFilesRef.current.has(eventKey)) return
         processedOutputFilesRef.current.add(eventKey)
-        liveOutputFileMessageIdsRef.current.add(finalAssistantTextMessageId)
+        liveOutputFileMessageIdsRef.current.add(outputFilesTargetMessageId)
 
-        const filesToPersist = mergeDetectedFiles(messageOutputFiles.get(finalAssistantTextMessageId) ?? [], files)
+        const filesToPersist = mergeDetectedFiles(messageOutputFiles.get(outputFilesTargetMessageId) ?? [], files)
         setMessageOutputFiles(prev => {
             const next = new Map(prev)
-            next.set(finalAssistantTextMessageId, mergeDetectedFiles(next.get(finalAssistantTextMessageId) ?? [], files))
+            next.set(outputFilesTargetMessageId, mergeDetectedFiles(next.get(outputFilesTargetMessageId) ?? [], files))
             return next
         })
 
@@ -318,11 +333,11 @@ export default function MessageList({
             headers: { ...gatewayHeaders(), 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 sessionId: outputFilesEvent.sessionId,
-                messageId: finalAssistantTextMessageId,
+                messageId: outputFilesTargetMessageId,
                 files: filesToPersist,
             }),
         }).catch(() => { /* best-effort persistence */ })
-    }, [outputFilesEvent, agentId, sessionId, finalAssistantTextMessageId, messageOutputFiles, gatewayHeaders])
+    }, [outputFilesEvent, agentId, sessionId, outputFilesTargetMessageId, messageOutputFiles, gatewayHeaders])
 
     // ── Resume: load persisted file capsules from gateway ───────────
     useEffect(() => {

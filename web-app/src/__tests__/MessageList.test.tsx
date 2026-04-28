@@ -343,6 +343,106 @@ describe('MessageList tool error rendering', () => {
         })
     })
 
+    it('attaches late OutputFiles to the assistant message with the matching request id', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input)
+            if (url.includes('/config')) {
+                return Promise.resolve({ ok: false }) as Promise<Response>
+            }
+            if (url.includes('/file-capsules') && init?.method === 'POST') {
+                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+            }
+            return Promise.resolve({ ok: true, json: async () => ({ entries: {} }) }) as Promise<Response>
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-a',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'First done' }],
+                metadata: { requestId: 'req-a' },
+            },
+            {
+                id: 'assistant-b',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Second done' }],
+                metadata: { requestId: 'req-b' },
+            },
+        ]
+
+        renderMessageListWithPreview(messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                requestId: 'req-a',
+                files: [{
+                    path: 'first-report.md',
+                    name: 'first-report.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'first-report.md',
+                }],
+            },
+        })
+
+        await waitFor(() => {
+            const postCall = fetchMock.mock.calls.find(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )
+            expect(postCall).toBeTruthy()
+            const body = JSON.parse(String(postCall?.[1]?.body))
+            expect(body.messageId).toBe('assistant-a')
+        })
+    })
+
+    it('does not attach request-scoped OutputFiles when no assistant request id matches', async () => {
+        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input)
+            if (url.includes('/config')) {
+                return Promise.resolve({ ok: false }) as Promise<Response>
+            }
+            if (url.includes('/file-capsules') && init?.method === 'POST') {
+                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+            }
+            return Promise.resolve({ ok: true, json: async () => ({ entries: {} }) }) as Promise<Response>
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-latest',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Latest done' }],
+                metadata: { requestId: 'req-latest' },
+            },
+        ]
+
+        renderMessageListWithPreview(messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                requestId: 'req-missing',
+                files: [{
+                    path: 'missing-request.md',
+                    name: 'missing-request.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'missing-request.md',
+                }],
+            },
+        })
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )).toBe(false)
+        })
+        expect(screen.queryByText('missing-request.md')).toBeNull()
+    })
+
     it('restores output file capsules from persisted session entries', async () => {
         const fetchMock = vi.fn((input: RequestInfo | URL) => {
             const url = String(input)
