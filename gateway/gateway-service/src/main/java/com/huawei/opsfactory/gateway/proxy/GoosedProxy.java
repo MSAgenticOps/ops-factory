@@ -136,6 +136,8 @@ public class GoosedProxy {
     public Mono<Void> proxySessionCommandWithBody(ServerHttpResponse response, int port, String path,
                                                   HttpMethod method, String body, String secretKey) {
         String target = goosedBaseUrl(port) + path;
+        long start = System.currentTimeMillis();
+        log.info("[GOOSED-PROXY] request method={} path={} port={}", method, path, port);
 
         return webClient.method(method)
                 .uri(target)
@@ -146,9 +148,16 @@ public class GoosedProxy {
                     if (upstream.statusCode().isError()) {
                         return upstream.bodyToMono(String.class)
                                 .defaultIfEmpty("")
-                                .flatMap(errorBody -> Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
-                                        upstream.headers().asHttpHeaders(), errorBody)));
+                                .flatMap(errorBody -> {
+                                    log.warn("[GOOSED-PROXY] upstream-error method={} path={} port={} status={} error={} durationMs={}",
+                                            method, path, port, upstream.rawStatusCode(),
+                                            truncate(errorBody, 200), System.currentTimeMillis() - start);
+                                    return Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
+                                            upstream.headers().asHttpHeaders(), errorBody));
+                                });
                     }
+                    log.info("[GOOSED-PROXY] response method={} path={} port={} status={} durationMs={}",
+                            method, path, port, upstream.statusCode(), System.currentTimeMillis() - start);
                     response.setStatusCode(upstream.statusCode());
                     copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
                     return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
@@ -166,6 +175,8 @@ public class GoosedProxy {
                                          String agentId, String userId, String sessionId,
                                          Function<String, Mono<String>> beforeTerminalEventFactory) {
         String target = goosedBaseUrl(port) + path;
+        log.info("[GOOSED-PROXY] sse-connect port={} path={} agentId={} userId={} sessionId={} lastEventId={}",
+                port, path, agentId, userId, sessionId, lastEventId);
 
         WebClient.RequestHeadersSpec<?> spec = webClient.get()
                 .uri(target)
@@ -177,11 +188,15 @@ public class GoosedProxy {
 
         return spec.exchangeToMono(upstream -> {
                     if (upstream.statusCode().isError()) {
+                        log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}",
+                                port, path, upstream.rawStatusCode(), agentId, sessionId);
                         return upstream.bodyToMono(String.class)
                                 .defaultIfEmpty("")
                                 .flatMap(errorBody -> Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
                                         upstream.headers().asHttpHeaders(), errorBody)));
                     }
+                    log.info("[GOOSED-PROXY] sse-connected port={} path={} status={} agentId={} sessionId={}",
+                            port, path, upstream.statusCode(), agentId, sessionId);
                     response.setStatusCode(upstream.statusCode());
                     copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
                     Flux<DataBuffer> body = transformSessionEventStream(
@@ -306,12 +321,18 @@ public class GoosedProxy {
      */
     public Mono<String> fetchJson(int port, String path, String secretKey) {
         String target = goosedBaseUrl(port) + path;
+        long start = System.currentTimeMillis();
+        log.info("[GOOSED-PROXY] request method=GET path={} port={}", path, port);
         return webClient.get()
                 .uri(target)
                 .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
                 .retrieve()
                 .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(30));
+                .timeout(Duration.ofSeconds(30))
+                .doOnNext(body -> log.info("[GOOSED-PROXY] response method=GET path={} port={} status=200 bodyLen={} durationMs={}",
+                        path, port, body != null ? body.length() : 0, System.currentTimeMillis() - start))
+                .doOnError(err -> log.warn("[GOOSED-PROXY] error method=GET path={} port={} error={} durationMs={}",
+                        path, port, err.getMessage(), System.currentTimeMillis() - start));
     }
 
     public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, String secretKey) {
@@ -320,6 +341,8 @@ public class GoosedProxy {
 
     public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec, String secretKey) {
         String target = goosedBaseUrl(port) + path;
+        long start = System.currentTimeMillis();
+        log.info("[GOOSED-PROXY] request method={} path={} port={}", method, path, port);
         WebClient.RequestBodySpec spec = webClient.method(method)
                 .uri(target)
                 .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
@@ -330,6 +353,10 @@ public class GoosedProxy {
         return ready.retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(timeoutSec))
+                .doOnNext(resp -> log.info("[GOOSED-PROXY] response method={} path={} port={} status=200 bodyLen={} durationMs={}",
+                        method, path, port, resp != null ? resp.length() : 0, System.currentTimeMillis() - start))
+                .doOnError(err -> log.warn("[GOOSED-PROXY] error method={} path={} port={} error={} durationMs={}",
+                        method, path, port, err.getMessage(), System.currentTimeMillis() - start))
                 .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
@@ -386,5 +413,10 @@ public class GoosedProxy {
             }
             target.put(name, values);
         });
+    }
+
+    private static String truncate(String s, int maxLen) {
+        if (s == null) return "";
+        return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...";
     }
 }
