@@ -258,15 +258,26 @@ cleanup_tmp_files() {
 
 trap cleanup_tmp_files EXIT
 
+redact_sensitive_lines() {
+  sed -E \
+    -e 's/(["'\'']?[^"'\'':=[:space:]]*([Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Pp][Ii][_-]?[Kk][Ee][Yy]|[Aa][Cc][Cc][Ee][Ss][Ss][_-]?[Kk][Ee][Yy]|[Ss][Ee][Cc][Rr][Ee][Tt][_-]?[Kk][Ee][Yy]|[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][^"'\'':=[:space:]]*[Kk][Ee][Yy]|[Ee][Nn][Cc][Rr][Yy][Pp][Tt][Ii][Oo][Nn][^"'\'':=[:space:]]*[Kk][Ee][Yy]|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])[^"'\'':=[:space:]]*["'\'']?[[:space:]]*[:=][[:space:]]*).*/\1<redacted>/' \
+    -e 's/([Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn][[:space:]]*:[[:space:]]*)([Bb][Ee][Aa][Rr][Ee][Rr]|[Bb][Aa][Ss][Ii][Cc]|[Tt][Oo][Kk][Ee][Nn])?[[:space:]]+[^[:space:]"'\'',;]+/\1<redacted>/g' \
+    -e 's/([Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]+)[A-Za-z0-9._~+\/=-]+/\1<redacted>/g'
+}
+
 run_sh() {
   local name="$1"
   shift
+  local out="$OUT_DIR/$name.txt"
+  local tmp="$out.tmp"
   echo ">>> $name"
   {
     echo "### $name"
     echo "\$ $*"
     bash -lc "$*"
-  } > "$OUT_DIR/$name.txt" 2>&1 || true
+  } > "$tmp" 2>&1 || true
+  redact_sensitive_lines < "$tmp" > "$out" 2>/dev/null || cp "$tmp" "$out" 2>/dev/null || true
+  rm -f "$tmp"
 }
 
 copy_redacted_file() {
@@ -280,12 +291,25 @@ copy_redacted_file() {
   esac
   if [ "$size" -le "$MAX_AGENT_FILE_BYTES" ]; then
     mkdir -p "$(dirname "$dest")"
-    sed -E \
-      -e 's/(["'\'']?[^"'\'':=[:space:]]*([Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Pp][Ii][_-]?[Kk][Ee][Yy]|[Aa][Cc][Cc][Ee][Ss][Ss][_-]?[Kk][Ee][Yy]|[Ss][Ee][Cc][Rr][Ee][Tt][_-]?[Kk][Ee][Yy]|[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][^"'\'':=[:space:]]*[Kk][Ee][Yy]|[Ee][Nn][Cc][Rr][Yy][Pp][Tt][Ii][Oo][Nn][^"'\'':=[:space:]]*[Kk][Ee][Yy]|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])[^"'\'':=[:space:]]*["'\'']?[[:space:]]*[:=][[:space:]]*).*/\1<redacted>/' \
-      "$src" > "$dest" 2>/dev/null || true
+    redact_sensitive_lines < "$src" > "$dest" 2>/dev/null || true
   else
     echo "Skipped large config file ($size bytes): $src" >> "$OUT_DIR/skipped-config-files.txt"
   fi
+}
+
+copy_redacted_log() {
+  local src="$1"
+  local dest="$2"
+  [ -f "$src" ] || return 0
+  mkdir -p "$(dirname "$dest")"
+  case "$src" in
+    *.gz)
+      gzip -cd "$src" 2>/dev/null | redact_sensitive_lines > "$dest.redacted.txt" 2>/dev/null || true
+      ;;
+    *)
+      redact_sensitive_lines < "$src" > "$dest" 2>/dev/null || true
+      ;;
+  esac
 }
 
 echo "Collecting session debug bundle to: $OUT_DIR"
@@ -839,7 +863,7 @@ collect_log_matches() {
   if [ -s "$tmp" ]; then
     {
       echo "### $log"
-      cat "$tmp"
+      redact_sensitive_lines < "$tmp"
     } > "$out"
   fi
   rm -f "$tmp"
@@ -961,7 +985,7 @@ if [ "$COPY_MCP_LOGS" = "1" ]; then
       continue
     fi
     dest="$OUT_DIR/mcp-full-logs/$(safe_name "$log")"
-    cp "$log" "$dest" 2>/dev/null || true
+    copy_redacted_log "$log" "$dest"
     MCP_COPIED_BYTES="$next_total"
   done < "$MCP_CANDIDATES"
   printf '%s\n' "$MCP_COPIED_BYTES" > "$OUT_DIR/mcp-full-logs-copied-bytes.txt"
@@ -1030,8 +1054,7 @@ if [ "$COPY_GOOSED_LOGS" = "1" ] && [ -d "$GOOSED_LOG_ROOT" ]; then
     fi
     rel="${log#"$GOOSED_LOG_ROOT/"}"
     dest="$OUT_DIR/goosed-full-logs/$rel"
-    mkdir -p "$(dirname "$dest")"
-    cp "$log" "$dest" 2>/dev/null || true
+    copy_redacted_log "$log" "$dest"
     GOOSED_COPIED_BYTES="$next_total"
   done < "$GOOSED_CANDIDATES"
   printf '%s\n' "$GOOSED_COPIED_BYTES" > "$OUT_DIR/goosed-full-logs-copied-bytes.txt"

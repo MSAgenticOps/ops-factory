@@ -16,16 +16,19 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class UserContextFilterTest {
 
     private UserContextFilter filter;
     private GatewayProperties gatewayProperties;
+    private PrewarmService prewarmService;
 
     @Before
     public void setUp() {
-        PrewarmService prewarmService = mock(PrewarmService.class);
+        prewarmService = mock(PrewarmService.class);
         gatewayProperties = mock(GatewayProperties.class);
         when(gatewayProperties.getAdminUsers()).thenReturn(List.of("admin"));
         filter = new UserContextFilter(prewarmService, gatewayProperties);
@@ -120,5 +123,51 @@ public class UserContextFilterTest {
                 .verifyComplete();
 
         assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+    }
+
+    @Test
+    public void testTraceStartDoesNotPrewarmUser() {
+        MockServerHttpRequest request = MockServerHttpRequest.post("/gateway/agents/qa-agent/sessions/20260429_3/trace")
+                .header("x-user-id", "admin")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        WebFilterChain chain = ex -> Mono.empty();
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertEquals("admin", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
+        assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+        verify(prewarmService, never()).onUserActivity("admin");
+    }
+
+    @Test
+    public void testTraceDownloadDoesNotPrewarmUser() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/gateway/session-traces/job-1/download")
+                .header("x-user-id", "admin")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        WebFilterChain chain = ex -> Mono.empty();
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertEquals("admin", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
+        assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+        verify(prewarmService, never()).onUserActivity("admin");
+    }
+
+    @Test
+    public void testRegularGatewayRequestPrewarmsUser() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/gateway/agents")
+                .header("x-user-id", "admin")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        WebFilterChain chain = ex -> Mono.empty();
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(prewarmService).onUserActivity("admin");
     }
 }
