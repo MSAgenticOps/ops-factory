@@ -57,6 +57,16 @@ public class UserContextFilter implements WebFilter {
                path.equals("/gateway/status") || path.equals("/gateway/me") || path.equals("/gateway/config");
     }
 
+    private static boolean isTraceEndpoint(String path) {
+        if (path.startsWith("/gateway/session-traces/")) {
+            return true;
+        }
+        if (!path.startsWith("/gateway/agents/") || !path.endsWith("/trace")) {
+            return false;
+        }
+        return path.substring("/gateway/agents/".length()).contains("/sessions/");
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
@@ -86,8 +96,10 @@ public class UserContextFilter implements WebFilter {
         exchange.getAttributes().put(USER_ROLE_ATTR, role);
         ThreadContext.put("userId", userId);
 
-        // Trigger pre-warm for authenticated users
-        prewarmService.onUserActivity(userId);
+        // Trigger pre-warm for authenticated users, except diagnostics that must not mutate runtime state.
+        if (!isTraceEndpoint(path)) {
+            prewarmService.onUserActivity(userId);
+        }
 
         return chain.filter(exchange);
     }
