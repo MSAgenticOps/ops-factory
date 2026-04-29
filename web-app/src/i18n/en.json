@@ -1179,6 +1179,14 @@
     "sessionIdLabel": "ID",
     "moveToInbox": "Move to Inbox",
     "markAsUnread": "Mark as unread",
+    "traceSession": "Collect trace package",
+    "traceSessionRunning": "Collecting trace package",
+    "traceSessionStarted": "Collecting trace package.",
+    "traceSessionActiveNotice": "Trace collection is running. Keep this page open until the automatic download starts; if you leave, return to History and run Trace again.",
+    "traceSessionDownloaded": "Trace package is ready. Check your browser downloads.",
+    "traceSessionFailed": "Failed to collect trace package.",
+    "traceSessionFailedWithReason": "Failed to collect trace package: {{error}}",
+    "traceSessionTimeout": "Trace collection timed out. Keep the page open and try again.",
     "deleteSession": "Delete session"
   },
   "inbox": {

@@ -5,6 +5,7 @@ import type { Session } from '@goosed/sdk'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { useUser } from '../../../platform/providers/UserContext'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListFooter from '../../../platform/ui/list/ListFooter'
@@ -13,7 +14,8 @@ import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import FilterSelect from '../../../platform/ui/filters/FilterSelect'
 import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
-import { isScheduledSession } from '../../../../config/runtime'
+import { GATEWAY_URL, gatewayHeaders, isAdminUser, isScheduledSession } from '../../../../config/runtime'
+import { trackedFetch } from '../../../platform/logging/requestClient'
 import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
 
@@ -23,12 +25,23 @@ interface AgentSession extends Session {
 
 type HistoryFilter = 'user' | 'scheduled' | 'all'
 
+type TraceJobStatus = 'running' | 'succeeded' | 'failed'
+
+interface TraceJobResponse {
+    jobId: string
+    status: TraceJobStatus
+    fileName?: string
+    message?: string
+}
+
 function parseHistoryFilter(raw: string | null): HistoryFilter {
     if (raw === 'scheduled' || raw === 'all' || raw === 'user') return raw
     return 'user'
 }
 
 const ALL_AGENTS = '__all__'
+const TRACE_POLL_INTERVAL_MS = 1500
+const TRACE_POLL_TIMEOUT_MS = 10 * 60 * 1000
 
 function hasSessionMessages(session: Session): boolean {
     if (typeof session.message_count === 'number') return session.message_count > 0
@@ -36,10 +49,54 @@ function hasSessionMessages(session: Session): boolean {
     return true
 }
 
+function wait(ms: number): Promise<void> {
+    return new Promise(resolve => window.setTimeout(resolve, ms))
+}
+
+function getDownloadFilename(response: Response, fallback: string): string {
+    const disposition = response.headers.get('content-disposition')
+    const utf8Match = disposition?.match(/filename\*=UTF-8''([^;]+)/i)
+    if (utf8Match?.[1]) {
+        try {
+            return decodeURIComponent(utf8Match[1])
+        } catch {
+            return utf8Match[1]
+        }
+    }
+
+    const asciiMatch = disposition?.match(/filename="?([^";]+)"?/i)
+    return asciiMatch?.[1] || fallback
+}
+
+async function downloadBlobResponse(response: Response, fallbackName: string): Promise<void> {
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = getDownloadFilename(response, fallbackName)
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+async function getResponseError(response: Response): Promise<string> {
+    const text = await response.text().catch(() => '')
+    if (!text) return `HTTP ${response.status}`
+
+    try {
+        const body = JSON.parse(text)
+        return body.message || body.error || text
+    } catch {
+        return text
+    }
+}
+
 export default function HistoryPage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { showToast } = useToast()
+    const { userId, role } = useUser()
     const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected, error: connectionError } = useGoosed()
     const { markSessionRead, markSessionUnread } = useInbox()
@@ -48,6 +105,7 @@ export default function HistoryPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [deletingSessionKeys, setDeletingSessionKeys] = useState<Set<string>>(new Set())
+    const [tracingSessionKeys, setTracingSessionKeys] = useState<Set<string>>(new Set())
     const [renamingSession, setRenamingSession] = useState<SessionWithAgent | null>(null)
     const [isRenaming, setIsRenaming] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
@@ -78,8 +136,9 @@ export default function HistoryPage() {
     }, [searchParams, setSearchParams])
     const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
     const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
+    const canTraceSessions = isAdminUser(userId, role)
 
-    const getSessionKey = (session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`
+    const getSessionKey = useCallback((session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`, [])
 
     useEffect(() => {
         let cancelled = false
@@ -214,6 +273,91 @@ export default function HistoryPage() {
         }
     }, [agents, getClient, renamingSession, showToast, t])
 
+    const pollTraceJob = useCallback(async (jobId: string): Promise<TraceJobResponse> => {
+        const startedAt = Date.now()
+        while (Date.now() - startedAt < TRACE_POLL_TIMEOUT_MS) {
+            const response = await trackedFetch(`${GATEWAY_URL}/session-traces/${encodeURIComponent(jobId)}`, {
+                category: 'request',
+                name: 'request.send',
+                headers: gatewayHeaders(userId),
+            })
+            if (!response.ok) {
+                throw new Error(await getResponseError(response))
+            }
+
+            const job = await response.json() as TraceJobResponse
+            if (job.status !== 'running') {
+                return job
+            }
+            await wait(TRACE_POLL_INTERVAL_MS)
+        }
+        throw new Error(t('history.traceSessionTimeout'))
+    }, [t, userId])
+
+    const handleTraceSession = useCallback(async (session: SessionWithAgent) => {
+        const resolvedAgentId = session.agentId || agents[0]?.id || ''
+        if (!resolvedAgentId) {
+            showToast('error', t('history.traceSessionFailed'))
+            return
+        }
+
+        const sessionKey = getSessionKey({ ...session, agentId: resolvedAgentId })
+        if (tracingSessionKeys.has(sessionKey)) return
+
+        setTracingSessionKeys((prev) => new Set(prev).add(sessionKey))
+        showToast('info', t('history.traceSessionStarted'))
+
+        try {
+            const startResponse = await trackedFetch(
+                `${GATEWAY_URL}/agents/${encodeURIComponent(resolvedAgentId)}/sessions/${encodeURIComponent(session.id)}/trace`,
+                {
+                    method: 'POST',
+                    category: 'request',
+                    name: 'request.send',
+                    headers: gatewayHeaders(userId),
+                },
+            )
+            if (!startResponse.ok) {
+                throw new Error(await getResponseError(startResponse))
+            }
+
+            const startedJob = await startResponse.json() as TraceJobResponse
+            const completedJob = startedJob.status === 'running'
+                ? await pollTraceJob(startedJob.jobId)
+                : startedJob
+            if (completedJob.status !== 'succeeded') {
+                throw new Error(completedJob.message || t('history.traceSessionFailed'))
+            }
+
+            const downloadResponse = await trackedFetch(
+                `${GATEWAY_URL}/session-traces/${encodeURIComponent(completedJob.jobId)}/download`,
+                {
+                    category: 'request',
+                    name: 'request.send',
+                    headers: gatewayHeaders(userId),
+                },
+            )
+            if (!downloadResponse.ok) {
+                throw new Error(await getResponseError(downloadResponse))
+            }
+
+            await downloadBlobResponse(
+                downloadResponse,
+                completedJob.fileName || `session-trace-${session.id}.tar.gz`,
+            )
+            showToast('success', t('history.traceSessionDownloaded'))
+        } catch (err) {
+            console.error('Failed to collect session trace:', err)
+            showToast('error', err instanceof Error ? t('history.traceSessionFailedWithReason', { error: err.message }) : t('history.traceSessionFailed'))
+        } finally {
+            setTracingSessionKeys((prev) => {
+                const next = new Set(prev)
+                next.delete(sessionKey)
+                return next
+            })
+        }
+    }, [agents, getSessionKey, pollTraceJob, showToast, t, tracingSessionKeys, userId])
+
     const handleDeleteSession = async (session: SessionWithAgent) => {
         const resolvedAgentId = session.agentId || agents[0]?.id
         const sessionKey = getSessionKey({ ...session, agentId: resolvedAgentId })
@@ -268,6 +412,12 @@ export default function HistoryPage() {
             {(error || (!isConnected && connectionError)) && (
                 <div className="conn-banner conn-banner-error">
                     {error || t('common.connectionError', { error: connectionError })}
+                </div>
+            )}
+
+            {tracingSessionKeys.size > 0 && (
+                <div className="conn-banner conn-banner-warning">
+                    {t('history.traceSessionActiveNotice')}
                 </div>
             )}
 
@@ -361,8 +511,10 @@ export default function HistoryPage() {
                         onRename={handleRenameSession}
                         onDelete={handleDeleteSession}
                         deletingSessionKeys={deletingSessionKeys}
+                        tracingSessionKeys={tracingSessionKeys}
                         getSessionKey={getSessionKey}
                         agentNameById={Object.fromEntries(agents.map((agent) => [agent.id, agent.name]))}
+                        onTrace={canTraceSessions ? handleTraceSession : undefined}
                         onMarkUnread={historyFilter !== 'user' ? handleMarkUnread : undefined}
                     />
                 )}

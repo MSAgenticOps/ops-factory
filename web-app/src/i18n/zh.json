@@ -1179,6 +1179,14 @@
     "sessionIdLabel": "ID",
     "moveToInbox": "移至收件箱",
     "markAsUnread": "标记为未读",
+    "traceSession": "收集 Trace 包",
+    "traceSessionRunning": "正在收集 Trace 包",
+    "traceSessionStarted": "正在收集 Trace 诊断包。",
+    "traceSessionActiveNotice": "Trace 诊断包正在收集。请保持当前页面打开直到自动下载开始；如果离开页面，请回到历史记录后重新点击 Trace。",
+    "traceSessionDownloaded": "Trace 诊断包已生成。请在浏览器下载列表中确认。",
+    "traceSessionFailed": "收集 Trace 诊断包失败。",
+    "traceSessionFailedWithReason": "收集 Trace 诊断包失败：{{error}}",
+    "traceSessionTimeout": "Trace 诊断包收集超时。请保持页面打开并重试。",
     "deleteSession": "删除会话"
   },
   "inbox": {
