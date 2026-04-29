@@ -16,7 +16,11 @@ import FilterSelect from '../../../platform/ui/filters/FilterSelect'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import { slugify } from '../../../../config/runtime'
-import ResourceCard, { ResourceCardPrimaryAction, type ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
+import ResourceCard, {
+    ResourceCardDeleteAction,
+    ResourceCardEditAction,
+    type ResourceStatusTone,
+} from '../../../platform/ui/primitives/ResourceCard'
 import '../styles/scheduled-actions.css'
 
 interface FormState {
@@ -473,14 +477,16 @@ export default function ScheduledActions() {
                                     { label: t('scheduler.lastRun'), value: job.last_run ? new Date(job.last_run).toLocaleString() : t('scheduler.never') },
                                 ]}
                                 footer={(
-                                    <>
-                                        <button type="button" className="resource-card-danger-action" onClick={() => handleDelete(job)}>
-                                            {t('common.delete')}
-                                        </button>
-                                        <ResourceCardPrimaryAction onClick={() => void openEditModal(job)}>
-                                            {t('scheduler.configure')}
-                                        </ResourceCardPrimaryAction>
-                                    </>
+                                    <div className="card-icon-actions">
+                                        <ResourceCardEditAction
+                                            onClick={() => void openEditModal(job)}
+                                            label={t('scheduler.configure')}
+                                        />
+                                        <ResourceCardDeleteAction
+                                            onClick={() => handleDelete(job)}
+                                            label={t('common.delete')}
+                                        />
+                                    </div>
                                 )}
                             />
                         ))}
