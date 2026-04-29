@@ -95,7 +95,7 @@ public class SessionController {
                             String sessionId = extractSessionId(startResponse);
                             String resumeBody = "{\"session_id\":\"" + sessionId
                                     + "\",\"load_model_and_extensions\":true}";
-                            GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-START] goosed start complete agentId={} userId={} sessionId={} port={} startCallMs={}",
+                            GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-START] goosed start complete agentId={} userId={} sessionId={} port={} startCallMs={}",
                                     agentId, userId, sessionId, instance.getPort(), startCallMs));
                             long resumeStart = System.currentTimeMillis();
                             return goosedProxy.fetchJson(
@@ -103,7 +103,7 @@ public class SessionController {
                                     .doOnNext(r -> {
                                         long resumeMs = System.currentTimeMillis() - resumeStart;
                                         instance.markSessionResumed(sessionId);
-                                        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-START] session ready agentId={} userId={} sessionId={} resident={} port={} resumeMs={} totalMs={}",
+                                        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-START] session ready agentId={} userId={} sessionId={} resident={} port={} resumeMs={} totalMs={}",
                                                 agentId, userId, sessionId, resident, instance.getPort(), resumeMs,
                                                 System.currentTimeMillis() - requestStart));
                                     })
