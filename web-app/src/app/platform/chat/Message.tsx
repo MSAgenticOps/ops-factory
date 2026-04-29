@@ -50,6 +50,9 @@ interface ProcessEntry {
     kind: 'reasoning' | 'thinking' | 'tool'
     label?: string
     content?: string
+    contentEndIndex?: number
+    hasClosedThinkBlock?: boolean
+    hasFollowingDisplayContent?: boolean
     toolCall?: ToolCallPair
 }
 
@@ -101,6 +104,76 @@ function parseTodoContent(content: string) {
 
 function normalizeProcessText(text: string | undefined): string {
     return (text || '').replace(/\s+/g, ' ').trim()
+}
+
+function hasDisplayableTextContentAfter(message: ChatMessage, contentIndex: number | undefined): boolean {
+    if (contentIndex === undefined) return false
+
+    for (let i = contentIndex + 1; i < message.content.length; i++) {
+        const content = message.content[i]
+        if (content.type === 'text' && typeof content.text === 'string' && content.text.trim()) {
+            return true
+        }
+    }
+
+    return false
+}
+
+function getFallbackThinkingPosition(message: ChatMessage): {
+    contentEndIndex?: number
+    hasClosedThinkBlock: boolean
+    hasFollowingDisplayContent: boolean
+} {
+    let contentEndIndex: number | undefined
+    let lastClosedThinkEnd = -1
+    let unclosedThinkIndex: number | undefined
+
+    for (let i = 0; i < message.content.length; i++) {
+        const content = message.content[i]
+        if (content.type !== 'text' || typeof content.text !== 'string') continue
+
+        const closedThinkRegex = /<think>[\s\S]*?<\/think>/gi
+        for (let match = closedThinkRegex.exec(content.text); match; match = closedThinkRegex.exec(content.text)) {
+            contentEndIndex = i
+            lastClosedThinkEnd = match.index + match[0].length
+            unclosedThinkIndex = undefined
+        }
+
+        const unclosed = content.text.match(/<think>[\s\S]*$/i)
+        const unclosedIndex = unclosed?.index ?? -1
+        if (unclosed && lastClosedThinkEnd < unclosedIndex) {
+            unclosedThinkIndex = i
+        }
+    }
+
+    if (contentEndIndex === undefined) {
+        return { contentEndIndex: unclosedThinkIndex, hasClosedThinkBlock: false, hasFollowingDisplayContent: false }
+    }
+
+    const sourceContent = message.content[contentEndIndex]
+    const sameContentTail = sourceContent?.type === 'text' && typeof sourceContent.text === 'string'
+        ? sourceContent.text.slice(lastClosedThinkEnd).replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+        : ''
+
+    return {
+        contentEndIndex,
+        hasClosedThinkBlock: true,
+        hasFollowingDisplayContent: sameContentTail.length > 0 || hasDisplayableTextContentAfter(message, contentEndIndex),
+    }
+}
+
+function isProcessTextEntryStreaming(
+    message: ChatMessage,
+    processEntries: ProcessEntry[],
+    entry: ProcessEntry,
+    index: number,
+    isStreaming: boolean
+): boolean {
+    return isStreaming &&
+        index === processEntries.length - 1 &&
+        !entry.hasClosedThinkBlock &&
+        !entry.hasFollowingDisplayContent &&
+        !hasDisplayableTextContentAfter(message, entry.contentEndIndex)
 }
 
 function formatMessageTime(epochSeconds: number, showDate = false): string {
@@ -256,6 +329,7 @@ function MessageInner({
         let hasStructuredThinking = false
         let textBufferKind: 'reasoning' | 'thinking' | null = null
         let textBuffer = ''
+        let textBufferEndIndex: number | undefined
         const lastSeenTextByKind: Record<'reasoning' | 'thinking', string | null> = { reasoning: null, thinking: null }
         const pushProcessTextEntry = (entry: ProcessEntry) => {
             const currentText = normalizeProcessText(entry.content)
@@ -281,6 +355,7 @@ function MessageInner({
 
                         if (currentText.startsWith(previousText)) {
                             previousEntry.content = entry.content
+                            previousEntry.contentEndIndex = entry.contentEndIndex
                             lastSeenTextByKind[entry.kind] = currentText
                             return
                         }
@@ -297,6 +372,7 @@ function MessageInner({
             if (!textBufferKind || !textBuffer.trim()) {
                 textBufferKind = null
                 textBuffer = ''
+                textBufferEndIndex = undefined
                 return
             }
 
@@ -305,13 +381,16 @@ function MessageInner({
                 kind: textBufferKind,
                 label: textBufferKind === 'reasoning' ? t('chat.reasoning') : t('chat.thinkingLabel'),
                 content: textBuffer,
+                contentEndIndex: textBufferEndIndex,
             })
 
             textBufferKind = null
             textBuffer = ''
+            textBufferEndIndex = undefined
         }
 
-        for (const content of message.content) {
+        for (let contentIndex = 0; contentIndex < message.content.length; contentIndex++) {
+            const content = message.content[contentIndex]
             if (content.type === 'reasoning' && typeof content.text === 'string' && content.text.trim()) {
                 hasStructuredReasoning = true
                 if (textBufferKind !== 'reasoning') {
@@ -319,6 +398,7 @@ function MessageInner({
                     textBufferKind = 'reasoning'
                 }
                 textBuffer += content.text
+                textBufferEndIndex = contentIndex
                 continue
             }
 
@@ -329,6 +409,7 @@ function MessageInner({
                     textBufferKind = 'thinking'
                 }
                 textBuffer += content.thinking
+                textBufferEndIndex = contentIndex
                 continue
             }
 
@@ -344,6 +425,7 @@ function MessageInner({
                 items.push({
                     key: content.id,
                     kind: 'tool',
+                    contentEndIndex: contentIndex,
                     toolCall: {
                         id: content.id,
                         name,
@@ -373,11 +455,15 @@ function MessageInner({
         if (!hasStructuredThinking) {
             const thinkingText = getThinkingContent(message)
             if (thinkingText) {
+                const fallbackThinking = getFallbackThinkingPosition(message)
                 pushProcessTextEntry({
                     key: `${message.id || 'message'}-thinking-fallback`,
                     kind: 'thinking',
                     label: t('chat.thinkingLabel'),
                     content: thinkingText,
+                    contentEndIndex: fallbackThinking.contentEndIndex,
+                    hasClosedThinkBlock: fallbackThinking.hasClosedThinkBlock,
+                    hasFollowingDisplayContent: fallbackThinking.hasFollowingDisplayContent,
                 })
             }
         }
@@ -402,27 +488,31 @@ function MessageInner({
     useEffect(() => {
         setOpenState(current => {
             const next = { ...current }
-            for (const entry of processEntries) {
+            for (let index = 0; index < processEntries.length; index++) {
+                const entry = processEntries[index]
                 if ((entry.kind === 'reasoning' || entry.kind === 'thinking') && !(entry.key in next)) {
-                    next[entry.key] = isStreaming
+                    next[entry.key] = isProcessTextEntryStreaming(message, processEntries, entry, index, isStreaming)
                 }
             }
             return next
         })
-    }, [isStreaming, processEntries])
+    }, [isStreaming, message, processEntries])
 
     useEffect(() => {
         if (isStreaming) {
             setOpenState(current => {
                 const next = { ...current }
-                for (const entry of processEntries) {
+                for (let index = 0; index < processEntries.length; index++) {
+                    const entry = processEntries[index]
                     if (entry.kind !== 'reasoning' && entry.kind !== 'thinking') continue
-                    next[entry.key] = true
+                    if (isProcessTextEntryStreaming(message, processEntries, entry, index, isStreaming)) {
+                        next[entry.key] = true
+                    }
                 }
                 return next
             })
         }
-    }, [isStreaming, processEntries])
+    }, [isStreaming, message, processEntries])
 
     useEffect(() => {
         const wasStreaming = wasStreamingRef.current
@@ -465,8 +555,8 @@ function MessageInner({
         return () => window.removeEventListener('resize', syncFadeStates)
     }, [processEntries, openState])
 
-    const toggleEntry = (key: string) => {
-        if (isStreaming) return
+    const toggleEntry = (key: string, isEntryStreaming: boolean) => {
+        if (isEntryStreaming) return
         setOpenState(current => ({ ...current, [key]: !current[key] }))
     }
 
@@ -679,18 +769,19 @@ function MessageInner({
                                 if (entry.kind === 'reasoning' || entry.kind === 'thinking') {
                                     const isOpen = openState[entry.key] ?? true
                                     const state = fadeState[entry.key] || { hasTopFade: false, hasBottomFade: false }
+                                    const isEntryStreaming = isProcessTextEntryStreaming(message, processEntries, entry, index, isStreaming)
                                     return (
                                         <div key={entry.key} className={`process-step process-step-thinking${stepClass}`}>
                                             <div className="process-step-rail" aria-hidden="true" />
                                             <div className="process-step-content">
                                                 <button
                                                     type="button"
-                                                    className={`process-thinking-header${isOpen ? ' open' : ''}${isStreaming ? ' is-streaming' : ''}`}
-                                                    onClick={() => toggleEntry(entry.key)}
-                                                    disabled={isStreaming}
+                                                    className={`process-thinking-header${isOpen ? ' open' : ''}${isEntryStreaming ? ' is-streaming' : ''}`}
+                                                    onClick={() => toggleEntry(entry.key, isEntryStreaming)}
+                                                    disabled={isEntryStreaming}
                                                     aria-expanded={isOpen}
                                                 >
-                                                    <ThinkingStatusIcon isStreaming={isStreaming} isOpen={isOpen} />
+                                                    <ThinkingStatusIcon isStreaming={isEntryStreaming} isOpen={isOpen} />
                                                     <span className="process-thinking-label">{entry.label}</span>
                                                 </button>
                                                 {isOpen && (

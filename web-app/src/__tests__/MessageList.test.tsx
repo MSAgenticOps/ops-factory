@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { ComponentProps } from 'react'
 import MessageList from '../app/platform/chat/MessageList'
@@ -100,6 +100,111 @@ describe('MessageList tool error rendering', () => {
         const { container } = renderMessageList(messages)
         const errorNode = container.querySelector('.process-step-node.error')
         expect(errorNode).toBeTruthy()
+    })
+
+    it('marks a thinking step complete once a following tool step is streaming', () => {
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-tool-chain',
+                role: 'assistant',
+                content: [
+                    { type: 'thinking', thinking: '检查服务状态', signature: '' },
+                    {
+                        type: 'toolRequest',
+                        id: 'tool-1',
+                        toolCall: {
+                            status: 'pending',
+                            value: {
+                                name: 'execute_remote_command',
+                                arguments: { command: 'ps -ef' },
+                            },
+                        },
+                    },
+                ],
+            },
+        ]
+
+        const { container } = renderMessageList(messages, { isLoading: true })
+
+        expect(container.querySelector('.process-thinking-status-spinning')).toBeNull()
+        expect(container.querySelector('.process-thinking-status-chevron')).toBeTruthy()
+        expect(container.querySelector('.process-step-node.pending')).toBeTruthy()
+    })
+
+    it('allows completed thinking steps to collapse while a later tool step is streaming', () => {
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-tool-chain',
+                role: 'assistant',
+                content: [
+                    { type: 'thinking', thinking: '检查服务状态', signature: '' },
+                    {
+                        type: 'toolRequest',
+                        id: 'tool-1',
+                        toolCall: {
+                            status: 'pending',
+                            value: {
+                                name: 'execute_remote_command',
+                                arguments: { command: 'ps -ef' },
+                            },
+                        },
+                    },
+                ],
+            },
+        ]
+
+        renderMessageList(messages, { isLoading: true })
+
+        fireEvent.click(screen.getByRole('button', { name: /思考过程|Thinking/ }))
+        expect(screen.getByText('检查服务状态')).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: /思考过程|Thinking/ }))
+
+        expect(screen.queryByText('检查服务状态')).toBeNull()
+    })
+
+    it('keeps the current thinking step streaming when no later content exists yet', () => {
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-thinking',
+                role: 'assistant',
+                content: [{ type: 'thinking', thinking: '正在分析', signature: '' }],
+            },
+        ]
+
+        const { container } = renderMessageList(messages, { isLoading: true })
+
+        expect(container.querySelector('.process-thinking-status-spinning')).toBeTruthy()
+    })
+
+    it('marks fallback think-tag content complete once answer text follows it', () => {
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-think-tag',
+                role: 'assistant',
+                content: [{ type: 'text', text: '<think>分析中</think>结论正文' }],
+            },
+        ]
+
+        const { container } = renderMessageList(messages, { isLoading: true })
+
+        expect(container.querySelector('.process-thinking-status-spinning')).toBeNull()
+        expect(container.querySelector('.process-thinking-status-chevron')).toBeTruthy()
+        expect(screen.getByText('结论正文')).toBeTruthy()
+    })
+
+    it('marks a closed fallback think-tag complete even before answer text arrives', () => {
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-closed-think-tag',
+                role: 'assistant',
+                content: [{ type: 'text', text: '<think>分析中</think>' }],
+            },
+        ]
+
+        const { container } = renderMessageList(messages, { isLoading: true })
+
+        expect(container.querySelector('.process-thinking-status-spinning')).toBeNull()
+        expect(container.querySelector('.process-thinking-status-chevron')).toBeTruthy()
     })
 
     it('scrolls to bottom again when a resumed session changes with the same message count', async () => {
