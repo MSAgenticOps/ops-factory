@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next'
 import TypeCard from './TypeCard'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
-import type { ClusterType } from '../../../../types/host'
+import type { ClusterType, Cluster } from '../../../../types/host'
 
 type Props = {
     clusterTypes: ClusterType[]
+    clusters: Cluster[]
     loading: boolean
     onCreate: (body: Partial<ClusterType>) => Promise<ClusterType>
     onUpdate: (id: string, body: Partial<ClusterType>) => Promise<ClusterType>
@@ -31,7 +32,7 @@ const emptyForm: FormData = {
     mode: 'peer',
 }
 
-export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpdate, onDelete }: Props) {
+export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<ClusterType | null>(null)
@@ -84,6 +85,11 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
     }, [editing, form, onCreate, onUpdate])
 
     const handleDelete = useCallback(async (item: ClusterType) => {
+        const inUse = clusters.filter(c => c.type === item.name)
+        if (inUse.length > 0) {
+            alert(t('hostResource.clusterTypeInUse', { name: item.name, clusters: inUse.map(c => c.name).join(', ') }))
+            return
+        }
         if (confirm(t('hostResource.confirmDeleteClusterType'))) {
             try {
                 await onDelete(item.id)
@@ -91,7 +97,7 @@ export default function ClusterTypeTab({ clusterTypes, loading, onCreate, onUpda
                 alert(err instanceof Error ? err.message : 'Failed')
             }
         }
-    }, [onDelete, t])
+    }, [clusters, onDelete, t])
 
     const updateEnvVar = useCallback((index: number, field: 'key' | 'value', val: string) => {
         setForm(f => {

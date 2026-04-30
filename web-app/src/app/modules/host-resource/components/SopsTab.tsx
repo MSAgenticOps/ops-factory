@@ -119,7 +119,7 @@ function VariableEditor({
                     className="btn btn-subtle sop-workflow-inline-add"
                     onClick={addVar}
                 >
-                    + {t('remoteDiagnosis.sops.addNode')}
+                    + {t('remoteDiagnosis.sops.addVariable')}
                 </button>
             </div>
             {variables.map((v, i: number) => (
@@ -232,7 +232,7 @@ function TransitionEditor({
                     className="btn btn-subtle sop-workflow-inline-add"
                     onClick={addTransition}
                 >
-                    + {t('remoteDiagnosis.sops.addNode')}
+                    + {t('remoteDiagnosis.sops.addBranch')}
                 </button>
             </div>
             {transitions.map((tr, i) => (
