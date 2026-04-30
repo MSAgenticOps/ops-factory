@@ -48,6 +48,7 @@ export default function ResourceFormModal({
     onSaveClusterRelation, onUpdateClusterRelation, onDeleteClusterRelation,
 }: Props) {
     const { t } = useTranslation()
+    const requiredStar = <span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span>
     const [selectedType, setSelectedType] = useState<ResourceType | null>(
         editingItem?.type ?? null
     )
@@ -390,7 +391,7 @@ export default function ResourceFormModal({
                             {selectedType === 'group' && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.groupName')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
+                                        <label className="form-label">{t('hostResource.groupName')}{requiredStar}</label>
                                         <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} />
                                     </div>
                                     <div className="form-group">
@@ -431,11 +432,11 @@ export default function ResourceFormModal({
                             {selectedType === 'cluster' && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.clusterName')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
+                                        <label className="form-label">{t('hostResource.clusterName')}{requiredStar}</label>
                                         <input className="form-input" value={clusterName} onChange={e => setClusterName(e.target.value)} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.clusterType')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
+                                        <label className="form-label">{t('hostResource.clusterType')}{requiredStar}</label>
                                         <select
                                             className="form-input"
                                             value={clusterTypeIsCustom ? '__custom__' : clusterType}
@@ -470,7 +471,7 @@ export default function ResourceFormModal({
                                         <input className="form-input" value={clusterPurpose} onChange={e => setClusterPurpose(e.target.value)} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.parentGroup')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
+                                        <label className="form-label">{t('hostResource.parentGroup')}{requiredStar}</label>
                                         <select className="form-input" value={clusterGroupId} onChange={e => setClusterGroupId(e.target.value)}>
                                             <option value="">{t('hostResource.noParent')}</option>
                                             {groups.map(g => (
@@ -750,7 +751,7 @@ export default function ResourceFormModal({
                                     <h4 className="hr-section-label">{t('hostResource.basicInfo')}</h4>
                                     <div className="hr-form-row">
                                         <div className="form-group">
-                                            <label className="form-label">{t('hostResource.hostName')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
+                                            <label className="form-label">{t('hostResource.hostName')}{requiredStar}</label>
                                             <input className="form-input" value={hostName} onChange={e => setHostName(e.target.value)} />
                                         </div>
                                         <div className="form-group">
@@ -760,7 +761,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="hr-form-row">
                                         <div className="form-group">
-                                            <label className="form-label">{t('hostResource.ip')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
+                                            <label className="form-label">{t('hostResource.ip')}{requiredStar}</label>
                                             <input className="form-input" value={hostIp} onChange={e => setHostIp(e.target.value)} placeholder="192.168.1.100 / 2409:808c:8a:109::20" />
                                         </div>
                                         <div className="form-group" style={{ maxWidth: 120 }}>
