@@ -192,7 +192,7 @@ export default function HistoryPage() {
         } finally {
             setIsRenaming(false)
         }
-    }, [agents, getClient, renamingSession, showToast, t, historySessions])
+    }, [agents, getClient, renamingSession, showToast, t, historySessions.refresh])
 
     const pollTraceJob = useCallback(async (jobId: string): Promise<TraceJobResponse> => {
         const startedAt = Date.now()

@@ -28,6 +28,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -138,11 +139,13 @@ public class SessionController {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex, pageSize, search, agentId, type));
+        int safePageIndex = Math.max(1, pageIndex);
+        int safePageSize = Math.max(1, Math.min(pageSize, 200));
 
         // Try cache first
         List<Map<String, Object>> cached = sessionCacheService.get(userId);
         if (cached != null) {
-            String result = applyFiltersAndPaginate(cached, pageIndex, pageSize, search, agentId, type);
+            String result = applyFiltersAndPaginate(cached, safePageIndex, safePageSize, search, agentId, type);
             GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] cache hit userId={}", userId));
             return Mono.just(result);
         }
@@ -170,12 +173,16 @@ public class SessionController {
                     parsed.sort((a, b) -> {
                         String ta = a.getOrDefault("created_at", "") instanceof String s ? s : "";
                         String tb = b.getOrDefault("created_at", "") instanceof String s ? s : "";
-                        return tb.compareTo(ta);
+                        try {
+                            return Instant.parse(tb).compareTo(Instant.parse(ta));
+                        } catch (Exception e) {
+                            return tb.compareTo(ta);
+                        }
                     });
-                    // Cache the full sorted list
-                    sessionCacheService.put(userId, parsed);
-                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] fetched userId={} total={}", userId, parsed.size()));
-                    return applyFiltersAndPaginate(parsed, pageIndex, pageSize, search, agentId, type);
+                    // Cache atomically: concurrent request may have already cached
+                    List<Map<String, Object>> effective = sessionCacheService.getOrFetch(userId, () -> parsed);
+                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size()));
+                    return applyFiltersAndPaginate(effective, safePageIndex, safePageSize, search, agentId, type);
                 });
     }
 
@@ -183,7 +190,6 @@ public class SessionController {
      * Parse goosed response and extract individual session JSON strings,
      * injecting agentId into each.
      */
-    @SuppressWarnings("unchecked")
     private String applyFiltersAndPaginate(
             List<Map<String, Object>> sortedSessions, int pageIndex, int pageSize,
             String search, String agentId, String type) {
@@ -205,12 +211,17 @@ public class SessionController {
         int total = filtered.size();
         int from = Math.min((pageIndex - 1) * pageSize, total);
         int to = Math.min(from + pageSize, total);
-        List<Map<String, Object>> page = from < total ? filtered.subList(from, to) : List.of();
-        List<String> pageJson = new ArrayList<>();
-        for (Map<String, Object> m : page) {
-            try { pageJson.add(MAPPER.writeValueAsString(m)); } catch (Exception e) { log.warn("Failed to serialize session for page: {}", e.getMessage()); }
+        List<Map<String, Object>> page = from < total ? new ArrayList<>(filtered.subList(from, to)) : List.of();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("sessions", page);
+        response.put("total", total);
+        response.put("pageIndex", pageIndex);
+        response.put("pageSize", pageSize);
+        try {
+            return MAPPER.writeValueAsString(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize paginated response", e);
         }
-        return "{\"sessions\":[" + String.join(",", pageJson) + "],\"total\":" + total + ",\"pageIndex\":" + pageIndex + ",\"pageSize\":" + pageSize + "}";
     }
 
     /**
