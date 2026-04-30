@@ -21,15 +21,10 @@ Common options:
   --agent, --agent-id ID           Agent id. Defaults to AGENT_ID or qos-agent.
   --root DIR                       ops-factory repository root. Defaults to ROOT, script location, or cwd.
   --gateway-root DIR               Gateway root. Defaults to GATEWAY_ROOT or <root>/gateway.
+  --web-app-root DIR               Web app root. Defaults to WEB_APP_ROOT or <root>/web-app.
   --db FILE                        sessions.db path. Defaults to the selected user/agent sessions.db.
   --out-dir DIR                    Output directory. Defaults to /tmp/session-debug-...
-  --gateway-url URL                Gateway URL. Defaults to http://127.0.0.1:3000.
-  --gateway-api-prefix PREFIX      API prefix. Defaults to /gateway.
-  --gateway-secret SECRET          Gateway secret header value. Also reads GATEWAY_API_PASSWORD.
-  --goosed-port PORT               Optional direct goosed port.
-  --goosed-secret SECRET           Optional direct goosed secret.
   --gateway-jar FILE               Optional running gateway jar for fingerprinting.
-  --no-api                         Skip gateway/goosed HTTP requests.
   --no-archive                     Do not create the .tar.gz archive.
   -h, --help                       Show this help.
 
@@ -39,6 +34,8 @@ Useful environment knobs:
   TRANSCRIPT_CHARS_PER_PART=4000   Max text per content part in db-transcript.md.
   COPY_GOOSED_LOGS=1               Copy full goosed logs related to this session.
   MAX_GOOSED_LOG_BYTES=104857600   Max total bytes of copied goosed logs.
+  COPY_MCP_LOGS=1                  Copy full MCP logs related to this session/date.
+  MAX_MCP_LOG_BYTES=104857600      Max total bytes of copied MCP logs.
   MAX_AGENT_FILE_BYTES=1048576     Max small agent text file size to copy.
   COPY_WORKDIR=0                   Set to 1 to copy the session working directory.
   MAX_WORKDIR_COPY_BYTES=52428800  Safety limit for COPY_WORKDIR.
@@ -63,21 +60,18 @@ AGENT_ID="${AGENT_ID:-qos-agent}"
 SESSION_ID="${SESSION_ID:-}"
 ROOT="${ROOT:-}"
 GATEWAY_ROOT="${GATEWAY_ROOT:-}"
+WEB_APP_ROOT="${WEB_APP_ROOT:-}"
 DB="${DB:-}"
-GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:3000}"
-GATEWAY_API_PREFIX="${GATEWAY_API_PREFIX:-/gateway}"
-GATEWAY_SECRET="${GATEWAY_SECRET:-${GATEWAY_API_PASSWORD:-}}"
-GOOSED_PORT="${GOOSED_PORT:-}"
-GOOSED_SECRET="${GOOSED_SECRET:-}"
 GATEWAY_JAR="${GATEWAY_JAR:-}"
 OUT_DIR="${OUT_DIR:-}"
-FETCH_API="${FETCH_API:-1}"
 CREATE_ARCHIVE="${CREATE_ARCHIVE:-1}"
 LOG_TAIL_LINES="${LOG_TAIL_LINES:-2000}"
 PREVIEW_CHARS="${PREVIEW_CHARS:-500}"
 TRANSCRIPT_CHARS_PER_PART="${TRANSCRIPT_CHARS_PER_PART:-4000}"
 COPY_GOOSED_LOGS="${COPY_GOOSED_LOGS:-1}"
 MAX_GOOSED_LOG_BYTES="${MAX_GOOSED_LOG_BYTES:-104857600}"
+COPY_MCP_LOGS="${COPY_MCP_LOGS:-1}"
+MAX_MCP_LOG_BYTES="${MAX_MCP_LOG_BYTES:-104857600}"
 MAX_AGENT_FILE_BYTES="${MAX_AGENT_FILE_BYTES:-1048576}"
 COPY_WORKDIR="${COPY_WORKDIR:-0}"
 MAX_WORKDIR_COPY_BYTES="${MAX_WORKDIR_COPY_BYTES:-52428800}"
@@ -111,6 +105,11 @@ while [ "$#" -gt 0 ]; do
       GATEWAY_ROOT="$2"
       shift 2
       ;;
+    --web-app-root)
+      require_value "$1" "${2:-}"
+      WEB_APP_ROOT="$2"
+      shift 2
+      ;;
     --db)
       require_value "$1" "${2:-}"
       DB="$2"
@@ -121,39 +120,10 @@ while [ "$#" -gt 0 ]; do
       OUT_DIR="$2"
       shift 2
       ;;
-    --gateway-url)
-      require_value "$1" "${2:-}"
-      GATEWAY_URL="$2"
-      shift 2
-      ;;
-    --gateway-api-prefix)
-      require_value "$1" "${2:-}"
-      GATEWAY_API_PREFIX="$2"
-      shift 2
-      ;;
-    --gateway-secret)
-      require_value "$1" "${2:-}"
-      GATEWAY_SECRET="$2"
-      shift 2
-      ;;
-    --goosed-port)
-      require_value "$1" "${2:-}"
-      GOOSED_PORT="$2"
-      shift 2
-      ;;
-    --goosed-secret)
-      require_value "$1" "${2:-}"
-      GOOSED_SECRET="$2"
-      shift 2
-      ;;
     --gateway-jar)
       require_value "$1" "${2:-}"
       GATEWAY_JAR="$2"
       shift 2
-      ;;
-    --no-api)
-      FETCH_API=0
-      shift
       ;;
     --no-archive)
       CREATE_ARCHIVE=0
@@ -195,14 +165,6 @@ file_size() {
   stat -f%z "$1" 2>/dev/null || stat -c%s "$1" 2>/dev/null || wc -c < "$1"
 }
 
-file_mtime_epoch() {
-  stat -f%m "$1" 2>/dev/null || stat -c%Y "$1" 2>/dev/null || echo 0
-}
-
-sha256_file() {
-  sha256sum "$1" 2>/dev/null || shasum -a 256 "$1" 2>/dev/null || true
-}
-
 iso_now() {
   date '+%Y-%m-%dT%H:%M:%S%z'
 }
@@ -226,58 +188,17 @@ validate_bool_flag() {
   esac
 }
 
-validate_optional_port() {
-  local name="$1"
-  local value="$2"
-  [ -z "$value" ] && return 0
-  validate_uint_range "$name" "$value" 1 65535
-}
-
-validate_gateway_url() {
-  local value="$1"
-  case "$value" in
-    http://*|https://*) ;;
-    *) die "GATEWAY_URL must start with http:// or https://: $value" ;;
-  esac
-  if printf '%s' "$value" | grep -Eq '[[:space:]]'; then
-    die "GATEWAY_URL must not contain whitespace: $value"
-  fi
-}
-
-validate_api_prefix() {
-  local value="$1"
-  if printf '%s' "$value" | grep -Eq '[[:space:]?#]'; then
-    die "GATEWAY_API_PREFIX must not contain whitespace, ? or #: $value"
-  fi
-}
-
-normalize_api_prefix() {
-  local prefix="$1"
-  [ -n "$prefix" ] || {
-    printf ''
-    return
-  }
-  case "$prefix" in
-    /*) ;;
-    *) prefix="/$prefix" ;;
-  esac
-  prefix="${prefix%/}"
-  printf '%s' "$prefix"
-}
-
 validate_uint_range "LOG_TAIL_LINES" "$LOG_TAIL_LINES" 1 1000000
 validate_uint_range "PREVIEW_CHARS" "$PREVIEW_CHARS" 1 1000000
 validate_uint_range "TRANSCRIPT_CHARS_PER_PART" "$TRANSCRIPT_CHARS_PER_PART" 1 10000000
 validate_uint_range "MAX_GOOSED_LOG_BYTES" "$MAX_GOOSED_LOG_BYTES" 1 1099511627776
+validate_uint_range "MAX_MCP_LOG_BYTES" "$MAX_MCP_LOG_BYTES" 1 1099511627776
 validate_uint_range "MAX_AGENT_FILE_BYTES" "$MAX_AGENT_FILE_BYTES" 1 1099511627776
 validate_uint_range "MAX_WORKDIR_COPY_BYTES" "$MAX_WORKDIR_COPY_BYTES" 1 1099511627776
-validate_bool_flag "FETCH_API" "$FETCH_API"
 validate_bool_flag "CREATE_ARCHIVE" "$CREATE_ARCHIVE"
 validate_bool_flag "COPY_GOOSED_LOGS" "$COPY_GOOSED_LOGS"
+validate_bool_flag "COPY_MCP_LOGS" "$COPY_MCP_LOGS"
 validate_bool_flag "COPY_WORKDIR" "$COPY_WORKDIR"
-validate_optional_port "GOOSED_PORT" "$GOOSED_PORT"
-validate_gateway_url "$GATEWAY_URL"
-validate_api_prefix "$GATEWAY_API_PREFIX"
 
 if [ -z "$ROOT" ]; then
   if [ -d "$SCRIPT_DIR/.." ] && [ "$(basename "$SCRIPT_DIR")" = "scripts" ] && [ "$(basename "$(cd "$SCRIPT_DIR/.." && pwd)")" = "gateway" ]; then
@@ -290,7 +211,7 @@ if [ -z "$ROOT" ]; then
 fi
 
 GATEWAY_ROOT="${GATEWAY_ROOT:-$ROOT/gateway}"
-GATEWAY_API_PREFIX="$(normalize_api_prefix "$GATEWAY_API_PREFIX")"
+WEB_APP_ROOT="${WEB_APP_ROOT:-$ROOT/web-app}"
 
 SESSION_SQL="$(sql_escape "$SESSION_ID")"
 
@@ -337,31 +258,29 @@ cleanup_tmp_files() {
 
 trap cleanup_tmp_files EXIT
 
-run() {
-  local name="$1"
-  shift
-  echo ">>> $name"
-  {
-    echo "### $name"
-    printf '$'
-    printf ' %q' "$@"
-    echo
-    "$@"
-  } > "$OUT_DIR/$name.txt" 2>&1 || true
+redact_sensitive_lines() {
+  sed -E \
+    -e 's/(["'\'']?[^"'\'':=[:space:]]*([Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Pp][Ii][_-]?[Kk][Ee][Yy]|[Aa][Cc][Cc][Ee][Ss][Ss][_-]?[Kk][Ee][Yy]|[Ss][Ee][Cc][Rr][Ee][Tt][_-]?[Kk][Ee][Yy]|[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][^"'\'':=[:space:]]*[Kk][Ee][Yy]|[Ee][Nn][Cc][Rr][Yy][Pp][Tt][Ii][Oo][Nn][^"'\'':=[:space:]]*[Kk][Ee][Yy]|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn])[^"'\'':=[:space:]]*["'\'']?[[:space:]]*[:=][[:space:]]*).*/\1<redacted>/' \
+    -e 's/([Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn][[:space:]]*:[[:space:]]*)([Bb][Ee][Aa][Rr][Ee][Rr]|[Bb][Aa][Ss][Ii][Cc]|[Tt][Oo][Kk][Ee][Nn])?[[:space:]]+[^[:space:]"'\'',;]+/\1<redacted>/g' \
+    -e 's/([Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]+)[A-Za-z0-9._~+\/=-]+/\1<redacted>/g'
 }
 
 run_sh() {
   local name="$1"
   shift
+  local out="$OUT_DIR/$name.txt"
+  local tmp="$out.tmp"
   echo ">>> $name"
   {
     echo "### $name"
     echo "\$ $*"
     bash -lc "$*"
-  } > "$OUT_DIR/$name.txt" 2>&1 || true
+  } > "$tmp" 2>&1 || true
+  redact_sensitive_lines < "$tmp" > "$out" 2>/dev/null || cp "$tmp" "$out" 2>/dev/null || true
+  rm -f "$tmp"
 }
 
-copy_small_file() {
+copy_redacted_file() {
   local src="$1"
   local dest="$2"
   [ -f "$src" ] || return 0
@@ -372,48 +291,23 @@ copy_small_file() {
   esac
   if [ "$size" -le "$MAX_AGENT_FILE_BYTES" ]; then
     mkdir -p "$(dirname "$dest")"
-    cp "$src" "$dest" 2>/dev/null || true
+    redact_sensitive_lines < "$src" > "$dest" 2>/dev/null || true
   else
-    echo "Skipped large file ($size bytes): $src" >> "$OUT_DIR/skipped-agent-files.txt"
+    echo "Skipped large config file ($size bytes): $src" >> "$OUT_DIR/skipped-config-files.txt"
   fi
 }
 
-api_url() {
-  local path="$1"
-  case "$path" in
-    /*) ;;
-    *) path="/$path" ;;
-  esac
-  printf '%s%s%s' "${GATEWAY_URL%/}" "$GATEWAY_API_PREFIX" "$path"
-}
-
-curl_to_file() {
-  local name="$1"
-  local url="$2"
-  shift 2
-  if ! command -v curl >/dev/null 2>&1; then
-    echo "curl not found" > "$OUT_DIR/$name.err"
-    return 0
-  fi
-  local status
-  status="$(
-    curl -sS \
-      -D "$OUT_DIR/$name.headers" \
-      -o "$OUT_DIR/$name.json" \
-      -w '%{http_code}' \
-      "$@" \
-      "$url" \
-      2> "$OUT_DIR/$name.err" || true
-  )"
-  printf '%s\n' "$status" > "$OUT_DIR/$name.status"
-  printf '%s\n' "$url" > "$OUT_DIR/$name.url"
-  case "$status" in
-    2*|3*) ;;
+copy_redacted_log() {
+  local src="$1"
+  local dest="$2"
+  [ -f "$src" ] || return 0
+  mkdir -p "$(dirname "$dest")"
+  case "$src" in
+    *.gz)
+      gzip -cd "$src" 2>/dev/null | redact_sensitive_lines > "$dest.redacted.txt" 2>/dev/null || true
+      ;;
     *)
-      {
-        echo "HTTP request returned status $status"
-        echo "URL: $url"
-      } >> "$OUT_DIR/$name.err"
+      redact_sensitive_lines < "$src" > "$dest" 2>/dev/null || true
       ;;
   esac
 }
@@ -426,25 +320,21 @@ AGENT_ID=$AGENT_ID
 SESSION_ID=$SESSION_ID
 ROOT=$ROOT
 GATEWAY_ROOT=$GATEWAY_ROOT
+WEB_APP_ROOT=$WEB_APP_ROOT
 DB=$DB
-GATEWAY_URL=$GATEWAY_URL
-GATEWAY_API_PREFIX=$GATEWAY_API_PREFIX
 GATEWAY_JAR=$GATEWAY_JAR
-GOOSED_PORT=$GOOSED_PORT
 OUT_DIR=$OUT_DIR
-FETCH_API=$FETCH_API
 CREATE_ARCHIVE=$CREATE_ARCHIVE
 COPY_WORKDIR=$COPY_WORKDIR
 COPY_GOOSED_LOGS=$COPY_GOOSED_LOGS
+COPY_MCP_LOGS=$COPY_MCP_LOGS
 collected_at=$(iso_now)
 hostname=$(hostname)
-gateway_secret_set=$([ -n "$GATEWAY_SECRET" ] && echo true || echo false)
-goosed_secret_set=$([ -n "$GOOSED_SECRET" ] && echo true || echo false)
 EOF
 
-run_sh "env-summary" "pwd; uname -a; date '+%Y-%m-%dT%H:%M:%S%z'; command -v sqlite3 || true; command -v jq || true; command -v curl || true; command -v java || true; command -v jar || true; command -v javap || true; command -v git || true"
+run_sh "env-summary" "pwd; uname -a; date '+%Y-%m-%dT%H:%M:%S%z'; command -v sqlite3 || true; command -v jq || true; command -v java || true; command -v jar || true; command -v javap || true; command -v git || true; command -v node || true; command -v npm || true"
 run_sh "processes" "ps -ef | grep -E 'gateway-service|goosed|opsfactory|java|vite|node' | grep -v grep || true"
-run_sh "ports" "(command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:3000 -iTCP:5173 ${GOOSED_PORT:+-iTCP:$GOOSED_PORT} -sTCP:LISTEN) || true"
+run_sh "ports" "(command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP -sTCP:LISTEN | grep -E ':(3000|5173|[0-9]+).*LISTEN|COMMAND' | sed -n '1,300p') || true"
 
 if [ -d "$ROOT/.git" ]; then
   run_sh "git-summary" "cd '$ROOT' && git rev-parse --show-toplevel && git rev-parse --abbrev-ref HEAD && git rev-parse HEAD && git status --short"
@@ -454,25 +344,62 @@ AGENT_RUNTIME_DIR="$GATEWAY_ROOT/users/$USER_ID/agents/$AGENT_ID"
 BASE_AGENT_DIR="$GATEWAY_ROOT/agents/$AGENT_ID"
 
 run_sh "agent-runtime-tree" "find '$AGENT_RUNTIME_DIR' -maxdepth 4 -print 2>/dev/null | sort || true"
-run_sh "agent-base-tree" "find '$BASE_AGENT_DIR' -maxdepth 3 -print 2>/dev/null | sort || true"
+run_sh "agent-base-tree" "find '$BASE_AGENT_DIR' -maxdepth 5 -print 2>/dev/null | sort || true"
+
+mkdir -p "$OUT_DIR/config-context/gateway" "$OUT_DIR/config-context/web-app"
+for file in \
+  "$GATEWAY_ROOT/config.yaml" \
+  "$GATEWAY_ROOT/config.yaml.example" \
+  "$GATEWAY_ROOT/gateway-service/src/main/resources/application.yml" \
+  "$GATEWAY_ROOT/gateway-service/src/main/resources/application.yaml" \
+  "$GATEWAY_ROOT/gateway-service/src/main/resources/application.properties"
+do
+  [ -f "$file" ] || continue
+  rel="${file#"$GATEWAY_ROOT/"}"
+  copy_redacted_file "$file" "$OUT_DIR/config-context/gateway/$rel"
+done
+
+if [ -d "$WEB_APP_ROOT" ]; then
+  run_sh "web-app-summary" "cd '$WEB_APP_ROOT' && { pwd; ls -la; test -f package.json && sed -n '1,220p' package.json; test -f vite.config.ts && sed -n '1,220p' vite.config.ts; test -f tsconfig.json && sed -n '1,220p' tsconfig.json; }"
+  for file in \
+    "$WEB_APP_ROOT/package.json" \
+    "$WEB_APP_ROOT/package-lock.json" \
+    "$WEB_APP_ROOT/vite.config.ts" \
+    "$WEB_APP_ROOT/tsconfig.json" \
+    "$WEB_APP_ROOT/tsconfig.node.json"
+  do
+    [ -f "$file" ] || continue
+    rel="${file#"$WEB_APP_ROOT/"}"
+    copy_redacted_file "$file" "$OUT_DIR/config-context/web-app/$rel"
+  done
+  find "$WEB_APP_ROOT" -maxdepth 1 -type f -name '.env*' -print 2>/dev/null | while IFS= read -r file; do
+    rel="${file#"$WEB_APP_ROOT/"}"
+    copy_redacted_file "$file" "$OUT_DIR/config-context/web-app/$rel"
+  done
+  run_sh "web-app-runtime-source" "test -f '$WEB_APP_ROOT/src/config/runtime.ts' && sed -n '1,260p' '$WEB_APP_ROOT/src/config/runtime.ts' || true"
+  run_sh "web-app-session-debug-source" "cd '$WEB_APP_ROOT' && rg -n 'sessionId|request_id|chat_request_id|sessionError|localStorage|sessionStorage|debugChatOrder|opsfactory:debug' src/config src/app src/types 2>/dev/null | sed -n '1,1000p' || true"
+else
+  echo "Web app root not found: $WEB_APP_ROOT" > "$OUT_DIR/web-app-missing.txt"
+fi
 
 mkdir -p "$OUT_DIR/agent-context/runtime" "$OUT_DIR/agent-context/base"
 if [ -d "$AGENT_RUNTIME_DIR" ]; then
-  find "$AGENT_RUNTIME_DIR" -maxdepth 2 -type f \
-    \( -name 'AGENTS.md' -o -name '*.md' -o -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.txt' \) \
+  find "$AGENT_RUNTIME_DIR" -maxdepth 5 -type f \
+    \( -name 'AGENTS.md' -o -name '*.md' -o -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.txt' -o -name '*.toml' \) \
     ! -path '*/data/*' ! -path '*/state/*' ! -path '*/home/*' ! -path '*/uploads/*' \
     -print 2>/dev/null | while IFS= read -r file; do
       rel="${file#"$AGENT_RUNTIME_DIR/"}"
-      copy_small_file "$file" "$OUT_DIR/agent-context/runtime/$rel"
+      copy_redacted_file "$file" "$OUT_DIR/agent-context/runtime/$rel"
     done
 fi
 
 if [ -d "$BASE_AGENT_DIR" ]; then
-  find "$BASE_AGENT_DIR" -maxdepth 2 -type f \
-    \( -name 'AGENTS.md' -o -name '*.md' -o -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.txt' \) \
+  find "$BASE_AGENT_DIR" -maxdepth 6 -type f \
+    \( -name 'AGENTS.md' -o -name '*.md' -o -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.txt' -o -name '*.toml' -o -name 'package.json' -o -name 'tsconfig.json' -o -name '*.py' -o -name '*.ts' \) \
+    ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/target/*' \
     -print 2>/dev/null | while IFS= read -r file; do
       rel="${file#"$BASE_AGENT_DIR/"}"
-      copy_small_file "$file" "$OUT_DIR/agent-context/base/$rel"
+      copy_redacted_file "$file" "$OUT_DIR/agent-context/base/$rel"
     done
 fi
 
@@ -504,6 +431,26 @@ if [ -f "$DB" ]; then
 
   if command -v sqlite3 >/dev/null 2>&1; then
     sqlite3 "$DB" ".backup '$OUT_DIR/sessions.db.snapshot'" > "$OUT_DIR/db-backup.txt" 2>&1 || true
+    sqlite3 "$DB" "pragma quick_check;" > "$OUT_DIR/db-quick-check.txt" 2> "$OUT_DIR/db-quick-check.err" || true
+    sqlite3 -header -csv "$DB" "
+select
+  name,
+  type,
+  sql
+from sqlite_master
+where type in ('table', 'index', 'trigger', 'view')
+order by type, name;
+" > "$OUT_DIR/db-sqlite-master.csv" 2> "$OUT_DIR/db-sqlite-master.err" || true
+    {
+      echo "table,count"
+      sqlite3 "$DB" "select name from sqlite_master where type = 'table' order by name;" 2>/dev/null | while IFS= read -r table; do
+        case "$table" in
+          *[!A-Za-z0-9_]*|'') continue ;;
+        esac
+        count="$(sqlite3 "$DB" "select count(*) from \"$table\";" 2>/dev/null || echo "")"
+        printf '%s,%s\n' "$table" "$count"
+      done
+    } > "$OUT_DIR/db-table-counts.csv"
 
     THREAD_ID="$(sqlite3 "$DB" "select coalesce(thread_id, '') from sessions where id = '$SESSION_SQL' limit 1;" 2>/dev/null || true)"
     WORKING_DIR="$(sqlite3 "$DB" "select coalesce(working_dir, '') from sessions where id = '$SESSION_SQL' limit 1;" 2>/dev/null || true)"
@@ -809,67 +756,12 @@ if command -v jq >/dev/null 2>&1 && [ -s "$OUT_DIR/db-messages-by-id.json" ]; th
   ' "$OUT_DIR/db-messages-by-id.json" > "$OUT_DIR/db-transcript.md" 2> "$OUT_DIR/db-transcript.err" || true
 fi
 
-REQ_ID="session-debug-${SESSION_ID}-${RUN_STAMP}"
-printf '%s\n' "$REQ_ID" > "$OUT_DIR/gateway-request-id.txt"
-
-HEADERS=(-H "X-Request-Id: $REQ_ID" -H "x-user-id: $USER_ID")
-if [ -n "$GATEWAY_SECRET" ]; then
-  HEADERS+=(-H "x-secret-key: $GATEWAY_SECRET")
-fi
-
-if [ "$FETCH_API" = "1" ]; then
-  curl_to_file "gateway-agent-session" "$(api_url "/agents/$AGENT_ID/sessions/$SESSION_ID")" "${HEADERS[@]}"
-  curl_to_file "gateway-global-session" "$(api_url "/sessions/$SESSION_ID?agentId=$AGENT_ID")" "${HEADERS[@]}"
-  curl_to_file "gateway-file-capsules" "$(api_url "/agents/$AGENT_ID/file-capsules?sessionId=$SESSION_ID")" "${HEADERS[@]}"
-
-  if [ -n "$GOOSED_PORT" ] && [ -n "$GOOSED_SECRET" ]; then
-    curl_to_file "goosed-session" "http://127.0.0.1:$GOOSED_PORT/sessions/$SESSION_ID" -H "x-secret-key: $GOOSED_SECRET"
-  else
-    echo "Skipped direct goosed API. Set GOOSED_PORT and GOOSED_SECRET to enable." > "$OUT_DIR/goosed-skipped.txt"
-  fi
-else
-  echo "Skipped API collection because FETCH_API=$FETCH_API." > "$OUT_DIR/api-skipped.txt"
-fi
-
-if command -v jq >/dev/null 2>&1; then
-  for json in "$OUT_DIR"/gateway-agent-session.json "$OUT_DIR"/gateway-global-session.json "$OUT_DIR"/goosed-session.json; do
-    [ -s "$json" ] || continue
-    base="$(basename "$json" .json)"
-    jq -r --argjson preview "$PREVIEW_CHARS" '
-      def content_array($v): $v | if type == "array" then . elif type == "object" then [.] else [] end;
-      def part_label:
-        if type != "object" then tostring
-        elif .type == "text" then (.text // "")
-        elif .type == "reasoning" then (.text // .reasoning // "")
-        elif .type == "thinking" then (.thinking // .text // "")
-        elif .type == "toolRequest" then ("toolRequest:" + (.toolCall.value.name // .toolCall.name // .id // ""))
-        elif .type == "toolResponse" then ("toolResponse:" + (.id // .toolCallId // ""))
-        else (.type // "")
-        end;
-      ([
-        "index",
-        "id",
-        "role",
-        "created",
-        "userVisible",
-        "content_types",
-        "preview"
-      ] | @tsv),
-      ((.conversation // []) | to_entries[] | [
-        .key,
-        (.value.id // ""),
-        (.value.role // ""),
-        (.value.created // ""),
-        ((.value.metadata.userVisible // "") | tostring),
-        (content_array(.value.content // []) | map(if type == "object" then (.type // "unknown") else type end) | join(",")),
-        (content_array(.value.content // []) | map(part_label) | join(" ") | gsub("[[:space:]]+"; " ") | .[0:$preview])
-      ] | @tsv)
-    ' "$json" > "$OUT_DIR/$base-conversation.tsv" 2> "$OUT_DIR/$base-conversation.err" || true
-  done
-fi
-
 if [ -n "$WORKING_DIR" ]; then
   run_sh "working-dir-files" "test -d '$WORKING_DIR' && { echo 'WORKING_DIR=$WORKING_DIR'; du -sh '$WORKING_DIR' 2>/dev/null || true; find '$WORKING_DIR' -maxdepth 5 -type f -exec ls -lh {} + 2>/dev/null | sed -n '1,1000p'; } || echo 'Working directory not found: $WORKING_DIR'"
+  if [ -f "$WORKING_DIR/data/$SESSION_ID/file-capsules.json" ]; then
+    mkdir -p "$OUT_DIR/session-files"
+    copy_redacted_file "$WORKING_DIR/data/$SESSION_ID/file-capsules.json" "$OUT_DIR/session-files/file-capsules.json"
+  fi
   if [ "$COPY_WORKDIR" = "1" ] && [ -d "$WORKING_DIR" ]; then
     WORKDIR_BYTES="$(du -sk "$WORKING_DIR" 2>/dev/null | awk '{print $1 * 1024}' || echo 0)"
     if [ "${WORKDIR_BYTES:-0}" -le "$MAX_WORKDIR_COPY_BYTES" ]; then
@@ -890,12 +782,66 @@ fi
 LOG_PATTERN_FILE="$OUT_DIR/log-patterns.txt"
 {
   printf '%s\n' "$SESSION_ID"
-  printf '%s\n' "$REQ_ID"
   printf '%s\n' "sessionId=$SESSION_ID"
   printf '%s\n' "session_id=$SESSION_ID"
   printf '%s\n' "\"session_id\":\"$SESSION_ID\""
   printf '%s\n' "\"sessionId\":\"$SESSION_ID\""
 } > "$LOG_PATTERN_FILE"
+
+mkdir -p "$OUT_DIR/mcp-context"
+{
+  echo "### MCP config directories"
+  for dir in \
+    "$BASE_AGENT_DIR/config/mcp" \
+    "$AGENT_RUNTIME_DIR/config/mcp" \
+    "$AGENT_RUNTIME_DIR/.goose" \
+    "$AGENT_RUNTIME_DIR/home/.config/goose" \
+    "$AGENT_RUNTIME_DIR/home/.cache/goose"
+  do
+    [ -e "$dir" ] || continue
+    echo
+    echo "## $dir"
+    find "$dir" -maxdepth 5 -print 2>/dev/null | sort
+  done
+} > "$OUT_DIR/mcp-context/mcp-tree.txt"
+
+for dir in "$BASE_AGENT_DIR/config/mcp" "$AGENT_RUNTIME_DIR/config/mcp"; do
+  [ -d "$dir" ] || continue
+  find "$dir" -maxdepth 5 -type f \
+    \( -name '*.json' -o -name '*.yaml' -o -name '*.yml' -o -name '*.toml' -o -name '*.md' -o -name '*.py' -o -name '*.ts' -o -name 'package.json' -o -name 'tsconfig.json' \) \
+    ! -path '*/node_modules/*' ! -path '*/dist/*' \
+    -print 2>/dev/null | while IFS= read -r file; do
+      rel="${file#"$dir/"}"
+      copy_redacted_file "$file" "$OUT_DIR/mcp-context/$(safe_name "$dir")/$rel"
+    done
+done
+
+MCP_LOG_ROOTS="$OUT_DIR/mcp-log-roots.txt"
+: > "$MCP_LOG_ROOTS"
+for dir in \
+  "$ROOT/logs/mcp" \
+  "$GATEWAY_ROOT/logs/mcp" \
+  "$AGENT_RUNTIME_DIR/logs/mcp" \
+  "$AGENT_RUNTIME_DIR/state/logs/mcp" \
+  "${WORKING_DIR:+$WORKING_DIR/logs/mcp}"
+do
+  [ -d "$dir" ] || continue
+  if ! grep -Fqx "$dir" "$MCP_LOG_ROOTS" 2>/dev/null; then
+    printf '%s\n' "$dir" >> "$MCP_LOG_ROOTS"
+  fi
+done
+
+{
+  echo "### MCP log roots"
+  sed -n '1,200p' "$MCP_LOG_ROOTS" 2>/dev/null || true
+  echo
+  echo "### MCP log files"
+  while IFS= read -r dir; do
+    find "$dir" -type f \
+      \( -name '*.log' -o -name '*.txt' -o -name '*.jsonl' -o -name '*.log.gz' \) \
+      -exec ls -lh {} + 2>/dev/null
+  done < "$MCP_LOG_ROOTS" | sort
+} > "$OUT_DIR/mcp-context/mcp-logs-index.txt"
 
 collect_log_matches() {
   local log="$1"
@@ -904,14 +850,37 @@ collect_log_matches() {
   local tmp
   out="$OUT_DIR/log-$(safe_name "$log").txt"
   tmp="$out.tmp"
-  grep -F -f "$LOG_PATTERN_FILE" "$log" 2>/dev/null | tail -n "$LOG_TAIL_LINES" > "$tmp" || true
+  case "$log" in
+    *.gz)
+      if command -v zgrep >/dev/null 2>&1; then
+        zgrep -F -f "$LOG_PATTERN_FILE" "$log" 2>/dev/null | tail -n "$LOG_TAIL_LINES" > "$tmp" || true
+      fi
+      ;;
+    *)
+      grep -F -f "$LOG_PATTERN_FILE" "$log" 2>/dev/null | tail -n "$LOG_TAIL_LINES" > "$tmp" || true
+      ;;
+  esac
   if [ -s "$tmp" ]; then
     {
       echo "### $log"
-      cat "$tmp"
+      redact_sensitive_lines < "$tmp"
     } > "$out"
   fi
   rm -f "$tmp"
+}
+
+log_contains_fixed() {
+  local needle="$1"
+  local log="$2"
+  [ -n "$needle" ] || return 1
+  case "$log" in
+    *.gz)
+      command -v zgrep >/dev/null 2>&1 && zgrep -Fq "$needle" "$log" 2>/dev/null
+      ;;
+    *)
+      grep -Fq "$needle" "$log" 2>/dev/null
+      ;;
+  esac
 }
 
 add_log_candidate() {
@@ -925,7 +894,19 @@ add_log_candidate() {
   printf '%s\t%s\t%s\n' "$reason" "$(file_size "$log" | tr -d ' ')" "$log" >> "$OUT_DIR/goosed-log-candidate-reasons.tsv"
 }
 
+add_mcp_log_candidate() {
+  local list_file="$1"
+  local log="$2"
+  local reason="$3"
+  [ -f "$log" ] || return 0
+  if ! grep -Fqx "$log" "$list_file" 2>/dev/null; then
+    printf '%s\n' "$log" >> "$list_file"
+  fi
+  printf '%s\t%s\t%s\n' "$reason" "$(file_size "$log" | tr -d ' ')" "$log" >> "$OUT_DIR/mcp-log-candidate-reasons.tsv"
+}
+
 for log in \
+  "$ROOT/logs/gateway.log" \
   "$GATEWAY_ROOT/logs/gateway.log" \
   "$GATEWAY_ROOT/logs/gateway-stdout-stderr.log" \
   "$ROOT/gateway/logs/gateway.log" \
@@ -934,12 +915,108 @@ do
   collect_log_matches "$log"
 done
 
+if [ -d "$ROOT/logs" ]; then
+  find "$ROOT/logs" -maxdepth 1 -type f \
+    \( -name 'gateway*.log' -o -name 'gateway*.log.gz' -o -path '*/mcp/*.log' -o -path '*/mcp/*.log.gz' \) \
+    -print 2>/dev/null | while IFS= read -r log; do
+      collect_log_matches "$log"
+    done
+fi
+
+if [ -d "$ROOT/logs/mcp" ]; then
+  find "$ROOT/logs/mcp" -type f \
+    \( -name '*.log' -o -name '*.txt' -o -name '*.jsonl' -o -name '*.log.gz' \) \
+    -print 2>/dev/null | while IFS= read -r log; do
+      collect_log_matches "$log"
+    done
+fi
+
+if [ -d "$WEB_APP_ROOT/logs" ]; then
+  find "$WEB_APP_ROOT/logs" -type f \
+    \( -name '*.log' -o -name '*.txt' -o -name '*.jsonl' -o -name '*.log.gz' \) \
+    -print 2>/dev/null | while IFS= read -r log; do
+      collect_log_matches "$log"
+    done
+fi
+
 if [ -d "$AGENT_RUNTIME_DIR/state/logs" ]; then
   find "$AGENT_RUNTIME_DIR/state/logs" -type f \
     \( -name '*.log' -o -name '*.txt' -o -name '*.jsonl' \) \
     -print 2>/dev/null | while IFS= read -r log; do
       collect_log_matches "$log"
     done
+fi
+
+MCP_CANDIDATES="$OUT_DIR/mcp-log-candidates.txt"
+: > "$MCP_CANDIDATES"
+: > "$OUT_DIR/mcp-log-candidate-reasons.tsv"
+
+if [ "$COPY_MCP_LOGS" = "1" ]; then
+  echo ">>> mcp-full-logs"
+  while IFS= read -r dir; do
+    [ -d "$dir" ] || continue
+    find "$dir" -type f \
+      \( -name '*.log' -o -name '*.txt' -o -name '*.jsonl' -o -name '*.log.gz' \) \
+      -print 2>/dev/null | while IFS= read -r log; do
+        if log_contains_fixed "$SESSION_ID" "$log"; then
+          add_mcp_log_candidate "$MCP_CANDIDATES" "$log" "contains-session-id"
+        elif [ -n "$SESSION_MIN_DATE_UTC" ] && printf '%s' "$log" | grep -Fq "$SESSION_MIN_DATE_UTC"; then
+          add_mcp_log_candidate "$MCP_CANDIDATES" "$log" "same-utc-date-as-session-start"
+        elif [ -n "$SESSION_MAX_DATE_UTC" ] && printf '%s' "$log" | grep -Fq "$SESSION_MAX_DATE_UTC"; then
+          add_mcp_log_candidate "$MCP_CANDIDATES" "$log" "same-utc-date-as-session-end"
+        elif printf '%s' "$log" | grep -Eiq 'mcp|knowledge|tool'; then
+          add_mcp_log_candidate "$MCP_CANDIDATES" "$log" "mcp-log-file"
+        fi
+      done
+  done < "$MCP_LOG_ROOTS"
+
+  mkdir -p "$OUT_DIR/mcp-full-logs"
+  MCP_COPIED_BYTES=0
+  while IFS= read -r log; do
+    [ -f "$log" ] || continue
+    size="$(file_size "$log" | tr -d ' ')"
+    case "$size" in
+      ''|*[!0-9]*) size=0 ;;
+    esac
+    next_total=$((MCP_COPIED_BYTES + size))
+    if [ "$next_total" -gt "$MAX_MCP_LOG_BYTES" ]; then
+      printf 'Skipped because copy limit would be exceeded: size=%s limit=%s path=%s\n' \
+        "$size" "$MAX_MCP_LOG_BYTES" "$log" >> "$OUT_DIR/mcp-full-logs-skipped.txt"
+      continue
+    fi
+    dest="$OUT_DIR/mcp-full-logs/$(safe_name "$log")"
+    copy_redacted_log "$log" "$dest"
+    MCP_COPIED_BYTES="$next_total"
+  done < "$MCP_CANDIDATES"
+  printf '%s\n' "$MCP_COPIED_BYTES" > "$OUT_DIR/mcp-full-logs-copied-bytes.txt"
+
+  {
+    echo "### copied MCP logs"
+    find "$OUT_DIR/mcp-full-logs" -type f -exec ls -lh {} + 2>/dev/null | sort || true
+    echo
+    echo "### candidate reasons"
+    sed -n '1,500p' "$OUT_DIR/mcp-log-candidate-reasons.tsv" 2>/dev/null || true
+  } > "$OUT_DIR/mcp-full-logs-index.txt"
+
+  {
+    echo "### MCP tool/session signals"
+    find "$OUT_DIR/mcp-full-logs" -type f -print 2>/dev/null | sort | while IFS= read -r copied_log; do
+      case "$copied_log" in
+        *.gz)
+          command -v zgrep >/dev/null 2>&1 && zgrep -Ein \
+            "session|$SESSION_ID|tool|mcp|request|response|error|failed|timeout|panic|exception|stderr|stdout|start|exit|closed" \
+            "$copied_log" 2>/dev/null | sed "s#^#$copied_log:#" || true
+          ;;
+        *)
+          grep -Ein \
+            "session|$SESSION_ID|tool|mcp|request|response|error|failed|timeout|panic|exception|stderr|stdout|start|exit|closed" \
+            "$copied_log" 2>/dev/null | sed "s#^#$copied_log:#" || true
+          ;;
+      esac
+    done
+  } > "$OUT_DIR/mcp-session-signals.txt"
+else
+  echo "Skipped full MCP log copy. COPY_MCP_LOGS=$COPY_MCP_LOGS" > "$OUT_DIR/mcp-full-logs-skipped.txt"
 fi
 
 GOOSED_LOG_ROOT="$AGENT_RUNTIME_DIR/state/logs/server"
@@ -952,7 +1029,7 @@ if [ "$COPY_GOOSED_LOGS" = "1" ] && [ -d "$GOOSED_LOG_ROOT" ]; then
   find "$GOOSED_LOG_ROOT" -type f \
     \( -name '*.log' -o -name '*.txt' -o -name '*.jsonl' \) \
     -print 2>/dev/null | while IFS= read -r log; do
-      if grep -Fq "$SESSION_ID" "$log" 2>/dev/null; then
+      if log_contains_fixed "$SESSION_ID" "$log"; then
         add_log_candidate "$GOOSED_CANDIDATES" "$log" "contains-session-id"
       elif [ -n "$SESSION_MIN_DATE_UTC" ] && printf '%s' "$log" | grep -Fq "/$SESSION_MIN_DATE_UTC/"; then
         add_log_candidate "$GOOSED_CANDIDATES" "$log" "same-utc-date-as-session-start"
@@ -977,8 +1054,7 @@ if [ "$COPY_GOOSED_LOGS" = "1" ] && [ -d "$GOOSED_LOG_ROOT" ]; then
     fi
     rel="${log#"$GOOSED_LOG_ROOT/"}"
     dest="$OUT_DIR/goosed-full-logs/$rel"
-    mkdir -p "$(dirname "$dest")"
-    cp "$log" "$dest" 2>/dev/null || true
+    copy_redacted_log "$log" "$dest"
     GOOSED_COPIED_BYTES="$next_total"
   done < "$GOOSED_CANDIDATES"
   printf '%s\n' "$GOOSED_COPIED_BYTES" > "$OUT_DIR/goosed-full-logs-copied-bytes.txt"
@@ -995,7 +1071,7 @@ if [ "$COPY_GOOSED_LOGS" = "1" ] && [ -d "$GOOSED_LOG_ROOT" ]; then
     echo "### goosed lifecycle/termination/session signals"
     find "$OUT_DIR/goosed-full-logs" -type f -print 2>/dev/null | sort | while IFS= read -r copied_log; do
       grep -Ein \
-        "session_id=$SESSION_ID|session\\.id=$SESSION_ID|session $SESSION_ID|Session loaded|Restoring evicted session|Session started|Session completed|exit_type=|shutdown|cancel|Cancelled|Closed|timeout|timed out|panic|error|failed|provider|WAITING_LLM|WAITING_TOOL|Tool call|evict|dropped|EOF|broken pipe|connection" \
+        "session_id=$SESSION_ID|session\\.id=$SESSION_ID|session $SESSION_ID|Session loaded|Restoring evicted session|Session started|Session completed|exit_type=|shutdown|cancel|Cancelled|Closed|timeout|timed out|panic|error|failed|provider|WAITING_LLM|WAITING_TOOL|Tool call|mcp|rmcp|evict|dropped|EOF|broken pipe|connection" \
         "$copied_log" 2>/dev/null | sed "s#^#$copied_log:#" || true
     done
   } > "$OUT_DIR/goosed-session-signals.txt"
@@ -1016,8 +1092,8 @@ done
   echo "- session_id: $SESSION_ID"
   echo "- thread_id: ${THREAD_ID:-<none>}"
   echo "- db: $DB"
-  echo "- gateway_url: $GATEWAY_URL$GATEWAY_API_PREFIX"
-  echo "- request_id: $REQ_ID"
+  echo "- gateway_root: $GATEWAY_ROOT"
+  echo "- web_app_root: $WEB_APP_ROOT"
   echo "- working_dir: ${WORKING_DIR:-<none>}"
   echo
   echo "## Most useful files"
@@ -1031,12 +1107,15 @@ done
   echo "- db-turn-summary.csv: per-human-turn grouping for long task continuity analysis"
   echo "- db-last-40-messages.csv: tail of the session, useful when the agent stopped near the end"
   echo "- db-thread-messages.json: associated thread messages when available"
-  echo "- gateway-agent-session.json: gateway API session response"
-  echo "- gateway-agent-session-conversation.tsv: gateway response timeline"
-  echo "- gateway-file-capsules.json: files exposed by the gateway for this session"
+  echo "- config-context/: redacted gateway and web-app configuration files"
+  echo "- agent-context/: redacted agent runtime/base configuration, including prompts and MCP config"
+  echo "- mcp-context/: MCP config trees and MCP log indexes"
+  echo "- session-files/file-capsules.json: persisted output file capsule mapping when present"
   echo "- goosed-full-logs/: full goosed logs that contain the session id or fall on the session UTC date"
   echo "- goosed-session-signals.txt: lifecycle, provider, tool, shutdown, timeout, and error lines from copied goosed logs"
-  echo "- log-*.txt: focused matching gateway/goosed log lines"
+  echo "- mcp-full-logs/: copied MCP logs selected by session/date/MCP location"
+  echo "- mcp-session-signals.txt: MCP/tool/request/error lines from copied MCP logs"
+  echo "- log-*.txt: focused matching gateway/goosed/MCP/web-app log lines"
   echo "- sessions.db.snapshot: sqlite backup of the session database"
   echo
   echo "## Counts"

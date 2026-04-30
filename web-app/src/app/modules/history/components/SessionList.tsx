@@ -12,8 +12,10 @@ interface SessionListProps {
     onRename: (session: SessionWithAgent) => void
     onDelete: (session: SessionWithAgent) => void
     deletingSessionKeys?: Set<string>
+    tracingSessionKeys?: Set<string>
     getSessionKey?: (session: SessionWithAgent) => string
     agentNameById?: Record<string, string>
+    onTrace?: (session: SessionWithAgent) => void
     onMarkUnread?: (session: SessionWithAgent) => void
 }
 
@@ -24,8 +26,10 @@ export default function SessionList({
     onRename,
     onDelete,
     deletingSessionKeys,
+    tracingSessionKeys,
     getSessionKey,
     agentNameById,
+    onTrace,
     onMarkUnread,
 }: SessionListProps) {
     const { t } = useTranslation()
@@ -95,6 +99,8 @@ export default function SessionList({
                     onRename={onRename}
                     onDelete={onDelete}
                     isDeleting={deletingSessionKeys?.has(getSessionKey ? getSessionKey(session) : session.id)}
+                    onTrace={onTrace}
+                    isTracing={tracingSessionKeys?.has(getSessionKey ? getSessionKey(session) : session.id)}
                     onMarkUnread={onMarkUnread}
                 />
             ))}

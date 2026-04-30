@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Session } from '@goosed/sdk'
+import { FileArchive, Loader2 } from 'lucide-react'
 import { isScheduledSession } from '../../../../config/runtime'
 import ListCard from '../../../platform/ui/list/ListCard'
 
@@ -13,6 +14,8 @@ interface SessionItemProps {
     onRename: (session: SessionWithAgent) => void
     onDelete: (session: SessionWithAgent) => void
     isDeleting?: boolean
+    onTrace?: (session: SessionWithAgent) => void
+    isTracing?: boolean
     onMarkUnread?: (session: SessionWithAgent) => void
 }
 
@@ -21,7 +24,17 @@ function truncateSessionId(sessionId: string, edgeLength = 6): string {
     return `${sessionId.slice(0, edgeLength)}...${sessionId.slice(-edgeLength)}`
 }
 
-export default function SessionItem({ session, agentName, onResume, onRename, onDelete, isDeleting = false, onMarkUnread }: SessionItemProps) {
+export default function SessionItem({
+    session,
+    agentName,
+    onResume,
+    onRename,
+    onDelete,
+    isDeleting = false,
+    onTrace,
+    isTracing = false,
+    onMarkUnread,
+}: SessionItemProps) {
     const { t } = useTranslation()
     const formattedDate = new Date(session.created_at).toLocaleDateString(undefined, {
         month: 'short',
@@ -41,6 +54,12 @@ export default function SessionItem({ session, agentName, onResume, onRename, on
         e.preventDefault()
         e.stopPropagation()
         onRename(session)
+    }
+
+    const handleTraceClick = (e: MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onTrace?.(session)
     }
 
     return (
@@ -110,6 +129,23 @@ export default function SessionItem({ session, agentName, onResume, onRename, on
                             <path d="M22 12h-4l-3 4H9l-3-4H2" />
                             <path d="M5 12V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7" />
                         </svg>
+                    </button>
+                )}
+                {onTrace && (
+                    <button
+                        type="button"
+                        className="session-action-btn"
+                        onClick={handleTraceClick}
+                        disabled={isTracing}
+                        aria-busy={isTracing}
+                        title={isTracing ? t('history.traceSessionRunning') : t('history.traceSession')}
+                        aria-label={isTracing ? t('history.traceSessionRunning') : t('history.traceSession')}
+                    >
+                        {isTracing ? (
+                            <Loader2 className="session-action-icon session-action-spinner" size={16} aria-hidden="true" />
+                        ) : (
+                            <FileArchive className="session-action-icon" size={16} aria-hidden="true" />
+                        )}
                     </button>
                 )}
                 <button
