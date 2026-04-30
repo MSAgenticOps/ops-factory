@@ -607,6 +607,7 @@ export default function HostResourcePage() {
             {activeTab === 'cluster-types' && (
                 <ClusterTypeTab
                     clusterTypes={clusterTypesHook.clusterTypes}
+                    clusters={clusters}
                     loading={clusterTypesHook.loading}
                     onCreate={clusterTypesHook.createClusterType}
                     onUpdate={clusterTypesHook.updateClusterType}

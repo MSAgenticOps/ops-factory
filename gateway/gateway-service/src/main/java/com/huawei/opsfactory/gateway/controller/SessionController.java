@@ -28,6 +28,7 @@ import reactor.core.scheduler.Schedulers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,10 +125,16 @@ public class SessionController {
     }
 
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> listAllSessions(ServerWebExchange exchange) {
+    public Mono<String> listAllSessions(
+            @RequestParam(defaultValue = "1") int pageIndex,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String agentId,
+            @RequestParam(required = false) String type,
+            ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] begin userId={}", userId));
+        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex, pageSize, search, agentId, type));
         return Flux.fromIterable(instanceManager.getAllInstances())
                 .filter(inst -> inst.getUserId().equals(userId)
                         || GatewayConstants.SYSTEM_USER.equals(inst.getUserId()))
@@ -140,8 +147,41 @@ public class SessionController {
                     for (List<String> batch : lists) {
                         allSessions.addAll(batch);
                     }
-                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] complete userId={} sessions={}", userId, allSessions.size()));
-                    return "{\"sessions\":[" + String.join(",", allSessions) + "]}";
+                    // Filter by agentId
+                    List<Map<String, Object>> parsed = new ArrayList<>();
+                    for (String json : allSessions) {
+                        try {
+                            Map<String, Object> m = MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
+                            if (agentId != null && !agentId.isBlank() && !agentId.equals(m.get("agentId"))) continue;
+                            if (type != null && !type.isBlank()) {
+                                String sessionType = m.getOrDefault("session_type", "user") instanceof String s ? s : "user";
+                                String scheduleId = m.get("schedule_id") instanceof String s && !s.isBlank() ? s : null;
+                                if ("user".equals(type) && (!"user".equals(sessionType) || scheduleId != null)) continue;
+                                if ("scheduled".equals(type) && (scheduleId == null && !"scheduled".equals(sessionType))) continue;
+                            }
+                            if (search != null && !search.isBlank()) {
+                                String name = m.getOrDefault("name", "") instanceof String s ? s.toLowerCase() : "";
+                                if (!name.contains(search.toLowerCase())) continue;
+                            }
+                            parsed.add(m);
+                        } catch (Exception ignored) {}
+                    }
+                    // Sort by created_at descending
+                    parsed.sort((a, b) -> {
+                        String ta = a.getOrDefault("created_at", "") instanceof String s ? s : "";
+                        String tb = b.getOrDefault("created_at", "") instanceof String s ? s : "";
+                        return tb.compareTo(ta);
+                    });
+                    int total = parsed.size();
+                    int from = Math.min((pageIndex - 1) * pageSize, total);
+                    int to = Math.min(from + pageSize, total);
+                    List<Map<String, Object>> page = from < total ? parsed.subList(from, to) : List.of();
+                    List<String> pageJson = new ArrayList<>();
+                    for (Map<String, Object> m : page) {
+                        try { pageJson.add(MAPPER.writeValueAsString(m)); } catch (Exception ignored) {}
+                    }
+                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] complete userId={} total={} page={}/{} returned={}", userId, total, pageIndex, pageSize, pageJson.size()));
+                    return "{\"sessions\":[" + String.join(",", pageJson) + "],\"total\":" + total + ",\"pageIndex\":" + pageIndex + ",\"pageSize\":" + pageSize + "}";
                 });
     }
 

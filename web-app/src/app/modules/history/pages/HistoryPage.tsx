@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { Session } from '@goosed/sdk'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useToast } from '../../../platform/providers/ToastContext'
@@ -18,10 +17,7 @@ import { GATEWAY_URL, gatewayHeaders, isAdminUser, isScheduledSession } from '..
 import { trackedFetch } from '../../../platform/logging/requestClient'
 import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
-
-interface AgentSession extends Session {
-    agentId: string
-}
+import { useHistorySessions } from '../hooks/useHistorySessions'
 
 type HistoryFilter = 'user' | 'scheduled' | 'all'
 
@@ -42,12 +38,6 @@ function parseHistoryFilter(raw: string | null): HistoryFilter {
 const ALL_AGENTS = '__all__'
 const TRACE_POLL_INTERVAL_MS = 1500
 const TRACE_POLL_TIMEOUT_MS = 10 * 60 * 1000
-
-function hasSessionMessages(session: Session): boolean {
-    if (typeof session.message_count === 'number') return session.message_count > 0
-    if (Array.isArray(session.conversation)) return session.conversation.length > 0
-    return true
-}
 
 function wait(ms: number): Promise<void> {
     return new Promise(resolve => window.setTimeout(resolve, ms))
@@ -100,10 +90,6 @@ export default function HistoryPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected, error: connectionError } = useGoosed()
     const { markSessionRead, markSessionUnread } = useInbox()
-    const [sessions, setSessions] = useState<AgentSession[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState('')
-    const [error, setError] = useState<string | null>(null)
     const [deletingSessionKeys, setDeletingSessionKeys] = useState<Set<string>>(new Set())
     const [tracingSessionKeys, setTracingSessionKeys] = useState<Set<string>>(new Set())
     const [renamingSession, setRenamingSession] = useState<SessionWithAgent | null>(null)
@@ -116,6 +102,30 @@ export default function HistoryPage() {
         if (!raw || raw === ALL_AGENTS) return ALL_AGENTS
         return agents.some((agent) => agent.id === raw) ? raw : ALL_AGENTS
     }, [agents, searchParams])
+    const [searchTerm, setSearchTerm] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
+
+    // Debounce search input
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+        return () => clearTimeout(timer)
+    }, [searchTerm])
+
+    const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
+    const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
+    const canTraceSessions = isAdminUser(userId, role)
+
+    const getSessionKey = useCallback((session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`, [])
+
+    // Server-side paginated sessions
+    const historySessions = useHistorySessions({
+        pageIndex: currentPage,
+        pageSize,
+        search: debouncedSearch || undefined,
+        agentId: selectedAgent === ALL_AGENTS ? undefined : selectedAgent,
+        type: historyFilter === 'all' ? undefined : historyFilter,
+    })
+
     const setHistoryFilter = useCallback((filter: HistoryFilter) => {
         const nextParams = new URLSearchParams(searchParams)
         if (filter === 'user') {
@@ -134,96 +144,11 @@ export default function HistoryPage() {
         }
         setSearchParams(nextParams, { replace: true })
     }, [searchParams, setSearchParams])
-    const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
-    const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
-    const canTraceSessions = isAdminUser(userId, role)
 
-    const getSessionKey = useCallback((session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`, [])
-
-    useEffect(() => {
-        let cancelled = false
-        const loadSessions = async () => {
-            if (!isConnected || agents.length === 0) {
-                if (!cancelled) setIsLoading(false)
-                return
-            }
-
-            setIsLoading(true)
-            setError(null)
-
-            try {
-                const results = await Promise.allSettled(
-                    agents.map(async (agent) => {
-                        const client = getClient(agent.id)
-                        const agentSessions = await client.listSessions()
-                        return agentSessions.map((session: Session) => ({ ...session, agentId: agent.id }))
-                    }),
-                )
-
-                const allSessions: AgentSession[] = []
-                for (const result of results) {
-                    if (result.status === 'fulfilled') {
-                        allSessions.push(...result.value)
-                    }
-                }
-
-                allSessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                if (!cancelled) {
-                    setSessions(allSessions)
-                }
-            } catch (err) {
-                console.error('Failed to load sessions:', err)
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'Failed to load sessions')
-                }
-            } finally {
-                if (!cancelled) {
-                    setIsLoading(false)
-                }
-            }
-        }
-
-        void loadSessions()
-        return () => {
-            cancelled = true
-        }
-    }, [getClient, agents, isConnected])
-
-    const nonEmptySessions = useMemo(() => sessions.filter(hasSessionMessages), [sessions])
-
-    const filteredByAgent = useMemo(() => {
-        if (selectedAgent === ALL_AGENTS) return nonEmptySessions
-        return nonEmptySessions.filter((session) => session.agentId === selectedAgent)
-    }, [nonEmptySessions, selectedAgent])
-
-    const filteredByType = useMemo(() => {
-        if (historyFilter === 'all') return filteredByAgent
-        if (historyFilter === 'scheduled') {
-            return filteredByAgent.filter((session) => isScheduledSession(session))
-        }
-        return filteredByAgent.filter((session) => (session.session_type || 'user') === 'user' && !session.schedule_id)
-    }, [filteredByAgent, historyFilter])
-
-    const filteredSessions = useMemo(() => {
-        if (!searchTerm.trim()) return filteredByType
-
-        const term = searchTerm.toLowerCase()
-        return filteredByType.filter((session) =>
-            session.name.toLowerCase().includes(term) ||
-            session.working_dir.toLowerCase().includes(term),
-        )
-    }, [filteredByType, searchTerm])
-
-    const totalPages = Math.ceil(filteredSessions.length / pageSize)
-    const paginatedSessions = useMemo(() => {
-        const startIndex = (currentPage - 1) * pageSize
-        const endIndex = startIndex + pageSize
-        return filteredSessions.slice(startIndex, endIndex)
-    }, [filteredSessions, currentPage, pageSize])
-
+    // Reset page on filter/search/agent change
     useEffect(() => {
         setCurrentPage(1)
-    }, [historyFilter, searchTerm, selectedAgent])
+    }, [historyFilter, debouncedSearch, selectedAgent])
 
     const handleResumeSession = (session: SessionWithAgent) => {
         const resolvedAgentId = session.agentId || agents[0]?.id || ''
@@ -258,12 +183,8 @@ export default function HistoryPage() {
         setIsRenaming(true)
         try {
             await getClient(resolvedAgentId).updateSessionName(renamingSession.id, nextTitle)
-            setSessions((prev) => prev.map((session) => (
-                session.id === renamingSession.id && session.agentId === renamingSession.agentId
-                    ? { ...session, name: nextTitle }
-                    : session
-            )))
             setRenamingSession(null)
+            historySessions.refresh()
             showToast('success', t('history.renameSessionSuccess'))
         } catch (err) {
             console.error('Failed to rename session:', err)
@@ -271,7 +192,7 @@ export default function HistoryPage() {
         } finally {
             setIsRenaming(false)
         }
-    }, [agents, getClient, renamingSession, showToast, t])
+    }, [agents, getClient, renamingSession, showToast, t, historySessions])
 
     const pollTraceJob = useCallback(async (jobId: string): Promise<TraceJobResponse> => {
         const startedAt = Date.now()
@@ -359,6 +280,7 @@ export default function HistoryPage() {
     }, [agents, getSessionKey, pollTraceJob, showToast, t, tracingSessionKeys, userId])
 
     const handleDeleteSession = async (session: SessionWithAgent) => {
+        if (!confirm(t('history.confirmDeleteSession'))) return
         const resolvedAgentId = session.agentId || agents[0]?.id
         const sessionKey = getSessionKey({ ...session, agentId: resolvedAgentId })
         if (deletingSessionKeys.has(sessionKey)) return
@@ -373,26 +295,16 @@ export default function HistoryPage() {
                     break
                 }
             }
-            setSessions((prev) => prev.filter((current) => current.id !== session.id))
             setLastDeletedSessionId(session.id)
             setLastDeletedAt(Date.now())
-            setCurrentPage((prev) => {
-                const newFilteredCount = filteredSessions.length - 1
-                const newTotalPages = Math.ceil(newFilteredCount / pageSize)
-                return prev > newTotalPages ? Math.max(1, newTotalPages) : prev
-            })
+            historySessions.refresh()
         } catch (err) {
             console.error('Failed to delete session:', err)
             const message = err instanceof Error ? err.message : 'Unknown error'
             if (message.includes('Resource not found')) {
-                setSessions((prev) => prev.filter((current) => current.id !== session.id))
                 setLastDeletedSessionId(session.id)
                 setLastDeletedAt(Date.now())
-                setCurrentPage((prev) => {
-                    const newFilteredCount = filteredSessions.length - 1
-                    const newTotalPages = Math.ceil(newFilteredCount / pageSize)
-                    return prev > newTotalPages ? Math.max(1, newTotalPages) : prev
-                })
+                historySessions.refresh()
                 return
             }
             showToast('error', t('errors.deleteFailed'))
@@ -409,9 +321,9 @@ export default function HistoryPage() {
         <div className="page-container sidebar-top-page page-shell-wide history-page">
             <PageHeader title={t('history.title')} subtitle={t('history.subtitle')} />
 
-            {(error || (!isConnected && connectionError)) && (
+            {(historySessions.error || (!isConnected && connectionError)) && (
                 <div className="conn-banner conn-banner-error">
-                    {error || t('common.connectionError', { error: connectionError })}
+                    {historySessions.error || t('common.connectionError', { error: connectionError })}
                 </div>
             )}
 
@@ -475,24 +387,24 @@ export default function HistoryPage() {
                         secondary={undefined}
                     />
                 )}
-                footer={filteredSessions.length > 0 ? (
+                footer={historySessions.total > 0 ? (
                     <ListFooter>
                         <Pagination
                             currentPage={currentPage}
-                            totalPages={totalPages}
+                            totalPages={historySessions.totalPages}
                             pageSize={pageSize}
-                            totalItems={filteredSessions.length}
+                            totalItems={historySessions.total}
                             onPageChange={setCurrentPage}
                             onPageSizeChange={(newSize) => {
                                 setPageSize(newSize)
                                 setCurrentPage(1)
                             }}
-                            disabled={isLoading}
+                            disabled={historySessions.isLoading}
                         />
                     </ListFooter>
                 ) : undefined}
             >
-                {searchTerm && filteredSessions.length === 0 && !isLoading ? (
+                {debouncedSearch && historySessions.sessions.length === 0 && !historySessions.isLoading ? (
                     <div className="empty-state">
                         <svg className="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <circle cx="11" cy="11" r="8" />
@@ -500,13 +412,13 @@ export default function HistoryPage() {
                         </svg>
                         <h3 className="empty-state-title">{t('common.noResults')}</h3>
                         <p className="empty-state-description">
-                            {t('history.noMatchSessions', { term: searchTerm })}
+                            {t('history.noMatchSessions', { term: debouncedSearch })}
                         </p>
                     </div>
                 ) : (
                     <SessionList
-                        sessions={paginatedSessions}
-                        isLoading={isLoading}
+                        sessions={historySessions.sessions}
+                        isLoading={historySessions.isLoading}
                         onResume={handleResumeSession}
                         onRename={handleRenameSession}
                         onDelete={handleDeleteSession}

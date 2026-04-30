@@ -158,7 +158,7 @@ export default function ResourceFormModal({
     const getEntityName = useCallback((id: string, type: string) => {
         if (type === 'cluster' || !type) {
             const c = clusters.find(cl => cl.id === id)
-            return c ? `${c.name} (${c.type})` : id.substring(0, 8)
+            return c ? c.name : id.substring(0, 8)
         }
         if (type === 'business-service') {
             const bs = businessServices.find(b => b.id === id)
@@ -276,6 +276,8 @@ export default function ResourceFormModal({
                 await onSaveGroup({ name: groupName.trim(), code: groupCode.trim(), parentId: groupParentId || null, description: groupDescription.trim(), enabled: groupEnabled })
             } else if (selectedType === 'cluster') {
                 if (!clusterName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!clusterType.trim()) { setError(t('hostResource.clusterTypeRequired')); setSaving(false); return }
+                if (!clusterGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
                 await onSaveCluster({
                     name: clusterName.trim(), type: clusterType.trim(), purpose: clusterPurpose.trim(),
                     groupId: clusterGroupId || null, description: clusterDescription.trim(),
@@ -388,7 +390,7 @@ export default function ResourceFormModal({
                             {selectedType === 'group' && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.groupName')}</label>
+                                        <label className="form-label">{t('hostResource.groupName')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
                                         <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} />
                                     </div>
                                     <div className="form-group">
@@ -429,11 +431,11 @@ export default function ResourceFormModal({
                             {selectedType === 'cluster' && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.clusterName')}</label>
+                                        <label className="form-label">{t('hostResource.clusterName')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
                                         <input className="form-input" value={clusterName} onChange={e => setClusterName(e.target.value)} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.clusterType')}</label>
+                                        <label className="form-label">{t('hostResource.clusterType')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
                                         <select
                                             className="form-input"
                                             value={clusterTypeIsCustom ? '__custom__' : clusterType}
@@ -468,7 +470,7 @@ export default function ResourceFormModal({
                                         <input className="form-input" value={clusterPurpose} onChange={e => setClusterPurpose(e.target.value)} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.parentGroup')}</label>
+                                        <label className="form-label">{t('hostResource.parentGroup')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
                                         <select className="form-input" value={clusterGroupId} onChange={e => setClusterGroupId(e.target.value)}>
                                             <option value="">{t('hostResource.noParent')}</option>
                                             {groups.map(g => (
@@ -538,7 +540,7 @@ export default function ResourceFormModal({
                                                                     value={editRelTargetId}
                                                                     onChange={setEditRelTargetId}
                                                                     options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({
-                                                                        value: c.id, label: `${c.name} (${c.type})`
+                                                                        value: c.id, label: c.name
                                                                     }))}
                                                                     style={{ flex: 1, fontSize: '0.75rem' }}
                                                                 />
@@ -579,7 +581,7 @@ export default function ResourceFormModal({
                                                         onChange={setNewRelTargetId}
                                                         placeholder={t('hostResource.selectCluster')}
                                                         options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({
-                                                            value: c.id, label: `${c.name} (${c.type})`
+                                                            value: c.id, label: c.name
                                                         }))}
                                                         style={{ flex: 1, fontSize: '0.75rem' }}
                                                     />
@@ -686,7 +688,7 @@ export default function ResourceFormModal({
                                                                     value={editRelTargetId}
                                                                     onChange={setEditRelTargetId}
                                                                     options={clusters.map(c => ({
-                                                                        value: c.id, label: `${c.name} (${c.type})`
+                                                                        value: c.id, label: c.name
                                                                     }))}
                                                                     style={{ flex: 1, fontSize: '0.75rem' }}
                                                                 />
@@ -726,7 +728,7 @@ export default function ResourceFormModal({
                                                         onChange={setNewRelTargetId}
                                                         placeholder={t('hostResource.selectCluster')}
                                                         options={clusters.map(c => ({
-                                                            value: c.id, label: `${c.name} (${c.type})`
+                                                            value: c.id, label: c.name
                                                         }))}
                                                         style={{ flex: 1, fontSize: '0.75rem' }}
                                                     />
@@ -748,7 +750,7 @@ export default function ResourceFormModal({
                                     <h4 className="hr-section-label">{t('hostResource.basicInfo')}</h4>
                                     <div className="hr-form-row">
                                         <div className="form-group">
-                                            <label className="form-label">{t('hostResource.hostName')}</label>
+                                            <label className="form-label">{t('hostResource.hostName')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
                                             <input className="form-input" value={hostName} onChange={e => setHostName(e.target.value)} />
                                         </div>
                                         <div className="form-group">
@@ -758,7 +760,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="hr-form-row">
                                         <div className="form-group">
-                                            <label className="form-label">{t('hostResource.ip')}</label>
+                                            <label className="form-label">{t('hostResource.ip')}<span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span></label>
                                             <input className="form-input" value={hostIp} onChange={e => setHostIp(e.target.value)} placeholder="192.168.1.100 / 2409:808c:8a:109::20" />
                                         </div>
                                         <div className="form-group" style={{ maxWidth: 120 }}>
@@ -811,7 +813,7 @@ export default function ResourceFormModal({
                                             <select className="form-input" value={hostClusterId} onChange={e => { setHostClusterId(e.target.value); setHostRole('') }}>
                                                 <option value="">{t('hostResource.noCluster')}</option>
                                                 {clusters.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
                                                 ))}
                                             </select>
                                         </div>

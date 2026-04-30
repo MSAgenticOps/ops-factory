@@ -142,56 +142,11 @@ function WhitelistFormModal({
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 'var(--spacing-3)',
-                                cursor: 'pointer',
-                                fontSize: 'var(--font-size-sm)',
-                                color: 'var(--color-text-secondary)',
-                            }}
-                        >
-                            <div className="toggle-switch">
-                                <input
-                                    type="checkbox"
-                                    checked={enabled}
-                                    onChange={e => setEnabled(e.target.checked)}
-                                    style={{ display: 'none' }}
-                                />
-                                <span
-                                    className="toggle-slider"
-                                    style={{
-                                        display: 'inline-block',
-                                        width: 36,
-                                        height: 20,
-                                        borderRadius: 10,
-                                        background: enabled ? 'var(--color-success)' : 'var(--color-border)',
-                                        position: 'relative',
-                                        transition: 'background var(--transition-fast)',
-                                        cursor: 'pointer',
-                                        flexShrink: 0,
-                                    }}
-                                    onClick={() => setEnabled(prev => !prev)}
-                                >
-                                    <span
-                                        style={{
-                                            position: 'absolute',
-                                            top: 2,
-                                            left: enabled ? 18 : 2,
-                                            width: 16,
-                                            height: 16,
-                                            borderRadius: '50%',
-                                            background: '#fff',
-                                            transition: 'left var(--transition-fast)',
-                                            boxShadow: 'var(--shadow-sm)',
-                                        }}
-                                    />
-                                </span>
-                            </div>
-                            {t('remoteDiagnosis.whitelist.enabled')}
-                        </label>
+                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ToggleSwitch checked={enabled} onChange={setEnabled} />
+                        <span style={{ fontSize: '0.75rem', color: enabled ? 'var(--color-success, #10b981)' : 'var(--text-secondary, #64748b)' }}>
+                            {enabled ? t('remoteDiagnosis.whitelist.enabled') : t('remoteDiagnosis.whitelist.disabled')}
+                        </span>
                     </div>
                 </div>
 
