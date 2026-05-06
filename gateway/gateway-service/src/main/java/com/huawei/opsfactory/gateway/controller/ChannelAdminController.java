@@ -205,7 +205,7 @@ public class ChannelAdminController {
                     if (detail == null) {
                         return Mono.just(ResponseEntity.badRequest().body(errorBody("Channel '" + channelId + "' not found")));
                     }
-                    return channelAdapterRegistry.require(detail.type()).testConnectivity(channelId)
+                    return channelAdapterRegistry.require(detail.type()).testConnectivity(channelId, userId)
                             .map(result -> ResponseEntity.ok(Map.<String, Object>of(
                                     "success", result.ok(),
                                     "connectivity", result
