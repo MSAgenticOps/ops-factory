@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
@@ -9,6 +9,7 @@ import ChatInput from '../../../platform/chat/ChatInput'
 import GooseAvatarIcon from '../../../platform/chat/GooseAvatarIcon'
 import { gatewayHeaders } from '../../../../config/runtime'
 import { getUrlParams } from '../../../../utils/urlParams'
+import type { SelectedSkill } from '../../../../types/message'
 import '../styles/home.css'
 
 interface ModelInfo {
@@ -16,6 +17,7 @@ interface ModelInfo {
     model: string
 }
 
+const DEFAULT_HOME_AGENT_ID = 'qos-agent'
 const UNIVERSAL_AGENT_ID = 'universal-agent'
 const DIAGNOSIS_GATEWAY_URL = `${window.location.origin || 'http://localhost:3000'}`
 
@@ -23,13 +25,16 @@ export default function HomePage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { showToast } = useToast()
-    const { userId } = useUser()
+    const { userId, role } = useUser()
     const { getClient, agents, isConnected, error: connectionError } = useGoosed()
     const [isCreatingSession, setIsCreatingSession] = useState(false)
     const [diagnosisMessage, setDiagnosisMessage] = useState<string>('')
     const [selectedAgent, setSelectedAgent] = useState('')
     const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
     const hasCalledDiagnosis = useRef(false)
+    const selectedAgentSkills = useMemo(() => {
+        return agents.find(agent => agent.id === selectedAgent)?.skills || []
+    }, [agents, selectedAgent])
 
     const handleDiagnosis = useCallback(async (sceneCode: string) => {
         if (hasCalledDiagnosis.current) return
@@ -60,8 +65,9 @@ export default function HomePage() {
                 setSelectedAgent('qos-agent')
                 void handleDiagnosis(hasScene)
             } else if (!selectedAgent) {
+                const defaultAgent = agents.find((agent) => agent.id === DEFAULT_HOME_AGENT_ID)
                 const universal = agents.find((agent) => agent.id === UNIVERSAL_AGENT_ID)
-                setSelectedAgent(universal ? universal.id : agents[0].id)
+                setSelectedAgent(defaultAgent?.id || universal?.id || agents[0].id)
             }
         }
     }, [agents, selectedAgent, handleDiagnosis])
@@ -97,13 +103,13 @@ export default function HomePage() {
         void fetchModelInfo()
     }, [getClient, selectedAgent, isConnected])
 
-    const handleInputSubmit = async (message: string) => {
+    const handleInputSubmit = async (message: string, _images?: unknown, _attachedFiles?: unknown, selectedSkill?: SelectedSkill) => {
         if (isCreatingSession || !selectedAgent) return
 
         setIsCreatingSession(true)
         try {
             navigate('/chat', {
-                state: buildNewChatState(selectedAgent, message),
+                state: buildNewChatState(selectedAgent, message, selectedSkill),
             })
         } catch (err) {
             console.error('Failed to create session:', err)
@@ -141,11 +147,14 @@ export default function HomePage() {
                 <ChatInput
                     onSubmit={handleInputSubmit}
                     disabled={!isConnected || isCreatingSession || !selectedAgent}
+                    canQuickContinue={false}
                     placeholder={isCreatingSession ? t('home.creatingSession') : t('home.askAnything')}
                     autoFocus
                     selectedAgent={selectedAgent}
                     onAgentChange={setSelectedAgent}
                     modelInfo={modelInfo}
+                    skills={selectedAgentSkills}
+                    onBrowseSkillMarket={role === 'admin' ? () => navigate('/skill-market') : undefined}
                 />
             </div>
         </div>

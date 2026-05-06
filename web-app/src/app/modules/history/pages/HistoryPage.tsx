@@ -1,50 +1,131 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { Session } from '@goosed/sdk'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { useUser } from '../../../platform/providers/UserContext'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListFooter from '../../../platform/ui/list/ListFooter'
-import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
+import FilterSelect from '../../../platform/ui/filters/FilterSelect'
 import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
-import { isScheduledSession } from '../../../../config/runtime'
+import { GATEWAY_URL, gatewayHeaders, isAdminUser, isScheduledSession } from '../../../../config/runtime'
+import { trackedFetch } from '../../../platform/logging/requestClient'
 import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
-
-interface AgentSession extends Session {
-    agentId: string
-}
+import { useHistorySessions } from '../hooks/useHistorySessions'
 
 type HistoryFilter = 'user' | 'scheduled' | 'all'
+
+type TraceJobStatus = 'running' | 'succeeded' | 'failed'
+
+interface TraceJobResponse {
+    jobId: string
+    status: TraceJobStatus
+    fileName?: string
+    message?: string
+}
 
 function parseHistoryFilter(raw: string | null): HistoryFilter {
     if (raw === 'scheduled' || raw === 'all' || raw === 'user') return raw
     return 'user'
 }
 
+const ALL_AGENTS = '__all__'
+const TRACE_POLL_INTERVAL_MS = 1500
+const TRACE_POLL_TIMEOUT_MS = 10 * 60 * 1000
+
+function wait(ms: number): Promise<void> {
+    return new Promise(resolve => window.setTimeout(resolve, ms))
+}
+
+function getDownloadFilename(response: Response, fallback: string): string {
+    const disposition = response.headers.get('content-disposition')
+    const utf8Match = disposition?.match(/filename\*=UTF-8''([^;]+)/i)
+    if (utf8Match?.[1]) {
+        try {
+            return decodeURIComponent(utf8Match[1])
+        } catch {
+            return utf8Match[1]
+        }
+    }
+
+    const asciiMatch = disposition?.match(/filename="?([^";]+)"?/i)
+    return asciiMatch?.[1] || fallback
+}
+
+async function downloadBlobResponse(response: Response, fallbackName: string): Promise<void> {
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = getDownloadFilename(response, fallbackName)
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+async function getResponseError(response: Response): Promise<string> {
+    const text = await response.text().catch(() => '')
+    if (!text) return `HTTP ${response.status}`
+
+    try {
+        const body = JSON.parse(text)
+        return body.message || body.error || text
+    } catch {
+        return text
+    }
+}
+
 export default function HistoryPage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { showToast } = useToast()
+    const { userId, role } = useUser()
     const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected, error: connectionError } = useGoosed()
     const { markSessionRead, markSessionUnread } = useInbox()
-    const [sessions, setSessions] = useState<AgentSession[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState('')
-    const [error, setError] = useState<string | null>(null)
     const [deletingSessionKeys, setDeletingSessionKeys] = useState<Set<string>>(new Set())
+    const [tracingSessionKeys, setTracingSessionKeys] = useState<Set<string>>(new Set())
     const [renamingSession, setRenamingSession] = useState<SessionWithAgent | null>(null)
     const [isRenaming, setIsRenaming] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(20)
     const historyFilter = parseHistoryFilter(searchParams.get('type'))
+    const selectedAgent = useMemo(() => {
+        const raw = searchParams.get('agent')
+        if (!raw || raw === ALL_AGENTS) return ALL_AGENTS
+        return agents.some((agent) => agent.id === raw) ? raw : ALL_AGENTS
+    }, [agents, searchParams])
+    const [searchTerm, setSearchTerm] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
+
+    // Debounce search input
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+        return () => clearTimeout(timer)
+    }, [searchTerm])
+
+    const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
+    const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
+    const canTraceSessions = isAdminUser(userId, role)
+
+    const getSessionKey = useCallback((session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`, [])
+
+    // Server-side paginated sessions
+    const historySessions = useHistorySessions({
+        pageIndex: currentPage,
+        pageSize,
+        search: debouncedSearch || undefined,
+        agentId: selectedAgent === ALL_AGENTS ? undefined : selectedAgent,
+        type: historyFilter === 'all' ? undefined : historyFilter,
+    })
+
     const setHistoryFilter = useCallback((filter: HistoryFilter) => {
         const nextParams = new URLSearchParams(searchParams)
         if (filter === 'user') {
@@ -54,88 +135,20 @@ export default function HistoryPage() {
         }
         setSearchParams(nextParams, { replace: true })
     }, [searchParams, setSearchParams])
-    const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
-    const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
-
-    const getSessionKey = (session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`
-
-    useEffect(() => {
-        let cancelled = false
-        const loadSessions = async () => {
-            if (!isConnected || agents.length === 0) {
-                if (!cancelled) setIsLoading(false)
-                return
-            }
-
-            setIsLoading(true)
-            setError(null)
-
-            try {
-                const results = await Promise.allSettled(
-                    agents.map(async (agent) => {
-                        const client = getClient(agent.id)
-                        const agentSessions = await client.listSessions()
-                        return agentSessions.map((session: Session) => ({ ...session, agentId: agent.id }))
-                    }),
-                )
-
-                const allSessions: AgentSession[] = []
-                for (const result of results) {
-                    if (result.status === 'fulfilled') {
-                        allSessions.push(...result.value)
-                    }
-                }
-
-                allSessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                if (!cancelled) {
-                    setSessions(allSessions)
-                }
-            } catch (err) {
-                console.error('Failed to load sessions:', err)
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'Failed to load sessions')
-                }
-            } finally {
-                if (!cancelled) {
-                    setIsLoading(false)
-                }
-            }
+    const setSelectedAgent = useCallback((agentId: string) => {
+        const nextParams = new URLSearchParams(searchParams)
+        if (!agentId || agentId === ALL_AGENTS) {
+            nextParams.delete('agent')
+        } else {
+            nextParams.set('agent', agentId)
         }
+        setSearchParams(nextParams, { replace: true })
+    }, [searchParams, setSearchParams])
 
-        void loadSessions()
-        return () => {
-            cancelled = true
-        }
-    }, [getClient, agents, isConnected])
-
-    const filteredByType = useMemo(() => {
-        if (historyFilter === 'all') return sessions
-        if (historyFilter === 'scheduled') {
-            return sessions.filter((session) => isScheduledSession(session))
-        }
-        return sessions.filter((session) => (session.session_type || 'user') === 'user' && !session.schedule_id)
-    }, [sessions, historyFilter])
-
-    const filteredSessions = useMemo(() => {
-        if (!searchTerm.trim()) return filteredByType
-
-        const term = searchTerm.toLowerCase()
-        return filteredByType.filter((session) =>
-            session.name.toLowerCase().includes(term) ||
-            session.working_dir.toLowerCase().includes(term),
-        )
-    }, [filteredByType, searchTerm])
-
-    const totalPages = Math.ceil(filteredSessions.length / pageSize)
-    const paginatedSessions = useMemo(() => {
-        const startIndex = (currentPage - 1) * pageSize
-        const endIndex = startIndex + pageSize
-        return filteredSessions.slice(startIndex, endIndex)
-    }, [filteredSessions, currentPage, pageSize])
-
+    // Reset page on filter/search/agent change
     useEffect(() => {
         setCurrentPage(1)
-    }, [historyFilter, searchTerm])
+    }, [historyFilter, debouncedSearch, selectedAgent])
 
     const handleResumeSession = (session: SessionWithAgent) => {
         const resolvedAgentId = session.agentId || agents[0]?.id || ''
@@ -170,12 +183,8 @@ export default function HistoryPage() {
         setIsRenaming(true)
         try {
             await getClient(resolvedAgentId).updateSessionName(renamingSession.id, nextTitle)
-            setSessions((prev) => prev.map((session) => (
-                session.id === renamingSession.id && session.agentId === renamingSession.agentId
-                    ? { ...session, name: nextTitle }
-                    : session
-            )))
             setRenamingSession(null)
+            historySessions.refresh()
             showToast('success', t('history.renameSessionSuccess'))
         } catch (err) {
             console.error('Failed to rename session:', err)
@@ -183,9 +192,95 @@ export default function HistoryPage() {
         } finally {
             setIsRenaming(false)
         }
-    }, [agents, getClient, renamingSession, showToast, t])
+    }, [agents, getClient, renamingSession, showToast, t, historySessions.refresh])
+
+    const pollTraceJob = useCallback(async (jobId: string): Promise<TraceJobResponse> => {
+        const startedAt = Date.now()
+        while (Date.now() - startedAt < TRACE_POLL_TIMEOUT_MS) {
+            const response = await trackedFetch(`${GATEWAY_URL}/session-traces/${encodeURIComponent(jobId)}`, {
+                category: 'request',
+                name: 'request.send',
+                headers: gatewayHeaders(userId),
+            })
+            if (!response.ok) {
+                throw new Error(await getResponseError(response))
+            }
+
+            const job = await response.json() as TraceJobResponse
+            if (job.status !== 'running') {
+                return job
+            }
+            await wait(TRACE_POLL_INTERVAL_MS)
+        }
+        throw new Error(t('history.traceSessionTimeout'))
+    }, [t, userId])
+
+    const handleTraceSession = useCallback(async (session: SessionWithAgent) => {
+        const resolvedAgentId = session.agentId || agents[0]?.id || ''
+        if (!resolvedAgentId) {
+            showToast('error', t('history.traceSessionFailed'))
+            return
+        }
+
+        const sessionKey = getSessionKey({ ...session, agentId: resolvedAgentId })
+        if (tracingSessionKeys.has(sessionKey)) return
+
+        setTracingSessionKeys((prev) => new Set(prev).add(sessionKey))
+        showToast('info', t('history.traceSessionStarted'))
+
+        try {
+            const startResponse = await trackedFetch(
+                `${GATEWAY_URL}/agents/${encodeURIComponent(resolvedAgentId)}/sessions/${encodeURIComponent(session.id)}/trace`,
+                {
+                    method: 'POST',
+                    category: 'request',
+                    name: 'request.send',
+                    headers: gatewayHeaders(userId),
+                },
+            )
+            if (!startResponse.ok) {
+                throw new Error(await getResponseError(startResponse))
+            }
+
+            const startedJob = await startResponse.json() as TraceJobResponse
+            const completedJob = startedJob.status === 'running'
+                ? await pollTraceJob(startedJob.jobId)
+                : startedJob
+            if (completedJob.status !== 'succeeded') {
+                throw new Error(completedJob.message || t('history.traceSessionFailed'))
+            }
+
+            const downloadResponse = await trackedFetch(
+                `${GATEWAY_URL}/session-traces/${encodeURIComponent(completedJob.jobId)}/download`,
+                {
+                    category: 'request',
+                    name: 'request.send',
+                    headers: gatewayHeaders(userId),
+                },
+            )
+            if (!downloadResponse.ok) {
+                throw new Error(await getResponseError(downloadResponse))
+            }
+
+            await downloadBlobResponse(
+                downloadResponse,
+                completedJob.fileName || `session-trace-${session.id}.tar.gz`,
+            )
+            showToast('success', t('history.traceSessionDownloaded'))
+        } catch (err) {
+            console.error('Failed to collect session trace:', err)
+            showToast('error', err instanceof Error ? t('history.traceSessionFailedWithReason', { error: err.message }) : t('history.traceSessionFailed'))
+        } finally {
+            setTracingSessionKeys((prev) => {
+                const next = new Set(prev)
+                next.delete(sessionKey)
+                return next
+            })
+        }
+    }, [agents, getSessionKey, pollTraceJob, showToast, t, tracingSessionKeys, userId])
 
     const handleDeleteSession = async (session: SessionWithAgent) => {
+        if (!confirm(t('history.confirmDeleteSession'))) return
         const resolvedAgentId = session.agentId || agents[0]?.id
         const sessionKey = getSessionKey({ ...session, agentId: resolvedAgentId })
         if (deletingSessionKeys.has(sessionKey)) return
@@ -200,26 +295,16 @@ export default function HistoryPage() {
                     break
                 }
             }
-            setSessions((prev) => prev.filter((current) => current.id !== session.id))
             setLastDeletedSessionId(session.id)
             setLastDeletedAt(Date.now())
-            setCurrentPage((prev) => {
-                const newFilteredCount = filteredSessions.length - 1
-                const newTotalPages = Math.ceil(newFilteredCount / pageSize)
-                return prev > newTotalPages ? Math.max(1, newTotalPages) : prev
-            })
+            historySessions.refresh()
         } catch (err) {
             console.error('Failed to delete session:', err)
             const message = err instanceof Error ? err.message : 'Unknown error'
             if (message.includes('Resource not found')) {
-                setSessions((prev) => prev.filter((current) => current.id !== session.id))
                 setLastDeletedSessionId(session.id)
                 setLastDeletedAt(Date.now())
-                setCurrentPage((prev) => {
-                    const newFilteredCount = filteredSessions.length - 1
-                    const newTotalPages = Math.ceil(newFilteredCount / pageSize)
-                    return prev > newTotalPages ? Math.max(1, newTotalPages) : prev
-                })
+                historySessions.refresh()
                 return
             }
             showToast('error', t('errors.deleteFailed'))
@@ -236,9 +321,15 @@ export default function HistoryPage() {
         <div className="page-container sidebar-top-page page-shell-wide history-page">
             <PageHeader title={t('history.title')} subtitle={t('history.subtitle')} />
 
-            {(error || (!isConnected && connectionError)) && (
+            {(historySessions.error || (!isConnected && connectionError)) && (
                 <div className="conn-banner conn-banner-error">
-                    {error || t('common.connectionError', { error: connectionError })}
+                    {historySessions.error || t('common.connectionError', { error: connectionError })}
+                </div>
+            )}
+
+            {tracingSessionKeys.size > 0 && (
+                <div className="conn-banner conn-banner-warning">
+                    {t('history.traceSessionActiveNotice')}
                 </div>
             )}
 
@@ -260,11 +351,24 @@ export default function HistoryPage() {
                 controls={(
                     <ListToolbar
                         primary={(
-                            <>
+                            <div className="history-toolbar-controls">
                                 <ListSearchInput
                                     value={searchTerm}
                                     placeholder={t('history.searchPlaceholder')}
                                     onChange={setSearchTerm}
+                                />
+
+                                <FilterSelect
+                                    value={selectedAgent}
+                                    options={[
+                                        { value: ALL_AGENTS, label: t('history.allAgents') },
+                                        ...agents.map((agent) => ({
+                                            value: agent.id,
+                                            label: agent.name,
+                                        })),
+                                    ]}
+                                    onChange={setSelectedAgent}
+                                    disabled={agents.length === 0}
                                 />
 
                                 <div className="seg-filter" role="tablist" aria-label="Session type filter">
@@ -278,29 +382,29 @@ export default function HistoryPage() {
                                         {t('history.filterAll')}
                                     </button>
                                 </div>
-                            </>
+                            </div>
                         )}
-                        secondary={searchTerm ? <ListResultsMeta>{t('common.resultsFound', { count: filteredSessions.length })}</ListResultsMeta> : undefined}
+                        secondary={undefined}
                     />
                 )}
-                footer={filteredSessions.length > 0 ? (
+                footer={historySessions.total > 0 ? (
                     <ListFooter>
                         <Pagination
                             currentPage={currentPage}
-                            totalPages={totalPages}
+                            totalPages={historySessions.totalPages}
                             pageSize={pageSize}
-                            totalItems={filteredSessions.length}
+                            totalItems={historySessions.total}
                             onPageChange={setCurrentPage}
                             onPageSizeChange={(newSize) => {
                                 setPageSize(newSize)
                                 setCurrentPage(1)
                             }}
-                            disabled={isLoading}
+                            disabled={historySessions.isLoading}
                         />
                     </ListFooter>
                 ) : undefined}
             >
-                {searchTerm && filteredSessions.length === 0 && !isLoading ? (
+                {debouncedSearch && historySessions.sessions.length === 0 && !historySessions.isLoading ? (
                     <div className="empty-state">
                         <svg className="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <circle cx="11" cy="11" r="8" />
@@ -308,18 +412,21 @@ export default function HistoryPage() {
                         </svg>
                         <h3 className="empty-state-title">{t('common.noResults')}</h3>
                         <p className="empty-state-description">
-                            {t('history.noMatchSessions', { term: searchTerm })}
+                            {t('history.noMatchSessions', { term: debouncedSearch })}
                         </p>
                     </div>
                 ) : (
                     <SessionList
-                        sessions={paginatedSessions}
-                        isLoading={isLoading}
+                        sessions={historySessions.sessions}
+                        isLoading={historySessions.isLoading}
                         onResume={handleResumeSession}
                         onRename={handleRenameSession}
                         onDelete={handleDeleteSession}
                         deletingSessionKeys={deletingSessionKeys}
+                        tracingSessionKeys={tracingSessionKeys}
                         getSessionKey={getSessionKey}
+                        agentNameById={Object.fromEntries(agents.map((agent) => [agent.id, agent.name]))}
+                        onTrace={canTraceSessions ? handleTraceSession : undefined}
                         onMarkUnread={historyFilter !== 'user' ? handleMarkUnread : undefined}
                     />
                 )}

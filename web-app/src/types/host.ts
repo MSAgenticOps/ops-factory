@@ -16,6 +16,7 @@ export interface Host {
     tags: string[]
     description: string
     customAttributes?: CustomAttribute[]
+    role?: 'primary' | 'backup' | null
     createdAt: string
     updatedAt: string
 }
@@ -42,6 +43,7 @@ export interface HostCreateRequest {
     tags: string[]
     description?: string
     customAttributes?: CustomAttribute[]
+    role?: 'primary' | 'backup' | null
 }
 
 export interface HostTestResult {
@@ -56,6 +58,7 @@ export interface HostGroup {
     code?: string
     parentId?: string | null
     description: string
+    enabled?: boolean
     createdAt: string
     updatedAt: string
 }
@@ -86,6 +89,11 @@ export interface BusinessService {
     updatedAt: string
 }
 
+export interface EnvVariable {
+    key: string
+    value: string
+}
+
 export interface ClusterType {
     id: string
     name: string
@@ -93,6 +101,9 @@ export interface ClusterType {
     description: string
     color: string
     knowledge: string
+    commandPrefix?: string
+    envVariables?: EnvVariable[]
+    mode?: 'peer' | 'primary-backup'
     createdAt: string
     updatedAt: string
 }
@@ -140,4 +151,40 @@ export interface GraphEdge {
 export interface GraphData {
     nodes: GraphNode[]
     edges: GraphEdge[]
+}
+
+export interface ClusterRelation {
+    id: string
+    sourceType: 'cluster' | 'business-service' | 'host'
+    sourceId: string
+    targetId: string
+    description: string
+    createdAt: string
+    updatedAt: string
+}
+
+export interface ClusterGraphNode {
+    id: string
+    name: string
+    type: string
+    mode?: string
+    groupId?: string | null
+    hostCount: number
+    nodeType: 'cluster' | 'business-service' | 'host'
+    ip?: string | null          // host
+    clusterId?: string | null   // host
+    role?: string | null        // host
+    clusterType?: string | null // host
+}
+
+export interface ClusterGraphEdge {
+    source: string
+    target: string
+    description: string
+    type?: 'cluster-relation' | 'business-entry' | 'constitute'
+}
+
+export interface ClusterGraphData {
+    nodes: ClusterGraphNode[]
+    edges: ClusterGraphEdge[]
 }

@@ -1,0 +1,1887 @@
+{
+  "sessionId": "20260426_3",
+  "userId": "admin",
+  "agentId": "supervisor-agent",
+  "targetRounds": 50,
+  "modelInfo": {
+    "provider": "custom_qwen3.5-35b-a3b",
+    "model": "qwen/qwen3.5-35b-a3b"
+  },
+  "provider": "custom_qwen3.5-35b-a3b",
+  "model": "qwen/qwen3.5-35b-a3b",
+  "startedAt": "2026-04-26T02:00:57.778Z",
+  "roundTimeoutMs": 300000,
+  "prompts": [
+    "必须调用 control_center__get_platform_status、control_center__list_services、control_center__get_realtime_metrics，然后给出平台健康结论。",
+    "必须调用 control_center__list_services、control_center__get_service_status(serviceId=\"gateway\")、control_center__read_service_logs(serviceId=\"gateway\", lines=80)，分析 gateway 风险。",
+    "必须调用 control_center__get_agents_status、control_center__get_platform_status，检查 agent 配置和运行实例状态。",
+    "必须调用 control_center__get_observability_data(hours=24)、control_center__get_realtime_metrics，分析错误、延迟、trace 和可观测性缺口。",
+    "必须调用 control_center__list_services、control_center__get_service_status(serviceId=\"knowledge-service\")、control_center__read_service_logs(serviceId=\"knowledge-service\", lines=80)，分析知识库服务。",
+    "必须调用 control_center__list_services、control_center__get_service_status(serviceId=\"business-intelligence\")、control_center__read_service_logs(serviceId=\"business-intelligence\", lines=80)，分析 BI 服务。",
+    "必须调用 control_center__list_events、control_center__list_services，说明最近服务事件和当前服务健康是否一致。",
+    "必须调用 control_center__get_platform_status、control_center__get_agents_status、control_center__get_realtime_metrics，找出当前最值得关注的平台风险。",
+    "必须调用 control_center__list_services，并对你认为最不健康的服务再调用 control_center__get_service_status，说明选择依据。",
+    "必须调用 control_center__read_service_config(serviceId=\"gateway\")、control_center__read_service_logs(serviceId=\"gateway\", lines=60)，检查 gateway 配置和日志风险。",
+    "必须调用 control_center__read_service_config(serviceId=\"knowledge-service\")、control_center__read_service_logs(serviceId=\"knowledge-service\", lines=60)，检查知识库配置和日志风险。",
+    "必须调用 control_center__get_service_status(serviceId=\"skill-market\")、control_center__read_service_logs(serviceId=\"skill-market\", lines=60)，分析 skill-market 健康。",
+    "必须调用 control_center__get_platform_status、control_center__list_events、control_center__get_observability_data(hours=24)，做一次巡检报告。",
+    "必须调用 control_center__list_services、control_center__get_realtime_metrics、control_center__list_events，判断当前是否有请求压力、错误或服务操作。",
+    "必须调用 control_center__get_agents_status，并结合 control_center__get_platform_status 判断实例数量、用户实例和空闲风险。"
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "requestId": "749546d4-1d90-4542-8e8a-be69943eb9f6",
+      "startedAt": "2026-04-26T02:00:57.779Z",
+      "promptChars": 216,
+      "submitMs": 12,
+      "firstEventMs": 1065,
+      "firstContentMs": 1065,
+      "finishMs": 8411,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 505,
+        "Finish": 1
+      },
+      "sseFrames": 506,
+      "activeRequestsSeen": 0,
+      "messageCount": 505,
+      "assistantTextChars": 777,
+      "reasoningChars": 0,
+      "thinkingChars": 231,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__list_services": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2562,
+          "name": "control_center__get_platform_status",
+          "id": "call_83263e42879742e990a0c528"
+        },
+        {
+          "atMs": 2562,
+          "name": "control_center__list_services",
+          "id": "call_1085dcaea5604baf8d83474e"
+        },
+        {
+          "atMs": 2562,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_de9ab7c4cf02434a99b97a6b"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_83263e42879742e990a0c528",
+          "ms": 79
+        },
+        {
+          "name": "control_center__list_services",
+          "id": "call_1085dcaea5604baf8d83474e",
+          "ms": 79
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_de9ab7c4cf02434a99b97a6b",
+          "ms": 79
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 288050
+    },
+    {
+      "round": 2,
+      "requestId": "d351cf4d-bcca-4aa7-a090-62e68df943fb",
+      "startedAt": "2026-04-26T02:01:06.249Z",
+      "promptChars": 267,
+      "submitMs": 16,
+      "firstEventMs": 1872,
+      "firstContentMs": 1872,
+      "finishMs": 11835,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 892,
+        "Finish": 1
+      },
+      "sseFrames": 893,
+      "activeRequestsSeen": 0,
+      "messageCount": 892,
+      "assistantTextChars": 985,
+      "reasoningChars": 0,
+      "thinkingChars": 816,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3616,
+          "name": "control_center__list_services",
+          "id": "call_8f471f4b0f3246289acd4d76"
+        },
+        {
+          "atMs": 3616,
+          "name": "control_center__get_service_status",
+          "id": "call_d5858ed69ed641e788b40d4f"
+        },
+        {
+          "atMs": 3616,
+          "name": "control_center__read_service_logs",
+          "id": "call_16eb91083fe3417c911eccaa"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_8f471f4b0f3246289acd4d76",
+          "ms": 46
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_d5858ed69ed641e788b40d4f",
+          "ms": 46
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_16eb91083fe3417c911eccaa",
+          "ms": 46
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 468884
+    },
+    {
+      "round": 3,
+      "requestId": "e506d6ea-16f8-4673-9a27-be30d01d6993",
+      "startedAt": "2026-04-26T02:01:18.092Z",
+      "promptChars": 191,
+      "submitMs": 15,
+      "firstEventMs": 2001,
+      "firstContentMs": 2001,
+      "finishMs": 19330,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1559,
+        "Finish": 1
+      },
+      "sseFrames": 1560,
+      "activeRequestsSeen": 0,
+      "messageCount": 1559,
+      "assistantTextChars": 2206,
+      "reasoningChars": 0,
+      "thinkingChars": 960,
+      "toolCounts": {
+        "control_center__get_agents_status": 1,
+        "control_center__get_platform_status": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2638,
+          "name": "control_center__get_agents_status",
+          "id": "call_3fd8f28ed3a84f04ac2db8fd"
+        },
+        {
+          "atMs": 4472,
+          "name": "control_center__get_platform_status",
+          "id": "call_1a92cb173ab44ee9aba0a011"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_agents_status",
+          "id": "call_3fd8f28ed3a84f04ac2db8fd",
+          "ms": 36
+        },
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_1a92cb173ab44ee9aba0a011",
+          "ms": 26
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 793386
+    },
+    {
+      "round": 4,
+      "requestId": "483c6813-c1eb-4dd7-9773-a7686fe4fc3b",
+      "startedAt": "2026-04-26T02:01:37.428Z",
+      "promptChars": 210,
+      "submitMs": 18,
+      "firstEventMs": 1746,
+      "firstContentMs": 1746,
+      "finishMs": 15051,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1182,
+        "Finish": 1
+      },
+      "sseFrames": 1183,
+      "activeRequestsSeen": 0,
+      "messageCount": 1182,
+      "assistantTextChars": 1690,
+      "reasoningChars": 0,
+      "thinkingChars": 669,
+      "toolCounts": {
+        "control_center__get_observability_data": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2400,
+          "name": "control_center__get_observability_data",
+          "id": "call_80563143c5bd430cba95a961"
+        },
+        {
+          "atMs": 3838,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_1c7f29331700419f9cdfd788"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_observability_data",
+          "id": "call_80563143c5bd430cba95a961",
+          "ms": 15
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_1c7f29331700419f9cdfd788",
+          "ms": 21
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 621877
+    },
+    {
+      "round": 5,
+      "requestId": "4886a3de-bac7-49b1-8162-f64df0825509",
+      "startedAt": "2026-04-26T02:01:52.484Z",
+      "promptChars": 281,
+      "submitMs": 17,
+      "firstEventMs": 2178,
+      "firstContentMs": 2178,
+      "finishMs": 18265,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1242,
+        "Finish": 1
+      },
+      "sseFrames": 1243,
+      "activeRequestsSeen": 0,
+      "messageCount": 1242,
+      "assistantTextChars": 2135,
+      "reasoningChars": 0,
+      "thinkingChars": 403,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3125,
+          "name": "control_center__list_services",
+          "id": "call_7a65f7b4da66402295bc2d1d"
+        },
+        {
+          "atMs": 5455,
+          "name": "control_center__get_service_status",
+          "id": "call_af439dbdbed6464090e6b7a1"
+        },
+        {
+          "atMs": 7048,
+          "name": "control_center__read_service_logs",
+          "id": "call_9454203e6afd4b3392f9472a"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_7a65f7b4da66402295bc2d1d",
+          "ms": 42
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_af439dbdbed6464090e6b7a1",
+          "ms": 20
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_9454203e6afd4b3392f9472a",
+          "ms": 14
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 626658
+    },
+    {
+      "round": 6,
+      "requestId": "7c536f58-08ad-4e57-8d26-1964655564b3",
+      "startedAt": "2026-04-26T02:02:10.756Z",
+      "promptChars": 290,
+      "submitMs": 20,
+      "firstEventMs": 2848,
+      "firstContentMs": 2848,
+      "finishMs": 16498,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1032,
+        "Finish": 1
+      },
+      "sseFrames": 1033,
+      "activeRequestsSeen": 0,
+      "messageCount": 1032,
+      "assistantTextChars": 1481,
+      "reasoningChars": 0,
+      "thinkingChars": 523,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3141,
+          "name": "control_center__list_services",
+          "id": "call_659098b1a7e24ca9a7eb4f88"
+        },
+        {
+          "atMs": 5467,
+          "name": "control_center__get_service_status",
+          "id": "call_cf6a4cce647c4dcd90d9c107"
+        },
+        {
+          "atMs": 7192,
+          "name": "control_center__read_service_logs",
+          "id": "call_cc9f12e3728a4820b164f922"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_659098b1a7e24ca9a7eb4f88",
+          "ms": 34
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_cf6a4cce647c4dcd90d9c107",
+          "ms": 20
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_cc9f12e3728a4820b164f922",
+          "ms": 14
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 517049
+    },
+    {
+      "round": 7,
+      "requestId": "deac9e50-b571-4f8f-8eff-fe34ebd0843e",
+      "startedAt": "2026-04-26T02:02:27.260Z",
+      "promptChars": 180,
+      "submitMs": 16,
+      "firstEventMs": 3778,
+      "firstContentMs": 3778,
+      "finishMs": 15504,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1066,
+        "Finish": 1
+      },
+      "sseFrames": 1067,
+      "activeRequestsSeen": 0,
+      "messageCount": 1066,
+      "assistantTextChars": 1794,
+      "reasoningChars": 0,
+      "thinkingChars": 453,
+      "toolCounts": {
+        "control_center__list_events": 1,
+        "control_center__list_services": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 4233,
+          "name": "control_center__list_events",
+          "id": "call_563b68d9c4964755984ab340"
+        },
+        {
+          "atMs": 6810,
+          "name": "control_center__list_services",
+          "id": "call_c23e9e0b42fc43b1ab25594b"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_events",
+          "id": "call_563b68d9c4964755984ab340",
+          "ms": 15
+        },
+        {
+          "name": "control_center__list_services",
+          "id": "call_c23e9e0b42fc43b1ab25594b",
+          "ms": 32
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 529871
+    },
+    {
+      "round": 8,
+      "requestId": "323f22cc-9af5-4f9a-8930-f473f0df4be8",
+      "startedAt": "2026-04-26T02:02:42.772Z",
+      "promptChars": 224,
+      "submitMs": 17,
+      "firstEventMs": 1892,
+      "firstContentMs": 1892,
+      "finishMs": 23071,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1771,
+        "Finish": 1
+      },
+      "sseFrames": 1772,
+      "activeRequestsSeen": 0,
+      "messageCount": 1771,
+      "assistantTextChars": 2357,
+      "reasoningChars": 0,
+      "thinkingChars": 1134,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__get_agents_status": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2355,
+          "name": "control_center__get_platform_status",
+          "id": "call_87728796f4014161a06039d9"
+        },
+        {
+          "atMs": 4465,
+          "name": "control_center__get_agents_status",
+          "id": "call_eb76f11cfe9443659abac1cb"
+        },
+        {
+          "atMs": 6644,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_8857a0a743864b1a8b743761"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_87728796f4014161a06039d9",
+          "ms": 23
+        },
+        {
+          "name": "control_center__get_agents_status",
+          "id": "call_eb76f11cfe9443659abac1cb",
+          "ms": 27
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_8857a0a743864b1a8b743761",
+          "ms": 26
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 938239
+    },
+    {
+      "round": 9,
+      "requestId": "601c63b2-c975-493f-a1b1-705cb8f9ea5d",
+      "startedAt": "2026-04-26T02:03:05.849Z",
+      "promptChars": 190,
+      "submitMs": 17,
+      "firstEventMs": 2516,
+      "firstContentMs": 2516,
+      "finishMs": 19213,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1363,
+        "Finish": 1
+      },
+      "sseFrames": 1364,
+      "activeRequestsSeen": 0,
+      "messageCount": 1363,
+      "assistantTextChars": 2091,
+      "reasoningChars": 0,
+      "thinkingChars": 838,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 4599,
+          "name": "control_center__list_services",
+          "id": "call_229da96dd528448998cbdb19"
+        },
+        {
+          "atMs": 6886,
+          "name": "control_center__get_service_status",
+          "id": "call_00dbf12f3c8642878fdc9275"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_229da96dd528448998cbdb19",
+          "ms": 33
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_00dbf12f3c8642878fdc9275",
+          "ms": 20
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 684272
+    },
+    {
+      "round": 10,
+      "requestId": "65e61b0e-03dc-4084-a5aa-b9fc54ba8490",
+      "startedAt": "2026-04-26T02:03:25.065Z",
+      "promptChars": 244,
+      "submitMs": 14,
+      "firstEventMs": 2917,
+      "firstContentMs": 2917,
+      "finishMs": 18460,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1456,
+        "Finish": 1
+      },
+      "sseFrames": 1457,
+      "activeRequestsSeen": 0,
+      "messageCount": 1456,
+      "assistantTextChars": 2891,
+      "reasoningChars": 0,
+      "thinkingChars": 126,
+      "toolCounts": {
+        "control_center__read_service_config": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3349,
+          "name": "control_center__read_service_config",
+          "id": "call_1db1ceb979b04c56bcdf3417"
+        },
+        {
+          "atMs": 5475,
+          "name": "control_center__read_service_logs",
+          "id": "call_228724b26f0745f793283175"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__read_service_config",
+          "id": "call_1db1ceb979b04c56bcdf3417",
+          "ms": 15
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_228724b26f0745f793283175",
+          "ms": 27
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 739632
+    },
+    {
+      "round": 11,
+      "requestId": "fc88597f-8da2-4ae8-abea-e7b465e8f06b",
+      "startedAt": "2026-04-26T02:03:43.529Z",
+      "promptChars": 258,
+      "submitMs": 21,
+      "firstEventMs": 2879,
+      "firstContentMs": 2879,
+      "finishMs": 20792,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1667,
+        "Finish": 1
+      },
+      "sseFrames": 1668,
+      "activeRequestsSeen": 0,
+      "messageCount": 1667,
+      "assistantTextChars": 2729,
+      "reasoningChars": 0,
+      "thinkingChars": 401,
+      "toolCounts": {
+        "control_center__read_service_config": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3733,
+          "name": "control_center__read_service_config",
+          "id": "call_d67cd522f3ee4153b2dc0ec2"
+        },
+        {
+          "atMs": 6567,
+          "name": "control_center__read_service_logs",
+          "id": "call_3c097850c4d2488fb55156e4"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__read_service_config",
+          "id": "call_d67cd522f3ee4153b2dc0ec2",
+          "ms": 11
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_3c097850c4d2488fb55156e4",
+          "ms": 14
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 841980
+    },
+    {
+      "round": 12,
+      "requestId": "4c829fa2-90c0-4fe3-84d1-4458e16a383d",
+      "startedAt": "2026-04-26T02:04:04.326Z",
+      "promptChars": 253,
+      "submitMs": 18,
+      "firstEventMs": 51,
+      "firstContentMs": 51,
+      "finishMs": 48697,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 3,
+        "Finish": 1
+      },
+      "sseFrames": 4,
+      "activeRequestsSeen": 0,
+      "messageCount": 3,
+      "assistantTextChars": 147,
+      "reasoningChars": 0,
+      "thinkingChars": 0,
+      "toolCounts": {},
+      "toolRequests": [],
+      "toolResponses": 0,
+      "toolDurationsMs": [],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 2072
+    },
+    {
+      "round": 13,
+      "requestId": "817f9ace-1f2b-478c-b36a-4bb4083a24bf",
+      "startedAt": "2026-04-26T02:04:53.029Z",
+      "promptChars": 224,
+      "submitMs": 17,
+      "firstEventMs": 50,
+      "firstContentMs": 50,
+      "finishMs": 67588,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 516,
+        "UpdateConversation": 1,
+        "Finish": 1
+      },
+      "sseFrames": 518,
+      "activeRequestsSeen": 0,
+      "messageCount": 516,
+      "assistantTextChars": 465,
+      "reasoningChars": 0,
+      "thinkingChars": 636,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__list_events": 1,
+        "control_center__get_observability_data": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 64061,
+          "name": "control_center__get_platform_status",
+          "id": "call_3a9fa84540e34ce19349d161"
+        },
+        {
+          "atMs": 64061,
+          "name": "control_center__list_events",
+          "id": "call_557b6ad6d39b4d51a2312831"
+        },
+        {
+          "atMs": 64061,
+          "name": "control_center__get_observability_data",
+          "id": "call_19a241d0712e4b1c8039235a"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_3a9fa84540e34ce19349d161",
+          "ms": 28
+        },
+        {
+          "name": "control_center__list_events",
+          "id": "call_557b6ad6d39b4d51a2312831",
+          "ms": 28
+        },
+        {
+          "name": "control_center__get_observability_data",
+          "id": "call_19a241d0712e4b1c8039235a",
+          "ms": 28
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 908740
+    },
+    {
+      "round": 14,
+      "requestId": "8e4135d9-3d63-4810-be64-b48e49b9a30b",
+      "startedAt": "2026-04-26T02:06:00.624Z",
+      "promptChars": 218,
+      "submitMs": 21,
+      "firstEventMs": 1381,
+      "firstContentMs": 1381,
+      "finishMs": 8347,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 364,
+        "Finish": 1
+      },
+      "sseFrames": 365,
+      "activeRequestsSeen": 0,
+      "messageCount": 364,
+      "assistantTextChars": 4,
+      "reasoningChars": 0,
+      "thinkingChars": 923,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_realtime_metrics": 1,
+        "control_center__list_events": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2071,
+          "name": "control_center__list_services",
+          "id": "call_42904951b47a435aa9c3e084"
+        },
+        {
+          "atMs": 3043,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_11cac55af78d47658bb84fcb"
+        },
+        {
+          "atMs": 4140,
+          "name": "control_center__list_events",
+          "id": "call_85594bbd48e7499c827cc49f"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_42904951b47a435aa9c3e084",
+          "ms": 34
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_11cac55af78d47658bb84fcb",
+          "ms": 21
+        },
+        {
+          "name": "control_center__list_events",
+          "id": "call_85594bbd48e7499c827cc49f",
+          "ms": 10
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 225208
+    },
+    {
+      "round": 15,
+      "requestId": "fbe0cb76-7ea9-4194-9c84-9a0042be6918",
+      "startedAt": "2026-04-26T02:06:08.977Z",
+      "promptChars": 194,
+      "submitMs": 20,
+      "firstEventMs": 2097,
+      "firstContentMs": 2097,
+      "finishMs": 8291,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 761,
+        "Finish": 1
+      },
+      "sseFrames": 762,
+      "activeRequestsSeen": 0,
+      "messageCount": 761,
+      "assistantTextChars": 778,
+      "reasoningChars": 0,
+      "thinkingChars": 685,
+      "toolCounts": {
+        "control_center__get_agents_status": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2549,
+          "name": "control_center__get_agents_status",
+          "id": "call_1007f29c277c4fa38a803eb8"
+        }
+      ],
+      "toolResponses": 1,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_agents_status",
+          "id": "call_1007f29c277c4fa38a803eb8",
+          "ms": 28
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 395703
+    },
+    {
+      "round": 16,
+      "requestId": "108a1645-5ce2-4562-90c3-e84fae84f78d",
+      "startedAt": "2026-04-26T02:06:17.274Z",
+      "promptChars": 217,
+      "submitMs": 23,
+      "firstEventMs": 1732,
+      "firstContentMs": 1732,
+      "finishMs": 11417,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 770,
+        "Finish": 1
+      },
+      "sseFrames": 771,
+      "activeRequestsSeen": 0,
+      "messageCount": 770,
+      "assistantTextChars": 733,
+      "reasoningChars": 0,
+      "thinkingChars": 1039,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__list_services": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2668,
+          "name": "control_center__get_platform_status",
+          "id": "call_99dd1f614d6f4649ac89d192"
+        },
+        {
+          "atMs": 4085,
+          "name": "control_center__list_services",
+          "id": "call_f9b46971d7ab454ea1d78a6b"
+        },
+        {
+          "atMs": 6093,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_3291c1618912486eaa4af390"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_99dd1f614d6f4649ac89d192",
+          "ms": 23
+        },
+        {
+          "name": "control_center__list_services",
+          "id": "call_f9b46971d7ab454ea1d78a6b",
+          "ms": 35
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_3291c1618912486eaa4af390",
+          "ms": 16
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 431926
+    },
+    {
+      "round": 17,
+      "requestId": "2d8d519d-245f-453f-addf-6adf9f9d201f",
+      "startedAt": "2026-04-26T02:06:28.697Z",
+      "promptChars": 268,
+      "submitMs": 23,
+      "firstEventMs": 2014,
+      "firstContentMs": 2014,
+      "finishMs": 10943,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 721,
+        "Finish": 1
+      },
+      "sseFrames": 722,
+      "activeRequestsSeen": 0,
+      "messageCount": 721,
+      "assistantTextChars": 904,
+      "reasoningChars": 0,
+      "thinkingChars": 735,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2625,
+          "name": "control_center__list_services",
+          "id": "call_a441a6c09c8c43ff9d47abda"
+        },
+        {
+          "atMs": 4808,
+          "name": "control_center__get_service_status",
+          "id": "call_b9c5cadfd43b48c9878c3be8"
+        },
+        {
+          "atMs": 6229,
+          "name": "control_center__read_service_logs",
+          "id": "call_59138a6646d24d4e8641f052"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_a441a6c09c8c43ff9d47abda",
+          "ms": 40
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_b9c5cadfd43b48c9878c3be8",
+          "ms": 17
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_59138a6646d24d4e8641f052",
+          "ms": 24
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 387077
+    },
+    {
+      "round": 18,
+      "requestId": "6dad9eca-8c1f-465c-8954-f39717aefb49",
+      "startedAt": "2026-04-26T02:06:39.647Z",
+      "promptChars": 192,
+      "submitMs": 24,
+      "firstEventMs": 1829,
+      "firstContentMs": 1829,
+      "finishMs": 11909,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1065,
+        "Finish": 1
+      },
+      "sseFrames": 1066,
+      "activeRequestsSeen": 0,
+      "messageCount": 1065,
+      "assistantTextChars": 1460,
+      "reasoningChars": 0,
+      "thinkingChars": 816,
+      "toolCounts": {
+        "control_center__get_agents_status": 1,
+        "control_center__get_platform_status": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2170,
+          "name": "control_center__get_agents_status",
+          "id": "call_900577cbdff74a96b1750168"
+        },
+        {
+          "atMs": 3621,
+          "name": "control_center__get_platform_status",
+          "id": "call_f6feffdf528a4ce582064c34"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_agents_status",
+          "id": "call_900577cbdff74a96b1750168",
+          "ms": 30
+        },
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_f6feffdf528a4ce582064c34",
+          "ms": 23
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 552471
+    },
+    {
+      "round": 19,
+      "requestId": "3546c82e-97f4-4b12-a8c2-2b4baaf3ac40",
+      "startedAt": "2026-04-26T02:06:51.562Z",
+      "promptChars": 211,
+      "submitMs": 22,
+      "firstEventMs": 2071,
+      "firstContentMs": 2071,
+      "finishMs": 9635,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 684,
+        "Finish": 1
+      },
+      "sseFrames": 685,
+      "activeRequestsSeen": 0,
+      "messageCount": 684,
+      "assistantTextChars": 871,
+      "reasoningChars": 0,
+      "thinkingChars": 438,
+      "toolCounts": {
+        "control_center__get_observability_data": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2588,
+          "name": "control_center__get_observability_data",
+          "id": "call_6aecd951562942daba22953e"
+        },
+        {
+          "atMs": 4450,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_e5f846ecbed441ba87a01ced"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_observability_data",
+          "id": "call_6aecd951562942daba22953e",
+          "ms": 13
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_e5f846ecbed441ba87a01ced",
+          "ms": 21
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 377652
+    },
+    {
+      "round": 20,
+      "requestId": "e2254f7e-6d0a-4e43-95ad-927c5e3d0bb9",
+      "startedAt": "2026-04-26T02:07:01.204Z",
+      "promptChars": 282,
+      "submitMs": 23,
+      "firstEventMs": 2701,
+      "firstContentMs": 2701,
+      "finishMs": 15122,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1030,
+        "Finish": 1
+      },
+      "sseFrames": 1031,
+      "activeRequestsSeen": 0,
+      "messageCount": 1030,
+      "assistantTextChars": 1095,
+      "reasoningChars": 0,
+      "thinkingChars": 1058,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3260,
+          "name": "control_center__list_services",
+          "id": "call_c0b1030728424c60a070cfb2"
+        },
+        {
+          "atMs": 5585,
+          "name": "control_center__get_service_status",
+          "id": "call_fa6aee229b874f2c9be2bd0c"
+        },
+        {
+          "atMs": 7823,
+          "name": "control_center__read_service_logs",
+          "id": "call_e5ef399f8e5d4e208748bde8"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_c0b1030728424c60a070cfb2",
+          "ms": 31
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_fa6aee229b874f2c9be2bd0c",
+          "ms": 21
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_e5ef399f8e5d4e208748bde8",
+          "ms": 13
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 535063
+    },
+    {
+      "round": 21,
+      "requestId": "8a857d2c-f006-4693-ab1c-da5d2f79b6c8",
+      "startedAt": "2026-04-26T02:07:16.332Z",
+      "promptChars": 291,
+      "submitMs": 22,
+      "firstEventMs": 2743,
+      "firstContentMs": 2743,
+      "finishMs": 14324,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 667,
+        "Finish": 1
+      },
+      "sseFrames": 668,
+      "activeRequestsSeen": 0,
+      "messageCount": 667,
+      "assistantTextChars": 730,
+      "reasoningChars": 0,
+      "thinkingChars": 715,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3212,
+          "name": "control_center__list_services",
+          "id": "call_54596ca068a04e3e9925c9a9"
+        },
+        {
+          "atMs": 6080,
+          "name": "control_center__get_service_status",
+          "id": "call_594bb0a9673749debaba8423"
+        },
+        {
+          "atMs": 8178,
+          "name": "control_center__read_service_logs",
+          "id": "call_6ec90c6ee7ae4631b70e1ff7"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_54596ca068a04e3e9925c9a9",
+          "ms": 31
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_594bb0a9673749debaba8423",
+          "ms": 19
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_6ec90c6ee7ae4631b70e1ff7",
+          "ms": 15
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 342983
+    },
+    {
+      "round": 22,
+      "requestId": "ce0f6aec-7730-453f-878b-21e4aabbe1e4",
+      "startedAt": "2026-04-26T02:07:30.661Z",
+      "promptChars": 181,
+      "submitMs": 35,
+      "firstEventMs": 2350,
+      "firstContentMs": 2350,
+      "finishMs": 9924,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 529,
+        "Finish": 1
+      },
+      "sseFrames": 530,
+      "activeRequestsSeen": 0,
+      "messageCount": 529,
+      "assistantTextChars": 844,
+      "reasoningChars": 0,
+      "thinkingChars": 223,
+      "toolCounts": {
+        "control_center__list_events": 1,
+        "control_center__list_services": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2747,
+          "name": "control_center__list_events",
+          "id": "call_fe6509cfdea0441a9503039e"
+        },
+        {
+          "atMs": 4436,
+          "name": "control_center__list_services",
+          "id": "call_9fa384ae19dc4159aead78a7"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_events",
+          "id": "call_fe6509cfdea0441a9503039e",
+          "ms": 14
+        },
+        {
+          "name": "control_center__list_services",
+          "id": "call_9fa384ae19dc4159aead78a7",
+          "ms": 35
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 266007
+    },
+    {
+      "round": 23,
+      "requestId": "20b6926d-c1b4-4ae7-ba5f-227e84c57abe",
+      "startedAt": "2026-04-26T02:07:40.592Z",
+      "promptChars": 225,
+      "submitMs": 22,
+      "firstEventMs": 2449,
+      "firstContentMs": 2449,
+      "finishMs": 21500,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 1179,
+        "Finish": 1
+      },
+      "sseFrames": 1180,
+      "activeRequestsSeen": 0,
+      "messageCount": 1179,
+      "assistantTextChars": 1239,
+      "reasoningChars": 0,
+      "thinkingChars": 957,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__get_agents_status": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3164,
+          "name": "control_center__get_platform_status",
+          "id": "call_e2bc81cc43f44afc87b2199e"
+        },
+        {
+          "atMs": 6115,
+          "name": "control_center__get_agents_status",
+          "id": "call_bc604ecec6a541acbea15126"
+        },
+        {
+          "atMs": 8632,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_fb45ea18e5064542a5fdc3b2"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_e2bc81cc43f44afc87b2199e",
+          "ms": 20
+        },
+        {
+          "name": "control_center__get_agents_status",
+          "id": "call_bc604ecec6a541acbea15126",
+          "ms": 26
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_fb45ea18e5064542a5fdc3b2",
+          "ms": 20
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 646699
+    },
+    {
+      "round": 24,
+      "requestId": "c192772f-ee8a-41f1-bcc6-061f22c0b6bc",
+      "startedAt": "2026-04-26T02:08:02.099Z",
+      "promptChars": 191,
+      "submitMs": 23,
+      "firstEventMs": 71,
+      "firstContentMs": 71,
+      "finishMs": 64350,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 278,
+        "UpdateConversation": 1,
+        "Finish": 1
+      },
+      "sseFrames": 280,
+      "activeRequestsSeen": 0,
+      "messageCount": 278,
+      "assistantTextChars": 156,
+      "reasoningChars": 0,
+      "thinkingChars": 641,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 31447,
+          "name": "control_center__list_services",
+          "id": "call_f265bb925dcd494db2338671"
+        },
+        {
+          "atMs": 33341,
+          "name": "control_center__get_service_status",
+          "id": "call_b188e4bf5b484a63bb083454"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_f265bb925dcd494db2338671",
+          "ms": 38
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_b188e4bf5b484a63bb083454",
+          "ms": 22
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 1475982
+    },
+    {
+      "round": 25,
+      "requestId": "f5ee340f-9424-4c99-92aa-c0b2902b2d8a",
+      "startedAt": "2026-04-26T02:09:06.461Z",
+      "promptChars": 244,
+      "submitMs": 32,
+      "firstEventMs": 33511,
+      "firstContentMs": 33511,
+      "finishMs": 40906,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 747,
+        "Finish": 1
+      },
+      "sseFrames": 748,
+      "activeRequestsSeen": 0,
+      "messageCount": 747,
+      "assistantTextChars": 785,
+      "reasoningChars": 0,
+      "thinkingChars": 890,
+      "toolCounts": {
+        "control_center__read_service_config": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 34280,
+          "name": "control_center__read_service_config",
+          "id": "call_cd39b1616fdc41a8ba2ac87a"
+        },
+        {
+          "atMs": 34280,
+          "name": "control_center__read_service_logs",
+          "id": "call_771848b94e0342199706fdfe"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__read_service_config",
+          "id": "call_cd39b1616fdc41a8ba2ac87a",
+          "ms": 25
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_771848b94e0342199706fdfe",
+          "ms": 25
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 396024
+    },
+    {
+      "round": 26,
+      "requestId": "63b9e042-4bf5-48b7-82aa-95dac448d4fb",
+      "startedAt": "2026-04-26T02:09:47.374Z",
+      "promptChars": 258,
+      "submitMs": 37,
+      "firstEventMs": 1609,
+      "firstContentMs": 1609,
+      "finishMs": 9369,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 689,
+        "Finish": 1
+      },
+      "sseFrames": 690,
+      "activeRequestsSeen": 0,
+      "messageCount": 689,
+      "assistantTextChars": 828,
+      "reasoningChars": 0,
+      "thinkingChars": 500,
+      "toolCounts": {
+        "control_center__read_service_config": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2091,
+          "name": "control_center__read_service_config",
+          "id": "call_64005138669c451e9fb946f0"
+        },
+        {
+          "atMs": 3616,
+          "name": "control_center__read_service_logs",
+          "id": "call_5f5e701e44e44c70a3071dc3"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__read_service_config",
+          "id": "call_64005138669c451e9fb946f0",
+          "ms": 15
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_5f5e701e44e44c70a3071dc3",
+          "ms": 12
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 361881
+    },
+    {
+      "round": 27,
+      "requestId": "8712e640-9a3d-4e9c-b685-fdb8d3aa12a7",
+      "startedAt": "2026-04-26T02:09:56.749Z",
+      "promptChars": 253,
+      "submitMs": 26,
+      "firstEventMs": 1560,
+      "firstContentMs": 1560,
+      "finishMs": 7724,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 474,
+        "Finish": 1
+      },
+      "sseFrames": 475,
+      "activeRequestsSeen": 0,
+      "messageCount": 474,
+      "assistantTextChars": 473,
+      "reasoningChars": 0,
+      "thinkingChars": 591,
+      "toolCounts": {
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2052,
+          "name": "control_center__get_service_status",
+          "id": "call_967a28b561dd4f7a809fadb7"
+        },
+        {
+          "atMs": 3044,
+          "name": "control_center__read_service_logs",
+          "id": "call_1a15e9f6e7774769a65fbd68"
+        }
+      ],
+      "toolResponses": 2,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_967a28b561dd4f7a809fadb7",
+          "ms": 36
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_1a15e9f6e7774769a65fbd68",
+          "ms": 11
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 246008
+    },
+    {
+      "round": 28,
+      "requestId": "157879b9-f16d-441b-829e-2a95b29f3f5f",
+      "startedAt": "2026-04-26T02:10:04.481Z",
+      "promptChars": 224,
+      "submitMs": 24,
+      "firstEventMs": 1709,
+      "firstContentMs": 1709,
+      "finishMs": 10018,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 680,
+        "Finish": 1
+      },
+      "sseFrames": 681,
+      "activeRequestsSeen": 0,
+      "messageCount": 680,
+      "assistantTextChars": 677,
+      "reasoningChars": 0,
+      "thinkingChars": 651,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__list_events": 1,
+        "control_center__get_observability_data": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2409,
+          "name": "control_center__get_platform_status",
+          "id": "call_74a4c9f7e7a441e6ae138109"
+        },
+        {
+          "atMs": 3727,
+          "name": "control_center__list_events",
+          "id": "call_780fcbafe0364f4d9d0f28b2"
+        },
+        {
+          "atMs": 4831,
+          "name": "control_center__get_observability_data",
+          "id": "call_b970fe2bae6941b69a4b6222"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_74a4c9f7e7a441e6ae138109",
+          "ms": 18
+        },
+        {
+          "name": "control_center__list_events",
+          "id": "call_780fcbafe0364f4d9d0f28b2",
+          "ms": 11
+        },
+        {
+          "name": "control_center__get_observability_data",
+          "id": "call_b970fe2bae6941b69a4b6222",
+          "ms": 12
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 349740
+    },
+    {
+      "round": 29,
+      "requestId": "385804c5-6533-4a1a-9eb9-e48acc5c434e",
+      "startedAt": "2026-04-26T02:10:14.504Z",
+      "promptChars": 218,
+      "submitMs": 28,
+      "firstEventMs": 1903,
+      "firstContentMs": 1903,
+      "finishMs": 32194,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 21,
+        "Finish": 1
+      },
+      "sseFrames": 22,
+      "activeRequestsSeen": 0,
+      "messageCount": 21,
+      "assistantTextChars": 156,
+      "reasoningChars": 0,
+      "thinkingChars": 28,
+      "toolCounts": {},
+      "toolRequests": [],
+      "toolResponses": 0,
+      "toolDurationsMs": [],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 11290
+    },
+    {
+      "round": 30,
+      "requestId": "663557f1-683c-44d8-8ce9-bc7968306881",
+      "startedAt": "2026-04-26T02:10:46.705Z",
+      "promptChars": 194,
+      "submitMs": 26,
+      "firstEventMs": 1538,
+      "firstContentMs": 1538,
+      "finishMs": 8703,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 844,
+        "Finish": 1
+      },
+      "sseFrames": 845,
+      "activeRequestsSeen": 0,
+      "messageCount": 844,
+      "assistantTextChars": 1060,
+      "reasoningChars": 0,
+      "thinkingChars": 640,
+      "toolCounts": {
+        "control_center__get_agents_status": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2186,
+          "name": "control_center__get_agents_status",
+          "id": "call_37e05cffa9d446b0a21e380f"
+        }
+      ],
+      "toolResponses": 1,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_agents_status",
+          "id": "call_37e05cffa9d446b0a21e380f",
+          "ms": 31
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 436442
+    },
+    {
+      "round": 31,
+      "requestId": "4c26acab-46e9-4380-a00f-c39460621307",
+      "startedAt": "2026-04-26T02:10:55.414Z",
+      "promptChars": 217,
+      "submitMs": 32,
+      "firstEventMs": 1547,
+      "firstContentMs": 1547,
+      "finishMs": 14022,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 937,
+        "Finish": 1
+      },
+      "sseFrames": 938,
+      "activeRequestsSeen": 0,
+      "messageCount": 937,
+      "assistantTextChars": 870,
+      "reasoningChars": 0,
+      "thinkingChars": 1120,
+      "toolCounts": {
+        "control_center__get_platform_status": 1,
+        "control_center__list_services": 1,
+        "control_center__get_realtime_metrics": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 2272,
+          "name": "control_center__get_platform_status",
+          "id": "call_aae629eadc4d4b93bac7bb36"
+        },
+        {
+          "atMs": 4338,
+          "name": "control_center__list_services",
+          "id": "call_684002adc497444cb981cf3d"
+        },
+        {
+          "atMs": 6074,
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_1b68951782974246895a8181"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__get_platform_status",
+          "id": "call_aae629eadc4d4b93bac7bb36",
+          "ms": 17
+        },
+        {
+          "name": "control_center__list_services",
+          "id": "call_684002adc497444cb981cf3d",
+          "ms": 38
+        },
+        {
+          "name": "control_center__get_realtime_metrics",
+          "id": "call_1b68951782974246895a8181",
+          "ms": 21
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 516011
+    },
+    {
+      "round": 32,
+      "requestId": "5158c5ec-8394-4772-b5b6-9cb71aceb869",
+      "startedAt": "2026-04-26T02:11:09.443Z",
+      "promptChars": 268,
+      "submitMs": 25,
+      "firstEventMs": 2199,
+      "firstContentMs": 2199,
+      "finishMs": 13924,
+      "status": "finish",
+      "eventCounts": {
+        "Message": 792,
+        "Finish": 1
+      },
+      "sseFrames": 793,
+      "activeRequestsSeen": 0,
+      "messageCount": 792,
+      "assistantTextChars": 776,
+      "reasoningChars": 0,
+      "thinkingChars": 762,
+      "toolCounts": {
+        "control_center__list_services": 1,
+        "control_center__get_service_status": 1,
+        "control_center__read_service_logs": 1
+      },
+      "toolRequests": [
+        {
+          "atMs": 3057,
+          "name": "control_center__list_services",
+          "id": "call_dd4aba44b90b47e3b0dba38d"
+        },
+        {
+          "atMs": 5042,
+          "name": "control_center__get_service_status",
+          "id": "call_f47950bc85394c46bc16bf43"
+        },
+        {
+          "atMs": 7138,
+          "name": "control_center__read_service_logs",
+          "id": "call_6482d22bbdc34075a4c70871"
+        }
+      ],
+      "toolResponses": 3,
+      "toolDurationsMs": [
+        {
+          "name": "control_center__list_services",
+          "id": "call_dd4aba44b90b47e3b0dba38d",
+          "ms": 30
+        },
+        {
+          "name": "control_center__get_service_status",
+          "id": "call_f47950bc85394c46bc16bf43",
+          "ms": 14
+        },
+        {
+          "name": "control_center__read_service_logs",
+          "id": "call_6482d22bbdc34075a4c70871",
+          "ms": 22
+        }
+      ],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "",
+      "bodyChars": 423816
+    },
+    {
+      "round": 33,
+      "requestId": "305003ff-29e5-44d6-85d8-07a599ec653b",
+      "startedAt": "2026-04-26T02:11:23.371Z",
+      "promptChars": 192,
+      "submitMs": 27,
+      "firstEventMs": null,
+      "firstContentMs": null,
+      "finishMs": 992616,
+      "status": "timeout_or_abort",
+      "eventCounts": {},
+      "sseFrames": 0,
+      "activeRequestsSeen": 0,
+      "messageCount": 0,
+      "assistantTextChars": 0,
+      "reasoningChars": 0,
+      "thinkingChars": 0,
+      "toolCounts": {},
+      "toolRequests": [],
+      "toolResponses": 0,
+      "toolDurationsMs": [],
+      "maxTokenTotal": null,
+      "lastTokenTotal": null,
+      "error": "Error: round 33 timeout after 300000ms\n    at Timeout._onTimeout ([stdin]:49:134)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)",
+      "bodyChars": 0
+    }
+  ],
+  "outJson": "/Users/buyangnie/Documents/GitHub/ops-factory/output/supervisor-50-round-20260426_3-tools.json",
+  "outMd": "/Users/buyangnie/Documents/GitHub/ops-factory/output/supervisor-50-round-20260426_3-tools.md",
+  "finishedAt": "2026-04-26T02:27:55.994Z",
+  "totalElapsedMs": 1618216,
+  "goosedLog": "/Users/buyangnie/Documents/GitHub/ops-factory/gateway/users/admin/agents/supervisor-agent/state/logs/server/2026-04-26/20260426_011301-goosed.log"
+}

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { usePreview } from '../providers/PreviewContext'
 import { useToast } from '../providers/ToastContext'
 import { useUser } from '../providers/UserContext'
@@ -185,7 +186,16 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { showToast } = useToast()
-    const { previewFile, isLoading, error, openPreview, closePreview } = usePreview()
+    const {
+        previewFile,
+        isLoading,
+        error,
+        isPreviewFullscreen,
+        openPreview,
+        closePreview,
+        togglePreviewFullscreen,
+        exitPreviewFullscreen,
+    } = usePreview()
     const { userId, role } = useUser()
     const [copied, setCopied] = useState(false)
     const [showSource, setShowSource] = useState(false)
@@ -200,6 +210,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
     const [knowledgeImporting, setKnowledgeImporting] = useState(false)
     const [knowledgeImportError, setKnowledgeImportError] = useState<string | null>(null)
     const [knowledgeImportSuccess, setKnowledgeImportSuccess] = useState<{ sourceId: string; sourceName: string; count: number } | null>(null)
+    const knowledgeSourcesRequestRef = useRef(0)
 
     // Reset state when file changes
     useEffect(() => {
@@ -212,6 +223,19 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         setKnowledgeImportError(null)
         setKnowledgeImportSuccess(null)
     }, [previewFile?.path, previewFile?.rootId])
+
+    useEffect(() => {
+        if (!isPreviewFullscreen) return
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                exitPreviewFullscreen()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [exitPreviewFullscreen, isPreviewFullscreen])
 
     const handleCopy = useCallback(async () => {
         if (!previewFile?.content) return
@@ -295,8 +319,11 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
     }, [previewFile, userId])
 
     const loadKnowledgeSources = useCallback(async () => {
+        const requestId = knowledgeSourcesRequestRef.current + 1
+        knowledgeSourcesRequestRef.current = requestId
         setKnowledgeSourcesLoading(true)
         setKnowledgeImportError(null)
+        setKnowledgeSources([])
 
         try {
             const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`)
@@ -308,29 +335,35 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
 
             const sources = ((data as KnowledgeSourceListResponse | null)?.items || [])
                 .filter(source => source.status?.toUpperCase() === 'ACTIVE')
+            if (knowledgeSourcesRequestRef.current !== requestId) return
             setKnowledgeSources(sources)
-            setSelectedKnowledgeSourceId(current => current || sources[0]?.id || '')
+            setSelectedKnowledgeSourceId(current => {
+                if (current && sources.some(source => source.id === current)) {
+                    return current
+                }
+                return sources[0]?.id || ''
+            })
         } catch (err) {
+            if (knowledgeSourcesRequestRef.current !== requestId) return
             const message = err instanceof Error ? err.message : t('errors.unknown')
+            setKnowledgeSources([])
+            setSelectedKnowledgeSourceId('')
             setKnowledgeImportError(t('files.knowledgeLoadFailed', { error: message }))
         } finally {
-            setKnowledgeSourcesLoading(false)
+            if (knowledgeSourcesRequestRef.current === requestId) {
+                setKnowledgeSourcesLoading(false)
+            }
         }
     }, [t])
 
     const handleToggleKnowledgeMenu = useCallback(() => {
-        setIsKnowledgeMenuOpen(current => {
-            const next = !current
-            if (next && knowledgeSources.length === 0 && !knowledgeSourcesLoading) {
-                void loadKnowledgeSources()
-            }
-            if (next) {
-                setKnowledgeImportError(null)
-                setKnowledgeImportSuccess(null)
-            }
-            return next
-        })
-    }, [knowledgeSources.length, knowledgeSourcesLoading, loadKnowledgeSources])
+        if (!isKnowledgeMenuOpen) {
+            setKnowledgeImportError(null)
+            setKnowledgeImportSuccess(null)
+            void loadKnowledgeSources()
+        }
+        setIsKnowledgeMenuOpen(current => !current)
+    }, [isKnowledgeMenuOpen, loadKnowledgeSources])
 
     const handleImportToKnowledge = useCallback(async () => {
         if (!previewFile || !selectedKnowledgeSourceId) return
@@ -597,6 +630,16 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                                     </svg>
                                 </a>
                             )}
+                            <button
+                                className={`file-preview-btn ${isPreviewFullscreen ? 'active' : ''}`}
+                                onClick={togglePreviewFullscreen}
+                                title={isPreviewFullscreen ? t('files.exitFullscreen') : t('files.enterFullscreen')}
+                                aria-label={isPreviewFullscreen ? t('files.exitFullscreen') : t('files.enterFullscreen')}
+                            >
+                                {isPreviewFullscreen
+                                    ? <Minimize2 size={16} strokeWidth={2} />
+                                    : <Maximize2 size={16} strokeWidth={2} />}
+                            </button>
                             <button
                                 className="file-preview-btn file-preview-close"
                                 onClick={closePreview}

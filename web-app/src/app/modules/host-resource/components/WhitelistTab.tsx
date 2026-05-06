@@ -20,6 +20,33 @@ function TrashIcon() {
     )
 }
 
+function EditIcon() {
+    return (
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16" aria-hidden="true">
+            <path
+                d="M4.75 13.95 4 16l2.05-.75 8.5-8.5-1.3-1.3-8.5 8.5Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="m11.95 6.05 1.3 1.3m.65-.65 1.05-1.05a1.15 1.15 0 0 0 0-1.6l-.5-.5a1.15 1.15 0 0 0-1.6 0L11.8 4.6"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M4 16h12"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+            />
+        </svg>
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Whitelist Form Modal
 // ---------------------------------------------------------------------------
@@ -115,56 +142,11 @@ function WhitelistFormModal({
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 'var(--spacing-3)',
-                                cursor: 'pointer',
-                                fontSize: 'var(--font-size-sm)',
-                                color: 'var(--color-text-secondary)',
-                            }}
-                        >
-                            <div className="toggle-switch">
-                                <input
-                                    type="checkbox"
-                                    checked={enabled}
-                                    onChange={e => setEnabled(e.target.checked)}
-                                    style={{ display: 'none' }}
-                                />
-                                <span
-                                    className="toggle-slider"
-                                    style={{
-                                        display: 'inline-block',
-                                        width: 36,
-                                        height: 20,
-                                        borderRadius: 10,
-                                        background: enabled ? 'var(--color-success)' : 'var(--color-border)',
-                                        position: 'relative',
-                                        transition: 'background var(--transition-fast)',
-                                        cursor: 'pointer',
-                                        flexShrink: 0,
-                                    }}
-                                    onClick={() => setEnabled(prev => !prev)}
-                                >
-                                    <span
-                                        style={{
-                                            position: 'absolute',
-                                            top: 2,
-                                            left: enabled ? 18 : 2,
-                                            width: 16,
-                                            height: 16,
-                                            borderRadius: '50%',
-                                            background: '#fff',
-                                            transition: 'left var(--transition-fast)',
-                                            boxShadow: 'var(--shadow-sm)',
-                                        }}
-                                    />
-                                </span>
-                            </div>
-                            {t('remoteDiagnosis.whitelist.enabled')}
-                        </label>
+                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ToggleSwitch checked={enabled} onChange={setEnabled} />
+                        <span style={{ fontSize: '0.75rem', color: enabled ? 'var(--color-success, #10b981)' : 'var(--text-secondary, #64748b)' }}>
+                            {enabled ? t('remoteDiagnosis.whitelist.enabled') : t('remoteDiagnosis.whitelist.disabled')}
+                        </span>
                     </div>
                 </div>
 
@@ -304,7 +286,7 @@ export function WhitelistTab() {
     }, [commands, searchTerm])
 
     return (
-        <>
+        <div className="hr-type-tab-content">
             <section className="knowledge-section-card sop-workflow-section-card">
                 <div className="knowledge-section-header sop-workflow-section-header">
                     <div>
@@ -402,13 +384,15 @@ export function WhitelistTab() {
                                                 <div className="sop-workflow-table-actions">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-subtle"
+                                                        className="hr-host-card-action"
                                                         onClick={() => {
                                                             setEditingCommand(cmd)
                                                             setShowAddModal(true)
                                                         }}
+                                                        aria-label={t('common.edit')}
+                                                        title={t('common.edit')}
                                                     >
-                                                        {t('common.edit')}
+                                                        <EditIcon />
                                                     </button>
                                                     <button
                                                         type="button"
@@ -465,6 +449,6 @@ export function WhitelistTab() {
                     onSave={handleSaveCommand}
                 />
             )}
-        </>
+        </div>
     )
 }

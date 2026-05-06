@@ -26,6 +26,7 @@ interface MessageProps {
     userId?: string | null
     isStreaming?: boolean
     onRetry?: () => void
+    onCancelRequest?: () => void
     sourceDocuments?: Citation[]
     fetchedDocuments?: Citation[]
     outputFiles?: DetectedFile[]
@@ -49,12 +50,29 @@ interface ProcessEntry {
     kind: 'reasoning' | 'thinking' | 'tool'
     label?: string
     content?: string
+    contentEndIndex?: number
+    hasClosedThinkBlock?: boolean
+    hasFollowingDisplayContent?: boolean
     toolCall?: ToolCallPair
 }
 
 interface ScrollFadeState {
     hasTopFade: boolean
     hasBottomFade: boolean
+}
+
+function getFileDisplayParts(fileName: string, displayPath?: string, filePath?: string): {
+    name: string
+    fullPath: string
+} {
+    const fullPath = (displayPath || filePath || fileName || '').replace(/\\/g, '/')
+    if (!fullPath) {
+        return { name: fileName || '', fullPath: '' }
+    }
+    const parts = fullPath.split('/').filter(Boolean)
+    const fallbackName = parts[parts.length - 1] || fileName || fullPath
+    const name = fileName && !fileName.includes('/') ? fileName : fallbackName
+    return { name, fullPath }
 }
 
 function ThinkingStatusIcon({ isStreaming, isOpen }: { isStreaming: boolean; isOpen: boolean }) {
@@ -86,6 +104,76 @@ function parseTodoContent(content: string) {
 
 function normalizeProcessText(text: string | undefined): string {
     return (text || '').replace(/\s+/g, ' ').trim()
+}
+
+function hasDisplayableTextContentAfter(message: ChatMessage, contentIndex: number | undefined): boolean {
+    if (contentIndex === undefined) return false
+
+    for (let i = contentIndex + 1; i < message.content.length; i++) {
+        const content = message.content[i]
+        if (content.type === 'text' && typeof content.text === 'string' && content.text.trim()) {
+            return true
+        }
+    }
+
+    return false
+}
+
+function getFallbackThinkingPosition(message: ChatMessage): {
+    contentEndIndex?: number
+    hasClosedThinkBlock: boolean
+    hasFollowingDisplayContent: boolean
+} {
+    let contentEndIndex: number | undefined
+    let lastClosedThinkEnd = -1
+    let unclosedThinkIndex: number | undefined
+
+    for (let i = 0; i < message.content.length; i++) {
+        const content = message.content[i]
+        if (content.type !== 'text' || typeof content.text !== 'string') continue
+
+        const closedThinkRegex = /<think>[\s\S]*?<\/think>/gi
+        for (let match = closedThinkRegex.exec(content.text); match; match = closedThinkRegex.exec(content.text)) {
+            contentEndIndex = i
+            lastClosedThinkEnd = match.index + match[0].length
+            unclosedThinkIndex = undefined
+        }
+
+        const unclosed = content.text.match(/<think>[\s\S]*$/i)
+        const unclosedIndex = unclosed?.index ?? -1
+        if (unclosed && lastClosedThinkEnd < unclosedIndex) {
+            unclosedThinkIndex = i
+        }
+    }
+
+    if (contentEndIndex === undefined) {
+        return { contentEndIndex: unclosedThinkIndex, hasClosedThinkBlock: false, hasFollowingDisplayContent: false }
+    }
+
+    const sourceContent = message.content[contentEndIndex]
+    const sameContentTail = sourceContent?.type === 'text' && typeof sourceContent.text === 'string'
+        ? sourceContent.text.slice(lastClosedThinkEnd).replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+        : ''
+
+    return {
+        contentEndIndex,
+        hasClosedThinkBlock: true,
+        hasFollowingDisplayContent: sameContentTail.length > 0 || hasDisplayableTextContentAfter(message, contentEndIndex),
+    }
+}
+
+function isProcessTextEntryStreaming(
+    message: ChatMessage,
+    processEntries: ProcessEntry[],
+    entry: ProcessEntry,
+    index: number,
+    isStreaming: boolean
+): boolean {
+    return isStreaming &&
+        index === processEntries.length - 1 &&
+        !entry.hasClosedThinkBlock &&
+        !entry.hasFollowingDisplayContent &&
+        !hasDisplayableTextContentAfter(message, entry.contentEndIndex)
 }
 
 function formatMessageTime(epochSeconds: number, showDate = false): string {
@@ -129,10 +217,11 @@ function MermaidBlock({ code }: { code: string }) {
 function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId, userId }: {
     filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
+    const { t } = useTranslation()
     const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
-    const visibleName = displayPath || fileName
+    const { name: visibleName, fullPath } = getFileDisplayParts(fileName, displayPath, filePath)
 
     const handlePreview = (e: React.MouseEvent) => {
         e.preventDefault()
@@ -147,7 +236,7 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
     }
 
     return (
-        <div className="file-capsule">
+        <div className="file-capsule" title={fullPath}>
             <span className="file-capsule-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -157,17 +246,19 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
                     <polyline points="10 9 9 9 8 9" />
                 </svg>
             </span>
-            <span className="file-capsule-name">{visibleName}</span>
+            <span className="file-capsule-details">
+                <span className="file-capsule-name">{visibleName}</span>
+            </span>
             <div className="file-capsule-actions">
                 {canPreview && (
-                    <button className="file-capsule-btn" onClick={handlePreview} title="Preview">
+                    <button className="file-capsule-btn" onClick={handlePreview} aria-label={t('files.preview')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                             <circle cx="12" cy="12" r="3" />
                         </svg>
                     </button>
                 )}
-                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" title="Download">
+                <a href={downloadUrl + '&download=true'} download className="file-capsule-btn" aria-label={t('files.download')}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
@@ -196,6 +287,18 @@ function CheckIcon() {
     )
 }
 
+function SkillChip({ name }: { name: string }) {
+    return (
+        <span className="message-skill-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14" aria-hidden="true">
+                <path d="M12 3 4.5 7.25 12 11.5l7.5-4.25L12 3Z" />
+                <path d="m4.5 12.25 7.5 4.25 7.5-4.25" />
+            </svg>
+            <span>{name}</span>
+        </span>
+    )
+}
+
 function MessageInner({
     message,
     toolResponses = new Map(),
@@ -203,6 +306,7 @@ function MessageInner({
     userId,
     isStreaming = false,
     onRetry,
+    onCancelRequest,
     sourceDocuments,
     fetchedDocuments,
     outputFiles = [],
@@ -225,6 +329,7 @@ function MessageInner({
         let hasStructuredThinking = false
         let textBufferKind: 'reasoning' | 'thinking' | null = null
         let textBuffer = ''
+        let textBufferEndIndex: number | undefined
         const lastSeenTextByKind: Record<'reasoning' | 'thinking', string | null> = { reasoning: null, thinking: null }
         const pushProcessTextEntry = (entry: ProcessEntry) => {
             const currentText = normalizeProcessText(entry.content)
@@ -250,6 +355,7 @@ function MessageInner({
 
                         if (currentText.startsWith(previousText)) {
                             previousEntry.content = entry.content
+                            previousEntry.contentEndIndex = entry.contentEndIndex
                             lastSeenTextByKind[entry.kind] = currentText
                             return
                         }
@@ -266,6 +372,7 @@ function MessageInner({
             if (!textBufferKind || !textBuffer.trim()) {
                 textBufferKind = null
                 textBuffer = ''
+                textBufferEndIndex = undefined
                 return
             }
 
@@ -274,13 +381,16 @@ function MessageInner({
                 kind: textBufferKind,
                 label: textBufferKind === 'reasoning' ? t('chat.reasoning') : t('chat.thinkingLabel'),
                 content: textBuffer,
+                contentEndIndex: textBufferEndIndex,
             })
 
             textBufferKind = null
             textBuffer = ''
+            textBufferEndIndex = undefined
         }
 
-        for (const content of message.content) {
+        for (let contentIndex = 0; contentIndex < message.content.length; contentIndex++) {
+            const content = message.content[contentIndex]
             if (content.type === 'reasoning' && typeof content.text === 'string' && content.text.trim()) {
                 hasStructuredReasoning = true
                 if (textBufferKind !== 'reasoning') {
@@ -288,6 +398,7 @@ function MessageInner({
                     textBufferKind = 'reasoning'
                 }
                 textBuffer += content.text
+                textBufferEndIndex = contentIndex
                 continue
             }
 
@@ -298,6 +409,7 @@ function MessageInner({
                     textBufferKind = 'thinking'
                 }
                 textBuffer += content.thinking
+                textBufferEndIndex = contentIndex
                 continue
             }
 
@@ -313,6 +425,7 @@ function MessageInner({
                 items.push({
                     key: content.id,
                     kind: 'tool',
+                    contentEndIndex: contentIndex,
                     toolCall: {
                         id: content.id,
                         name,
@@ -342,11 +455,15 @@ function MessageInner({
         if (!hasStructuredThinking) {
             const thinkingText = getThinkingContent(message)
             if (thinkingText) {
+                const fallbackThinking = getFallbackThinkingPosition(message)
                 pushProcessTextEntry({
                     key: `${message.id || 'message'}-thinking-fallback`,
                     kind: 'thinking',
                     label: t('chat.thinkingLabel'),
                     content: thinkingText,
+                    contentEndIndex: fallbackThinking.contentEndIndex,
+                    hasClosedThinkBlock: fallbackThinking.hasClosedThinkBlock,
+                    hasFollowingDisplayContent: fallbackThinking.hasFollowingDisplayContent,
                 })
             }
         }
@@ -371,27 +488,31 @@ function MessageInner({
     useEffect(() => {
         setOpenState(current => {
             const next = { ...current }
-            for (const entry of processEntries) {
+            for (let index = 0; index < processEntries.length; index++) {
+                const entry = processEntries[index]
                 if ((entry.kind === 'reasoning' || entry.kind === 'thinking') && !(entry.key in next)) {
-                    next[entry.key] = isStreaming
+                    next[entry.key] = isProcessTextEntryStreaming(message, processEntries, entry, index, isStreaming)
                 }
             }
             return next
         })
-    }, [isStreaming, processEntries])
+    }, [isStreaming, message, processEntries])
 
     useEffect(() => {
         if (isStreaming) {
             setOpenState(current => {
                 const next = { ...current }
-                for (const entry of processEntries) {
+                for (let index = 0; index < processEntries.length; index++) {
+                    const entry = processEntries[index]
                     if (entry.kind !== 'reasoning' && entry.kind !== 'thinking') continue
-                    next[entry.key] = true
+                    if (isProcessTextEntryStreaming(message, processEntries, entry, index, isStreaming)) {
+                        next[entry.key] = true
+                    }
                 }
                 return next
             })
         }
-    }, [isStreaming, processEntries])
+    }, [isStreaming, message, processEntries])
 
     useEffect(() => {
         const wasStreaming = wasStreamingRef.current
@@ -434,8 +555,8 @@ function MessageInner({
         return () => window.removeEventListener('resize', syncFadeStates)
     }, [processEntries, openState])
 
-    const toggleEntry = (key: string) => {
-        if (isStreaming) return
+    const toggleEntry = (key: string, isEntryStreaming: boolean) => {
+        if (isEntryStreaming) return
         setOpenState(current => ({ ...current, [key]: !current[key] }))
     }
 
@@ -529,15 +650,26 @@ function MessageInner({
         )
     }
 
-    const isEmptyAssistantResponse = !isUser && message.content.length === 0 && !isStreaming
+    const sessionError = !isUser ? message.metadata?.sessionError : undefined
+    const sessionErrorActions = sessionError?.suggestedActions ?? []
+    const canRetrySessionError = !!sessionError && sessionError.retryable !== false && sessionErrorActions.includes('retry') && !!onRetry
+    const canCancelSessionError = !!sessionError && sessionErrorActions.includes('cancel') && !!onCancelRequest
+    const passiveSessionErrorActions = sessionErrorActions.filter(action => {
+        if (action === 'retry') return !canRetrySessionError
+        if (action === 'cancel') return !canCancelSessionError
+        return true
+    })
+    const isEmptyAssistantResponse = !isUser && !sessionError && message.content.length === 0 && !isStreaming
+    const selectedSkill = isUser ? message.metadata?.selectedSkill : undefined
+    const hasUserAttachedFiles = isUser && !!message.metadata?.attachedFiles?.length
 
-    if (isUser && !fullText) {
+    if (isUser && !fullText && !selectedSkill && !hasUserAttachedFiles) {
         return null
     }
 
     const hasProcessEntries = !isUser && processEntries.length > 0
 
-    if (!isUser && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
+    if (!isUser && !sessionError && !fullText && !hasProcessEntries && !isStreaming && !isEmptyAssistantResponse) {
         return null
     }
 
@@ -567,6 +699,52 @@ function MessageInner({
             )}
             <div className="message-body">
                 <div className="message-content">
+                    {sessionError && (
+                        <div className="message-error-banner">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span className="message-error-body">
+                                {t(sessionError.messageKey, { defaultValue: sessionError.fallback })}
+                                {(sessionError.traceId || sessionError.requestId || sessionError.sessionId || sessionError.agentId) && (
+                                    <small className="message-error-detail">
+                                        {t('chat.sessionErrors.reference', {
+                                            traceId: sessionError.traceId || '-',
+                                            requestId: sessionError.requestId || '-',
+                                            sessionId: sessionError.sessionId || '-',
+                                            agentId: sessionError.agentId || '-',
+                                        })}
+                                    </small>
+                                )}
+                                {sessionError.detail && (
+                                    <details className="message-error-detail">
+                                        <summary>{t('chat.sessionErrors.details')}</summary>
+                                        <span>{sessionError.detail}</span>
+                                    </details>
+                                )}
+                                {passiveSessionErrorActions.length > 0 && (
+                                    <small className="message-error-actions">
+                                        {passiveSessionErrorActions
+                                            .map(action => t(`chat.sessionErrors.actions.${action}`))
+                                            .join(' / ')}
+                                    </small>
+                                )}
+                            </span>
+                            {canRetrySessionError && (
+                                <button className="message-error-retry" onClick={onRetry}>
+                                    {t('chat.sessionErrors.actions.retry')}
+                                </button>
+                            )}
+                            {canCancelSessionError && (
+                                <button className="message-error-retry" onClick={onCancelRequest}>
+                                    {t('chat.sessionErrors.actions.cancel')}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {isEmptyAssistantResponse && (
                         <div className="message-error-banner">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -574,10 +752,10 @@ function MessageInner({
                                 <line x1="12" y1="8" x2="12" y2="12" />
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
                             </svg>
-                            <span>The model did not return a valid response. This may be a temporary service issue.</span>
+                            <span>{t('chat.emptyAssistantResponse')}</span>
                             {onRetry && (
                                 <button className="message-error-retry" onClick={onRetry}>
-                                    Retry
+                                    {t('common.tryAgain')}
                                 </button>
                             )}
                         </div>
@@ -591,18 +769,19 @@ function MessageInner({
                                 if (entry.kind === 'reasoning' || entry.kind === 'thinking') {
                                     const isOpen = openState[entry.key] ?? true
                                     const state = fadeState[entry.key] || { hasTopFade: false, hasBottomFade: false }
+                                    const isEntryStreaming = isProcessTextEntryStreaming(message, processEntries, entry, index, isStreaming)
                                     return (
                                         <div key={entry.key} className={`process-step process-step-thinking${stepClass}`}>
                                             <div className="process-step-rail" aria-hidden="true" />
                                             <div className="process-step-content">
                                                 <button
                                                     type="button"
-                                                    className={`process-thinking-header${isOpen ? ' open' : ''}${isStreaming ? ' is-streaming' : ''}`}
-                                                    onClick={() => toggleEntry(entry.key)}
-                                                    disabled={isStreaming}
+                                                    className={`process-thinking-header${isOpen ? ' open' : ''}${isEntryStreaming ? ' is-streaming' : ''}`}
+                                                    onClick={() => toggleEntry(entry.key, isEntryStreaming)}
+                                                    disabled={isEntryStreaming}
                                                     aria-expanded={isOpen}
                                                 >
-                                                    <ThinkingStatusIcon isStreaming={isStreaming} isOpen={isOpen} />
+                                                    <ThinkingStatusIcon isStreaming={isEntryStreaming} isOpen={isOpen} />
                                                     <span className="process-thinking-label">{entry.label}</span>
                                                 </button>
                                                 {isOpen && (
@@ -646,6 +825,12 @@ function MessageInner({
                                     </div>
                                 )
                             })}
+                        </div>
+                    )}
+
+                    {selectedSkill && (
+                        <div className="message-skill-chip-row">
+                            <SkillChip name={selectedSkill.name} />
                         </div>
                     )}
 

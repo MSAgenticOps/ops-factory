@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -29,9 +31,16 @@ public class ClusterService {
 
     private final GatewayProperties properties;
     private Path clustersDir;
+    private ClusterRelationService clusterRelationService;
 
     public ClusterService(GatewayProperties properties) {
         this.properties = properties;
+    }
+
+    @Lazy
+    @Autowired
+    public void setClusterRelationService(ClusterRelationService clusterRelationService) {
+        this.clusterRelationService = clusterRelationService;
     }
 
     @PostConstruct
@@ -125,6 +134,7 @@ public class ClusterService {
         cluster.put("purpose", body.getOrDefault("purpose", ""));
         cluster.put("groupId", body.getOrDefault("groupId", null));
         cluster.put("description", body.getOrDefault("description", ""));
+        cluster.put("enabled", body.getOrDefault("enabled", true));
         cluster.put("createdAt", now);
         cluster.put("updatedAt", now);
 
@@ -155,6 +165,9 @@ public class ClusterService {
         if (body.containsKey("description")) {
             cluster.put("description", body.get("description"));
         }
+        if (body.containsKey("enabled")) {
+            cluster.put("enabled", body.get("enabled"));
+        }
 
         cluster.put("updatedAt", Instant.now().toString());
         writeEntityFile(id, cluster);
@@ -172,6 +185,11 @@ public class ClusterService {
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
         if (!hosts.isEmpty()) {
             throw new IllegalStateException("Cannot delete cluster with hosts. Remove hosts first.");
+        }
+
+        // Cascade delete cluster relations
+        if (clusterRelationService != null) {
+            clusterRelationService.deleteRelationsByCluster(id);
         }
 
         Path file = clustersDir.resolve(id + ".json");
@@ -200,6 +218,11 @@ public class ClusterService {
         for (Map<String, Object> host : hosts) {
             hostService.deleteHost((String) host.get("id"));
             log.info("Force-deleted host {} in cluster {}", host.get("id"), id);
+        }
+
+        // Cascade delete cluster relations
+        if (clusterRelationService != null) {
+            clusterRelationService.deleteRelationsByCluster(id);
         }
 
         // Delete the cluster file itself

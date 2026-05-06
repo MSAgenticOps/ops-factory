@@ -49,6 +49,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean; on
     }
 
     const handleLanguageChange = (lng: string) => {
+        document.cookie = `locale=${lng === 'zh' ? 'zh_CN' : 'en_US'}; path=/; max-age=31536000`
         i18n.changeLanguage(lng)
     }
 
@@ -108,8 +109,8 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean; on
                                         value={i18n.language?.startsWith('zh') ? 'zh' : 'en'}
                                         onChange={(e) => handleLanguageChange(e.target.value)}
                                     >
-                                        <option value="en">English</option>
                                         <option value="zh">中文</option>
+                                        <option value="en">English</option>
                                     </select>
                                 </div>
                             </div>
@@ -128,7 +129,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean; on
                                     <div className="settings-row-label">
                                         <div className="settings-row-text">{t('settings.account')}</div>
                                     </div>
-                                    <button className="btn btn-secondary" onClick={handleLogout}>
+                                    <button className="btn btn-secondary settings-logout-btn" onClick={handleLogout}>
                                         {t('settings.logout')}
                                     </button>
                                 </div>

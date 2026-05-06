@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -11,6 +12,7 @@ import com.huawei.opsfactory.gateway.logging.GatewayLogContext;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import com.huawei.opsfactory.gateway.service.SessionCacheService;
 import com.huawei.opsfactory.gateway.service.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +28,9 @@ import reactor.core.scheduler.Schedulers;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,14 +47,17 @@ public class SessionController {
     private final SessionService sessionService;
     private final GoosedProxy goosedProxy;
     private final AgentConfigService agentConfigService;
+    private final SessionCacheService sessionCacheService;
     public SessionController(InstanceManager instanceManager,
                              SessionService sessionService,
                              GoosedProxy goosedProxy,
-                             AgentConfigService agentConfigService) {
+                             AgentConfigService agentConfigService,
+                             SessionCacheService sessionCacheService) {
         this.instanceManager = instanceManager;
         this.sessionService = sessionService;
         this.goosedProxy = goosedProxy;
         this.agentConfigService = agentConfigService;
+        this.sessionCacheService = sessionCacheService;
     }
 
     @PostMapping(value = "/agents/{agentId}/agent/start", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -93,7 +100,7 @@ public class SessionController {
                             String sessionId = extractSessionId(startResponse);
                             String resumeBody = "{\"session_id\":\"" + sessionId
                                     + "\",\"load_model_and_extensions\":true}";
-                            GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-START] goosed start complete agentId={} userId={} sessionId={} port={} startCallMs={}",
+                            GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-START] goosed start complete agentId={} userId={} sessionId={} port={} startCallMs={}",
                                     agentId, userId, sessionId, instance.getPort(), startCallMs));
                             long resumeStart = System.currentTimeMillis();
                             return goosedProxy.fetchJson(
@@ -101,7 +108,7 @@ public class SessionController {
                                     .doOnNext(r -> {
                                         long resumeMs = System.currentTimeMillis() - resumeStart;
                                         instance.markSessionResumed(sessionId);
-                                        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-START] session ready agentId={} userId={} sessionId={} resident={} port={} resumeMs={} totalMs={}",
+                                        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-START] session ready agentId={} userId={} sessionId={} resident={} port={} resumeMs={} totalMs={}",
                                                 agentId, userId, sessionId, resident, instance.getPort(), resumeMs,
                                                 System.currentTimeMillis() - requestStart));
                                     })
@@ -122,10 +129,27 @@ public class SessionController {
     }
 
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> listAllSessions(ServerWebExchange exchange) {
+    public Mono<String> listAllSessions(
+            @RequestParam(defaultValue = "1") int pageIndex,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String agentId,
+            @RequestParam(required = false) String type,
+            ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] begin userId={}", userId));
+        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex, pageSize, search, agentId, type));
+        int safePageIndex = Math.max(1, pageIndex);
+        int safePageSize = Math.max(1, Math.min(pageSize, 200));
+
+        // Try cache first
+        List<Map<String, Object>> cached = sessionCacheService.get(userId);
+        if (cached != null) {
+            String result = applyFiltersAndPaginate(cached, safePageIndex, safePageSize, search, agentId, type);
+            GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] cache hit userId={}", userId));
+            return Mono.just(result);
+        }
+
         return Flux.fromIterable(instanceManager.getAllInstances())
                 .filter(inst -> inst.getUserId().equals(userId)
                         || GatewayConstants.SYSTEM_USER.equals(inst.getUserId()))
@@ -138,9 +162,66 @@ public class SessionController {
                     for (List<String> batch : lists) {
                         allSessions.addAll(batch);
                     }
-                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] complete userId={} sessions={}", userId, allSessions.size()));
-                    return "{\"sessions\":[" + String.join(",", allSessions) + "]}";
+                    // Parse all sessions and sort
+                    List<Map<String, Object>> parsed = new ArrayList<>();
+                    for (String json : allSessions) {
+                        try {
+                            Map<String, Object> m = MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
+                            parsed.add(m);
+                        } catch (Exception e) { log.warn("Failed to parse session JSON: {}", e.getMessage()); }
+                    }
+                    parsed.sort((a, b) -> {
+                        String ta = a.getOrDefault("created_at", "") instanceof String s ? s : "";
+                        String tb = b.getOrDefault("created_at", "") instanceof String s ? s : "";
+                        try {
+                            return Instant.parse(tb).compareTo(Instant.parse(ta));
+                        } catch (Exception e) {
+                            return tb.compareTo(ta);
+                        }
+                    });
+                    // Cache atomically: concurrent request may have already cached
+                    List<Map<String, Object>> effective = sessionCacheService.getOrFetch(userId, () -> parsed);
+                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size()));
+                    return applyFiltersAndPaginate(effective, safePageIndex, safePageSize, search, agentId, type);
                 });
+    }
+
+    /**
+     * Parse goosed response and extract individual session JSON strings,
+     * injecting agentId into each.
+     */
+    private String applyFiltersAndPaginate(
+            List<Map<String, Object>> sortedSessions, int pageIndex, int pageSize,
+            String search, String agentId, String type) {
+        List<Map<String, Object>> filtered = new ArrayList<>();
+        for (Map<String, Object> m : sortedSessions) {
+            if (agentId != null && !agentId.isBlank() && !agentId.equals(m.get("agentId"))) continue;
+            if (type != null && !type.isBlank()) {
+                String sessionType = m.getOrDefault("session_type", "user") instanceof String s ? s : "user";
+                String scheduleId = m.get("schedule_id") instanceof String s && !s.isBlank() ? s : null;
+                if ("user".equals(type) && (!"user".equals(sessionType) || scheduleId != null)) continue;
+                if ("scheduled".equals(type) && (scheduleId == null && !"scheduled".equals(sessionType))) continue;
+            }
+            if (search != null && !search.isBlank()) {
+                String name = m.getOrDefault("name", "") instanceof String s ? s.toLowerCase() : "";
+                if (!name.contains(search.toLowerCase())) continue;
+            }
+            filtered.add(m);
+        }
+        int total = filtered.size();
+        int from = Math.min((pageIndex - 1) * pageSize, total);
+        int to = Math.min(from + pageSize, total);
+        List<Map<String, Object>> page = from < total ? new ArrayList<>(filtered.subList(from, to)) : List.of();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("sessions", page);
+        response.put("total", total);
+        response.put("pageIndex", pageIndex);
+        response.put("pageSize", pageSize);
+        try {
+            return MAPPER.writeValueAsString(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize paginated response", e);
+        }
     }
 
     /**
@@ -246,13 +327,13 @@ public class SessionController {
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
                         instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()))
-                .doOnSuccess(ignored -> GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-DELETE] complete agentId={} userId={} sessionId={}",
-                        agentId, userId, sessionId)));
+                .doOnSuccess(ignored -> {
+                    sessionCacheService.invalidate(userId);
+                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-DELETE] complete agentId={} userId={} sessionId={}",
+                        agentId, userId, sessionId));
+                });
     }
 
-    /**
-     * Global session delete: DELETE /sessions/{sessionId}?agentId=X
-     */
     @DeleteMapping("/sessions/{sessionId}")
     public Mono<Void> deleteSessionGlobal(@PathVariable String sessionId,
                                            @RequestParam String agentId,
@@ -266,8 +347,53 @@ public class SessionController {
                 .flatMap(instance -> goosedProxy.proxy(
                         exchange.getRequest(), exchange.getResponse(),
                         instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()))
-                .doOnSuccess(ignored -> GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-DELETE] complete agentId={} userId={} sessionId={} scope=global",
-                        agentId, userId, sessionId)));
+                .doOnSuccess(ignored -> {
+                    sessionCacheService.invalidate(userId);
+                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-DELETE] complete agentId={} userId={} sessionId={} scope=global",
+                        agentId, userId, sessionId));
+                });
+    }
+
+    @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable String agentId,
+                                                          @PathVariable String sessionId,
+                                                          ServerWebExchange exchange) {
+        String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
+        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
+        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-CLEANUP-EMPTY] begin agentId={} userId={} sessionId={}",
+                agentId, userId, sessionId));
+
+        return instanceManager.getOrSpawn(agentId, userId)
+                .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey())
+                        .flatMap(json -> {
+                            EmptySessionDecision decision = shouldDeleteEmptySession(json);
+                            if (!decision.delete()) {
+                                GatewayLogContext.run(requestId, userId, () -> log.info(
+                                        "[SESSION-CLEANUP-EMPTY] skip agentId={} userId={} sessionId={} reason={}",
+                                        agentId, userId, sessionId, decision.reason()));
+                                return Mono.just(cleanupResult(false, decision.reason()));
+                            }
+
+                            return goosedProxy.fetchJson(
+                                            instance.getPort(),
+                                            HttpMethod.DELETE,
+                                            "/sessions/" + sessionId,
+                                            null,
+                                            30,
+                                            instance.getSecretKey())
+                                    .then(Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
+                                            .subscribeOn(Schedulers.boundedElastic()))
+                                    .thenReturn(cleanupResult(true, "empty_session_deleted"))
+                                    .doOnSuccess(result -> GatewayLogContext.run(requestId, userId, () -> log.info(
+                                            "[SESSION-CLEANUP-EMPTY] deleted agentId={} userId={} sessionId={}",
+                                            agentId, userId, sessionId)));
+                        }))
+                .onErrorResume(WebClientResponseException.class, e -> {
+                    if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                        return Mono.just(cleanupResult(false, "session_not_found"));
+                    }
+                    return Mono.error(e);
+                });
     }
 
     /**
@@ -300,6 +426,67 @@ public class SessionController {
         }
     }
 
+    private EmptySessionDecision shouldDeleteEmptySession(String json) {
+        try {
+            JsonNode session = MAPPER.readTree(json);
+            String sessionType = textValue(session.get("session_type"));
+            if (sessionType != null && !"user".equals(sessionType)) {
+                return new EmptySessionDecision(false, "not_user_session");
+            }
+            if (hasText(session.get("schedule_id"))) {
+                return new EmptySessionDecision(false, "scheduled_session");
+            }
+            if (session.path("user_set_name").asBoolean(false)) {
+                return new EmptySessionDecision(false, "user_named_session");
+            }
+
+            JsonNode conversation = session.get("conversation");
+            if (conversation != null && conversation.isArray()) {
+                if (!conversation.isEmpty()) {
+                    return new EmptySessionDecision(false, "has_conversation");
+                }
+            }
+
+            JsonNode messageCount = session.get("message_count");
+            if (messageCount != null && messageCount.canConvertToInt()) {
+                return messageCount.asInt() == 0
+                        ? new EmptySessionDecision(true, "empty_message_count")
+                        : new EmptySessionDecision(false, "has_messages");
+            }
+
+            if (conversation != null && conversation.isArray()) {
+                return new EmptySessionDecision(true, "empty_conversation");
+            }
+
+            return new EmptySessionDecision(false, "message_count_unknown");
+        } catch (Exception e) {
+            log.warn("Failed to inspect session for empty cleanup: {}", e.getMessage());
+            return new EmptySessionDecision(false, "invalid_session_payload");
+        }
+    }
+
+    private Map<String, Object> cleanupResult(boolean deleted, String reason) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", deleted);
+        result.put("reason", reason);
+        return result;
+    }
+
+    private boolean hasText(JsonNode node) {
+        return node != null && !node.isNull() && !node.asText("").isBlank();
+    }
+
+    private String textValue(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        String value = node.asText("");
+        return value.isBlank() ? null : value;
+    }
+
+    private record EmptySessionDecision(boolean delete, String reason) {
+    }
+
     /**
      * Rename session: PUT /agents/{agentId}/sessions/{sessionId}/name
      */
@@ -317,7 +504,10 @@ public class SessionController {
                         exchange.getResponse(), instance.getPort(),
                         "/sessions/" + sessionId + "/name",
                         HttpMethod.PUT, body, instance.getSecretKey()))
-                .doOnSuccess(ignored -> GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-RENAME] complete agentId={} userId={} sessionId={}",
-                        agentId, userId, sessionId)));
+                .doOnSuccess(ignored -> {
+                    sessionCacheService.invalidate(userId);
+                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-RENAME] complete agentId={} userId={} sessionId={}",
+                        agentId, userId, sessionId));
+                });
     }
 }

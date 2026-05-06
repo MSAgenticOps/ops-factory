@@ -50,9 +50,21 @@ public class GatewayPropertiesTest {
         assertEquals("workingDir", files.getScanRoots().get(0).getId());
         assertEquals("${userAgentDir}", files.getScanRoots().get(0).getPath());
         assertFalse(files.getScanRoots().get(0).isRecursive());
+        assertTrue(files.getScanRoots().get(0).getExcludeDirs().isEmpty());
+        assertEquals(6, files.getScanRoots().get(0).getMaxDepth());
+        assertEquals(1000, files.getScanRoots().get(0).getMaxFiles());
+        assertEquals(2000L, files.getScanRoots().get(0).getScanTimeoutMs());
         assertEquals("output", files.getScanRoots().get(1).getId());
         assertEquals("${userAgentDir}/output", files.getScanRoots().get(1).getPath());
         assertFalse(files.getScanRoots().get(1).isRecursive());
+    }
+
+    @Test
+    public void testSkillMarketDefaults() {
+        GatewayProperties.SkillMarket skillMarket = new GatewayProperties.SkillMarket();
+        assertEquals("http://127.0.0.1:8095", skillMarket.getBaseUrl());
+        assertEquals(10000, skillMarket.getRequestTimeoutMs());
+        assertEquals(200, skillMarket.getMaxPackageSizeMb());
     }
 
     @Test

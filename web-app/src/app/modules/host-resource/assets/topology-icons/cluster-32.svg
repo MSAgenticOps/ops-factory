@@ -1,0 +1,9 @@
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="2.5" y="2.5" width="19" height="19" rx="5" fill="var(--hr-topology-icon-surface, #F8FAFC)"/>
+<rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="var(--hr-topology-icon-outline, #CBD5E1)" stroke-width="1.2"/>
+<path d="M2.5 12H1.5m20 0h1" stroke="var(--hr-topology-icon-outline, #CBD5E1)" stroke-width="1.2" stroke-linecap="round"/>
+<path d="M12 7.1 16 9.4v5.2L12 16.9 8 14.6V9.4z" fill="var(--hr-topology-icon-accent-soft, rgba(20, 184, 166, 0.12))"/>
+<path d="M12 7.1 16 9.4v5.2L12 16.9 8 14.6V9.4z" stroke="var(--hr-topology-icon-accent, #14B8A6)" stroke-width="1.4" stroke-linejoin="round"/>
+<path d="M12 7.1v4.9m4-2.6-4 2.6-4-2.6m4 2.6v4.9" stroke="var(--hr-topology-icon-accent, #14B8A6)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="12" cy="12" r="1" fill="var(--hr-topology-icon-accent, #14B8A6)"/>
+</svg>

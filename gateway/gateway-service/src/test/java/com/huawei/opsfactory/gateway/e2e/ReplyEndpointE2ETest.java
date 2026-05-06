@@ -4,11 +4,12 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.hook.HookContext;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import reactor.core.publisher.Flux;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -18,15 +19,12 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentCaptor.forClass;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
 
-/**
- * E2E tests for ReplyController endpoints:
- * POST /agents/{agentId}/reply, /resume, /restart, /stop
- */
+/** E2E tests for ReplyController endpoints. */
 public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     private ManagedInstance mockInstance;
@@ -40,117 +38,230 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
     }
 
-    // ====================== POST /agents/{agentId}/reply (SSE) ======================
+    // ====================== Session event transport ======================
 
     @Test
-    public void reply_authenticatedUser_streamsSSE() {
+    public void sessionReply_authenticatedUser_proxiesToGoosedSessionReply() throws Exception {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.empty());
 
-        DataBuffer buffer = new DefaultDataBufferFactory()
-                .wrap("data: {\"content\":\"hello\"}\n\n".getBytes(StandardCharsets.UTF_8));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
-                .thenReturn(Flux.just(buffer));
-
-        webClient.post().uri("/gateway/agents/test-agent/reply")
+        long before = System.currentTimeMillis() / 1000;
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"session_id\":\"session-123\",\"message\":\"hello\"}")
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"id\":\"u1\",\"role\":\"user\",\"created\":9999999999,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .exchange()
+                .expectStatus().isOk();
+        long after = System.currentTimeMillis() / 1000;
+
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
+                eq("{\"session_id\":\"session-123\",\"load_model_and_extensions\":true}"), anyInt(), anyString());
+
+        ArgumentCaptor<String> bodyCaptor = forClass(String.class);
+        verify(goosedProxy).proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), bodyCaptor.capture(), eq("test-secret"));
+        com.fasterxml.jackson.databind.JsonNode relayed = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(bodyCaptor.getValue());
+        org.junit.Assert.assertEquals("00000000-0000-0000-0000-000000000001",
+                relayed.path("request_id").asText());
+        long normalizedCreated = relayed.path("user_message").path("created").asLong();
+        org.junit.Assert.assertTrue(normalizedCreated >= before);
+        org.junit.Assert.assertTrue(normalizedCreated <= after);
+    }
+
+    @Test
+    public void sessionEvents_authenticatedUser_proxiesLastEventIdWithoutLegacyRelay() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(mockInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+                .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
+        when(goosedProxy.proxySessionEvents(any(), eq(9999), eq("/sessions/session-123/events"),
+                eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq("session-123"), any()))
+                .thenReturn(Mono.empty());
+
+        webClient.get().uri("/gateway/agents/test-agent/sessions/session-123/events")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .header("Last-Event-ID", "42")
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .exchange()
                 .expectStatus().isOk();
 
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
                 eq("{\"session_id\":\"session-123\",\"load_model_and_extensions\":true}"), anyInt(), anyString());
+        verify(goosedProxy).proxySessionEvents(any(), eq(9999), eq("/sessions/session-123/events"),
+                eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq("session-123"), any());
     }
 
     @Test
-    public void reply_existingSession_stillResumesBeforeReplyWhenInstanceCacheSaysResumed() {
-        mockInstance.markSessionResumed("session-123");
+    public void sessionCancel_authenticatedUser_proxiesToGoosedCancelOnly() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(mockInstance));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/cancel"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.empty());
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/cancel")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\"}")
+                .exchange()
+                .expectStatus().isOk();
+
+        verify(goosedProxy).proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/cancel"),
+                eq(HttpMethod.POST), eq("{\"request_id\":\"00000000-0000-0000-0000-000000000001\"}"),
+                eq("test-secret"));
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
+                anyString(), anyInt(), anyString());
+    }
+
+    @Test
+    public void sessionReply_getOrSpawnFailure_returnsStructuredError() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Agent temporarily unavailable")));
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
+                .expectBody()
+                .jsonPath("$.type").isEqualTo("Error")
+                .jsonPath("$.layer").isEqualTo("gateway")
+                .jsonPath("$.code").isEqualTo("gateway_goosed_unavailable")
+                .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayGoosedUnavailable")
+                .jsonPath("$.retryable").isEqualTo(true)
+                .jsonPath("$.request_id").isEqualTo("00000000-0000-0000-0000-000000000001")
+                .jsonPath("$.session_id").isEqualTo("session-123")
+                .jsonPath("$.agent_id").isEqualTo("test-agent");
+    }
+
+    @Test
+    public void sessionReply_goosedActiveRequest400_returnsConflictActions() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.error(WebClientResponseException.create(
+                        400,
+                        "Bad Request",
+                        HttpHeaders.EMPTY,
+                        "Session already has an active request. Cancel it first.".getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8)));
 
-        DataBuffer buffer = new DefaultDataBufferFactory()
-                .wrap("data: {\"content\":\"hello again\"}\n\n".getBytes(StandardCharsets.UTF_8));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
-                .thenReturn(Flux.just(buffer));
-
-        webClient.post().uri("/gateway/agents/test-agent/reply")
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"session_id\":\"session-123\",\"message\":\"hello again\"}")
-                .accept(MediaType.TEXT_EVENT_STREAM)
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
                 .exchange()
-                .expectStatus().isOk();
-
-        verify(goosedProxy, times(1)).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
-                eq("{\"session_id\":\"session-123\",\"load_model_and_extensions\":true}"), anyInt(), anyString());
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.type").isEqualTo("Error")
+                .jsonPath("$.layer").isEqualTo("goosed")
+                .jsonPath("$.code").isEqualTo("goosed_active_request_conflict")
+                .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.goosedActiveRequestConflict")
+                .jsonPath("$.retryable").isEqualTo(true)
+                .jsonPath("$.suggested_actions[0]").isEqualTo("wait")
+                .jsonPath("$.suggested_actions[1]").isEqualTo("cancel")
+                .jsonPath("$.suggested_actions[2]").isEqualTo("retry")
+                .jsonPath("$.request_id").isEqualTo("00000000-0000-0000-0000-000000000001");
     }
 
     @Test
-    public void reply_normalizesUserMessageCreatedBeforeRelay() throws Exception {
+    public void sessionReply_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.error(new RuntimeException("proxy write failed")));
 
-        DataBuffer buffer = new DefaultDataBufferFactory()
-                .wrap("data: {\"type\":\"Finish\"}\n\n".getBytes(StandardCharsets.UTF_8));
-        when(sseRelayService.relay(eq(9999), eq("/reply"), anyString(), eq("test-agent"), eq("alice"), any()))
-                .thenReturn(Flux.just(buffer));
-
-        long before = System.currentTimeMillis() / 1000;
-        webClient.post().uri("/gateway/agents/test-agent/reply")
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"session_id\":\"session-123\",\"user_message\":{\"id\":\"u1\",\"role\":\"user\",\"created\":9999999999,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}},\"override_conversation\":[{\"role\":\"user\",\"created\":123,\"content\":[{\"type\":\"text\",\"text\":\"old\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}]}")
-                .accept(MediaType.TEXT_EVENT_STREAM)
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
                 .exchange()
-                .expectStatus().isOk();
-        long after = System.currentTimeMillis() / 1000;
-
-        ArgumentCaptor<String> bodyCaptor = forClass(String.class);
-        verify(sseRelayService).relay(eq(9999), eq("/reply"), bodyCaptor.capture(),
-                eq("test-agent"), eq("alice"), anyString());
-
-        com.fasterxml.jackson.databind.JsonNode relayed = new com.fasterxml.jackson.databind.ObjectMapper()
-                .readTree(bodyCaptor.getValue());
-        long normalizedCreated = relayed.path("user_message").path("created").asLong();
-        org.junit.Assert.assertTrue(normalizedCreated >= before);
-        org.junit.Assert.assertTrue(normalizedCreated <= after);
-        org.junit.Assert.assertEquals("hello",
-                relayed.path("user_message").path("content").get(0).path("text").asText());
-        org.junit.Assert.assertEquals(123,
-                relayed.path("override_conversation").get(0).path("created").asLong());
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("gateway_submit_failed")
+                .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewaySubmitFailed");
     }
 
     @Test
-    public void reply_unauthenticated_returns401() {
-        webClient.post().uri("/gateway/agents/test-agent/reply")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"message\":\"hello\"}")
-                .exchange()
-                .expectStatus().isUnauthorized();
-    }
+    public void sessionEvents_proxyFailure_returnsStableFallbackMessageKey() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(mockInstance));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+                .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
+        when(goosedProxy.proxySessionEvents(any(), eq(9999), eq("/sessions/session-123/events"),
+                eq("test-secret"), eq(null), eq("test-agent"), eq("alice"), eq("session-123"), any()))
+                .thenReturn(Mono.error(new RuntimeException("events failed")));
 
-    @Test
-    public void reply_noUserIdHeader_returns400() {
-        // Without x-user-id header, UserContextFilter now rejects with 400
-        webClient.post().uri("/gateway/agents/test-agent/reply")
+        webClient.get().uri("/gateway/agents/test-agent/sessions/session-123/events")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
-                // No x-user-id header → rejected by UserContextFilter
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"message\":\"test\"}")
+                .header(HEADER_USER_ID, "alice")
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .exchange()
-                .expectStatus().isBadRequest();
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("gateway_events_failed")
+                .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayEventsFailed");
+    }
+
+    @Test
+    public void sessionCancel_proxyFailure_returnsStableFallbackMessageKey() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(mockInstance));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/cancel"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.error(new RuntimeException("cancel failed")));
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/cancel")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\"}")
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("gateway_cancel_failed")
+                .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayCancelFailed");
+    }
+
+    @Test
+    public void sessionCancel_gatewayTimeout_returnsCancelFailureCode() {
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.just(mockInstance));
+        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/cancel"),
+                eq(HttpMethod.POST), anyString(), eq("test-secret")))
+                .thenReturn(Mono.error(new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT,
+                        "Agent did not respond in time")));
+
+        webClient.post().uri("/gateway/agents/test-agent/sessions/session-123/cancel")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "alice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\"}")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.GATEWAY_TIMEOUT)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("gateway_cancel_failed")
+                .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayCancelFailed");
     }
 
     // ====================== POST /agents/{agentId}/resume ======================
@@ -203,47 +314,4 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isOk();
     }
 
-    // ====================== POST /agents/{agentId}/stop ======================
-
-    @Test
-    public void stop_authenticatedUser_proxiesToGoosed() {
-        when(instanceManager.getOrSpawn("test-agent", "bob"))
-                .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/agent/stop"),
-                eq(HttpMethod.POST), anyString(), anyString()))
-                .thenReturn(Mono.empty());
-
-        webClient.post().uri("/gateway/agents/test-agent/stop")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "bob")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{}")
-                .exchange()
-                .expectStatus().isOk();
-    }
-
-    @Test
-    public void stop_unauthenticated_returns401() {
-        webClient.post().uri("/gateway/agents/test-agent/stop")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{}")
-                .exchange()
-                .expectStatus().isUnauthorized();
-    }
-
-    // ====================== Instance spawn failure ======================
-
-    @Test
-    public void reply_instanceSpawnFails_returns500() {
-        when(instanceManager.getOrSpawn(anyString(), anyString()))
-                .thenReturn(Mono.error(new RuntimeException("Failed to spawn")));
-
-        webClient.post().uri("/gateway/agents/test-agent/reply")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"message\":\"test\"}")
-                .exchange()
-                .expectStatus().is5xxServerError();
-    }
 }

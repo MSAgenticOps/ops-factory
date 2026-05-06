@@ -10,10 +10,9 @@ import './Mcp.css'
 
 interface McpSectionProps {
   agentId: string | null
-  onBrowseMarket?: () => void
 }
 
-export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps) {
+export default function McpSection({ agentId }: McpSectionProps) {
   const { t } = useTranslation()
   const {
     categorized,
@@ -58,6 +57,16 @@ export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps)
     setIsAddModalOpen(true)
   }
 
+  const getKnowledgeConfigHandler = (entry: McpEntry) => {
+    const name = entry.name.toLowerCase()
+    return name === 'knowledge-service' || name === 'knowledge-cli' ? setKnowledgeEntry : undefined
+  }
+
+  const normalizeKnowledgeMcpName = (name: string) => {
+    const normalized = name.toLowerCase()
+    return normalized === 'knowledge-cli' ? 'knowledge-cli' : 'knowledge-service'
+  }
+
   if (!agentId) {
     return null
   }
@@ -71,11 +80,6 @@ export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps)
       <div className="mcp-section-header">
         <h3 className="mcp-section-title">{t('mcp.title')}</h3>
         <div className="mcp-header-actions">
-          {onBrowseMarket && (
-            <Button variant="secondary" size="sm" onClick={onBrowseMarket}>
-              {t('market.browseMarket')}
-            </Button>
-          )}
           <Button variant="primary" size="sm" onClick={handleOpenAddModal}>
             {t('mcp.addServer')}
           </Button>
@@ -107,7 +111,7 @@ export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps)
                     key={entry.name}
                     entry={entry}
                     onToggle={toggleMcp}
-                    onConfigKnowledge={entry.name === 'knowledge-service' ? setKnowledgeEntry : undefined}
+                    onConfigKnowledge={getKnowledgeConfigHandler(entry)}
                   />
                 ))}
               </div>
@@ -123,7 +127,7 @@ export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps)
                     key={entry.name}
                     entry={entry}
                     onToggle={toggleMcp}
-                    onConfigKnowledge={entry.name === 'knowledge-service' ? setKnowledgeEntry : undefined}
+                    onConfigKnowledge={getKnowledgeConfigHandler(entry)}
                   />
                 ))}
               </div>
@@ -139,7 +143,7 @@ export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps)
                     key={entry.name}
                     entry={entry}
                     onToggle={toggleMcp}
-                    onConfigKnowledge={entry.name === 'knowledge-service' ? setKnowledgeEntry : undefined}
+                    onConfigKnowledge={getKnowledgeConfigHandler(entry)}
                     onEdit={handleOpenEditModal}
                     onDelete={(name) => handleDelete(name)}
                     isCustom
@@ -177,7 +181,7 @@ export default function McpSection({ agentId, onBrowseMarket }: McpSectionProps)
       {knowledgeEntry && (
         <ConfigKnowledgeModal
           agentId={agentId}
-          mcpName={knowledgeEntry.name}
+          mcpName={normalizeKnowledgeMcpName(knowledgeEntry.name)}
           isOpen={Boolean(knowledgeEntry)}
           onClose={() => setKnowledgeEntry(null)}
         />

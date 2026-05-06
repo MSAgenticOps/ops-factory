@@ -7,7 +7,7 @@ set -euo pipefail
 # Usage: ./ctl.sh <action> [options] [component ...]
 #
 #   action:    startup | shutdown | status | restart
-#   component: onlyoffice | langfuse | gateway | knowledge | business-intelligence | exporter | control-center | webapp | all (default)
+#   component: onlyoffice | langfuse | gateway | knowledge | business-intelligence | skill-market | exporter | control-center | webapp | all (default)
 #              Multiple components can be specified.
 #   options:
 #     --apipwd <value>   Set GATEWAY_API_PASSWORD for gateway and child tools (default: empty)
@@ -39,6 +39,7 @@ ENABLE_EXPORTER="${ENABLE_EXPORTER:-true}"
 CTL_GATEWAY="${ROOT_DIR}/gateway/scripts/ctl.sh"
 CTL_KNOWLEDGE="${ROOT_DIR}/knowledge-service/scripts/ctl.sh"
 CTL_BUSINESS_INTELLIGENCE="${ROOT_DIR}/business-intelligence/scripts/ctl.sh"
+CTL_SKILL_MARKET="${ROOT_DIR}/skill-market/scripts/ctl.sh"
 CTL_CONTROL_CENTER="${ROOT_DIR}/control-center/scripts/ctl.sh"
 CTL_WEBAPP="${ROOT_DIR}/web-app/scripts/ctl.sh"
 CTL_LANGFUSE="${ROOT_DIR}/langfuse/scripts/ctl.sh"
@@ -61,6 +62,7 @@ component_name() {
         gateway) echo "Gateway" ;;
         knowledge) echo "Knowledge" ;;
         business-intelligence) echo "Business Intelligence" ;;
+        skill-market) echo "Skill Market" ;;
         exporter) echo "Exporter" ;;
         control-center) echo "Control Center" ;;
         webapp) echo "Webapp" ;;
@@ -75,7 +77,7 @@ is_optional_component() {
 }
 
 # === Component validation ===
-VALID_COMPONENTS="onlyoffice langfuse gateway knowledge business-intelligence exporter control-center webapp"
+VALID_COMPONENTS="onlyoffice langfuse gateway knowledge business-intelligence skill-market exporter control-center webapp"
 
 validate_component() {
     local comp="$1"
@@ -109,6 +111,7 @@ startup_one() {
         gateway)    "${CTL_GATEWAY}" startup "$@" ;;
         knowledge)  "${CTL_KNOWLEDGE}" startup "$@" ;;
         business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" startup "$@" ;;
+        skill-market) "${CTL_SKILL_MARKET}" startup "$@" ;;
         exporter)
             if [ "${ENABLE_EXPORTER}" != "true" ]; then
                 log_info "Exporter disabled (toggle=false)"
@@ -147,6 +150,7 @@ shutdown_one() {
         gateway)    "${CTL_GATEWAY}" shutdown ;;
         knowledge)  "${CTL_KNOWLEDGE}" shutdown ;;
         business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" shutdown ;;
+        skill-market) "${CTL_SKILL_MARKET}" shutdown ;;
         exporter)   "${CTL_EXPORTER}" shutdown ;;
         control-center) "${CTL_CONTROL_CENTER}" shutdown ;;
         webapp)     "${CTL_WEBAPP}" shutdown ;;
@@ -167,6 +171,8 @@ status_one() {
         knowledge) "${CTL_KNOWLEDGE}" status || return 1 ;;
         business-intelligence)
             "${CTL_BUSINESS_INTELLIGENCE}" status || return 1 ;;
+        skill-market)
+            "${CTL_SKILL_MARKET}" status || return 1 ;;
         exporter)
             if [ "${ENABLE_EXPORTER}" = "true" ]; then
                 "${CTL_EXPORTER}" status || return 1
@@ -201,13 +207,16 @@ do_startup() {
         # 5. Business Intelligence (mandatory, background)
         startup_with_policy business-intelligence --background
 
-        # 6. Exporter (optional, background)
+        # 6. Skill Market (mandatory, background)
+        startup_with_policy skill-market --background
+
+        # 7. Exporter (optional, background)
         startup_with_policy exporter --background
 
-        # 7. Control Center (mandatory, background)
+        # 8. Control Center (mandatory, background)
         startup_with_policy control-center --background
 
-        # 8. Webapp (mandatory, background)
+        # 9. Webapp (mandatory, background)
         startup_with_policy webapp --background
     else
         for comp in "${components[@]}"; do
@@ -230,6 +239,7 @@ do_shutdown() {
     if [[ ${#components[@]} -eq 0 || "${components[0]}" == "all" ]]; then
         "${CTL_EXPORTER}" shutdown
         "${CTL_CONTROL_CENTER}" shutdown
+        "${CTL_SKILL_MARKET}" shutdown
         "${CTL_BUSINESS_INTELLIGENCE}" shutdown
         "${CTL_KNOWLEDGE}" shutdown
         "${CTL_WEBAPP}" shutdown
@@ -261,6 +271,7 @@ do_status() {
         status_one gateway    || has_fail=1
         status_one knowledge  || has_fail=1
         status_one business-intelligence || has_fail=1
+        status_one skill-market || has_fail=1
         status_one exporter   || has_fail=1
         status_one control-center || has_fail=1
         status_one webapp     || has_fail=1
@@ -306,6 +317,7 @@ Components (multiple allowed):
   gateway     Gateway + goosed agents                  [mandatory]
   knowledge   Knowledge ingestion / retrieval service  [mandatory]
   business-intelligence  Business intelligence service [mandatory]
+  skill-market  Skill package catalog service          [mandatory]
   exporter    Prometheus metrics exporter              [optional]
   control-center  Control Center service               [mandatory]
   webapp      Web application (Vite dev server)        [mandatory]

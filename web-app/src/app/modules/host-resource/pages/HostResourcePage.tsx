@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
@@ -7,19 +7,24 @@ import { useHostGroups } from '../hooks/useHostGroups'
 import { useClusters } from '../hooks/useClusters'
 import { useHostResource } from '../hooks/useHostResource'
 import { useHostRelations } from '../hooks/useHostRelations'
+import { useClusterRelations } from '../hooks/useClusterRelations'
 import { useBusinessServices } from '../hooks/useBusinessServices'
 import { useClusterTypes } from '../hooks/useClusterTypes'
 import { useBusinessTypes } from '../hooks/useBusinessTypes'
 import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
 import { useSops } from '../hooks/useSops'
+import { useResourceExport } from '../hooks/useResourceExport'
+import { useResourceImport } from '../hooks/useResourceImport'
 import ResourceTree, { type TreeNode, type TreeNodeType } from '../components/ResourceTree'
 import ResourceFormModal from '../components/ResourceFormModal'
 import HostCard from '../components/HostCard'
 import RelationGraph from '../components/RelationGraph'
+import ClusterInsightPanel from '../components/ClusterInsightPanel'
 import ClusterTypeTab from '../components/ClusterTypeTab'
 import BusinessTypeTab from '../components/BusinessTypeTab'
 import { SopsTab } from '../components/SopsTab'
 import { WhitelistTab } from '../components/WhitelistTab'
+import ImportDialog from '../components/ImportDialog'
 import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService } from '../../../../types/host'
 import '../styles/host-resource.css'
 
@@ -35,7 +40,7 @@ type EditingItem =
     | { type: 'host'; data: Host }
     | null
 
-type TabKey = 'overview' | 'cluster-types' | 'business-types' | 'sop-management' | 'whitelist'
+type TabKey = 'overview' | 'topology' | 'cluster-types' | 'business-types' | 'sop-management' | 'whitelist'
 
 const PAGE_SIZE = 6
 
@@ -44,26 +49,42 @@ export default function HostResourcePage() {
     const [activeTab, setActiveTab] = useState<TabKey>('overview')
     const [selected, setSelected] = useState<SelectedNode | null>(null)
     const [focusedHostId, setFocusedHostId] = useState<string | null>(null)
-    const [hopFocusId, setHopFocusId] = useState<string | null>(null)
+    const [selectedTopologyClusterId, setSelectedTopologyClusterId] = useState<string | null>(null)
     const [showModal, setShowModal] = useState(false)
     const [editingItem, setEditingItem] = useState<EditingItem>(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [hostSearch, setHostSearch] = useState('')
-    const [importing, setImporting] = useState(false)
+    const [treeSearch, setTreeSearch] = useState('')
+    const [showImportDialog, setShowImportDialog] = useState(false)
     const [testingId, setTestingId] = useState<string | null>(null)
     const [testResults, setTestResults] = useState<Record<string, { ok: boolean; msg: string }>>({})
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Data hooks
     const { groups, fetchGroups, createGroup, updateGroup, deleteGroup } = useHostGroups()
     const { clusters, fetchAllClusters, createCluster, updateCluster, deleteCluster } = useClusters()
     const { hosts, allHosts, fetchHosts, fetchAllHosts, createHost, updateHost, deleteHost, testConnection } = useHostResource()
-    const { graphData, relations: hostRelations, fetchGraph, fetchRelations: fetchHostRelations, createRelation, updateRelation, deleteRelation } = useHostRelations()
+    const { relations: hostRelations, fetchGraph, fetchRelations: fetchHostRelations, createRelation } = useHostRelations()
+    const { relations: clusterRelations, clusterGraphData, fetchClusterGraph, fetchRelations: fetchClusterRelations, createRelation: createClusterRelation, updateRelation: updateClusterRelation, deleteRelation: deleteClusterRelation } = useClusterRelations()
     const { businessServices, fetchBusinessServices, createBusinessService, updateBusinessService, deleteBusinessService } = useBusinessServices()
     const clusterTypesHook = useClusterTypes()
     const businessTypesHook = useBusinessTypes()
-    const { commands: whitelistCommands, addCommand: addWhitelistCommand } = useCommandWhitelist()
+    const { commands: whitelistCommands, addCommand: addWhitelistCommand, fetchWhitelist: fetchWhitelistCommands } = useCommandWhitelist()
     const sopsHook = useSops()
+
+    // Export / Import hooks
+    const { exporting, exportAllAsZip } = useResourceExport()
+    const { importing: csvImporting, progress: importProgress, importCsv } = useResourceImport({
+        fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands,
+        groups, clusters, allHosts, businessServices,
+        clusterTypes: clusterTypesHook.clusterTypes,
+        businessTypes: businessTypesHook.businessTypes,
+        createGroup, updateGroup, createCluster, createHost,
+        createBusinessService, createRelation,
+        createClusterType: clusterTypesHook.createClusterType,
+        createBusinessType: businessTypesHook.createBusinessType,
+        createSop: sopsHook.createSop,
+        addWhitelistCommand,
+    })
 
     // Load all data on mount
     useEffect(() => { fetchGroups() }, [fetchGroups])
@@ -71,30 +92,10 @@ export default function HostResourcePage() {
     useEffect(() => { fetchAllHosts() }, [fetchAllHosts])
     useEffect(() => { fetchHostRelations() }, [fetchHostRelations])
     useEffect(() => { fetchBusinessServices() }, [fetchBusinessServices])
+    useEffect(() => { fetchClusterGraph() }, [fetchClusterGraph])
 
-    // Resolve the province-level group ID for a business service by walking up the tree
-    // until we find a group whose parent is a root group (no parentId).
-    // This works for any nesting depth: 1-level, 2-level, 3-level, etc.
-    const resolveProvinceGroupId = useCallback((bs: BusinessService): string | undefined => {
-        let current = groups.find(g => g.id === bs.groupId)
-        if (!current) return undefined
-
-        // Walk up until we find a group whose parent is a root group
-        while (current?.parentId) {
-            const parent = groups.find(g => g.id === current!.parentId)
-            if (!parent?.parentId) {
-                // current's parent is a root group → current is the province-level group
-                return current.id
-            }
-            current = parent
-        }
-
-        // BS is in a root group or group with no parent → return its own group ID
-        return current?.id
-    }, [groups])
-
-    // Fetch hosts based on tree selection
-    useEffect(() => {
+    // Refresh host list respecting the current tree selection filter
+    const refreshHostList = useCallback(() => {
         if (selected?.type === 'cluster') {
             fetchHosts(selected.id, undefined)
         } else if (selected?.type === 'business-service') {
@@ -106,31 +107,57 @@ export default function HostResourcePage() {
         }
     }, [selected, fetchHosts])
 
-    // Fetch graph based on tree selection
+    // Fetch hosts based on tree selection
     useEffect(() => {
-        if (selected?.type === 'cluster') {
-            fetchGraph(selected.id)
-            setFocusedHostId(null)
-            setHopFocusId(null)
-        } else if (selected?.type === 'business-service') {
-            const bs = businessServices.find(b => b.id === selected.id)
-            if (bs) {
-                const provinceId = resolveProvinceGroupId(bs)
-                fetchGraph(undefined, provinceId)
-            } else {
-                fetchGraph()
-            }
-            setFocusedHostId(selected.id)
-        } else if (selected?.type === 'group' || selected?.type === 'subgroup') {
-            fetchGraph(undefined, selected.id)
-            setFocusedHostId(null)
-            setHopFocusId(null)
-        } else {
-            fetchGraph()
-            setFocusedHostId(null)
-            setHopFocusId(null)
+        refreshHostList()
+    }, [refreshHostList])
+
+    const topologyNodeMap = useMemo(() => {
+        const map = new Map(clusterGraphData.nodes.map(node => [node.id, node]))
+        return map
+    }, [clusterGraphData])
+
+    const selectedTopologyCluster = useMemo(() => {
+        if (!selectedTopologyClusterId) return null
+        const clusterFromList = clusters.find(cluster => cluster.id === selectedTopologyClusterId)
+        if (clusterFromList) return clusterFromList
+
+        const graphNode = topologyNodeMap.get(selectedTopologyClusterId)
+        if (graphNode?.nodeType !== 'cluster') return null
+
+        return {
+            id: graphNode.id,
+            name: graphNode.name,
+            type: graphNode.type ?? graphNode.clusterType ?? '',
+            purpose: '',
+            description: '',
+            groupId: graphNode.groupId ?? null,
+            createdAt: '',
+            updatedAt: '',
+        } satisfies Cluster
+    }, [selectedTopologyClusterId, clusters, topologyNodeMap])
+
+    const selectedTopologyClusterHosts = useMemo(() => {
+        if (!selectedTopologyClusterId) return []
+        return allHosts.filter(host => host.clusterId === selectedTopologyClusterId)
+    }, [allHosts, selectedTopologyClusterId])
+
+    const topologyGraphData = useMemo(() => {
+        const visibleNodeIds = new Set(
+            clusterGraphData.nodes
+                .filter(node => node.nodeType === 'cluster' || node.nodeType === 'business-service')
+                .map(node => node.id),
+        )
+
+        return {
+            nodes: clusterGraphData.nodes.filter(node => visibleNodeIds.has(node.id)),
+            edges: clusterGraphData.edges.filter(edge =>
+                edge.type !== 'constitute'
+                && visibleNodeIds.has(edge.source)
+                && visibleNodeIds.has(edge.target),
+            ),
         }
-    }, [selected, fetchGraph, businessServices, resolveProvinceGroupId])
+    }, [clusterGraphData])
 
     // Build tree data — recursive, supports arbitrary nesting depth
     const treeData = useMemo((): TreeNode[] => {
@@ -200,10 +227,24 @@ export default function HostResourcePage() {
 
         // Root groups (no parentId) become top-level tree nodes
         const rootGroups = groups.filter(g => !g.parentId)
-        return rootGroups.map(g => {
+        const tree = rootGroups.map(g => {
             const node = buildGroupNode(g)
             return { ...node, type: 'group' as TreeNodeType }
         })
+
+        // Mark inheritedDisabled: a node is visually disabled if it or any ancestor group has enabled=false
+        function markInherited(nodes: TreeNode[], ancestorOff: boolean) {
+            for (const n of nodes) {
+                const isGroup = n.type === 'group' || n.type === 'subgroup'
+                const groupEnabled = isGroup && n.raw ? (n.raw as HostGroup).enabled !== false : true
+                const effective = ancestorOff || !groupEnabled
+                n.inheritedDisabled = effective
+                if (n.children) markInherited(n.children, effective)
+            }
+        }
+        markInherited(tree, false)
+
+        return tree
     }, [groups, clusters, allHosts, businessServices, t])
 
     // Build cluster lookup for HostCard
@@ -216,7 +257,6 @@ export default function HostResourcePage() {
     const handleSelect = useCallback((id: string, type: TreeNodeType) => {
         setSelected(prev => prev?.id === id && prev?.type === type ? prev : { id, type })
         setFocusedHostId(null)
-        setHopFocusId(null)
         setCurrentPage(1)
     }, [])
 
@@ -296,12 +336,12 @@ export default function HostResourcePage() {
             try {
                 await deleteHost(host.id)
                 if (focusedHostId === host.id) setFocusedHostId(null)
-                if (hopFocusId === host.id) setHopFocusId(null)
+                refreshHostList()
             } catch (err) {
                 alert(err instanceof Error ? err.message : 'Failed')
             }
         }
-    }, [deleteHost, focusedHostId, t])
+    }, [deleteHost, focusedHostId, t, refreshHostList])
 
     const handleTestHost = useCallback(async (host: Host) => {
         setTestingId(host.id)
@@ -334,11 +374,30 @@ export default function HostResourcePage() {
     const defaultGroupIdForCreate = selected?.type === 'group' || selected?.type === 'subgroup' ? selected.id : undefined
     const defaultClusterIdForCreate = selected?.type === 'cluster' ? selected.id : undefined
 
-    // Client-side search filter
+    // Client-side tree search filter
+    const filteredTreeData = useMemo(() => {
+        if (!treeSearch.trim()) return treeData
+        const term = treeSearch.toLowerCase()
+        function filterNodes(nodes: TreeNode[]): TreeNode[] {
+            return nodes.reduce<TreeNode[]>((acc, node) => {
+                const childMatch = node.children ? filterNodes(node.children) : []
+                const selfMatch = node.name.toLowerCase().includes(term)
+                    || (node.subtitle && node.subtitle.toLowerCase().includes(term))
+                if (selfMatch || childMatch.length > 0) {
+                    acc.push({ ...node, children: childMatch.length > 0 ? childMatch : node.children })
+                }
+                return acc
+            }, [])
+        }
+        return filterNodes(treeData)
+    }, [treeData, treeSearch])
+
+    // Client-side search filter (default alphabetical ascending by name)
     const filteredHosts = useMemo(() => {
-        if (!hostSearch.trim()) return hosts
-        const term = hostSearch.toLowerCase()
-        return hosts.filter(h => h.name.toLowerCase().includes(term))
+        const list = hostSearch.trim()
+            ? hosts.filter(h => h.name.toLowerCase().includes(hostSearch.toLowerCase()))
+            : hosts
+        return [...list].sort((a, b) => a.name.localeCompare(b.name))
     }, [hosts, hostSearch])
 
     // Pagination
@@ -347,166 +406,15 @@ export default function HostResourcePage() {
     const paginatedHosts = filteredHosts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
     const handleExport = useCallback(() => {
-        const data = {
-            version: 5,
-            exportedAt: new Date().toISOString(),
-            clusterTypes: clusterTypesHook.clusterTypes.map(ct => ({
-                name: ct.name, code: ct.code, description: ct.description,
-                color: ct.color, knowledge: ct.knowledge,
-            })),
-            businessTypes: businessTypesHook.businessTypes.map(bt => ({
-                name: bt.name, code: bt.code, description: bt.description,
-                color: bt.color, knowledge: bt.knowledge,
-            })),
-            groups: groups.map(({ id, name, code, parentId, description }) => ({ id, name, code, parentId, description })),
-            clusters: clusters.map(({ id, name, type, purpose, groupId, description }) => ({ id, name, type, purpose, groupId, description })),
-            businessServices: businessServices.map(({ id, name, code, groupId, businessTypeId, description, hostIds, tags, priority, contactInfo }) =>
-                ({ id, name, code, groupId, businessTypeId, description, hostIds, tags, priority, contactInfo })),
-            hosts: allHosts.map(({ id, name, hostname, ip, port, os, location, username, authType, business, clusterId, purpose, tags, description, customAttributes }) =>
-                ({ id, name, hostname, ip, port, os, location, username, authType, business, clusterId, purpose, tags, description, customAttributes })),
-            relations: hostRelations.map(({ id, sourceHostId, targetHostId, description }) => ({ id, sourceHostId, targetHostId, description })),
-            commandWhitelist: whitelistCommands.map(({ pattern, description, enabled }) => ({ pattern, description, enabled })),
-            sops: sopsHook.sops.map(s => ({
-                name: s.name, description: s.description, version: s.version,
-                triggerCondition: s.triggerCondition, enabled: s.enabled,
-                mode: s.mode, nodes: s.nodes, stepsDescription: s.stepsDescription,
-                tags: s.tags,
-            })),
-        }
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `ops-resources-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`
-        a.click()
-        URL.revokeObjectURL(url)
-    }, [groups, clusters, businessServices, allHosts, hostRelations, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops])
-
-    const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        try {
-            const text = await file.text()
-            const data = JSON.parse(text)
-            if ((!data.version || data.version < 1 || data.version > 5) || !data.groups || !data.clusters || !data.hosts) {
-                alert(t('hostResource.invalidFile'))
-                return
-            }
-
-            setImporting(true)
-            const groupIdMap = new Map<string, string>()
-            const clusterIdMap = new Map<string, string>()
-            const hostIdMap = new Map<string, string>()
-
-            // 0. Cluster types (v3+)
-            let ctCount = 0
-            if (data.clusterTypes) {
-                for (const ct of data.clusterTypes) {
-                    try {
-                        await clusterTypesHook.createClusterType(ct)
-                        ctCount++
-                    } catch { /* skip duplicate or failed */ }
-                }
-            }
-
-            // 0b. Business types (v3+)
-            let btCount = 0
-            if (data.businessTypes) {
-                for (const bt of data.businessTypes) {
-                    try {
-                        await businessTypesHook.createBusinessType(bt)
-                        btCount++
-                    } catch { /* skip duplicate or failed */ }
-                }
-            }
-
-            // 1. Groups (preserve hierarchy via parentId remapping)
-            for (const g of data.groups) {
-                const remapped = { ...g, parentId: g.parentId ? groupIdMap.get(g.parentId) : undefined }
-                const created = await createGroup(remapped)
-                groupIdMap.set(g.id, created.id)
-            }
-
-            // 2. Clusters
-            for (const c of data.clusters) {
-                const remapped = { ...c, groupId: c.groupId ? groupIdMap.get(c.groupId) : undefined }
-                const created = await createCluster(remapped)
-                clusterIdMap.set(c.id, created.id)
-            }
-
-            // 3. Business services (v2+)
-            let bsCount = 0
-            if (data.businessServices) {
-                for (const bs of data.businessServices) {
-                    const remapped = {
-                        ...bs,
-                        groupId: bs.groupId ? groupIdMap.get(bs.groupId) : undefined,
-                        hostIds: (bs.hostIds || []).map((hid: string) => hostIdMap.get(hid)).filter(Boolean),
-                    }
-                    try {
-                        await createBusinessService(remapped)
-                        bsCount++
-                    } catch { /* skip failed */ }
-                }
-            }
-
-            // 4. Hosts (credential empty, needs user to re-enter)
-            for (const h of data.hosts) {
-                const remapped = {
-                    ...h,
-                    clusterId: h.clusterId ? clusterIdMap.get(h.clusterId) : undefined,
-                    credential: '',
-                }
-                const created = await createHost(remapped as HostCreateRequest)
-                hostIdMap.set(h.id, created.id)
-            }
-
-            // 5. Relations
-            let relCount = 0
-            for (const r of (data.relations || [])) {
-                const newSource = hostIdMap.get(r.sourceHostId)
-                const newTarget = hostIdMap.get(r.targetHostId)
-                if (newSource && newTarget) {
-                    await createRelation({ sourceHostId: newSource, targetHostId: newTarget, description: r.description })
-                    relCount++
-                }
-            }
-
-            // 6. Command whitelist (v4+)
-            let wlCount = 0
-            for (const cmd of (data.commandWhitelist || [])) {
-                try {
-                    await addWhitelistCommand(cmd)
-                    wlCount++
-                } catch { /* skip duplicate or failed */ }
-            }
-
-            // 7. SOPs (v5+)
-            let sopCount = 0
-            if (data.sops) {
-                for (const sop of data.sops) {
-                    try {
-                        await sopsHook.createSop(sop)
-                        sopCount++
-                    } catch { /* skip duplicate or failed */ }
-                }
-            }
-
-            alert(t('hostResource.importSuccess', {
-                groups: groupIdMap.size, clusters: clusterIdMap.size,
-                hosts: hostIdMap.size, relations: relCount, sops: sopCount,
-            }))
-
-            // Refresh all data
-            await Promise.all([fetchGroups(), fetchAllClusters(), fetchAllHosts(), fetchHostRelations(), fetchGraph(), fetchBusinessServices(), sopsHook.fetchSops()])
-        } catch (err) {
-            alert(t('hostResource.importFailed', { error: err instanceof Error ? err.message : String(err) }))
-        } finally {
-            setImporting(false)
-            if (fileInputRef.current) fileInputRef.current.value = ''
-        }
-    }, [t, createGroup, createCluster, createHost, createRelation, createBusinessService, addWhitelistCommand, clusterTypesHook.createClusterType, businessTypesHook.createBusinessType, sopsHook.createSop, sopsHook.fetchSops, fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchGraph, fetchBusinessServices])
+        exportAllAsZip({
+            groups, clusters, allHosts, hostRelations,
+            businessServices,
+            clusterTypes: clusterTypesHook.clusterTypes,
+            businessTypes: businessTypesHook.businessTypes,
+            whitelistCommands,
+            sops: sopsHook.sops,
+        })
+    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops])
 
     const openCreateModal = useCallback(() => {
         setEditingItem(null)
@@ -520,6 +428,7 @@ export default function HostResourcePage() {
 
     const tabs: { key: TabKey; label: string }[] = [
         { key: 'overview', label: t('hostResource.tabOverview') },
+        { key: 'topology', label: t('hostResource.tabTopology') },
         { key: 'cluster-types', label: t('hostResource.tabClusterTypes') },
         { key: 'business-types', label: t('hostResource.tabBusinessTypes') },
         { key: 'sop-management', label: t('hostResource.tabSopManagement') },
@@ -537,13 +446,12 @@ export default function HostResourcePage() {
                                 + {t('hostResource.createResource')}
                             </button>
                         )}
-                        <button className="btn btn-secondary btn-sm" onClick={handleExport} disabled={importing}>
-                            {t('hostResource.export')}
+                        <button className="btn btn-secondary btn-sm" onClick={handleExport} disabled={exporting}>
+                            {exporting ? t('hostResource.exporting') : t('hostResource.export')}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-                            {importing ? t('hostResource.importing', { current: 0, total: 0 }) : t('hostResource.import')}
+                        <button className="btn btn-secondary btn-sm" onClick={() => setShowImportDialog(true)} disabled={csvImporting}>
+                            {t('hostResource.import')}
                         </button>
-                        <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
                     </div>
                 }
             />
@@ -569,8 +477,15 @@ export default function HostResourcePage() {
                     <div className="hr-layout-main">
                         {/* Left: Resource Tree */}
                         <div className="hr-tree-sidebar">
+                            <div className="hr-tree-search">
+                                <ListSearchInput
+                                    value={treeSearch}
+                                    placeholder={t('hostResource.searchTree')}
+                                    onChange={setTreeSearch}
+                                />
+                            </div>
                             <ResourceTree
-                                tree={treeData}
+                                tree={filteredTreeData}
                                 selectedId={selected?.id ?? null}
                                 selectedType={selected?.type ?? null}
                                 onSelect={handleSelect}
@@ -586,15 +501,21 @@ export default function HostResourcePage() {
                             ) : (
                                 <>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
-                                        <ListSearchInput
-                                            value={hostSearch}
-                                            placeholder={t('hostResource.searchHosts')}
-                                            onChange={setHostSearch}
-                                        />
-                                        {hostSearch && (
-                                            <ListResultsMeta>
-                                                {t('common.resultsFound', { count: filteredHosts.length })}
-                                            </ListResultsMeta>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2, 8px)', flex: 1 }}>
+                                            <ListSearchInput
+                                                value={hostSearch}
+                                                placeholder={t('hostResource.searchHosts')}
+                                                onChange={setHostSearch}
+                                            />
+                                            {hostSearch && (
+                                                <ListResultsMeta>
+                                                    {t('common.resultsFound', { count: filteredHosts.length })}
+                                                </ListResultsMeta>
+                                            )}
+                                        </div>
+                                        {selected?.type === 'cluster' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2, 8px)', flexShrink: 0 }}>
+                                            </div>
                                         )}
                                     </div>
                                     <div className="hr-host-grid">
@@ -645,31 +566,48 @@ export default function HostResourcePage() {
                             )}
                         </div>
                     </div>
+                </>
+            )}
 
-                    {/* Bottom: Topology */}
-                    <div className="hr-topology-area">
-                        <RelationGraph
-                            data={graphData}
-                            focusedHostId={focusedHostId}
-                            hopFocusId={hopFocusId}
-                            onNodeClick={(nodeId) => {
-                                setFocusedHostId(prev => prev === nodeId ? null : nodeId)
-                            }}
-                            onNodeDoubleClick={(nodeId) => {
-                                setHopFocusId(prev => prev === nodeId ? null : nodeId)
-                            }}
-                            onBackgroundClick={() => {
+            {activeTab === 'topology' && (
+                <div className="hr-topology-area">
+                    <div className="hr-topology-workbench">
+                        <div className="hr-topology-graph-pane">
+                            <div className="hr-topology-pane-header">
+                                <div>
+                                    <h3 className="hr-topology-pane-title">{t('hostResource.clusterRelationsTitle')}</h3>
+                                    <p className="hr-topology-pane-subtitle">{t('hostResource.clusterRelationsSubtitle')}</p>
+                                </div>
+                            </div>
+                            <RelationGraph
+                                data={topologyGraphData}
+                                onNodeClick={(nodeId) => {
+                                    const node = topologyNodeMap.get(nodeId)
+                                    if (node?.nodeType === 'cluster') {
+                                        setSelectedTopologyClusterId(prev => prev === nodeId ? null : nodeId)
+                                    }
+                                }}
+                            />
+                        </div>
+                        <ClusterInsightPanel
+                            cluster={selectedTopologyCluster}
+                            hosts={selectedTopologyClusterHosts}
+                            graphData={clusterGraphData}
+                            viewingClusterHosts={selected?.type === 'cluster' && selected.id === selectedTopologyCluster?.id}
+                            onViewClusterHosts={(clusterId) => {
+                                setSelected({ id: clusterId, type: 'cluster' })
                                 setFocusedHostId(null)
-                                setHopFocusId(null)
+                                setCurrentPage(1)
                             }}
                         />
                     </div>
-                </>
+                </div>
             )}
 
             {activeTab === 'cluster-types' && (
                 <ClusterTypeTab
                     clusterTypes={clusterTypesHook.clusterTypes}
+                    clusters={clusters}
                     loading={clusterTypesHook.loading}
                     onCreate={clusterTypesHook.createClusterType}
                     onUpdate={clusterTypesHook.updateClusterType}
@@ -701,11 +639,11 @@ export default function HostResourcePage() {
                     hosts={allHosts}
                     defaultGroupId={defaultGroupIdForCreate}
                     defaultClusterId={defaultClusterIdForCreate}
-                    hostRelations={hostRelations}
-                    fetchHostRelations={fetchHostRelations}
                     clusterTypes={clusterTypesHook.clusterTypes}
                     businessTypes={businessTypesHook.businessTypes}
                     businessServices={businessServices}
+                    clusterRelations={clusterRelations}
+                    fetchClusterRelations={fetchClusterRelations}
                     onClose={() => { setShowModal(false); setEditingItem(null) }}
                     onSaveGroup={async (data) => {
                         if (editingItem?.type === 'group') {
@@ -734,12 +672,22 @@ export default function HostResourcePage() {
                         } else {
                             await createHost(data as unknown as HostCreateRequest)
                         }
+                        refreshHostList()
                     }}
-                    onSaveRelation={createRelation}
-                    onUpdateRelation={updateRelation}
-                    onDeleteRelation={deleteRelation}
+                    onSaveClusterRelation={createClusterRelation}
+                    onUpdateClusterRelation={updateClusterRelation}
+                    onDeleteClusterRelation={deleteClusterRelation}
                 />
             )}
+
+            {/* Import Dialog */}
+            <ImportDialog
+                open={showImportDialog}
+                onClose={() => setShowImportDialog(false)}
+                importing={csvImporting}
+                progress={importProgress}
+                onImport={importCsv}
+            />
         </div>
     )
 }

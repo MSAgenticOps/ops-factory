@@ -5,11 +5,13 @@ import {
     type SessionLocator,
     type SessionLocatorState,
 } from '../../../utils/sessionLocator'
+import type { SelectedSkill } from '../../../types/message'
 
 const CHAT_LOCATOR_STORAGE_KEY = 'opsfactory:chat:session-locator'
 
 export interface ChatLocationState {
     initialMessage?: string
+    initialSelectedSkill?: SelectedSkill
     preferredAgentId?: string
     sessionLocator?: SessionLocator
     startNew?: boolean
@@ -17,6 +19,7 @@ export interface ChatLocationState {
 
 export interface ResolveChatRouteResult {
     initialMessage?: string
+    initialSelectedSkill?: SelectedSkill
     locatorState: SessionLocatorState
     preferredAgentId: string | null
     source: 'idle' | 'search' | 'startNew' | 'state' | 'storage'
@@ -31,6 +34,24 @@ function normalizeOptionalString(value: unknown): string | null {
 function readLocationState(value: unknown): ChatLocationState | null {
     if (!value || typeof value !== 'object') return null
     return value as ChatLocationState
+}
+
+function normalizeSelectedSkill(value: unknown): SelectedSkill | undefined {
+    if (!value || typeof value !== 'object') return undefined
+    const record = value as Record<string, unknown>
+    if (
+        typeof record.id !== 'string' ||
+        typeof record.name !== 'string' ||
+        typeof record.path !== 'string'
+    ) {
+        return undefined
+    }
+    return {
+        id: record.id,
+        name: record.name,
+        path: record.path,
+        ...(typeof record.description === 'string' ? { description: record.description } : {}),
+    }
 }
 
 function readSessionLocatorFromLocationState(value: unknown): SessionLocatorState | null {
@@ -78,7 +99,7 @@ function safeSessionStorageRemoveItem(key: string) {
 export function buildChatSessionState(
     sessionId: string,
     agentId: string,
-    extras: Pick<ChatLocationState, 'initialMessage'> = {},
+    extras: Pick<ChatLocationState, 'initialMessage' | 'initialSelectedSkill'> = {},
 ): ChatLocationState {
     const state: ChatLocationState = {
         sessionLocator: createSessionLocator(sessionId, agentId),
@@ -89,10 +110,15 @@ export function buildChatSessionState(
         state.initialMessage = initialMessage
     }
 
+    const initialSelectedSkill = normalizeSelectedSkill(extras.initialSelectedSkill)
+    if (initialSelectedSkill) {
+        state.initialSelectedSkill = initialSelectedSkill
+    }
+
     return state
 }
 
-export function buildNewChatState(preferredAgentId?: string, initialMessage?: string): ChatLocationState {
+export function buildNewChatState(preferredAgentId?: string, initialMessage?: string, initialSelectedSkill?: SelectedSkill): ChatLocationState {
     const state: ChatLocationState = {
         startNew: true,
     }
@@ -106,6 +132,11 @@ export function buildNewChatState(preferredAgentId?: string, initialMessage?: st
 
     if (normalizedInitialMessage) {
         state.initialMessage = normalizedInitialMessage
+    }
+
+    const normalizedSelectedSkill = normalizeSelectedSkill(initialSelectedSkill)
+    if (normalizedSelectedSkill) {
+        state.initialSelectedSkill = normalizedSelectedSkill
     }
 
     return state
@@ -135,11 +166,13 @@ export function readPersistedChatSessionLocator(): SessionLocator | null {
 export function resolveChatRouteState(searchParams: URLSearchParams, locationState: unknown): ResolveChatRouteResult {
     const state = readLocationState(locationState)
     const initialMessage = normalizeOptionalString(state?.initialMessage) ?? undefined
+    const initialSelectedSkill = normalizeSelectedSkill(state?.initialSelectedSkill)
     const preferredAgentId = normalizeOptionalString(state?.preferredAgentId)
 
     if (state?.startNew) {
         return {
             initialMessage,
+            initialSelectedSkill,
             locatorState: { kind: 'idle' },
             preferredAgentId,
             source: 'startNew',
@@ -150,6 +183,7 @@ export function resolveChatRouteState(searchParams: URLSearchParams, locationSta
     if (stateLocator) {
         return {
             initialMessage,
+            initialSelectedSkill,
             locatorState: stateLocator,
             preferredAgentId,
             source: 'state',
@@ -160,6 +194,7 @@ export function resolveChatRouteState(searchParams: URLSearchParams, locationSta
     if (searchLocator.kind !== 'idle') {
         return {
             initialMessage,
+            initialSelectedSkill,
             locatorState: searchLocator,
             preferredAgentId,
             source: 'search',
@@ -170,6 +205,7 @@ export function resolveChatRouteState(searchParams: URLSearchParams, locationSta
     if (storedLocator) {
         return {
             initialMessage,
+            initialSelectedSkill,
             locatorState: { kind: 'ready', locator: storedLocator },
             preferredAgentId,
             source: 'storage',
@@ -178,6 +214,7 @@ export function resolveChatRouteState(searchParams: URLSearchParams, locationSta
 
     return {
         initialMessage,
+        initialSelectedSkill,
         locatorState: { kind: 'idle' },
         preferredAgentId,
         source: 'idle',

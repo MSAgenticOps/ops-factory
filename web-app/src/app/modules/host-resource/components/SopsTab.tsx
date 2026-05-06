@@ -48,6 +48,33 @@ function TrashIcon() {
     )
 }
 
+function EditIcon() {
+    return (
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16" aria-hidden="true">
+            <path
+                d="M4.75 13.95 4 16l2.05-.75 8.5-8.5-1.3-1.3-8.5 8.5Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="m11.95 6.05 1.3 1.3m.65-.65 1.05-1.05a1.15 1.15 0 0 0 0-1.6l-.5-.5a1.15 1.15 0 0 0-1.6 0L11.8 4.6"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M4 16h12"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+            />
+        </svg>
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Variable Editor (inline sub-component)
 // ---------------------------------------------------------------------------
@@ -92,7 +119,7 @@ function VariableEditor({
                     className="btn btn-subtle sop-workflow-inline-add"
                     onClick={addVar}
                 >
-                    + {t('remoteDiagnosis.sops.addNode')}
+                    + {t('remoteDiagnosis.sops.addVariable')}
                 </button>
             </div>
             {variables.map((v, i: number) => (
@@ -205,7 +232,7 @@ function TransitionEditor({
                     className="btn btn-subtle sop-workflow-inline-add"
                     onClick={addTransition}
                 >
-                    + {t('remoteDiagnosis.sops.addNode')}
+                    + {t('remoteDiagnosis.sops.addBranch')}
                 </button>
             </div>
             {transitions.map((tr, i) => (
@@ -775,10 +802,12 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
                     <div className="sop-workflow-table-actions">
                         <button
                             type="button"
-                            className="btn btn-subtle"
+                            className="hr-host-card-action"
                             onClick={() => onEdit(sop)}
+                            aria-label={t('common.edit')}
+                            title={t('common.edit')}
                         >
-                            {t('common.edit')}
+                            <EditIcon />
                         </button>
                         <button
                             type="button"
@@ -1022,7 +1051,7 @@ export function SopsTab() {
     }, [sops, searchTerm])
 
     return (
-        <>
+        <div className="hr-type-tab-content">
             <section className="knowledge-section-card sop-workflow-section-card">
                 <div className="knowledge-section-header sop-workflow-section-header">
                     <div>
@@ -1156,6 +1185,6 @@ export function SopsTab() {
                     onSave={handleSaveSop}
                 />
             )}
-        </>
+        </div>
     )
 }

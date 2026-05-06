@@ -5,16 +5,18 @@ import {
 } from 'node:fs/promises'
 import net from 'node:net'
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import YAML from 'yaml'
 import { sleep } from './helpers.js'
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..')
 const GATEWAY_DIR = join(PROJECT_ROOT, 'gateway')
 const EXPORTER_DIR = join(PROJECT_ROOT, 'prometheus-exporter')
 const WEBAPP_DIR = join(PROJECT_ROOT, 'web-app')
+const SKILL_MARKET_DIR = join(PROJECT_ROOT, 'skill-market')
 const LANGFUSE_DIR = join(PROJECT_ROOT, 'langfuse')
 const ONLYOFFICE_DIR = join(PROJECT_ROOT, 'onlyoffice')
 const TMP_DIR = join(PROJECT_ROOT, 'test', '.tmp-config-test')
-const MVN = process.env.MVN || '/tmp/apache-maven-3.9.6/bin/mvn'
+const MVN = process.env.MVN || 'mvn'
 
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -62,6 +64,7 @@ describe('config files exist', () => {
     { name: 'gateway', dir: GATEWAY_DIR },
     { name: 'prometheus-exporter', dir: EXPORTER_DIR },
     { name: 'web-app', dir: WEBAPP_DIR },
+    { name: 'skill-market', dir: SKILL_MARKET_DIR },
     { name: 'langfuse', dir: LANGFUSE_DIR },
     { name: 'onlyoffice', dir: ONLYOFFICE_DIR },
   ]
@@ -99,6 +102,7 @@ describe('shell scripts syntax', () => {
   const scripts = {
     gateway: join(GATEWAY_DIR, 'scripts', 'ctl.sh'),
     exporter: join(EXPORTER_DIR, 'scripts', 'ctl.sh'),
+    skillMarket: join(SKILL_MARKET_DIR, 'scripts', 'ctl.sh'),
     onlyoffice: join(ONLYOFFICE_DIR, 'scripts', 'ctl.sh'),
     langfuse: join(LANGFUSE_DIR, 'scripts', 'ctl.sh'),
     orchestrator: join(PROJECT_ROOT, 'scripts', 'ctl.sh'),
@@ -119,6 +123,47 @@ describe('orchestrator script docs', () => {
     expect(content).toContain('ENABLE_ONLYOFFICE')
     expect(content).toContain('ENABLE_LANGFUSE')
     expect(content).toContain('ENABLE_EXPORTER')
+  })
+
+  it('scripts/ctl.sh registers skill-market as a managed component', async () => {
+    const content = await readFile(join(PROJECT_ROOT, 'scripts', 'ctl.sh'), 'utf-8')
+    expect(content).toContain('CTL_SKILL_MARKET')
+    expect(content).toContain('skill-market')
+    expect(content).toContain('Skill Market')
+  })
+})
+
+describe('skill-market service configuration', () => {
+  it('skill-market config exposes expected defaults', async () => {
+    const content = await readFile(join(SKILL_MARKET_DIR, 'config.yaml.example'), 'utf-8')
+    const config = YAML.parse(content)
+
+    expect(config.server.port).toBe(8095)
+    expect(config['skill-market'].runtime['base-dir']).toBe('./data')
+    expect(config['skill-market'].package['max-upload-size-mb']).toBe(50)
+    expect(config['skill-market'].package['max-unpacked-size-mb']).toBe(200)
+    expect(config['skill-market'].package['max-file-count']).toBe(1000)
+  })
+
+  it('gateway config declares skill-market client settings', async () => {
+    const content = await readFile(join(GATEWAY_DIR, 'config.yaml.example'), 'utf-8')
+    const config = YAML.parse(content)
+
+    expect(config.gateway['skill-market']['base-url']).toBe('http://127.0.0.1:8095')
+    expect(config.gateway['skill-market']['request-timeout-ms']).toBe(10000)
+    expect(config.gateway['skill-market']['max-package-size-mb']).toBe(200)
+  })
+
+  it('control-center registers skill-market as a managed service', async () => {
+    const content = await readFile(join(PROJECT_ROOT, 'control-center', 'config.yaml.example'), 'utf-8')
+    const config = YAML.parse(content)
+    const service = config['control-center'].services.find((item: { id: string }) => item.id === 'skill-market')
+
+    expect(service).toBeTruthy()
+    expect(service['base-url']).toBe('http://127.0.0.1:8095')
+    expect(service['health-path']).toBe('/actuator/health')
+    expect(service['ctl-component']).toBe('skill-market')
+    expect(service['log-path']).toBe('skill-market/logs/skill-market.log')
   })
 })
 

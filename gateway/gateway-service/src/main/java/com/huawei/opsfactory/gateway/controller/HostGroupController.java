@@ -17,6 +17,7 @@ import reactor.core.scheduler.Schedulers;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/gateway/host-groups")
@@ -38,10 +39,16 @@ public class HostGroupController {
     }
 
     @GetMapping
-    public Mono<Map<String, Object>> listGroups(ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listGroups(
+            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+            ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
+            if (enabledOnly) {
+                Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
+                groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
+            }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("groups", groups);
             return result;
@@ -49,12 +56,22 @@ public class HostGroupController {
     }
 
     @GetMapping("/tree")
-    public Mono<Map<String, Object>> getTree(ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> getTree(
+            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+            ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
             List<Map<String, Object>> clusters = clusterService.listClusters(null, null);
             List<Map<String, Object>> businessServices = businessServiceService.listBusinessServices(null, null);
+            if (enabledOnly) {
+                Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
+                groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
+                clusters.removeIf(c -> Boolean.FALSE.equals(c.get("enabled"))
+                        || disabledGroupIds.contains(c.get("groupId")));
+                businessServices.removeIf(bs -> Boolean.FALSE.equals(bs.get("enabled"))
+                        || disabledGroupIds.contains(bs.get("groupId")));
+            }
             return hostGroupService.getTree(groups, clusters, businessServices);
         }).subscribeOn(Schedulers.boundedElastic());
     }

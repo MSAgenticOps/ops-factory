@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { HostGroup, Cluster, BusinessService } from '../../../../types/host'
+import TopologyNodeIcon from './TopologyNodeIcon'
 
 export type TreeNodeType = 'group' | 'subgroup' | 'business-service' | 'cluster'
 
@@ -11,6 +12,7 @@ export type TreeNode = {
     subtitle?: string
     children?: TreeNode[]
     raw?: HostGroup | Cluster | BusinessService
+    inheritedDisabled?: boolean
 }
 
 type Props = {
@@ -45,13 +47,14 @@ export default function ResourceTree({ tree, selectedId, selectedType, onSelect,
                     onSelect={onSelect}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    inheritedDisabled={false}
                 />
             ))}
         </div>
     )
 }
 
-function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit, onDelete }: {
+function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit, onDelete, inheritedDisabled }: {
     node: TreeNode
     depth: number
     selectedId: string | null
@@ -59,10 +62,13 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
     onSelect: (id: string, type: TreeNodeType) => void
     onEdit?: (id: string, type: TreeNodeType) => void
     onDelete?: (id: string, type: TreeNodeType) => void
+    inheritedDisabled: boolean
 }) {
     const isSelected = selectedId === node.id && selectedType === node.type
     const hasChildren = node.children && node.children.length > 0
     const [expanded, setExpanded] = useState(true)
+
+    const isDisabled = inheritedDisabled === true
 
     const handleClick = () => {
         onSelect(node.id, node.type)
@@ -73,16 +79,12 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
         setExpanded(prev => !prev)
     }
 
-    const iconClass = node.type === 'group' || node.type === 'subgroup'
-        ? 'hr-tree-icon-folder'
-        : node.type === 'business-service'
-        ? 'hr-tree-icon-business-service'
-        : 'hr-tree-icon-cluster'
+    const isFolder = node.type === 'group' || node.type === 'subgroup'
 
     return (
         <div className="hr-tree-node-wrapper">
             <div
-                className={`hr-tree-node ${isSelected ? 'hr-tree-node-selected' : ''}`}
+                className={`hr-tree-node ${isSelected ? 'hr-tree-node-selected' : ''} ${isDisabled ? 'hr-tree-node-disabled' : ''}`}
                 style={{ paddingLeft: depth * 16 + 8 }}
                 onClick={handleClick}
             >
@@ -94,7 +96,15 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
                         &#9654;
                     </span>
                 )}
-                <span className={`hr-tree-icon ${iconClass}`} />
+                {isFolder ? (
+                    <span className="hr-tree-icon hr-tree-icon-folder" />
+                ) : (
+                    <TopologyNodeIcon
+                        kind={node.type === 'business-service' ? 'business' : 'cluster'}
+                        size={16}
+                        className={`hr-tree-icon hr-tree-icon-${node.type}`}
+                    />
+                )}
                 <span className="hr-tree-label">{node.name}</span>
                 {node.subtitle && <span className="hr-tree-subtitle">{node.subtitle}</span>}
                 <span className="hr-tree-node-actions" onClick={e => e.stopPropagation()}>
@@ -130,6 +140,7 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, onSelect, onEdit,
                             onSelect={onSelect}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            inheritedDisabled={isDisabled}
                         />
                     ))}
                 </div>
