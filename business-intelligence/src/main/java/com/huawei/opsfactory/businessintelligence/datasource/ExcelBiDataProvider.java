@@ -1,6 +1,7 @@
 package com.huawei.opsfactory.businessintelligence.datasource;
 
 import com.huawei.opsfactory.businessintelligence.config.BusinessIntelligenceRuntimeProperties;
+import com.huawei.opsfactory.businessintelligence.model.BiColumns;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -54,7 +55,8 @@ public class ExcelBiDataProvider implements BiDataProvider {
             requests.size(),
             problems.size()
         );
-        return new BiRawData(incidents, incidentSlaCriteria, changes, requests, problems);
+        List<Map<String, String>> enrichedIncidents = enrichIncidentsWithSla(incidents, incidentSlaCriteria);
+        return new BiRawData(enrichedIncidents, incidentSlaCriteria, changes, requests, problems);
     }
 
     private List<Map<String, String>> readRows(Path file, String sheetName) {
@@ -107,6 +109,69 @@ public class ExcelBiDataProvider implements BiDataProvider {
             return rows;
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to read data file: " + file, exception);
+        }
+    }
+
+    /**
+     * Inject computed "SLA Compliant" (Yes/No) into each incident row by comparing
+     * actual Response Time / Resolution Time against per-priority SLA criteria.
+     */
+    private List<Map<String, String>> enrichIncidentsWithSla(
+            List<Map<String, String>> incidents,
+            List<Map<String, String>> criteria) {
+        if (criteria.isEmpty() || incidents.isEmpty()) {
+            return incidents;
+        }
+        Map<String, Double> responseTargets = buildCriteriaMap(criteria,
+            List.of("Response （minutes）", "Response (minutes)", "Response"));
+        Map<String, Double> resolutionTargets = buildCriteriaMap(criteria,
+            List.of("Resolution （hours）", "Resolution (hours)", "Resolution"));
+
+        for (Map<String, String> row : incidents) {
+            String priority = row.getOrDefault(BiColumns.PRIORITY, "").trim();
+            Double respTarget = responseTargets.get(priority);
+            Double resolTarget = resolutionTargets.get(priority);
+            if (priority.isEmpty() || respTarget == null || resolTarget == null) {
+                row.put(BiColumns.SLA_COMPLIANT, "");
+            } else {
+                String respRaw = row.getOrDefault(BiColumns.RESPONSE_TIME_M, "").trim();
+                String resolRaw = row.getOrDefault(BiColumns.RESOLUTION_TIME_M, "").trim();
+                if (respRaw.isEmpty() || resolRaw.isEmpty()) {
+                    row.put(BiColumns.SLA_COMPLIANT, "");
+                } else {
+                    double respMinutes = parseDouble(respRaw);
+                    double resolMinutes = parseDouble(resolRaw);
+                    boolean met = respMinutes <= respTarget && resolMinutes / 60.0 <= resolTarget;
+                    row.put(BiColumns.SLA_COMPLIANT, met ? "Yes" : "No");
+                }
+            }
+        }
+        return incidents;
+    }
+
+    private Map<String, Double> buildCriteriaMap(List<Map<String, String>> criteria,
+                                                  List<String> candidateKeys) {
+        Map<String, Double> map = new LinkedHashMap<>();
+        for (Map<String, String> row : criteria) {
+            String priority = row.getOrDefault(BiColumns.PRIORITY, "").trim();
+            if (priority.isEmpty()) continue;
+            for (String key : candidateKeys) {
+                String val = row.getOrDefault(key, "").trim();
+                if (!val.isEmpty()) {
+                    map.put(priority, parseDouble(val));
+                    break;
+                }
+            }
+        }
+        return map;
+    }
+
+    private double parseDouble(String value) {
+        if (value == null || value.isBlank()) return 0;
+        try {
+            return Double.parseDouble(value.replaceAll("[,，]", ""));
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 

@@ -265,7 +265,10 @@
       "breached": "SLA breached",
       "met": "SLA met",
       "atRisk": "SLA at risk",
-      "unknown": "SLA unknown"
+      "unknown": "SLA unknown",
+      "bothBreached": "Both breached",
+      "responseBreached": "Response breached",
+      "resolutionBreached": "Resolution breached"
     },
     "noChartData": "No chart data yet",
     "noTableData": "No table data yet",
