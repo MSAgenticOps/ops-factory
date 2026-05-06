@@ -1296,8 +1296,10 @@
     align-items: center;
 }
 
-.hr-attr-key {
+.hr-custom-attr-row .hr-attr-key,
+.hr-custom-attr-row .hr-attr-value {
     flex: 1;
+    text-align: left;
 }
 
 .hr-attr-remove {
