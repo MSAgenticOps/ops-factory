@@ -26,15 +26,18 @@ public class WhatsAppMessagePumpService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
+    private final ChannelRuntimeStorageService runtimeStorageService;
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
     private final WhatsAppWebLoginService whatsAppWebLoginService;
 
     public WhatsAppMessagePumpService(ChannelConfigService channelConfigService,
+                                      ChannelRuntimeStorageService runtimeStorageService,
                                       ChannelDedupService channelDedupService,
                                       SessionBridgeService sessionBridgeService,
                                       WhatsAppWebLoginService whatsAppWebLoginService) {
         this.channelConfigService = channelConfigService;
+        this.runtimeStorageService = runtimeStorageService;
         this.channelDedupService = channelDedupService;
         this.sessionBridgeService = sessionBridgeService;
         this.whatsAppWebLoginService = whatsAppWebLoginService;
@@ -201,15 +204,15 @@ public class WhatsAppMessagePumpService {
     }
 
     private Path inboxDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("inbox");
+        return runtimeStorageService.inboxDirectory(channel);
     }
 
     private Path processedInboxDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("inbox-processed");
+        return runtimeStorageService.processedInboxDirectory(channel);
     }
 
     private Path outboxPendingDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("outbox").resolve("pending");
+        return runtimeStorageService.outboxPendingDirectory(channel);
     }
 
     private String asString(Object value) {

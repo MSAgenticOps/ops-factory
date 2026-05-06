@@ -1,0 +1,13 @@
+{
+  "id" : "wechat-main",
+  "name" : "微信",
+  "type" : "wechat",
+  "enabled" : true,
+  "defaultAgentId" : "fo-copilot",
+  "ownerUserId" : "admin",
+  "createdAt" : "2026-04-15T04:47:22.805839Z",
+  "updatedAt" : "2026-05-06T10:21:44.612655Z",
+  "config" : {
+    "authStateDir" : "auth"
+  }
+}
