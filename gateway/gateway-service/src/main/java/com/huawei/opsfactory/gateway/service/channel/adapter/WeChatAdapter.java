@@ -37,8 +37,8 @@ public class WeChatAdapter implements ChannelAdapter {
     }
 
     @Override
-    public Mono<ChannelConnectivityResult> testConnectivity(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+    public Mono<ChannelConnectivityResult> testConnectivity(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
         String status = config.loginStatus() == null || config.loginStatus().isBlank()
                 ? "disconnected"
@@ -46,7 +46,7 @@ public class WeChatAdapter implements ChannelAdapter {
 
         return switch (status) {
             case "connected" -> {
-                channelConfigService.recordEvent(channelId, "info", "wechat.status",
+                channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.status",
                         "WeChat session is connected");
                 yield Mono.just(new ChannelConnectivityResult(true, "WeChat session connected"));
             }
@@ -59,8 +59,8 @@ public class WeChatAdapter implements ChannelAdapter {
         };
     }
 
-    private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail detail = channelConfigService.getChannel(channelId);
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail detail = channelConfigService.getChannel(channelId, ownerUserId);
         if (detail == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Channel not found");
         }

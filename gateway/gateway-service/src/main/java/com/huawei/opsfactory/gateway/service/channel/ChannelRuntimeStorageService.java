@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,8 @@ public class ChannelRuntimeStorageService {
     private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("^[A-Za-z0-9._-]+$");
 
     private final GatewayProperties properties;
+
+    public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {}
 
     public ChannelRuntimeStorageService(GatewayProperties properties) {
         this.properties = properties;
@@ -143,6 +146,48 @@ public class ChannelRuntimeStorageService {
 
     public void deleteRuntime(ChannelDetail channel) {
         deleteDirectory(runtimeDirectory(channel));
+    }
+
+    public void deleteAllRuntimes(String type, String channelId) {
+        for (ChannelRuntimeRef runtime : listRuntimeRefs(type, channelId)) {
+            deleteDirectory(runtime.runtimeDirectory());
+        }
+    }
+
+    public List<ChannelRuntimeRef> listRuntimeRefs(String type, String channelId) {
+        String normalizedType = normalizeType(type);
+        String normalizedChannelId = requireSafeSegment(channelId, "channelId");
+        Path usersRoot = properties.getGatewayRootPath().resolve("users").normalize();
+        if (!Files.isDirectory(usersRoot)) {
+            return List.of();
+        }
+
+        List<ChannelRuntimeRef> refs = new ArrayList<>();
+        try (var users = Files.list(usersRoot)) {
+            users.filter(Files::isDirectory)
+                    .forEach(userDir -> {
+                        Path userName = userDir.getFileName();
+                        if (userName == null) {
+                            return;
+                        }
+                        String ownerUserId = userName.toString();
+                        try {
+                            Path runtimeDirectory = userDir.resolve("channels")
+                                    .resolve(normalizedType)
+                                    .resolve(normalizedChannelId)
+                                    .normalize();
+                            Path expected = runtimeDirectory(ownerUserId, normalizedType, normalizedChannelId);
+                            if (runtimeDirectory.equals(expected) && Files.isDirectory(runtimeDirectory)) {
+                                refs.add(new ChannelRuntimeRef(ownerUserId, normalizedType, normalizedChannelId, runtimeDirectory));
+                            }
+                        } catch (IllegalArgumentException ignored) {
+                            // Ignore unrelated/unsafe user directories when scanning channel runtime state.
+                        }
+                    });
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to list channel runtime directories", e);
+        }
+        return refs;
     }
 
     private void initializeIfMissing(Path file, Object payload) throws IOException {

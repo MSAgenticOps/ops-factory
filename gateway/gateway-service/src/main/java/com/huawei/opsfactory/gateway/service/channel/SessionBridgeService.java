@@ -58,7 +58,7 @@ public class SessionBridgeService {
     }
 
     public Mono<ChannelBinding> ensureSession(String channelId, String externalUserId) {
-        return ensureConversationSession(channelId, "default", externalUserId, externalUserId, null, "direct");
+        return ensureConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
     }
 
     public Mono<ChannelBinding> ensureConversationSession(String channelId,
@@ -67,19 +67,30 @@ public class SessionBridgeService {
                                                           String conversationId,
                                                           String threadId,
                                                           String conversationType) {
-        ChannelDetail channel = requireChannel(channelId);
+        return ensureConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
+    }
+
+    public Mono<ChannelBinding> ensureConversationSession(String channelId,
+                                                          String ownerUserId,
+                                                          String accountId,
+                                                          String peerId,
+                                                          String conversationId,
+                                                          String threadId,
+                                                          String conversationType) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelBinding binding = channelBindingService.ensureConversationBinding(
-                channelId, accountId, peerId, conversationId, threadId, conversationType);
+                channelId, ownerUserId, accountId, peerId, conversationId, threadId, conversationType);
         if (binding.sessionId() != null && !binding.sessionId().isBlank()) {
             return Mono.just(binding);
         }
 
-        String ownerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
+        String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
                 ? channel.ownerUserId()
                 : binding.ownerUserId();
-        return startSession(channel.defaultAgentId(), ownerUserId)
+        return startSession(channel.defaultAgentId(), effectiveOwnerUserId)
                 .map(sessionId -> channelBindingService.attachConversationSession(
                         channelId,
+                        effectiveOwnerUserId,
                         accountId,
                         peerId,
                         conversationId,
@@ -91,7 +102,7 @@ public class SessionBridgeService {
     }
 
     public Mono<ChannelReplyResult> sendText(String channelId, String externalUserId, String text) {
-        return sendConversationText(channelId, "default", externalUserId, externalUserId, null, "direct", text);
+        return sendConversationText(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", text);
     }
 
     public Mono<ChannelReplyResult> sendConversationText(String channelId,
@@ -101,25 +112,37 @@ public class SessionBridgeService {
                                                          String threadId,
                                                          String conversationType,
                                                          String text) {
-        ChannelDetail channel = requireChannel(channelId);
+        return sendConversationText(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType, text);
+    }
+
+    public Mono<ChannelReplyResult> sendConversationText(String channelId,
+                                                         String ownerUserId,
+                                                         String accountId,
+                                                         String peerId,
+                                                         String conversationId,
+                                                         String threadId,
+                                                         String conversationType,
+                                                         String text) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         if (text == null || text.isBlank()) {
             return Mono.error(new IllegalArgumentException("Text is required"));
         }
 
-        return ensureConversationSession(channelId, accountId, peerId, conversationId, threadId, conversationType)
+        return ensureConversationSession(channelId, ownerUserId, accountId, peerId, conversationId, threadId, conversationType)
                 .flatMap(binding -> {
-                    channelBindingService.markConversationInbound(channelId, accountId, conversationId, threadId);
-                    String ownerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
+                    channelBindingService.markConversationInbound(channelId, ownerUserId, accountId, conversationId, threadId);
+                    String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
                             ? channel.ownerUserId()
                             : binding.ownerUserId();
-                    return sendTextToSession(binding.agentId(), ownerUserId, binding.sessionId(), text.trim())
+                    return sendTextToSession(binding.agentId(), effectiveOwnerUserId, binding.sessionId(), text.trim())
                             .onErrorResume(WebClientResponseException.class, error -> {
                                 if (error.getStatusCode().value() != 404) {
                                     return Mono.error(error);
                                 }
-                                return startSession(binding.agentId(), ownerUserId)
+                                return startSession(binding.agentId(), effectiveOwnerUserId)
                                         .map(sessionId -> channelBindingService.attachConversationSession(
                                                 channelId,
+                                                effectiveOwnerUserId,
                                                 accountId,
                                                 peerId,
                                                 conversationId,
@@ -130,7 +153,7 @@ public class SessionBridgeService {
                                         ))
                                         .flatMap(rebound -> sendTextToSession(
                                                 rebound.agentId(),
-                                                ownerUserId,
+                                                effectiveOwnerUserId,
                                                 rebound.sessionId(),
                                                 text.trim()
                                         ));
@@ -140,9 +163,10 @@ public class SessionBridgeService {
                                 if (!message.contains("404")) {
                                     return Mono.error(error);
                                 }
-                                return startSession(binding.agentId(), ownerUserId)
+                                return startSession(binding.agentId(), effectiveOwnerUserId)
                                         .map(sessionId -> channelBindingService.attachConversationSession(
                                                 channelId,
+                                                effectiveOwnerUserId,
                                                 accountId,
                                                 peerId,
                                                 conversationId,
@@ -153,14 +177,14 @@ public class SessionBridgeService {
                                         ))
                                         .flatMap(rebound -> sendTextToSession(
                                                 rebound.agentId(),
-                                                ownerUserId,
+                                                effectiveOwnerUserId,
                                                 rebound.sessionId(),
                                                 text.trim()
                                         ));
                             })
                             .map(replyText -> {
-                                channelBindingService.markConversationOutbound(channelId, accountId, conversationId, threadId);
-                                channelConfigService.recordEvent(channelId, "info", "session.reply",
+                                channelBindingService.markConversationOutbound(channelId, effectiveOwnerUserId, accountId, conversationId, threadId);
+                                channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info", "session.reply",
                                         "Delivered text reply for session " + binding.sessionId());
                                 return new ChannelReplyResult(
                                         channelId,
@@ -169,7 +193,7 @@ public class SessionBridgeService {
                                         binding.conversationId(),
                                         binding.threadId(),
                                         binding.conversationType(),
-                                        ownerUserId,
+                                        effectiveOwnerUserId,
                                         binding.agentId(),
                                         binding.sessionId(),
                                         replyText
@@ -432,7 +456,11 @@ public class SessionBridgeService {
     }
 
     private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail channel = channelConfigService.getChannel(channelId);
+        return requireChannel(channelId, "admin");
+    }
+
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }

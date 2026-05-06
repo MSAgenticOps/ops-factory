@@ -37,7 +37,7 @@ public class ChannelBindingService {
     }
 
     public ChannelBinding ensureBinding(String channelId, String externalUserId) {
-        return ensureConversationBinding(channelId, "default", externalUserId, externalUserId, null, "direct");
+        return ensureConversationBinding(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
     }
 
     public ChannelBinding ensureConversationBinding(String channelId,
@@ -46,8 +46,18 @@ public class ChannelBindingService {
                                                     String conversationId,
                                                     String threadId,
                                                     String conversationType) {
-        ChannelDetail channel = requireChannel(channelId);
-        List<ChannelBinding> bindings = new ArrayList<>(readBindings(channelId, channel.type()));
+        return ensureConversationBinding(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
+    }
+
+    public ChannelBinding ensureConversationBinding(String channelId,
+                                                    String ownerUserId,
+                                                    String accountId,
+                                                    String peerId,
+                                                    String conversationId,
+                                                    String threadId,
+                                                    String conversationType) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
+        List<ChannelBinding> bindings = new ArrayList<>(readBindings(channel));
         for (ChannelBinding binding : bindings) {
             if (matches(binding, accountId, conversationId, threadId)) {
                 return binding;
@@ -69,14 +79,14 @@ public class ChannelBindingService {
                 null
         );
         bindings.add(created);
-        writeBindings(channelId, channel.type(), bindings);
-        channelConfigService.recordEvent(channelId, "info", "binding.created",
+        writeBindings(channel, bindings);
+        channelConfigService.recordEvent(channelId, ownerUserId, "info", "binding.created",
                 "Created binding for " + summarizeConversation(peerId, conversationId, threadId));
         return created;
     }
 
     public ChannelBinding attachSession(String channelId, String externalUserId, String sessionId, String agentId) {
-        return attachConversationSession(channelId, "default", externalUserId, externalUserId, null, "direct", sessionId, agentId);
+        return attachConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", sessionId, agentId);
     }
 
     public ChannelBinding attachConversationSession(String channelId,
@@ -87,8 +97,21 @@ public class ChannelBindingService {
                                                     String conversationType,
                                                     String sessionId,
                                                     String agentId) {
-        ChannelDetail channel = requireChannel(channelId);
-        List<ChannelBinding> bindings = new ArrayList<>(readBindings(channelId, channel.type()));
+        return attachConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId,
+                conversationType, sessionId, agentId);
+    }
+
+    public ChannelBinding attachConversationSession(String channelId,
+                                                    String ownerUserId,
+                                                    String accountId,
+                                                    String peerId,
+                                                    String conversationId,
+                                                    String threadId,
+                                                    String conversationType,
+                                                    String sessionId,
+                                                    String agentId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
+        List<ChannelBinding> bindings = new ArrayList<>(readBindings(channel));
         ChannelBinding nextBinding = null;
 
         for (int i = 0; i < bindings.size(); i++) {
@@ -132,42 +155,59 @@ public class ChannelBindingService {
             bindings.add(nextBinding);
         }
 
-        writeBindings(channelId, channel.type(), bindings);
-        channelConfigService.recordEvent(channelId, "info", "binding.session_attached",
+        writeBindings(channel, bindings);
+        channelConfigService.recordEvent(channelId, ownerUserId, "info", "binding.session_attached",
                 "Bound session " + sessionId + " to " + summarizeConversation(peerId, conversationId, threadId));
         return nextBinding;
     }
 
     public ChannelBinding markInbound(String channelId, String externalUserId) {
-        return markConversationInbound(channelId, "default", externalUserId, null);
+        return markConversationInbound(channelId, "admin", "default", externalUserId, null);
     }
 
     public ChannelBinding markOutbound(String channelId, String externalUserId) {
-        return markConversationOutbound(channelId, "default", externalUserId, null);
+        return markConversationOutbound(channelId, "admin", "default", externalUserId, null);
     }
 
     public ChannelBinding markConversationInbound(String channelId,
                                                   String accountId,
                                                   String conversationId,
                                                   String threadId) {
-        return updateTimestamps(channelId, accountId, conversationId, threadId, Instant.now().toString(), null);
+        return markConversationInbound(channelId, "admin", accountId, conversationId, threadId);
+    }
+
+    public ChannelBinding markConversationInbound(String channelId,
+                                                  String ownerUserId,
+                                                  String accountId,
+                                                  String conversationId,
+                                                  String threadId) {
+        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, Instant.now().toString(), null);
     }
 
     public ChannelBinding markConversationOutbound(String channelId,
                                                    String accountId,
                                                    String conversationId,
                                                    String threadId) {
-        return updateTimestamps(channelId, accountId, conversationId, threadId, null, Instant.now().toString());
+        return markConversationOutbound(channelId, "admin", accountId, conversationId, threadId);
+    }
+
+    public ChannelBinding markConversationOutbound(String channelId,
+                                                   String ownerUserId,
+                                                   String accountId,
+                                                   String conversationId,
+                                                   String threadId) {
+        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, null, Instant.now().toString());
     }
 
     private ChannelBinding updateTimestamps(String channelId,
+                                            String ownerUserId,
                                             String accountId,
                                             String conversationId,
                                             String threadId,
                                             String lastInboundAt,
                                             String lastOutboundAt) {
-        ChannelDetail channel = requireChannel(channelId);
-        List<ChannelBinding> bindings = new ArrayList<>(readBindings(channelId, channel.type()));
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
+        List<ChannelBinding> bindings = new ArrayList<>(readBindings(channel));
         for (int i = 0; i < bindings.size(); i++) {
             ChannelBinding binding = bindings.get(i);
             if (!matches(binding, accountId, conversationId, threadId)) {
@@ -188,30 +228,32 @@ public class ChannelBindingService {
                     lastOutboundAt != null ? lastOutboundAt : binding.lastOutboundAt()
             );
             bindings.set(i, updated);
-            writeBindings(channelId, channel.type(), bindings);
+            writeBindings(channel, bindings);
             return updated;
         }
         throw new IllegalArgumentException("Binding not found for channel '" + channelId + "'");
     }
 
     private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail channel = channelConfigService.getChannel(channelId);
+        return requireChannel(channelId, "admin");
+    }
+
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
         return channel;
     }
 
-    private List<ChannelBinding> readBindings(String channelId, String type) {
-        ChannelDetail channel = requireChannel(channelId);
+    private List<ChannelBinding> readBindings(ChannelDetail channel) {
         Path file = runtimeStorageService.bindingsFile(channel);
         Map<String, Object> wrapper = readJson(file);
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
                 new TypeReference<List<ChannelBinding>>() {});
     }
 
-    private void writeBindings(String channelId, String type, List<ChannelBinding> bindings) {
-        ChannelDetail channel = requireChannel(channelId);
+    private void writeBindings(ChannelDetail channel, List<ChannelBinding> bindings) {
         writeJson(runtimeStorageService.bindingsFile(channel), Map.of("bindings", bindings));
     }
 

@@ -32,7 +32,11 @@ public class WeChatLoginService {
     }
 
     public ChannelLoginState getLoginState(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return getLoginState(channelId, "admin");
+    }
+
+    public ChannelLoginState getLoginState(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
         Map<String, Object> runtimeState = readRuntimeState(channel);
         String status = normalizeStatus(config.loginStatus());
@@ -72,7 +76,11 @@ public class WeChatLoginService {
     }
 
     public ChannelLoginState startLogin(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return startLogin(channelId, "admin");
+    }
+
+    public ChannelLoginState startLogin(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path authDir = resolveAuthDir(channel);
         Path stateFile = loginStateFile(channel);
         Path pidFile = pidFile(channel);
@@ -95,14 +103,18 @@ public class WeChatLoginService {
 
         writeInitialStateFile(channel, stateFile);
         startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inboxDir, outboxPendingDir, outboxSentDir, outboxErrorDir);
-        channelConfigService.recordEvent(channelId, "info", "wechat.login_requested",
+        channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.login_requested",
                 "WeChat login requested; auth directory prepared at " + authDir);
 
-        return getLoginState(channelId);
+        return getLoginState(channelId, ownerUserId);
     }
 
     public ChannelLoginState logout(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return logout(channelId, "admin");
+    }
+
+    public ChannelLoginState logout(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path authDir = resolveAuthDir(channel);
         Path stateFile = loginStateFile(channel);
         Path pidFile = pidFile(channel);
@@ -123,9 +135,9 @@ public class WeChatLoginService {
         }
 
         writeDisconnectedStateFile(channel, stateFile);
-        channelConfigService.recordEvent(channelId, "info", "wechat.logged_out",
+        channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.logged_out",
                 "Cleared WeChat auth state");
-        ChannelDetail updated = channelConfigService.getChannel(channelId);
+        ChannelDetail updated = channelConfigService.getChannel(channelId, ownerUserId);
 
         return new ChannelLoginState(
                 updated.id(),
@@ -140,8 +152,8 @@ public class WeChatLoginService {
         );
     }
 
-    private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail channel = channelConfigService.getChannel(channelId);
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
