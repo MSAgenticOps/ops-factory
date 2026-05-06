@@ -23,9 +23,12 @@ public class WeChatLoginService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
+    private final ChannelRuntimeStorageService runtimeStorageService;
 
-    public WeChatLoginService(ChannelConfigService channelConfigService) {
+    public WeChatLoginService(ChannelConfigService channelConfigService,
+                              ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
+        this.runtimeStorageService = runtimeStorageService;
     }
 
     public ChannelLoginState getLoginState(String channelId) {
@@ -90,17 +93,6 @@ public class WeChatLoginService {
             throw new IllegalStateException("Failed to create WeChat runtime directory", e);
         }
 
-        channelConfigService.updateChannelConfig(channelId, current -> new ChannelConnectionConfig(
-                "pending",
-                current.authStateDir(),
-                current.lastConnectedAt(),
-                current.lastDisconnectedAt(),
-                "",
-                current.selfPhone(),
-                current.wechatId(),
-                current.displayName()
-        ));
-
         writeInitialStateFile(channel, stateFile);
         startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inboxDir, outboxPendingDir, outboxSentDir, outboxErrorDir);
         channelConfigService.recordEvent(channelId, "info", "wechat.login_requested",
@@ -130,18 +122,10 @@ public class WeChatLoginService {
             // best-effort
         }
 
-        ChannelDetail updated = channelConfigService.updateChannelConfig(channelId, current -> new ChannelConnectionConfig(
-                "disconnected",
-                current.authStateDir(),
-                current.lastConnectedAt(),
-                Instant.now().toString(),
-                "",
-                current.selfPhone(),
-                current.wechatId(),
-                current.displayName()
-        ));
+        writeDisconnectedStateFile(channel, stateFile);
         channelConfigService.recordEvent(channelId, "info", "wechat.logged_out",
                 "Cleared WeChat auth state");
+        ChannelDetail updated = channelConfigService.getChannel(channelId);
 
         return new ChannelLoginState(
                 updated.id(),
@@ -168,22 +152,19 @@ public class WeChatLoginService {
     }
 
     private Path resolveAuthDir(ChannelDetail channel) {
-        String configured = channel.config().authStateDir();
-        Path channelRoot = channelConfigService.channelDirectory(channel.type(), channel.id());
-        Path relative = Path.of(configured == null || configured.isBlank() ? "auth" : configured);
-        return relative.isAbsolute() ? relative.normalize() : channelRoot.resolve(relative).normalize();
+        return runtimeStorageService.authDirectory(channel);
     }
 
     private Path loginStateFile(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("login-state.json");
+        return runtimeStorageService.loginStateFile(channel);
     }
 
     private Path pidFile(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("login.pid");
+        return runtimeStorageService.pidFile(channel);
     }
 
     private Path logFile(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("login.log");
+        return runtimeStorageService.logFile(channel);
     }
 
     @SuppressWarnings("unchecked")
@@ -224,6 +205,26 @@ public class WeChatLoginService {
         payload.put("lastError", "");
         payload.put("qrCodeDataUrl", null);
         try {
+            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to write WeChat login state file", e);
+        }
+    }
+
+    private void writeDisconnectedStateFile(ChannelDetail channel, Path stateFile) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("channelId", channel.id());
+        payload.put("status", "disconnected");
+        payload.put("message", "WeChat login required");
+        payload.put("authStateDir", channel.config().authStateDir());
+        payload.put("wechatId", channel.config().wechatId());
+        payload.put("displayName", channel.config().displayName());
+        payload.put("lastConnectedAt", channel.config().lastConnectedAt());
+        payload.put("lastDisconnectedAt", Instant.now().toString());
+        payload.put("lastError", "");
+        payload.put("qrCodeDataUrl", null);
+        try {
+            Files.createDirectories(stateFile.getParent());
             Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
@@ -316,19 +317,19 @@ public class WeChatLoginService {
     }
 
     private Path inboxDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("inbox");
+        return runtimeStorageService.inboxDirectory(channel);
     }
 
     private Path outboxPendingDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("outbox").resolve("pending");
+        return runtimeStorageService.outboxPendingDirectory(channel);
     }
 
     private Path outboxSentDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("outbox").resolve("sent");
+        return runtimeStorageService.outboxSentDirectory(channel);
     }
 
     private Path outboxErrorDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("outbox").resolve("error");
+        return runtimeStorageService.outboxErrorDirectory(channel);
     }
 
     private void clearDirectory(Path dir) {

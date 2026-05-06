@@ -39,9 +39,11 @@ residentInstances:
   - userId: robby
     agentIds: ['*']
 agents:
-  - { id: qos-agent, name: QoS Agent }
-  - { id: qa-agent, name: QA Agent }
-  - { id: qa-cli-agent, name: QA CLI Agent }
-  - {id: universal-agent, name: Universal Agent}
-  - {id: kb-agent, name: KB Agent}
-  - {id: supervisor-agent, name: Supervisor Agent}
+- {id: universal-agent, name: Universal Agent}
+- {id: fo-copilot, name: FO Copilot}
+- {id: kb-agent, name: KB Agent}
+- {id: supervisor-agent, name: Supervisor Agent}
+- {id: qos-agent, name: QoS Agent}
+- {id: qa-agent, name: QA Agent}
+- {id: qa-cli-agent, name: QA CLI Agent}
+- {id: report-agent, name: Report Agent}

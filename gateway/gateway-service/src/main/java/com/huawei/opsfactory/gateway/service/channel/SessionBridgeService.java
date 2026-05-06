@@ -74,7 +74,10 @@ public class SessionBridgeService {
             return Mono.just(binding);
         }
 
-        return startSession(channel.defaultAgentId(), binding.syntheticUserId())
+        String ownerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
+                ? channel.ownerUserId()
+                : binding.ownerUserId();
+        return startSession(channel.defaultAgentId(), ownerUserId)
                 .map(sessionId -> channelBindingService.attachConversationSession(
                         channelId,
                         accountId,

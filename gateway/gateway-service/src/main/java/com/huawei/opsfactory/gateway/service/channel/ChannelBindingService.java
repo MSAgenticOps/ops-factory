@@ -2,7 +2,6 @@ package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import org.slf4j.Logger;
@@ -28,12 +27,13 @@ public class ChannelBindingService {
     private static final Logger log = LoggerFactory.getLogger(ChannelBindingService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final GatewayProperties properties;
     private final ChannelConfigService channelConfigService;
+    private final ChannelRuntimeStorageService runtimeStorageService;
 
-    public ChannelBindingService(GatewayProperties properties, ChannelConfigService channelConfigService) {
-        this.properties = properties;
+    public ChannelBindingService(ChannelConfigService channelConfigService,
+                                 ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
+        this.runtimeStorageService = runtimeStorageService;
     }
 
     public ChannelBinding ensureBinding(String channelId, String externalUserId) {
@@ -203,22 +203,16 @@ public class ChannelBindingService {
     }
 
     private List<ChannelBinding> readBindings(String channelId, String type) {
-        Path file = bindingsFile(channelId, type);
+        ChannelDetail channel = requireChannel(channelId);
+        Path file = runtimeStorageService.bindingsFile(channel);
         Map<String, Object> wrapper = readJson(file);
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
                 new TypeReference<List<ChannelBinding>>() {});
     }
 
     private void writeBindings(String channelId, String type, List<ChannelBinding> bindings) {
-        writeJson(bindingsFile(channelId, type), Map.of("bindings", bindings));
-    }
-
-    private Path bindingsFile(String channelId, String type) {
-        return properties.getGatewayRootPath()
-                .resolve("channels")
-                .resolve(type)
-                .resolve(channelId)
-                .resolve("bindings.json");
+        ChannelDetail channel = requireChannel(channelId);
+        writeJson(runtimeStorageService.bindingsFile(channel), Map.of("bindings", bindings));
     }
 
     @SuppressWarnings("unchecked")

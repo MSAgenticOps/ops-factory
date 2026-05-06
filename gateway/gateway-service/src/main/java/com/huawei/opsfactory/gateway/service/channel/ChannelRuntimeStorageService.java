@@ -1,0 +1,198 @@
+package com.huawei.opsfactory.gateway.service.channel;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelInstance;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+@Service
+public class ChannelRuntimeStorageService {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("^[A-Za-z0-9._-]+$");
+
+    private final GatewayProperties properties;
+
+    public ChannelRuntimeStorageService(GatewayProperties properties) {
+        this.properties = properties;
+    }
+
+    public Path runtimeDirectory(ChannelDetail channel) {
+        return runtimeDirectory(channel.ownerUserId(), channel.type(), channel.id());
+    }
+
+    public Path runtimeDirectory(ChannelInstance channel) {
+        return runtimeDirectory(channel.ownerUserId(), channel.type(), channel.id());
+    }
+
+    public Path runtimeDirectory(String ownerUserId, String type, String channelId) {
+        Path typeRoot = properties.getGatewayRootPath()
+                .resolve("users")
+                .resolve(normalizeOwnerUserId(ownerUserId))
+                .resolve("channels")
+                .resolve(normalizeType(type))
+                .normalize();
+        Path runtimeDirectory = typeRoot.resolve(requireSafeSegment(channelId, "channelId")).normalize();
+        if (!runtimeDirectory.startsWith(typeRoot)) {
+            throw new IllegalArgumentException("channelId must stay within the channel runtime directory");
+        }
+        return runtimeDirectory;
+    }
+
+    public Path authDirectory(ChannelDetail channel) {
+        String configured = channel.config() == null ? "" : channel.config().authStateDir();
+        Path relative = Path.of(configured == null || configured.isBlank() ? "auth" : configured.trim());
+        if (relative.isAbsolute()) {
+            throw new IllegalArgumentException("authStateDir must be relative to the channel runtime directory");
+        }
+        Path runtimeDirectory = runtimeDirectory(channel);
+        Path authDirectory = runtimeDirectory.resolve(relative).normalize();
+        if (!authDirectory.startsWith(runtimeDirectory)) {
+            throw new IllegalArgumentException("authStateDir must stay within the channel runtime directory");
+        }
+        return authDirectory;
+    }
+
+    public Path loginStateFile(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("login-state.json");
+    }
+
+    public Path pidFile(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("login.pid");
+    }
+
+    public Path logFile(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("login.log");
+    }
+
+    public Path inboxDirectory(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("inbox");
+    }
+
+    public Path processedInboxDirectory(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("processed");
+    }
+
+    public Path outboxPendingDirectory(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("outbox").resolve("pending");
+    }
+
+    public Path outboxSentDirectory(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("outbox").resolve("sent");
+    }
+
+    public Path outboxErrorDirectory(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("outbox").resolve("error");
+    }
+
+    public Path bindingsFile(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("bindings.json");
+    }
+
+    public Path bindingsFile(ChannelInstance channel) {
+        return runtimeDirectory(channel).resolve("bindings.json");
+    }
+
+    public Path dedupFile(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("inbound-dedup.json");
+    }
+
+    public Path eventsFile(ChannelDetail channel) {
+        return runtimeDirectory(channel).resolve("events.json");
+    }
+
+    public Path eventsFile(ChannelInstance channel) {
+        return runtimeDirectory(channel).resolve("events.json");
+    }
+
+    public void initializeRuntime(ChannelInstance channel) {
+        try {
+            Files.createDirectories(runtimeDirectory(channel));
+            initializeIfMissing(bindingsFile(channel), Map.of("bindings", List.of()));
+            initializeIfMissing(runtimeDirectory(channel).resolve("inbound-dedup.json"), Map.of("messages", List.of()));
+            initializeIfMissing(eventsFile(channel), Map.of("events", List.of()));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to initialize channel runtime for " + channel.id(), e);
+        }
+    }
+
+    public void initializeRuntime(ChannelDetail channel) {
+        try {
+            Files.createDirectories(runtimeDirectory(channel));
+            initializeIfMissing(bindingsFile(channel), Map.of("bindings", List.of()));
+            initializeIfMissing(dedupFile(channel), Map.of("messages", List.of()));
+            initializeIfMissing(eventsFile(channel), Map.of("events", List.of()));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to initialize channel runtime for " + channel.id(), e);
+        }
+    }
+
+    public void deleteRuntime(ChannelInstance channel) {
+        deleteDirectory(runtimeDirectory(channel));
+    }
+
+    public void deleteRuntime(ChannelDetail channel) {
+        deleteDirectory(runtimeDirectory(channel));
+    }
+
+    private void initializeIfMissing(Path file, Object payload) throws IOException {
+        if (Files.exists(file)) {
+            return;
+        }
+        Files.createDirectories(file.getParent());
+        Files.writeString(file,
+                MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                StandardCharsets.UTF_8);
+    }
+
+    private void deleteDirectory(Path dir) {
+        try {
+            if (!Files.exists(dir)) {
+                return;
+            }
+            try (var walk = Files.walk(dir)) {
+                walk.sorted(Comparator.reverseOrder())
+                        .forEach(path -> {
+                            try {
+                                Files.deleteIfExists(path);
+                            } catch (IOException e) {
+                                throw new IllegalStateException("Failed to delete " + path, e);
+                            }
+                        });
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to delete channel runtime directory " + dir, e);
+        }
+    }
+
+    private String normalizeType(String type) {
+        return requireSafeSegment(type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(), "type");
+    }
+
+    private String normalizeOwnerUserId(String ownerUserId) {
+        String normalized = ownerUserId == null || ownerUserId.isBlank() ? "admin" : ownerUserId.trim();
+        if (normalized.contains("/") || normalized.contains("\\")
+                || ".".equals(normalized) || "..".equals(normalized)) {
+            throw new IllegalArgumentException("ownerUserId contains unsafe path characters");
+        }
+        return normalized;
+    }
+
+    private String requireSafeSegment(String value, String fieldName) {
+        if (value == null || value.isBlank() || !SAFE_PATH_SEGMENT.matcher(value).matches()
+                || ".".equals(value) || "..".equals(value)) {
+            throw new IllegalArgumentException(fieldName + " contains unsafe path characters");
+        }
+        return value;
+    }
+}
