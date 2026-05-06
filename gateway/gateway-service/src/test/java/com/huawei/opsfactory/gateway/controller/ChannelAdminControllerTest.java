@@ -58,8 +58,8 @@ public class ChannelAdminControllerTest {
 
     @Test
     public void testGetLoginStateDispatchesToWeChatService() {
-        when(channelConfigService.getChannel("wechat-main")).thenReturn(channelDetail("wechat"));
-        when(weChatLoginService.getLoginState("wechat-main")).thenReturn(
+        when(channelConfigService.getChannel("wechat-main", "admin")).thenReturn(channelDetail("wechat"));
+        when(weChatLoginService.getLoginState("wechat-main", "admin")).thenReturn(
                 new ChannelLoginState("wechat-main", "connected", "WeChat session connected", "auth",
                         "wxid_123", "", "", "", null)
         );
@@ -73,14 +73,14 @@ public class ChannelAdminControllerTest {
                 .jsonPath("$.state.status").isEqualTo("connected")
                 .jsonPath("$.state.message").isEqualTo("WeChat session connected");
 
-        verify(weChatLoginService).getLoginState("wechat-main");
-        verify(whatsAppWebLoginService, never()).getLoginState(Mockito.anyString());
+        verify(weChatLoginService).getLoginState("wechat-main", "admin");
+        verify(whatsAppWebLoginService, never()).getLoginState(Mockito.anyString(), Mockito.anyString());
     }
 
     @Test
     public void testStartLoginDispatchesToWeChatService() {
-        when(channelConfigService.getChannel("wechat-main")).thenReturn(channelDetail("wechat"));
-        when(weChatLoginService.startLogin("wechat-main")).thenReturn(
+        when(channelConfigService.getChannel("wechat-main", "admin")).thenReturn(channelDetail("wechat"));
+        when(weChatLoginService.startLogin("wechat-main", "admin")).thenReturn(
                 new ChannelLoginState("wechat-main", "pending", "WeChat QR login is pending", "auth",
                         "wxid_123", "", "", "", "https://example.com/qr.png")
         );
@@ -94,8 +94,8 @@ public class ChannelAdminControllerTest {
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.state.status").isEqualTo("pending");
 
-        verify(weChatLoginService).startLogin("wechat-main");
-        verify(whatsAppWebLoginService, never()).startLogin(eq("wechat-main"));
+        verify(weChatLoginService).startLogin("wechat-main", "admin");
+        verify(whatsAppWebLoginService, never()).startLogin(eq("wechat-main"), eq("admin"));
     }
 
     private ChannelDetail channelDetail(String type) {

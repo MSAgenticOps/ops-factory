@@ -33,7 +33,11 @@ public class WhatsAppWebLoginService {
     }
 
     public ChannelLoginState getLoginState(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return getLoginState(channelId, "admin");
+    }
+
+    public ChannelLoginState getLoginState(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
         Map<String, Object> runtimeState = readRuntimeState(channel);
         String status = normalizeStatus(config.loginStatus());
@@ -73,7 +77,11 @@ public class WhatsAppWebLoginService {
     }
 
     public ChannelLoginState startLogin(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return startLogin(channelId, "admin");
+    }
+
+    public ChannelLoginState startLogin(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path authDir = resolveAuthDir(channel);
         Path stateFile = loginStateFile(channel);
         Path pidFile = pidFile(channel);
@@ -96,14 +104,18 @@ public class WhatsAppWebLoginService {
 
         writeInitialStateFile(channel, stateFile);
         startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inboxDir, outboxPendingDir, outboxSentDir, outboxErrorDir);
-        channelConfigService.recordEvent(channelId, "info", "whatsapp.login_requested",
+        channelConfigService.recordEvent(channelId, ownerUserId, "info", "whatsapp.login_requested",
                 "WhatsApp Web login requested; auth directory prepared at " + authDir);
 
-        return getLoginState(channelId);
+        return getLoginState(channelId, ownerUserId);
     }
 
     public ChannelLoginState logout(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return logout(channelId, "admin");
+    }
+
+    public ChannelLoginState logout(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path authDir = resolveAuthDir(channel);
         Path stateFile = loginStateFile(channel);
         Path pidFile = pidFile(channel);
@@ -124,9 +136,9 @@ public class WhatsAppWebLoginService {
         }
 
         writeDisconnectedStateFile(channel, stateFile);
-        channelConfigService.recordEvent(channelId, "info", "whatsapp.logged_out",
+        channelConfigService.recordEvent(channelId, ownerUserId, "info", "whatsapp.logged_out",
                 "Cleared WhatsApp Web auth state");
-        ChannelDetail updated = channelConfigService.getChannel(channelId);
+        ChannelDetail updated = channelConfigService.getChannel(channelId, ownerUserId);
 
         return new ChannelLoginState(
                 updated.id(),
@@ -141,8 +153,8 @@ public class WhatsAppWebLoginService {
         );
     }
 
-    private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail channel = channelConfigService.getChannel(channelId);
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }

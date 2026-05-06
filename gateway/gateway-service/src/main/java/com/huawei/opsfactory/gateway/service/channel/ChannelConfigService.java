@@ -68,29 +68,37 @@ public class ChannelConfigService {
     }
 
     public List<ChannelSummary> listChannels() {
+        return listChannels("admin");
+    }
+
+    public List<ChannelSummary> listChannels(String ownerUserId) {
         List<ChannelInstance> channels = readInstances();
-        List<ChannelBinding> bindings = readBindings();
+        List<ChannelBinding> bindings = readBindings(ownerUserId);
 
         return channels.stream()
-                .map(channel -> toSummary(applyRuntimeState(channel), bindings))
+                .map(channel -> toSummary(applyRuntimeState(withRuntimeUser(channel, ownerUserId)), bindings))
                 .sorted(Comparator.comparing(ChannelSummary::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
     public ChannelDetail getChannel(String channelId) {
+        return getChannel(channelId, "admin");
+    }
+
+    public ChannelDetail getChannel(String channelId, String ownerUserId) {
         ChannelInstance channel = findChannel(channelId);
         if (channel == null) {
             return null;
         }
-        ChannelInstance effectiveChannel = applyRuntimeState(channel);
+        ChannelInstance effectiveChannel = applyRuntimeState(withRuntimeUser(channel, ownerUserId));
 
-        List<ChannelBinding> bindings = readBindings().stream()
+        List<ChannelBinding> bindings = readBindings(effectiveChannel).stream()
                 .filter(binding -> channelId.equals(binding.channelId()))
                 .sorted(Comparator.comparing(ChannelBinding::lastInboundAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
-        List<ChannelEvent> events = readEvents().stream()
+        List<ChannelEvent> events = readEvents(effectiveChannel).stream()
                 .filter(event -> channelId.equals(event.channelId()))
                 .sorted(Comparator.comparing(ChannelEvent::createdAt, Comparator.reverseOrder()))
                 .limit(20)
@@ -111,6 +119,16 @@ public class ChannelConfigService {
                 bindings,
                 events
         );
+    }
+
+    public List<ChannelDetail> listRuntimeChannels(String type) {
+        String normalizedType = normalizeType(type);
+        return readInstances().stream()
+                .filter(channel -> normalizedType.equals(channel.type()))
+                .flatMap(channel -> runtimeStorageService.listRuntimeRefs(channel.type(), channel.id()).stream()
+                        .map(ref -> getChannel(channel.id(), ref.ownerUserId()))
+                        .filter(detail -> detail != null))
+                .toList();
     }
 
     public ChannelDetail createChannel(ChannelUpsertRequest request, String ownerUserId) {
@@ -136,11 +154,15 @@ public class ChannelConfigService {
         channels.add(created);
         writeChannelConfig(created);
         runtimeStorageService.initializeRuntime(created);
-        appendEvent(created.id(), "info", "channel.created", "Channel created");
-        return getChannel(created.id());
+        appendEvent(created.id(), created.ownerUserId(), "info", "channel.created", "Channel created");
+        return getChannel(created.id(), created.ownerUserId());
     }
 
     public ChannelDetail updateChannel(String channelId, ChannelUpsertRequest request) {
+        return updateChannel(channelId, request, "admin");
+    }
+
+    public ChannelDetail updateChannel(String channelId, ChannelUpsertRequest request, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
@@ -157,18 +179,22 @@ public class ChannelConfigService {
                 normalizeType(request.type() != null ? request.type() : existing.type()),
                 request.enabled() != null ? request.enabled() : existing.enabled(),
                 normalizeAgentId(request.defaultAgentId(), existing.defaultAgentId()),
-                normalizeOwnerUserId(existing.ownerUserId()),
+                normalizeOwnerUserId(ownerUserId),
                 existing.createdAt(),
                 Instant.now().toString(),
                 mergeConfig(existing.type(), existing.config(), request.config())
         );
 
         writeChannelConfig(updated);
-        appendEvent(channelId, "info", "channel.updated", "Channel updated");
-        return getChannel(channelId);
+        appendEvent(channelId, ownerUserId, "info", "channel.updated", "Channel updated");
+        return getChannel(channelId, ownerUserId);
     }
 
     public ChannelDetail setEnabled(String channelId, boolean enabled) {
+        return setEnabled(channelId, enabled, "admin");
+    }
+
+    public ChannelDetail setEnabled(String channelId, boolean enabled, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
@@ -180,16 +206,16 @@ public class ChannelConfigService {
                 existing.type(),
                 enabled,
                 existing.defaultAgentId(),
-                normalizeOwnerUserId(existing.ownerUserId()),
+                normalizeOwnerUserId(ownerUserId),
                 existing.createdAt(),
                 Instant.now().toString(),
                 existing.config()
         );
 
         writeChannelConfig(updated);
-        appendEvent(channelId, "info", enabled ? "channel.enabled" : "channel.disabled",
+        appendEvent(channelId, ownerUserId, "info", enabled ? "channel.enabled" : "channel.disabled",
                 enabled ? "Channel enabled" : "Channel disabled");
-        return getChannel(channelId);
+        return getChannel(channelId, ownerUserId);
     }
 
     public void deleteChannel(String channelId) {
@@ -198,15 +224,19 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
 
-        runtimeStorageService.deleteRuntime(existing);
+        runtimeStorageService.deleteAllRuntimes(existing.type(), existing.id());
         deleteDirectory(channelDir(existing.type(), channelId));
     }
 
     public List<ChannelBinding> listBindings(String channelId) {
+        return listBindings(channelId, "admin");
+    }
+
+    public List<ChannelBinding> listBindings(String channelId, String ownerUserId) {
         if (findChannel(channelId) == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
-        return readBindings().stream()
+        return readBindings(withRuntimeUser(findChannel(channelId), ownerUserId)).stream()
                 .filter(binding -> channelId.equals(binding.channelId()))
                 .sorted(Comparator.comparing(ChannelBinding::lastInboundAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
@@ -214,10 +244,14 @@ public class ChannelConfigService {
     }
 
     public List<ChannelEvent> listEvents(String channelId) {
+        return listEvents(channelId, "admin");
+    }
+
+    public List<ChannelEvent> listEvents(String channelId, String ownerUserId) {
         if (findChannel(channelId) == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
-        return readEvents().stream()
+        return readEvents(withRuntimeUser(findChannel(channelId), ownerUserId)).stream()
                 .filter(event -> channelId.equals(event.channelId()))
                 .sorted(Comparator.comparing(ChannelEvent::createdAt, Comparator.reverseOrder()))
                 .limit(50)
@@ -225,12 +259,16 @@ public class ChannelConfigService {
     }
 
     public ChannelVerificationResult verifyChannel(String channelId) {
+        return verifyChannel(channelId, "admin");
+    }
+
+    public ChannelVerificationResult verifyChannel(String channelId, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
-        ChannelVerificationResult result = verifyChannel(applyRuntimeState(existing));
-        appendEvent(channelId,
+        ChannelVerificationResult result = verifyChannel(applyRuntimeState(withRuntimeUser(existing, ownerUserId)));
+        appendEvent(channelId, ownerUserId,
                 result.ok() ? "info" : "warning",
                 "channel.verified",
                 result.ok() ? "Channel configuration verified" : String.join("; ", result.issues()));
@@ -238,14 +276,23 @@ public class ChannelConfigService {
     }
 
     public void recordEvent(String channelId, String level, String type, String summary) {
-        appendEvent(channelId, level, type, summary);
+        recordEvent(channelId, "admin", level, type, summary);
+    }
+
+    public void recordEvent(String channelId, String ownerUserId, String level, String type, String summary) {
+        appendEvent(channelId, ownerUserId, level, type, summary);
     }
 
     public ChannelDetail resetChannelRuntimeState(String channelId) {
+        return resetChannelRuntimeState(channelId, "admin");
+    }
+
+    public ChannelDetail resetChannelRuntimeState(String channelId, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
+        existing = withRuntimeUser(existing, ownerUserId);
         Map<String, Object> runtimeState = new LinkedHashMap<>();
         runtimeState.put("channelId", existing.id());
         runtimeState.put("status", "disconnected");
@@ -256,7 +303,7 @@ public class ChannelConfigService {
         runtimeState.put("lastError", "");
         runtimeState.put("qrCodeDataUrl", null);
         writeJson(runtimeStorageService.runtimeDirectory(existing).resolve("login-state.json"), runtimeState);
-        return getChannel(channelId);
+        return getChannel(channelId, ownerUserId);
     }
 
     private ChannelSummary toSummary(ChannelInstance channel, List<ChannelBinding> allBindings) {
@@ -401,7 +448,12 @@ public class ChannelConfigService {
     }
 
     private String normalizeOwnerUserId(String ownerUserId) {
-        return isBlank(ownerUserId) ? "admin" : ownerUserId.trim();
+        String normalized = isBlank(ownerUserId) ? "admin" : ownerUserId.trim();
+        if (normalized.contains("/") || normalized.contains("\\")
+                || ".".equals(normalized) || "..".equals(normalized)) {
+            throw new IllegalArgumentException("ownerUserId contains unsafe path characters");
+        }
+        return normalized;
     }
 
     private ChannelConnectionConfig normalizeConfig(String type, ChannelConnectionConfig config) {
@@ -477,10 +529,15 @@ public class ChannelConfigService {
     }
 
     private void appendEvent(String channelId, String level, String type, String summary) {
+        appendEvent(channelId, "admin", level, type, summary);
+    }
+
+    private void appendEvent(String channelId, String ownerUserId, String level, String type, String summary) {
         ChannelInstance channel = findChannel(channelId);
         if (channel == null) {
             return;
         }
+        channel = withRuntimeUser(channel, ownerUserId);
 
         List<ChannelEvent> events = new ArrayList<>(readEvents(channel));
         events.add(new ChannelEvent(
@@ -496,6 +553,20 @@ public class ChannelConfigService {
         }
         runtimeStorageService.initializeRuntime(channel);
         writeEvents(channel, events);
+    }
+
+    private ChannelInstance withRuntimeUser(ChannelInstance channel, String ownerUserId) {
+        return new ChannelInstance(
+                channel.id(),
+                channel.name(),
+                channel.type(),
+                channel.enabled(),
+                channel.defaultAgentId(),
+                normalizeOwnerUserId(ownerUserId),
+                channel.createdAt(),
+                channel.updatedAt(),
+                channel.config()
+        );
     }
 
     private List<ChannelInstance> readInstances() {
@@ -527,8 +598,9 @@ public class ChannelConfigService {
         return channels;
     }
 
-    private List<ChannelBinding> readBindings() {
+    private List<ChannelBinding> readBindings(String ownerUserId) {
         return readInstances().stream()
+                .map(channel -> withRuntimeUser(channel, ownerUserId))
                 .flatMap(channel -> readBindings(channel).stream())
                 .toList();
     }
@@ -539,8 +611,9 @@ public class ChannelConfigService {
                 new TypeReference<List<ChannelBinding>>() {});
     }
 
-    private List<ChannelEvent> readEvents() {
+    private List<ChannelEvent> readEvents(String ownerUserId) {
         return readInstances().stream()
+                .map(channel -> withRuntimeUser(channel, ownerUserId))
                 .flatMap(channel -> readEvents(channel).stream())
                 .toList();
     }
@@ -606,7 +679,7 @@ public class ChannelConfigService {
                 normalizeType((String) raw.get("type")),
                 raw.get("enabled") instanceof Boolean enabled && enabled,
                 emptyIfNull((String) raw.get("defaultAgentId")),
-                normalizeOwnerUserId((String) raw.get("ownerUserId")),
+                "admin",
                 emptyIfNull((String) raw.get("createdAt")),
                 emptyIfNull((String) raw.get("updatedAt")),
                 deserializeChannelConfig((String) raw.get("type"), rawConfig)
@@ -646,7 +719,6 @@ public class ChannelConfigService {
         payload.put("type", channel.type());
         payload.put("enabled", channel.enabled());
         payload.put("defaultAgentId", channel.defaultAgentId());
-        payload.put("ownerUserId", normalizeOwnerUserId(channel.ownerUserId()));
         payload.put("createdAt", channel.createdAt());
         payload.put("updatedAt", channel.updatedAt());
         payload.put("config", Map.of("authStateDir", config.authStateDir()));
