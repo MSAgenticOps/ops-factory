@@ -1,7 +1,6 @@
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,17 +23,18 @@ public class ChannelDedupService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int MAX_MESSAGES = 500;
 
-    private final GatewayProperties properties;
     private final ChannelConfigService channelConfigService;
+    private final ChannelRuntimeStorageService runtimeStorageService;
 
-    public ChannelDedupService(GatewayProperties properties, ChannelConfigService channelConfigService) {
-        this.properties = properties;
+    public ChannelDedupService(ChannelConfigService channelConfigService,
+                               ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
+        this.runtimeStorageService = runtimeStorageService;
     }
 
     public boolean markIfNew(String channelId, String externalMessageId) {
         ChannelDetail channel = requireChannel(channelId);
-        Path file = dedupFile(channel.type(), channelId);
+        Path file = runtimeStorageService.dedupFile(channel);
         Map<String, Object> wrapper = readJson(file);
         List<Map<String, Object>> messages = castMessages(wrapper.get("messages"));
 
@@ -61,14 +61,6 @@ public class ChannelDedupService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
         return channel;
-    }
-
-    private Path dedupFile(String type, String channelId) {
-        return properties.getGatewayRootPath()
-                .resolve("channels")
-                .resolve(type)
-                .resolve(channelId)
-                .resolve("inbound-dedup.json");
     }
 
     @SuppressWarnings("unchecked")

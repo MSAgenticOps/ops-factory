@@ -25,13 +25,16 @@ public class WeChatMessagePumpService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
+    private final ChannelRuntimeStorageService runtimeStorageService;
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
 
     public WeChatMessagePumpService(ChannelConfigService channelConfigService,
+                                    ChannelRuntimeStorageService runtimeStorageService,
                                     ChannelDedupService channelDedupService,
                                     SessionBridgeService sessionBridgeService) {
         this.channelConfigService = channelConfigService;
+        this.runtimeStorageService = runtimeStorageService;
         this.channelDedupService = channelDedupService;
         this.sessionBridgeService = sessionBridgeService;
     }
@@ -152,15 +155,15 @@ public class WeChatMessagePumpService {
     }
 
     private Path inboxDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("inbox");
+        return runtimeStorageService.inboxDirectory(channel);
     }
 
     private Path processedInboxDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("inbox-processed");
+        return runtimeStorageService.processedInboxDirectory(channel);
     }
 
     private Path outboxPendingDir(ChannelDetail channel) {
-        return channelConfigService.channelDirectory(channel.type(), channel.id()).resolve("outbox").resolve("pending");
+        return runtimeStorageService.outboxPendingDirectory(channel);
     }
 
     private String asString(Object value) {

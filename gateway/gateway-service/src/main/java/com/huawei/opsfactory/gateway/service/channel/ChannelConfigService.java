@@ -30,7 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
 @Service
@@ -44,24 +43,25 @@ public class ChannelConfigService {
 
     private final GatewayProperties properties;
     private final AgentConfigService agentConfigService;
+    private final ChannelRuntimeStorageService runtimeStorageService;
 
     private Path channelsDir;
-    private Path legacyChannelsDir;
 
-    public ChannelConfigService(GatewayProperties properties, AgentConfigService agentConfigService) {
+    public ChannelConfigService(GatewayProperties properties,
+                                AgentConfigService agentConfigService,
+                                ChannelRuntimeStorageService runtimeStorageService) {
         this.properties = properties;
         this.agentConfigService = agentConfigService;
+        this.runtimeStorageService = runtimeStorageService;
     }
 
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
         this.channelsDir = gatewayRoot.resolve("channels");
-        this.legacyChannelsDir = gatewayRoot.resolve("data").resolve("channels");
 
         try {
             Files.createDirectories(channelsDir);
-            migrateLegacyLayoutIfNeeded();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to initialize channels storage", e);
         }
@@ -135,7 +135,7 @@ public class ChannelConfigService {
         );
         channels.add(created);
         writeChannelConfig(created);
-        initializeChannelRuntimeFiles(created.id(), created.type());
+        runtimeStorageService.initializeRuntime(created);
         appendEvent(created.id(), "info", "channel.created", "Channel created");
         return getChannel(created.id());
     }
@@ -147,6 +147,9 @@ public class ChannelConfigService {
         }
 
         validateUpdateRequest(request);
+        if (!isBlank(request.type()) && !normalizeType(request.type()).equals(existing.type())) {
+            throw new IllegalArgumentException("Channel type cannot be changed after creation");
+        }
 
         ChannelInstance updated = new ChannelInstance(
                 existing.id(),
@@ -195,6 +198,7 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
 
+        runtimeStorageService.deleteRuntime(existing);
         deleteDirectory(channelDir(existing.type(), channelId));
     }
 
@@ -237,54 +241,21 @@ public class ChannelConfigService {
         appendEvent(channelId, level, type, summary);
     }
 
-    public ChannelDetail updateChannelConfig(String channelId, UnaryOperator<ChannelConnectionConfig> updater) {
-        ChannelInstance existing = findChannel(channelId);
-        if (existing == null) {
-            throw new IllegalArgumentException("Channel '" + channelId + "' not found");
-        }
-
-        ChannelInstance updated = new ChannelInstance(
-                existing.id(),
-                existing.name(),
-                existing.type(),
-                existing.enabled(),
-                existing.defaultAgentId(),
-                normalizeOwnerUserId(existing.ownerUserId()),
-                existing.createdAt(),
-                Instant.now().toString(),
-                updater.apply(normalizeConfig(existing.type(), existing.config()))
-        );
-        writeChannelConfig(updated);
-        return getChannel(channelId);
-    }
-
     public ChannelDetail resetChannelRuntimeState(String channelId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
-
-        ChannelInstance updated = new ChannelInstance(
-                existing.id(),
-                existing.name(),
-                existing.type(),
-                existing.enabled(),
-                existing.defaultAgentId(),
-                existing.ownerUserId(),
-                existing.createdAt(),
-                Instant.now().toString(),
-                new ChannelConnectionConfig(
-                        "disconnected",
-                        existing.config().authStateDir(),
-                        "",
-                        "",
-                        "",
-                        "",
-                        existing.type().equals("wechat") ? existing.config().wechatId() : "",
-                        existing.type().equals("wechat") ? existing.config().displayName() : ""
-                )
-        );
-        writeChannelConfig(updated);
+        Map<String, Object> runtimeState = new LinkedHashMap<>();
+        runtimeState.put("channelId", existing.id());
+        runtimeState.put("status", "disconnected");
+        runtimeState.put("message", "wechat".equals(existing.type()) ? "WeChat login required" : "WhatsApp Web login required");
+        runtimeState.put("authStateDir", normalizeConfig(existing.type(), existing.config()).authStateDir());
+        runtimeState.put("lastConnectedAt", "");
+        runtimeState.put("lastDisconnectedAt", Instant.now().toString());
+        runtimeState.put("lastError", "");
+        runtimeState.put("qrCodeDataUrl", null);
+        writeJson(runtimeStorageService.runtimeDirectory(existing).resolve("login-state.json"), runtimeState);
         return getChannel(channelId);
     }
 
@@ -396,6 +367,25 @@ public class ChannelConfigService {
         if (!SUPPORTED_TYPES.contains(type)) {
             throw new IllegalArgumentException("Unsupported channel type '" + type + "'");
         }
+        if (request.config() != null && !isSafeRelativeAuthStateDir(request.config().authStateDir())) {
+            throw new IllegalArgumentException("authStateDir must be relative to the channel runtime directory");
+        }
+    }
+
+    private boolean isSafeRelativeAuthStateDir(String authStateDir) {
+        if (authStateDir == null || authStateDir.isBlank()) {
+            return true;
+        }
+        Path path = Path.of(authStateDir.trim());
+        if (path.isAbsolute()) {
+            return false;
+        }
+        for (Path segment : path) {
+            if ("..".equals(segment.toString())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String normalizeType(String type) {
@@ -492,7 +482,7 @@ public class ChannelConfigService {
             return;
         }
 
-        List<ChannelEvent> events = new ArrayList<>(readEvents(channelId, channel.type()));
+        List<ChannelEvent> events = new ArrayList<>(readEvents(channel));
         events.add(new ChannelEvent(
                 UUID.randomUUID().toString(),
                 channelId,
@@ -504,7 +494,8 @@ public class ChannelConfigService {
         if (events.size() > MAX_EVENTS) {
             events = events.subList(events.size() - MAX_EVENTS, events.size());
         }
-        writeEvents(channelId, channel.type(), events);
+        runtimeStorageService.initializeRuntime(channel);
+        writeEvents(channel, events);
     }
 
     private List<ChannelInstance> readInstances() {
@@ -538,34 +529,30 @@ public class ChannelConfigService {
 
     private List<ChannelBinding> readBindings() {
         return readInstances().stream()
-                .flatMap(channel -> readBindings(channel.id(), channel.type()).stream())
+                .flatMap(channel -> readBindings(channel).stream())
                 .toList();
     }
 
-    private List<ChannelBinding> readBindings(String channelId, String type) {
-        Map<String, Object> wrapper = readJson(bindingsFile(channelId, type));
+    private List<ChannelBinding> readBindings(ChannelInstance channel) {
+        Map<String, Object> wrapper = readJson(runtimeStorageService.bindingsFile(channel));
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
                 new TypeReference<List<ChannelBinding>>() {});
     }
 
-    private void writeBindings(String channelId, String type, List<ChannelBinding> bindings) {
-        writeJson(bindingsFile(channelId, type), Map.of("bindings", bindings));
-    }
-
     private List<ChannelEvent> readEvents() {
         return readInstances().stream()
-                .flatMap(channel -> readEvents(channel.id(), channel.type()).stream())
+                .flatMap(channel -> readEvents(channel).stream())
                 .toList();
     }
 
-    private List<ChannelEvent> readEvents(String channelId, String type) {
-        Map<String, Object> wrapper = readJson(eventsFile(channelId, type));
+    private List<ChannelEvent> readEvents(ChannelInstance channel) {
+        Map<String, Object> wrapper = readJson(runtimeStorageService.eventsFile(channel));
         return MAPPER.convertValue(wrapper.getOrDefault("events", List.of()),
                 new TypeReference<List<ChannelEvent>>() {});
     }
 
-    private void writeEvents(String channelId, String type, List<ChannelEvent> events) {
-        writeJson(eventsFile(channelId, type), Map.of("events", events));
+    private void writeEvents(ChannelInstance channel, List<ChannelEvent> events) {
+        writeJson(runtimeStorageService.eventsFile(channel), Map.of("events", events));
     }
 
     private ChannelInstance readChannelConfig(Path instanceDir) {
@@ -573,11 +560,38 @@ public class ChannelConfigService {
             String content = Files.readString(configFile(instanceDir), StandardCharsets.UTF_8);
             @SuppressWarnings("unchecked")
             Map<String, Object> raw = MAPPER.readValue(content, Map.class);
-            return deserializeChannelInstance(raw);
+            ChannelInstance channel = deserializeChannelInstance(raw);
+            if (!isValidConfigChannel(instanceDir, channel)) {
+                return null;
+            }
+            return channel;
         } catch (IOException e) {
             log.warn("Failed to read channel config {}: {}", instanceDir, e.getMessage());
             return null;
         }
+    }
+
+    private boolean isValidConfigChannel(Path instanceDir, ChannelInstance channel) {
+        if (channel == null || !CHANNEL_ID_PATTERN.matcher(channel.id()).matches()) {
+            log.warn("Skipping invalid channel config {}: invalid id '{}'", instanceDir, channel == null ? "" : channel.id());
+            return false;
+        }
+        Path directoryName = instanceDir.getFileName();
+        if (directoryName != null && !channel.id().equals(directoryName.toString())) {
+            log.warn("Skipping invalid channel config {}: id '{}' does not match directory", instanceDir, channel.id());
+            return false;
+        }
+        if (!SUPPORTED_TYPES.contains(channel.type())) {
+            log.warn("Skipping invalid channel config {}: unsupported type '{}'", instanceDir, channel.type());
+            return false;
+        }
+        Path typeDirectory = instanceDir.getParent();
+        Path typeName = typeDirectory == null ? null : typeDirectory.getFileName();
+        if (typeName != null && !channel.type().equals(typeName.toString())) {
+            log.warn("Skipping invalid channel config {}: type '{}' does not match directory", instanceDir, channel.type());
+            return false;
+        }
+        return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -625,100 +639,18 @@ public class ChannelConfigService {
     }
 
     private void writeChannelConfig(ChannelInstance channel) {
-        writeJson(configFile(channel.id(), channel.type()), channel);
-    }
-
-    private void initializeChannelRuntimeFiles(String channelId, String type) {
-        try {
-            initializeIfMissing(bindingsFile(channelId, type), Map.of("bindings", List.of()));
-            initializeIfMissing(dedupFile(channelId, type), Map.of("messages", List.of()));
-            initializeIfMissing(eventsFile(channelId, type), Map.of("events", List.of()));
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to initialize channel runtime files for " + channelId, e);
-        }
-    }
-
-    private void initializeIfMissing(Path file, Object payload) throws IOException {
-        if (Files.exists(file)) {
-            return;
-        }
-        Files.createDirectories(file.getParent());
-        Files.writeString(file,
-                MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                StandardCharsets.UTF_8);
-    }
-
-    private void migrateLegacyLayoutIfNeeded() throws IOException {
-        Path legacyInstancesFile = legacyChannelsDir.resolve("instances.json");
-        if (!Files.exists(legacyInstancesFile) || hasAnyChannelInstance()) {
-            return;
-        }
-
-        List<ChannelInstance> legacyChannels = MAPPER.convertValue(
-                readJson(legacyInstancesFile).getOrDefault("channels", List.of()),
-                new TypeReference<List<ChannelInstance>>() {});
-        List<ChannelBinding> legacyBindings = MAPPER.convertValue(
-                readJson(legacyChannelsDir.resolve("bindings.json")).getOrDefault("bindings", List.of()),
-                new TypeReference<List<ChannelBinding>>() {});
-        List<ChannelEvent> legacyEvents = MAPPER.convertValue(
-                readJson(legacyChannelsDir.resolve("events.json")).getOrDefault("events", List.of()),
-                new TypeReference<List<ChannelEvent>>() {});
-        Map<String, List<Map<String, Object>>> dedupByChannel = splitByChannel(
-                readJson(legacyChannelsDir.resolve("inbound-dedup.json")).getOrDefault("messages", List.of()));
-
-        for (ChannelInstance channel : legacyChannels) {
-            writeChannelConfig(channel);
-            writeBindings(channel.id(), channel.type(), legacyBindings.stream()
-                    .filter(binding -> channel.id().equals(binding.channelId()))
-                    .toList());
-            writeEvents(channel.id(), channel.type(), legacyEvents.stream()
-                    .filter(event -> channel.id().equals(event.channelId()))
-                    .toList());
-            writeJson(dedupFile(channel.id(), channel.type()),
-                    Map.of("messages", dedupByChannel.getOrDefault(channel.id(), List.of())));
-        }
-
-        log.info("Migrated {} legacy channel instance(s) into gateway/channels", legacyChannels.size());
-    }
-
-    private boolean hasAnyChannelInstance() throws IOException {
-        if (!Files.isDirectory(channelsDir)) {
-            return false;
-        }
-        try (DirectoryStream<Path> typeDirs = Files.newDirectoryStream(channelsDir)) {
-            for (Path typeDir : typeDirs) {
-                if (!Files.isDirectory(typeDir)) {
-                    continue;
-                }
-                try (DirectoryStream<Path> instanceDirs = Files.newDirectoryStream(typeDir)) {
-                    if (instanceDirs.iterator().hasNext()) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, List<Map<String, Object>>> splitByChannel(Object rawItems) {
-        Map<String, List<Map<String, Object>>> byChannel = new LinkedHashMap<>();
-        if (!(rawItems instanceof List<?> items)) {
-            return byChannel;
-        }
-        for (Object item : items) {
-            if (!(item instanceof Map<?, ?> rawMap)) {
-                continue;
-            }
-            Map<String, Object> normalized = new LinkedHashMap<>();
-            rawMap.forEach((key, value) -> normalized.put(String.valueOf(key), value));
-            String channelId = String.valueOf(normalized.getOrDefault("channelId", ""));
-            if (channelId.isBlank()) {
-                continue;
-            }
-            byChannel.computeIfAbsent(channelId, ignored -> new ArrayList<>()).add(normalized);
-        }
-        return byChannel;
+        ChannelConnectionConfig config = normalizeConfig(channel.type(), channel.config());
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", channel.id());
+        payload.put("name", channel.name());
+        payload.put("type", channel.type());
+        payload.put("enabled", channel.enabled());
+        payload.put("defaultAgentId", channel.defaultAgentId());
+        payload.put("ownerUserId", normalizeOwnerUserId(channel.ownerUserId()));
+        payload.put("createdAt", channel.createdAt());
+        payload.put("updatedAt", channel.updatedAt());
+        payload.put("config", Map.of("authStateDir", config.authStateDir()));
+        writeJson(configFile(channel.id(), channel.type()), payload);
     }
 
     private Path typeDir(String type) {
@@ -727,10 +659,6 @@ public class ChannelConfigService {
 
     private Path channelDir(String type, String channelId) {
         return typeDir(type).resolve(channelId);
-    }
-
-    public Path channelDirectory(String type, String channelId) {
-        return channelDir(type, channelId);
     }
 
     public Path getGatewayRoot() {
@@ -743,18 +671,6 @@ public class ChannelConfigService {
 
     private Path configFile(Path instanceDir) {
         return instanceDir.resolve("config.json");
-    }
-
-    private Path bindingsFile(String channelId, String type) {
-        return channelDir(type, channelId).resolve("bindings.json");
-    }
-
-    private Path dedupFile(String channelId, String type) {
-        return channelDir(type, channelId).resolve("inbound-dedup.json");
-    }
-
-    private Path eventsFile(String channelId, String type) {
-        return channelDir(type, channelId).resolve("events.json");
     }
 
     private String webhookPath(ChannelInstance channel) {
@@ -771,7 +687,7 @@ public class ChannelConfigService {
             return channel;
         }
 
-        Path runtimeFile = channelDir(channel.type(), channel.id()).resolve("login-state.json");
+        Path runtimeFile = runtimeStorageService.runtimeDirectory(channel).resolve("login-state.json");
         if (!Files.exists(runtimeFile)) {
             return channel;
         }
