@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import org.apache.tika.Tika;
@@ -60,7 +61,7 @@ public class TikaConversionService {
     }
 
     private String buildMarkdown(Path file, String contentType, String xhtml, String plainText) throws IOException {
-        String lowerFileName = file.getFileName().toString().toLowerCase();
+        String lowerFileName = file.getFileName().toString().toLowerCase(Locale.ROOT);
         if (lowerFileName.endsWith(".md") || "text/markdown".equalsIgnoreCase(contentType)) {
             return normalizeMarkdown(Files.readString(file));
         }
@@ -112,7 +113,7 @@ public class TikaConversionService {
             return;
         }
 
-        String tag = element.tagName().toLowerCase();
+        String tag = element.tagName().toLowerCase(Locale.ROOT);
         switch (tag) {
             case "h1", "h2", "h3", "h4", "h5", "h6" -> {
                 ensureParagraphBreak(markdown);
@@ -235,7 +236,7 @@ public class TikaConversionService {
         if (!(node instanceof Element element)) {
             return;
         }
-        String tag = element.tagName().toLowerCase();
+        String tag = element.tagName().toLowerCase(Locale.ROOT);
         switch (tag) {
             case "strong", "b" -> wrap(markdown, "**", renderInline(element));
             case "em", "i" -> wrap(markdown, "*", renderInline(element));
@@ -277,7 +278,7 @@ public class TikaConversionService {
     }
 
     private boolean isBlockLike(Element element) {
-        return switch (element.tagName().toLowerCase()) {
+        return switch (element.tagName().toLowerCase(Locale.ROOT)) {
             case "pre", "blockquote", "figure", "figcaption", "dl", "dt", "dd" -> true;
             default -> false;
         };

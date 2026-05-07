@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -87,7 +88,7 @@ public abstract class KnowledgeApiIntegrationTestSupport {
     }
 
     protected JsonNode uploadMarkdownFile(String sourceId, String fileName, String markdown) throws Exception {
-        MockMultipartFile file = new MockMultipartFile("files", fileName, "text/markdown", markdown.getBytes());
+        MockMultipartFile file = new MockMultipartFile("files", fileName, "text/markdown", markdown.getBytes(StandardCharsets.UTF_8));
         return readJson(mockMvc.perform(multipart("/knowledge/sources/{sourceId}/documents:ingest", sourceId)
                 .file(file))
             .andExpect(status().isOk())
