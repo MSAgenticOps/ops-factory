@@ -193,8 +193,7 @@ public class QosCollectionScheduler {
             }
 
             if (!allAlarms.isEmpty()) {
-                BigDecimal rScore = calculationService.calculateResourceScore(
-                    envInfo.getAgentSolutionType(), allAlarms, alarmWeights, alarmIdWeights, iMax);
+                BigDecimal rScore = calculationService.calculateResourceScore(allAlarms, alarmWeights, alarmIdWeights, iMax);
                 appendNormalize(envCode, "R", rScore, endTime);
             }
         }

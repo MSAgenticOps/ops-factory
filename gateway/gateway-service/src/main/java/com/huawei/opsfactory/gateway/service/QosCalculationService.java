@@ -65,7 +65,7 @@ public class QosCalculationService {
         return totalScore.setScale(2, RoundingMode.HALF_UP);
     }
 
-    public BigDecimal calculateResourceScore(String agentSolutionType, List<AlarmInfo> alarms,
+    public BigDecimal calculateResourceScore(List<AlarmInfo> alarms,
             Map<String, BigDecimal> alarmWeights, Map<String, BigDecimal> alarmIdWeights, int iMax) {
         BigDecimal impact = BigDecimal.ZERO;
         for (AlarmInfo alarm : alarms) {
