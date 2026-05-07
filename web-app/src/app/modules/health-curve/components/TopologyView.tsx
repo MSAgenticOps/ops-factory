@@ -35,16 +35,16 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
         const color = statusColor(latest)
 
         const nodes = [
-            { name: envCode || 'System', x: 300, y: 100, symbolSize: 50, itemStyle: { color } },
+            { name: envCode || t('healthCurve.title'), x: 300, y: 100, symbolSize: 50, itemStyle: { color } },
             { name: t('healthCurve.availability'), x: 150, y: 220, symbolSize: 35, itemStyle: { color: CHART_COLORS.availability } },
             { name: t('healthCurve.performance'), x: 300, y: 250, symbolSize: 35, itemStyle: { color: CHART_COLORS.performance } },
             { name: t('healthCurve.resource'), x: 450, y: 220, symbolSize: 35, itemStyle: { color: CHART_COLORS.resource } }
         ]
 
         const links = [
-            { source: envCode || 'System', target: t('healthCurve.availability') },
-            { source: envCode || 'System', target: t('healthCurve.performance') },
-            { source: envCode || 'System', target: t('healthCurve.resource') }
+            { source: envCode || t('healthCurve.title'), target: t('healthCurve.availability') },
+            { source: envCode || t('healthCurve.title'), target: t('healthCurve.performance') },
+            { source: envCode || t('healthCurve.title'), target: t('healthCurve.resource') }
         ]
 
         return {

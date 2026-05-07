@@ -26,7 +26,6 @@ export default function HealthCurveFilters({
     const [envOptions, setEnvOptions] = useState<EnvironmentInfo[]>([])
     const [alarmScoreMax, setAlarmScoreMax] = useState<number | null>(null)
     const [weights, setWeights] = useState<{ a: string; p: string; r: string } | null>(null)
-    const now = Date.now()
 
     useEffect(() => {
         getEnvironments(userId)
@@ -93,6 +92,7 @@ export default function HealthCurveFilters({
 
     const handleTimeWindow = (hours: number) => {
         setTimeWindow(hours)
+        const now = Date.now()
         onTimeRangeChange(now - hours * 3600000, now)
     }
 

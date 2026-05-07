@@ -10,3 +10,17 @@ export const CHART_COLORS = {
   orange: '#f59e0b',        // --chart-3
   critical: '#ef4444',      // --chart-4
 } as const
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+export const CHART_COLORS_LIGHT = {
+  good: hexToRgba(CHART_COLORS.good, 0.08),
+  warning: hexToRgba(CHART_COLORS.warning, 0.08),
+  orange: hexToRgba(CHART_COLORS.orange, 0.08),
+  critical: hexToRgba(CHART_COLORS.critical, 0.08),
+} as const

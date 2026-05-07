@@ -26,7 +26,7 @@ export default function DimensionScoreCards({ envCode, startTime, endTime }: Dim
 
     const fetchDetailSeries = (endpoint: string, setter: (d: TimeSeriesPoint[]) => void) => {
         if (!envCode) { setter([]); return }
-        getIndicatorDetail(endpoint, envCode, startTime, endTime, 1, 9999, userId)
+        getIndicatorDetail(endpoint, envCode, startTime, endTime, 1, 100, userId)
             .then(res => {
                 const results = res.results || []
                 const grouped = new Map<number, { sum: number; count: number }>()
