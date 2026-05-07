@@ -2,10 +2,6 @@ package com.huawei.opsfactory.gateway.qos.dv;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DvEnvironmentInfo {
     private String envCode;
@@ -52,13 +48,4 @@ public class DvEnvironmentInfo {
     public void setCrtFileName(String crtFileName) { this.crtFileName = crtFileName; }
     public String getDns() { return dns; }
     public void setDns(String dns) { this.dns = dns; }
-
-    public List<String> getDnsList() {
-        if (dns == null || dns.isBlank()) return List.of();
-        return Arrays.stream(dns.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
-    }
-
-    public boolean hasCertificate() {
-        return crtContent != null && !crtContent.isBlank();
-    }
 }

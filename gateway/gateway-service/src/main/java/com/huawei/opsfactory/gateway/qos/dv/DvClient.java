@@ -148,79 +148,6 @@ public class DvClient {
         }
     }
 
-    // --- 11.3.3 告警流水号查询 ---
-
-    public List<String> fetchAlarmCsns(DvEnvironmentInfo env, long startTime, long endTime,
-            List<String> severities, List<String> dns) {
-        return executeWithRetry(() -> doFetchAlarmCsns(env, startTime, endTime, severities, dns),
-                "fetchAlarmCsns[" + env.getEnvCode() + "]");
-    }
-
-    private List<String> doFetchAlarmCsns(DvEnvironmentInfo env, long startTime, long endTime,
-            List<String> severities, List<String> dns) {
-        try {
-            WebClient webClient = buildWebClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String url = env.getServerUrl() + "/rest/fault/v1/current-alarms/csns";
-            String jsonBody = MAPPER.writeValueAsString(buildAlarmQuery(startTime, endTime, severities, dns));
-
-            String response = webClient.post()
-                    .uri(url)
-                    .headers(h -> headers.forEach(h::add))
-                    .body(Mono.just(jsonBody), String.class)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(60));
-
-            return parseCsns(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch alarm CSNs from " + env.getServerUrl()
-                    + ": " + e.getMessage(), e);
-        }
-    }
-
-    // --- 11.3.4 批量告警查询 ---
-
-    public List<AlarmInfo> fetchAlarmsByCsns(DvEnvironmentInfo env, List<String> csns) {
-        if (csns == null || csns.isEmpty()) {
-            return List.of();
-        }
-        List<AlarmInfo> allAlarms = new ArrayList<>();
-        for (int i = 0; i < csns.size(); i += ALARM_BATCH_SIZE) {
-            List<String> batch = csns.subList(i, Math.min(i + ALARM_BATCH_SIZE, csns.size()));
-            List<AlarmInfo> batchResult = executeWithRetry(
-                    () -> doFetchAlarmsByCsns(env, batch),
-                    "fetchAlarmsByCsns[" + env.getEnvCode() + " batch " + (i / ALARM_BATCH_SIZE) + "]");
-            if (batchResult != null) {
-                allAlarms.addAll(batchResult);
-            }
-        }
-        return allAlarms;
-    }
-
-    private List<AlarmInfo> doFetchAlarmsByCsns(DvEnvironmentInfo env, List<String> csns) {
-        try {
-            WebClient webClient = buildWebClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String csnsParam = String.join(",", csns);
-            String url = env.getServerUrl() + "/rest/fault/v1/current-alarms/batch?csns=" + csnsParam;
-
-            String response = webClient.get()
-                    .uri(url)
-                    .headers(h -> headers.forEach(h::add))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(60));
-
-            return parseAlarms(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch alarms by CSNs from " + env.getServerUrl()
-                    + ": " + e.getMessage(), e);
-        }
-    }
-
     // --- 11.8 通用重试机制 ---
 
     private <T> T executeWithRetry(Supplier<T> action, String operationName) {
@@ -358,23 +285,6 @@ public class DvClient {
             log.warn("Failed to parse alarm response: {}", e.getMessage());
         }
         return alarms;
-    }
-
-    private List<String> parseCsns(String response) {
-        List<String> csns = new ArrayList<>();
-        if (response == null) return csns;
-        try {
-            JsonNode root = MAPPER.readTree(response);
-            JsonNode csnsNode = root.has("csns") ? root.get("csns") : root.get("result");
-            if (csnsNode != null && csnsNode.isArray()) {
-                for (JsonNode node : csnsNode) {
-                    csns.add(node.asText());
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to parse CSN response: {}", e.getMessage());
-        }
-        return csns;
     }
 
     private static String textVal(JsonNode node, String field) {

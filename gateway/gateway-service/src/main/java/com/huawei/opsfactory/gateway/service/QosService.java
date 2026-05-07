@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -165,16 +164,6 @@ public class QosService {
                 .filter(d -> "R".equals(d.getType()))
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
                 .collect(Collectors.toList());
-    }
-
-    public void saveNormalizeData(String envCode, String type, BigDecimal value, long timestamp) {
-        IndicatorNormalizeData data = new IndicatorNormalizeData();
-        data.setCode(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE);
-        data.setEnvCode(envCode);
-        data.setType(type);
-        data.setIndicatorValue(value);
-        data.setTimestamp(timestamp);
-        normalizeDataStore.append(data);
     }
 
     private BigDecimal resolveWeight(String dimension) {

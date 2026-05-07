@@ -65,15 +65,17 @@ public class QosCalculationService {
         return totalScore.setScale(2, RoundingMode.HALF_UP);
     }
 
-    public BigDecimal calculateResourceScore(List<AlarmInfo> alarms,
-            Map<String, BigDecimal> alarmWeights, int iMax) {
+    public BigDecimal calculateResourceScore(String agentSolutionType, List<AlarmInfo> alarms,
+            Map<String, BigDecimal> alarmWeights, Map<String, BigDecimal> alarmIdWeights, int iMax) {
         BigDecimal impact = BigDecimal.ZERO;
         for (AlarmInfo alarm : alarms) {
             String severity = alarm.getSeverity();
             if ("INFO".equalsIgnoreCase(severity) || "4".equals(severity)) {
                 continue;
             }
-            BigDecimal weight = alarmWeights.getOrDefault(severity, BigDecimal.ZERO);
+            BigDecimal weight = alarmIdWeights != null && alarm.getAlarmId() != null
+                    ? alarmIdWeights.getOrDefault(alarm.getAlarmId(), alarmWeights.getOrDefault(severity, BigDecimal.ZERO))
+                    : alarmWeights.getOrDefault(severity, BigDecimal.ZERO);
             int count = alarm.getCount() != null ? alarm.getCount() : 1;
             impact = impact.add(weight.multiply(new BigDecimal(count)));
         }

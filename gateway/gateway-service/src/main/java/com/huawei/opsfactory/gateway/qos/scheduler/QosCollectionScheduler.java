@@ -5,6 +5,7 @@ import com.huawei.opsfactory.gateway.qos.dv.DvClient;
 import com.huawei.opsfactory.gateway.qos.dv.DvEnvironmentInfo;
 import com.huawei.opsfactory.gateway.qos.model.AlarmDetailData;
 import com.huawei.opsfactory.gateway.qos.model.AlarmInfo;
+import com.huawei.opsfactory.gateway.qos.model.AlarmWeight;
 import com.huawei.opsfactory.gateway.qos.model.DnCluster;
 import com.huawei.opsfactory.gateway.qos.model.DnElement;
 import com.huawei.opsfactory.gateway.qos.model.DnRegistry;
@@ -15,6 +16,7 @@ import com.huawei.opsfactory.gateway.qos.model.PerformanceDataResult;
 import com.huawei.opsfactory.gateway.qos.model.PerformanceIndicatorScope;
 import com.huawei.opsfactory.gateway.qos.model.ProductConfigRule;
 import com.huawei.opsfactory.gateway.qos.store.AlarmDetailDataStore;
+import com.huawei.opsfactory.gateway.qos.store.AlarmWeightStore;
 import com.huawei.opsfactory.gateway.qos.store.DnRegistryStore;
 import com.huawei.opsfactory.gateway.qos.store.IndicatorDetailDataStore;
 import com.huawei.opsfactory.gateway.qos.store.IndicatorNormalizeDataStore;
@@ -49,6 +51,7 @@ public class QosCollectionScheduler {
     private final IndicatorNormalizeDataStore normalizeDataStore;
     private final AlarmDetailDataStore alarmDetailDataStore;
     private final DnRegistryStore dnRegistryStore;
+    private final AlarmWeightStore alarmWeightStore;
 
     public QosCollectionScheduler(GatewayProperties properties,
             DvClient dvClient,
@@ -59,7 +62,8 @@ public class QosCollectionScheduler {
             IndicatorDetailDataStore detailDataStore,
             IndicatorNormalizeDataStore normalizeDataStore,
             AlarmDetailDataStore alarmDetailDataStore,
-            DnRegistryStore dnRegistryStore) {
+            DnRegistryStore dnRegistryStore,
+            AlarmWeightStore alarmWeightStore) {
         this.properties = properties;
         this.dvClient = dvClient;
         this.calculationService = calculationService;
@@ -70,6 +74,7 @@ public class QosCollectionScheduler {
         this.normalizeDataStore = normalizeDataStore;
         this.alarmDetailDataStore = alarmDetailDataStore;
         this.dnRegistryStore = dnRegistryStore;
+        this.alarmWeightStore = alarmWeightStore;
     }
 
     @Scheduled(fixedDelayString = "${gateway.qos.collection-interval-ms:300000}")
@@ -155,6 +160,10 @@ public class QosCollectionScheduler {
                     .findFirst().orElse(null);
             int iMax = config != null && config.getAlarmScoreMax() != null ? config.getAlarmScoreMax() : 20;
             Map<String, BigDecimal> alarmWeights = resolveAlarmWeights(config);
+            Map<String, BigDecimal> alarmIdWeights = alarmWeightStore.loadAll().stream()
+                    .filter(aw -> envInfo.getAgentSolutionType().equals(aw.getAgentSolutionType()))
+                    .filter(aw -> aw.getAlarmId() != null && aw.getWeight() != null)
+                    .collect(Collectors.toMap(AlarmWeight::getAlarmId, AlarmWeight::getWeight, (a, b) -> a));
 
             List<DnCluster> clusters = loadClusters(envCode);
             List<AlarmInfo> allAlarms = new ArrayList<>();
@@ -184,7 +193,8 @@ public class QosCollectionScheduler {
             }
 
             if (!allAlarms.isEmpty()) {
-                BigDecimal rScore = calculationService.calculateResourceScore(allAlarms, alarmWeights, iMax);
+                BigDecimal rScore = calculationService.calculateResourceScore(
+                    envInfo.getAgentSolutionType(), allAlarms, alarmWeights, alarmIdWeights, iMax);
                 appendNormalize(envCode, "R", rScore, endTime);
             }
         }
