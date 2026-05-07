@@ -58,7 +58,7 @@ public class DvAuthService {
 
     private TokenInfo fetchNewToken(DvEnvironmentInfo env) {
         try {
-            SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName());
+            SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
             HttpClient httpClient = HttpClient.create()
                     .secure(t -> t.sslContext(sslContext)
                             .handshakeTimeout(Duration.ofSeconds(10)))

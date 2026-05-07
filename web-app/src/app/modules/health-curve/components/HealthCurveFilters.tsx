@@ -11,12 +11,17 @@ interface HealthCurveFiltersProps {
     onRefresh: () => void
 }
 
+interface ProductOption {
+    agentSolutionType: string
+    productTypeName: string
+}
+
 export default function HealthCurveFilters({
     envCode, onEnvCodeChange, onTimeRangeChange, onRefresh,
 }: HealthCurveFiltersProps) {
     const { t } = useTranslation()
     const { userId } = useUser()
-    const [products, setProducts] = useState<string[]>([])
+    const [products, setProducts] = useState<ProductOption[]>([])
     const [selectedProduct, setSelectedProduct] = useState('')
     const [envOptions, setEnvOptions] = useState<EnvironmentInfo[]>([])
     const [alarmScoreMax, setAlarmScoreMax] = useState<number | null>(null)
@@ -28,17 +33,26 @@ export default function HealthCurveFilters({
             .then(res => {
                 const envs = res.results || []
                 setEnvOptions(envs)
-                const productTypes = [...new Set(envs.map((e: { agentSolutionType: string }) => e.agentSolutionType))]
-                setProducts(productTypes)
-                if (envs.length > 0 && !envCode) {
-                    onEnvCodeChange(envs[0].envCode)
+                const seen = new Map<string, ProductOption>()
+                for (const e of envs) {
+                    if (!seen.has(e.agentSolutionType)) {
+                        seen.set(e.agentSolutionType, {
+                            agentSolutionType: e.agentSolutionType,
+                            productTypeName: e.productTypeName || e.agentSolutionType,
+                        })
+                    }
+                }
+                const productList = [...seen.values()]
+                setProducts(productList)
+                if (productList.length > 0 && !selectedProduct) {
+                    setSelectedProduct(productList[0].agentSolutionType)
                 }
             })
             .catch(() => { setEnvOptions([]); setProducts([]) })
     }, [userId])
 
     useEffect(() => {
-        const product = selectedProduct || products[0]
+        const product = selectedProduct || (products.length > 0 ? products[0].agentSolutionType : '')
         if (!product) return
         getProductConfigRule(product, userId)
             .then(res => {
@@ -58,13 +72,13 @@ export default function HealthCurveFilters({
 
     const filteredEnvs = selectedProduct
         ? envOptions.filter(e => e.agentSolutionType === selectedProduct)
-        : envOptions
+        : []
 
     useEffect(() => {
         if (filteredEnvs.length > 0 && !filteredEnvs.some(e => e.envCode === envCode)) {
             onEnvCodeChange(filteredEnvs[0].envCode)
         }
-    }, [filteredEnvs])
+    }, [selectedProduct, filteredEnvs])
 
     const [timeWindow, setTimeWindow] = useState(1)
 
@@ -84,14 +98,20 @@ export default function HealthCurveFilters({
 
     return (
         <div className="health-curve-filters">
-            <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
+            <span className="hc-filter-label">{t('healthCurve.product')}</span>
+            <select value={selectedProduct} onChange={e => {
+                setSelectedProduct(e.target.value)
+                const envsOfProduct = envOptions.filter(env => env.agentSolutionType === e.target.value)
+                if (envsOfProduct.length > 0) onEnvCodeChange(envsOfProduct[0].envCode)
+            }}>
                 {products.map(p => (
-                    <option key={p} value={p}>{p}</option>
+                    <option key={p.agentSolutionType} value={p.agentSolutionType}>{p.productTypeName}</option>
                 ))}
             </select>
+            <span className="hc-filter-label">{t('healthCurve.environment')}</span>
             <select value={envCode} onChange={e => onEnvCodeChange(e.target.value)}>
                 {filteredEnvs.map(e => (
-                    <option key={e.envCode} value={e.envCode}>{e.envCode}</option>
+                    <option key={e.envCode} value={e.envCode}>{e.envName || e.envCode}</option>
                 ))}
             </select>
             <select value={timeWindow} onChange={e => handleTimeWindow(Number(e.target.value))}>

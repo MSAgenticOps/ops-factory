@@ -17,16 +17,32 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class DvSslContextFactory {
 
     private static final Logger log = LoggerFactory.getLogger(DvSslContextFactory.class);
 
-    public SslContext createSslContext(String crtContent, String fileName) {
+    private final ConcurrentHashMap<String, SslContext> sslContextCache = new ConcurrentHashMap<>();
+
+    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl) {
         if (crtContent == null || crtContent.isBlank()) {
+            if (strictSsl) {
+                throw new IllegalStateException("No SSL certificate configured and strict-ssl is enabled");
+            }
+            log.warn("INSECURE SSL: no certificate configured, falling back to insecure trust manager");
             return createInsecureSslContext();
         }
+
+        return sslContextCache.computeIfAbsent(crtContent, k -> doCreateSslContext(k, fileName, strictSsl));
+    }
+
+    public SslContext createSslContext(String crtContent, String fileName) {
+        return createSslContext(crtContent, fileName, true);
+    }
+
+    private SslContext doCreateSslContext(String crtContent, String fileName, boolean strictSsl) {
         Path tempFile = null;
         try {
             byte[] certBytes = java.util.Base64.getDecoder().decode(crtContent);
@@ -54,7 +70,10 @@ public class DvSslContextFactory {
                     .keyManager(kmf)
                     .build();
         } catch (Exception e) {
-            log.warn("Failed to create SSL context with certificate, falling back to insecure: {}", e.getMessage());
+            if (strictSsl) {
+                throw new RuntimeException("Failed to create SSL context with certificate (strict-ssl enabled)", e);
+            }
+            log.warn("INSECURE SSL: failed to create SSL context with certificate, falling back to insecure: {}", e.getMessage());
             return createInsecureSslContext();
         } finally {
             if (tempFile != null) {

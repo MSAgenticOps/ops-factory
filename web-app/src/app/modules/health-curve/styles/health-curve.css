@@ -148,28 +148,6 @@
     border-bottom: 1px solid var(--color-border, #eee);
 }
 
-/* ---- Pagination ---- */
-.pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    margin-top: 12px;
-}
-
-.pagination button {
-    padding: 4px 12px;
-    border: 1px solid var(--color-border, #d0d0d0);
-    border-radius: 4px;
-    cursor: pointer;
-    background: var(--color-surface, #fafafa);
-}
-
-.pagination button:disabled {
-    opacity: 0.4;
-    cursor: default;
-}
-
 /* ---- Contribution analysis ---- */
 .contribution-analysis {
     padding: 12px;

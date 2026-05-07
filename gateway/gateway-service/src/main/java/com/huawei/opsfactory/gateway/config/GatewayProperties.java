@@ -529,21 +529,29 @@ public class GatewayProperties {
 
         public static class DvEnvironment {
             private String envCode;
+            private String envName;
             private String agentSolutionType;
+            private String productTypeName;
             private String serverUrl;
             private String utmUser;
             private String utmPassword;
             private String crtContent;
             private String crtFileName;
             private String dns;
+            private boolean strictSsl = true;
             public String getEnvCode() { return envCode; }
             public void setEnvCode(String envCode) { this.envCode = envCode; }
+            public String getEnvName() { return envName; }
+            public void setEnvName(String envName) { this.envName = envName; }
             public String getAgentSolutionType() { return agentSolutionType; }
             public void setAgentSolutionType(String agentSolutionType) { this.agentSolutionType = agentSolutionType; }
+            public String getProductTypeName() { return productTypeName; }
+            public void setProductTypeName(String productTypeName) { this.productTypeName = productTypeName; }
             public String getServerUrl() { return serverUrl; }
             public void setServerUrl(String serverUrl) { this.serverUrl = serverUrl; }
             public String getUtmUser() { return utmUser; }
             public void setUtmUser(String utmUser) { this.utmUser = utmUser; }
+            @com.fasterxml.jackson.annotation.JsonIgnore
             public String getUtmPassword() { return utmPassword; }
             public void setUtmPassword(String utmPassword) { this.utmPassword = utmPassword; }
             public String getCrtContent() { return crtContent; }
@@ -552,6 +560,8 @@ public class GatewayProperties {
             public void setCrtFileName(String crtFileName) { this.crtFileName = crtFileName; }
             public String getDns() { return dns; }
             public void setDns(String dns) { this.dns = dns; }
+            public boolean isStrictSsl() { return strictSsl; }
+            public void setStrictSsl(boolean strictSsl) { this.strictSsl = strictSsl; }
         }
     }
 

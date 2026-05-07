@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
 import { useUser } from '../../../platform/providers/UserContext'
 import { getContributionData } from '../../../../services/healthCurveAPI'
+import { CHART_COLORS } from '../styles/chart-colors'
 
 interface ContributionAnalysisProps {
     envCode: string
@@ -34,9 +35,9 @@ export default function ContributionAnalysis({ envCode, startTime, endTime }: Co
     }
 
     const typeColor = (type: string) => {
-        if (type === 'A') return '#4caf50'
-        if (type === 'P') return '#2196f3'
-        return '#ff9800'
+        if (type === 'A') return CHART_COLORS.availability
+        if (type === 'P') return CHART_COLORS.performance
+        return CHART_COLORS.resource
     }
 
     const option = data.length > 0 ? {

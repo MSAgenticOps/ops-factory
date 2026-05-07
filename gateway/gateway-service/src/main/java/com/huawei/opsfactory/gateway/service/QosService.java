@@ -127,7 +127,9 @@ public class QosService {
                 .map(env -> {
                     Map<String, String> item = new LinkedHashMap<>();
                     item.put("envCode", env.getEnvCode());
+                    item.put("envName", env.getEnvName() != null ? env.getEnvName() : env.getEnvCode());
                     item.put("agentSolutionType", env.getAgentSolutionType());
+                    item.put("productTypeName", env.getProductTypeName() != null ? env.getProductTypeName() : env.getAgentSolutionType());
                     return item;
                 })
                 .collect(Collectors.toList());

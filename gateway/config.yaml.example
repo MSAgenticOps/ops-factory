@@ -109,12 +109,15 @@ gateway:
       resource: 0.2                           # wR
     dv-environments: []                        # DV environments, example:
     #  - env-code: "DigitalCRM.sit"
+    #    env-name: "DigitalCRM SIT环境"               # display name (defaults to env-code)
     #    agent-solution-type: "DigitalCRM"
+    #    product-type-name: "数字CRM"                   # display name (defaults to agent-solution-type)
     #    server-url: "https://10.44.212.216:26335"
     #    utm-user: "admin"
     #    utm-password: "changeit"
     #    crt-content: ""                       # Base64 encoded certificate
     #    crt-file-name: "client.jks"
+    #    strict-ssl: true                       # reject insecure SSL fallback (default: true)
 
 logging:
   level:

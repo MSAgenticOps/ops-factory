@@ -152,14 +152,15 @@ public class DvClient {
 
     private <T> T executeWithRetry(Supplier<T> action, String operationName) {
         int retryCount = 0;
+        Exception lastException = null;
         while (retryCount <= MAX_RETRIES) {
             try {
                 return action.get();
             } catch (Exception e) {
+                lastException = e;
                 retryCount++;
                 if (retryCount > MAX_RETRIES) {
-                    log.error("{} failed after {} retries: {}", operationName, MAX_RETRIES, e.getMessage());
-                    return null;
+                    break;
                 }
                 long delayMs = (long) Math.pow(2, retryCount) * 1000;
                 log.warn("{} failed, retry {}/{} in {}ms: {}", operationName, retryCount, MAX_RETRIES, delayMs, e.getMessage());
@@ -167,18 +168,18 @@ public class DvClient {
                     Thread.sleep(delayMs);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    log.error("{} interrupted during retry", operationName);
-                    return null;
+                    throw new RuntimeException(operationName + " interrupted during retry", ie);
                 }
             }
         }
-        return null;
+        log.error("{} failed after {} retries: {}", operationName, MAX_RETRIES, lastException.getMessage());
+        throw new RuntimeException(operationName + " failed after " + MAX_RETRIES + " retries", lastException);
     }
 
     // --- 内部工具方法 ---
 
     private WebClient buildWebClient(DvEnvironmentInfo env) {
-        SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName());
+        SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
         HttpClient httpClient = HttpClient.create()
                 .secure(t -> t.sslContext(sslContext)
                         .handshakeTimeout(Duration.ofSeconds(10)))

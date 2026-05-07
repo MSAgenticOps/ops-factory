@@ -2248,6 +2248,8 @@
   "healthCurve": {
     "title": "业务健康状态总览",
     "availability": "可用性",
+    "product": "产品",
+    "environment": "环境",
     "performance": "性能",
     "resource": "资源",
     "healthCurve": "健康曲线",
@@ -2288,6 +2290,8 @@
     "good": "健康",
     "warning": "亚健康",
     "orange": "异常",
-    "critical": "严重"
+    "critical": "严重",
+    "pagePlaceholder": "页码",
+    "goToPage": "跳转"
   }
 }

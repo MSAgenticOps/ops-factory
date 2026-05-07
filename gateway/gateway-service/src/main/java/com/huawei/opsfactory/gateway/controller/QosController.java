@@ -3,8 +3,10 @@ package com.huawei.opsfactory.gateway.controller;
 import com.huawei.opsfactory.gateway.service.QosService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -30,6 +32,7 @@ public class QosController {
             String envCode = (String) req.get("envCode");
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
+            validateTimeRange(startTime, endTime);
             List<Map<String, Object>> results = qosService.getHealthIndicator(envCode, startTime, endTime);
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("results", results);
@@ -53,6 +56,7 @@ public class QosController {
             String envCode = (String) req.get("envCode");
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
+            validateTimeRange(startTime, endTime);
             List<?> results = qosService.getResourceNormalize(envCode, startTime, endTime);
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("results", results);
@@ -66,6 +70,7 @@ public class QosController {
             String envCode = (String) req.get("envCode");
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
+            validateTimeRange(startTime, endTime);
             List<Map<String, Object>> results = qosService.getContributionData(envCode, startTime, endTime);
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("results", results);
@@ -79,6 +84,7 @@ public class QosController {
             String envCode = (String) req.get("envCode");
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
+            validateTimeRange(startTime, endTime);
             int pageIndex = req.containsKey("pageIndex") ? toInt(req.get("pageIndex")) : 1;
             int pageSize = req.containsKey("pageSize") ? toInt(req.get("pageSize")) : 10;
             return qosService.getAlarmDetail(envCode, startTime, endTime, pageIndex, pageSize);
@@ -109,10 +115,20 @@ public class QosController {
             String envCode = (String) req.get("envCode");
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
+            validateTimeRange(startTime, endTime);
             int pageIndex = req.containsKey("pageIndex") ? toInt(req.get("pageIndex")) : 1;
             int pageSize = req.containsKey("pageSize") ? toInt(req.get("pageSize")) : 10;
             return qosService.getIndicatorDetail(envCode, type, startTime, endTime, pageIndex, pageSize);
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private void validateTimeRange(long startTime, long endTime) {
+        if (startTime <= 0 || endTime <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime and endTime are required");
+        }
+        if (endTime <= startTime) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endTime must be greater than startTime");
+        }
     }
 
     private static long toLong(Object val) {

@@ -4,6 +4,7 @@ import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import { useUser } from '../../../platform/providers/UserContext'
 import { getIndicatorDetail, getResourceIndicatorDetail } from '../../../../services/healthCurveAPI'
+import { CHART_COLORS } from '../styles/chart-colors'
 
 interface DimensionScoreCardsProps {
     envCode: string
@@ -88,7 +89,7 @@ export default function DimensionScoreCards({ envCode, startTime, endTime }: Dim
             <div className="score-card score-card-chart">
                 <span className="score-label">{t('healthCurve.availability')}</span>
                 {availabilityData.length > 0 ? (
-                    <ReactECharts option={buildChartOption(availabilityData, '#4a90d9')} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
+                    <ReactECharts option={buildChartOption(availabilityData, CHART_COLORS.availability)} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
                 ) : (
                     <div className="score-chart-empty">{t('healthCurve.noData')}</div>
                 )}
@@ -96,7 +97,7 @@ export default function DimensionScoreCards({ envCode, startTime, endTime }: Dim
             <div className="score-card score-card-chart">
                 <span className="score-label">{t('healthCurve.performance')}</span>
                 {performanceData.length > 0 ? (
-                    <ReactECharts option={buildChartOption(performanceData, '#ff9800')} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
+                    <ReactECharts option={buildChartOption(performanceData, CHART_COLORS.performance)} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
                 ) : (
                     <div className="score-chart-empty">{t('healthCurve.noData')}</div>
                 )}
@@ -104,7 +105,7 @@ export default function DimensionScoreCards({ envCode, startTime, endTime }: Dim
             <div className="score-card score-card-chart">
                 <span className="score-label">{t('healthCurve.resource')}</span>
                 {resourceData.length > 0 ? (
-                    <ReactECharts option={buildChartOption(resourceData, '#4caf50')} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
+                    <ReactECharts option={buildChartOption(resourceData, CHART_COLORS.resource)} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
                 ) : (
                     <div className="score-chart-empty">{t('healthCurve.noData')}</div>
                 )}

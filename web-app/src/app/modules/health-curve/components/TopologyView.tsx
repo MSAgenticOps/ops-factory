@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
 import type { HealthIndicatorPoint } from '../../../../types/health'
+import { CHART_COLORS } from '../styles/chart-colors'
 
 interface TopologyViewProps {
     points: HealthIndicatorPoint[]
@@ -15,10 +16,10 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
 
     const statusColor = (v: number | null) => {
         if (v === null) return '#999'
-        if (v >= 0.9) return '#4caf50'
-        if (v >= 0.7) return '#ffc107'
-        if (v >= 0.5) return '#ff9800'
-        return '#f44336'
+        if (v >= 0.9) return CHART_COLORS.good
+        if (v >= 0.7) return CHART_COLORS.warning
+        if (v >= 0.5) return CHART_COLORS.orange
+        return CHART_COLORS.critical
     }
 
     const statusLabel = (v: number | null) => {
@@ -35,9 +36,9 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
 
         const nodes = [
             { name: envCode || 'System', x: 300, y: 100, symbolSize: 50, itemStyle: { color } },
-            { name: t('healthCurve.availability'), x: 150, y: 220, symbolSize: 35, itemStyle: { color: '#4caf50' } },
-            { name: t('healthCurve.performance'), x: 300, y: 250, symbolSize: 35, itemStyle: { color: '#2196f3' } },
-            { name: t('healthCurve.resource'), x: 450, y: 220, symbolSize: 35, itemStyle: { color: '#ff9800' } }
+            { name: t('healthCurve.availability'), x: 150, y: 220, symbolSize: 35, itemStyle: { color: CHART_COLORS.availability } },
+            { name: t('healthCurve.performance'), x: 300, y: 250, symbolSize: 35, itemStyle: { color: CHART_COLORS.performance } },
+            { name: t('healthCurve.resource'), x: 450, y: 220, symbolSize: 35, itemStyle: { color: CHART_COLORS.resource } }
         ]
 
         const links = [

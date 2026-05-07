@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../../platform/providers/UserContext'
 import { getIndicatorDetail } from '../../../../services/healthCurveAPI'
+import Pagination from '../../../platform/ui/primitives/Pagination'
 
 interface IndicatorDetailTableProps {
     envCode: string
@@ -57,7 +58,7 @@ export default function IndicatorDetailTable({ envCode, startTime, endTime, type
                     ) : data.map((row, i) => {
                         const values = row.values as Record<string, string> | null
                         return (
-                            <tr key={i}>
+                            <tr key={row.indicatorName ? `${row.indicatorName}-${row.dn}-${row.timestamp}` : i}>
                                 <td>{row.timestamp ? new Date(Number(row.timestamp)).toLocaleString() : ''}</td>
                                 <td>{String(row.indicatorName ?? '')}</td>
                                 <td>{String(row.dn ?? '')}</td>
@@ -81,28 +82,13 @@ export default function IndicatorDetailTable({ envCode, startTime, endTime, type
                 </tbody>
             </table>
             {total > 10 && (
-                <div className="pagination">
-                    <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>&lt;</button>
-                    <span>{page} / {Math.ceil(total / 10)}</span>
-                    <button disabled={page >= Math.ceil(total / 10)} onClick={() => setPage(p => p + 1)}>&gt;</button>
-                    <input
-                        type="number"
-                        min={1}
-                        max={Math.ceil(total / 10)}
-                        placeholder="页码"
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                                const v = parseInt((e.target as HTMLInputElement).value, 10)
-                                if (v >= 1 && v <= Math.ceil(total / 10)) setPage(v)
-                            }
-                        }}
-                    />
-                    <button onClick={e => {
-                        const input = (e.currentTarget as HTMLElement).previousElementSibling as HTMLInputElement
-                        const v = parseInt(input.value, 10)
-                        if (v >= 1 && v <= Math.ceil(total / 10)) setPage(v)
-                    }}>跳转</button>
-                </div>
+                <Pagination
+                    currentPage={page}
+                    totalPages={Math.ceil(total / 10)}
+                    pageSize={10}
+                    totalItems={total}
+                    onPageChange={setPage}
+                />
             )}
         </div>
     )

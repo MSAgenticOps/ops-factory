@@ -2,6 +2,7 @@ import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import { useTranslation } from 'react-i18next'
 import type { HealthIndicatorPoint } from '../../../../types/health'
+import { CHART_COLORS } from '../styles/chart-colors'
 
 interface HealthCurveChartProps {
     points: HealthIndicatorPoint[]
@@ -38,10 +39,10 @@ export default function HealthCurveChart({ points, loading = false }: HealthCurv
             markArea: {
                 silent: true,
                 data: [
-                    [{ yAxis: 0.9, itemStyle: { color: 'rgba(76,175,80,0.08)' } }, { yAxis: 1 }],
-                    [{ yAxis: 0.7, itemStyle: { color: 'rgba(255,193,7,0.08)' } }, { yAxis: 0.9 }],
-                    [{ yAxis: 0.5, itemStyle: { color: 'rgba(255,152,0,0.08)' } }, { yAxis: 0.7 }],
-                    [{ yAxis: 0, itemStyle: { color: 'rgba(244,67,54,0.08)' } }, { yAxis: 0.5 }],
+                    [{ yAxis: 0.9, itemStyle: { color: `${CHART_COLORS.good}14` } }, { yAxis: 1 }],
+                    [{ yAxis: 0.7, itemStyle: { color: `${CHART_COLORS.warning}14` } }, { yAxis: 0.9 }],
+                    [{ yAxis: 0.5, itemStyle: { color: `${CHART_COLORS.orange}14` } }, { yAxis: 0.7 }],
+                    [{ yAxis: 0, itemStyle: { color: `${CHART_COLORS.critical}14` } }, { yAxis: 0.5 }],
                 ],
             },
         }],

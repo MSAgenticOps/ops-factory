@@ -2248,6 +2248,8 @@
   "healthCurve": {
     "title": "Business Health Overview",
     "availability": "Availability",
+    "product": "Product",
+    "environment": "Environment",
     "performance": "Performance",
     "resource": "Resource",
     "healthCurve": "Health Curve",
@@ -2288,6 +2290,8 @@
     "good": "Good",
     "warning": "Warning",
     "orange": "Orange",
-    "critical": "Critical"
+    "critical": "Critical",
+    "pagePlaceholder": "Page number",
+    "goToPage": "Go"
   }
 }

@@ -9,7 +9,9 @@ import type { HealthIndicatorResponse, IndicatorDetailResponse } from '../types/
 
 export interface EnvironmentInfo {
   envCode: string
+  envName?: string
   agentSolutionType: string
+  productTypeName?: string
 }
 
 async function request<T>(endpoint: string, body?: unknown, method = 'POST', userId?: string | null): Promise<T> {
@@ -32,20 +34,6 @@ export async function getHealthIndicator(envCode: string, startTime: number, end
   }, 'POST', userId);
 }
 
-export async function getAvailableIndicatorDetail(envCode: string, startTime: number, endTime: number,
-    pageIndex = 1, pageSize = 10, userId?: string | null): Promise<IndicatorDetailResponse> {
-  return request<IndicatorDetailResponse>('/qos/getAvailableIndicatorDetail', {
-    envCode, startTime, endTime, pageIndex, pageSize,
-  }, 'POST', userId);
-}
-
-export async function getPerformanceIndicatorDetail(envCode: string, startTime: number, endTime: number,
-    pageIndex = 1, pageSize = 10, userId?: string | null): Promise<IndicatorDetailResponse> {
-  return request<IndicatorDetailResponse>('/qos/getPerformanceIndicatorDetail', {
-    envCode, startTime, endTime, pageIndex, pageSize,
-  }, 'POST', userId);
-}
-
 export async function getResourceIndicatorDetail(envCode: string, startTime: number, endTime: number,
     userId?: string | null): Promise<{ results: Record<string, unknown>[] }> {
   return request<{ results: Record<string, unknown>[] }>('/qos/getResourceIndicatorDetail', {
@@ -57,13 +45,6 @@ export async function getContributionData(envCode: string, startTime: number, en
     userId?: string | null): Promise<{ results: { type: string; contribution: number }[] }> {
   return request<{ results: { type: string; contribution: number }[] }>('/qos/getContributionData', {
     envCode, startTime, endTime,
-  }, 'POST', userId);
-}
-
-export async function getAlarmIndicatorDetail(envCode: string, startTime: number, endTime: number,
-    pageIndex = 1, pageSize = 10, userId?: string | null): Promise<IndicatorDetailResponse> {
-  return request<IndicatorDetailResponse>('/qos/getAlarmIndicatorDetail', {
-    envCode, startTime, endTime, pageIndex, pageSize,
   }, 'POST', userId);
 }
 
@@ -81,12 +62,7 @@ export async function getIndicatorDetail(
   endpoint: string, envCode: string, startTime: number, endTime: number, pageIndex: number, pageSize: number,
   userId?: string | null,
 ): Promise<IndicatorDetailResponse> {
-  const url = `${GATEWAY_URL}${endpoint}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: gatewayHeaders(userId),
-    body: JSON.stringify({ envCode, startTime, endTime, pageIndex, pageSize }),
-  });
-  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  return response.json();
+  return request<IndicatorDetailResponse>(endpoint, {
+    envCode, startTime, endTime, pageIndex, pageSize,
+  }, 'POST', userId);
 }

@@ -92,48 +92,52 @@ public class QosCollectionScheduler {
         long startTime = endTime - properties.getQos().getCollectionIntervalMs();
 
         for (GatewayProperties.Qos.DvEnvironment dvEnvConfig : dvEnvs) {
-            DvEnvironmentInfo envInfo = toDvEnvironmentInfo(dvEnvConfig);
-            String envCode = envInfo.getEnvCode();
+            try {
+                DvEnvironmentInfo envInfo = toDvEnvironmentInfo(dvEnvConfig);
+                String envCode = envInfo.getEnvCode();
 
-            List<PerformanceIndicatorScope> envScopes = scopes.stream()
-                    .filter(s -> s.getAgentSolutionType().equals(envInfo.getAgentSolutionType()))
-                    .collect(Collectors.toList());
-            if (envScopes.isEmpty()) continue;
+                List<PerformanceIndicatorScope> envScopes = scopes.stream()
+                        .filter(s -> s.getAgentSolutionType().equals(envInfo.getAgentSolutionType()))
+                        .collect(Collectors.toList());
+                if (envScopes.isEmpty()) continue;
 
-            List<DnCluster> clusters = loadClusters(envCode);
-            // type -> dn -> indicator scores
-            Map<String, Map<String, List<BigDecimal>>> neScoreSums = new LinkedHashMap<>();
+                List<DnCluster> clusters = loadClusters(envCode);
+                // type -> dn -> indicator scores
+                Map<String, Map<String, List<BigDecimal>>> neScoreSums = new LinkedHashMap<>();
 
-            for (DnCluster cluster : clusters) {
-                for (DnElement element : (cluster.getElements() != null ? cluster.getElements() : List.<DnElement>of())) {
-                    List<String> dns = buildDns(envInfo, element);
-                    for (PerformanceIndicatorScope scope : envScopes) {
-                        List<PerformanceDataResult> perfData = dvClient.fetchPerformanceData(
-                            envInfo, scope.getMoType(), scope.getMeasUnitKey(), dns, startTime, endTime);
-                        if (perfData == null || perfData.isEmpty()) continue;
+                for (DnCluster cluster : clusters) {
+                    for (DnElement element : (cluster.getElements() != null ? cluster.getElements() : List.<DnElement>of())) {
+                        List<String> dns = buildDns(envInfo, element);
+                        for (PerformanceIndicatorScope scope : envScopes) {
+                            List<PerformanceDataResult> perfData = dvClient.fetchPerformanceData(
+                                envInfo, scope.getMoType(), scope.getMeasUnitKey(), dns, startTime, endTime);
+                            if (perfData == null || perfData.isEmpty()) continue;
 
-                        for (PerformanceDataResult pr : perfData) {
-                            appendRawData(envCode, pr, endTime);
-                            BigDecimal score = collectScore(neScoreSums, scope, pr);
-                            appendDetailData(envCode, scope, pr, endTime, score);
+                            for (PerformanceDataResult pr : perfData) {
+                                appendRawData(envCode, pr, endTime);
+                                BigDecimal score = collectScore(neScoreSums, scope, pr);
+                                appendDetailData(envCode, scope, pr, endTime, score);
+                            }
                         }
                     }
                 }
-            }
 
-            // aggregate: per-type average across all network elements
-            for (Map.Entry<String, Map<String, List<BigDecimal>>> typeEntry : neScoreSums.entrySet()) {
-                BigDecimal totalAvg = BigDecimal.ZERO;
-                int neCount = 0;
-                for (List<BigDecimal> scores : typeEntry.getValue().values()) {
-                    if (!scores.isEmpty()) {
-                        totalAvg = totalAvg.add(avg(scores));
-                        neCount++;
+                // aggregate: per-type average across all network elements
+                for (Map.Entry<String, Map<String, List<BigDecimal>>> typeEntry : neScoreSums.entrySet()) {
+                    BigDecimal totalAvg = BigDecimal.ZERO;
+                    int neCount = 0;
+                    for (List<BigDecimal> scores : typeEntry.getValue().values()) {
+                        if (!scores.isEmpty()) {
+                            totalAvg = totalAvg.add(avg(scores));
+                            neCount++;
+                        }
+                    }
+                    if (neCount > 0) {
+                        appendNormalize(envCode, typeEntry.getKey(), totalAvg.divide(BigDecimal.valueOf(neCount), 2, RoundingMode.HALF_UP), endTime);
                     }
                 }
-                if (neCount > 0) {
-                    appendNormalize(envCode, typeEntry.getKey(), totalAvg.divide(BigDecimal.valueOf(neCount), 2, RoundingMode.HALF_UP), endTime);
-                }
+            } catch (Exception e) {
+                log.error("QoS collection: failed for environment {}: {}", dvEnvConfig.getEnvCode(), e.getMessage());
             }
         }
         log.info("QoS collection: availability and performance collection completed");
@@ -152,49 +156,53 @@ public class QosCollectionScheduler {
         long startTime = endTime - properties.getQos().getCollectionIntervalMs();
 
         for (GatewayProperties.Qos.DvEnvironment dvEnvConfig : dvEnvs) {
-            DvEnvironmentInfo envInfo = toDvEnvironmentInfo(dvEnvConfig);
-            String envCode = envInfo.getEnvCode();
+            try {
+                DvEnvironmentInfo envInfo = toDvEnvironmentInfo(dvEnvConfig);
+                String envCode = envInfo.getEnvCode();
 
-            ProductConfigRule config = configs.stream()
-                    .filter(c -> c.getAgentSolutionType().equals(envInfo.getAgentSolutionType()))
-                    .findFirst().orElse(null);
-            int iMax = config != null && config.getAlarmScoreMax() != null ? config.getAlarmScoreMax() : 20;
-            Map<String, BigDecimal> alarmWeights = resolveAlarmWeights(config);
-            Map<String, BigDecimal> alarmIdWeights = alarmWeightStore.loadAll().stream()
-                    .filter(aw -> envInfo.getAgentSolutionType().equals(aw.getAgentSolutionType()))
-                    .filter(aw -> aw.getAlarmId() != null && aw.getWeight() != null)
-                    .collect(Collectors.toMap(AlarmWeight::getAlarmId, AlarmWeight::getWeight, (a, b) -> a));
+                ProductConfigRule config = configs.stream()
+                        .filter(c -> c.getAgentSolutionType().equals(envInfo.getAgentSolutionType()))
+                        .findFirst().orElse(null);
+                int iMax = config != null && config.getAlarmScoreMax() != null ? config.getAlarmScoreMax() : 20;
+                Map<String, BigDecimal> alarmWeights = resolveAlarmWeights(config);
+                Map<String, BigDecimal> alarmIdWeights = alarmWeightStore.loadAll().stream()
+                        .filter(aw -> envInfo.getAgentSolutionType().equals(aw.getAgentSolutionType()))
+                        .filter(aw -> aw.getAlarmId() != null && aw.getWeight() != null)
+                        .collect(Collectors.toMap(AlarmWeight::getAlarmId, AlarmWeight::getWeight, (a, b) -> a));
 
-            List<DnCluster> clusters = loadClusters(envCode);
-            List<AlarmInfo> allAlarms = new ArrayList<>();
-            for (DnCluster cluster : clusters) {
-                for (DnElement element : (cluster.getElements() != null ? cluster.getElements() : List.<DnElement>of())) {
-                    List<String> alarmDns = buildDns(envInfo, element);
-                    List<AlarmInfo> alarms = dvClient.fetchCurrentAlarms(envInfo, startTime, endTime, null, alarmDns);
-                    if (alarms != null) allAlarms.addAll(alarms);
+                List<DnCluster> clusters = loadClusters(envCode);
+                List<AlarmInfo> allAlarms = new ArrayList<>();
+                for (DnCluster cluster : clusters) {
+                    for (DnElement element : (cluster.getElements() != null ? cluster.getElements() : List.<DnElement>of())) {
+                        List<String> alarmDns = buildDns(envInfo, element);
+                        List<AlarmInfo> alarms = dvClient.fetchCurrentAlarms(envInfo, startTime, endTime, null, alarmDns);
+                        if (alarms != null) allAlarms.addAll(alarms);
+                    }
                 }
-            }
 
-            for (AlarmInfo alarm : allAlarms) {
-                AlarmDetailData detail = new AlarmDetailData();
-                detail.setCode(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE);
-                detail.setEnvCode(envCode);
-                detail.setAlarmId(alarm.getAlarmId());
-                detail.setAlarmName(alarm.getAlarmName());
-                detail.setSeverity(alarm.getSeverity());
-                detail.setDn(alarm.getDn());
-                detail.setMeName(alarm.getMeName());
-                detail.setOccurUtc(alarm.getOccurUtc());
-                detail.setCount(alarm.getCount());
-                detail.setMoi(alarm.getMoi());
-                detail.setAdditionalInformation(alarm.getAdditionalInformation());
-                detail.setTimestamp(endTime);
-                alarmDetailDataStore.append(detail);
-            }
+                for (AlarmInfo alarm : allAlarms) {
+                    AlarmDetailData detail = new AlarmDetailData();
+                    detail.setCode(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE);
+                    detail.setEnvCode(envCode);
+                    detail.setAlarmId(alarm.getAlarmId());
+                    detail.setAlarmName(alarm.getAlarmName());
+                    detail.setSeverity(alarm.getSeverity());
+                    detail.setDn(alarm.getDn());
+                    detail.setMeName(alarm.getMeName());
+                    detail.setOccurUtc(alarm.getOccurUtc());
+                    detail.setCount(alarm.getCount());
+                    detail.setMoi(alarm.getMoi());
+                    detail.setAdditionalInformation(alarm.getAdditionalInformation());
+                    detail.setTimestamp(endTime);
+                    alarmDetailDataStore.append(detail);
+                }
 
-            if (!allAlarms.isEmpty()) {
-                BigDecimal rScore = calculationService.calculateResourceScore(allAlarms, alarmWeights, alarmIdWeights, iMax);
-                appendNormalize(envCode, "R", rScore, endTime);
+                if (!allAlarms.isEmpty()) {
+                    BigDecimal rScore = calculationService.calculateResourceScore(allAlarms, alarmWeights, alarmIdWeights, iMax);
+                    appendNormalize(envCode, "R", rScore, endTime);
+                }
+            } catch (Exception e) {
+                log.error("QoS collection: resource collection failed for environment {}: {}", dvEnvConfig.getEnvCode(), e.getMessage());
             }
         }
         log.info("QoS collection: resource collection completed");
@@ -290,9 +298,11 @@ public class QosCollectionScheduler {
     }
 
     private DvEnvironmentInfo toDvEnvironmentInfo(GatewayProperties.Qos.DvEnvironment config) {
-        return new DvEnvironmentInfo(config.getEnvCode(), config.getAgentSolutionType(),
+        DvEnvironmentInfo info = new DvEnvironmentInfo(config.getEnvCode(), config.getAgentSolutionType(),
                 config.getServerUrl(), config.getUtmUser(), config.getUtmPassword(),
                 config.getCrtContent(), config.getCrtFileName(), config.getDns());
+        info.setStrictSsl(config.isStrictSsl());
+        return info;
     }
 
     private Map<String, BigDecimal> resolveAlarmWeights(ProductConfigRule config) {
