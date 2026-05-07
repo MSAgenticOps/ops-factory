@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -85,7 +86,7 @@ class KnowledgeMaintenanceIntegrationTest extends KnowledgeApiIntegrationTestSup
         assertThat(searchResult.path("code").asText()).isEqualTo("SOURCE_IN_MAINTENANCE");
 
         MockMultipartFile file = new MockMultipartFile("files", "maintenance-check.txt",
-            MediaType.TEXT_PLAIN_VALUE, "runbook maintenance check".getBytes());
+            MediaType.TEXT_PLAIN_VALUE, "runbook maintenance check".getBytes(StandardCharsets.UTF_8));
         var ingestResult = readJson(mockMvc.perform(multipart("/knowledge/sources/{sourceId}/documents:ingest", sourceId)
                 .file(file))
             .andExpect(status().isConflict())
@@ -177,7 +178,7 @@ class KnowledgeMaintenanceIntegrationTest extends KnowledgeApiIntegrationTestSup
             # Sample Runbook
 
             Restart the affected service, verify the topology, and confirm incident recovery.
-            """.getBytes()
+            """.getBytes(StandardCharsets.UTF_8)
         );
         mockMvc.perform(multipart("/knowledge/sources/{sourceId}/documents:ingest", sourceId)
                 .file(file))
