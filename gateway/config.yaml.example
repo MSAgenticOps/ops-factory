@@ -95,6 +95,30 @@ gateway:
     default-timeout: 30
     max-timeout: 120
 
+  # QoS Health Curve (optional)
+  qos:
+    enabled: false                            # enable health curve collection and API
+    collection-interval-ms: 300000            # metrics collection interval (5 min)
+    rotation-interval-ms: 3600000             # data file rotation interval (1 hour)
+    raw-data-retention-days: 7
+    detail-data-retention-days: 30
+    normalize-data-retention-days: 90
+    weights:
+      availability: 0.4                       # wA (0~1, wA+wP+wR=1)
+      performance: 0.4                        # wP
+      resource: 0.2                           # wR
+    dv-environments: []                        # DV environments, example:
+    #  - env-code: "DigitalCRM.sit"
+    #    env-name: "DigitalCRM SIT环境"               # display name (defaults to env-code)
+    #    agent-solution-type: "DigitalCRM"
+    #    product-type-name: "数字CRM"                   # display name (defaults to agent-solution-type)
+    #    server-url: "https://10.44.212.216:26335"
+    #    utm-user: "admin"
+    #    utm-password: "changeit"
+    #    crt-content: ""                       # Base64 encoded certificate
+    #    crt-file-name: "client.jks"
+    #    strict-ssl: true                       # reject insecure SSL fallback (default: true)
+
 logging:
   level:
     root: INFO
