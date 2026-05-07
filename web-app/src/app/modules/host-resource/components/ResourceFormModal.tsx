@@ -285,6 +285,7 @@ export default function ResourceFormModal({
                 })
             } else if (selectedType === 'business-service') {
                 if (!bsName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!bsGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
                 await onSaveBusinessService({
                     name: bsName.trim(),
                     code: bsCode.trim(),
@@ -636,7 +637,7 @@ export default function ResourceFormModal({
                                         )}
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.bsName')}</label>
+                                        <label className="form-label">{t('hostResource.bsName')}{requiredStar}</label>
                                         <input className="form-input" value={bsName} onChange={e => setBsName(e.target.value)} />
                                     </div>
                                     <div className="form-group">
@@ -650,7 +651,7 @@ export default function ResourceFormModal({
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.bsGroup')}</label>
+                                        <label className="form-label">{t('hostResource.bsGroup')}{requiredStar}</label>
                                         <select className="form-input" value={bsGroupId} onChange={e => setBsGroupId(e.target.value)}>
                                             <option value="">{t('hostResource.noParent')}</option>
                                             {groups.map(g => (
