@@ -41,8 +41,8 @@ public class WhatsAppAdapter implements ChannelAdapter {
     }
 
     @Override
-    public Mono<ChannelConnectivityResult> testConnectivity(String channelId) {
-        ChannelDetail channel = requireChannel(channelId);
+    public Mono<ChannelConnectivityResult> testConnectivity(String channelId, String ownerUserId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
         String status = config.loginStatus() == null || config.loginStatus().isBlank()
                 ? "disconnected"
@@ -50,7 +50,7 @@ public class WhatsAppAdapter implements ChannelAdapter {
 
         return switch (status) {
             case "connected" -> {
-                channelConfigService.recordEvent(channelId, "info", "whatsapp.status",
+                channelConfigService.recordEvent(channelId, ownerUserId, "info", "whatsapp.status",
                         "WhatsApp Web session is connected");
                 yield Mono.just(new ChannelConnectivityResult(true, "WhatsApp Web session connected"));
             }
@@ -63,8 +63,8 @@ public class WhatsAppAdapter implements ChannelAdapter {
         };
     }
 
-    private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail detail = channelConfigService.getChannel(channelId);
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail detail = channelConfigService.getChannel(channelId, ownerUserId);
         if (detail == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Channel not found");
         }

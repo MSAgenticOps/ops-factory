@@ -33,7 +33,11 @@ public class ChannelDedupService {
     }
 
     public boolean markIfNew(String channelId, String externalMessageId) {
-        ChannelDetail channel = requireChannel(channelId);
+        return markIfNew(channelId, "admin", externalMessageId);
+    }
+
+    public boolean markIfNew(String channelId, String ownerUserId, String externalMessageId) {
+        ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path file = runtimeStorageService.dedupFile(channel);
         Map<String, Object> wrapper = readJson(file);
         List<Map<String, Object>> messages = castMessages(wrapper.get("messages"));
@@ -56,7 +60,11 @@ public class ChannelDedupService {
     }
 
     private ChannelDetail requireChannel(String channelId) {
-        ChannelDetail channel = channelConfigService.getChannel(channelId);
+        return requireChannel(channelId, "admin");
+    }
+
+    private ChannelDetail requireChannel(String channelId, String ownerUserId) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }

@@ -82,6 +82,7 @@ public class ChannelConfigServiceTest {
         Map<String, Object> config = MAPPER.readValue(configDir.resolve("config.json").toFile(), Map.class);
         @SuppressWarnings("unchecked")
         Map<String, Object> channelConfig = (Map<String, Object>) config.get("config");
+        assertFalse(config.containsKey("ownerUserId"));
         assertEquals("auth", channelConfig.get("authStateDir"));
         assertFalse(channelConfig.containsKey("loginStatus"));
         assertFalse(channelConfig.containsKey("lastConnectedAt"));
@@ -117,19 +118,56 @@ public class ChannelConfigServiceTest {
     }
 
     @Test
+    public void sharedConfigUsesIndependentRuntimePerUser() throws Exception {
+        service.createChannel(upsertRequest("whatsapp-main", "whatsapp"), "admin");
+
+        Path adminRuntime = gatewayRoot.resolve("users").resolve("admin").resolve("channels")
+                .resolve("whatsapp").resolve("whatsapp-main");
+        Path aliceRuntime = gatewayRoot.resolve("users").resolve("alice@example.com").resolve("channels")
+                .resolve("whatsapp").resolve("whatsapp-main");
+        Files.createDirectories(adminRuntime);
+        Files.createDirectories(aliceRuntime);
+        Files.writeString(adminRuntime.resolve("login-state.json"), MAPPER.writeValueAsString(Map.of(
+                "status", "connected",
+                "selfPhone", "+10000000000"
+        )), StandardCharsets.UTF_8);
+        Files.writeString(aliceRuntime.resolve("login-state.json"), MAPPER.writeValueAsString(Map.of(
+                "status", "pending",
+                "selfPhone", "+20000000000"
+        )), StandardCharsets.UTF_8);
+
+        ChannelDetail adminView = service.getChannel("whatsapp-main", "admin");
+        ChannelDetail aliceView = service.getChannel("whatsapp-main", "alice@example.com");
+
+        assertEquals("admin", adminView.ownerUserId());
+        assertEquals("connected", adminView.config().loginStatus());
+        assertEquals("+10000000000", adminView.config().selfPhone());
+        assertEquals("alice@example.com", aliceView.ownerUserId());
+        assertEquals("pending", aliceView.config().loginStatus());
+        assertEquals("+20000000000", aliceView.config().selfPhone());
+        assertEquals("admin", service.listChannels("admin").get(0).ownerUserId());
+        assertEquals("alice@example.com", service.listChannels("alice@example.com").get(0).ownerUserId());
+    }
+
+    @Test
     public void deleteChannelRemovesConfigAndUserRuntimeDirectories() throws Exception {
         service.createChannel(upsertRequest("wechat-main", "wechat"), "admin");
 
         Path configDir = gatewayRoot.resolve("channels").resolve("wechat").resolve("wechat-main");
         Path runtimeDir = gatewayRoot.resolve("users").resolve("admin").resolve("channels")
                 .resolve("wechat").resolve("wechat-main");
+        Path aliceRuntimeDir = gatewayRoot.resolve("users").resolve("alice@example.com").resolve("channels")
+                .resolve("wechat").resolve("wechat-main");
+        Files.createDirectories(aliceRuntimeDir);
         assertTrue(Files.exists(configDir));
         assertTrue(Files.exists(runtimeDir));
+        assertTrue(Files.exists(aliceRuntimeDir));
 
         service.deleteChannel("wechat-main");
 
         assertFalse(Files.exists(configDir));
         assertFalse(Files.exists(runtimeDir));
+        assertFalse(Files.exists(aliceRuntimeDir));
     }
 
     @Test
@@ -173,6 +211,7 @@ public class ChannelConfigServiceTest {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.createChannel(upsertRequest("bad-owner", "whatsapp"), "../admin"));
         assertTrue(error.getMessage().contains("ownerUserId"));
+        assertFalse(Files.exists(gatewayRoot.resolve("channels").resolve("whatsapp").resolve("bad-owner")));
     }
 
     @Test
@@ -266,6 +305,7 @@ public class ChannelConfigServiceTest {
 
         when(sessionBridgeService.sendConversationText(
                 eq("whatsapp-main"),
+                eq("admin"),
                 eq("default"),
                 eq("+8613800000000"),
                 eq("+8613800000000"),

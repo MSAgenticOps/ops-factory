@@ -41,20 +41,15 @@ public class WeChatMessagePumpService {
 
     @Scheduled(fixedDelay = 2000)
     public void pumpInbox() {
-        for (var summary : channelConfigService.listChannels()) {
-            if (!"wechat".equals(summary.type()) || !summary.enabled()) {
+        for (ChannelDetail detail : channelConfigService.listRuntimeChannels("wechat")) {
+            if (!detail.enabled()) {
                 continue;
             }
-            processChannel(summary.id());
+            processChannel(detail);
         }
     }
 
-    private void processChannel(String channelId) {
-        ChannelDetail detail = channelConfigService.getChannel(channelId);
-        if (detail == null) {
-            return;
-        }
-
+    private void processChannel(ChannelDetail detail) {
         Path inboxDir = inboxDir(detail);
         if (!Files.isDirectory(inboxDir)) {
             return;
@@ -65,7 +60,7 @@ public class WeChatMessagePumpService {
                     .sorted()
                     .forEach(path -> processInboundFile(detail, path));
         } catch (IOException e) {
-            log.warn("Failed to scan WeChat inbox for {}: {}", channelId, e.getMessage());
+            log.warn("Failed to scan WeChat inbox for {}: {}", detail.id(), e.getMessage());
         }
     }
 
@@ -75,7 +70,7 @@ public class WeChatMessagePumpService {
         try {
             payload = MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
         } catch (Exception e) {
-            channelConfigService.recordEvent(channel.id(), "warning", "wechat.inbox_invalid",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
                     "Failed to parse inbound WeChat file " + file.getFileName());
             moveToProcessed(channel, file, "invalid");
             return;
@@ -87,13 +82,13 @@ public class WeChatMessagePumpService {
         String text = asString(payload.get("text"));
         String contextToken = asString(payload.get("contextToken"));
         if (messageId == null || peerId == null || conversationId == null || text == null || text.isBlank()) {
-            channelConfigService.recordEvent(channel.id(), "warning", "wechat.inbox_invalid",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
                     "Inbound WeChat file missing required fields");
             moveToProcessed(channel, file, "invalid");
             return;
         }
 
-        if (!channelDedupService.markIfNew(channel.id(), messageId)) {
+        if (!channelDedupService.markIfNew(channel.id(), channel.ownerUserId(), messageId)) {
             moveToProcessed(channel, file, "duplicate");
             return;
         }
@@ -101,6 +96,7 @@ public class WeChatMessagePumpService {
         try {
             ChannelReplyResult reply = sessionBridgeService.sendConversationText(
                             channel.id(),
+                            channel.ownerUserId(),
                             "default",
                             peerId,
                             conversationId,
@@ -115,7 +111,7 @@ public class WeChatMessagePumpService {
             }
             moveToProcessed(channel, file, "processed");
         } catch (Exception e) {
-            channelConfigService.recordEvent(channel.id(), "warning", "wechat.inbox_failed",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_failed",
                     "Failed to process inbound WeChat message: " + e.getMessage());
             moveToProcessed(channel, file, "error");
         }
@@ -133,7 +129,7 @@ public class WeChatMessagePumpService {
         try {
             Files.createDirectories(pendingDir);
             Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
-            channelConfigService.recordEvent(channel.id(), "info", "wechat.outbox_enqueued",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "wechat.outbox_enqueued",
                     "Queued WeChat reply for " + peerId);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat outbox command", e);

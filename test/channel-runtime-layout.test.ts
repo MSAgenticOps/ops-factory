@@ -55,7 +55,7 @@ describe('channel runtime layout', () => {
     expect(existsSync(join(runtimeDir, 'inbound-dedup.json'))).toBe(true)
 
     const config = JSON.parse(await readFile(join(configDir, 'config.json'), 'utf-8'))
-    expect(config.ownerUserId).toBe('admin')
+    expect(config.ownerUserId).toBeUndefined()
     expect(config.config).toEqual({ authStateDir: 'auth' })
   })
 

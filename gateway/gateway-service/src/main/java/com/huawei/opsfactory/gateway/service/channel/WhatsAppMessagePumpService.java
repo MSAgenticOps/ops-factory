@@ -45,20 +45,15 @@ public class WhatsAppMessagePumpService {
 
     @Scheduled(fixedDelay = 2000)
     public void pumpInbox() {
-        for (var summary : channelConfigService.listChannels()) {
-            if (!"whatsapp".equals(summary.type()) || !summary.enabled()) {
+        for (ChannelDetail detail : channelConfigService.listRuntimeChannels("whatsapp")) {
+            if (!detail.enabled()) {
                 continue;
             }
-            processChannel(summary.id());
+            processChannel(detail);
         }
     }
 
-    private void processChannel(String channelId) {
-        ChannelDetail detail = channelConfigService.getChannel(channelId);
-        if (detail == null) {
-            return;
-        }
-
+    private void processChannel(ChannelDetail detail) {
         Path inboxDir = inboxDir(detail);
         if (!Files.isDirectory(inboxDir)) {
             return;
@@ -69,12 +64,16 @@ public class WhatsAppMessagePumpService {
                     .sorted()
                     .forEach(path -> processInboundFile(detail, path));
         } catch (IOException e) {
-            log.warn("Failed to scan WhatsApp inbox for {}: {}", channelId, e.getMessage());
+            log.warn("Failed to scan WhatsApp inbox for {}: {}", detail.id(), e.getMessage());
         }
     }
 
     public ChannelSelfTestResult runSelfTest(String channelId, String text) {
-        ChannelDetail channel = channelConfigService.getChannel(channelId);
+        return runSelfTest(channelId, "admin", text);
+    }
+
+    public ChannelSelfTestResult runSelfTest(String channelId, String ownerUserId, String text) {
+        ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
@@ -82,7 +81,7 @@ public class WhatsAppMessagePumpService {
             throw new IllegalArgumentException("Self-test text is required");
         }
 
-        var loginState = whatsAppWebLoginService.getLoginState(channelId);
+        var loginState = whatsAppWebLoginService.getLoginState(channelId, ownerUserId);
         if (!"connected".equals(loginState.status())) {
             throw new IllegalStateException("WhatsApp channel is not connected. Reconnect before running self-test.");
         }
@@ -94,6 +93,7 @@ public class WhatsAppMessagePumpService {
 
         ChannelReplyResult reply = sessionBridgeService.sendConversationText(
                         channel.id(),
+                        ownerUserId,
                         "default",
                         selfPhone,
                         selfPhone,
@@ -109,7 +109,7 @@ public class WhatsAppMessagePumpService {
         if (reply.replyText() != null && !reply.replyText().isBlank()) {
             writeOutboxCommand(channel, selfPhone, reply.replyText());
         }
-        channelConfigService.recordEvent(channel.id(), "info", "whatsapp.self_test",
+        channelConfigService.recordEvent(channel.id(), ownerUserId, "info", "whatsapp.self_test",
                 "Queued self-chat test reply for " + selfPhone);
         return new ChannelSelfTestResult(
                 channel.id(),
@@ -126,7 +126,7 @@ public class WhatsAppMessagePumpService {
         try {
             payload = MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
         } catch (Exception e) {
-            channelConfigService.recordEvent(channel.id(), "warning", "whatsapp.inbox_invalid",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "whatsapp.inbox_invalid",
                     "Failed to parse inbound WhatsApp file " + file.getFileName());
             moveToProcessed(channel, file, "invalid");
             return;
@@ -137,13 +137,13 @@ public class WhatsAppMessagePumpService {
         String conversationId = asString(payload.get("conversationId"));
         String text = asString(payload.get("text"));
         if (messageId == null || peerId == null || conversationId == null || text == null || text.isBlank()) {
-            channelConfigService.recordEvent(channel.id(), "warning", "whatsapp.inbox_invalid",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "whatsapp.inbox_invalid",
                     "Inbound WhatsApp file missing required fields");
             moveToProcessed(channel, file, "invalid");
             return;
         }
 
-        if (!channelDedupService.markIfNew(channel.id(), messageId)) {
+        if (!channelDedupService.markIfNew(channel.id(), channel.ownerUserId(), messageId)) {
             moveToProcessed(channel, file, "duplicate");
             return;
         }
@@ -151,6 +151,7 @@ public class WhatsAppMessagePumpService {
         try {
             ChannelReplyResult reply = sessionBridgeService.sendConversationText(
                             channel.id(),
+                            channel.ownerUserId(),
                             "default",
                             peerId,
                             conversationId,
@@ -165,7 +166,7 @@ public class WhatsAppMessagePumpService {
             }
             moveToProcessed(channel, file, "processed");
         } catch (Exception e) {
-            channelConfigService.recordEvent(channel.id(), "warning", "whatsapp.inbox_failed",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "whatsapp.inbox_failed",
                     "Failed to process inbound WhatsApp message: " + e.getMessage());
             moveToProcessed(channel, file, "error");
         }
@@ -182,7 +183,7 @@ public class WhatsAppMessagePumpService {
         try {
             Files.createDirectories(pendingDir);
             Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
-            channelConfigService.recordEvent(channel.id(), "info", "whatsapp.outbox_enqueued",
+            channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "whatsapp.outbox_enqueued",
                     "Queued WhatsApp reply for " + peerId);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WhatsApp outbox command", e);
