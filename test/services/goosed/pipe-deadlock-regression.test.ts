@@ -12,7 +12,7 @@
  * 3. Verifying /status remains responsive throughout
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { startJavaGateway, sleep, type GatewayHandle } from '../../platform/shared/helpers.js'
+import { startJavaGateway, type GatewayHandle } from '../../platform/shared/helpers.js'
 import { WebClient } from '../../platform/shared/journey-helpers.js'
 
 let gw: GatewayHandle
