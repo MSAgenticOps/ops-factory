@@ -1813,7 +1813,7 @@ public class KnowledgeServiceFacade {
     }
 
     private String errorCodeFromException(Exception ex) {
-        String message = summarizeError(ex).toLowerCase();
+        String message = summarizeError(ex).toLowerCase(Locale.ROOT);
         if (message.contains("parse") || message.contains("convert")) {
             return "DOCUMENT_PARSE_FAILED";
         }
@@ -2062,7 +2062,7 @@ public class KnowledgeServiceFacade {
 
     private Double resolveProfileScoreThreshold(String mode, Map<String, Object> profileConfig) {
         Optional<Double> legacyThreshold = nestedDouble(profileConfig, "retrieval", "scoreThreshold");
-        return switch ((mode == null ? "hybrid" : mode).toLowerCase()) {
+        return switch ((mode == null ? "hybrid" : mode).toLowerCase(Locale.ROOT)) {
         case "semantic" -> nestedDouble(profileConfig, "retrieval", "semanticThreshold").or(() -> legacyThreshold).orElse(null);
         case "lexical" -> nestedDouble(profileConfig, "retrieval", "lexicalThreshold").or(() -> legacyThreshold).orElse(null);
         default -> null;

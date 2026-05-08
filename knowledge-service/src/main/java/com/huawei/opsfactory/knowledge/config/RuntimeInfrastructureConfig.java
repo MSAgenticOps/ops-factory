@@ -8,6 +8,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import javax.sql.DataSource;
 import org.springframework.boot.autoconfigure.flyway.FlywayConfigurationCustomizer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -109,6 +110,6 @@ public class RuntimeInfrastructureConfig {
     }
 
     private String normalizeType(KnowledgeDatabaseProperties databaseProperties) {
-        return databaseProperties.getType() == null ? "sqlite" : databaseProperties.getType().trim().toLowerCase();
+        return databaseProperties.getType() == null ? "sqlite" : databaseProperties.getType().trim().toLowerCase(Locale.ROOT);
     }
 }

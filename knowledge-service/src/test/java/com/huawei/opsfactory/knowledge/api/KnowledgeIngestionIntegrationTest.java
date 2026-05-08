@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,7 +105,7 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
     void shouldRejectUnsupportedContentTypeWithBadRequest() throws Exception {
         String sourceId = createSource();
         MockMultipartFile unsupportedFile = new MockMultipartFile(
-            "files", "malware.exe", "application/x-msdownload", "MZ fake exe content".getBytes()
+            "files", "malware.exe", "application/x-msdownload", "MZ fake exe content".getBytes(StandardCharsets.UTF_8)
         );
 
         mockMvc.perform(multipart("/knowledge/sources/{sourceId}/documents:ingest", sourceId)
@@ -118,7 +119,7 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
     void shouldDeduplicateIdenticalFileOnSecondUpload() throws Exception {
         String sourceId = createSource();
         MockMultipartFile file = new MockMultipartFile(
-            "files", "repeat.md", "text/markdown", "# Repeat\n\nSame content".getBytes()
+            "files", "repeat.md", "text/markdown", "# Repeat\n\nSame content".getBytes(StandardCharsets.UTF_8)
         );
 
         JsonNode first = readJson(mockMvc.perform(multipart("/knowledge/sources/{sourceId}/documents:ingest", sourceId)
@@ -152,7 +153,7 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
                 <p>Use detected content type instead of octet-stream.</p>
               </body>
             </html>
-            """.getBytes()
+            """.getBytes(StandardCharsets.UTF_8)
         );
 
         JsonNode ingest = readJson(mockMvc.perform(multipart("/knowledge/sources/{sourceId}/documents:ingest", sourceId)
