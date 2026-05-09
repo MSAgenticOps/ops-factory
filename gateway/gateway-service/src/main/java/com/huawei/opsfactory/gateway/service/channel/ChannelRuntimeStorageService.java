@@ -22,7 +22,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Manages channel runtime directory layout and provides path resolution for auth, inbox, outbox, bindings, dedup, and event files.
+ * Manages channel runtime directory layout and provides path resolution for auth, inbox, outbox, bindings, dedup, and
+ * event files.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -33,8 +34,20 @@ public class ChannelRuntimeStorageService {
     private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("^[A-Za-z0-9._-]+$");
 
     private final GatewayProperties properties;
+    /**
+     * Type definition for Channel Runtime Ref.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {}
+    /**
+     * Creates the channel runtime storage service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ChannelRuntimeStorageService(GatewayProperties properties) {
         this.properties = properties;
@@ -369,7 +382,10 @@ public class ChannelRuntimeStorageService {
     }
 
     private String normalizeType(String type) {
-        return requireSafeSegment(type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(Locale.ROOT), "type");
+        return requireSafeSegment(
+                type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(Locale.ROOT),
+                "type"
+        );
     }
 
     private String normalizeOwnerUserId(String ownerUserId) {

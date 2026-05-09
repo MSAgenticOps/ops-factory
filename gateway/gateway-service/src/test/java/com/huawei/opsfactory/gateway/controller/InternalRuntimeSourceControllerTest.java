@@ -23,6 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Internal Runtime Source Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(SpringRunner.class)
 @WebFluxTest(InternalRuntimeSourceController.class)
@@ -45,6 +51,12 @@ public class InternalRuntimeSourceControllerTest {
 
     @MockBean
     private MetricsBuffer metricsBuffer;
+    /**
+     * Tests system as admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSystem_asAdmin() {
@@ -65,6 +77,12 @@ public class InternalRuntimeSourceControllerTest {
                 .jsonPath("$.idle.timeoutMs").isNumber()
                 .jsonPath("$.langfuse.configured").isEqualTo(false);
     }
+    /**
+     * Tests system non admin forbidden.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSystem_nonAdminForbidden() {
@@ -74,6 +92,12 @@ public class InternalRuntimeSourceControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Tests instances.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testInstances() {
@@ -98,6 +122,12 @@ public class InternalRuntimeSourceControllerTest {
                 .jsonPath("$.byAgent[0].instances[0].status").isEqualTo("running")
                 .jsonPath("$.byAgent[0].instances[0].idleSinceMs").isNumber();
     }
+    /**
+     * Tests instances non admin forbidden.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testInstances_nonAdminForbidden() {
@@ -107,6 +137,12 @@ public class InternalRuntimeSourceControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Tests metrics empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testMetrics_empty() {
@@ -126,6 +162,12 @@ public class InternalRuntimeSourceControllerTest {
                 .jsonPath("$.aggregate.totalErrors").isEqualTo(0)
                 .jsonPath("$.series.length()").isEqualTo(0);
     }
+    /**
+     * Tests metrics with snapshots.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testMetrics_withSnapshots() {
@@ -175,6 +217,12 @@ public class InternalRuntimeSourceControllerTest {
                 .jsonPath("$.series[0].t").isEqualTo(1000)
                 .jsonPath("$.series[1].t").isEqualTo(2000);
     }
+    /**
+     * Tests metrics non admin forbidden.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testMetrics_nonAdminForbidden() {

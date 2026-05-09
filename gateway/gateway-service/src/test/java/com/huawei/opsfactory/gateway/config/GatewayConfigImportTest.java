@@ -22,12 +22,24 @@ import org.springframework.test.context.junit4.SpringRunner;
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     properties = "spring.config.import=optional:file:src/test/resources/config/test-gateway-config.yaml"
 )
+/**
+ * Test coverage for Gateway Config Import.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class GatewayConfigImportTest {
     @Autowired
     private GatewayProperties properties;
 
     @Autowired
     private Environment environment;
+    /**
+     * Verifies that import gateway config yaml into spring environment.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void shouldImportGatewayConfigYamlIntoSpringEnvironment() {
@@ -46,6 +58,12 @@ public class GatewayConfigImportTest {
         assertTrue(properties.getLogging().isIncludeSseChunkPreview());
         assertEquals(42, properties.getLogging().getSseChunkPreviewMaxChars());
     }
+    /**
+     * Verifies that apply logging levels to log4j runtime.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void shouldApplyLoggingLevelsToLog4jRuntime() {

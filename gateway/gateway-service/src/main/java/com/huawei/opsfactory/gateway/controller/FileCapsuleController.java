@@ -74,6 +74,12 @@ public class FileCapsuleController {
     @PostMapping(
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Executes the save file capsule operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<Map<String, Object>> saveFileCapsule(@PathVariable String agentId,
                                                      @RequestBody Map<String, Object> body,
                                                      ServerWebExchange exchange) {

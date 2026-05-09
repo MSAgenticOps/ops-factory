@@ -8,7 +8,8 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * Contract for channel-type adapters that handle webhook verification, inbound message processing, and connectivity checks.
+ * Contract for channel-type adapters that handle webhook verification, inbound message processing, and connectivity
+ * checks.
  *
  * @author x00000000
  * @since 2026-05-09

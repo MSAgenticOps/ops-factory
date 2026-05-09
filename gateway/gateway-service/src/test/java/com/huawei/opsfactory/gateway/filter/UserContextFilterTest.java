@@ -19,11 +19,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for User Context Filter.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class UserContextFilterTest {
     private UserContextFilter filter;
     private GatewayProperties gatewayProperties;
     private PrewarmService prewarmService;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -32,6 +44,12 @@ public class UserContextFilterTest {
         when(gatewayProperties.getAdminUsers()).thenReturn(List.of("admin"));
         filter = new UserContextFilter(prewarmService, gatewayProperties);
     }
+    /**
+     * Tests extracts user id from header.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExtractsUserIdFromHeader() {
@@ -47,6 +65,12 @@ public class UserContextFilterTest {
         assertEquals("user123", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
         assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
     }
+    /**
+     * Tests rejects400 when no user id header.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testRejects400WhenNoUserIdHeader() {
@@ -61,6 +85,12 @@ public class UserContextFilterTest {
                 exchange.getResponse().getStatusCode());
         assertNull(exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
     }
+    /**
+     * Tests sys user gets admin role.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSysUserGetsAdminRole() {
@@ -75,6 +105,12 @@ public class UserContextFilterTest {
 
         assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
     }
+    /**
+     * Tests empty user id returns400.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testEmptyUserIdReturns400() {
@@ -91,6 +127,12 @@ public class UserContextFilterTest {
                 exchange.getResponse().getStatusCode());
         assertNull(exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
     }
+    /**
+     * Tests configured admin user gets admin role.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testConfiguredAdminUserGetsAdminRole() {
@@ -107,6 +149,12 @@ public class UserContextFilterTest {
 
         assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
     }
+    /**
+     * Tests non admin user gets user role.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNonAdminUserGetsUserRole() {
@@ -123,6 +171,12 @@ public class UserContextFilterTest {
 
         assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
     }
+    /**
+     * Tests trace start does not prewarm user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testTraceStartDoesNotPrewarmUser() {
@@ -139,6 +193,12 @@ public class UserContextFilterTest {
         assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
         verify(prewarmService, never()).onUserActivity("admin");
     }
+    /**
+     * Tests trace download does not prewarm user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testTraceDownloadDoesNotPrewarmUser() {
@@ -155,6 +215,12 @@ public class UserContextFilterTest {
         assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
         verify(prewarmService, never()).onUserActivity("admin");
     }
+    /**
+     * Tests regular gateway request prewarms user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testRegularGatewayRequestPrewarmsUser() {

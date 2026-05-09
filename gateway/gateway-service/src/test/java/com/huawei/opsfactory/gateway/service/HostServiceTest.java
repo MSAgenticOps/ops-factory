@@ -13,6 +13,12 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.Assert.*;
+/**
+ * Test coverage for Host Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class HostServiceTest {
     @Rule
@@ -21,6 +27,12 @@ public class HostServiceTest {
     private HostService hostService;
     private GatewayProperties properties;
     private Path hostsDir;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() throws IOException {
@@ -38,12 +50,24 @@ public class HostServiceTest {
     }
 
     // ── listHosts ──────────────────────────────────────────────────
+    /**
+     * Tests list hosts empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_empty() {
         List<Map<String, Object>> hosts = hostService.listHosts(null);
         assertTrue(hosts.isEmpty());
     }
+    /**
+     * Tests list hosts returns all hosts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_returnsAllHosts() {
@@ -53,6 +77,12 @@ public class HostServiceTest {
         List<Map<String, Object>> hosts = hostService.listHosts(null);
         assertEquals(2, hosts.size());
     }
+    /**
+     * Tests list hosts credentials masked.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_credentialsMasked() {
@@ -62,6 +92,12 @@ public class HostServiceTest {
         assertEquals(1, hosts.size());
         assertEquals("***", hosts.get(0).get("credential"));
     }
+    /**
+     * Tests list hosts filter by tag.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_filterByTag() {
@@ -72,6 +108,12 @@ public class HostServiceTest {
         List<Map<String, Object>> hosts = hostService.listHosts(new String[]{"RCPA"});
         assertEquals(2, hosts.size());
     }
+    /**
+     * Tests list hosts filter by tag no match.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_filterByTagNoMatch() {
@@ -80,6 +122,12 @@ public class HostServiceTest {
         List<Map<String, Object>> hosts = hostService.listHosts(new String[]{"NONEXISTENT"});
         assertTrue(hosts.isEmpty());
     }
+    /**
+     * Tests list hosts empty tags array.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_emptyTagsArray() {
@@ -90,6 +138,12 @@ public class HostServiceTest {
     }
 
     // ── getHost ────────────────────────────────────────────────────
+    /**
+     * Tests get host existing.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetHost_existing() {
@@ -100,6 +154,12 @@ public class HostServiceTest {
         assertEquals("Server1", host.get("name"));
         assertEquals("***", host.get("credential"));
     }
+    /**
+     * Tests get host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetHost_notFound() {
@@ -107,6 +167,12 @@ public class HostServiceTest {
     }
 
     // ── getHostWithCredential ──────────────────────────────────────
+    /**
+     * Tests get host with credential decrypts credential.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetHostWithCredential_decryptsCredential() {
@@ -125,6 +191,12 @@ public class HostServiceTest {
         Map<String, Object> host = hostService.getHostWithCredential(id);
         assertEquals("mySecretPassword", host.get("credential"));
     }
+    /**
+     * Tests get host with credential not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetHostWithCredential_notFound() {
@@ -132,6 +204,12 @@ public class HostServiceTest {
     }
 
     // ── createHost ─────────────────────────────────────────────────
+    /**
+     * Tests create host success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateHost_success() {
@@ -159,6 +237,12 @@ public class HostServiceTest {
         assertNotNull(result.get("createdAt"));
         assertNotNull(result.get("updatedAt"));
     }
+    /**
+     * Tests create host default values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateHost_defaultValues() {
@@ -173,6 +257,12 @@ public class HostServiceTest {
         assertEquals("password", result.get("authType"));
         assertEquals("", result.get("description"));
     }
+    /**
+     * Tests create host encrypted credential stored.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateHost_encryptedCredentialStored() throws IOException {
@@ -190,6 +280,12 @@ public class HostServiceTest {
     }
 
     // ── updateHost ─────────────────────────────────────────────────
+    /**
+     * Tests update host success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateHost_success() {
@@ -208,6 +304,12 @@ public class HostServiceTest {
         assertEquals("Updated", result.get("name"));
         assertEquals("10.0.0.2", result.get("ip"));
     }
+    /**
+     * Tests update host update credential.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateHost_updateCredential() {
@@ -227,6 +329,12 @@ public class HostServiceTest {
         Map<String, Object> withCred = hostService.getHostWithCredential(id);
         assertEquals("newPassword", withCred.get("credential"));
     }
+    /**
+     * Tests update host update tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateHost_updateTags() {
@@ -242,6 +350,12 @@ public class HostServiceTest {
         Map<String, Object> result = hostService.updateHost(id, updates);
         assertEquals(List.of("NEW1", "NEW2"), result.get("tags"));
     }
+    /**
+     * Tests update host partial update.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateHost_partialUpdate() {
@@ -260,6 +374,12 @@ public class HostServiceTest {
         assertEquals("10.0.0.1", result.get("ip"));
         assertEquals("new desc", result.get("description"));
     }
+    /**
+     * Tests update host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateHost_notFound() {
@@ -267,6 +387,12 @@ public class HostServiceTest {
         updates.put("name", "NewName");
         hostService.updateHost("nonexistent", updates);
     }
+    /**
+     * Tests update host masked credential preserves original.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateHost_maskedCredentialPreservesOriginal() {
@@ -289,6 +415,12 @@ public class HostServiceTest {
         assertEquals("originalSecretPassword", withCred.get("credential"));
         assertEquals("UpdatedName", withCred.get("name"));
     }
+    /**
+     * Tests update host updated at changes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateHost_updatedAtChanges() throws InterruptedException {
@@ -309,6 +441,12 @@ public class HostServiceTest {
     }
 
     // ── deleteHost ─────────────────────────────────────────────────
+    /**
+     * Tests delete host success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteHost_success() {
@@ -318,6 +456,12 @@ public class HostServiceTest {
         assertTrue(deleted);
         assertTrue(hostService.listHosts(null).isEmpty());
     }
+    /**
+     * Tests delete host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteHost_notFound() {
@@ -326,12 +470,24 @@ public class HostServiceTest {
     }
 
     // ── getAllTags ─────────────────────────────────────────────────
+    /**
+     * Tests get all tags empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetAllTags_empty() {
         List<String> tags = hostService.getAllTags();
         assertTrue(tags.isEmpty());
     }
+    /**
+     * Tests get all tags collects unique.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetAllTags_collectsUnique() {
@@ -345,6 +501,12 @@ public class HostServiceTest {
         assertTrue(tags.contains("GMDB"));
         assertTrue(tags.contains("ALL"));
     }
+    /**
+     * Tests get all tags host with no tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetAllTags_hostWithNoTags() {
@@ -355,6 +517,12 @@ public class HostServiceTest {
     }
 
     // ── testConnection ─────────────────────────────────────────────
+    /**
+     * Tests connection host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testConnection_hostNotFound() {
@@ -363,6 +531,12 @@ public class HostServiceTest {
     }
 
     // ── Edge cases ─────────────────────────────────────────────────
+    /**
+     * Tests list hosts skips corrupt file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListHosts_skipsCorruptFile() throws IOException {
@@ -373,6 +547,12 @@ public class HostServiceTest {
         // Should not throw, just skip the corrupt file
         assertNotNull(hosts);
     }
+    /**
+     * Tests create host with key auth.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateHost_withKeyAuth() {

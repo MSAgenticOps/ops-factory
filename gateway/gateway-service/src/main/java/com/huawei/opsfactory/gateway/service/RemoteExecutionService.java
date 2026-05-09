@@ -21,7 +21,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist validation.
+ * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist
+ * validation.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -35,6 +36,12 @@ public class RemoteExecutionService {
     private final GatewayProperties properties;
     private final ClusterService clusterService;
     private final ClusterTypeService clusterTypeService;
+    /**
+     * Creates the remote execution service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public RemoteExecutionService(HostService hostService,
                                   CommandWhitelistService commandWhitelistService,
@@ -138,7 +145,10 @@ public class RemoteExecutionService {
             result.put("hostName", hostName);
             result.put("exitCode", -1);
             result.put("output", "");
-            result.put("error", "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected));
+            result.put(
+                    "error",
+                    "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected)
+            );
             result.put("rejectedCommands", rejected);
             result.put("duration", 0L);
             return result;

@@ -35,6 +35,12 @@ public class WhatsAppWebLoginService {
 
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
+    /**
+     * Creates the whats app web login service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public WhatsAppWebLoginService(ChannelConfigService channelConfigService,
                                    ChannelRuntimeStorageService runtimeStorageService) {
@@ -137,7 +143,17 @@ public class WhatsAppWebLoginService {
         }
 
         writeInitialStateFile(channel, stateFile);
-        startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inboxDir, outboxPendingDir, outboxSentDir, outboxErrorDir);
+        startHelperProcess(
+                channel,
+                authDir,
+                stateFile,
+                pidFile,
+                logFile,
+                inboxDir,
+                outboxPendingDir,
+                outboxSentDir,
+                outboxErrorDir
+        );
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "whatsapp.login_requested",
                 "WhatsApp Web login requested; auth directory prepared at " + authDir);
 
@@ -263,7 +279,11 @@ public class WhatsAppWebLoginService {
         payload.put("lastError", "");
         payload.put("qrCodeDataUrl", null);
         try {
-            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+            Files.writeString(
+                    stateFile,
+                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                    StandardCharsets.UTF_8
+            );
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WhatsApp login state file", e);
         }
@@ -282,7 +302,11 @@ public class WhatsAppWebLoginService {
         payload.put("qrCodeDataUrl", null);
         try {
             Files.createDirectories(stateFile.getParent());
-            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+            Files.writeString(
+                    stateFile,
+                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                    StandardCharsets.UTF_8
+            );
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WhatsApp login state file", e);
         }

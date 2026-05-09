@@ -19,9 +19,21 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Reply Endpoint Performance E2 E.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
     private ManagedInstance mockInstance;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() throws Exception {
@@ -37,6 +49,12 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
                 anyString(), anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"ok\":true}"));
     }
+    /**
+     * Executes the session reply response latency includes hook and spawn delay operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_responseLatencyIncludesHookAndSpawnDelay() {
@@ -56,6 +74,12 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
         assertTrue("reply latency should stay within a reasonable bound, actual=" + elapsedMs,
                 elapsedMs < 5000);
     }
+    /**
+     * Executes the session reply response latency includes resume delay operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_responseLatencyIncludesResumeDelay() {
@@ -81,6 +105,12 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
         assertTrue("reply latency should stay within a reasonable bound, actual=" + elapsedMs,
                 elapsedMs < 5000);
     }
+    /**
+     * Executes the session reply response latency includes upstream completion delay operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_responseLatencyIncludesUpstreamCompletionDelay() {

@@ -57,6 +57,12 @@ public class SessionTraceController {
     @PostMapping(
             value = "/agents/{agentId}/sessions/{sessionId}/trace",
             produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Executes the start trace operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<TraceJobSnapshot> startTrace(@PathVariable("agentId") String agentId,
                                              @PathVariable("sessionId") String sessionId,
                                              ServerWebExchange exchange) {
@@ -74,6 +80,12 @@ public class SessionTraceController {
     @GetMapping(
             value = "/session-traces/{jobId}",
             produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Returns the trace.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<TraceJobSnapshot> getTrace(@PathVariable("jobId") String jobId,
                                            ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);

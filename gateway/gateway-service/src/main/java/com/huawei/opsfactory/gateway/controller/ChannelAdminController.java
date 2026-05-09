@@ -51,6 +51,12 @@ public class ChannelAdminController {
     private final WhatsAppWebLoginService whatsAppWebLoginService;
     private final WhatsAppMessagePumpService whatsAppMessagePumpService;
     private final WeChatLoginService weChatLoginService;
+    /**
+     * Creates the channel admin controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ChannelAdminController(ChannelConfigService channelConfigService,
                                   ChannelAdapterRegistry channelAdapterRegistry,
@@ -110,7 +116,10 @@ public class ChannelAdminController {
         String ownerUserId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
-                ChannelDetail detail = channelConfigService.createChannel(request, ownerUserId != null ? ownerUserId : "admin");
+                ChannelDetail detail = channelConfigService.createChannel(
+                        request,
+                        ownerUserId != null ? ownerUserId : "admin"
+                );
                 return ResponseEntity.status(HttpStatus.CREATED)
                         .body(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
@@ -434,7 +443,11 @@ public class ChannelAdminController {
                 if (!"whatsapp".equals(detail.type())) {
                     return ResponseEntity.badRequest().body(errorBody(detail.type() + " self-test is not implemented yet"));
                 }
-                ChannelSelfTestResult result = whatsAppMessagePumpService.runSelfTest(channelId, userId, request.text());
+                ChannelSelfTestResult result = whatsAppMessagePumpService.runSelfTest(
+                        channelId,
+                        userId,
+                        request.text()
+                );
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "result", result));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));

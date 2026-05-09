@@ -20,6 +20,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Remote Exec Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(SpringRunner.class)
 @WebFluxTest(RemoteExecController.class)
@@ -38,6 +44,12 @@ public class RemoteExecControllerTest {
     private CommandWhitelistService commandWhitelistService;
 
     // ── execute: validation ──────────────────────────────────────
+    /**
+     * Tests execute missing host id.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_missingHostId() {
@@ -55,6 +67,12 @@ public class RemoteExecControllerTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.error").isEqualTo("hostId is required");
     }
+    /**
+     * Tests execute blank host id.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_blankHostId() {
@@ -72,6 +90,12 @@ public class RemoteExecControllerTest {
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("hostId is required");
     }
+    /**
+     * Tests execute missing command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_missingCommand() {
@@ -89,6 +113,12 @@ public class RemoteExecControllerTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.error").isEqualTo("command is required");
     }
+    /**
+     * Tests execute blank command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_blankCommand() {
@@ -108,6 +138,12 @@ public class RemoteExecControllerTest {
     }
 
     // ── execute: success ─────────────────────────────────────────
+    /**
+     * Tests execute success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_success() {
@@ -137,6 +173,12 @@ public class RemoteExecControllerTest {
                 .jsonPath("$.output").isEqualTo("rcpa  1234  1  0  Mar27 ?  00:05:23 /rcpa/openas")
                 .jsonPath("$.duration").isEqualTo(1250);
     }
+    /**
+     * Tests execute custom timeout.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_customTimeout() {
@@ -166,6 +208,12 @@ public class RemoteExecControllerTest {
     }
 
     // ── execute: whitelist rejection ─────────────────────────────
+    /**
+     * Tests execute whitelist rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_whitelistRejected() {
@@ -197,6 +245,12 @@ public class RemoteExecControllerTest {
                 .expectBody()
                 .jsonPath("$.exitCode").isEqualTo(-1);
     }
+    /**
+     * Tests execute whitelist rejected with success false.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_whitelistRejected_withSuccessFalse() {
@@ -232,6 +286,12 @@ public class RemoteExecControllerTest {
     }
 
     // ── execute: host not found ──────────────────────────────────
+    /**
+     * Tests execute host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_hostNotFound() {
@@ -258,6 +318,12 @@ public class RemoteExecControllerTest {
                 .expectBody()
                 .jsonPath("$.exitCode").isEqualTo(-1);
     }
+    /**
+     * Tests execute unexpected failure is sanitized.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_unexpectedFailure_isSanitized() {
@@ -281,6 +347,12 @@ public class RemoteExecControllerTest {
     }
 
     // ── Auth tests ───────────────────────────────────────────────
+    /**
+     * Tests execute unauthorized no key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_unauthorized_noKey() {
@@ -295,6 +367,12 @@ public class RemoteExecControllerTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+    /**
+     * Tests execute forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_forbidden_nonAdmin() {

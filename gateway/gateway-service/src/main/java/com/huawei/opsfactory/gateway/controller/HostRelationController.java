@@ -19,7 +19,8 @@ import reactor.core.scheduler.Schedulers;
 import java.util.*;
 
 /**
- * @deprecated Use {@link ClusterRelationController} instead. Host-level relations are replaced by cluster-level relations.
+ * @deprecated Use {@link ClusterRelationController} instead. Host-level relations are replaced by cluster-level
+ * relations.
  */
 @Deprecated
 @RestController
@@ -29,8 +30,17 @@ public class HostRelationController {
 
     private final HostRelationService hostRelationService;
     private final BusinessServiceService businessServiceService;
+    /**
+     * Creates the host relation controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
-    public HostRelationController(HostRelationService hostRelationService, BusinessServiceService businessServiceService) {
+    public HostRelationController(
+            HostRelationService hostRelationService,
+            BusinessServiceService businessServiceService
+    ) {
         this.hostRelationService = hostRelationService;
         this.businessServiceService = businessServiceService;
     }
@@ -51,7 +61,13 @@ public class HostRelationController {
             ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
-            List<Map<String, Object>> relations = hostRelationService.listRelations(hostId, groupId, clusterId, sourceType, sourceId);
+            List<Map<String, Object>> relations = hostRelationService.listRelations(
+                    hostId,
+                    groupId,
+                    clusterId,
+                    sourceType,
+                    sourceId
+            );
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("relations", relations);
             return result;
@@ -212,7 +228,13 @@ public class HostRelationController {
             nodes.add(bsNode);
 
             // Add edges from BS to each entry host that exists in the graph, using actual relation descriptions
-            List<Map<String, Object>> bsRelations = hostRelationService.listRelations(null, null, null, "business-service", bsId);
+            List<Map<String, Object>> bsRelations = hostRelationService.listRelations(
+                    null,
+                    null,
+                    null,
+                    "business-service",
+                    bsId
+            );
             for (Map<String, Object> rel : bsRelations) {
                 String targetId = (String) rel.get("targetHostId");
                 if (targetId != null && hostNodeIds.contains(targetId)) {

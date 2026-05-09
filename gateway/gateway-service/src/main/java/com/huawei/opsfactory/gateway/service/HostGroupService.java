@@ -39,6 +39,12 @@ public class HostGroupService {
 
     private final GatewayProperties properties;
     private Path groupsDir;
+    /**
+     * Creates the host group service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public HostGroupService(GatewayProperties properties) {
         this.properties = properties;

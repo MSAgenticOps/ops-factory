@@ -26,6 +26,12 @@ public class PrewarmService {
     private final InstanceManager instanceManager;
     private final GatewayProperties properties;
     private final Set<String> warmedUsers = ConcurrentHashMap.newKeySet();
+    /**
+     * Creates the prewarm service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public PrewarmService(InstanceManager instanceManager, GatewayProperties properties) {
         this.instanceManager = instanceManager;

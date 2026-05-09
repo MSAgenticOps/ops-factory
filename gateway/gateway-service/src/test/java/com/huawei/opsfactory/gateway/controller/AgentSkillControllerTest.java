@@ -17,6 +17,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
+/**
+ * Test coverage for Agent Skill Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(SpringRunner.class)
 @WebFluxTest(AgentSkillController.class)
@@ -30,6 +36,12 @@ public class AgentSkillControllerTest {
 
     @MockBean
     private AgentSkillInstallService installService;
+    /**
+     * Executes the install skill as admin operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void installSkill_asAdmin() throws Exception {
@@ -51,6 +63,12 @@ public class AgentSkillControllerTest {
                 .jsonPath("$.skill.id").isEqualTo("log-analysis")
                 .jsonPath("$.restartRequired").isEqualTo(true);
     }
+    /**
+     * Executes the install skill non admin forbidden operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void installSkill_nonAdminForbidden() {
@@ -62,6 +80,12 @@ public class AgentSkillControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the install skill conflict operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void installSkill_conflict() throws Exception {
@@ -78,6 +102,12 @@ public class AgentSkillControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false);
     }
+    /**
+     * Executes the uninstall skill as admin operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void uninstallSkill_asAdmin() throws Exception {
@@ -97,6 +127,12 @@ public class AgentSkillControllerTest {
                 .jsonPath("$.skillId").isEqualTo("log-analysis")
                 .jsonPath("$.restartRequired").isEqualTo(true);
     }
+    /**
+     * Executes the uninstall skill non admin forbidden operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void uninstallSkill_nonAdminForbidden() {

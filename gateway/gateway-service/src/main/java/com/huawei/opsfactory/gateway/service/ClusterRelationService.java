@@ -44,6 +44,12 @@ public class ClusterRelationService {
     private ClusterService clusterService;
     private ClusterTypeService clusterTypeService;
     private BusinessServiceService businessServiceService;
+    /**
+     * Creates the cluster relation service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ClusterRelationService(GatewayProperties properties) {
         this.properties = properties;
@@ -206,7 +212,13 @@ public class ClusterRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId, targetId);
+        log.info(
+                "Created cluster relation: id={}, sourceType={}, source={}, target={}",
+                id,
+                sourceType,
+                sourceId,
+                targetId
+        );
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -392,7 +404,12 @@ public class ClusterRelationService {
                 existing.put("sourceId", clusterId);
                 existing.put("updatedAt", Instant.now().toString());
                 writeEntityFile((String) existing.get("id"), existing);
-                log.info("Updated 包含 relation: cluster={} -> host={} (was cluster={})", clusterId, hostId, currentSource);
+                log.info(
+                        "Updated 包含 relation: cluster={} -> host={} (was cluster={})",
+                        clusterId,
+                        hostId,
+                        currentSource
+                );
             }
         }
     }

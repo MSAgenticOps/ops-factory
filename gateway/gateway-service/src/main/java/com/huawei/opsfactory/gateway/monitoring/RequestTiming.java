@@ -17,6 +17,12 @@ public class RequestTiming {
     private final boolean error;
     private final String agentId;
     private final String userId;
+    /**
+     * Creates the request timing instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public RequestTiming(long startTime, long ttftMs, long totalMs,
                          long totalBytes, boolean error,

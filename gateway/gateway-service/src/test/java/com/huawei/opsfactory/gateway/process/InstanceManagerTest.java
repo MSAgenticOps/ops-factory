@@ -17,6 +17,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Instance Manager.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class InstanceManagerTest {
     private InstanceManager instanceManager;
@@ -24,6 +30,12 @@ public class InstanceManagerTest {
     private PortAllocator portAllocator;
     private RuntimePreparer runtimePreparer;
     private AgentConfigService agentConfigService;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() throws Exception {
@@ -40,11 +52,23 @@ public class InstanceManagerTest {
         instanceManager = new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService,
                 3000, false, "");
     }
+    /**
+     * Tests get instance no instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetInstance_noInstance() {
         assertNull(instanceManager.getInstance("agent1", "user1"));
     }
+    /**
+     * Tests get all instances empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetAllInstances_empty() {
@@ -52,6 +76,12 @@ public class InstanceManagerTest {
         assertNotNull(all);
         assertTrue(all.isEmpty());
     }
+    /**
+     * Tests stop instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStopInstance() {
@@ -71,6 +101,12 @@ public class InstanceManagerTest {
         assertNull(instanceManager.getInstance("agent1", "user1"));
         assertEquals(ManagedInstance.Status.STOPPED, instance.getStatus());
     }
+    /**
+     * Tests stop all for agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStopAllForAgent() {
@@ -97,6 +133,12 @@ public class InstanceManagerTest {
         assertNull(instanceManager.getInstance("agent1", "user2"));
         assertNotNull(instanceManager.getInstance("agent2", "user1"));
     }
+    /**
+     * Tests touch all for user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testTouchAllForUser() throws InterruptedException {
@@ -120,6 +162,12 @@ public class InstanceManagerTest {
         // user2's instance should NOT have been touched more recently
         assertEquals(beforeUser2, inst3.getLastActivity());
     }
+    /**
+     * Tests stop all.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStopAll() {
@@ -138,6 +186,12 @@ public class InstanceManagerTest {
 
         assertTrue(instanceManager.getAllInstances().isEmpty());
     }
+    /**
+     * Tests stop all handles errors.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStopAll_handlesErrors() {
@@ -152,6 +206,12 @@ public class InstanceManagerTest {
         // Should not throw even if individual instance fails
         instanceManager.stopAll();
     }
+    /**
+     * Tests get or spawn removes instance when process died.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetOrSpawn_removesInstanceWhenProcessDied() {

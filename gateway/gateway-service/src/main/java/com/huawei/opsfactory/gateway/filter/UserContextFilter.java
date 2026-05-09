@@ -46,6 +46,12 @@ public class UserContextFilter implements WebFilter {
     // Cached set for fast lookup; refreshed when the underlying list changes.
     private volatile Set<String> adminUserSet = Set.of();
     private volatile List<String> cachedAdminList = List.of();
+    /**
+     * Creates the user context filter instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public UserContextFilter(PrewarmService prewarmService, GatewayProperties gatewayProperties) {
         this.prewarmService = prewarmService;

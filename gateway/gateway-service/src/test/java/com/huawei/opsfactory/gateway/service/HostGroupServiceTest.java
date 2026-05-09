@@ -13,6 +13,12 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.Assert.*;
+/**
+ * Test coverage for Host Group Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class HostGroupServiceTest {
     @Rule
@@ -21,6 +27,12 @@ public class HostGroupServiceTest {
     private HostGroupService hostGroupService;
     private GatewayProperties properties;
     private Path groupsDir;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() throws IOException {
@@ -37,6 +49,12 @@ public class HostGroupServiceTest {
     }
 
     // ── createGroup ──────────────────────────────────────────────
+    /**
+     * Tests create group enabled by default.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateGroup_enabledByDefault() {
@@ -51,6 +69,12 @@ public class HostGroupServiceTest {
         assertEquals("PROD", result.get("code"));
         assertEquals(true, result.get("enabled"));
     }
+    /**
+     * Tests create group enabled false.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateGroup_enabledFalse() {
@@ -62,6 +86,12 @@ public class HostGroupServiceTest {
         Map<String, Object> result = hostGroupService.createGroup(body);
         assertEquals(false, result.get("enabled"));
     }
+    /**
+     * Tests create group enabled true.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateGroup_enabledTrue() {
@@ -74,6 +104,12 @@ public class HostGroupServiceTest {
     }
 
     // ── updateGroup ──────────────────────────────────────────────
+    /**
+     * Tests update group set enabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_setEnabled() {
@@ -89,6 +125,12 @@ public class HostGroupServiceTest {
         assertEquals(false, result.get("enabled"));
         assertEquals("PROD", result.get("name"));
     }
+    /**
+     * Tests update group re enable.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_reEnable() {
@@ -104,6 +146,12 @@ public class HostGroupServiceTest {
         Map<String, Object> result = hostGroupService.updateGroup(id, updates);
         assertEquals(true, result.get("enabled"));
     }
+    /**
+     * Tests update group partial update preserves enabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_partialUpdatePreservesEnabled() {
@@ -121,6 +169,12 @@ public class HostGroupServiceTest {
         assertEquals("PROD-UPDATED", result.get("name"));
         assertEquals(false, result.get("enabled"));
     }
+    /**
+     * Tests update group default enabled remains true.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_defaultEnabledRemainsTrue() {
@@ -139,6 +193,12 @@ public class HostGroupServiceTest {
     }
 
     // ── getDisabledGroupIds ──────────────────────────────────────
+    /**
+     * Tests get disabled group ids no disabled groups.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetDisabledGroupIds_noDisabledGroups() {
@@ -148,6 +208,12 @@ public class HostGroupServiceTest {
         Set<String> disabled = hostGroupService.getDisabledGroupIds(hostGroupService.listGroups());
         assertTrue(disabled.isEmpty());
     }
+    /**
+     * Tests get disabled group ids directly disabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetDisabledGroupIds_directlyDisabled() {
@@ -158,6 +224,12 @@ public class HostGroupServiceTest {
         assertEquals(1, disabled.size());
         assertTrue(disabled.contains("g1"));
     }
+    /**
+     * Tests get disabled group ids inherited from parent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetDisabledGroupIds_inheritedFromParent() {
@@ -175,6 +247,12 @@ public class HostGroupServiceTest {
         assertTrue(disabled.contains("g1-1-1"));
         assertFalse(disabled.contains("g2"));
     }
+    /**
+     * Tests get disabled group ids deep inheritance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetDisabledGroupIds_deepInheritance() {
@@ -194,6 +272,12 @@ public class HostGroupServiceTest {
         assertFalse(disabled.contains("root"));
         assertEquals(4, disabled.size());
     }
+    /**
+     * Tests get disabled group ids enabled missing defaults to true.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetDisabledGroupIds_enabledMissingDefaultsToTrue() {
@@ -203,6 +287,12 @@ public class HostGroupServiceTest {
         Set<String> disabled = hostGroupService.getDisabledGroupIds(hostGroupService.listGroups());
         assertTrue(disabled.isEmpty());
     }
+    /**
+     * Tests get disabled group ids multiple roots.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetDisabledGroupIds_multipleRoots() {
@@ -220,6 +310,12 @@ public class HostGroupServiceTest {
     }
 
     // ── Persistence: enabled state survives read-back ────────────
+    /**
+     * Tests enabled state persisted and read back.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testEnabledStatePersistedAndReadBack() {
@@ -233,6 +329,12 @@ public class HostGroupServiceTest {
         Map<String, Object> readBack = hostGroupService.getGroup(id);
         assertEquals(false, readBack.get("enabled"));
     }
+    /**
+     * Tests update enabled persisted and read back.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateEnabledPersistedAndReadBack() {

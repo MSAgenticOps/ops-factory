@@ -41,8 +41,18 @@ public class McpController {
     private final InstanceManager instanceManager;
     private final GoosedProxy goosedProxy;
     private final AgentConfigService agentConfigService;
+    /**
+     * Creates the mcp controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
-    public McpController(InstanceManager instanceManager, GoosedProxy goosedProxy, AgentConfigService agentConfigService) {
+    public McpController(
+            InstanceManager instanceManager,
+            GoosedProxy goosedProxy,
+            AgentConfigService agentConfigService
+    ) {
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;
         this.agentConfigService = agentConfigService;

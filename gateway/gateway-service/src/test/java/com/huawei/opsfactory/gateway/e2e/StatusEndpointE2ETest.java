@@ -9,6 +9,12 @@ import org.junit.Test;
  */
 public class StatusEndpointE2ETest extends BaseE2ETest {
     // ====================== GET /status ======================
+    /**
+     * Returns the status returns ok.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getStatus_returnsOk() {
@@ -20,6 +26,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /me ======================
+    /**
+     * Returns the me sys user returns sys.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getMe_sysUser_returnsSys() {
@@ -32,6 +44,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.userId").isEqualTo("admin")
                 .jsonPath("$.role").isEqualTo("admin");
     }
+    /**
+     * Returns the me regular user returns user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getMe_regularUser_returnsUser() {
@@ -46,6 +64,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /config ======================
+    /**
+     * Returns the config returns office preview defaults.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getConfig_returnsOfficePreviewDefaults() {
@@ -58,6 +82,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.officePreview.onlyofficeUrl").isEqualTo("")
                 .jsonPath("$.officePreview.fileBaseUrl").isEqualTo("");
     }
+    /**
+     * Returns the config unauthenticated returns401.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getConfig_unauthenticated_returns401() {

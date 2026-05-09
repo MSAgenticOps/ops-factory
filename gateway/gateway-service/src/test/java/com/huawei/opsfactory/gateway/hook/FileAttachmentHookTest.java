@@ -17,6 +17,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for File Attachment Hook.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class FileAttachmentHookTest {
     @Rule
@@ -25,6 +31,12 @@ public class FileAttachmentHookTest {
     private AgentConfigService agentConfigService;
     private FileAttachmentHook hook;
     private Path usersDir;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() throws IOException {
@@ -34,6 +46,12 @@ public class FileAttachmentHookTest {
         when(agentConfigService.getUsersDir()).thenReturn(usersDir);
         hook = new FileAttachmentHook(agentConfigService);
     }
+    /**
+     * Tests no user message passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNoUserMessage_passthrough() {
@@ -43,6 +61,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests no content passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNoContent_passthrough() {
@@ -52,6 +76,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests non array content passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNonArrayContent_passthrough() {
@@ -61,6 +91,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests no file paths passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNoFilePaths_passthrough() {
@@ -70,6 +106,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests valid file path passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidFilePath_passthrough() throws IOException {
@@ -87,6 +129,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests path traversal forbidden.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPathTraversal_forbidden() throws IOException {
@@ -108,6 +156,12 @@ public class FileAttachmentHookTest {
                 })
                 .verify();
     }
+    /**
+     * Tests non existent file not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNonExistentFile_notFound() throws IOException {
@@ -127,6 +181,12 @@ public class FileAttachmentHookTest {
                 })
                 .verify();
     }
+    /**
+     * Tests non text content ignored.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNonTextContent_ignored() {
@@ -137,6 +197,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests invalid json passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testInvalidJson_passthrough() {
@@ -145,6 +211,12 @@ public class FileAttachmentHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests empty content array passthrough.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testEmptyContentArray_passthrough() {

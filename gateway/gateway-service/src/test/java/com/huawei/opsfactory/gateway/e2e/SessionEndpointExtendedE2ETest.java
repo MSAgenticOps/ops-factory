@@ -27,6 +27,12 @@ import static org.mockito.Mockito.when;
  */
 public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     private ManagedInstance runningInstance;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -39,6 +45,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /sessions/{sessionId}?agentId=X ======================
+    /**
+     * Returns the session global authenticated returns session with agent id.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSessionGlobal_authenticated_returnsSessionWithAgentId() {
@@ -56,6 +68,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .jsonPath("$.id").isEqualTo("session-abc")
                 .jsonPath("$.agentId").isEqualTo("test-agent");
     }
+    /**
+     * Returns the session global unauthenticated returns401.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSessionGlobal_unauthenticated_returns401() {
@@ -65,6 +83,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== DELETE /sessions/{sessionId}?agentId=X ======================
+    /**
+     * Executes the delete session global authenticated removes owner and proxies operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteSessionGlobal_authenticated_removesOwnerAndProxies() {
@@ -81,6 +105,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
 
         verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"), any());
     }
+    /**
+     * Executes the delete session global unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteSessionGlobal_unauthenticated_returns401() {
@@ -90,6 +120,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== POST /agents/{agentId}/sessions/{sessionId}/cleanup-empty ======================
+    /**
+     * Executes the cleanup empty session empty user session deletes session operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void cleanupEmptySession_emptyUserSession_deletesSession() {
@@ -113,6 +149,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-empty"),
                 eq(null), anyInt(), anyString());
     }
+    /**
+     * Executes the cleanup empty session session with messages skips delete operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void cleanupEmptySession_sessionWithMessages_skipsDelete() {
@@ -133,6 +175,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-used"),
                 eq(null), anyInt(), anyString());
     }
+    /**
+     * Executes the cleanup empty session non empty conversation with zero message count skips delete operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void cleanupEmptySession_nonEmptyConversationWithZeroMessageCount_skipsDelete() {
@@ -153,6 +201,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-conversation"),
                 eq(null), anyInt(), anyString());
     }
+    /**
+     * Executes the cleanup empty session scheduled session skips delete operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void cleanupEmptySession_scheduledSession_skipsDelete() {
@@ -175,6 +229,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== PUT /agents/{agentId}/sessions/{sessionId}/name ======================
+    /**
+     * Executes the rename session authenticated proxies to goosed operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void renameSession_authenticated_proxiesToGoosed() {
@@ -195,6 +255,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         verify(goosedProxy).proxyWithBody(any(), eq(9999), eq("/sessions/session-123/name"),
                 eq(HttpMethod.PUT), anyString(), anyString());
     }
+    /**
+     * Executes the rename session unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void renameSession_unauthenticated_returns401() {
@@ -206,6 +272,12 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== Session not found ======================
+    /**
+     * Returns the session not found from goosed returns404.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSession_notFoundFromGoosed_returns404() {

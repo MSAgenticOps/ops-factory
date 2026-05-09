@@ -13,6 +13,12 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.Assert.*;
+/**
+ * Test coverage for Sop Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class SopServiceTest {
     @Rule
@@ -20,6 +26,12 @@ public class SopServiceTest {
 
     private SopService sopService;
     private Path sopsDir;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() throws IOException {
@@ -40,12 +52,24 @@ public class SopServiceTest {
     }
 
     // ── listSops ─────────────────────────────────────────────────
+    /**
+     * Tests list sops empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListSops_empty() {
         List<Map<String, Object>> sops = sopService.listSops();
         assertTrue(sops.isEmpty());
     }
+    /**
+     * Tests list sops returns all.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListSops_returnsAll() {
@@ -55,6 +79,12 @@ public class SopServiceTest {
         List<Map<String, Object>> sops = sopService.listSops();
         assertEquals(2, sops.size());
     }
+    /**
+     * Tests list sops skips corrupt file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListSops_skipsCorruptFile() throws IOException {
@@ -66,6 +96,12 @@ public class SopServiceTest {
     }
 
     // ── getSop ───────────────────────────────────────────────────
+    /**
+     * Tests get sop existing.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetSop_existing() {
@@ -76,6 +112,12 @@ public class SopServiceTest {
         assertEquals("TestSOP", sop.get("name"));
         assertEquals("test description", sop.get("description"));
     }
+    /**
+     * Tests get sop not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetSop_notFound() {
@@ -83,6 +125,12 @@ public class SopServiceTest {
     }
 
     // ── createSop ────────────────────────────────────────────────
+    /**
+     * Tests create sop success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateSop_success() {
@@ -104,6 +152,12 @@ public class SopServiceTest {
         assertEquals("RCPA进程异常", result.get("triggerCondition"));
         assertNotNull(result.get("nodes"));
     }
+    /**
+     * Tests create sop default values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateSop_defaultValues() {
@@ -121,6 +175,12 @@ public class SopServiceTest {
     }
 
     // ── updateSop ────────────────────────────────────────────────
+    /**
+     * Tests update sop success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateSop_success() {
@@ -138,6 +198,12 @@ public class SopServiceTest {
         assertEquals("Updated", result.get("name"));
         assertEquals("new desc", result.get("description"));
     }
+    /**
+     * Tests update sop partial update.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateSop_partialUpdate() {
@@ -156,6 +222,12 @@ public class SopServiceTest {
         assertEquals("1.0.0", result.get("version"));
         assertEquals("new condition", result.get("triggerCondition"));
     }
+    /**
+     * Tests update sop update nodes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateSop_updateNodes() {
@@ -174,6 +246,12 @@ public class SopServiceTest {
         Map<String, Object> result = sopService.updateSop(id, updates);
         assertEquals(newNodes, result.get("nodes"));
     }
+    /**
+     * Tests update sop not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateSop_notFound() {
@@ -183,6 +261,12 @@ public class SopServiceTest {
     }
 
     // ── deleteSop ────────────────────────────────────────────────
+    /**
+     * Tests delete sop success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteSop_success() {
@@ -192,12 +276,24 @@ public class SopServiceTest {
         assertTrue(deleted);
         assertTrue(sopService.listSops().isEmpty());
     }
+    /**
+     * Tests delete sop not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteSop_notFound() {
         boolean deleted = sopService.deleteSop("nonexistent");
         assertFalse(deleted);
     }
+    /**
+     * Tests delete sop file removed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteSop_fileRemoved() throws IOException {
@@ -209,6 +305,12 @@ public class SopServiceTest {
     }
 
     // ── Duplicate Name Validation ────────────────────────────────
+    /**
+     * Tests create sop duplicate name rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testCreateSop_duplicateName_rejected() {
@@ -218,6 +320,12 @@ public class SopServiceTest {
         body.put("name", "DiagnoseRCPA");
         sopService.createSop(body);
     }
+    /**
+     * Tests create sop duplicate name case insensitive rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testCreateSop_duplicateNameCaseInsensitive_rejected() {
@@ -227,6 +335,12 @@ public class SopServiceTest {
         body.put("name", "diagnosercpa");
         sopService.createSop(body);
     }
+    /**
+     * Tests create sop different name allowed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateSop_differentName_allowed() {
@@ -239,6 +353,12 @@ public class SopServiceTest {
         assertNotNull(result.get("id"));
         assertEquals("DiagnoseOther", result.get("name"));
     }
+    /**
+     * Tests update sop duplicate name rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateSop_duplicateName_rejected() {
@@ -249,6 +369,12 @@ public class SopServiceTest {
         updates.put("name", "DiagnoseRCPA");
         sopService.updateSop("sop-2", updates);
     }
+    /**
+     * Tests update sop same name same id allowed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateSop_sameNameSameId_allowed() {

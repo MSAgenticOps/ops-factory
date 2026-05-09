@@ -51,6 +51,12 @@ public class SessionTraceService implements DisposableBean {
     private final Path gatewayRoot;
     private final Path scriptPath;
     private final Path traceRoot;
+    /**
+     * Creates the session trace service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public SessionTraceService() {
         this.repoRoot = resolveRepoRoot();
@@ -171,7 +177,10 @@ public class SessionTraceService implements DisposableBean {
             log.info("[SESSION-TRACE] start jobId={} userId={} agentId={} sessionId={}",
                     job.jobId, job.userId, job.agentId, job.sessionId);
             Process process = pb.start();
-            boolean finished = process.waitFor(COLLECTION_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+            boolean finished = process.waitFor(
+                    COLLECTION_TIMEOUT.toMillis(),
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+            );
             if (!finished) {
                 process.destroyForcibly();
                 throw new IllegalStateException("trace collection timed out");
@@ -315,12 +324,24 @@ public class SessionTraceService implements DisposableBean {
     public void destroy() {
         executor.shutdownNow();
     }
+    /**
+     * Type definition for Trace Status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public enum TraceStatus {
         RUNNING,
         SUCCEEDED,
         FAILED
     }
+    /**
+     * Type definition for Trace Job Snapshot.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public record TraceJobSnapshot(
             String jobId,
@@ -359,7 +380,15 @@ public class SessionTraceService implements DisposableBean {
         }
 
         private TraceJobSnapshot snapshot() {
-            return new TraceJobSnapshot(jobId, status.name().toLowerCase(Locale.ROOT), userId, agentId, sessionId, fileName, message);
+            return new TraceJobSnapshot(
+                    jobId,
+                    status.name().toLowerCase(Locale.ROOT),
+                    userId,
+                    agentId,
+                    sessionId,
+                    fileName,
+                    message
+            );
         }
     }
 }

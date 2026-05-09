@@ -37,6 +37,12 @@ import static org.junit.Assert.assertTrue;
  */
 public class GoosedProxyExtendedTest {
     private GoosedProxy proxy;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -47,6 +53,12 @@ public class GoosedProxyExtendedTest {
     }
 
     // ====================== copyHeaders ======================
+    /**
+     * Tests copy headers injects secret key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCopyHeaders_injectsSecretKey() throws Exception {
@@ -56,7 +68,12 @@ public class GoosedProxyExtendedTest {
 
         HttpHeaders target = new HttpHeaders();
 
-        Method copyHeaders = GoosedProxy.class.getDeclaredMethod("copyHeaders", HttpHeaders.class, HttpHeaders.class, String.class);
+        Method copyHeaders = GoosedProxy.class.getDeclaredMethod(
+                "copyHeaders",
+                HttpHeaders.class,
+                HttpHeaders.class,
+                String.class
+        );
         copyHeaders.setAccessible(true);
         copyHeaders.invoke(proxy, source, target, "my-secret");
 
@@ -64,6 +81,12 @@ public class GoosedProxyExtendedTest {
         assertEquals("value", target.getFirst("X-Custom"));
         assertEquals("my-secret", target.getFirst("x-secret-key"));
     }
+    /**
+     * Tests copy headers overrides existing secret key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCopyHeaders_overridesExistingSecretKey() throws Exception {
@@ -72,7 +95,12 @@ public class GoosedProxyExtendedTest {
 
         HttpHeaders target = new HttpHeaders();
 
-        Method copyHeaders = GoosedProxy.class.getDeclaredMethod("copyHeaders", HttpHeaders.class, HttpHeaders.class, String.class);
+        Method copyHeaders = GoosedProxy.class.getDeclaredMethod(
+                "copyHeaders",
+                HttpHeaders.class,
+                HttpHeaders.class,
+                String.class
+        );
         copyHeaders.setAccessible(true);
         copyHeaders.invoke(proxy, source, target, "my-secret");
 
@@ -81,6 +109,12 @@ public class GoosedProxyExtendedTest {
     }
 
     // ====================== copyUpstreamHeaders ======================
+    /**
+     * Tests copy upstream headers filters cors headers.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCopyUpstreamHeaders_filtersCorsHeaders() throws Exception {
@@ -96,7 +130,11 @@ public class GoosedProxyExtendedTest {
 
         HttpHeaders target = new HttpHeaders();
 
-        Method copyUpstream = GoosedProxy.class.getDeclaredMethod("copyUpstreamHeaders", HttpHeaders.class, HttpHeaders.class);
+        Method copyUpstream = GoosedProxy.class.getDeclaredMethod(
+                "copyUpstreamHeaders",
+                HttpHeaders.class,
+                HttpHeaders.class
+        );
         copyUpstream.setAccessible(true);
         copyUpstream.invoke(proxy, source, target);
 
@@ -112,13 +150,23 @@ public class GoosedProxyExtendedTest {
         assertEquals("keep-this", target.getFirst("X-Custom-Header"));
         assertEquals("application/json", target.getFirst("Content-Type"));
     }
+    /**
+     * Tests copy upstream headers empty source.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCopyUpstreamHeaders_emptySource() throws Exception {
         HttpHeaders source = new HttpHeaders();
         HttpHeaders target = new HttpHeaders();
 
-        Method copyUpstream = GoosedProxy.class.getDeclaredMethod("copyUpstreamHeaders", HttpHeaders.class, HttpHeaders.class);
+        Method copyUpstream = GoosedProxy.class.getDeclaredMethod(
+                "copyUpstreamHeaders",
+                HttpHeaders.class,
+                HttpHeaders.class
+        );
         copyUpstream.setAccessible(true);
         copyUpstream.invoke(proxy, source, target);
 
@@ -126,6 +174,12 @@ public class GoosedProxyExtendedTest {
     }
 
     // ====================== fetchJson ======================
+    /**
+     * Tests fetch json returns non null mono.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testFetchJson_returnsNonNullMono() {
@@ -134,6 +188,12 @@ public class GoosedProxyExtendedTest {
     }
 
     // ====================== proxyWithBody ======================
+    /**
+     * Tests proxy with body returns non null mono.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testProxyWithBody_returnsNonNullMono() {
@@ -141,6 +201,12 @@ public class GoosedProxyExtendedTest {
         assertNotNull(proxy.proxyWithBody(null, 99999, "/test",
                 org.springframework.http.HttpMethod.POST, "{}", "test-secret"));
     }
+    /**
+     * Tests proxy session command with body non2xx throws upstream error without committing response.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testProxySessionCommandWithBody_non2xxThrowsUpstreamErrorWithoutCommittingResponse() {
@@ -167,6 +233,12 @@ public class GoosedProxyExtendedTest {
             server.disposeNow();
         }
     }
+    /**
+     * Tests emit transformed frame emits original before supplemental event completes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testEmitTransformedFrame_emitsOriginalBeforeSupplementalEventCompletes() throws Exception {

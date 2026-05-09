@@ -15,6 +15,12 @@ import static org.junit.Assert.*;
  */
 public class MetricsBufferTest {
     private MetricsBuffer buffer;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -25,12 +31,24 @@ public class MetricsBufferTest {
     }
 
     // ---- Snapshot tests ----
+    /**
+     * Returns the snapshots empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSnapshots_empty() {
         List<MetricsSnapshot> result = buffer.getSnapshots(120);
         assertTrue(result.isEmpty());
     }
+    /**
+     * Returns the snapshots single entry.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSnapshots_singleEntry() {
@@ -41,6 +59,12 @@ public class MetricsBufferTest {
         assertEquals(1, result.size());
         assertEquals(1000L, result.get(0).getTimestamp());
     }
+    /**
+     * Returns the snapshots ordered oldest first.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSnapshots_orderedOldestFirst() {
@@ -54,6 +78,12 @@ public class MetricsBufferTest {
         assertEquals(200L, result.get(1).getTimestamp());
         assertEquals(300L, result.get(2).getTimestamp());
     }
+    /**
+     * Returns the snapshots max slots limits result.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSnapshots_maxSlotsLimitsResult() {
@@ -68,6 +98,12 @@ public class MetricsBufferTest {
         assertEquals(800L, result.get(1).getTimestamp());
         assertEquals(900L, result.get(2).getTimestamp());
     }
+    /**
+     * Returns the snapshots circular overwrite.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSnapshots_circularOverwrite() {
@@ -85,12 +121,24 @@ public class MetricsBufferTest {
     }
 
     // ---- Timing tests ----
+    /**
+     * Executes the drain timings empty operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_empty() {
         List<RequestTiming> result = buffer.drainTimings();
         assertTrue(result.isEmpty());
     }
+    /**
+     * Executes the drain timings single timing operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_singleTiming() {
@@ -101,6 +149,12 @@ public class MetricsBufferTest {
         assertEquals(100, result.get(0).getTtftMs());
         assertEquals(500, result.get(0).getTotalMs());
     }
+    /**
+     * Executes the drain timings drains all operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_drainsAll() {
@@ -115,6 +169,12 @@ public class MetricsBufferTest {
         List<RequestTiming> result2 = buffer.drainTimings();
         assertTrue(result2.isEmpty());
     }
+    /**
+     * Executes the drain timings multiple windows operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_multipleWindows() {
@@ -130,6 +190,12 @@ public class MetricsBufferTest {
         assertEquals(1, w2.size());
         assertEquals(300, w2.get(0).getTtftMs());
     }
+    /**
+     * Executes the drain timings buffer wrap around operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_bufferWrapAround() {
@@ -150,6 +216,12 @@ public class MetricsBufferTest {
         // Most recent should be the last one written
         assertEquals(1599, result2.get(499).getTtftMs());
     }
+    /**
+     * Executes the drain timings wrap without drain does not lose data operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_wrapWithoutDrain_doesNotLoseData() {
@@ -164,6 +236,12 @@ public class MetricsBufferTest {
     }
 
     // ---- Persistence tests ----
+    /**
+     * Executes the persist to disk and restore operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void persistToDisk_andRestore() {
@@ -178,6 +256,12 @@ public class MetricsBufferTest {
         List<MetricsSnapshot> result = buffer.getSnapshots(120);
         assertEquals(3, result.size());
     }
+    /**
+     * Executes the persist to disk skips when not dirty operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void persistToDisk_skipsWhenNotDirty() {
@@ -187,6 +271,12 @@ public class MetricsBufferTest {
     }
 
     // ---- Error counting ----
+    /**
+     * Executes the drain timings error flag operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void drainTimings_errorFlag() {

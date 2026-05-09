@@ -51,6 +51,12 @@ public class AgentConfigService {
     private final ConcurrentHashMap<String, Map<String, Object>> secretsCache = new ConcurrentHashMap<>();
     private final Set<String> residentInstanceKeys = ConcurrentHashMap.newKeySet();
     private Path gatewayRoot;
+    /**
+     * Creates the agent config service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public AgentConfigService(GatewayProperties properties) {
         this.properties = properties;
@@ -264,7 +270,14 @@ public class AgentConfigService {
                                 skill.put("description", frontmatter.get("description"));
                             }
                             putFrontmatterAlias(skill, frontmatter, "pinned", "pinned");
-                            putFrontmatterAlias(skill, frontmatter, "displayOrder", "displayOrder", "display-order", "x-display-order");
+                            putFrontmatterAlias(
+                                    skill,
+                                    frontmatter,
+                                    "displayOrder",
+                                    "displayOrder",
+                                    "display-order",
+                                    "x-display-order"
+                            );
                         } catch (Exception e) {
                             log.warn("Failed to parse SKILL.md for skill {}/{}", agentId, dirName, e);
                         }

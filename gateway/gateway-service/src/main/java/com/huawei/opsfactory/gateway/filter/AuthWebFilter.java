@@ -30,6 +30,12 @@ public class AuthWebFilter implements WebFilter {
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     private final GatewayProperties properties;
+    /**
+     * Creates the auth web filter instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public AuthWebFilter(GatewayProperties properties) {
         this.properties = properties;

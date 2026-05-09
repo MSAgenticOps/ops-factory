@@ -18,6 +18,12 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class FileEndpointExtendedE2ETest extends BaseE2ETest {
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
@@ -27,6 +33,12 @@ public class FileEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== Path traversal ======================
+    /**
+     * Returns the file path traversal returns403.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getFile_pathTraversal_returns403() {
@@ -41,6 +53,12 @@ public class FileEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== Upload without multipart ======================
+    /**
+     * Executes the upload file not multipart returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void uploadFile_notMultipart_returns400() {

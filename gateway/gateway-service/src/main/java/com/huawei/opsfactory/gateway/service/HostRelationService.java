@@ -41,6 +41,12 @@ public class HostRelationService {
     private Path relationsDir;
 
     private BusinessServiceService businessServiceService;
+    /**
+     * Creates the host relation service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public HostRelationService(GatewayProperties properties, HostService hostService, ClusterService clusterService) {
         this.properties = properties;
@@ -83,7 +89,13 @@ public class HostRelationService {
     /**
      * List relations with optional filters.
      */
-    public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType, String sourceId) {
+    public List<Map<String, Object>> listRelations(
+            String hostId,
+            String groupId,
+            String clusterId,
+            String sourceType,
+            String sourceId
+    ) {
         List<Map<String, Object>> relations = new ArrayList<>();
         if (!Files.isDirectory(relationsDir)) {
             return relations;
@@ -200,7 +212,13 @@ public class HostRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info("Created host relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceHostId, targetHostId);
+        log.info(
+                "Created host relation: id={}, sourceType={}, source={}, target={}",
+                id,
+                sourceType,
+                sourceHostId,
+                targetHostId
+        );
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {

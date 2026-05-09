@@ -47,6 +47,12 @@ public class BusinessServiceService {
     private HostService hostService;
     private HostRelationService hostRelationService;
     private ClusterRelationService clusterRelationService;
+    /**
+     * Creates the business service service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public BusinessServiceService(GatewayProperties properties) {
         this.properties = properties;
@@ -424,7 +430,13 @@ public class BusinessServiceService {
         bsNode.put("nodeType", "business-service");
         nodes.add(0, bsNode);
 
-        List<Map<String, Object>> bsRelations = hostRelationService.listRelations(null, null, null, "business-service", id);
+        List<Map<String, Object>> bsRelations = hostRelationService.listRelations(
+                null,
+                null,
+                null,
+                "business-service",
+                id
+        );
         for (Map<String, Object> rel : bsRelations) {
             String targetId = (String) rel.get("targetHostId");
             if (targetId != null && hostMap.containsKey(targetId)) {

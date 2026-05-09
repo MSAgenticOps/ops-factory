@@ -14,18 +14,36 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for We Chat Adapter.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class WeChatAdapterTest {
     private static final String OWNER_USER_ID = "alice@example.com";
 
     private ChannelConfigService channelConfigService;
     private WeChatAdapter adapter;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
         channelConfigService = mock(ChannelConfigService.class);
         adapter = new WeChatAdapter(channelConfigService);
     }
+    /**
+     * Tests connected connectivity.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testConnectedConnectivity() {
@@ -37,6 +55,12 @@ public class WeChatAdapterTest {
 
         verify(channelConfigService).recordEvent("wechat-main", OWNER_USER_ID, "info", "wechat.status", "WeChat session is connected");
     }
+    /**
+     * Tests pending connectivity.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPendingConnectivity() {
@@ -48,6 +72,12 @@ public class WeChatAdapterTest {
 
         verify(channelConfigService, never()).recordEvent("wechat-main", OWNER_USER_ID, "info", "wechat.status", "WeChat session is connected");
     }
+    /**
+     * Tests error connectivity uses last error.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testErrorConnectivityUsesLastError() {

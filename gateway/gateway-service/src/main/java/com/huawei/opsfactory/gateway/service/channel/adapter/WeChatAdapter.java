@@ -27,6 +27,12 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 @Service
 public class WeChatAdapter implements ChannelAdapter {
     private final ChannelConfigService channelConfigService;
+    /**
+     * Creates the we chat adapter instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public WeChatAdapter(ChannelConfigService channelConfigService) {
         this.channelConfigService = channelConfigService;

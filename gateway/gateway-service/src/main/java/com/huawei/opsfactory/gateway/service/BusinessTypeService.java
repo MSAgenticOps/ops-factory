@@ -37,6 +37,12 @@ public class BusinessTypeService {
 
     private final GatewayProperties properties;
     private Path businessTypesDir;
+    /**
+     * Creates the business type service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public BusinessTypeService(GatewayProperties properties) {
         this.properties = properties;

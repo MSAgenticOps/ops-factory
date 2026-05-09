@@ -26,7 +26,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Manages channel conversation bindings, including creation, session attachment, and inbound/outbound timestamp tracking.
+ * Manages channel conversation bindings, including creation, session attachment, and inbound/outbound timestamp
+ * tracking.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -38,6 +39,12 @@ public class ChannelBindingService {
 
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
+    /**
+     * Creates the channel binding service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ChannelBindingService(ChannelConfigService channelConfigService,
                                  ChannelRuntimeStorageService runtimeStorageService) {
@@ -67,11 +74,20 @@ public class ChannelBindingService {
                                                     String conversationId,
                                                     String threadId,
                                                     String conversationType) {
-        return ensureConversationBinding(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
+        return ensureConversationBinding(
+                channelId,
+                "admin",
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType
+        );
     }
 
     /**
-     * Ensures a conversation binding exists for the given channel and conversation identifiers, creating one if necessary.
+     * Ensures a conversation binding exists for the given channel and conversation identifiers, creating one if
+     * necessary.
      *
      * @author x00000000
      * @since 2026-05-09
@@ -119,7 +135,17 @@ public class ChannelBindingService {
      * @since 2026-05-09
      */
     public ChannelBinding attachSession(String channelId, String externalUserId, String sessionId, String agentId) {
-        return attachConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", sessionId, agentId);
+        return attachConversationSession(
+                channelId,
+                "admin",
+                "default",
+                externalUserId,
+                externalUserId,
+                null,
+                "direct",
+                sessionId,
+                agentId
+        );
     }
 
     /**
@@ -250,7 +276,15 @@ public class ChannelBindingService {
                                                   String accountId,
                                                   String conversationId,
                                                   String threadId) {
-        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, Instant.now().toString(), null);
+        return updateTimestamps(
+                channelId,
+                ownerUserId,
+                accountId,
+                conversationId,
+                threadId,
+                Instant.now().toString(),
+                null
+        );
     }
 
     /**
@@ -277,7 +311,15 @@ public class ChannelBindingService {
                                                    String accountId,
                                                    String conversationId,
                                                    String threadId) {
-        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, null, Instant.now().toString());
+        return updateTimestamps(
+                channelId,
+                ownerUserId,
+                accountId,
+                conversationId,
+                threadId,
+                null,
+                Instant.now().toString()
+        );
     }
 
     private ChannelBinding updateTimestamps(String channelId,

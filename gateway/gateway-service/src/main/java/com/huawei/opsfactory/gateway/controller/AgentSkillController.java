@@ -32,6 +32,12 @@ import reactor.core.scheduler.Schedulers;
 @RequestMapping("/gateway/agents")
 public class AgentSkillController {
     private final AgentSkillInstallService installService;
+    /**
+     * Creates the agent skill controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public AgentSkillController(AgentSkillInstallService installService) {
         this.installService = installService;

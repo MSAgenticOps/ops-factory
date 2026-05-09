@@ -12,10 +12,22 @@ import java.nio.file.Path;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+/**
+ * Test coverage for File Util.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class FileUtilTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
+    /**
+     * Tests delete recursively single file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteRecursively_singleFile() throws IOException {
@@ -24,6 +36,12 @@ public class FileUtilTest {
         FileUtil.deleteRecursively(file.toPath());
         assertFalse(file.exists());
     }
+    /**
+     * Tests delete recursively empty directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteRecursively_emptyDirectory() throws IOException {
@@ -32,6 +50,12 @@ public class FileUtilTest {
         FileUtil.deleteRecursively(dir.toPath());
         assertFalse(dir.exists());
     }
+    /**
+     * Tests delete recursively nested directories.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteRecursively_nestedDirectories() throws IOException {
@@ -50,6 +74,12 @@ public class FileUtilTest {
         FileUtil.deleteRecursively(dir.toPath());
         assertFalse(dir.exists());
     }
+    /**
+     * Tests delete recursively non existent path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteRecursively_nonExistentPath() throws IOException {
@@ -58,6 +88,12 @@ public class FileUtilTest {
         // Should not throw
         FileUtil.deleteRecursively(nonExistent);
     }
+    /**
+     * Tests delete recursively directory with mixed content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteRecursively_directoryWithMixedContent() throws IOException {

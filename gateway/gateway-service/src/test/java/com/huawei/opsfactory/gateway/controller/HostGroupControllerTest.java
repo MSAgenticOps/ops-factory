@@ -22,6 +22,12 @@ import java.util.*;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Host Group Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(SpringRunner.class)
 @WebFluxTest(HostGroupController.class)
@@ -46,6 +52,12 @@ public class HostGroupControllerTest {
     private PrewarmService prewarmService;
 
     // ── listGroups ──────────────────────────────────────────────
+    /**
+     * Tests list groups returns all.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListGroups_returnsAll() {
@@ -63,6 +75,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.groups").isArray()
                 .jsonPath("$.groups.length()").isEqualTo(2);
     }
+    /**
+     * Tests list groups enabled only filters disabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListGroups_enabledOnly_filtersDisabled() {
@@ -82,6 +100,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.groups.length()").isEqualTo(1)
                 .jsonPath("$.groups[0].id").isEqualTo("g2");
     }
+    /**
+     * Tests list groups enabled only filters inherited disabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListGroups_enabledOnly_filtersInheritedDisabled() {
@@ -103,6 +127,12 @@ public class HostGroupControllerTest {
     }
 
     // ── getTree ─────────────────────────────────────────────────
+    /**
+     * Tests get tree returns all.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetTree_returnsAll() {
@@ -125,6 +155,12 @@ public class HostGroupControllerTest {
                 .expectBody()
                 .jsonPath("$.tree").isArray();
     }
+    /**
+     * Tests get tree enabled only filters disabled groups.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetTree_enabledOnly_filtersDisabledGroups() {
@@ -149,6 +185,12 @@ public class HostGroupControllerTest {
                 .expectBody()
                 .jsonPath("$.tree.length()").isEqualTo(1);
     }
+    /**
+     * Tests get tree enabled only filters clusters in disabled group.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetTree_enabledOnly_filtersClustersInDisabledGroup() {
@@ -175,6 +217,12 @@ public class HostGroupControllerTest {
     }
 
     // ── updateGroup (enabled toggle) ────────────────────────────
+    /**
+     * Tests update group set enabled false.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_setEnabledFalse() {
@@ -195,6 +243,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.group.enabled").isEqualTo(false);
     }
+    /**
+     * Tests update group set enabled true.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_setEnabledTrue() {
@@ -215,6 +269,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.group.enabled").isEqualTo(true);
     }
+    /**
+     * Tests update group not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateGroup_notFound() {
@@ -234,6 +294,12 @@ public class HostGroupControllerTest {
     }
 
     // ── Auth ────────────────────────────────────────────────────
+    /**
+     * Tests list groups unauthorized no key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListGroups_unauthorized_noKey() {
@@ -242,6 +308,12 @@ public class HostGroupControllerTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+    /**
+     * Tests list groups forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListGroups_forbidden_nonAdmin() {

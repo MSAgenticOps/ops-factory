@@ -35,6 +35,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     private SessionCacheService sessionCacheService;
 
     private ManagedInstance runningInstance;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -49,6 +55,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== POST /agents/{agentId}/agent/start ======================
+    /**
+     * Executes the start session authenticated calls start then resume operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void startSession_authenticated_callsStartThenResume() {
@@ -74,6 +86,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
                 org.mockito.ArgumentMatchers.contains("\"load_model_and_extensions\":true"), anyInt(), anyString());
     }
+    /**
+     * Executes the start session resume fails propagates error operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void startSession_resumeFails_propagatesError() {
@@ -92,6 +110,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
+    /**
+     * Executes the start session resume receives correct session id operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void startSession_resumeReceivesCorrectSessionId() {
@@ -114,6 +138,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
                 org.mockito.ArgumentMatchers.contains("\"session_id\":\"abc-def-456\""), anyInt(), anyString());
     }
+    /**
+     * Executes the start session returns start response not resume response operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void startSession_returnsStartResponse_notResumeResponse() {
@@ -138,6 +168,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.name").isEqualTo("New Chat")
                 .jsonPath("$.extension_results").doesNotExist();
     }
+    /**
+     * Executes the start session unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void startSession_unauthenticated_returns401() {
@@ -149,6 +185,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /sessions (Aggregated) ======================
+    /**
+     * Executes the list all sessions no instances returns empty array operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAllSessions_noInstances_returnsEmptyArray() {
@@ -165,6 +207,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.pageIndex").isEqualTo(1)
                 .jsonPath("$.pageSize").isEqualTo(20);
     }
+    /**
+     * Executes the list all sessions with running instances aggregates sessions operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAllSessions_withRunningInstances_aggregatesSessions() {
@@ -190,6 +238,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
+    /**
+     * Executes the list all sessions stopped instances excluded operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAllSessions_stoppedInstancesExcluded() {
@@ -210,6 +264,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.pageIndex").isEqualTo(1)
                 .jsonPath("$.pageSize").isEqualTo(20);
     }
+    /**
+     * Executes the list all sessions unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAllSessions_unauthenticated_returns401() {
@@ -219,6 +279,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /agents/{agentId}/sessions ======================
+    /**
+     * Executes the list agent sessions authenticated proxies to goosed operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAgentSessions_authenticated_proxiesToGoosed() {
@@ -237,6 +303,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /agents/{agentId}/sessions/{sessionId} ======================
+    /**
+     * Returns the session authenticated proxies to goosed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSession_authenticated_proxiesToGoosed() {
@@ -254,6 +326,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.id").isEqualTo("session-123")
                 .jsonPath("$.agentId").isEqualTo("test-agent");
     }
+    /**
+     * Returns the session unauthenticated returns401.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getSession_unauthenticated_returns401() {
@@ -263,6 +341,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== DELETE /agents/{agentId}/sessions/{sessionId} ======================
+    /**
+     * Executes the delete session authenticated removes owner and proxies operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteSession_authenticated_removesOwnerAndProxies() {
@@ -279,6 +363,12 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
         verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-456"), any());
     }
+    /**
+     * Executes the delete session unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteSession_unauthenticated_returns401() {

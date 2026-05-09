@@ -41,6 +41,12 @@ import static java.util.Map.entry;
 @Service
 public class FileService {
     private final GatewayProperties gatewayProperties;
+    /**
+     * Creates the file service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public FileService(GatewayProperties gatewayProperties) {
         this.gatewayProperties = gatewayProperties;
@@ -175,7 +181,15 @@ public class FileService {
                 String name = entry.getFileName().toString();
                 if (Files.isDirectory(entry)) {
                     if (depth < root.maxDepth() && !root.excludeDirs().contains(name) && !name.startsWith(".")) {
-                        listFilesRecursive(root, entry, files, allowedExtensions, depth + 1, deadlineNanos, rootStartCount);
+                        listFilesRecursive(
+                                root,
+                                entry,
+                                files,
+                                allowedExtensions,
+                                depth + 1,
+                                deadlineNanos,
+                                rootStartCount
+                        );
                     }
                 } else {
                     if (!SKIP_FILES.contains(name)) {
@@ -309,7 +323,10 @@ public class FileService {
     }
 
     private Path resolveScanRootPath(Path userAgentDir, String configuredPath) {
-        String expanded = configuredPath.replace("${userAgentDir}", userAgentDir.toAbsolutePath().normalize().toString());
+        String expanded = configuredPath.replace(
+                "${userAgentDir}",
+                userAgentDir.toAbsolutePath().normalize().toString()
+        );
         Path path = Path.of(expanded);
         return path.isAbsolute() ? path.normalize() : userAgentDir.resolve(path).normalize();
     }

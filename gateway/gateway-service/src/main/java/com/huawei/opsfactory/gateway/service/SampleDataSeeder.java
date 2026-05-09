@@ -18,6 +18,12 @@ import javax.annotation.PostConstruct;
 @Service
 public class SampleDataSeeder {
     private static final Logger log = LoggerFactory.getLogger(SampleDataSeeder.class);
+    /**
+     * Creates the sample data seeder instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public SampleDataSeeder(GatewayProperties properties,
                             HostService hostService,

@@ -35,6 +35,12 @@ public class FileAttachmentHook implements RequestHook {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AgentConfigService agentConfigService;
+    /**
+     * Creates the file attachment hook instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public FileAttachmentHook(AgentConfigService agentConfigService) {
         this.agentConfigService = agentConfigService;

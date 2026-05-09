@@ -29,6 +29,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Channel Config Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class ChannelConfigServiceTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -38,6 +44,12 @@ public class ChannelConfigServiceTest {
 
     private Path gatewayRoot;
     private ChannelConfigService service;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -52,6 +64,12 @@ public class ChannelConfigServiceTest {
         service = new ChannelConfigService(properties, agentConfigService, runtimeStorageService);
         service.init();
     }
+    /**
+     * Executes the create channel separates config and runtime state operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createChannelSeparatesConfigAndRuntimeState() throws Exception {
@@ -87,6 +105,12 @@ public class ChannelConfigServiceTest {
         assertFalse(channelConfig.containsKey("lastConnectedAt"));
         assertFalse(channelConfig.containsKey("selfPhone"));
     }
+    /**
+     * Executes the runtime state is read from user directory only operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void runtimeStateIsReadFromUserDirectoryOnly() throws Exception {
@@ -115,6 +139,12 @@ public class ChannelConfigServiceTest {
         assertEquals("+8613800000000", after.config().selfPhone());
         assertEquals("2026-05-06T00:00:00Z", after.config().lastConnectedAt());
     }
+    /**
+     * Executes the shared config uses independent runtime per user operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sharedConfigUsesIndependentRuntimePerUser() throws Exception {
@@ -147,6 +177,12 @@ public class ChannelConfigServiceTest {
         assertEquals("admin", service.listChannels("admin").get(0).ownerUserId());
         assertEquals("alice@example.com", service.listChannels("alice@example.com").get(0).ownerUserId());
     }
+    /**
+     * Executes the delete channel removes config and user runtime directories operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteChannelRemovesConfigAndUserRuntimeDirectories() throws Exception {
@@ -168,6 +204,12 @@ public class ChannelConfigServiceTest {
         assertFalse(Files.exists(runtimeDir));
         assertFalse(Files.exists(aliceRuntimeDir));
     }
+    /**
+     * Executes the update channel rejects type changes operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void updateChannelRejectsTypeChanges() {
@@ -180,6 +222,12 @@ public class ChannelConfigServiceTest {
         assertTrue(Files.exists(gatewayRoot.resolve("channels").resolve("whatsapp").resolve("whatsapp-main")));
         assertFalse(Files.exists(gatewayRoot.resolve("channels").resolve("wechat").resolve("whatsapp-main")));
     }
+    /**
+     * Executes the auth state dir cannot escape user runtime directory operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void authStateDirCannotEscapeUserRuntimeDirectory() {
@@ -191,13 +239,28 @@ public class ChannelConfigServiceTest {
                 "whatsapp",
                 true,
                 "fo-copilot",
-                new ChannelConnectionConfig("", "../../../../channels/whatsapp/whatsapp-main/auth", "", "", "", "", "", "")
+                new ChannelConnectionConfig(
+                        "",
+                        "../../../../channels/whatsapp/whatsapp-main/auth",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        ""
+                )
         );
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.updateChannel("whatsapp-main", request));
 
         assertTrue(error.getMessage().contains("authStateDir"));
     }
+    /**
+     * Executes the owner user id allows existing user id characters but rejects path traversal operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void ownerUserIdAllowsExistingUserIdCharactersButRejectsPathTraversal() {
@@ -212,6 +275,12 @@ public class ChannelConfigServiceTest {
         assertTrue(error.getMessage().contains("ownerUserId"));
         assertFalse(Files.exists(gatewayRoot.resolve("channels").resolve("whatsapp").resolve("bad-owner")));
     }
+    /**
+     * Executes the invalid config channel id is ignored operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void invalidConfigChannelIdIsIgnored() throws Exception {
@@ -233,6 +302,12 @@ public class ChannelConfigServiceTest {
         assertFalse(Files.exists(gatewayRoot.resolve("users").resolve("admin").resolve("channels")
                 .resolve("whatsapp").resolve("bad-channel")));
     }
+    /**
+     * Executes the binding and dedup write only to user runtime directory operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void bindingAndDedupWriteOnlyToUserRuntimeDirectory() throws Exception {
@@ -257,6 +332,12 @@ public class ChannelConfigServiceTest {
         assertTrue(Files.readString(runtimeDir.resolve("bindings.json")).contains("+8613800000000"));
         assertTrue(Files.readString(runtimeDir.resolve("inbound-dedup.json")).contains("message-1"));
     }
+    /**
+     * Executes the whatsapp login initializes user runtime directory only operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void whatsappLoginInitializesUserRuntimeDirectoryOnly() throws Exception {
@@ -284,6 +365,12 @@ public class ChannelConfigServiceTest {
         assertTrue(Files.exists(runtimeDir.resolve("login-state.json")));
         assertTrue(Files.readString(runtimeDir.resolve("login-state.json")).contains("pending"));
     }
+    /**
+     * Executes the whatsapp message pump uses user runtime directories only operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void whatsappMessagePumpUsesUserRuntimeDirectoriesOnly() throws Exception {
@@ -353,6 +440,12 @@ public class ChannelConfigServiceTest {
             assertTrue(Files.readString(outboxFile.get()).contains("reply from agent"));
         }
     }
+    /**
+     * Executes the wechat login initializes user runtime directory only operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void wechatLoginInitializesUserRuntimeDirectoryOnly() throws Exception {

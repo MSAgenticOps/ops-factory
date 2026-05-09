@@ -3,14 +3,32 @@ package com.huawei.opsfactory.gateway.common.model;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+/**
+ * Test coverage for Agent Registry Entry.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class AgentRegistryEntryTest {
+    /**
+     * Tests record accessors.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testRecordAccessors() {
         AgentRegistryEntry entry = new AgentRegistryEntry("kb-agent", "KB Agent");
         assertEquals("kb-agent", entry.id());
         assertEquals("KB Agent", entry.name());
     }
+    /**
+     * Tests record equality.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testRecordEquality() {
@@ -19,6 +37,12 @@ public class AgentRegistryEntryTest {
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
     }
+    /**
+     * Tests record accessors with different values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testRecordAccessors_withDifferentValues() {

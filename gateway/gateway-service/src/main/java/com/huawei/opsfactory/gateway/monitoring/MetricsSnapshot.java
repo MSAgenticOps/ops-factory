@@ -22,6 +22,12 @@ public class MetricsSnapshot {
     private long totalBytes;
     private int errorCount;
     private double tokensPerSec;
+    /**
+     * Creates the metrics snapshot instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public MetricsSnapshot() {}
 

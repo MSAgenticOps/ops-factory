@@ -36,7 +36,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Bridges external channel conversations to internal agent sessions, handling session creation, SSE streaming, and reply extraction.
+ * Bridges external channel conversations to internal agent sessions, handling session creation, SSE streaming, and
+ * reply extraction.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -52,6 +53,12 @@ public class SessionBridgeService {
     private final GoosedProxy goosedProxy;
     private final AgentConfigService agentConfigService;
     private final WebClient webClient;
+    /**
+     * Creates the session bridge service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public SessionBridgeService(ChannelConfigService channelConfigService,
                                 ChannelBindingService channelBindingService,
@@ -88,7 +95,15 @@ public class SessionBridgeService {
                                                           String conversationId,
                                                           String threadId,
                                                           String conversationType) {
-        return ensureConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
+        return ensureConversationSession(
+                channelId,
+                "admin",
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType
+        );
     }
 
     /**
@@ -135,7 +150,16 @@ public class SessionBridgeService {
      * @since 2026-05-09
      */
     public Mono<ChannelReplyResult> sendText(String channelId, String externalUserId, String text) {
-        return sendConversationText(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", text);
+        return sendConversationText(
+                channelId,
+                "admin",
+                "default",
+                externalUserId,
+                externalUserId,
+                null,
+                "direct",
+                text
+        );
     }
 
     /**
@@ -151,7 +175,16 @@ public class SessionBridgeService {
                                                          String threadId,
                                                          String conversationType,
                                                          String text) {
-        return sendConversationText(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType, text);
+        return sendConversationText(
+                channelId,
+                "admin",
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType,
+                text
+        );
     }
 
     /**
@@ -173,9 +206,23 @@ public class SessionBridgeService {
             return Mono.error(new IllegalArgumentException("Text is required"));
         }
 
-        return ensureConversationSession(channelId, ownerUserId, accountId, peerId, conversationId, threadId, conversationType)
+        return ensureConversationSession(
+                channelId,
+                ownerUserId,
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType
+        )
                 .flatMap(binding -> {
-                    channelBindingService.markConversationInbound(channelId, ownerUserId, accountId, conversationId, threadId);
+                    channelBindingService.markConversationInbound(
+                            channelId,
+                            ownerUserId,
+                            accountId,
+                            conversationId,
+                            threadId
+                    );
                     String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
                             ? channel.ownerUserId()
                             : binding.ownerUserId();
@@ -228,7 +275,13 @@ public class SessionBridgeService {
                                         ));
                             })
                             .map(replyText -> {
-                                channelBindingService.markConversationOutbound(channelId, effectiveOwnerUserId, accountId, conversationId, threadId);
+                                channelBindingService.markConversationOutbound(
+                                        channelId,
+                                        effectiveOwnerUserId,
+                                        accountId,
+                                        conversationId,
+                                        threadId
+                                );
                                 channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info", "session.reply",
                                         "Delivered text reply for session " + binding.sessionId());
                                 return new ChannelReplyResult(

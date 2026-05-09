@@ -52,6 +52,12 @@ public class CommandWhitelistService {
     private final GatewayProperties properties;
     private Path gatewayRoot;
     private Path whitelistFile;
+    /**
+     * Creates the command whitelist service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public CommandWhitelistService(GatewayProperties properties) {
         this.properties = properties;

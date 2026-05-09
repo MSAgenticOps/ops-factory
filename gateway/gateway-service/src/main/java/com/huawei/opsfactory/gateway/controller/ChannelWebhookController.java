@@ -33,6 +33,12 @@ public class ChannelWebhookController {
     private static final Logger log = LoggerFactory.getLogger(ChannelWebhookController.class);
 
     private final ChannelAdapterRegistry channelAdapterRegistry;
+    /**
+     * Creates the channel webhook controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ChannelWebhookController(ChannelAdapterRegistry channelAdapterRegistry) {
         this.channelAdapterRegistry = channelAdapterRegistry;
@@ -58,7 +64,11 @@ public class ChannelWebhookController {
      * @author x00000000
      * @since 2026-05-09
      */
-    @PostMapping(value = "/whatsapp/{channelId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(
+            value = "/whatsapp/{channelId}",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     public Mono<ResponseEntity<Map<String, Object>>> receiveWhatsAppWebhook(@PathVariable String channelId,
                                                                             @RequestBody String body,
                                                                             ServerWebExchange exchange) {

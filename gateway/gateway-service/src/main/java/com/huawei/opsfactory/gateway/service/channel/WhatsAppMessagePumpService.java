@@ -24,7 +24,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Scheduled service that polls the WhatsApp inbox directory, deduplicates inbound messages, and dispatches them to agent sessions.
+ * Scheduled service that polls the WhatsApp inbox directory, deduplicates inbound messages, and dispatches them to
+ * agent sessions.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -39,6 +40,12 @@ public class WhatsAppMessagePumpService {
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
     private final WhatsAppWebLoginService whatsAppWebLoginService;
+    /**
+     * Creates the whats app message pump service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public WhatsAppMessagePumpService(ChannelConfigService channelConfigService,
                                       ChannelRuntimeStorageService runtimeStorageService,
@@ -209,7 +216,11 @@ public class WhatsAppMessagePumpService {
         Path file = pendingDir.resolve(payload.get("id") + ".json");
         try {
             Files.createDirectories(pendingDir);
-            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+            Files.writeString(
+                    file,
+                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                    StandardCharsets.UTF_8
+            );
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "whatsapp.outbox_enqueued",
                     "Queued WhatsApp reply for " + peerId);
         } catch (IOException e) {
@@ -221,7 +232,10 @@ public class WhatsAppMessagePumpService {
         Path processedDir = processedInboxDir(channel);
         try {
             Files.createDirectories(processedDir);
-            Files.move(file, processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json")));
+            Files.move(
+                    file,
+                    processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json"))
+            );
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(file);

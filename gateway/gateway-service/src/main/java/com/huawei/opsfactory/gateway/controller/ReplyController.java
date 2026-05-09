@@ -73,6 +73,12 @@ public class ReplyController {
     private final ConcurrentHashMap<String, Mono<String>> inFlightResumes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<Map<String, Object>>> fileSnapshots = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> pendingFileSnapshotRequests = new ConcurrentHashMap<>();
+    /**
+     * Creates the reply controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ReplyController(InstanceManager instanceManager,
                            GoosedProxy goosedProxy,
@@ -250,7 +256,12 @@ public class ReplyController {
                 .then();
     }
 
-    private Mono<String> outputFilesBeforeTerminalEvent(String agentId, String userId, String sessionId, String eventJson) {
+    private Mono<String> outputFilesBeforeTerminalEvent(
+            String agentId,
+            String userId,
+            String sessionId,
+            String eventJson
+    ) {
         return Mono.fromCallable(() -> {
                     JsonNode event = MAPPER.readTree(eventJson);
                     String type = event.path("type").asText("");
@@ -572,7 +583,14 @@ public class ReplyController {
 
     private Mono<String> resumeSession(ManagedInstance instance, String sessionId, String body, String logPrefix) {
         if (sessionId == null || sessionId.isBlank()) {
-            return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120, instance.getSecretKey());
+            return goosedProxy.fetchJson(
+                    instance.getPort(),
+                    HttpMethod.POST,
+                    "/agent/resume",
+                    body,
+                    120,
+                    instance.getSecretKey()
+            );
         }
 
         String dedupeKey = instance.getKey() + ":" + sessionId;
@@ -580,7 +598,14 @@ public class ReplyController {
             long resumeStart = System.currentTimeMillis();
             log.info("{} session {} not yet resumed on instance {}:{} (port={}), calling /agent/resume",
                     logPrefix, sessionId, instance.getAgentId(), instance.getUserId(), instance.getPort());
-            return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", body, 120, instance.getSecretKey())
+            return goosedProxy.fetchJson(
+                    instance.getPort(),
+                    HttpMethod.POST,
+                    "/agent/resume",
+                    body,
+                    120,
+                    instance.getSecretKey()
+            )
                     .doOnNext(r -> {
                         long resumeMs = System.currentTimeMillis() - resumeStart;
                         instance.markSessionResumed(sessionId);

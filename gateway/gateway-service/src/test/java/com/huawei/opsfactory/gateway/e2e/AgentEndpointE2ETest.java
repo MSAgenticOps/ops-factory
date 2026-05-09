@@ -23,6 +23,12 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class AgentEndpointE2ETest extends BaseE2ETest {
+    /**
+     * Executes the list agents authenticated returns agent list operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listAgents_authenticated_returnsAgentList() {
         when(agentConfigService.getRegistry()).thenReturn(List.of(
@@ -53,6 +59,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agents[0].skills[0].name").isEqualTo("brainstorming")
                 .jsonPath("$.agents[1].id").isEqualTo("kb-agent");
     }
+    /**
+     * Executes the list agents empty registry returns empty array operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAgents_emptyRegistry_returnsEmptyArray() {
@@ -67,6 +79,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agents").isArray()
                 .jsonPath("$.agents.length()").isEqualTo(0);
     }
+    /**
+     * Executes the list agents unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAgents_unauthenticated_returns401() {
@@ -74,6 +92,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+    /**
+     * Executes the list agents regular user can access operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listAgents_regularUser_canAccess() {
@@ -87,6 +111,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.agents").isArray();
     }
+    /**
+     * Executes the create agent admin success operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createAgent_admin_success() throws Exception {
@@ -106,6 +136,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agent.id").isEqualTo("test-agent")
                 .jsonPath("$.agent.name").isEqualTo("Test Agent");
     }
+    /**
+     * Executes the create agent non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createAgent_nonAdmin_returns403() {
@@ -117,6 +153,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the create agent missing id returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createAgent_missingId_returns400() {
@@ -128,6 +170,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
+    /**
+     * Executes the create agent blank id returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createAgent_blankId_returns400() {
@@ -139,6 +187,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
+    /**
+     * Executes the create agent missing name returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createAgent_missingName_returns400() {
@@ -150,6 +204,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
+    /**
+     * Executes the create agent duplicate id returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void createAgent_duplicateId_returns400() throws Exception {
@@ -164,6 +224,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
+    /**
+     * Executes the delete agent admin success operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteAgent_admin_success() throws Exception {
@@ -181,6 +247,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         verify(instanceManager).stopAllForAgent("test-agent");
         verify(agentConfigService).deleteAgent("test-agent");
     }
+    /**
+     * Executes the delete agent non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteAgent_nonAdmin_returns403() {
@@ -190,6 +262,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the delete agent not found returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void deleteAgent_notFound_returns400() throws Exception {
@@ -202,6 +280,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isBadRequest();
     }
+    /**
+     * Executes the list skills admin returns skills list operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listSkills_admin_returnsSkillsList() {
@@ -221,6 +305,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.skills[1].name").isEqualTo("coding")
                 .jsonPath("$.skills[1].description").isEqualTo("Code assistance");
     }
+    /**
+     * Executes the list skills non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void listSkills_nonAdmin_returns403() {
@@ -230,6 +320,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Returns the config admin returns agent config.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getConfig_admin_returnsAgentConfig() {
@@ -251,6 +347,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.provider").isEqualTo("openai")
                 .jsonPath("$.model").isEqualTo("gpt-4o");
     }
+    /**
+     * Returns the config non admin returns403.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getConfig_nonAdmin_returns403() {
@@ -260,6 +362,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Returns the config missing provider model returns empty strings.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void getConfig_missingProviderModel_returnsEmptyStrings() {
@@ -280,6 +388,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.provider").isEqualTo("")
                 .jsonPath("$.model").isEqualTo("");
     }
+    /**
+     * Executes the update config admin success operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void updateConfig_admin_success() throws Exception {
@@ -299,6 +413,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
 
         verify(agentConfigService).writeAgentsMd("universal-agent", "# Updated content");
     }
+    /**
+     * Executes the update config non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void updateConfig_nonAdmin_returns403() {
@@ -310,6 +430,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the update config null agents md still returns updated operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void updateConfig_nullAgentsMd_stillReturnsUpdated() {

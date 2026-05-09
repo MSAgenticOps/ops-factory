@@ -29,6 +29,12 @@ public class SessionService {
     private final InstanceManager instanceManager;
     private final com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy;
     private final WebClient webClient;
+    /**
+     * Creates the session service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public SessionService(InstanceManager instanceManager,
                           com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy) {

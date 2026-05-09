@@ -20,6 +20,12 @@ public final class TestLogAppender extends AbstractAppender implements AutoClose
         super(name, null, layout, false, Property.EMPTY_ARRAY);
         this.logger = logger;
     }
+    /**
+     * Executes the attach to operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public static TestLogAppender attachTo(Class<?> type) {
         Logger logger = (Logger) LogManager.getLogger(type);
@@ -32,17 +38,35 @@ public final class TestLogAppender extends AbstractAppender implements AutoClose
         logger.addAppender(appender);
         return appender;
     }
+    /**
+     * Executes the append operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Override
     public void append(LogEvent event) {
         events.add(event.toImmutable());
     }
+    /**
+     * Executes the formatted messages operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public List<String> formattedMessages() {
         return events.stream()
             .map(event -> event.getMessage().getFormattedMessage())
             .toList();
     }
+    /**
+     * Executes the close operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Override
     public void close() {

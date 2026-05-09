@@ -38,6 +38,12 @@ public class SopService {
     private final CommandWhitelistService commandWhitelistService;
     private Path gatewayRoot;
     private Path sopsDir;
+    /**
+     * Creates the sop service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public SopService(GatewayProperties properties, CommandWhitelistService commandWhitelistService) {
         this.properties = properties;

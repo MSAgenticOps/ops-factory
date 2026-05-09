@@ -5,25 +5,55 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+/**
+ * Test coverage for Managed Instance.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class ManagedInstanceTest {
+    /**
+     * Tests build key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildKey() {
         assertEquals("agent1:user1", ManagedInstance.buildKey("agent1", "user1"));
         assertEquals("kb-agent:admin", ManagedInstance.buildKey("kb-agent", "admin"));
     }
+    /**
+     * Tests get key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetKey() {
         ManagedInstance instance = new ManagedInstance("agent1", "user1", 8080, 1234L, null, "test-secret");
         assertEquals("agent1:user1", instance.getKey());
     }
+    /**
+     * Tests initial status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testInitialStatus() {
         ManagedInstance instance = new ManagedInstance("agent1", "user1", 8080, 1234L, null, "test-secret");
         assertEquals(ManagedInstance.Status.STARTING, instance.getStatus());
     }
+    /**
+     * Tests set status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSetStatus() {
@@ -31,6 +61,12 @@ public class ManagedInstanceTest {
         instance.setStatus(ManagedInstance.Status.RUNNING);
         assertEquals(ManagedInstance.Status.RUNNING, instance.getStatus());
     }
+    /**
+     * Tests touch.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testTouch() throws InterruptedException {
@@ -40,6 +76,12 @@ public class ManagedInstanceTest {
         instance.touch();
         assertTrue(instance.getLastActivity() >= before);
     }
+    /**
+     * Tests getters.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetters() {
@@ -49,6 +91,12 @@ public class ManagedInstanceTest {
         assertEquals(9090, instance.getPort());
         assertEquals(5678L, instance.getPid());
     }
+    /**
+     * Tests status transitions.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStatusTransitions() {
@@ -64,6 +112,12 @@ public class ManagedInstanceTest {
         instance.setStatus(ManagedInstance.Status.ERROR);
         assertEquals(ManagedInstance.Status.ERROR, instance.getStatus());
     }
+    /**
+     * Tests status enum values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStatusEnumValues() {
@@ -74,12 +128,24 @@ public class ManagedInstanceTest {
         assertEquals(ManagedInstance.Status.STOPPED, ManagedInstance.Status.valueOf("STOPPED"));
         assertEquals(ManagedInstance.Status.ERROR, ManagedInstance.Status.valueOf("ERROR"));
     }
+    /**
+     * Tests process is nullable.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testProcessIsNullable() {
         ManagedInstance instance = new ManagedInstance("agent1", "user1", 8080, 1234L, null, "test-secret");
         assertEquals(null, instance.getProcess());
     }
+    /**
+     * Tests last activity initialized on construction.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testLastActivityInitializedOnConstruction() {
@@ -90,12 +156,24 @@ public class ManagedInstanceTest {
         assertTrue(instance.getLastActivity() >= before);
         assertTrue(instance.getLastActivity() <= after);
     }
+    /**
+     * Tests build key special characters.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testBuildKey_specialCharacters() {
         assertEquals("agent-1:user_2", ManagedInstance.buildKey("agent-1", "user_2"));
         assertEquals("a:b", ManagedInstance.buildKey("a", "b"));
     }
+    /**
+     * Tests touch updates timestamp.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testTouch_updatesTimestamp() throws InterruptedException {
@@ -106,6 +184,12 @@ public class ManagedInstanceTest {
         long second = instance.getLastActivity();
         assertTrue("Touch should update lastActivity", second > first);
     }
+    /**
+     * Tests session resumed tracking.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSessionResumedTracking() {

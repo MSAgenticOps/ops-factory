@@ -9,8 +9,20 @@ import reactor.test.StepVerifier;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+/**
+ * Test coverage for Hook Pipeline.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class HookPipelineTest {
+    /**
+     * Tests empty pipeline.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testEmptyPipeline() {
         HookPipeline pipeline = new HookPipeline(List.of());
@@ -20,6 +32,12 @@ public class HookPipelineTest {
                 .expectNext("{\"test\": true}")
                 .verifyComplete();
     }
+    /**
+     * Tests single hook pass through.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSingleHook_passThrough() {
@@ -31,6 +49,12 @@ public class HookPipelineTest {
                 .expectNext("body")
                 .verifyComplete();
     }
+    /**
+     * Tests multiple hooks executed in order.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testMultipleHooks_executedInOrder() {
@@ -50,6 +74,12 @@ public class HookPipelineTest {
                 .expectNext("start-hook1-hook2")
                 .verifyComplete();
     }
+    /**
+     * Tests hook error short circuits.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testHookError_shortCircuits() {

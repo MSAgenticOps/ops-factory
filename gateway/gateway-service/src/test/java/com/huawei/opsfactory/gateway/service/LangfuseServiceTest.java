@@ -5,8 +5,20 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+/**
+ * Test coverage for Langfuse Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class LangfuseServiceTest {
+    /**
+     * Tests is configured all set.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsConfigured_allSet() {
         GatewayProperties props = new GatewayProperties();
@@ -19,6 +31,12 @@ public class LangfuseServiceTest {
         LangfuseService service = new LangfuseService(props);
         assertTrue(service.isConfigured());
     }
+    /**
+     * Tests is configured missing host.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testIsConfigured_missingHost() {
@@ -32,6 +50,12 @@ public class LangfuseServiceTest {
         LangfuseService service = new LangfuseService(props);
         assertFalse(service.isConfigured());
     }
+    /**
+     * Tests is configured defaults.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testIsConfigured_defaults() {

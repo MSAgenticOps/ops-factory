@@ -34,6 +34,12 @@ public class HostGroupController {
     private final ClusterService clusterService;
     private final BusinessServiceService businessServiceService;
     private final HostService hostService;
+    /**
+     * Creates the host group controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
                                BusinessServiceService businessServiceService, HostService hostService) {
@@ -191,7 +197,12 @@ public class HostGroupController {
             try {
                 boolean deleted;
                 if (force) {
-                    deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
+                    deleted = hostGroupService.forceDeleteGroup(
+                            id,
+                            clusterService,
+                            hostService,
+                            businessServiceService
+                    );
                 } else {
                     deleted = hostGroupService.deleteGroup(id, clusterService);
                 }

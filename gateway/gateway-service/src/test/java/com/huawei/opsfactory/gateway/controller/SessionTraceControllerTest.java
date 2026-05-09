@@ -17,6 +17,12 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Session Trace Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(SpringRunner.class)
 @WebFluxTest(SessionTraceController.class)
@@ -30,6 +36,12 @@ public class SessionTraceControllerTest {
 
     @MockBean
     private PrewarmService prewarmService;
+    /**
+     * Tests start trace resolves path variables.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStartTrace_resolvesPathVariables() {
@@ -57,6 +69,12 @@ public class SessionTraceControllerTest {
 
         verify(traceService).startTrace("admin", "qa-agent", "20260429_2");
     }
+    /**
+     * Tests start trace non admin forbidden.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testStartTrace_nonAdminForbidden() {

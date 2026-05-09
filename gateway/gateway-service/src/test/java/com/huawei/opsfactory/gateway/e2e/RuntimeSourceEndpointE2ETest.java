@@ -19,6 +19,12 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
+    /**
+     * Executes the system admin returns system info operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void system_admin_returnsSystemInfo() {
         when(agentConfigService.getRegistry()).thenReturn(List.of(
@@ -39,6 +45,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.idle.timeoutMs").isNumber()
                 .jsonPath("$.langfuse.configured").isEqualTo(false);
     }
+    /**
+     * Executes the system non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void system_nonAdmin_returns403() {
@@ -48,6 +60,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the system unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void system_unauthenticated_returns401() {
@@ -55,6 +73,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+    /**
+     * Executes the instances admin returns instance list operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void instances_admin_returnsInstanceList() {
@@ -82,6 +106,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.byAgent[0].instances[0].lastActivity").isNumber()
                 .jsonPath("$.byAgent[0].instances[0].idleSinceMs").isNumber();
     }
+    /**
+     * Executes the instances non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void instances_nonAdmin_returns403() {
@@ -91,6 +121,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the metrics admin returns metrics data operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void metrics_admin_returnsMetricsData() {
@@ -132,6 +168,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.series[0].requests").isEqualTo(4)
                 .jsonPath("$.series[0].errors").isEqualTo(1);
     }
+    /**
+     * Executes the metrics non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void metrics_nonAdmin_returns403() {
@@ -141,6 +183,12 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Executes the metrics unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void metrics_unauthenticated_returns401() {

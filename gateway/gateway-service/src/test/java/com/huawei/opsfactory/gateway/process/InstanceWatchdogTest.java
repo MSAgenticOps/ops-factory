@@ -12,6 +12,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Instance Watchdog.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class InstanceWatchdogTest {
     private InstanceManager instanceManager;
@@ -19,6 +25,12 @@ public class InstanceWatchdogTest {
     private PrewarmService prewarmService;
     private AgentConfigService agentConfigService;
     private InstanceWatchdog watchdog;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -33,6 +45,12 @@ public class InstanceWatchdogTest {
     }
 
     // ---- Idle reap tests (original behavior) ----
+    /**
+     * Tests reap idle instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testReap_idleInstance() {
@@ -45,6 +63,12 @@ public class InstanceWatchdogTest {
 
         verify(instanceManager).stopInstance(idle);
     }
+    /**
+     * Tests reap active instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testReap_activeInstance() {
@@ -57,10 +81,21 @@ public class InstanceWatchdogTest {
 
         verify(instanceManager, never()).stopInstance(active);
     }
+    /**
+     * Tests reap never reaps resident instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testReap_neverReapsResidentInstance() {
-        ManagedInstance resident = createInstance("agent1", "admin", ManagedInstance.Status.RUNNING, mockAliveProcess());
+        ManagedInstance resident = createInstance(
+                "agent1",
+                "admin",
+                ManagedInstance.Status.RUNNING,
+                mockAliveProcess()
+        );
         setLastActivity(resident, System.currentTimeMillis() - 60 * 60 * 1000L);
 
         when(instanceManager.getAllInstances()).thenReturn(List.of(resident));
@@ -70,6 +105,12 @@ public class InstanceWatchdogTest {
 
         verify(instanceManager, never()).stopInstance(resident);
     }
+    /**
+     * Tests reap skips non running.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testReap_skipsNonRunning() {
@@ -84,6 +125,12 @@ public class InstanceWatchdogTest {
     }
 
     // ---- Health check tests (new behavior) ----
+    /**
+     * Tests watchdog detects dead process respawns.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testWatchdog_detectsDeadProcess_respawns() {
@@ -97,6 +144,12 @@ public class InstanceWatchdogTest {
         verify(instanceManager).stopInstance(dead);
         verify(instanceManager).respawnAsync("agent1", "user1", 1);
     }
+    /**
+     * Tests watchdog respects max restart attempts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testWatchdog_respectsMaxRestartAttempts() {
@@ -111,6 +164,12 @@ public class InstanceWatchdogTest {
         verify(instanceManager).stopInstance(dead);
         verify(instanceManager, never()).respawnAsync("agent1", "user1", 4);
     }
+    /**
+     * Tests watchdog backoff delay.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testWatchdog_backoffDelay() {
@@ -127,6 +186,12 @@ public class InstanceWatchdogTest {
         // Should not respawn yet due to backoff
         verify(instanceManager, never()).respawnAsync("agent1", "user1", 2);
     }
+    /**
+     * Tests watchdog backoff expired respawns.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testWatchdog_backoffExpired_respawns() {
@@ -142,6 +207,12 @@ public class InstanceWatchdogTest {
         verify(instanceManager).stopInstance(dead);
         verify(instanceManager).respawnAsync("agent1", "user1", 2);
     }
+    /**
+     * Tests watchdog alive process no action.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testWatchdog_aliveProcess_noAction() {
@@ -154,6 +225,12 @@ public class InstanceWatchdogTest {
         verify(instanceManager, never()).stopInstance(alive);
         verify(instanceManager, never()).respawnAsync("agent1", "user1", 1);
     }
+    /**
+     * Tests watchdog resident dead process still respawns.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testWatchdog_residentDeadProcessStillRespawns() {

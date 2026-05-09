@@ -5,9 +5,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.test.StepVerifier;
+/**
+ * Test coverage for Body Limit Hook.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class BodyLimitHookTest {
     private BodyLimitHook hook;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -15,6 +27,12 @@ public class BodyLimitHookTest {
         properties.getUpload().setMaxFileSizeMb(1); // 1MB limit for testing
         hook = new BodyLimitHook(properties);
     }
+    /**
+     * Tests small body passes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testSmallBody_passes() {
@@ -23,6 +41,12 @@ public class BodyLimitHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+    /**
+     * Tests oversized body fails.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testOversizedBody_fails() {
@@ -37,6 +61,12 @@ public class BodyLimitHookTest {
                 .expectError(ResponseStatusException.class)
                 .verify();
     }
+    /**
+     * Tests null body passes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testNullBody_passes() {

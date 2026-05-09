@@ -27,6 +27,12 @@ import java.util.Map;
 @RequestMapping("/gateway/business-services")
 public class BusinessServiceController {
     private final BusinessServiceService businessServiceService;
+    /**
+     * Creates the business service controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public BusinessServiceController(BusinessServiceService businessServiceService) {
         this.businessServiceService = businessServiceService;

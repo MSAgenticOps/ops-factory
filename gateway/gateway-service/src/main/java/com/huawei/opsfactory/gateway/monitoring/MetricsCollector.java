@@ -37,6 +37,12 @@ public class MetricsCollector {
     private final GoosedProxy goosedProxy;
     private final MetricsBuffer metricsBuffer;
     private long previousTotalTokens = -1;
+    /**
+     * Creates the metrics collector instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public MetricsCollector(InstanceManager instanceManager,
                             GoosedProxy goosedProxy,

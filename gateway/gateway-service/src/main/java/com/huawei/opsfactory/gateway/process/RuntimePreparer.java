@@ -28,6 +28,12 @@ public class RuntimePreparer {
     private static final Logger log = LoggerFactory.getLogger(RuntimePreparer.class);
 
     private final GatewayProperties properties;
+    /**
+     * Creates the runtime preparer instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public RuntimePreparer(GatewayProperties properties) {
         this.properties = properties;

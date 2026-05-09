@@ -27,6 +27,12 @@ import java.util.Map;
 @RequestMapping("/gateway/cluster-types")
 public class ClusterTypeController {
     private final ClusterTypeService clusterTypeService;
+    /**
+     * Creates the cluster type controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public ClusterTypeController(ClusterTypeService clusterTypeService) {
         this.clusterTypeService = clusterTypeService;

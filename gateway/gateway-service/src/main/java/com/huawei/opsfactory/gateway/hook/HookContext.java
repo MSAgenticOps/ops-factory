@@ -18,6 +18,12 @@ public class HookContext {
     private final String agentId;
     private final String userId;
     private final Map<String, Object> state = new HashMap<>();
+    /**
+     * Creates the hook context instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public HookContext(String body, String agentId, String userId) {
         this.body = body;

@@ -10,12 +10,24 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.Assert.*;
+/**
+ * Test coverage for Command Whitelist Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class CommandWhitelistServiceTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private CommandWhitelistService whitelistService;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -29,6 +41,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── init (default initialization) ────────────────────────────
+    /**
+     * Tests init creates default whitelist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testInit_createsDefaultWhitelist() {
@@ -57,6 +75,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── getWhitelist ─────────────────────────────────────────────
+    /**
+     * Tests get whitelist returns structure.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetWhitelist_returnsStructure() {
@@ -65,6 +89,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── addCommand ───────────────────────────────────────────────
+    /**
+     * Tests add command success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testAddCommand_success() {
@@ -81,6 +111,12 @@ public class CommandWhitelistServiceTest {
         boolean found = commands.stream().anyMatch(c -> "iostat2".equals(c.get("pattern")));
         assertTrue(found);
     }
+    /**
+     * Tests add command multiple.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testAddCommand_multiple() {
@@ -95,6 +131,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── updateCommand ────────────────────────────────────────────
+    /**
+     * Tests update command success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateCommand_success() {
@@ -113,6 +155,12 @@ public class CommandWhitelistServiceTest {
         assertEquals("updated description", psCmd.get("description"));
         assertEquals(false, psCmd.get("enabled"));
     }
+    /**
+     * Tests update command preserves pattern.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateCommand_preservesPattern() {
@@ -127,6 +175,12 @@ public class CommandWhitelistServiceTest {
         boolean tailExists = commands.stream().anyMatch(c -> "tail".equals(c.get("pattern")));
         assertTrue(tailExists);
     }
+    /**
+     * Tests update command not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateCommand_notFound() {
@@ -136,6 +190,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── deleteCommand ────────────────────────────────────────────
+    /**
+     * Tests delete command success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteCommand_success() {
@@ -147,6 +207,12 @@ public class CommandWhitelistServiceTest {
         boolean psExists = commands.stream().anyMatch(c -> "ps".equals(c.get("pattern")));
         assertFalse(psExists);
     }
+    /**
+     * Tests delete command reduces count.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteCommand_reducesCount() {
@@ -161,6 +227,12 @@ public class CommandWhitelistServiceTest {
         int countAfter = ((List<Map<String, Object>>) after.get("commands")).size();
         assertEquals(countBefore - 1, countAfter);
     }
+    /**
+     * Tests delete command not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test(expected = IllegalArgumentException.class)
     public void testDeleteCommand_notFound() {
@@ -168,24 +240,48 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── validateCommand ──────────────────────────────────────────
+    /**
+     * Tests validate command all allowed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_allAllowed() {
         List<String> rejected = whitelistService.validateCommand("ps -ef");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command pipe allowed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_pipeAllowed() {
         List<String> rejected = whitelistService.validateCommand("ps -ef|grep java|grep -v grep");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command semicolon allowed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_semicolonAllowed() {
         List<String> rejected = whitelistService.validateCommand("cd /home;tail -n 50 log.txt");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command rejected command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_rejectedCommand() {
@@ -193,6 +289,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
     }
+    /**
+     * Tests validate command mixed allowed and rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_mixedAllowedAndRejected() {
@@ -200,6 +302,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("reboot", rejected.get(0));
     }
+    /**
+     * Tests validate command disabled command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_disabledCommand() {
@@ -210,12 +318,24 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("ps", rejected.get(0));
     }
+    /**
+     * Tests validate command empty string.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_emptyString() {
         List<String> rejected = whitelistService.validateCommand("");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command complex pipe.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_complexPipe() {
@@ -223,6 +343,12 @@ public class CommandWhitelistServiceTest {
                 "cd /home/rcpa/logs/stat;tail -n 50 pool.log|grep -v timeout");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command multiple rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_multipleRejected() {
@@ -234,6 +360,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── validateCommand – pipes inside quotes (bug fix) ──────────
+    /**
+     * Tests validate command pipe inside single quotes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_pipeInsideSingleQuotes() {
@@ -241,6 +373,12 @@ public class CommandWhitelistServiceTest {
                 "tail -100 /var/log/syslog | grep -E 'ERROR|WARN|Exception|Timeout' | tail -30");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command pipe inside double quotes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_pipeInsideDoubleQuotes() {
@@ -248,6 +386,12 @@ public class CommandWhitelistServiceTest {
                 "grep \"ERROR|WARN\" /var/log/syslog | tail -20");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command escaped pipe.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_escapedPipe() {
@@ -255,6 +399,12 @@ public class CommandWhitelistServiceTest {
                 "grep 'a\\|b' /var/log/syslog | tail -20");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command mixed quotes and pipes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_mixedQuotesAndPipes() {
@@ -265,6 +415,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── getRiskLevel – pipes inside quotes ────────────────────────
+    /**
+     * Tests get risk level pipe inside quotes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetRiskLevel_pipeInsideQuotes() {
@@ -274,6 +430,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── validateCommand – || and && operators ────────────────────
+    /**
+     * Tests validate command logical or.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_logicalOr() {
@@ -281,6 +443,12 @@ public class CommandWhitelistServiceTest {
                 "ps -ef || echo \"failed\"");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command logical and.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_logicalAnd() {
@@ -288,6 +456,12 @@ public class CommandWhitelistServiceTest {
                 "cd /home && ls -la");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests validate command logical or with rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_logicalOrWithRejected() {
@@ -296,6 +470,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
     }
+    /**
+     * Tests validate command logical and with rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_logicalAndWithRejected() {
@@ -304,6 +484,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
     }
+    /**
+     * Tests validate command or or not split as two pipes.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_orOrNotSplitAsTwoPipes() {
@@ -316,6 +502,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── validateCommand – echo in default whitelist ──────────────
+    /**
+     * Tests validate command echo in default.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testValidateCommand_echoInDefault() {
@@ -324,6 +516,12 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── Prefix matching mode (command body + arguments) ─────────
+    /**
+     * Tests prefix mode simple with absolute path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_simpleWithAbsolutePath() {
@@ -331,6 +529,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("/home/nslb");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode simple with absolute path and args.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_simpleWithAbsolutePathAndArgs() {
@@ -338,6 +542,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("/home/nslb list -v");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode simple with relative path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_simpleWithRelativePath() {
@@ -345,6 +555,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("./nslb collect");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode exact match.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_exactMatch() {
@@ -352,6 +568,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("nslb list");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode with extra args.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_withExtraArgs() {
@@ -359,6 +581,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("nslb list -v");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode different args rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_differentArgs_rejected() {
@@ -367,6 +595,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("nslb", rejected.get(0));
     }
+    /**
+     * Tests prefix mode word boundary rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_wordBoundary_rejected() {
@@ -375,6 +609,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("nslb", rejected.get(0));
     }
+    /**
+     * Tests prefix mode with path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_withPath() {
@@ -382,6 +622,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("/home/nslb list");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode with path different args rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_withPathDifferentArgs_rejected() {
@@ -390,6 +636,12 @@ public class CommandWhitelistServiceTest {
         assertEquals(1, rejected.size());
         assertEquals("/home/nslb", rejected.get(0));
     }
+    /**
+     * Tests prefix mode simple and prefix coexist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_simpleAndPrefixCoexist() {
@@ -399,6 +651,12 @@ public class CommandWhitelistServiceTest {
         List<String> rejected = whitelistService.validateCommand("nslb collect");
         assertTrue(rejected.isEmpty());
     }
+    /**
+     * Tests prefix mode only prefix no simple.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testPrefixMode_onlyPrefix_noSimple() {
@@ -409,18 +667,36 @@ public class CommandWhitelistServiceTest {
     }
 
     // ── getRiskLevel – prefix matching ──────────────────────────
+    /**
+     * Tests get risk level prefix mode low.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetRiskLevel_prefixModeLow() {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         assertEquals("low", whitelistService.getRiskLevel("nslb list"));
     }
+    /**
+     * Tests get risk level prefix mode no match.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetRiskLevel_prefixModeNoMatch() {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         assertEquals("high", whitelistService.getRiskLevel("nslb collect"));
     }
+    /**
+     * Tests get risk level longer pattern wins.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetRiskLevel_longerPatternWins() {
@@ -429,6 +705,12 @@ public class CommandWhitelistServiceTest {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         assertEquals("low", whitelistService.getRiskLevel("nslb list"));
     }
+    /**
+     * Tests get risk level prefix mode with path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetRiskLevel_prefixModeWithPath() {

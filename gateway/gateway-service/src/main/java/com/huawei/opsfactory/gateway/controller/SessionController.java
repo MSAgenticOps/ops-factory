@@ -61,6 +61,12 @@ public class SessionController {
     private final GoosedProxy goosedProxy;
     private final AgentConfigService agentConfigService;
     private final SessionCacheService sessionCacheService;
+    /**
+     * Creates the session controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SessionController(InstanceManager instanceManager,
                              SessionService sessionService,
                              GoosedProxy goosedProxy,
@@ -163,7 +169,11 @@ public class SessionController {
             ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex, pageSize, search, agentId, type));
+        GatewayLogContext.run(
+                requestId,
+                userId,
+                () -> log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex, pageSize, search, agentId, type)
+        );
         int safePageIndex = Math.max(1, pageIndex);
         int safePageSize = Math.max(1, Math.min(pageSize, 200));
 
@@ -206,7 +216,11 @@ public class SessionController {
                     });
                     // Cache atomically: concurrent request may have already cached
                     List<Map<String, Object>> effective = sessionCacheService.getOrFetch(userId, () -> parsed);
-                    GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size()));
+                    GatewayLogContext.run(
+                            requestId,
+                            userId,
+                            () -> log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size())
+                    );
                     return applyFiltersAndPaginate(effective, safePageIndex, safePageSize, search, agentId, type);
                 });
     }
@@ -314,7 +328,11 @@ public class SessionController {
                                     ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-GET] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId));
+        GatewayLogContext.run(
+                requestId,
+                userId,
+                () -> log.info("[SESSION-GET] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId)
+        );
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()))
                 .map(json -> injectAgentId(json, agentId))
@@ -337,7 +355,11 @@ public class SessionController {
                                           ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-GET] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId));
+        GatewayLogContext.run(
+                requestId,
+                userId,
+                () -> log.info("[SESSION-GET] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId)
+        );
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId, instance.getSecretKey()))
                 .map(json -> injectAgentId(json, agentId))
@@ -363,7 +385,11 @@ public class SessionController {
                                      ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId));
+        GatewayLogContext.run(
+                requestId,
+                userId,
+                () -> log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId)
+        );
         Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
                 .subscribeOn(Schedulers.boundedElastic()).subscribe();
         return instanceManager.getOrSpawn(agentId, userId)
@@ -389,7 +415,11 @@ public class SessionController {
                                            ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId));
+        GatewayLogContext.run(
+                requestId,
+                userId,
+                () -> log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId)
+        );
         Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
                 .subscribeOn(Schedulers.boundedElastic()).subscribe();
         return instanceManager.getOrSpawn(agentId, userId)
@@ -409,7 +439,10 @@ public class SessionController {
      * @author x00000000
      * @since 2026-05-09
      */
-    @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(
+            value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable String agentId,
                                                           @PathVariable String sessionId,
                                                           ServerWebExchange exchange) {

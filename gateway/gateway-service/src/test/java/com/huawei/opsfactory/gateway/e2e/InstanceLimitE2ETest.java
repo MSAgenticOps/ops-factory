@@ -22,12 +22,24 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class InstanceLimitE2ETest extends BaseE2ETest {
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         // HookPipeline passes body through unchanged
         when(hookPipeline.executeRequest(any(HookContext.class)))
                 .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
     }
+    /**
+     * Executes the session reply per user limit reached returns5xx operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_perUserLimitReached_returns5xx() {
@@ -42,6 +54,12 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
+    /**
+     * Executes the session reply global limit reached returns5xx operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_globalLimitReached_returns5xx() {
@@ -56,6 +74,12 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
+    /**
+     * Executes the session reply normal spawn returns200 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_normalSpawn_returns200() {
@@ -78,6 +102,12 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
+    /**
+     * Executes the session reply unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionReply_unauthenticated_returns401() {
@@ -87,6 +117,12 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+    /**
+     * Executes the resume limit reached returns5xx operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void resume_limitReached_returns5xx() {

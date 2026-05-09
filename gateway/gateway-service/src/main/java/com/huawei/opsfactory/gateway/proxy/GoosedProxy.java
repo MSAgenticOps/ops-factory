@@ -58,6 +58,12 @@ public class GoosedProxy {
 
     private final WebClient webClient;
     private final GatewayProperties properties;
+    /**
+     * Creates the goosed proxy instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     public GoosedProxy(GatewayProperties properties) {
         this.properties = properties;
@@ -101,7 +107,13 @@ public class GoosedProxy {
     /**
      * Proxy an arbitrary request to a goosed instance.
      */
-    public Mono<Void> proxy(ServerHttpRequest request, ServerHttpResponse response, int port, String path, String secretKey) {
+    public Mono<Void> proxy(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            int port,
+            String path,
+            String secretKey
+    ) {
         String target = goosedBaseUrl(port) + path;
         HttpMethod method = request.getMethod();
 
@@ -366,7 +378,14 @@ public class GoosedProxy {
      * @author x00000000
      * @since 2026-05-09
      */
-    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec, String secretKey) {
+    public Mono<String> fetchJson(
+            int port,
+            HttpMethod method,
+            String path,
+            String body,
+            int timeoutSec,
+            String secretKey
+    ) {
         String target = goosedBaseUrl(port) + path;
         long start = System.currentTimeMillis();
         log.info("[GOOSED-PROXY] request method={} path={} port={}", method, path, port);
@@ -416,7 +435,11 @@ public class GoosedProxy {
                 "Agent temporarily unavailable: " + e.getMessage());
     }
 
-    private WebClientResponseException toUpstreamResponseException(int rawStatusCode, HttpHeaders headers, String body) {
+    private WebClientResponseException toUpstreamResponseException(
+            int rawStatusCode,
+            HttpHeaders headers,
+            String body
+    ) {
         HttpStatus status = HttpStatus.resolve(rawStatusCode);
         String statusText = status != null ? status.getReasonPhrase() : "HTTP " + rawStatusCode;
         return WebClientResponseException.create(

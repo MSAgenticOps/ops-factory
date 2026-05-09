@@ -26,8 +26,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Reply Controller Real Proxy.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 public class ReplyControllerRealProxyTest {
+    /**
+     * Executes the session reply real goosed400 returns gateway error envelope operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void sessionReply_realGoosed400ReturnsGatewayErrorEnvelope() throws Exception {
         DisposableServer server = HttpServer.create()
@@ -48,7 +60,14 @@ public class ReplyControllerRealProxyTest {
             HookPipeline hookPipeline = mock(HookPipeline.class);
             AgentConfigService agentConfigService = mock(AgentConfigService.class);
             FileService fileService = mock(FileService.class);
-            ManagedInstance instance = new ManagedInstance("test-agent", "alice", server.port(), 12345L, null, "test-secret");
+            ManagedInstance instance = new ManagedInstance(
+                    "test-agent",
+                    "alice",
+                    server.port(),
+                    12345L,
+                    null,
+                    "test-secret"
+            );
             instance.setStatus(ManagedInstance.Status.RUNNING);
 
             when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
@@ -91,6 +110,12 @@ public class ReplyControllerRealProxyTest {
             server.disposeNow();
         }
     }
+    /**
+     * Executes the session events real goosed404 returns gateway error envelope operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionEvents_realGoosed404ReturnsGatewayErrorEnvelope() {
@@ -112,7 +137,14 @@ public class ReplyControllerRealProxyTest {
             HookPipeline hookPipeline = mock(HookPipeline.class);
             AgentConfigService agentConfigService = mock(AgentConfigService.class);
             FileService fileService = mock(FileService.class);
-            ManagedInstance instance = new ManagedInstance("test-agent", "alice", server.port(), 12345L, null, "test-secret");
+            ManagedInstance instance = new ManagedInstance(
+                    "test-agent",
+                    "alice",
+                    server.port(),
+                    12345L,
+                    null,
+                    "test-secret"
+            );
             instance.setStatus(ManagedInstance.Status.RUNNING);
 
             when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
@@ -145,6 +177,12 @@ public class ReplyControllerRealProxyTest {
             server.disposeNow();
         }
     }
+    /**
+     * Executes the session events active requests drained emits output files after original event operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void sessionEvents_activeRequestsDrainedEmitsOutputFilesAfterOriginalEvent() throws Exception {
@@ -168,7 +206,14 @@ public class ReplyControllerRealProxyTest {
             HookPipeline hookPipeline = mock(HookPipeline.class);
             AgentConfigService agentConfigService = mock(AgentConfigService.class);
             FileService fileService = mock(FileService.class);
-            ManagedInstance instance = new ManagedInstance("test-agent", "alice", server.port(), 12345L, null, "test-secret");
+            ManagedInstance instance = new ManagedInstance(
+                    "test-agent",
+                    "alice",
+                    server.port(),
+                    12345L,
+                    null,
+                    "test-secret"
+            );
             instance.setStatus(ManagedInstance.Status.RUNNING);
 
             List<Map<String, Object>> beforeFiles = Collections.emptyList();

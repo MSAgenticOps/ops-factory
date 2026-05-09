@@ -18,6 +18,12 @@ import java.util.*;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+/**
+ * Test coverage for Remote Execution Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(MockitoJUnitRunner.class)
 public class RemoteExecutionServiceTest {
@@ -38,6 +44,12 @@ public class RemoteExecutionServiceTest {
 
     private RemoteExecutionService remoteExecutionService;
     private GatewayProperties properties;
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Before
     public void setUp() {
@@ -48,6 +60,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: host not found ──────────────────────────────────
+    /**
+     * Tests execute host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_hostNotFound() {
@@ -62,6 +80,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: command rejected by whitelist ───────────────────
+    /**
+     * Tests execute command rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_commandRejected() {
@@ -85,6 +109,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: SSH connection fails (invalid host) ─────────────
+    /**
+     * Tests execute ssh connection fails.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_sshConnectionFails() {
@@ -108,6 +138,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: whitelist validation passes, SSH fails gracefully ─
+    /**
+     * Tests execute whitelist checked before ssh.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_whitelistCheckedBeforeSsh() {
@@ -132,6 +168,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: port from Number ────────────────────────────────
+    /**
+     * Tests execute host with non default port.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_hostWithNonDefaultPort() {
@@ -152,6 +194,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: key auth type ───────────────────────────────────
+    /**
+     * Tests execute key auth type.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_keyAuthType() {
@@ -173,6 +221,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: missing port uses default 22 ────────────────────
+    /**
+     * Tests execute missing port defaults to22.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_missingPortDefaultsTo22() {
@@ -192,6 +246,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── execute: empty command ───────────────────────────────────
+    /**
+     * Tests execute empty command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_emptyCommand() {
@@ -211,6 +271,12 @@ public class RemoteExecutionServiceTest {
     }
 
     // ── env variable replacement + command prefix ─────────────────
+    /**
+     * Tests execute host without cluster no prefix no vars.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_hostWithoutCluster_noPrefixNoVars() {
@@ -231,6 +297,12 @@ public class RemoteExecutionServiceTest {
         assertNotNull(result);
         // SSH will fail but command was processed without prefix/vars
     }
+    /**
+     * Tests execute env vars replaced before whitelist check.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_envVarsReplacedBeforeWhitelistCheck() {
@@ -270,6 +342,12 @@ public class RemoteExecutionServiceTest {
         assertNotNull(result.get("rejectedCommands"));
         assertTrue(((List<?>) result.get("rejectedCommands")).contains("cd"));
     }
+    /**
+     * Tests execute with cluster type prefix applied to ssh command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_withClusterTypePrefix_appliedToSshCommand() {
@@ -308,6 +386,12 @@ public class RemoteExecutionServiceTest {
         // Verify whitelist was called with the replaced (not original) command
         verify(commandWhitelistService).validateCommand("cd /opt/nslb && ls");
     }
+    /**
+     * Tests execute no matching cluster type no prefix no vars.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_noMatchingClusterType_noPrefixNoVars() {
@@ -336,6 +420,12 @@ public class RemoteExecutionServiceTest {
         Map<String, Object> result = remoteExecutionService.execute("host-1", "ls", 5);
         assertNotNull(result);
     }
+    /**
+     * Tests execute cluster service throws handled gracefully.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testExecute_clusterServiceThrows_handledGracefully() {

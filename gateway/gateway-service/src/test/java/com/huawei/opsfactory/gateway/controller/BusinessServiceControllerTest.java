@@ -20,6 +20,12 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
+/**
+ * Test coverage for Business Service Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 
 @RunWith(SpringRunner.class)
 @WebFluxTest(BusinessServiceController.class)
@@ -35,6 +41,12 @@ public class BusinessServiceControllerTest {
     private com.huawei.opsfactory.gateway.process.PrewarmService prewarmService;
 
     // ── listBusinessServices ───────────────────────────────────────
+    /**
+     * Tests list business services.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListBusinessServices() {
@@ -50,6 +62,12 @@ public class BusinessServiceControllerTest {
                 .jsonPath("$.businessServices").isArray()
                 .jsonPath("$.businessServices").isEmpty();
     }
+    /**
+     * Tests list business services with keyword.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListBusinessServices_withKeyword() {
@@ -68,6 +86,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── getBusinessService ─────────────────────────────────────────
+    /**
+     * Tests get business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetBusinessService() {
@@ -85,6 +109,12 @@ public class BusinessServiceControllerTest {
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.businessService.id").isEqualTo("bs-1");
     }
+    /**
+     * Tests get business service not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetBusinessService_notFound() {
@@ -101,6 +131,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── getResolved ────────────────────────────────────────────────
+    /**
+     * Tests get business service resolved.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetBusinessServiceResolved() {
@@ -122,6 +158,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── getHosts ───────────────────────────────────────────────────
+    /**
+     * Tests get business service hosts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetBusinessServiceHosts() {
@@ -141,6 +183,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── getTopology ────────────────────────────────────────────────
+    /**
+     * Tests get business service topology.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testGetBusinessServiceTopology() {
@@ -160,6 +208,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── createBusinessService ──────────────────────────────────────
+    /**
+     * Tests create business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateBusinessService() {
@@ -182,6 +236,12 @@ public class BusinessServiceControllerTest {
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.businessService.id").isEqualTo("new-id");
     }
+    /**
+     * Tests create business service error.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateBusinessService_error() {
@@ -204,6 +264,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── updateBusinessService ──────────────────────────────────────
+    /**
+     * Tests update business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateBusinessService() {
@@ -226,6 +292,12 @@ public class BusinessServiceControllerTest {
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.businessService.name").isEqualTo("UpdatedService");
     }
+    /**
+     * Tests update business service not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testUpdateBusinessService_notFound() {
@@ -247,6 +319,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── deleteBusinessService ──────────────────────────────────────
+    /**
+     * Tests delete business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteBusinessService() {
@@ -260,6 +338,12 @@ public class BusinessServiceControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true);
     }
+    /**
+     * Tests delete business service not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testDeleteBusinessService_notFound() {
@@ -275,6 +359,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── migrate ────────────────────────────────────────────────────
+    /**
+     * Tests migrate.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testMigrate() {
@@ -293,6 +383,12 @@ public class BusinessServiceControllerTest {
     }
 
     // ── Auth tests ─────────────────────────────────────────────────
+    /**
+     * Tests list business services unauthorized no key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListBusinessServices_unauthorized_noKey() {
@@ -301,6 +397,12 @@ public class BusinessServiceControllerTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+    /**
+     * Tests list business services forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testListBusinessServices_forbidden_nonAdmin() {
@@ -310,6 +412,12 @@ public class BusinessServiceControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+    /**
+     * Tests create business service forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
 
     @Test
     public void testCreateBusinessService_forbidden_nonAdmin() {
