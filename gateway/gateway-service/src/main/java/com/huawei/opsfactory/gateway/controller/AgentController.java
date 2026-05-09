@@ -23,6 +23,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -119,8 +120,8 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create agent");
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create agent", e);
         }
     }
 
@@ -143,8 +144,8 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete agent");
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete agent", e);
         }
     }
 
@@ -207,8 +208,8 @@ public class AgentController {
         if (agentsMd != null) {
             try {
                 agentConfigService.writeAgentsMd(id, agentsMd);
-            } catch (Exception e) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update config");
+            } catch (IOException e) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update config", e);
             }
         }
         return Mono.just(ResponseEntity.ok(Map.of("success", (Object) true)));

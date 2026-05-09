@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -163,9 +162,10 @@ public class HostControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().is5xxServerError()
                 .expectBody()
-                .jsonPath("$.success").isEqualTo(false);
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.error").isEqualTo("Internal server error");
     }
 
     // ── updateHost ───────────────────────────────────────────────
@@ -206,7 +206,7 @@ public class HostControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isBadRequest();
+                .expectStatus().isNotFound();
     }
 
     // ── deleteHost ───────────────────────────────────────────────

@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -253,6 +254,23 @@ public class AgentControllerTest {
                 .bodyValue("{\"id\": \"dup-agent\", \"name\": \"Dup Agent\"}")
                 .exchange()
                 .expectStatus().isBadRequest();
+    }
+
+    @Test
+    public void testCreateAgent_ioFailureReturns500() throws Exception {
+        when(agentConfigService.createAgent(eq("io-agent"), eq("IO Agent")))
+                .thenThrow(new IOException("disk full"));
+
+        webTestClient.post().uri("/gateway/agents")
+                .header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"id\": \"io-agent\", \"name\": \"IO Agent\"}")
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.error").isEqualTo("Failed to create agent");
     }
 
     @Test
