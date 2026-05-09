@@ -47,6 +47,12 @@ public class InternalRuntimeSourceController {
     @Value("${server.address:0.0.0.0}")
     private String serverHost;
 
+    /**
+     * Creates the internal runtime source controller.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public InternalRuntimeSourceController(InstanceManager instanceManager,
                                            AgentConfigService agentConfigService,
                                            LangfuseService langfuseService,

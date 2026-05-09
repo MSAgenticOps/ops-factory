@@ -38,6 +38,12 @@ import java.nio.file.Path;
 public class SessionTraceController {
     private final SessionTraceService traceService;
 
+    /**
+     * Creates the session trace controller.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SessionTraceController(SessionTraceService traceService) {
         this.traceService = traceService;
     }
@@ -48,7 +54,9 @@ public class SessionTraceController {
      * @author x00000000
      * @since 2026-05-09
      */
-    @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/trace", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(
+            value = "/agents/{agentId}/sessions/{sessionId}/trace",
+            produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<TraceJobSnapshot> startTrace(@PathVariable("agentId") String agentId,
                                              @PathVariable("sessionId") String sessionId,
                                              ServerWebExchange exchange) {
@@ -63,7 +71,9 @@ public class SessionTraceController {
      * @author x00000000
      * @since 2026-05-09
      */
-    @GetMapping(value = "/session-traces/{jobId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(
+            value = "/session-traces/{jobId}",
+            produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<TraceJobSnapshot> getTrace(@PathVariable("jobId") String jobId,
                                            ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -98,7 +108,8 @@ public class SessionTraceController {
         exchange.getResponse().getHeaders().setContentType(mediaType);
         exchange.getResponse().getHeaders().set(
                 HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + filename.replace("\"", "") + "\"; filename*=UTF-8''" + encodedFilename);
+                "attachment; filename=\"" + filename.replace("\"", "")
+                        + "\"; filename*=UTF-8''" + encodedFilename);
 
         return exchange.getResponse()
                 .writeWith(DataBufferUtils.read(archive, exchange.getResponse().bufferFactory(), 64 * 1024))

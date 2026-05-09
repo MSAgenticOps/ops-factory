@@ -26,6 +26,9 @@ import java.util.Map;
 /**
  * Persists and retrieves file capsule metadata (messageId to output files).
  * Data is stored at: data/{sessionId}/file-capsules.json
+ *
+ * @author x00000000
+ * @since 2026-05-09
  */
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/file-capsules")
@@ -33,19 +36,27 @@ public class FileCapsuleController {
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
 
+    /**
+     * Creates the file capsule controller.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public FileCapsuleController(AgentConfigService agentConfigService, FileService fileService) {
         this.agentConfigService = agentConfigService;
         this.fileService = fileService;
     }
 
     /**
-     * GET /agents/{agentId}/file-capsules?sessionId=xxx
-     * Returns persisted messageId → files mapping for a session.
+     * Returns the persisted messageId-to-files mapping for a session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> getFileCapsules(@PathVariable String agentId,
-                                                      @RequestParam String sessionId,
-                                                      ServerWebExchange exchange) {
+                                                     @RequestParam String sessionId,
+                                                     ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
         return Mono.fromCallable(() -> {
@@ -55,14 +66,17 @@ public class FileCapsuleController {
     }
 
     /**
-     * POST /agents/{agentId}/file-capsules
-     * Frontend writes back the messageId → files mapping after receiving the OutputFiles SSE event.
-     * Body: { "sessionId": "xxx", "messageId": "msg_uuid4", "files": [...] }
+     * Saves the messageId-to-files mapping reported by the frontend for a session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> saveFileCapsule(@PathVariable String agentId,
-                                                      @RequestBody Map<String, Object> body,
-                                                      ServerWebExchange exchange) {
+                                                     @RequestBody Map<String, Object> body,
+                                                     ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
 
@@ -71,7 +85,11 @@ public class FileCapsuleController {
         Object rawFiles = body.get("files");
 
         if (sessionId == null || messageId == null || !(rawFiles instanceof List<?> fileList)) {
-            return Mono.just(Map.of("status", "error", "message", "sessionId, messageId, and files are required"));
+            return Mono.just(Map.of(
+                    "status",
+                    "error",
+                    "message",
+                    "sessionId, messageId, and files are required"));
         }
 
         // Convert List<Object> → List<Map<String, String>>
