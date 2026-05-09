@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.hook;
 
 import org.slf4j.Logger;
@@ -7,6 +11,12 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+/**
+ * Orchestrates registered request hooks, executing them in order and short-circuiting on errors.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 public class HookPipeline {
     private static final Logger log = LoggerFactory.getLogger(HookPipeline.class);

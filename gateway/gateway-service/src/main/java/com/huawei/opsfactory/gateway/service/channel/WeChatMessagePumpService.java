@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +22,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Scheduled service that polls the WeChat inbox directory, deduplicates inbound messages, and dispatches them to agent sessions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class WeChatMessagePumpService {
     private static final Logger log = LoggerFactory.getLogger(WeChatMessagePumpService.class);
@@ -38,6 +48,12 @@ public class WeChatMessagePumpService {
         this.sessionBridgeService = sessionBridgeService;
     }
 
+    /**
+     * Periodically polls the WeChat inbox directory for new messages and processes them.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Scheduled(fixedDelay = 2000)
     public void pumpInbox() {
         for (ChannelDetail detail : channelConfigService.listRuntimeChannels("wechat")) {

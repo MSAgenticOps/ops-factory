@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.common.util;
 
 import org.yaml.snakeyaml.Yaml;
@@ -10,6 +14,12 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * YAML configuration file loader.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public final class YamlLoader {
     private YamlLoader() {
     }

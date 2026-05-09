@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -30,6 +34,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Manages host entities with AES-GCM encrypted credentials, SSH connection testing, and cluster-based filtering.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class HostService {
     private static final Logger log = LoggerFactory.getLogger(HostService.class);
@@ -53,42 +63,84 @@ public class HostService {
         this.properties = properties;
     }
 
+    /**
+     * Sets the host relation service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
     public void setHostRelationService(HostRelationService hostRelationService) {
         this.hostRelationService = hostRelationService;
     }
 
+    /**
+     * Sets the business service service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
     public void setBusinessServiceService(BusinessServiceService businessServiceService) {
         this.businessServiceService = businessServiceService;
     }
 
+    /**
+     * Sets the host group service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
     public void setHostGroupService(HostGroupService hostGroupService) {
         this.hostGroupService = hostGroupService;
     }
 
+    /**
+     * Sets the cluster service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
     public void setClusterService(ClusterService clusterService) {
         this.clusterService = clusterService;
     }
 
+    /**
+     * Sets the cluster type service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
     public void setClusterTypeService(ClusterTypeService clusterTypeService) {
         this.clusterTypeService = clusterTypeService;
     }
 
+    /**
+     * Sets the cluster relation service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
     public void setClusterRelationService(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
     }
 
+    /**
+     * Initializes the hosts data directory and AES encryption key at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         this.gatewayRoot = properties.getGatewayRootPath();
@@ -202,6 +254,12 @@ public class HostService {
         host.put("tags", tags);
     }
 
+    /**
+     * Lists hosts optionally filtered by tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listHosts(String[] tags) {
         List<Map<String, Object>> hosts = new ArrayList<>();
         if (!Files.isDirectory(hostsDir)) {
@@ -247,6 +305,12 @@ public class HostService {
         return hosts;
     }
 
+    /**
+     * Gets a host by its ID with the credential masked.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getHost(String id) {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
@@ -257,6 +321,12 @@ public class HostService {
         return host;
     }
 
+    /**
+     * Gets a host by its ID with the decrypted credential for internal use.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getHostWithCredential(String id) {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
@@ -277,6 +347,12 @@ public class HostService {
         return host;
     }
 
+    /**
+     * Creates a new host from the provided field map with encrypted credential.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createHost(Map<String, Object> body) {
         String name = body.getOrDefault("name", "").toString();
         for (Map<String, Object> existing : listHosts(null)) {
@@ -336,6 +412,12 @@ public class HostService {
         return result;
     }
 
+    /**
+     * Updates an existing host with the provided field map, re-encrypting the credential if changed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateHost(String id, Map<String, Object> body) {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
@@ -434,6 +516,12 @@ public class HostService {
         return result;
     }
 
+    /**
+     * Deletes a host by ID with cascade deletion of related relations.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteHost(String id) {
         // Cascade delete relations first
         if (hostRelationService != null) {
@@ -526,6 +614,12 @@ public class HostService {
         }
     }
 
+    /**
+     * Returns all unique tags across all hosts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<String> getAllTags() {
         LinkedHashSet<String> allTags = new LinkedHashSet<>();
         List<Map<String, Object>> hosts = listHosts(null);
@@ -556,6 +650,12 @@ public class HostService {
         return null;
     }
 
+    /**
+     * Tests the SSH connection to a host by its ID and returns connection status and latency.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> testConnection(String id) {
         Map<String, Object> host;
         try {

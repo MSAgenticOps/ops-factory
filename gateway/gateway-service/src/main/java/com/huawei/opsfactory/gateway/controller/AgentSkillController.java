@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -18,6 +22,12 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+/**
+ * REST controller for installing and uninstalling skills on agent instances.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/agents")
 public class AgentSkillController {
@@ -27,6 +37,12 @@ public class AgentSkillController {
         this.installService = installService;
     }
 
+    /**
+     * Installs a skill on the specified agent instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{agentId}/skills/install")
     public Mono<ResponseEntity<Map<String, Object>>> installSkill(
             @PathVariable String agentId,
@@ -44,6 +60,12 @@ public class AgentSkillController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Uninstalls a skill from the specified agent instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{agentId}/skills/{skillId}")
     public Mono<ResponseEntity<Map<String, Object>>> uninstallSkill(
             @PathVariable String agentId,

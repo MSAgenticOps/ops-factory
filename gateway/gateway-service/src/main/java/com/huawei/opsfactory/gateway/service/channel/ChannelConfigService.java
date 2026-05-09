@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -25,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +37,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+/**
+ * Central service for channel CRUD, configuration persistence, runtime state merging, and event recording.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ChannelConfigService {
     private static final Logger log = LoggerFactory.getLogger(ChannelConfigService.class);
@@ -54,6 +65,12 @@ public class ChannelConfigService {
         this.runtimeStorageService = runtimeStorageService;
     }
 
+    /**
+     * Initializes the channels storage directory on application startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -66,10 +83,22 @@ public class ChannelConfigService {
         }
     }
 
+    /**
+     * Lists all channels with summary information for the default owner user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelSummary> listChannels() {
         return listChannels("admin");
     }
 
+    /**
+     * Lists all channels with summary information for the given owner user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelSummary> listChannels(String ownerUserId) {
         List<ChannelInstance> channels = readInstances();
         List<ChannelBinding> bindings = readBindings(ownerUserId);
@@ -80,10 +109,22 @@ public class ChannelConfigService {
                 .toList();
     }
 
+    /**
+     * Gets the full detail of a channel by its ID for the default owner user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail getChannel(String channelId) {
         return getChannel(channelId, "admin");
     }
 
+    /**
+     * Gets the full detail of a channel by its ID and owner user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail getChannel(String channelId, String ownerUserId) {
         ChannelInstance channel = findChannel(channelId);
         if (channel == null) {
@@ -120,6 +161,12 @@ public class ChannelConfigService {
         );
     }
 
+    /**
+     * Lists all runtime channels of the given type across all owner users.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelDetail> listRuntimeChannels(String type) {
         String normalizedType = normalizeType(type);
         return readInstances().stream()
@@ -130,6 +177,12 @@ public class ChannelConfigService {
                 .toList();
     }
 
+    /**
+     * Creates a new channel from the given upsert request.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail createChannel(ChannelUpsertRequest request, String ownerUserId) {
         validateCreateRequest(request);
 
@@ -157,10 +210,22 @@ public class ChannelConfigService {
         return getChannel(created.id(), created.ownerUserId());
     }
 
+    /**
+     * Updates an existing channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail updateChannel(String channelId, ChannelUpsertRequest request) {
         return updateChannel(channelId, request, "admin");
     }
 
+    /**
+     * Updates an existing channel with the given upsert request.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail updateChannel(String channelId, ChannelUpsertRequest request, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
@@ -189,10 +254,22 @@ public class ChannelConfigService {
         return getChannel(channelId, ownerUserId);
     }
 
+    /**
+     * Enables or disables a channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail setEnabled(String channelId, boolean enabled) {
         return setEnabled(channelId, enabled, "admin");
     }
 
+    /**
+     * Enables or disables a channel for the given owner user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail setEnabled(String channelId, boolean enabled, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
@@ -217,6 +294,12 @@ public class ChannelConfigService {
         return getChannel(channelId, ownerUserId);
     }
 
+    /**
+     * Deletes a channel and all its associated runtime data.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void deleteChannel(String channelId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
@@ -227,10 +310,22 @@ public class ChannelConfigService {
         deleteDirectory(channelDir(existing.type(), channelId));
     }
 
+    /**
+     * Lists bindings for a channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelBinding> listBindings(String channelId) {
         return listBindings(channelId, "admin");
     }
 
+    /**
+     * Lists bindings for a channel and owner user, sorted by last inbound timestamp descending.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelBinding> listBindings(String channelId, String ownerUserId) {
         if (findChannel(channelId) == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
@@ -242,10 +337,22 @@ public class ChannelConfigService {
                 .toList();
     }
 
+    /**
+     * Lists events for a channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelEvent> listEvents(String channelId) {
         return listEvents(channelId, "admin");
     }
 
+    /**
+     * Lists events for a channel and owner user, sorted by creation time descending.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelEvent> listEvents(String channelId, String ownerUserId) {
         if (findChannel(channelId) == null) {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
@@ -257,10 +364,22 @@ public class ChannelConfigService {
                 .toList();
     }
 
+    /**
+     * Verifies the configuration of a channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelVerificationResult verifyChannel(String channelId) {
         return verifyChannel(channelId, "admin");
     }
 
+    /**
+     * Verifies the configuration of a channel and records the result as an event.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelVerificationResult verifyChannel(String channelId, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
@@ -274,18 +393,42 @@ public class ChannelConfigService {
         return result;
     }
 
+    /**
+     * Records an audit event for a channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void recordEvent(String channelId, String level, String type, String summary) {
         recordEvent(channelId, "admin", level, type, summary);
     }
 
+    /**
+     * Records an audit event for a channel with the specified level, type, and summary.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void recordEvent(String channelId, String ownerUserId, String level, String type, String summary) {
         appendEvent(channelId, ownerUserId, level, type, summary);
     }
 
+    /**
+     * Resets the runtime login state of a channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail resetChannelRuntimeState(String channelId) {
         return resetChannelRuntimeState(channelId, "admin");
     }
 
+    /**
+     * Resets the runtime login state of a channel, clearing connection data and writing a disconnected state file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelDetail resetChannelRuntimeState(String channelId, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
         if (existing == null) {
@@ -435,7 +578,7 @@ public class ChannelConfigService {
     }
 
     private String normalizeType(String type) {
-        return isBlank(type) ? "whatsapp" : type.trim().toLowerCase();
+        return isBlank(type) ? "whatsapp" : type.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeName(String maybeName, String fallback) {
@@ -524,7 +667,7 @@ public class ChannelConfigService {
         if (isBlank(loginStatus)) {
             return "disconnected";
         }
-        return loginStatus.trim().toLowerCase();
+        return loginStatus.trim().toLowerCase(Locale.ROOT);
     }
 
     private void appendEvent(String channelId, String level, String type, String summary) {
@@ -732,6 +875,12 @@ public class ChannelConfigService {
         return typeDir(type).resolve(channelId);
     }
 
+    /**
+     * Returns the gateway root path from configuration properties.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getGatewayRoot() {
         return properties.getGatewayRootPath();
     }

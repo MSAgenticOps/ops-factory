@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -15,6 +19,12 @@ import reactor.core.scheduler.Schedulers;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * REST controller for executing and risk-checking remote commands on managed hosts.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/remote")
 public class RemoteExecController {
@@ -29,6 +39,12 @@ public class RemoteExecController {
         this.commandWhitelistService = commandWhitelistService;
     }
 
+    /**
+     * Executes a remote command on a managed host after whitelist validation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/execute")
     public Mono<ResponseEntity<Map<String, Object>>> execute(
             @RequestBody Map<String, Object> request,
@@ -91,6 +107,12 @@ public class RemoteExecController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Checks the risk level of a command against the whitelist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/check-risk")
     public Mono<ResponseEntity<Map<String, Object>>> checkRisk(
             @RequestBody Map<String, Object> request,

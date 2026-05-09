@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -16,11 +20,18 @@ import org.springframework.web.server.ServerWebExchange;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Admin-only controller exposing system info, instance status, and aggregated metrics.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/runtime-source")
 public class InternalRuntimeSourceController {
@@ -48,6 +59,12 @@ public class InternalRuntimeSourceController {
         this.metricsBuffer = metricsBuffer;
     }
 
+    /**
+     * Returns system-level information including uptime, agent count, and configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/system")
     public Map<String, Object> system(ServerWebExchange exchange) {
         requireAdmin(exchange);
@@ -73,6 +90,12 @@ public class InternalRuntimeSourceController {
         return result;
     }
 
+    /**
+     * Returns the current status of all managed goosed instances.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/instances")
     public Map<String, Object> instances(ServerWebExchange exchange) {
         requireAdmin(exchange);
@@ -87,7 +110,7 @@ public class InternalRuntimeSourceController {
                             item.put("userId", instance.getUserId());
                             item.put("port", instance.getPort());
                             item.put("pid", instance.getPid());
-                            item.put("status", instance.getStatus().name().toLowerCase());
+                            item.put("status", instance.getStatus().name().toLowerCase(Locale.ROOT));
                             item.put("lastActivity", instance.getLastActivity());
                             item.put("idleSinceMs", System.currentTimeMillis() - instance.getLastActivity());
                             return item;
@@ -114,6 +137,12 @@ public class InternalRuntimeSourceController {
         return result;
     }
 
+    /**
+     * Returns aggregated metrics including request counts, latency, throughput, and time series data.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/metrics")
     public Map<String, Object> metrics(ServerWebExchange exchange) {
         requireAdmin(exchange);

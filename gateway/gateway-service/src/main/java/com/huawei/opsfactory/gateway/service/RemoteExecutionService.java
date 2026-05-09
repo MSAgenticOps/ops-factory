@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -16,6 +20,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist validation.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class RemoteExecutionService {
     private static final Logger log = LoggerFactory.getLogger(RemoteExecutionService.class);

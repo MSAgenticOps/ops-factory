@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import org.slf4j.Logger;
@@ -16,6 +20,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,6 +30,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
+/**
+ * Collects session debug traces as tar.gz archives with background job management and automatic cleanup.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class SessionTraceService implements DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(SessionTraceService.class);
@@ -49,6 +60,12 @@ public class SessionTraceService implements DisposableBean {
         cleanupExpiredTraceDirectories();
     }
 
+    /**
+     * Starts a background trace collection job for the given session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public synchronized TraceJobSnapshot startTrace(String userId, String agentId, String sessionId) {
         validateId("userId", userId);
         validateId("agentId", agentId);
@@ -76,6 +93,12 @@ public class SessionTraceService implements DisposableBean {
         return job.snapshot();
     }
 
+    /**
+     * Gets the current status snapshot of a trace collection job.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public TraceJobSnapshot getJob(String jobId) {
         cleanupExpiredJobs();
         TraceJob job = jobs.get(jobId);
@@ -85,6 +108,12 @@ public class SessionTraceService implements DisposableBean {
         return job.snapshot();
     }
 
+    /**
+     * Returns the path to the collected trace archive for a completed job.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getArchive(String jobId) {
         TraceJob job = jobs.get(jobId);
         if (job == null) {
@@ -99,6 +128,12 @@ public class SessionTraceService implements DisposableBean {
         return job.archivePath;
     }
 
+    /**
+     * Deletes a trace job and its associated files.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void deleteJob(String jobId) {
         TraceJob job = jobs.remove(jobId);
         if (job == null) {
@@ -169,6 +204,12 @@ public class SessionTraceService implements DisposableBean {
         }
     }
 
+    /**
+     * Periodically cleans up expired trace jobs and trace directories.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Scheduled(fixedDelay = CLEANUP_FIXED_DELAY_MS)
     public void cleanupExpiredTraces() {
         cleanupExpiredJobs();
@@ -264,6 +305,12 @@ public class SessionTraceService implements DisposableBean {
         }
     }
 
+    /**
+     * Shuts down the background executor on bean disposal.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public void destroy() {
         executor.shutdownNow();
@@ -312,7 +359,7 @@ public class SessionTraceService implements DisposableBean {
         }
 
         private TraceJobSnapshot snapshot() {
-            return new TraceJobSnapshot(jobId, status.name().toLowerCase(), userId, agentId, sessionId, fileName, message);
+            return new TraceJobSnapshot(jobId, status.name().toLowerCase(Locale.ROOT), userId, agentId, sessionId, fileName, message);
         }
     }
 }

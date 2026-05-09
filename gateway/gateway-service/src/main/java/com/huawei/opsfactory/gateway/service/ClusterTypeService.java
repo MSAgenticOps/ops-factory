@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,6 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Manages cluster type definitions including mode, command prefix, and environment variables.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ClusterTypeService {
     private static final Logger log = LoggerFactory.getLogger(ClusterTypeService.class);
@@ -32,6 +42,12 @@ public class ClusterTypeService {
         this.properties = properties;
     }
 
+    /**
+     * Initializes the cluster types data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -46,6 +62,12 @@ public class ClusterTypeService {
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists all cluster types.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listClusterTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
         if (!Files.isDirectory(clusterTypesDir)) {
@@ -71,6 +93,12 @@ public class ClusterTypeService {
         return types;
     }
 
+    /**
+     * Gets a cluster type by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getClusterType(String id) {
         Path file = clusterTypesDir.resolve(id + ".json");
         Map<String, Object> ct = readFile(file);
@@ -80,6 +108,12 @@ public class ClusterTypeService {
         return ct;
     }
 
+    /**
+     * Creates a new cluster type from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createClusterType(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -102,6 +136,12 @@ public class ClusterTypeService {
         return ct;
     }
 
+    /**
+     * Updates an existing cluster type with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateClusterType(String id, Map<String, Object> body) {
         Path file = clusterTypesDir.resolve(id + ".json");
         Map<String, Object> ct = readFile(file);
@@ -144,6 +184,12 @@ public class ClusterTypeService {
         return ct;
     }
 
+    /**
+     * Deletes a cluster type by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteClusterType(String id) {
         Path file = clusterTypesDir.resolve(id + ".json");
         try {

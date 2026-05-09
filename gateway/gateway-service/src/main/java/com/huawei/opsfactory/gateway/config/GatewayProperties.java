@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.config;
 
 import org.slf4j.Logger;
@@ -10,6 +14,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * Central configuration properties bound to the {@code gateway} prefix in application config.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @ConfigurationProperties(prefix = "gateway")
 public class GatewayProperties {
@@ -40,170 +50,422 @@ public class GatewayProperties {
 
     // ---- Getters / Setters ----
 
+    /**
+     * Returns the secret key used for gateway authentication.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String getSecretKey() {
         return secretKey;
     }
 
+    /**
+     * Sets the secret key used for gateway authentication.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setSecretKey(String secretKey) {
         this.secretKey = secretKey;
     }
 
+    /**
+     * Returns the allowed CORS origin pattern.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String getCorsOrigin() {
         return corsOrigin;
     }
 
+    /**
+     * Sets the allowed CORS origin pattern.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setCorsOrigin(String corsOrigin) {
         this.corsOrigin = corsOrigin;
     }
 
+    /**
+     * Returns the path to the goosed binary.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String getGoosedBin() {
         return goosedBin;
     }
 
+    /**
+     * Sets the path to the goosed binary.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setGoosedBin(String goosedBin) {
         this.goosedBin = goosedBin;
     }
 
+    /**
+     * Returns whether TLS is enabled for goosed communication.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean isGooseTls() {
         return gooseTls;
     }
 
+    /**
+     * Sets whether TLS is enabled for goosed communication.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setGooseTls(boolean gooseTls) {
         this.gooseTls = gooseTls;
     }
 
+    /**
+     * Returns the URL scheme (http or https) based on the TLS setting.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String gooseScheme() {
         return gooseTls ? "https" : "http";
     }
 
+    /**
+     * Returns the path configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Paths getPaths() {
         return paths;
     }
 
+    /**
+     * Sets the path configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setPaths(Paths paths) {
         this.paths = paths;
     }
 
+    /**
+     * Returns the idle timeout configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Idle getIdle() {
         return idle;
     }
 
+    /**
+     * Sets the idle timeout configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setIdle(Idle idle) {
         this.idle = idle;
     }
 
+    /**
+     * Returns the upload size limit configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Upload getUpload() {
         return upload;
     }
 
+    /**
+     * Sets the upload size limit configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setUpload(Upload upload) {
         this.upload = upload;
     }
 
+    /**
+     * Returns the Langfuse observability configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Langfuse getLangfuse() {
         return langfuse;
     }
 
+    /**
+     * Sets the Langfuse observability configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setLangfuse(Langfuse langfuse) {
         this.langfuse = langfuse;
     }
 
+    /**
+     * Returns the instance limit configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Limits getLimits() {
         return limits;
     }
 
+    /**
+     * Sets the instance limit configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setLimits(Limits limits) {
         this.limits = limits;
     }
 
+    /**
+     * Returns the prewarm configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Prewarm getPrewarm() {
         return prewarm;
     }
 
+    /**
+     * Sets the prewarm configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setPrewarm(Prewarm prewarm) {
         this.prewarm = prewarm;
     }
 
+    /**
+     * Returns the SSE timeout configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Sse getSse() {
         return sse;
     }
 
+    /**
+     * Sets the SSE timeout configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setSse(Sse sse) {
         this.sse = sse;
     }
 
+    /**
+     * Returns the Office preview configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public OfficePreview getOfficePreview() {
         return officePreview;
     }
 
+    /**
+     * Sets the Office preview configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setOfficePreview(OfficePreview officePreview) {
         this.officePreview = officePreview;
     }
 
+    /**
+     * Returns the logging configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Logging getLogging() {
         return logging;
     }
 
+    /**
+     * Sets the logging configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setLogging(Logging logging) {
         this.logging = logging;
     }
 
+    /**
+     * Returns the credential encryption key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String getCredentialEncryptionKey() {
         return credentialEncryptionKey;
     }
 
+    /**
+     * Sets the credential encryption key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setCredentialEncryptionKey(String credentialEncryptionKey) {
         this.credentialEncryptionKey = credentialEncryptionKey;
     }
 
+    /**
+     * Returns the remote execution configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public RemoteExecution getRemoteExecution() {
         return remoteExecution;
     }
 
+    /**
+     * Sets the remote execution configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setRemoteExecution(RemoteExecution remoteExecution) {
         this.remoteExecution = remoteExecution;
     }
 
+    /**
+     * Returns the file capsules configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public FileCapsules getFileCapsules() {
         return fileCapsules;
     }
 
+    /**
+     * Sets the file capsules configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setFileCapsules(FileCapsules fileCapsules) {
         this.fileCapsules = fileCapsules;
     }
 
+    /**
+     * Returns the file browser configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public FileBrowser getFiles() {
         return files;
     }
 
+    /**
+     * Sets the file browser configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setFiles(FileBrowser files) {
         this.files = files;
     }
 
+    /**
+     * Returns the skill market configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SkillMarket getSkillMarket() {
         return skillMarket;
     }
 
+    /**
+     * Sets the skill market configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setSkillMarket(SkillMarket skillMarket) {
         this.skillMarket = skillMarket;
     }
 
+    /**
+     * Returns the knowledge feature configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Knowledge getKnowledge() {
         return knowledge;
     }
 
+    /**
+     * Sets the knowledge feature configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setKnowledge(Knowledge knowledge) {
         this.knowledge = knowledge;
     }
 
+    /**
+     * Returns the list of admin user IDs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<String> getAdminUsers() {
         return adminUsers;
     }
 
+    /**
+     * Sets the list of admin user IDs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void setAdminUsers(List<String> adminUsers) {
         this.adminUsers = adminUsers;
     }
 
+    /**
+     * Resolves the absolute path to the gateway configuration file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getConfigPath() {
         String configuredPath = configuredConfigPath();
         if (configuredPath == null || configuredPath.isBlank()) {
@@ -217,6 +479,12 @@ public class GatewayProperties {
         return Path.of("").toAbsolutePath().resolve(configPath).normalize();
     }
 
+    /**
+     * Returns the directory containing the gateway configuration file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getConfigDirectory() {
         Path configPath = getConfigPath();
         Path parent = configPath.getParent();
@@ -226,6 +494,12 @@ public class GatewayProperties {
         return Path.of("").toAbsolutePath().normalize();
     }
 
+    /**
+     * Resolves the absolute path to the project root directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getProjectRootPath() {
         Path configuredRoot = Path.of(paths.getProjectRoot());
         if (configuredRoot.isAbsolute()) {
@@ -237,6 +511,12 @@ public class GatewayProperties {
         return configuredRoot.toAbsolutePath().normalize();
     }
 
+    /**
+     * Resolves the absolute path to the gateway root directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getGatewayRootPath() {
         if (configuredConfigPath() == null) {
             return getProjectRootPath().resolve("gateway").normalize();
@@ -465,6 +745,12 @@ public class GatewayProperties {
 
     // ---- PostConstruct for logging configuration values ----
 
+    /**
+     * Logs the loaded configuration values at startup and normalizes the goosed binary path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void logConfiguration() {
         normalizeGoosedBin();

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.channel.ChannelAdapter;
@@ -17,6 +21,12 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
+/**
+ * Public endpoint for receiving and verifying external channel webhook callbacks.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/channels/webhooks")
 public class ChannelWebhookController {
@@ -28,6 +38,12 @@ public class ChannelWebhookController {
         this.channelAdapterRegistry = channelAdapterRegistry;
     }
 
+    /**
+     * Verifies a WhatsApp webhook challenge request.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping(value = "/whatsapp/{channelId}", produces = MediaType.TEXT_PLAIN_VALUE)
     public Mono<ResponseEntity<String>> verifyWhatsAppWebhook(@PathVariable String channelId,
                                                               ServerWebExchange exchange) {
@@ -36,6 +52,12 @@ public class ChannelWebhookController {
                 .map(ResponseEntity::ok);
     }
 
+    /**
+     * Receives and processes an incoming WhatsApp webhook event.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/whatsapp/{channelId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> receiveWhatsAppWebhook(@PathVariable String channelId,
                                                                             @RequestBody String body,

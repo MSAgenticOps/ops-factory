@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -44,12 +48,24 @@ public class HostRelationService {
         this.clusterService = clusterService;
     }
 
+    /**
+     * Sets the business service service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setBusinessServiceService(BusinessServiceService businessServiceService) {
         this.businessServiceService = businessServiceService;
     }
 
+    /**
+     * Initializes the host relations data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -139,6 +155,12 @@ public class HostRelationService {
         return relations;
     }
 
+    /**
+     * Creates a new host relation from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceHostId = (String) body.get("sourceHostId");
         String targetHostId = (String) body.get("targetHostId");
@@ -188,6 +210,12 @@ public class HostRelationService {
         return relation;
     }
 
+    /**
+     * Updates an existing host relation with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
         Map<String, Object> relation = readFile(file);
@@ -239,6 +267,12 @@ public class HostRelationService {
         return relation;
     }
 
+    /**
+     * Deletes a host relation by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
         try {

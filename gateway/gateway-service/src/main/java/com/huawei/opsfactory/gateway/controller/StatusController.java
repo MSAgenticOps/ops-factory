@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.UserRole;
@@ -10,7 +14,14 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.Locale;
 
+/**
+ * Lightweight controller exposing health-check, current-user identity, and public config.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping(value = "/gateway")
 public class StatusController {
@@ -20,20 +31,38 @@ public class StatusController {
         this.properties = properties;
     }
 
+    /**
+     * Returns health check status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/status")
     public Mono<String> status() {
         return Mono.just("ok");
     }
 
+    /**
+     * Returns the current user's identity and role.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/me")
     public Mono<Map<String, Object>> me(ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         UserRole role = exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR);
         return Mono.just(Map.of(
                 "userId", userId != null ? userId : "unknown",
-                "role", role != null ? role.name().toLowerCase() : "user"));
+                "role", role != null ? role.name().toLowerCase(Locale.ROOT) : "user"));
     }
 
+    /**
+     * Returns public configuration such as Office preview settings.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/config")
     public Mono<Map<String, Object>> config() {
         GatewayProperties.OfficePreview op = properties.getOfficePreview();

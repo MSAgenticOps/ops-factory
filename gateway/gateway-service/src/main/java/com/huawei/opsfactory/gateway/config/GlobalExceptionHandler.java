@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.config;
 
 import org.slf4j.Logger;
@@ -14,6 +18,12 @@ import org.springframework.web.server.ServerWebInputException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Global exception handler that catches and normalizes errors from all controllers.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -27,6 +37,12 @@ public class GlobalExceptionHandler {
         this.properties = properties;
     }
 
+    /**
+     * Handles request input errors such as invalid JSON body.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @ExceptionHandler(ServerWebInputException.class)
     public ResponseEntity<Map<String, Object>> handleInputException(ServerWebInputException ex) {
         log.warn("Request input error: {}", ex.getMessage());
@@ -40,6 +56,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    /**
+     * Handles response status exceptions and returns a normalized error body.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
         log.warn("Request rejected with status={} reason={}", ex.getStatus(), ex.getReason());

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.monitoring;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -46,8 +50,8 @@ public class MetricsBuffer {
 
     /**
      * Accumulated per-agent statistics.
- * @author x00000000
- * @since 2026-05-09
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static class AgentStats {
         public int requestCount;
@@ -55,10 +59,22 @@ public class MetricsBuffer {
         public long latencySum;
         public long ttftSum;
 
+        /**
+         * Gets the average request latency in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public double getAvgLatencyMs() {
             return requestCount > 0 ? (double) latencySum / requestCount : 0;
         }
 
+        /**
+         * Gets the average time-to-first-token in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public double getAvgTtftMs() {
             return requestCount > 0 ? (double) ttftSum / requestCount : 0;
         }

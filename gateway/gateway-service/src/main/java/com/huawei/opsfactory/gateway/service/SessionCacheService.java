@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import org.slf4j.Logger;
@@ -22,6 +26,12 @@ public class SessionCacheService {
 
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
+    /**
+     * Returns cached sessions for the given user ID if still within the TTL.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> get(String userId) {
         CacheEntry entry = cache.get(userId);
         if (entry == null || System.currentTimeMillis() - entry.timestamp > DEFAULT_TTL_MS) {
@@ -54,11 +64,23 @@ public class SessionCacheService {
         }).sessions;
     }
 
+    /**
+     * Invalidates the cached sessions for the given user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void invalidate(String userId) {
         cache.remove(userId);
         log.debug("[SESSION-CACHE] invalidated userId={}", userId);
     }
 
+    /**
+     * Periodically removes expired cache entries.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Scheduled(fixedRate = 60_000)
     public void cleanupExpired() {
         long now = System.currentTimeMillis();

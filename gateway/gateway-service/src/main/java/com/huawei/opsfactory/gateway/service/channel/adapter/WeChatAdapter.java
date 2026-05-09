@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel.adapter;
 
 import com.huawei.opsfactory.gateway.service.channel.ChannelAdapter;
@@ -10,8 +14,16 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.Locale;
+
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
+/**
+ * {@link ChannelAdapter} implementation for WeChat channels, providing connectivity testing based on login state.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class WeChatAdapter implements ChannelAdapter {
     private final ChannelConfigService channelConfigService;
@@ -20,28 +32,52 @@ public class WeChatAdapter implements ChannelAdapter {
         this.channelConfigService = channelConfigService;
     }
 
+    /**
+     * Returns the WeChat channel type identifier.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public String type() {
         return "wechat";
     }
 
+    /**
+     * Rejects webhook verification requests since WeChat channels do not use webhooks.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<String> verifyWebhook(String channelId, ServerWebExchange exchange) {
         return Mono.error(new ResponseStatusException(BAD_REQUEST, "WeChat channel does not use webhooks"));
     }
 
+    /**
+     * Rejects webhook handling requests since WeChat channels do not use webhooks.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<Void> handleWebhook(String channelId, String rawBody, ServerWebExchange exchange) {
         return Mono.error(new ResponseStatusException(BAD_REQUEST, "WeChat channel does not use webhooks"));
     }
 
+    /**
+     * Tests the connectivity of a WeChat channel based on its current login status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<ChannelConnectivityResult> testConnectivity(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
         String status = config.loginStatus() == null || config.loginStatus().isBlank()
                 ? "disconnected"
-                : config.loginStatus().trim().toLowerCase();
+                : config.loginStatus().trim().toLowerCase(Locale.ROOT);
 
         return switch (status) {
             case "connected" -> {

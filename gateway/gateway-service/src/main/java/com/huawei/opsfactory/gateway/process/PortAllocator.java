@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import org.springframework.stereotype.Component;
@@ -5,6 +9,12 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.net.ServerSocket;
 
+/**
+ * Allocates ephemeral ports by binding to port zero and immediately releasing the socket.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 public class PortAllocator {
     /**

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -15,6 +19,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Scheduled watchdog that detects dead agent processes and reaps idle instances.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 public class InstanceWatchdog {
     private static final Logger log = LoggerFactory.getLogger(InstanceWatchdog.class);
@@ -33,6 +43,12 @@ public class InstanceWatchdog {
         this.agentConfigService = agentConfigService;
     }
 
+    /**
+     * Periodically checks instance health and reaps idle instances.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Scheduled(fixedDelayString = "${gateway.idle.check-interval-ms:60000}")
     public void watchInstances() {
         checkInstanceHealth();

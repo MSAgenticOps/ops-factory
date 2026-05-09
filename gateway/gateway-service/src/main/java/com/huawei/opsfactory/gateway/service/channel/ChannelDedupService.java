@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +20,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * File-based deduplication service that tracks inbound message IDs to prevent duplicate processing.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ChannelDedupService {
     private static final Logger log = LoggerFactory.getLogger(ChannelDedupService.class);
@@ -31,10 +41,22 @@ public class ChannelDedupService {
         this.runtimeStorageService = runtimeStorageService;
     }
 
+    /**
+     * Checks if a message is new and marks it as seen, using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean markIfNew(String channelId, String externalMessageId) {
         return markIfNew(channelId, "admin", externalMessageId);
     }
 
+    /**
+     * Checks if a message is new and marks it as seen to prevent duplicate processing.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean markIfNew(String channelId, String ownerUserId, String externalMessageId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path file = runtimeStorageService.dedupFile(channel);
