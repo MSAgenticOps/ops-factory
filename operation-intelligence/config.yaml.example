@@ -12,7 +12,7 @@ operation-intelligence:
   # data-root: "../gateway"
 
   qos:
-    enabled: false                            # enable health curve collection and API
+    enabled: true                             # enable health curve collection and API
     collection-interval-ms: 300000            # metrics collection interval (5 min)
     rotation-interval-ms: 3600000             # data file rotation interval (1 hour)
     raw-data-retention-days: 7
@@ -32,7 +32,6 @@ operation-intelligence:
     #    utm-password: "changeit"
     #    crt-content: ""                       # Base64 encoded certificate
     #    crt-file-name: "client.jks"
-    #    keystore-password: ""                 # keystore password (default: empty)
     #    strict-ssl: false                       # reject insecure SSL fallback (default: true)
 
   logging:

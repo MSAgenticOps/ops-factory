@@ -32,7 +32,6 @@ operation-intelligence:
         utm-password: "changeit"
         crt-content: ""                       # Base64 encoded certificate
         crt-file-name: "client.jks"
-        keystore-password: ""                 # keystore password (default: empty)
         strict-ssl: false                     # reject insecure SSL fallback (default: true)
 
   logging:

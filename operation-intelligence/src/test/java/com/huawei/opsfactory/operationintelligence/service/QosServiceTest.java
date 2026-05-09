@@ -115,6 +115,7 @@ class QosServiceTest {
         when(detailStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
         Map<String, Object> result = service.getIndicatorDetail("ENV1", "A", 0L, 2000L, 1, 0);
         assertNotNull(result);
+        assertEquals(10, result.get("pageSize"));
     }
 
     @Test

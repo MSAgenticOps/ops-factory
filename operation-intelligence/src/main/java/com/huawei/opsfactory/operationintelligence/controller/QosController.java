@@ -137,13 +137,13 @@ public class QosController {
         }
     }
 
-    private static long toLong(Object val) {
+    static long toLong(Object val) {
         if (val instanceof Number) return ((Number) val).longValue();
         if (val instanceof String) return Long.parseLong((String) val);
         return 0;
     }
 
-    private static int toInt(Object val) {
+    static int toInt(Object val) {
         if (val instanceof Number) return ((Number) val).intValue();
         if (val instanceof String) return Integer.parseInt((String) val);
         return 1;

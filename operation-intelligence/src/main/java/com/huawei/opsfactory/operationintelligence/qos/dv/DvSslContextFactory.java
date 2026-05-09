@@ -23,7 +23,7 @@ public class DvSslContextFactory {
 
     private final ConcurrentHashMap<String, SslContext> sslContextCache = new ConcurrentHashMap<>();
 
-    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl, String keystorePassword) {
+    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl) {
         if (crtContent == null || crtContent.isBlank()) {
             if (strictSsl) {
                 throw new IllegalStateException("No SSL certificate configured and strict-ssl is enabled");
@@ -32,30 +32,24 @@ public class DvSslContextFactory {
             return createInsecureSslContext();
         }
 
-        return sslContextCache.computeIfAbsent(crtContent, k -> doCreateSslContext(k, fileName, strictSsl, keystorePassword));
-    }
-
-    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl) {
-        return createSslContext(crtContent, fileName, strictSsl, "");
+        return sslContextCache.computeIfAbsent(crtContent, k -> doCreateSslContext(k, fileName, strictSsl));
     }
 
     public SslContext createSslContext(String crtContent, String fileName) {
-        return createSslContext(crtContent, fileName, true, "");
+        return createSslContext(crtContent, fileName, true);
     }
 
-    private SslContext doCreateSslContext(String crtContent, String fileName, boolean strictSsl, String keystorePassword) {
+    private SslContext doCreateSslContext(String crtContent, String fileName, boolean strictSsl) {
         try {
             byte[] certBytes = java.util.Base64.getDecoder().decode(crtContent);
             String type = (fileName != null && fileName.endsWith(".p12")) ? "PKCS12" : "JKS";
             KeyStore keyStore = KeyStore.getInstance(type);
-            char[] pwd = (keystorePassword != null && !keystorePassword.isEmpty())
-                    ? keystorePassword.toCharArray() : new char[0];
             try (InputStream is = new ByteArrayInputStream(certBytes)) {
-                keyStore.load(is, pwd);
+                keyStore.load(is, new char[0]);
             }
 
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            kmf.init(keyStore, pwd);
+            kmf.init(keyStore, new char[0]);
 
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init((KeyStore) null);

@@ -2256,8 +2256,6 @@
     "availabilityDetail": "可用性详情",
     "performanceDetail": "性能详情",
     "alarmDetail": "告警详情",
-    "selectEnv": "选择环境",
-    "selectProduct": "选择产品",
     "last15Min": "最近15分钟",
     "lastHour": "最近1小时",
     "last2Hours": "最近2小时",

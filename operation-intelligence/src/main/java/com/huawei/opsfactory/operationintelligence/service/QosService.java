@@ -78,7 +78,7 @@ public class QosService {
     public Map<String, Object> getIndicatorDetail(String envCode, String type, long startTime, long endTime,
             int pageIndex, int pageSize) {
         if (pageIndex < 1) pageIndex = 1;
-        if (pageSize < 1) pageSize = 10;
+        if (pageSize < 1 || pageSize > 1000) pageSize = 10;
         List<IndicatorDetailData> data = detailDataStore.loadRange(startTime, endTime);
         List<IndicatorDetailData> filtered = data.stream()
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
@@ -108,7 +108,7 @@ public class QosService {
     public Map<String, Object> getAlarmDetail(String envCode, long startTime, long endTime,
             int pageIndex, int pageSize) {
         if (pageIndex < 1) pageIndex = 1;
-        if (pageSize < 1) pageSize = 10;
+        if (pageSize < 1 || pageSize > 1000) pageSize = 10;
         List<AlarmDetailData> data = alarmDetailDataStore.loadRange(startTime, endTime);
         List<AlarmDetailData> filtered = data.stream()
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))

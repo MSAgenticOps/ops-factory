@@ -99,7 +99,7 @@ public class OperationIntelligenceProperties {
     }
 
     public static class Qos {
-        private boolean enabled = false;
+        private boolean enabled = true;
         private long collectionIntervalMs = 300000;
         private long rotationIntervalMs = 3600000;
         private long rawDataRetentionDays = 7;
@@ -163,7 +163,6 @@ public class OperationIntelligenceProperties {
             private String crtContent;
             private String crtFileName;
             private String dns;
-            private String keystorePassword = "";
             private boolean strictSsl = true;
             public String getEnvCode() { return envCode; }
             public void setEnvCode(String envCode) { this.envCode = envCode; }
@@ -186,8 +185,6 @@ public class OperationIntelligenceProperties {
             public void setCrtFileName(String crtFileName) { this.crtFileName = crtFileName; }
             public String getDns() { return dns; }
             public void setDns(String dns) { this.dns = dns; }
-            public String getKeystorePassword() { return keystorePassword; }
-            public void setKeystorePassword(String keystorePassword) { this.keystorePassword = keystorePassword; }
             public boolean isStrictSsl() { return strictSsl; }
             public void setStrictSsl(boolean strictSsl) { this.strictSsl = strictSsl; }
         }

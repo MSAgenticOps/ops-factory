@@ -8,11 +8,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class DvClientTest {
 
     private DvClient client;
+    private DvSslContextFactory sslFactory;
+    private DvAuthService authService;
 
     @BeforeEach
     void setUp() {
-        DvSslContextFactory sslFactory = new DvSslContextFactory();
-        DvAuthService authService = new DvAuthService(sslFactory);
+        sslFactory = new DvSslContextFactory();
+        authService = new DvAuthService(sslFactory);
         client = new DvClient(authService, sslFactory);
     }
 
@@ -74,7 +76,11 @@ class DvClientTest {
 
     @Test
     void executeWithRetry_alwaysFails_throws() {
+        DvClient noSleepClient = new DvClient(authService, sslFactory) {
+            @Override
+            void sleepBeforeRetry(long delayMs) { /* no-op for testing */ }
+        };
         assertThrows(RuntimeException.class,
-                () -> client.executeWithRetry(() -> { throw new RuntimeException("fail"); }, "testOp"));
+                () -> noSleepClient.executeWithRetry(() -> { throw new RuntimeException("fail"); }, "testOp"));
     }
 }

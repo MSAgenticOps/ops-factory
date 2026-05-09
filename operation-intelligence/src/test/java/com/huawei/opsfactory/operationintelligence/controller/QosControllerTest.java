@@ -7,48 +7,31 @@ class QosControllerTest {
 
     @Test
     void toLong_numberInput() {
-        assertEquals(123L, callToLong(123));
+        assertEquals(123L, QosController.toLong(123));
     }
 
     @Test
     void toLong_stringInput() {
-        assertEquals(456L, callToLong("456"));
+        assertEquals(456L, QosController.toLong("456"));
     }
 
     @Test
     void toLong_nullInput_returnsZero() {
-        assertEquals(0L, callToLong(null));
+        assertEquals(0L, QosController.toLong(null));
     }
 
     @Test
     void toInt_numberInput() {
-        assertEquals(10, callToInt(10));
+        assertEquals(10, QosController.toInt(10));
     }
 
     @Test
     void toInt_stringInput() {
-        assertEquals(20, callToInt("20"));
+        assertEquals(20, QosController.toInt("20"));
     }
 
     @Test
     void toInt_nullInput_returnsOne() {
-        assertEquals(1, callToInt(null));
-    }
-
-    // QosController.toLong and toInt are private static. We test them via reflection
-    // or indirectly. Since they are private, test the controller behavior through
-    // its public methods or make them package-private for testing.
-    // For now, test the logic directly:
-
-    private long callToLong(Object val) {
-        if (val instanceof Number) return ((Number) val).longValue();
-        if (val instanceof String) return Long.parseLong((String) val);
-        return 0;
-    }
-
-    private int callToInt(Object val) {
-        if (val instanceof Number) return ((Number) val).intValue();
-        if (val instanceof String) return Integer.parseInt((String) val);
-        return 1;
+        assertEquals(1, QosController.toInt(null));
     }
 }

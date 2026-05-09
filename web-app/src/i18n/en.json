@@ -2254,6 +2254,8 @@
     "resource": "Resource",
     "chart": "Health Curve",
     "availabilityDetail": "Availability Detail",
+    "performanceDetail": "Performance Detail",
+    "alarmDetail": "Alarm Detail",
     "last15Min": "Last 15 Min",
     "lastHour": "Last Hour",
     "last2Hours": "Last 2 Hours",

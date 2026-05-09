@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import jakarta.annotation.PreDestroy;
+import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -36,6 +37,7 @@ public class DvClient {
     private final DvAuthService authService;
     private final DvSslContextFactory sslFactory;
     private final ConcurrentHashMap<String, WebClient> clientCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ConnectionProvider> providerCache = new ConcurrentHashMap<>();
 
     public DvClient(DvAuthService authService, DvSslContextFactory sslFactory) {
         this.authService = authService;
@@ -164,6 +166,10 @@ public class DvClient {
         }
     }
 
+    void sleepBeforeRetry(long delayMs) throws InterruptedException {
+        Thread.sleep(delayMs);
+    }
+
     // --- 11.8 通用重试机制 ---
 
     <T> T executeWithRetry(Supplier<T> action, String operationName) {
@@ -181,7 +187,7 @@ public class DvClient {
                 long delayMs = (long) Math.pow(2, retryCount) * 1000;
                 log.warn("{} failed, retry {}/{} in {}ms: {}", operationName, retryCount, MAX_RETRIES, delayMs, e.getMessage());
                 try {
-                    Thread.sleep(delayMs);
+                    sleepBeforeRetry(delayMs);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException(operationName + " interrupted during retry", ie);
@@ -197,7 +203,10 @@ public class DvClient {
     private WebClient getOrCreateWebClient(DvEnvironmentInfo env) {
         return clientCache.computeIfAbsent(env.getServerUrl(), url -> {
             SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
-            HttpClient httpClient = HttpClient.create(ConnectionProvider.builder("dv-" + url.hashCode()).maxConnections(10).build())
+            ConnectionProvider provider = ConnectionProvider.builder("dv-" + url.hashCode())
+                    .maxConnections(10).build();
+            providerCache.put(url, provider);
+            HttpClient httpClient = HttpClient.create(provider)
                     .secure(t -> t.sslContext(sslContext)
                             .handshakeTimeout(Duration.ofSeconds(10)))
                     .responseTimeout(Duration.ofSeconds(60));
@@ -210,6 +219,8 @@ public class DvClient {
     @PreDestroy
     public void shutdown() {
         clientCache.clear();
+        providerCache.values().forEach(ConnectionProvider::dispose);
+        providerCache.clear();
     }
 
     private Map<String, Object> buildAlarmQuery(long startTime, long endTime,

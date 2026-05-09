@@ -208,7 +208,7 @@ public class QosCollectionScheduler {
 
                 if (!allAlarms.isEmpty()) {
                     BigDecimal rScore = calculationService.calculateResourceScore(allAlarms, alarmWeights, alarmIdWeights, iMax);
-                    normalizeDataStore.append(buildNormalize(envCode, "R", rScore, endTime));
+                    normalizeDataStore.appendAll(List.of(buildNormalize(envCode, "R", rScore, endTime)));
                 }
             } catch (Exception e) {
                 log.error("QoS collection: resource collection failed for environment {}: {}", dvEnvConfig.getEnvCode(), e.getMessage());
@@ -311,7 +311,6 @@ public class QosCollectionScheduler {
                 config.getServerUrl(), config.getUtmUser(), config.getUtmPassword(),
                 config.getCrtContent(), config.getCrtFileName(), config.getDns());
         info.setStrictSsl(config.isStrictSsl());
-        info.setKeystorePassword(config.getKeystorePassword());
         return info;
     }
 

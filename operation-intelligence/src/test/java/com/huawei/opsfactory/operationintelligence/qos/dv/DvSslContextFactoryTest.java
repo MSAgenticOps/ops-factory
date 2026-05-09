@@ -10,24 +10,24 @@ class DvSslContextFactoryTest {
     @Test
     void createSslContext_nullContent_strictSsl_throws() {
         assertThrows(IllegalStateException.class,
-                () -> factory.createSslContext(null, "cert.jks", true, ""));
+                () -> factory.createSslContext(null, "cert.jks", true));
     }
 
     @Test
     void createSslContext_blankContent_strictSsl_throws() {
         assertThrows(IllegalStateException.class,
-                () -> factory.createSslContext("  ", "cert.jks", true, ""));
+                () -> factory.createSslContext("  ", "cert.jks", true));
     }
 
     @Test
     void createSslContext_nullContent_looseSsl_returnsInsecure() {
-        var ctx = factory.createSslContext(null, "cert.jks", false, "");
+        var ctx = factory.createSslContext(null, "cert.jks", false);
         assertNotNull(ctx);
     }
 
     @Test
     void createSslContext_blankContent_looseSsl_returnsInsecure() {
-        var ctx = factory.createSslContext("", "cert.jks", false, "");
+        var ctx = factory.createSslContext("", "cert.jks", false);
         assertNotNull(ctx);
     }
 
@@ -38,9 +38,9 @@ class DvSslContextFactoryTest {
     }
 
     @Test
-    void createSslContext_nullContent_looseSsl_returnsSameInsecure() {
-        var ctx1 = factory.createSslContext(null, "cert.jks", false, "");
-        var ctx2 = factory.createSslContext(null, "cert.jks", false, "");
+    void createSslContext_nullContent_looseSsl_returnsNonNullTwice() {
+        var ctx1 = factory.createSslContext(null, "cert.jks", false);
+        var ctx2 = factory.createSslContext(null, "cert.jks", false);
         assertNotNull(ctx1);
         assertNotNull(ctx2);
     }
