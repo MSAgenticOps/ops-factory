@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import type { SkillMarketDetail, SkillMarketEntry } from '../../../../types/skillMarket'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useToast } from '../../../platform/providers/ToastContext'
@@ -12,8 +12,10 @@ import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import ResourceCard, {
-    ResourceCardDangerAction,
-    ResourceCardPrimaryAction,
+    ResourceCardActionGroup,
+    ResourceCardDeleteAction,
+    ResourceCardEditAction,
+    ResourceCardInstallAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import { useSkillMarket } from '../hooks/useSkillMarket'
@@ -194,19 +196,20 @@ export default function SkillMarketPage() {
                                         { label: t('skillMarket.updatedAt'), value: formatDate(skill.updatedAt) },
                                     ]}
                                     footer={(
-                                        <>
-                                            <ResourceCardDangerAction onClick={() => setDeleteTarget(skill)}>
-                                                <Trash2 size={14} /> {t('common.delete')}
-                                            </ResourceCardDangerAction>
-                                            <div className="skill-market-actions">
-                                                <Button variant="secondary" size="sm" onClick={() => handleEdit(skill)}>
-                                                    <Pencil size={14} /> {t('common.edit')}
-                                                </Button>
-                                                <ResourceCardPrimaryAction onClick={() => setInstallTarget(skill)}>
-                                                    <Download size={14} /> {t('skillMarket.install')}
-                                                </ResourceCardPrimaryAction>
-                                            </div>
-                                        </>
+                                        <ResourceCardActionGroup>
+                                            <ResourceCardEditAction
+                                                onClick={() => handleEdit(skill)}
+                                                label={t('common.edit')}
+                                            />
+                                            <ResourceCardInstallAction
+                                                onClick={() => setInstallTarget(skill)}
+                                                label={t('skillMarket.install')}
+                                            />
+                                            <ResourceCardDeleteAction
+                                                onClick={() => setDeleteTarget(skill)}
+                                                label={t('common.delete')}
+                                            />
+                                        </ResourceCardActionGroup>
                                     )}
                                 />
                             )

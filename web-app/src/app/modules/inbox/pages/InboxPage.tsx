@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Archive, MessageSquare } from 'lucide-react'
 import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
@@ -9,6 +10,7 @@ import Pagination from '../../../platform/ui/primitives/Pagination'
 import FilterBar from '../../../platform/ui/filters/FilterBar'
 import FilterInlineGroup from '../../../platform/ui/filters/FilterInlineGroup'
 import FilterSelect from '../../../platform/ui/filters/FilterSelect'
+import { ItemActionButton, ItemActionGroup } from '../../../platform/ui/primitives/ItemAction'
 import ListCard from '../../../platform/ui/list/ListCard'
 import ListFooter from '../../../platform/ui/list/ListFooter'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
@@ -157,22 +159,19 @@ export default function InboxPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="inbox-item-actions">
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
+                                <ItemActionGroup className="inbox-item-actions">
+                                    <ItemActionButton
+                                        icon={Archive}
                                         onClick={() => markSessionRead(session.agentId, session.id)}
-                                    >
-                                        {t('inbox.dismiss')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
+                                        label={t('inbox.dismiss')}
+                                    />
+                                    <ItemActionButton
+                                        icon={MessageSquare}
                                         onClick={() => openSession(session.agentId, session.id)}
-                                    >
-                                        {t('common.open')}
-                                    </button>
-                                </div>
+                                        label={t('common.open')}
+                                        tone="primary"
+                                    />
+                                </ItemActionGroup>
                             </ListCard>
                         ))}
                     </div>

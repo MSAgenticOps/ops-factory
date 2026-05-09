@@ -133,53 +133,15 @@
 }
 
 .file-actions {
-    display: flex;
-    gap: var(--spacing-2);
     opacity: 0;
     transition: opacity var(--transition-fast);
-    align-items: center;
     justify-content: flex-end;
     flex: 0 0 120px;
 }
 
-.file-item:hover .file-actions {
+.file-item:hover .file-actions,
+.file-item:focus-within .file-actions {
     opacity: 1;
-}
-
-.file-download-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    transition: all var(--transition-fast);
-    text-decoration: none;
-}
-
-.file-download-btn:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text-primary);
-}
-
-.file-delete-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.file-delete-btn:hover {
-    background: rgba(239, 68, 68, 0.12);
-    color: var(--color-error);
 }
 
 @media (max-width: 768px) {

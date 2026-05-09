@@ -1,5 +1,15 @@
-import type { ReactElement, ReactNode } from 'react'
-import Button from './Button'
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactElement, ReactNode } from 'react'
+import {
+    Download,
+    Pencil,
+    Play,
+    RotateCcw,
+    Settings,
+    Square,
+    Trash2,
+    type LucideIcon,
+} from 'lucide-react'
+import { ItemActionButton, ItemActionGroup, type ItemActionTone } from './ItemAction'
 import './ResourceCard.css'
 
 export type ResourceStatusTone = 'neutral' | 'configured' | 'success' | 'warning' | 'danger'
@@ -21,93 +31,89 @@ interface ResourceCardProps {
     footer?: ReactNode
 }
 
-interface ResourceCardActionProps {
-    danger?: boolean
-    onClick?: () => void
+interface ResourceCardActionGroupProps extends HTMLAttributes<HTMLDivElement> {
     children: ReactNode
 }
 
-function EditIcon(): ReactElement {
-    return (
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-                d="M4.75 13.95 4 16l2.05-.75 8.5-8.5-1.3-1.3-8.5 8.5Z"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="m11.95 6.05 1.3 1.3m.65-.65 1.05-1.05a1.15 1.15 0 0 0 0-1.6l-.5-.5a1.15 1.15 0 0 0-1.6 0L11.8 4.6"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M4 16h12"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-            />
-        </svg>
-    )
+interface ResourceCardActionProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+    icon: LucideIcon
+    label: string
+    tone?: ItemActionTone
 }
 
-function TrashIcon(): ReactElement {
+export function ResourceCardActionGroup({ children, className, ...props }: ResourceCardActionGroupProps): ReactElement {
     return (
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-                d="M6.5 5.5h7m-6 0V4.75A1.75 1.75 0 0 1 9.25 3h1.5A1.75 1.75 0 0 1 12.5 4.75v.75m-8 0h11m-1 0-.6 8.39a1.75 1.75 0 0 1-1.75 1.61H7.85A1.75 1.75 0 0 1 6.1 13.89L5.5 5.5m2.75 2.5v4m4-4v4"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    )
-}
-
-export function ResourceCardPrimaryAction({ onClick, children }: ResourceCardActionProps): ReactElement {
-    return (
-        <Button variant="primary" size="sm" className="resource-card-primary-button" onClick={onClick}>
+        <ItemActionGroup {...props} className={['card-icon-actions', className].filter(Boolean).join(' ')}>
             {children}
-        </Button>
+        </ItemActionGroup>
     )
 }
 
-export function ResourceCardDangerAction({ onClick, children }: ResourceCardActionProps): ReactElement {
+export function ResourceCardAction({
+    icon: Icon,
+    label,
+    tone = 'default',
+    className = '',
+    type = 'button',
+    ...props
+}: ResourceCardActionProps): ReactElement {
     return (
-        <button type="button" className="resource-card-danger-action" onClick={onClick}>
-            {children}
-        </button>
+        <ItemActionButton
+            {...props}
+            icon={Icon}
+            label={label}
+            tone={tone}
+            type={type}
+            className={['card-icon-action', className].filter(Boolean).join(' ')}
+        />
     )
 }
 
 interface ResourceCardIconActionProps {
     onClick?: () => void
     label: string
+    disabled?: boolean
 }
 
-export function ResourceCardEditAction({ onClick, label }: ResourceCardIconActionProps): ReactElement {
+export function ResourceCardConfigureAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
     return (
-        <button type="button" className="card-icon-action" onClick={onClick} title={label} aria-label={label}>
-            <EditIcon />
-        </button>
+        <ResourceCardAction icon={Settings} label={label} tone="primary" onClick={onClick} disabled={disabled} />
     )
 }
 
-export function ResourceCardDeleteAction({ onClick, label }: ResourceCardIconActionProps): ReactElement {
+export function ResourceCardEditAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
     return (
-        <button
-            type="button"
-            className="card-icon-action card-icon-action-danger"
-            onClick={onClick}
-            title={label}
-            aria-label={label}
-        >
-            <TrashIcon />
-        </button>
+        <ResourceCardAction icon={Pencil} label={label} onClick={onClick} disabled={disabled} />
+    )
+}
+
+export function ResourceCardInstallAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
+    return (
+        <ResourceCardAction icon={Download} label={label} tone="success" onClick={onClick} disabled={disabled} />
+    )
+}
+
+export function ResourceCardStartAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
+    return (
+        <ResourceCardAction icon={Play} label={label} tone="success" onClick={onClick} disabled={disabled} />
+    )
+}
+
+export function ResourceCardRestartAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
+    return (
+        <ResourceCardAction icon={RotateCcw} label={label} tone="warning" onClick={onClick} disabled={disabled} />
+    )
+}
+
+export function ResourceCardStopAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
+    return (
+        <ResourceCardAction icon={Square} label={label} tone="danger" onClick={onClick} disabled={disabled} />
+    )
+}
+
+export function ResourceCardDeleteAction({ onClick, label, disabled }: ResourceCardIconActionProps): ReactElement {
+    return (
+        <ResourceCardAction icon={Trash2} label={label} tone="danger" onClick={onClick} disabled={disabled} />
     )
 }
 

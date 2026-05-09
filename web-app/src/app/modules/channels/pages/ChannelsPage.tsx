@@ -7,8 +7,9 @@ import CardGrid from '../../../platform/ui/cards/CardGrid'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import ResourceCard, {
-    ResourceCardDangerAction,
-    ResourceCardPrimaryAction,
+    ResourceCardActionGroup,
+    ResourceCardConfigureAction,
+    ResourceCardDeleteAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import { useChannels } from '../hooks/useChannels'
@@ -166,14 +167,16 @@ export default function ChannelsPage() {
                                     { label: t('channels.lastOutbound'), value: formatTimestamp(channel.lastOutboundAt, t('channels.never')) },
                                 ]}
                                 footer={(
-                                    <>
-                                        <ResourceCardDangerAction onClick={() => void handleDelete(channel.id, channel.name)}>
-                                            {t('channels.delete')}
-                                        </ResourceCardDangerAction>
-                                        <ResourceCardPrimaryAction onClick={() => navigate(`/channels/${channel.id}/configure`)}>
-                                            {t('channels.configure')}
-                                        </ResourceCardPrimaryAction>
-                                    </>
+                                    <ResourceCardActionGroup>
+                                        <ResourceCardConfigureAction
+                                            onClick={() => navigate(`/channels/${channel.id}/configure`)}
+                                            label={t('channels.configure')}
+                                        />
+                                        <ResourceCardDeleteAction
+                                            onClick={() => void handleDelete(channel.id, channel.name)}
+                                            label={t('channels.delete')}
+                                        />
+                                    </ResourceCardActionGroup>
                                 )}
                             />
                         ))}
