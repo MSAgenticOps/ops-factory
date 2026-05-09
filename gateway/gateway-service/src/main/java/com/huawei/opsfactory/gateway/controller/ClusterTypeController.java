@@ -6,8 +6,6 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.ClusterTypeService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,8 +26,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/cluster-types")
 public class ClusterTypeController {
-    private static final Logger log = LoggerFactory.getLogger(ClusterTypeController.class);
-
     private final ClusterTypeService clusterTypeService;
 
     public ClusterTypeController(ClusterTypeService clusterTypeService) {
@@ -98,8 +94,7 @@ public class ClusterTypeController {
                 body.put("success", true);
                 body.put("clusterType", ct);
                 return ResponseEntity.status(HttpStatus.CREATED).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create cluster type", e);
+            } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
                 body.put("error", e.getMessage());
@@ -132,12 +127,6 @@ public class ClusterTypeController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update cluster type {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

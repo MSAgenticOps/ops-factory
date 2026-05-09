@@ -103,12 +103,6 @@ public class SopController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create SOP", e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -144,12 +138,6 @@ public class SopController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update SOP {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

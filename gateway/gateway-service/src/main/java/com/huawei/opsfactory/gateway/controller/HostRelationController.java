@@ -115,12 +115,6 @@ public class HostRelationController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create host relation", e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -149,12 +143,6 @@ public class HostRelationController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update host relation {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

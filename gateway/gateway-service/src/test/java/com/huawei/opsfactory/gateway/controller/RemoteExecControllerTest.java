@@ -259,6 +259,27 @@ public class RemoteExecControllerTest {
                 .jsonPath("$.exitCode").isEqualTo(-1);
     }
 
+    @Test
+    public void testExecute_unexpectedFailure_isSanitized() {
+        when(remoteExecutionService.execute("host-1", "ls", 30))
+                .thenThrow(new RuntimeException("SSH stack trace"));
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("hostId", "host-1");
+        body.put("command", "ls");
+
+        webTestClient.post().uri("/gateway/remote/execute")
+                .header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.error").isEqualTo("Internal server error");
+    }
+
     // ── Auth tests ───────────────────────────────────────────────
 
     @Test

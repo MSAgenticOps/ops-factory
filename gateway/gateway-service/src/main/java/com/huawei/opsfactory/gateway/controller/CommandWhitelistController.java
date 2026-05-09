@@ -6,8 +6,6 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +14,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,8 +25,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/command-whitelist")
 public class CommandWhitelistController {
-    private static final Logger log = LoggerFactory.getLogger(CommandWhitelistController.class);
-
     private final CommandWhitelistService commandWhitelistService;
 
     public CommandWhitelistController(CommandWhitelistService commandWhitelistService) {
@@ -74,12 +69,6 @@ public class CommandWhitelistController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } catch (Exception e) {
-                log.error("Failed to add command to whitelist", e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -108,12 +97,6 @@ public class CommandWhitelistController {
                 body.put("success", false);
                 body.put("error", "Command not found: " + pattern);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update command {}", pattern, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

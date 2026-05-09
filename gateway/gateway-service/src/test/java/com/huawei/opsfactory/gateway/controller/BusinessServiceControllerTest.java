@@ -197,9 +197,10 @@ public class BusinessServiceControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().is5xxServerError()
                 .expectBody()
-                .jsonPath("$.success").isEqualTo(false);
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.error").isEqualTo("Internal server error");
     }
 
     // ── updateBusinessService ──────────────────────────────────────

@@ -8,8 +8,6 @@ import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,8 +29,6 @@ import java.util.Set;
 @RestController
 @RequestMapping("/gateway/clusters")
 public class ClusterController {
-    private static final Logger log = LoggerFactory.getLogger(ClusterController.class);
-
     private final ClusterService clusterService;
     private final HostService hostService;
     private final HostGroupService hostGroupService;
@@ -155,8 +151,7 @@ public class ClusterController {
                 body.put("success", true);
                 body.put("cluster", cluster);
                 return ResponseEntity.status(HttpStatus.CREATED).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create cluster", e);
+            } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
                 body.put("error", e.getMessage());
@@ -189,12 +184,6 @@ public class ClusterController {
                 body.put("success", false);
                 body.put("error", e.getMessage());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update cluster {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
