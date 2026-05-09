@@ -29,10 +29,22 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final GatewayProperties properties;
 
+    /**
+     * Creates a global exception handler with default gateway properties.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public GlobalExceptionHandler() {
         this(new GatewayProperties());
     }
 
+    /**
+     * Creates a global exception handler with the given gateway properties.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public GlobalExceptionHandler(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -73,8 +85,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Catch-all for goosed HTTP errors that controllers didn't handle.
-     * Forwards the upstream status code with a sanitized error message,
-     * preventing raw 500s with stack traces from leaking to the frontend.
+     * Forwards the upstream status code with a sanitized error message.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @ExceptionHandler(WebClientResponseException.class)
     public ResponseEntity<Map<String, Object>> handleWebClientResponse(WebClientResponseException ex) {
@@ -110,7 +124,10 @@ public class GlobalExceptionHandler {
 
     /**
      * Last-resort catch-all for any unhandled exception.
-     * Returns 500 with a generic message — never leaks internal details.
+     * Returns 500 with a generic message and never leaks internal details.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {

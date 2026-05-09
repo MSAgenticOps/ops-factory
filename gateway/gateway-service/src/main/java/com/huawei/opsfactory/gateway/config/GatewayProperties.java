@@ -539,130 +539,690 @@ public class GatewayProperties {
 
     // ---- Nested config classes ----
 
+    /**
+     * Path-related gateway configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Paths {
         private String projectRoot = "..";
         private String agentsDir = "agents";
         private String usersDir = "users";
 
-        public String getProjectRoot() { return projectRoot; }
-        public void setProjectRoot(String projectRoot) { this.projectRoot = projectRoot; }
-        public String getAgentsDir() { return agentsDir; }
-        public void setAgentsDir(String agentsDir) { this.agentsDir = agentsDir; }
-        public String getUsersDir() { return usersDir; }
-        public void setUsersDir(String usersDir) { this.usersDir = usersDir; }
+        /**
+         * Returns the configured project root path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getProjectRoot() {
+            return projectRoot;
+        }
+
+        /**
+         * Sets the configured project root path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setProjectRoot(String projectRoot) {
+            this.projectRoot = projectRoot;
+        }
+
+        /**
+         * Returns the configured agents directory path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getAgentsDir() {
+            return agentsDir;
+        }
+
+        /**
+         * Sets the configured agents directory path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setAgentsDir(String agentsDir) {
+            this.agentsDir = agentsDir;
+        }
+
+        /**
+         * Returns the configured users directory path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getUsersDir() {
+            return usersDir;
+        }
+
+        /**
+         * Sets the configured users directory path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setUsersDir(String usersDir) {
+            this.usersDir = usersDir;
+        }
     }
 
+    /**
+     * Idle instance lifecycle configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Idle {
         private int timeoutMinutes = 15;
         private long checkIntervalMs = 60000L;
         private int maxRestartAttempts = 3;
         private long restartBaseDelayMs = 5000L;
 
-        public int getTimeoutMinutes() { return timeoutMinutes; }
-        public void setTimeoutMinutes(int timeoutMinutes) { this.timeoutMinutes = timeoutMinutes; }
-        public long getCheckIntervalMs() { return checkIntervalMs; }
-        public void setCheckIntervalMs(long checkIntervalMs) { this.checkIntervalMs = checkIntervalMs; }
-        public int getMaxRestartAttempts() { return maxRestartAttempts; }
-        public void setMaxRestartAttempts(int maxRestartAttempts) { this.maxRestartAttempts = maxRestartAttempts; }
-        public long getRestartBaseDelayMs() { return restartBaseDelayMs; }
-        public void setRestartBaseDelayMs(long restartBaseDelayMs) { this.restartBaseDelayMs = restartBaseDelayMs; }
+        /**
+         * Returns the idle timeout in minutes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getTimeoutMinutes() {
+            return timeoutMinutes;
+        }
+
+        /**
+         * Sets the idle timeout in minutes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setTimeoutMinutes(int timeoutMinutes) {
+            this.timeoutMinutes = timeoutMinutes;
+        }
+
+        /**
+         * Returns the watchdog check interval in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public long getCheckIntervalMs() {
+            return checkIntervalMs;
+        }
+
+        /**
+         * Sets the watchdog check interval in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setCheckIntervalMs(long checkIntervalMs) {
+            this.checkIntervalMs = checkIntervalMs;
+        }
+
+        /**
+         * Returns the maximum restart attempts for one instance.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxRestartAttempts() {
+            return maxRestartAttempts;
+        }
+
+        /**
+         * Sets the maximum restart attempts for one instance.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxRestartAttempts(int maxRestartAttempts) {
+            this.maxRestartAttempts = maxRestartAttempts;
+        }
+
+        /**
+         * Returns the base backoff delay in milliseconds for restarts.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public long getRestartBaseDelayMs() {
+            return restartBaseDelayMs;
+        }
+
+        /**
+         * Sets the base backoff delay in milliseconds for restarts.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setRestartBaseDelayMs(long restartBaseDelayMs) {
+            this.restartBaseDelayMs = restartBaseDelayMs;
+        }
     }
 
+    /**
+     * Upload size limit configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Upload {
         private int maxFileSizeMb = 50;
         private int maxImageSizeMb = 20;
 
-        public int getMaxFileSizeMb() { return maxFileSizeMb; }
-        public void setMaxFileSizeMb(int maxFileSizeMb) { this.maxFileSizeMb = maxFileSizeMb; }
-        public int getMaxImageSizeMb() { return maxImageSizeMb; }
-        public void setMaxImageSizeMb(int maxImageSizeMb) { this.maxImageSizeMb = maxImageSizeMb; }
+        /**
+         * Returns the maximum upload file size in megabytes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxFileSizeMb() {
+            return maxFileSizeMb;
+        }
+
+        /**
+         * Sets the maximum upload file size in megabytes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxFileSizeMb(int maxFileSizeMb) {
+            this.maxFileSizeMb = maxFileSizeMb;
+        }
+
+        /**
+         * Returns the maximum upload image size in megabytes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxImageSizeMb() {
+            return maxImageSizeMb;
+        }
+
+        /**
+         * Sets the maximum upload image size in megabytes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxImageSizeMb(int maxImageSizeMb) {
+            this.maxImageSizeMb = maxImageSizeMb;
+        }
     }
 
+    /**
+     * Langfuse observability integration configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Langfuse {
         private String host = "";
         private String publicKey = "";
         private String secretKey = "";
 
-        public String getHost() { return host; }
-        public void setHost(String host) { this.host = host; }
-        public String getPublicKey() { return publicKey; }
-        public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
-        public String getSecretKey() { return secretKey; }
-        public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+        /**
+         * Returns the Langfuse host URL.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getHost() {
+            return host;
+        }
+
+        /**
+         * Sets the Langfuse host URL.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        /**
+         * Returns the Langfuse public key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getPublicKey() {
+            return publicKey;
+        }
+
+        /**
+         * Sets the Langfuse public key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setPublicKey(String publicKey) {
+            this.publicKey = publicKey;
+        }
+
+        /**
+         * Returns the Langfuse secret key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getSecretKey() {
+            return secretKey;
+        }
+
+        /**
+         * Sets the Langfuse secret key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
+        }
     }
 
+    /**
+     * Instance count limit configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Limits {
         private int maxInstancesPerUser = 5;
         private int maxInstancesGlobal = 50;
 
-        public int getMaxInstancesPerUser() { return maxInstancesPerUser; }
-        public void setMaxInstancesPerUser(int maxInstancesPerUser) { this.maxInstancesPerUser = maxInstancesPerUser; }
-        public int getMaxInstancesGlobal() { return maxInstancesGlobal; }
-        public void setMaxInstancesGlobal(int maxInstancesGlobal) { this.maxInstancesGlobal = maxInstancesGlobal; }
+        /**
+         * Returns the maximum instances allowed per user.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxInstancesPerUser() {
+            return maxInstancesPerUser;
+        }
+
+        /**
+         * Sets the maximum instances allowed per user.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxInstancesPerUser(int maxInstancesPerUser) {
+            this.maxInstancesPerUser = maxInstancesPerUser;
+        }
+
+        /**
+         * Returns the maximum instances allowed globally.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxInstancesGlobal() {
+            return maxInstancesGlobal;
+        }
+
+        /**
+         * Sets the maximum instances allowed globally.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxInstancesGlobal(int maxInstancesGlobal) {
+            this.maxInstancesGlobal = maxInstancesGlobal;
+        }
     }
 
+    /**
+     * Server-sent events timeout configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Sse {
         private int firstByteTimeoutSec = 120;
         private int idleTimeoutSec = 600;
         private int maxDurationSec = 1200;
 
-        public int getFirstByteTimeoutSec() { return firstByteTimeoutSec; }
-        public void setFirstByteTimeoutSec(int firstByteTimeoutSec) { this.firstByteTimeoutSec = firstByteTimeoutSec; }
-        public int getIdleTimeoutSec() { return idleTimeoutSec; }
-        public void setIdleTimeoutSec(int idleTimeoutSec) { this.idleTimeoutSec = idleTimeoutSec; }
-        public int getMaxDurationSec() { return maxDurationSec; }
-        public void setMaxDurationSec(int maxDurationSec) { this.maxDurationSec = maxDurationSec; }
+        /**
+         * Returns the first-byte timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getFirstByteTimeoutSec() {
+            return firstByteTimeoutSec;
+        }
+
+        /**
+         * Sets the first-byte timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setFirstByteTimeoutSec(int firstByteTimeoutSec) {
+            this.firstByteTimeoutSec = firstByteTimeoutSec;
+        }
+
+        /**
+         * Returns the idle timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getIdleTimeoutSec() {
+            return idleTimeoutSec;
+        }
+
+        /**
+         * Sets the idle timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setIdleTimeoutSec(int idleTimeoutSec) {
+            this.idleTimeoutSec = idleTimeoutSec;
+        }
+
+        /**
+         * Returns the maximum stream duration in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxDurationSec() {
+            return maxDurationSec;
+        }
+
+        /**
+         * Sets the maximum stream duration in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxDurationSec(int maxDurationSec) {
+            this.maxDurationSec = maxDurationSec;
+        }
     }
 
+    /**
+     * Instance prewarm configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Prewarm {
         private boolean enabled = true;
         private String defaultAgentId = "universal-agent";
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public String getDefaultAgentId() { return defaultAgentId; }
-        public void setDefaultAgentId(String defaultAgentId) { this.defaultAgentId = defaultAgentId; }
+        /**
+         * Returns whether prewarming is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets whether prewarming is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Returns the default agent identifier used for prewarming.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getDefaultAgentId() {
+            return defaultAgentId;
+        }
+
+        /**
+         * Sets the default agent identifier used for prewarming.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setDefaultAgentId(String defaultAgentId) {
+            this.defaultAgentId = defaultAgentId;
+        }
     }
 
+    /**
+     * Office preview integration configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class OfficePreview {
         private boolean enabled = false;
         private String onlyofficeUrl = "";
         private String fileBaseUrl = "";
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public String getOnlyofficeUrl() { return onlyofficeUrl; }
-        public void setOnlyofficeUrl(String onlyofficeUrl) { this.onlyofficeUrl = onlyofficeUrl; }
-        public String getFileBaseUrl() { return fileBaseUrl; }
-        public void setFileBaseUrl(String fileBaseUrl) { this.fileBaseUrl = fileBaseUrl; }
+        /**
+         * Returns whether Office preview is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets whether Office preview is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Returns the OnlyOffice service URL.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getOnlyofficeUrl() {
+            return onlyofficeUrl;
+        }
+
+        /**
+         * Sets the OnlyOffice service URL.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setOnlyofficeUrl(String onlyofficeUrl) {
+            this.onlyofficeUrl = onlyofficeUrl;
+        }
+
+        /**
+         * Returns the base URL used to serve previewable files.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getFileBaseUrl() {
+            return fileBaseUrl;
+        }
+
+        /**
+         * Sets the base URL used to serve previewable files.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setFileBaseUrl(String fileBaseUrl) {
+            this.fileBaseUrl = fileBaseUrl;
+        }
     }
 
+    /**
+     * Logging behavior configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Logging {
         private boolean accessLogEnabled = true;
         private boolean includeUpstreamErrorBody = false;
         private boolean includeSseChunkPreview = false;
         private int sseChunkPreviewMaxChars = 160;
 
-        public boolean isAccessLogEnabled() { return accessLogEnabled; }
-        public void setAccessLogEnabled(boolean accessLogEnabled) { this.accessLogEnabled = accessLogEnabled; }
-        public boolean isIncludeUpstreamErrorBody() { return includeUpstreamErrorBody; }
-        public void setIncludeUpstreamErrorBody(boolean includeUpstreamErrorBody) { this.includeUpstreamErrorBody = includeUpstreamErrorBody; }
-        public boolean isIncludeSseChunkPreview() { return includeSseChunkPreview; }
-        public void setIncludeSseChunkPreview(boolean includeSseChunkPreview) { this.includeSseChunkPreview = includeSseChunkPreview; }
-        public int getSseChunkPreviewMaxChars() { return sseChunkPreviewMaxChars; }
-        public void setSseChunkPreviewMaxChars(int sseChunkPreviewMaxChars) { this.sseChunkPreviewMaxChars = sseChunkPreviewMaxChars; }
+        /**
+         * Returns whether access logging is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public boolean isAccessLogEnabled() {
+            return accessLogEnabled;
+        }
+
+        /**
+         * Sets whether access logging is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setAccessLogEnabled(boolean accessLogEnabled) {
+            this.accessLogEnabled = accessLogEnabled;
+        }
+
+        /**
+         * Returns whether upstream error bodies are included in logs.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public boolean isIncludeUpstreamErrorBody() {
+            return includeUpstreamErrorBody;
+        }
+
+        /**
+         * Sets whether upstream error bodies are included in logs.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setIncludeUpstreamErrorBody(boolean includeUpstreamErrorBody) {
+            this.includeUpstreamErrorBody = includeUpstreamErrorBody;
+        }
+
+        /**
+         * Returns whether SSE chunk previews are included in logs.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public boolean isIncludeSseChunkPreview() {
+            return includeSseChunkPreview;
+        }
+
+        /**
+         * Sets whether SSE chunk previews are included in logs.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setIncludeSseChunkPreview(boolean includeSseChunkPreview) {
+            this.includeSseChunkPreview = includeSseChunkPreview;
+        }
+
+        /**
+         * Returns the maximum number of characters kept for SSE chunk previews.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getSseChunkPreviewMaxChars() {
+            return sseChunkPreviewMaxChars;
+        }
+
+        /**
+         * Sets the maximum number of characters kept for SSE chunk previews.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setSseChunkPreviewMaxChars(int sseChunkPreviewMaxChars) {
+            this.sseChunkPreviewMaxChars = sseChunkPreviewMaxChars;
+        }
     }
 
+    /**
+     * Remote execution timeout configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class RemoteExecution {
         private int defaultTimeout = 30;
         private int maxTimeout = 120;
 
-        public int getDefaultTimeout() { return defaultTimeout; }
-        public void setDefaultTimeout(int defaultTimeout) { this.defaultTimeout = defaultTimeout; }
-        public int getMaxTimeout() { return maxTimeout; }
-        public void setMaxTimeout(int maxTimeout) { this.maxTimeout = maxTimeout; }
+        /**
+         * Returns the default remote execution timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getDefaultTimeout() {
+            return defaultTimeout;
+        }
+
+        /**
+         * Sets the default remote execution timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setDefaultTimeout(int defaultTimeout) {
+            this.defaultTimeout = defaultTimeout;
+        }
+
+        /**
+         * Returns the maximum allowed remote execution timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxTimeout() {
+            return maxTimeout;
+        }
+
+        /**
+         * Sets the maximum allowed remote execution timeout in seconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxTimeout(int maxTimeout) {
+            this.maxTimeout = maxTimeout;
+        }
     }
 
+    /**
+     * File capsule feature configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class FileCapsules {
         private List<String> allowedExtensions = List.of(
                 "doc", "docx",
@@ -674,21 +1234,65 @@ public class GatewayProperties {
                 "md", "markdown",
                 "html", "htm");
 
-        public List<String> getAllowedExtensions() { return allowedExtensions; }
+        /**
+         * Returns the allowed file extensions for file capsules.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public List<String> getAllowedExtensions() {
+            return allowedExtensions;
+        }
 
-        public void setAllowedExtensions(List<String> allowedExtensions) { this.allowedExtensions = allowedExtensions; }
+        /**
+         * Sets the allowed file extensions for file capsules.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setAllowedExtensions(List<String> allowedExtensions) {
+            this.allowedExtensions = allowedExtensions;
+        }
     }
 
+    /**
+     * File browser scanning configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class FileBrowser {
         private List<FileScanRoot> scanRoots = List.of(
                 new FileScanRoot("workingDir", "${userAgentDir}", false),
                 new FileScanRoot("output", "${userAgentDir}/output", false));
 
-        public List<FileScanRoot> getScanRoots() { return scanRoots; }
+        /**
+         * Returns the configured file browser scan roots.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public List<FileScanRoot> getScanRoots() {
+            return scanRoots;
+        }
 
-        public void setScanRoots(List<FileScanRoot> scanRoots) { this.scanRoots = scanRoots; }
+        /**
+         * Sets the configured file browser scan roots.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setScanRoots(List<FileScanRoot> scanRoots) {
+            this.scanRoots = scanRoots;
+        }
     }
 
+    /**
+     * Definition of one file browser scan root.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class FileScanRoot {
         private String id = "";
         private String path = "";
@@ -698,49 +1302,268 @@ public class GatewayProperties {
         private int maxFiles = 1000;
         private long scanTimeoutMs = 2000;
 
+        /**
+         * Creates an empty file scan root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public FileScanRoot() {
         }
 
+        /**
+         * Creates a file scan root with the given identifier, path, and recursion flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public FileScanRoot(String id, String path, boolean recursive) {
             this.id = id;
             this.path = path;
             this.recursive = recursive;
         }
 
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
-        public String getPath() { return path; }
-        public void setPath(String path) { this.path = path; }
-        public boolean isRecursive() { return recursive; }
-        public void setRecursive(boolean recursive) { this.recursive = recursive; }
-        public List<String> getExcludeDirs() { return excludeDirs; }
-        public void setExcludeDirs(List<String> excludeDirs) { this.excludeDirs = excludeDirs; }
-        public int getMaxDepth() { return maxDepth; }
-        public void setMaxDepth(int maxDepth) { this.maxDepth = maxDepth; }
-        public int getMaxFiles() { return maxFiles; }
-        public void setMaxFiles(int maxFiles) { this.maxFiles = maxFiles; }
-        public long getScanTimeoutMs() { return scanTimeoutMs; }
-        public void setScanTimeoutMs(long scanTimeoutMs) { this.scanTimeoutMs = scanTimeoutMs; }
+        /**
+         * Returns the scan root identifier.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getId() {
+            return id;
+        }
+
+        /**
+         * Sets the scan root identifier.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        /**
+         * Returns the scan root path template.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getPath() {
+            return path;
+        }
+
+        /**
+         * Sets the scan root path template.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setPath(String path) {
+            this.path = path;
+        }
+
+        /**
+         * Returns whether recursive scanning is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public boolean isRecursive() {
+            return recursive;
+        }
+
+        /**
+         * Sets whether recursive scanning is enabled.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setRecursive(boolean recursive) {
+            this.recursive = recursive;
+        }
+
+        /**
+         * Returns the excluded directory names for this scan root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public List<String> getExcludeDirs() {
+            return excludeDirs;
+        }
+
+        /**
+         * Sets the excluded directory names for this scan root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setExcludeDirs(List<String> excludeDirs) {
+            this.excludeDirs = excludeDirs;
+        }
+
+        /**
+         * Returns the maximum scan depth.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxDepth() {
+            return maxDepth;
+        }
+
+        /**
+         * Sets the maximum scan depth.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxDepth(int maxDepth) {
+            this.maxDepth = maxDepth;
+        }
+
+        /**
+         * Returns the maximum number of files per scan.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxFiles() {
+            return maxFiles;
+        }
+
+        /**
+         * Sets the maximum number of files per scan.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxFiles(int maxFiles) {
+            this.maxFiles = maxFiles;
+        }
+
+        /**
+         * Returns the scan timeout in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public long getScanTimeoutMs() {
+            return scanTimeoutMs;
+        }
+
+        /**
+         * Sets the scan timeout in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setScanTimeoutMs(long scanTimeoutMs) {
+            this.scanTimeoutMs = scanTimeoutMs;
+        }
     }
 
+    /**
+     * Skill market integration configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class SkillMarket {
         private String baseUrl = "http://127.0.0.1:8095";
         private int requestTimeoutMs = 10000;
         private int maxPackageSizeMb = 200;
 
-        public String getBaseUrl() { return baseUrl; }
-        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-        public int getRequestTimeoutMs() { return requestTimeoutMs; }
-        public void setRequestTimeoutMs(int requestTimeoutMs) { this.requestTimeoutMs = requestTimeoutMs; }
-        public int getMaxPackageSizeMb() { return maxPackageSizeMb; }
-        public void setMaxPackageSizeMb(int maxPackageSizeMb) { this.maxPackageSizeMb = maxPackageSizeMb; }
+        /**
+         * Returns the skill market base URL.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getBaseUrl() {
+            return baseUrl;
+        }
+
+        /**
+         * Sets the skill market base URL.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+
+        /**
+         * Returns the skill market request timeout in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getRequestTimeoutMs() {
+            return requestTimeoutMs;
+        }
+
+        /**
+         * Sets the skill market request timeout in milliseconds.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setRequestTimeoutMs(int requestTimeoutMs) {
+            this.requestTimeoutMs = requestTimeoutMs;
+        }
+
+        /**
+         * Returns the maximum package size in megabytes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getMaxPackageSizeMb() {
+            return maxPackageSizeMb;
+        }
+
+        /**
+         * Sets the maximum package size in megabytes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setMaxPackageSizeMb(int maxPackageSizeMb) {
+            this.maxPackageSizeMb = maxPackageSizeMb;
+        }
     }
 
+    /**
+     * Knowledge feature configuration values.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public static class Knowledge {
         private String artifactsRoot = "../knowledge-service/data/artifacts";
 
-        public String getArtifactsRoot() { return artifactsRoot; }
-        public void setArtifactsRoot(String artifactsRoot) { this.artifactsRoot = artifactsRoot; }
+        /**
+         * Returns the artifacts root directory path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public String getArtifactsRoot() {
+            return artifactsRoot;
+        }
+
+        /**
+         * Sets the artifacts root directory path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void setArtifactsRoot(String artifactsRoot) {
+            this.artifactsRoot = artifactsRoot;
+        }
     }
 
     // ---- PostConstruct for logging configuration values ----
