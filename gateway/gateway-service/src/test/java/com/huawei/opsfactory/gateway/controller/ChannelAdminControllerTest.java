@@ -37,7 +37,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(ChannelAdminController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class ChannelAdminControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

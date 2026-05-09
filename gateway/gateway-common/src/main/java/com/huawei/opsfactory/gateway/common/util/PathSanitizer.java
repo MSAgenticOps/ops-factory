@@ -3,7 +3,6 @@ package com.huawei.opsfactory.gateway.common.util;
 import java.nio.file.Path;
 
 public final class PathSanitizer {
-
     private PathSanitizer() {
     }
 

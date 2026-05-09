@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.Map;
 
 public final class YamlLoader {
-
     private YamlLoader() {
     }
 

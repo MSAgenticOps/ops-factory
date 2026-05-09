@@ -21,7 +21,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SessionTraceServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 

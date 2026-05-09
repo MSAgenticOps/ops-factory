@@ -23,7 +23,6 @@ import org.springframework.test.context.junit4.SpringRunner;
     properties = "spring.config.import=optional:file:src/test/resources/config/test-gateway-config.yaml"
 )
 public class GatewayConfigImportTest {
-
     @Autowired
     private GatewayProperties properties;
 

@@ -14,7 +14,6 @@ import java.util.Map;
 @RestController
 @RequestMapping(value = "/gateway")
 public class StatusController {
-
     private final GatewayProperties properties;
 
     public StatusController(GatewayProperties properties) {

@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class PerformanceIndicatorScopeStore {
-
     private final JsonFileStore<PerformanceIndicatorScope> store;
 
     public PerformanceIndicatorScopeStore(GatewayProperties properties) {

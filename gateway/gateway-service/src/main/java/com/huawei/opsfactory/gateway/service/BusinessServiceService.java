@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class BusinessServiceService {
-
     private static final Logger log = LoggerFactory.getLogger(BusinessServiceService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

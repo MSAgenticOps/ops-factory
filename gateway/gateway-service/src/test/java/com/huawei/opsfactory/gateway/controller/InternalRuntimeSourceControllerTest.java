@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(InternalRuntimeSourceController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class InternalRuntimeSourceControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

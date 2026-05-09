@@ -35,7 +35,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/channels")
 public class ChannelAdminController {
-
     private static final Logger log = LoggerFactory.getLogger(ChannelAdminController.class);
 
     private final ChannelConfigService channelConfigService;

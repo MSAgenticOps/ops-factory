@@ -15,9 +15,10 @@ import static org.junit.Assert.assertTrue;
 /**
  * Tests for LangfuseService data parsing and aggregation logic:
  * buildOverview, parseTraces, parseObservations, emptyOverview.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class LangfuseServiceBuildOverviewTest {
-
     private LangfuseService service;
 
     @Before

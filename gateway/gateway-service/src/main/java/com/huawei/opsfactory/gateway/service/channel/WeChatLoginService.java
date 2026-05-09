@@ -19,7 +19,6 @@ import java.util.Map;
 
 @Service
 public class WeChatLoginService {
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;

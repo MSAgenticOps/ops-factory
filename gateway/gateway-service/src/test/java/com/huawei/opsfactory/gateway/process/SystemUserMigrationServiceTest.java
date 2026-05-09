@@ -15,7 +15,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class SystemUserMigrationServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 

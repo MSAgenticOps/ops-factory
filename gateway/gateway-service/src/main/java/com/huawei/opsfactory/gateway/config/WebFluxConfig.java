@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 
 @Configuration
 public class WebFluxConfig {
-
     private final GatewayProperties properties;
 
     public WebFluxConfig(GatewayProperties properties) {

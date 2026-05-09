@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(BusinessServiceController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class BusinessServiceControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

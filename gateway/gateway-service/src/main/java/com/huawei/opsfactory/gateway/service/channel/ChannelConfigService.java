@@ -34,7 +34,6 @@ import java.util.regex.Pattern;
 
 @Service
 public class ChannelConfigService {
-
     private static final Logger log = LoggerFactory.getLogger(ChannelConfigService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Pattern CHANNEL_ID_PATTERN = Pattern.compile("^[a-z0-9-]+$");

@@ -17,7 +17,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/qos")
 public class QosController {
-
     private static final Logger log = LoggerFactory.getLogger(QosController.class);
 
     private final QosService qosService;

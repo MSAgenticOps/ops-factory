@@ -50,7 +50,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @RestController
 @RequestMapping("/gateway/agents/{agentId}")
 public class ReplyController {
-
     private static final Logger log = LoggerFactory.getLogger(ReplyController.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -660,5 +659,4 @@ public class ReplyController {
                         exchange.getResponse(), instance.getPort(), "/agent/restart",
                         HttpMethod.POST, body, instance.getSecretKey()));
     }
-
 }

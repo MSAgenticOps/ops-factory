@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/business-types")
 public class BusinessTypeController {
-
     private static final Logger log = LoggerFactory.getLogger(BusinessTypeController.class);
 
     private final BusinessTypeService businessTypeService;

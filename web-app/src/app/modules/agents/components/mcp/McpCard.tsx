@@ -1,7 +1,62 @@
 import { useTranslation } from 'react-i18next'
 import type { McpEntry } from '../../../../../types/mcp'
 import { getMcpDisplayName } from '../../../../../types/mcp'
-import Button from '../../../../platform/ui/primitives/Button'
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M4.75 13.95 4 16l2.05-.75 8.5-8.5-1.3-1.3-8.5 8.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m11.95 6.05 1.3 1.3m.65-.65 1.05-1.05a1.15 1.15 0 0 0 0-1.6l-.5-.5a1.15 1.15 0 0 0-1.6 0L11.8 4.6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 16h12"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function ConfigureIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M10 3.3 11.1 4l1.3-.22.86 1.01 1.3.23.23 1.3 1.01.86-.22 1.3.7 1.1-.7 1.1.22 1.3-1.01.86-.23 1.3-1.3.23-.86 1.01-1.3-.22-1.1.7-1.1-.7-1.3.22-.86-1.01-1.3-.23-.23-1.3-1.01-.86.22-1.3-.7-1.1.7-1.1-.22-1.3 1.01-.86.23-1.3 1.3-.23.86-1.01 1.3.22 1.1-.7Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="10" r="2.2" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M6.5 5.5h7m-6 0V4.75A1.75 1.75 0 0 1 9.25 3h1.5A1.75 1.75 0 0 1 12.5 4.75v.75m-8 0h11m-1 0-.6 8.39a1.75 1.75 0 0 1-1.75 1.61H7.85A1.75 1.75 0 0 1 6.1 13.89L5.5 5.5m2.75 2.5v4m4-4v4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 interface McpCardProps {
   entry: McpEntry
@@ -44,34 +99,37 @@ export default function McpCard({ entry, onToggle, onEdit, onConfigKnowledge, on
       {(isCustom || onConfigKnowledge) && (onEdit || onConfigKnowledge || onDelete) && (
         <div className="mcp-card-actions">
           {onConfigKnowledge && (
-            <Button
-              variant="secondary"
-              tone="subtle"
-              size="sm"
+            <button
+              type="button"
+              className="card-icon-action"
               onClick={() => onConfigKnowledge(entry)}
+              title={t('mcp.configKnowledge')}
+              aria-label={t('mcp.configKnowledge')}
             >
-              {t('mcp.configKnowledge')}
-            </Button>
+              <ConfigureIcon />
+            </button>
           )}
           {onEdit && (
-            <Button
-              variant="secondary"
-              tone="subtle"
-              size="sm"
+            <button
+              type="button"
+              className="card-icon-action"
               onClick={() => onEdit(entry)}
+              title={t('common.edit')}
+              aria-label={t('common.edit')}
             >
-              {t('common.edit')}
-            </Button>
+              <EditIcon />
+            </button>
           )}
           {onDelete && (
-            <Button
-              variant="danger"
-              tone="quiet"
-              size="sm"
+            <button
+              type="button"
+              className="card-icon-action card-icon-action-danger"
               onClick={() => onDelete(entry.name)}
+              title={t('common.delete')}
+              aria-label={t('common.delete')}
             >
-              {t('common.delete')}
-            </Button>
+              <TrashIcon />
+            </button>
           )}
         </div>
       )}

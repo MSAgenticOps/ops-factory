@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class DnRegistryStore {
-
     private final JsonFileStore<DnRegistry> store;
 
     public DnRegistryStore(GatewayProperties properties) {

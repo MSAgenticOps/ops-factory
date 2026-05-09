@@ -9,7 +9,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class UserRoleTest {
-
     @Test
     public void testFromUserId_sys() {
         assertEquals(UserRole.ADMIN, UserRole.fromUserId("admin"));

@@ -11,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class PrewarmService {
-
     private static final Logger log = LoggerFactory.getLogger(PrewarmService.class);
 
     private final InstanceManager instanceManager;

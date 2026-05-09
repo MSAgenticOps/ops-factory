@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class AlarmWeightStore {
-
     private final JsonFileStore<AlarmWeight> store;
 
     public AlarmWeightStore(GatewayProperties properties) {

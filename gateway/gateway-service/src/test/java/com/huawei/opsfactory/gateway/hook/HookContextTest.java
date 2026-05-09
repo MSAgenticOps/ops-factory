@@ -7,7 +7,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class HookContextTest {
-
     @Test
     public void testConstructor() {
         HookContext ctx = new HookContext("{}", "agent1", "user1");

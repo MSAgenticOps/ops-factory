@@ -26,7 +26,6 @@ import java.nio.file.Path;
 @RestController
 @RequestMapping("/gateway")
 public class SessionTraceController {
-
     private final SessionTraceService traceService;
 
     public SessionTraceController(SessionTraceService traceService) {

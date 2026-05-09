@@ -1,7 +1,6 @@
 package com.huawei.opsfactory.gateway.common.constants;
 
 public final class GatewayConstants {
-
     private GatewayConstants() {
     }
 

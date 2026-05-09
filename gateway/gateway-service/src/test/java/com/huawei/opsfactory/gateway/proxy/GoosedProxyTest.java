@@ -8,7 +8,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class GoosedProxyTest {
-
     private GoosedProxy proxy;
     private GoosedProxy proxyTls;
 
@@ -29,9 +28,6 @@ public class GoosedProxyTest {
     public void testWebClientNotNull() {
         assertNotNull(proxy.getWebClient());
     }
-
-
-
 
     // ====================== TLS tests ======================
 

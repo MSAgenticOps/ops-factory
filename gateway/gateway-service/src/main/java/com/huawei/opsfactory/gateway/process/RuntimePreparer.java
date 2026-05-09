@@ -15,7 +15,6 @@ import java.util.stream.Stream;
 
 @Component
 public class RuntimePreparer {
-
     private static final Logger log = LoggerFactory.getLogger(RuntimePreparer.class);
 
     private final GatewayProperties properties;

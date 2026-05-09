@@ -10,9 +10,10 @@ import static org.junit.Assert.*;
 
 /**
  * Unit tests for MetricsBuffer — circular buffer, drainTimings, persistence.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class MetricsBufferTest {
-
     private MetricsBuffer buffer;
 
     @Before

@@ -24,7 +24,6 @@ import java.util.Set;
 @RestController
 @RequestMapping("/gateway/hosts")
 public class HostController {
-
     private static final Logger log = LoggerFactory.getLogger(HostController.class);
 
     private final HostService hostService;

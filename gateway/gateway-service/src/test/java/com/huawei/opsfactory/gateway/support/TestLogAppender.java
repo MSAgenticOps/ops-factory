@@ -13,7 +13,6 @@ import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 
 public final class TestLogAppender extends AbstractAppender implements AutoCloseable {
-
     private final Logger logger;
     private final List<LogEvent> events = new CopyOnWriteArrayList<>();
 

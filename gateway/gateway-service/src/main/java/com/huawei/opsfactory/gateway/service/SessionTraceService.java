@@ -27,7 +27,6 @@ import java.util.regex.Pattern;
 
 @Service
 public class SessionTraceService implements DisposableBean {
-
     private static final Logger log = LoggerFactory.getLogger(SessionTraceService.class);
     private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9_.-]+");
     private static final Duration JOB_TTL = Duration.ofHours(1);

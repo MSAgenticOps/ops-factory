@@ -12,9 +12,10 @@ import static org.mockito.Mockito.when;
 /**
  * E2E tests for CatchAllProxyController:
  * Verifies auth, admin/user access control, and proxy routing for /agents/{agentId}/** paths.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
-
     // ====================== Admin access ======================
 
     @Test

@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 @Component
 @Order(2)
 public class FileAttachmentHook implements RequestHook {
-
     private static final Logger log = LoggerFactory.getLogger(FileAttachmentHook.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 

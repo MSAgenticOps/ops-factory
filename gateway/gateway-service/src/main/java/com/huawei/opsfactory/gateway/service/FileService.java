@@ -29,7 +29,6 @@ import static java.util.Map.entry;
 
 @Service
 public class FileService {
-
     private final GatewayProperties gatewayProperties;
 
     public FileService(GatewayProperties gatewayProperties) {

@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 
 @Service
 public class ChannelRuntimeStorageService {
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("^[A-Za-z0-9._-]+$");
 

@@ -4,7 +4,6 @@ import java.util.function.Supplier;
 import org.apache.logging.log4j.ThreadContext;
 
 public final class GatewayLogContext {
-
     private GatewayLogContext() {
     }
 

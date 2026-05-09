@@ -9,7 +9,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class PathSanitizerTest {
-
     @Test
     public void testIsSafe_normalPath() {
         Path base = Path.of("/home/user/data");

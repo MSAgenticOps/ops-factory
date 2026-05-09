@@ -13,7 +13,6 @@ import reactor.test.StepVerifier;
 import static org.junit.Assert.assertEquals;
 
 public class AuthWebFilterTest {
-
     private AuthWebFilter filter;
     private GatewayProperties properties;
 

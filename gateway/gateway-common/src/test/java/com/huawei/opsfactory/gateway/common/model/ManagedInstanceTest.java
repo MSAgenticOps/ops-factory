@@ -7,7 +7,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ManagedInstanceTest {
-
     @Test
     public void testBuildKey() {
         assertEquals("agent1:user1", ManagedInstance.buildKey("agent1", "user1"));

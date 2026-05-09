@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class QosService {
-
     private final QosCalculationService calculationService;
     private final ProductConfigRuleStore productConfigRuleStore;
     private final IndicatorNormalizeDataStore normalizeDataStore;

@@ -5,7 +5,6 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public class AgentRegistryEntryTest {
-
     @Test
     public void testRecordAccessors() {
         AgentRegistryEntry entry = new AgentRegistryEntry("kb-agent", "KB Agent");

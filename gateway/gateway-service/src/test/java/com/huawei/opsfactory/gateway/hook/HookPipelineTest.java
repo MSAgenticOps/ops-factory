@@ -11,7 +11,6 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public class HookPipelineTest {
-
     @Test
     public void testEmptyPipeline() {
         HookPipeline pipeline = new HookPipeline(List.of());

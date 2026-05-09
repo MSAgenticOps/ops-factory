@@ -6,8 +6,8 @@ import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import ResourceCard, {
-    ResourceCardDangerAction,
-    ResourceCardPrimaryAction,
+    ResourceCardDeleteAction,
+    ResourceCardEditAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
@@ -417,14 +417,16 @@ export default function Knowledge() {
                                         { label: t('knowledge.updatedAt'), value: formatDate(source.updatedAt) },
                                     ]}
                                     footer={(
-                                        <>
-                                            <ResourceCardDangerAction onClick={() => setDeleteTarget(source)}>
-                                                {t('common.delete')}
-                                            </ResourceCardDangerAction>
-                                            <ResourceCardPrimaryAction onClick={() => navigate(`/knowledge/${source.id}`)}>
-                                                {t('knowledge.configure')}
-                                            </ResourceCardPrimaryAction>
-                                        </>
+                                        <div className="card-icon-actions">
+                                            <ResourceCardEditAction
+                                                onClick={() => navigate(`/knowledge/${source.id}`)}
+                                                label={t('knowledge.configure')}
+                                            />
+                                            <ResourceCardDeleteAction
+                                                onClick={() => setDeleteTarget(source)}
+                                                label={t('common.delete')}
+                                            />
+                                        </div>
                                     )}
                                 />
                             )

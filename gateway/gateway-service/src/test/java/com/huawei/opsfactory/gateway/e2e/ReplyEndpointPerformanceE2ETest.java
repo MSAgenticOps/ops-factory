@@ -21,7 +21,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
-
     private ManagedInstance mockInstance;
 
     @Before

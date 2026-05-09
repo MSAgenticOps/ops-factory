@@ -29,7 +29,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class AgentConfigService {
-
     private static final Logger log = LoggerFactory.getLogger(AgentConfigService.class);
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
     private static final String KNOWLEDGE_CLI_MCP = "knowledge-cli";
@@ -727,7 +726,6 @@ public class AgentConfigService {
         org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
         Files.writeString(configYaml, yaml.dump(data));
     }
-
 
     public Path getAgentsDir() {
         return gatewayRoot.resolve(properties.getPaths().getAgentsDir());

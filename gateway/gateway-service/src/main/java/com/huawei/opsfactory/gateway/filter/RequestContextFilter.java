@@ -16,7 +16,6 @@ import reactor.core.publisher.Mono;
 @Component
 @Order(1)
 public class RequestContextFilter implements WebFilter {
-
     public static final String REQUEST_ID_ATTR = "requestId";
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
 

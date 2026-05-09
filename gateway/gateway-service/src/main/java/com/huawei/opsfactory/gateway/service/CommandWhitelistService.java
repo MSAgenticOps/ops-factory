@@ -19,7 +19,6 @@ import java.util.Map;
 
 @Service
 public class CommandWhitelistService {
-
     private static final Logger log = LoggerFactory.getLogger(CommandWhitelistService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

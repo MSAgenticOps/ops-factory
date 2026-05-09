@@ -14,7 +14,6 @@ import java.time.Duration;
 
 @Service
 public class SessionService {
-
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     private final InstanceManager instanceManager;

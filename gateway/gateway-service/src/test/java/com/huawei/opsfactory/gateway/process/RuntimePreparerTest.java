@@ -13,7 +13,6 @@ import java.nio.file.Path;
 import static org.junit.Assert.assertTrue;
 
 public class RuntimePreparerTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 

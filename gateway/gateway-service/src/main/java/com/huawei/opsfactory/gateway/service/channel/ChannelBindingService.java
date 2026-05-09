@@ -23,7 +23,6 @@ import java.util.Map;
 
 @Service
 public class ChannelBindingService {
-
     private static final Logger log = LoggerFactory.getLogger(ChannelBindingService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

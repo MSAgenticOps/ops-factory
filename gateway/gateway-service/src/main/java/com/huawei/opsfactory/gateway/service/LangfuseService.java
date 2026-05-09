@@ -22,7 +22,6 @@ import java.util.TreeMap;
 
 @Service
 public class LangfuseService {
-
     private static final Logger log = LoggerFactory.getLogger(LangfuseService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

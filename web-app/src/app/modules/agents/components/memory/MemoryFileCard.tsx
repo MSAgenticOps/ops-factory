@@ -4,6 +4,47 @@ import Button from '../../../../platform/ui/primitives/Button'
 import './Memory.css'
 import '../prompt/PromptsSection.css'
 
+function EditIcon() {
+    return (
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path
+                d="M4.75 13.95 4 16l2.05-.75 8.5-8.5-1.3-1.3-8.5 8.5Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="m11.95 6.05 1.3 1.3m.65-.65 1.05-1.05a1.15 1.15 0 0 0 0-1.6l-.5-.5a1.15 1.15 0 0 0-1.6 0L11.8 4.6"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M4 16h12"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+            />
+        </svg>
+    )
+}
+
+function TrashIcon() {
+    return (
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path
+                d="M6.5 5.5h7m-6 0V4.75A1.75 1.75 0 0 1 9.25 3h1.5A1.75 1.75 0 0 1 12.5 4.75v.75m-8 0h11m-1 0-.6 8.39a1.75 1.75 0 0 1-1.75 1.61H7.85A1.75 1.75 0 0 1 6.1 13.89L5.5 5.5m2.75 2.5v4m4-4v4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    )
+}
+
 export interface MemoryEntry {
     tags: string[]
     content: string
@@ -110,19 +151,24 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                             {t('prompts.collapse')}
                         </Button>
                     ) : (
-                        <Button variant="secondary" size="sm" className="prompts-edit-btn" onClick={handleEdit}>
-                            {t('common.edit')}
-                        </Button>
+                        <button
+                            type="button"
+                            className="card-icon-action"
+                            onClick={handleEdit}
+                            title={t('common.edit')}
+                            aria-label={t('common.edit')}
+                        >
+                            <EditIcon />
+                        </button>
                     )}
                     <button
                         type="button"
-                        className="memory-delete-icon"
+                        className="card-icon-action card-icon-action-danger"
                         onClick={onDelete}
                         title={t('common.delete')}
+                        aria-label={t('common.delete')}
                     >
-                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H5H10H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H11V12C11 12.5523 10.5523 13 10 13H5C4.44772 13 4 12.5523 4 12V4H3.5C3.22386 4 3 3.77614 3 3.5ZM5 4H10V12H5V4Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-                        </svg>
+                        <TrashIcon />
                     </button>
                 </div>
             </div>

@@ -10,7 +10,6 @@ import java.util.Map;
 
 @Service
 public class QosCalculationService {
-
     private static final BigDecimal[] DEFAULT_AVAILABILITY_THRESHOLDS = {
             new BigDecimal("0.9"), new BigDecimal("0.6"), new BigDecimal("0.3")
     };

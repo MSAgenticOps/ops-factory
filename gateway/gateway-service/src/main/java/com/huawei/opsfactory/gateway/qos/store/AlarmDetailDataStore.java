@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class AlarmDetailDataStore {
-
     private final JsonFileStore<AlarmDetailData> store;
 
     public AlarmDetailDataStore(GatewayProperties properties) {

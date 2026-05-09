@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/cluster-types")
 public class ClusterTypeController {
-
     private static final Logger log = LoggerFactory.getLogger(ClusterTypeController.class);
 
     private final ClusterTypeService clusterTypeService;

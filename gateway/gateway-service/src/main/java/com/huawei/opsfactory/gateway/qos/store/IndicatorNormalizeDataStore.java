@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class IndicatorNormalizeDataStore {
-
     private final JsonFileStore<IndicatorNormalizeData> store;
 
     public IndicatorNormalizeDataStore(GatewayProperties properties) {

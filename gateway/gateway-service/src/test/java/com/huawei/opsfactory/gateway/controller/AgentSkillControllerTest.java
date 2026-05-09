@@ -22,7 +22,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @WebFluxTest(AgentSkillController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class AgentSkillControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

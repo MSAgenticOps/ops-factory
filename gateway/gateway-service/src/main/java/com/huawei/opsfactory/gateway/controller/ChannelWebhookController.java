@@ -20,7 +20,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/channels/webhooks")
 public class ChannelWebhookController {
-
     private static final Logger log = LoggerFactory.getLogger(ChannelWebhookController.class);
 
     private final ChannelAdapterRegistry channelAdapterRegistry;

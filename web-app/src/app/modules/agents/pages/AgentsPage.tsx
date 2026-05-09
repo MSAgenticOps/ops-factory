@@ -9,8 +9,8 @@ import CardGrid from '../../../platform/ui/cards/CardGrid'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import ResourceCard, {
-    ResourceCardDangerAction,
-    ResourceCardPrimaryAction,
+    ResourceCardDeleteAction,
+    ResourceCardEditAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import { CreateAgentModal } from '../components/CreateAgentModal'
@@ -165,14 +165,16 @@ export default function Agents() {
                                             { label: t('agents.mcp'), value: <McpCount agentId={agent.id} /> },
                                         ]}
                                         footer={isAdmin ? (
-                                            <>
-                                                <ResourceCardDangerAction onClick={() => setDeleteTarget({ id: agent.id, name: agent.name })}>
-                                                    {t('agents.deleteAgent')}
-                                                </ResourceCardDangerAction>
-                                                <ResourceCardPrimaryAction onClick={() => navigate(`/agents/${agent.id}/configure`)}>
-                                                    {t('agents.configure')}
-                                                </ResourceCardPrimaryAction>
-                                            </>
+                                            <div className="card-icon-actions">
+                                                <ResourceCardEditAction
+                                                    onClick={() => navigate(`/agents/${agent.id}/configure`)}
+                                                    label={t('agents.configure')}
+                                                />
+                                                <ResourceCardDeleteAction
+                                                    onClick={() => setDeleteTarget({ id: agent.id, name: agent.name })}
+                                                    label={t('agents.deleteAgent')}
+                                                />
+                                            </div>
                                         ) : undefined}
                                     />
                                 )

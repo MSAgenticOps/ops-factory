@@ -22,7 +22,6 @@ import java.util.Set;
 @RestController
 @RequestMapping("/gateway/host-groups")
 public class HostGroupController {
-
     private static final Logger log = LoggerFactory.getLogger(HostGroupController.class);
 
     private final HostGroupService hostGroupService;

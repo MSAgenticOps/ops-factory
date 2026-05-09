@@ -21,7 +21,6 @@ import java.util.UUID;
 
 @Service
 public class SopService {
-
     private static final Logger log = LoggerFactory.getLogger(SopService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

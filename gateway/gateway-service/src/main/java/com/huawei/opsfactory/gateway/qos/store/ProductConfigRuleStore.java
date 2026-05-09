@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class ProductConfigRuleStore {
-
     private final JsonFileStore<ProductConfigRule> store;
 
     public ProductConfigRuleStore(GatewayProperties properties) {

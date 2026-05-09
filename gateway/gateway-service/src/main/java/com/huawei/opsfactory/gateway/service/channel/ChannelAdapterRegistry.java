@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class ChannelAdapterRegistry {
-
     private final Map<String, ChannelAdapter> adaptersByType;
 
     public ChannelAdapterRegistry(List<ChannelAdapter> adapters) {
