@@ -19,10 +19,16 @@ set "DIST_PATH=C:\zhulin\ops-factory\web-app\dist"
 set "ZIP_FILE=C:\zhulin\ops-factory\web-app\dist.zip"
 
 set "FILES[0]=C:\zhulin\ops-factory\gateway\gateway-service\target\gateway-service.jar"
-set "FILES[1]=C:\zhulin\ops-factory\gateway\gateway-common\target\gateway-common-1.0.0-SNAPSHOT.jar"
+set "FILES[1]=C:\zhulin\ops-factory\gateway\gateway-service\target\lib.zip"
 set "FILES[2]=C:\zhulin\goose\handle_ops_app.sh"
 set "FILES[3]=C:\zhulin\goose\handle_ops_app.conf"
 set "FILES[4]=C:\zhulin\ops-factory\web-app\dist.zip"
+set "FILES[5]=C:\zhulin\goose\agents.zip"
+set "FILES[6]=C:\zhulin\ops-factory\gateway\config.yaml"
+set "FILES[7]=C:\zhulin\ops-factory\operation-intelligence\target\operation-intelligence.jar"
+set "FILES[8]=C:\zhulin\ops-factory\operation-intelligence\scripts\dv_server.py"
+
+set "OI_CONFIG_SRC=C:\zhulin\ops-factory\operation-intelligence\config.yaml"
 
 echo Configuration:
 echo   User: %USER%
@@ -53,6 +59,65 @@ if exist "%ZIP_FILE%" (
     echo.
     echo ✗ 压缩失败: %ZIP_FILE%
     echo 请检查源路径是否存在: %DIST_PATH%
+    pause
+    exit /b 1
+)
+
+echo.
+echo ============================================
+echo Step 0b: 压缩lib目录
+echo ============================================
+set "LIB_SRC=C:\zhulin\ops-factory\gateway\gateway-service\target\lib"
+set "LIB_ZIP=C:\zhulin\ops-factory\gateway\gateway-service\target\lib.zip"
+
+if exist "%LIB_ZIP%" (
+    echo 删除旧的压缩文件: %LIB_ZIP%
+    del "%LIB_ZIP%"
+)
+
+powershell -Command "Compress-Archive -Path '%LIB_SRC%\*' -DestinationPath '%LIB_ZIP%' -Force"
+
+if exist "%LIB_ZIP%" (
+    echo.
+    echo ✓ lib目录压缩成功: %LIB_ZIP%
+    for %%F in ("%LIB_ZIP%") do echo 文件大小: %%~zF 字节
+) else (
+    echo.
+    echo ✗ lib目录压缩失败: %LIB_ZIP%
+    pause
+    exit /b 1
+)
+
+echo.
+echo ============================================
+echo Step 0c: 压缩agents目录
+echo ============================================
+set "AGENTS_SRC=C:\zhulin\ops-factory\gateway\agents"
+set "AGENTS_ZIP=C:\zhulin\goose\agents.zip"
+set "AGENTS_STAGING=%TEMP%\agents-staging"
+
+if exist "%AGENTS_ZIP%" (
+    echo 删除旧的压缩文件: %AGENTS_ZIP%
+    del "%AGENTS_ZIP%"
+)
+
+if exist "%AGENTS_STAGING%" rmdir /s /q "%AGENTS_STAGING%"
+
+echo 正在准备agents临时目录（排除node_modules和.goose）...
+robocopy "%AGENTS_SRC%" "%AGENTS_STAGING%" /e /xd node_modules .goose /njh /njs /ndl /nc /np >nul 2>&1
+
+echo 正在压缩agents目录...
+powershell -Command "Compress-Archive -Path '%AGENTS_STAGING%\*' -DestinationPath '%AGENTS_ZIP%' -Force -CompressionLevel Fastest"
+
+if exist "%AGENTS_STAGING%" rmdir /s /q "%AGENTS_STAGING%"
+
+if exist "%AGENTS_ZIP%" (
+    echo.
+    echo ✓ agents目录压缩成功: %AGENTS_ZIP%
+    for %%F in ("%AGENTS_ZIP%") do echo 文件大小: %%~zF 字节
+) else (
+    echo.
+    echo ✗ agents目录压缩失败: %AGENTS_ZIP%
     pause
     exit /b 1
 )
@@ -105,7 +170,7 @@ echo.
 echo [Step 3] Uploading files...
 echo.
 
-for /L %%i in (0,1,4) do (
+for /L %%i in (0,1,8) do (
     set "CURRENT_FILE=!FILES[%%i]!"
     if exist "!CURRENT_FILE!" (
         set /a FILE_COUNT+=1
@@ -135,6 +200,15 @@ echo.
 :: Check if we need to execute remote script
 if !SUCCESS_COUNT! gtr 0 (
     echo Found %SUCCESS_COUNT% successfully uploaded files.
+    echo Uploading OI config as oi-config.yaml...
+    if exist "%OI_CONFIG_SRC%" (
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%OI_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%oi-config.yaml
+        if !errorlevel! equ 0 (
+            echo   OI config uploaded as oi-config.yaml: SUCCESS
+        ) else (
+            echo   OI config upload: FAILED
+        )
+    )
     echo Attempting to execute remote script: /home/paas/gateway/handle_ops_app.sh
     
     "%PLINK_PATH%" -pw %PASSWORD% -batch %USER%@%HOST% "cd /home/paas/gateway/"
