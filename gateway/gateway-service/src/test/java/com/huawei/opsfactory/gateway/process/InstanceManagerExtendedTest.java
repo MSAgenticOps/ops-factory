@@ -32,6 +32,8 @@ import static org.mockito.Mockito.when;
  * - Instance limits (per-user and global)
  * - Dead process detection (getOrSpawn with stale entry)
  * - resetStuckRunningSchedules
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class InstanceManagerExtendedTest {
 

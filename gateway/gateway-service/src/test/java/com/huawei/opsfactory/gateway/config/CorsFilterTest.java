@@ -16,6 +16,8 @@ import static org.junit.Assert.*;
 /**
  * Unit tests for the CORS filter in WebFluxConfig.
  * Covers all origin matching scenarios after removal of isLocalDevOrigin fallback.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class CorsFilterTest {
 

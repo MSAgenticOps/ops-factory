@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
  * GET /agents/{agentId}/sessions
  * GET /agents/{agentId}/sessions/{sessionId}
  * DELETE /agents/{agentId}/sessions/{sessionId}
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class SessionEndpointE2ETest extends BaseE2ETest {
 

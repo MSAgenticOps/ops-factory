@@ -23,6 +23,8 @@ import static org.mockito.Mockito.when;
  * PUT /agents/{agentId}/files/**
  * DELETE /agents/{agentId}/files/**
  * POST /agents/{agentId}/files/upload
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class FileEndpointE2ETest extends BaseE2ETest {
 

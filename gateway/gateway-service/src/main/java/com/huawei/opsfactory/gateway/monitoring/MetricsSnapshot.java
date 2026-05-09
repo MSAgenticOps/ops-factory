@@ -2,6 +2,8 @@ package com.huawei.opsfactory.gateway.monitoring;
 
 /**
  * One 30-second metrics collection snapshot.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class MetricsSnapshot {
 

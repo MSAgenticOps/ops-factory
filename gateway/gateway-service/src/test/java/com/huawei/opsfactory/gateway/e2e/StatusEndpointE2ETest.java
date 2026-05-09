@@ -4,6 +4,8 @@ import org.junit.Test;
 
 /**
  * E2E tests for StatusController endpoints: /status, /me, /config.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class StatusEndpointE2ETest extends BaseE2ETest {
 

@@ -15,6 +15,8 @@ import static org.mockito.Mockito.when;
  * GET /runtime-source/system
  * GET /runtime-source/instances
  * GET /runtime-source/metrics
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 

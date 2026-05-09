@@ -19,6 +19,8 @@ import static org.mockito.Mockito.when;
 /**
  * E2E tests for AgentController endpoints.
  * Tests the full HTTP pipeline: AuthWebFilter → UserContextFilter → AgentController.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class AgentEndpointE2ETest extends BaseE2ETest {
 

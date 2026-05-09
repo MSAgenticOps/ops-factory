@@ -27,6 +27,8 @@ import static org.junit.Assert.assertTrue;
  * - SKIP_FILES filtering in listFiles
  * - resolveFile fallback search
  * - Hidden directory filtering
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class FileServiceExtendedTest {
 

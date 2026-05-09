@@ -2,6 +2,8 @@ package com.huawei.opsfactory.gateway.common.util;
 
 /**
  * Lightweight JSON helpers for extracting values without a full parse.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public final class JsonUtil {
 

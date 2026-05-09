@@ -47,6 +47,8 @@ public class MetricsBuffer {
 
     /**
      * Accumulated per-agent statistics.
+ * @author x00000000
+ * @since 2026-05-09
      */
     public static class AgentStats {
         public int requestCount;

@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
  * E2E tests verifying instance limit enforcement at the HTTP layer.
  * When InstanceManager.getOrSpawn throws IllegalStateException for
  * per-user or global limits, the session reply endpoint should return 5xx.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class InstanceLimitE2ETest extends BaseE2ETest {
 

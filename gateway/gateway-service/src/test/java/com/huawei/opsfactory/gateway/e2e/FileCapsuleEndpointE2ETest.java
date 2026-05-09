@@ -19,6 +19,8 @@ import static org.mockito.Mockito.when;
  * E2E tests for FileCapsuleController endpoints:
  * GET  /agents/{agentId}/file-capsules?sessionId=xxx
  * POST /agents/{agentId}/file-capsules
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 

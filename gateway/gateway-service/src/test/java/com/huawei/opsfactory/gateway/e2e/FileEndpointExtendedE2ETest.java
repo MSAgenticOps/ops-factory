@@ -14,6 +14,8 @@ import static org.mockito.Mockito.when;
  * Extended E2E tests for FileController covering:
  * - Path traversal via controller (returns 403)
  * - Upload without multipart content type (returns 400)
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class FileEndpointExtendedE2ETest extends BaseE2ETest {
 

@@ -20,6 +20,8 @@ import static org.mockito.Mockito.when;
  * GET /agents/{agentId}/mcp
  * POST /agents/{agentId}/mcp
  * DELETE /agents/{agentId}/mcp/{name}
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class McpEndpointE2ETest extends BaseE2ETest {
 
