@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import { useUser } from '../../../platform/providers/UserContext'
+import StatCard from '../../../platform/ui/primitives/StatCard'
 import { getIndicatorDetail, getResourceIndicatorDetail } from '../../../../services/operationIntelligenceAPI'
 import { CHART_COLORS } from '../styles/chart-colors'
 
@@ -84,32 +85,44 @@ export default function DimensionScoreCards({ envCode, startTime, endTime }: Dim
         }],
     })
 
+    const renderTrend = (data: TimeSeriesPoint[], color: string) => (
+        data.length > 0 ? (
+            <ReactECharts
+                option={buildChartOption(data, color)}
+                className="oi-stat-sparkline"
+                style={{ height: 132 }}
+                opts={{ renderer: 'svg' }}
+            />
+        ) : (
+            <div className="empty-state oi-empty-inline">
+                <div className="empty-state-title">{t('operationIntelligence.noData')}</div>
+            </div>
+        )
+    )
+
+    const latestValue = (data: TimeSeriesPoint[]) => (
+        data.length > 0 ? data[data.length - 1].value.toFixed(2) : t('operationIntelligence.noDataShort')
+    )
+
     return (
-        <div className="dimension-score-cards">
-            <div className="score-card score-card-chart">
-                <span className="score-label">{t('operationIntelligence.availability')}</span>
-                {availabilityData.length > 0 ? (
-                    <ReactECharts option={buildChartOption(availabilityData, CHART_COLORS.availability)} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
-                ) : (
-                    <div className="score-chart-empty">{t('operationIntelligence.noData')}</div>
-                )}
-            </div>
-            <div className="score-card score-card-chart">
-                <span className="score-label">{t('operationIntelligence.performance')}</span>
-                {performanceData.length > 0 ? (
-                    <ReactECharts option={buildChartOption(performanceData, CHART_COLORS.performance)} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
-                ) : (
-                    <div className="score-chart-empty">{t('operationIntelligence.noData')}</div>
-                )}
-            </div>
-            <div className="score-card score-card-chart">
-                <span className="score-label">{t('operationIntelligence.resource')}</span>
-                {resourceData.length > 0 ? (
-                    <ReactECharts option={buildChartOption(resourceData, CHART_COLORS.resource)} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
-                ) : (
-                    <div className="score-chart-empty">{t('operationIntelligence.noData')}</div>
-                )}
-            </div>
+        <div className="dimension-score-cards ui-metric-grid">
+            <StatCard
+                label={t('operationIntelligence.availability')}
+                value={latestValue(availabilityData)}
+                tone="success"
+                meta={renderTrend(availabilityData, CHART_COLORS.availability)}
+            />
+            <StatCard
+                label={t('operationIntelligence.performance')}
+                value={latestValue(performanceData)}
+                meta={renderTrend(performanceData, CHART_COLORS.performance)}
+            />
+            <StatCard
+                label={t('operationIntelligence.resource')}
+                value={latestValue(resourceData)}
+                tone="warning"
+                meta={renderTrend(resourceData, CHART_COLORS.resource)}
+            />
         </div>
     )
 }

@@ -15,23 +15,38 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
     const latest = points.length > 0 ? parseFloat(points[points.length - 1].value) : null
 
     const statusColor = (v: number | null) => {
-        if (v === null) return CHART_COLORS.neutral
-        if (v >= 0.9) return CHART_COLORS.good
-        if (v >= 0.7) return CHART_COLORS.warning
-        if (v >= 0.5) return CHART_COLORS.orange
+        if (v === null) {
+            return CHART_COLORS.neutral
+        }
+        if (v >= 0.9) {
+            return CHART_COLORS.good
+        }
+        if (v >= 0.7) {
+            return CHART_COLORS.warning
+        }
+        if (v >= 0.5) {
+            return CHART_COLORS.orange
+        }
         return CHART_COLORS.critical
     }
 
     const statusLabel = (v: number | null) => {
-        if (v === null) return '--'
-        if (v >= 0.9) return t('operationIntelligence.good')
-        if (v >= 0.7) return t('operationIntelligence.warning')
-        if (v >= 0.5) return t('operationIntelligence.orange')
+        if (v === null) {
+            return '--'
+        }
+        if (v >= 0.9) {
+            return t('operationIntelligence.good')
+        }
+        if (v >= 0.7) {
+            return t('operationIntelligence.warning')
+        }
+        if (v >= 0.5) {
+            return t('operationIntelligence.orange')
+        }
         return t('operationIntelligence.critical')
     }
 
     const option = useMemo(() => {
-        const hs = latest !== null ? latest.toFixed(2) : '--'
         const color = statusColor(latest)
 
         const nodes = [
@@ -48,12 +63,6 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
         ]
 
         return {
-            title: {
-                text: `${t('operationIntelligence.topology')}: ${hs}  (${statusLabel(latest)})`,
-                left: 'center',
-                top: 5,
-                textStyle: { fontSize: 14 }
-            },
             tooltip: {},
             series: [{
                 type: 'graph',
@@ -70,12 +79,19 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
     }, [points, envCode, t])
 
     if (!envCode) {
-        return <div className="topology-view">{t('operationIntelligence.noData')}</div>
+        return (
+            <div className="empty-state">
+                <div className="empty-state-title">{t('operationIntelligence.noData')}</div>
+            </div>
+        )
     }
 
     return (
         <div className="topology-view">
-            <ReactECharts option={option} style={{ height: 300 }} />
+            <div className="topology-summary">
+                {t('operationIntelligence.healthScore')}: {latest !== null ? latest.toFixed(2) : '--'} ({statusLabel(latest)})
+            </div>
+            <ReactECharts option={option} className="topology-chart" opts={{ renderer: 'svg' }} />
         </div>
     )
 }

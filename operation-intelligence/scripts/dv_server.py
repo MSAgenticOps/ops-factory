@@ -102,6 +102,9 @@ class MockHandler(BaseHTTPRequestHandler):
             }
         ])
 
+    def do_GET_mos(self):
+        self.do_POST_mos()
+
     # ---- /rest/dvpmservice/v1/openapi/monitor/history/data ----
     def do_POST_monitor_history(self):
         body = self._read_json()

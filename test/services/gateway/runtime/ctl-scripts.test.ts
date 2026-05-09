@@ -25,6 +25,7 @@ const SCRIPTS = {
   langfuse: join(PROJECT_ROOT, 'langfuse', 'scripts', 'ctl.sh'),
   onlyoffice: join(PROJECT_ROOT, 'onlyoffice', 'scripts', 'ctl.sh'),
   exporter: join(PROJECT_ROOT, 'prometheus-exporter', 'scripts', 'ctl.sh'),
+  operationIntelligence: join(PROJECT_ROOT, 'operation-intelligence', 'scripts', 'ctl.sh'),
 } as const
 
 type ScriptName = keyof typeof SCRIPTS
@@ -85,6 +86,14 @@ describe('syntax validation', () => {
       expect(stderr).toBe('')
     })
   }
+
+  it('service scripts avoid find/head pipelines that trip pipefail during startup', async () => {
+    for (const [name, path] of Object.entries(SCRIPTS)) {
+      const content = await readFile(path, 'utf-8')
+      expect(content, `${name} uses a pipefail-unsafe find | head pipeline`)
+        .not.toMatch(/find[\s\S]*\|\s*head\s+-1/)
+    }
+  })
 })
 
 // =============================================================================
@@ -112,6 +121,7 @@ describe('help output', () => {
     const output = stdout + stderr
     expect(output).toContain('gateway')
     expect(output).toContain('skill-market')
+    expect(output).toContain('operation-intelligence')
     expect(output).toContain('webapp')
     expect(output).toContain('langfuse')
     expect(output).toContain('onlyoffice')
@@ -124,6 +134,7 @@ describe('help output', () => {
     expect(output).toContain('ENABLE_ONLYOFFICE')
     expect(output).toContain('ENABLE_LANGFUSE')
     expect(output).toContain('ENABLE_EXPORTER')
+    expect(output).toContain('ENABLE_OPERATION_INTELLIGENCE')
   })
 })
 
@@ -186,6 +197,13 @@ describe('status output', () => {
     expect(typeof code).toBe('number')
     expect(output).toMatch(/[Ee]xporter|not running|running|FAIL|OK/)
   })
+
+  it('operation-intelligence status reports a concrete state', async () => {
+    const { stdout, stderr, code } = await runCtl('operationIntelligence', ['status'])
+    const output = stdout + stderr
+    expect(typeof code).toBe('number')
+    expect(output).toMatch(/operation-intelligence|not running|running|FAIL|OK/)
+  })
 })
 
 // =============================================================================
@@ -206,6 +224,13 @@ describe('shutdown implementation', () => {
   it('exporter shutdown is graceful', async () => {
     const { code } = await runCtl('exporter', ['shutdown'])
     expect(code).toBe(0)
+  })
+
+  it('operation-intelligence script defines shutdown without mutating live service state in tests', async () => {
+    const content = await readFile(SCRIPTS.operationIntelligence, 'utf-8')
+    expect(content).toContain('do_shutdown()')
+    expect(content).toContain('daemon_stop "${PID_FILE}" "operation-intelligence"')
+    expect(content).toContain('stop_dv_server')
   })
 })
 
@@ -243,12 +268,14 @@ describe('service toggles', () => {
       ENABLE_ONLYOFFICE: 'false',
       ENABLE_LANGFUSE: 'false',
       ENABLE_EXPORTER: 'false',
+      ENABLE_OPERATION_INTELLIGENCE: 'false',
     })
     const output = stdout + stderr
     // Should NOT contain onlyoffice/langfuse/exporter status lines
     expect(output).not.toMatch(/OnlyOffice running/)
     expect(output).not.toMatch(/Langfuse running/)
     expect(output).not.toMatch(/Exporter running/)
+    expect(output).not.toMatch(/Operation Intelligence running/)
     // But should still check gateway and webapp
     expect(output).toMatch(/[Gg]ateway/)
     expect(output).toMatch(/[Ww]ebapp/)
@@ -264,7 +291,7 @@ describe('--background flag parsing', () => {
   // We can't actually start services here, but we can verify that
   // scripts that support --background accept it without syntax errors
   // by checking help output still works with the flag
-  for (const name of ['gateway', 'skillMarket', 'webapp', 'exporter'] as const) {
+  for (const name of ['gateway', 'skillMarket', 'webapp', 'exporter', 'operationIntelligence'] as const) {
     it(`${name} accepts --background flag`, async () => {
       const { stdout, stderr, code } = await runCtl(name, ['--help', '--background'])
       const output = stdout + stderr
