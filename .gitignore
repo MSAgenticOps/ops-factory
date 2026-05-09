@@ -15,6 +15,7 @@ pnpm-debug.log*
 .env.*
 !.env.example
 gateway/agents/*/config/secrets.yaml
+.codex/
 
 # Node
 node_modules/
