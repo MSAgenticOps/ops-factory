@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import ReactECharts from 'echarts-for-react'
 import { useUser } from '../../../platform/providers/UserContext'
+import PieDistributionCard from '../../../platform/ui/primitives/PieDistributionCard'
+import SectionCard from '../../../platform/ui/primitives/SectionCard'
 import { getContributionData } from '../../../../services/operationIntelligenceAPI'
 import { CHART_COLORS } from '../styles/chart-colors'
 
@@ -29,51 +30,41 @@ export default function ContributionAnalysis({ envCode, startTime, endTime }: Co
     }, [envCode, startTime, endTime, userId])
 
     const typeLabel = (type: string) => {
-        if (type === 'A') return t('operationIntelligence.availability')
-        if (type === 'P') return t('operationIntelligence.performance')
+        if (type === 'A') {
+            return t('operationIntelligence.availability')
+        }
+        if (type === 'P') {
+            return t('operationIntelligence.performance')
+        }
         return t('operationIntelligence.resource')
     }
 
-    const typeColor = (type: string) => {
-        if (type === 'A') return CHART_COLORS.availability
-        if (type === 'P') return CHART_COLORS.performance
-        return CHART_COLORS.resource
-    }
-
-    const option = data.length > 0 ? {
-        grid: { left: 80, right: 40, top: 8, bottom: 8 },
-        xAxis: { type: 'value' as const, show: false },
-        yAxis: {
-            type: 'category' as const,
-            show: true,
-            data: data.map(d => typeLabel(d.type)),
-            axisLine: { show: false },
-            axisTick: { show: false },
-            axisLabel: { fontSize: 13, color: 'var(--color-text-secondary, #666)' }
-        },
-        series: [{
-            type: 'bar' as const,
-            data: data.map(d => ({
-                value: d.contribution,
-                itemStyle: { color: typeColor(d.type) }
-            })),
-            barWidth: '40%',
-            label: {
-                show: true,
-                position: 'right' as const,
-                formatter: (p: { value: number }) => `${(p.value * 100).toFixed(2)}%`
-            }
-        }]
-    } : null
-
     if (data.length === 0) {
-        return <div className="contribution-analysis contribution-card">{t('operationIntelligence.noData')}</div>
+        return (
+            <SectionCard
+                title={t('operationIntelligence.contributionDetail')}
+                className="contribution-card"
+                bodyClassName="contribution-card-empty-body"
+            >
+                <div className="empty-state">
+                    <div className="empty-state-title">{t('operationIntelligence.noData')}</div>
+                </div>
+            </SectionCard>
+        )
     }
 
     return (
-        <div className="contribution-analysis contribution-card">
-            <span className="score-label">{t('operationIntelligence.contributionDetail')}</span>
-            <ReactECharts option={option} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
-        </div>
+        <PieDistributionCard
+            title={t('operationIntelligence.contributionDetail')}
+            items={data.map(item => ({
+                label: typeLabel(item.type),
+                value: Number((item.contribution * 100).toFixed(2)),
+            }))}
+            colors={[CHART_COLORS.availability, CHART_COLORS.performance, CHART_COLORS.resource]}
+            otherLabel={t('operationIntelligence.other')}
+            maxVisibleItems={3}
+            maxHeight={180}
+            className="contribution-card"
+        />
     )
 }

@@ -341,11 +341,12 @@ gateway:
     "businessIntelligenceServiceUrl": "http://127.0.0.1:8093",
     "skillMarketServiceUrl": "http://127.0.0.1:8095",
     "operationIntelligenceServiceUrl": "http://127.0.0.1:8096",
+    "operationIntelligenceSecretKey": "change-this-oi-secret",
     "port": 5173
 }
 ```
 
-`gateway.secret-key` 必须和 `web-app.config.json` 的 `gatewaySecretKey` 保持一致。`control-center/config.yaml` 中 gateway 服务的 `auth.secret-key` 也要同步。
+`gateway.secret-key` 必须和 `web-app/config.json` 的 `gatewaySecretKey` 保持一致。`operation-intelligence.secret-key` 必须和 `web-app/config.json` 的 `operationIntelligenceSecretKey` 保持一致。`control-center/config.yaml` 中 gateway 服务的 `auth.secret-key` 也要同步。
 
 ## LLM 配置
 

@@ -1,135 +1,267 @@
-/* Operation Intelligence module-specific styles — relies on platform shared classes:
-   page-container, sidebar-top-page, mon-page-header, mon-section,
-   ui-section-title, config-tabs, config-tab, config-tab-active,
-   ui-metric-grid, page-title
-*/
+/* Operation Intelligence uses platform primitives for page, cards, filters, and tables.
+   Module CSS is limited to domain-specific layout and chart/table sizing. */
 
-/* ---- Page layout ---- */
 .operation-intelligence-page {
-    max-width: 1400px !important;
-}
-
-.operation-intelligence-page .mon-page-header {
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-/* ---- Cards + Contribution row ---- */
-.oi-cards-row {
-    display: flex;
-    gap: 16px;
-    align-items: stretch;
-}
-
-.oi-cards-row .dimension-score-cards {
-    flex: 1;
-}
-
-.contribution-card {
-    flex: 0 0 260px;
-    padding: 16px;
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #e0e0e0);
-    border-radius: 6px;
+    --ui-chart-card-title-size: 1.125rem;
+    --operation-intelligence-section-gap: var(--spacing-6);
     display: flex;
     flex-direction: column;
+    gap: var(--operation-intelligence-section-gap);
 }
 
-/* ---- Filters bar ---- */
-.operation-intelligence-filters {
-    display: flex;
-    gap: 8px;
+.operation-intelligence-filter-toolbar {
+    min-width: 0;
+    width: 100%;
+}
+
+.operation-intelligence-control-panel {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.95fr) minmax(220px, 1.3fr) minmax(160px, 0.95fr) minmax(max-content, 1fr) 32px;
     align-items: center;
+    gap: 10px;
+    min-width: 0;
+    width: 100%;
 }
 
-.operation-intelligence-filters select,
-.operation-intelligence-filters button {
-    padding: 6px 12px;
-    border: 1px solid var(--color-border, #d0d0d0);
-    border-radius: 4px;
-    background: var(--color-surface, #fafafa);
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--color-text-primary, #32353b);
+.operation-intelligence-filters {
+    display: contents;
 }
 
-.operation-intelligence-filters select:focus,
-.operation-intelligence-filters button:focus {
-    outline: 2px solid var(--color-focus-ring, #4a90d9);
-    outline-offset: -1px;
+.operation-intelligence-filters .filter-select-field {
+    align-items: center;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    min-width: 0;
+    width: 100%;
+    min-height: 38px;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
-.operation-intelligence-filters button:hover {
-    background: var(--color-border, #eee);
+.operation-intelligence-filters .filter-select-field:nth-child(1) {
+    grid-column: 1;
 }
 
-.oi-filter-label {
-    font-size: 13px;
-    color: var(--color-text-secondary, #666);
+.operation-intelligence-filters .filter-select-field:nth-child(2) {
+    grid-column: 2;
+}
+
+.operation-intelligence-filters .filter-select-field:nth-child(3) {
+    grid-column: 3;
+}
+
+.operation-intelligence-filters .filter-select-label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
     white-space: nowrap;
 }
 
-/* ---- Score cards ---- */
+.operation-intelligence-filters .filter-select {
+    min-width: 0;
+    min-height: 36px;
+    width: 100%;
+    padding: 0 36px 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}
+
+.operation-intelligence-filters .filter-select:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.operation-intelligence-score-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: flex-end;
+    grid-column: 4;
+    min-width: 0;
+}
+
+.operation-intelligence-score-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}
+
+.operation-intelligence-score-chip-label,
+.operation-intelligence-score-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    line-height: 1;
+}
+
+.operation-intelligence-score-chip-value {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.operation-intelligence-refresh-button {
+    grid-column: 5;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    border-color: var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+.operation-intelligence-refresh-button:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+}
+
+.oi-cards-row {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    gap: var(--spacing-4);
+    align-items: stretch;
+    margin-top: 0;
+}
+
+.oi-score-panel {
+    display: flex;
+    min-width: 0;
+    height: 100%;
+}
+
 .dimension-score-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-4);
+    width: 100%;
+    height: 100%;
+    align-items: stretch;
 }
 
-.score-card {
-    padding: 16px;
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #e0e0e0);
-    border-radius: 6px;
-    text-align: center;
+.dimension-score-cards .stat-card {
+    min-height: 268px;
 }
 
-.score-label {
-    display: block;
-    font-size: 13px;
-    color: var(--color-text-secondary, #666);
-    margin-bottom: 4px;
+.dimension-score-cards .stat-card-label {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 700;
 }
 
-.score-card-chart {
-    display: flex;
-    flex-direction: column;
+.oi-stat-sparkline {
+    height: 132px;
+    width: 100%;
 }
 
-.score-chart-empty {
-    height: 120px;
+.oi-empty-inline {
+    min-height: 132px;
+    padding: var(--spacing-4);
+}
+
+.contribution-card {
+    height: 100%;
+    min-height: 0;
+}
+
+.contribution-card .pie-distribution-card-body {
+    min-height: 0;
+}
+
+.contribution-card .pie-distribution-card-content {
+    gap: var(--spacing-3);
+}
+
+.contribution-card .pie-distribution-chart {
+    width: 136px;
+    height: 136px;
+}
+
+.contribution-card .pie-distribution-row {
+    grid-template-columns: minmax(56px, 1fr) 54px 46px;
+    column-gap: var(--spacing-2);
+}
+
+.contribution-card .pie-distribution-value,
+.contribution-card .pie-distribution-percent {
+    font-size: var(--font-size-xs);
+}
+
+.contribution-card-empty-body {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text-secondary, #999);
-    font-size: 13px;
+    min-height: 180px;
 }
 
-/* ---- Chart ---- */
+.operation-intelligence-section {
+    margin-top: 0;
+}
+
+.operation-intelligence-chart-section {
+    gap: var(--spacing-4);
+}
+
+.operation-intelligence-chart-card-body {
+    min-height: 0;
+}
+
+.operation-intelligence-chart-surface {
+    min-width: 0;
+    width: 100%;
+}
+
+.operation-intelligence-chart-surface-line {
+    padding-top: var(--spacing-1);
+}
+
+.operation-intelligence-chart,
 .operation-intelligence-chart-loading,
 .operation-intelligence-chart-empty {
     height: 300px;
+    min-height: 300px;
+    width: 100%;
+}
+
+.operation-intelligence-chart-loading,
+.operation-intelligence-chart-empty {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text-secondary, #999);
-    font-size: 14px;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
 }
 
-/* ---- Tabs (use platform config-tabs + local tweaks) ---- */
-.oi-tabs {
+.operation-intelligence-page .analytics-table-card-shell > .oi-tabs {
     margin-bottom: 0;
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
 }
 
-.oi-detail-section {
-    border-top-left-radius: 0;
+.oi-detail-content {
+    margin-top: var(--spacing-5);
 }
 
-/* ---- Tables ---- */
+.indicator-detail-table,
+.alarm-detail-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
 .indicator-detail-table table,
 .alarm-detail-table table {
     width: 100%;
+    min-width: 760px;
     border-collapse: collapse;
 }
 
@@ -137,20 +269,133 @@
 .indicator-detail-table td,
 .alarm-detail-table th,
 .alarm-detail-table td {
-    padding: 8px 12px;
+    padding: var(--spacing-3) var(--spacing-4);
     text-align: left;
-    border-bottom: 1px solid var(--color-border, #eee);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    vertical-align: top;
 }
 
-/* ---- Contribution analysis ---- */
-.contribution-analysis {
-    padding: 12px;
+.indicator-detail-table th,
+.alarm-detail-table th {
+    color: var(--color-text-muted);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: var(--color-bg-secondary);
+    white-space: nowrap;
 }
 
-/* ---- Topology view ---- */
+.indicator-detail-table td,
+.alarm-detail-table td {
+    font-variant-numeric: tabular-nums;
+}
+
+.indicator-detail-table tr:last-child td,
+.alarm-detail-table tr:last-child td {
+    border-bottom: none;
+}
+
 .topology-view {
-    padding: 12px;
-    border: 1px solid var(--color-border, #e0e0e0);
-    border-radius: 6px;
-    background: var(--color-surface, #fafafa);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    min-height: 320px;
+}
+
+.topology-summary {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+}
+
+.topology-chart {
+    height: 300px;
+    width: 100%;
+}
+
+@media (max-width: 1180px) {
+    .oi-cards-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .dimension-score-cards {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dimension-score-cards .stat-card {
+        min-height: 0;
+    }
+
+    .operation-intelligence-control-panel {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .operation-intelligence-filters {
+        display: contents;
+    }
+
+    .operation-intelligence-score-chips {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .operation-intelligence-page {
+        gap: var(--spacing-4);
+    }
+
+    .operation-intelligence-filters .filter-select-field {
+        grid-template-columns: minmax(0, 1fr);
+        flex-basis: 100%;
+        width: 100%;
+    }
+
+    .operation-intelligence-filters .filter-select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .operation-intelligence-score-chips {
+        flex-wrap: wrap;
+    }
+
+    .contribution-card .pie-distribution-card-content {
+        gap: var(--spacing-3);
+    }
+
+    .contribution-card .pie-distribution-chart {
+        width: min(100%, 180px);
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .operation-intelligence-chart,
+    .operation-intelligence-chart-loading,
+    .operation-intelligence-chart-empty,
+    .topology-view {
+        min-height: 260px;
+    }
+
+    .topology-chart {
+        height: 260px;
+    }
+
+    .indicator-detail-table table,
+    .alarm-detail-table table {
+        min-width: 100%;
+    }
+
+    .indicator-detail-table th,
+    .indicator-detail-table td,
+    .alarm-detail-table th,
+    .alarm-detail-table td {
+        padding: var(--spacing-2);
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }

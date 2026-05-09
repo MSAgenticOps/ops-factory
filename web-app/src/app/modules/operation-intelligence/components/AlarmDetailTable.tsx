@@ -16,13 +16,40 @@ export default function AlarmDetailTable({ envCode, startTime, endTime }: AlarmD
     const [data, setData] = useState<Record<string, unknown>[]>([])
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        if (!envCode) return
+        if (!envCode) {
+            return
+        }
+        setError(null)
         getIndicatorDetail('/qos/getAlarmIndicatorDetail', envCode, startTime, endTime, page, 10, userId)
-            .then((res: { results?: Record<string, unknown>[]; total?: number }) => { setData(res.results || []); setTotal(res.total || 0) })
-            .catch(() => { setData([]); setTotal(0) })
-    }, [envCode, startTime, endTime, page, userId])
+            .then((res: { results?: Record<string, unknown>[]; total?: number }) => {
+                setData(res.results || [])
+                setTotal(res.total || 0)
+            })
+            .catch((err) => {
+                setData([])
+                setTotal(0)
+                setError(err instanceof Error ? err.message : t('operationIntelligence.loadFailed'))
+            })
+    }, [envCode, startTime, endTime, page, userId, t])
+
+    if (error) {
+        return (
+            <div className="conn-banner conn-banner-error">
+                {t('operationIntelligence.loadFailedWithReason', { error })}
+            </div>
+        )
+    }
+
+    if (data.length === 0) {
+        return (
+            <div className="empty-state">
+                <div className="empty-state-title">{t('operationIntelligence.noData')}</div>
+            </div>
+        )
+    }
 
     return (
         <div className="alarm-detail-table">
@@ -39,9 +66,7 @@ export default function AlarmDetailTable({ envCode, startTime, endTime }: AlarmD
                     </tr>
                 </thead>
                 <tbody>
-                    {data.length === 0 ? (
-                        <tr><td colSpan={7}>{t('operationIntelligence.noData')}</td></tr>
-                    ) : data.map((row, i) => (
+                    {data.map((row, i) => (
                         <tr key={row.alarmName ? `${row.alarmName}-${row.occurUtc}-${i}` : i}>
                             <td>{row.occurUtc ? new Date(Number(row.occurUtc)).toLocaleString() : ''}</td>
                             <td>{String(row.alarmName ?? '')}</td>

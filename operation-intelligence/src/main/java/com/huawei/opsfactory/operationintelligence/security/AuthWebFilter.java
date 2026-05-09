@@ -18,6 +18,7 @@ public class AuthWebFilter implements WebFilter {
     private static final Logger log = LoggerFactory.getLogger(AuthWebFilter.class);
     private static final String HEADER_SECRET_KEY = "x-secret-key";
     private static final String QUERY_KEY = "key";
+    private static final String HEALTH_PATH = "/actuator/health";
 
     private final OperationIntelligenceProperties properties;
 
@@ -27,7 +28,9 @@ public class AuthWebFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        if ("OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().name())) {
+        String path = exchange.getRequest().getURI().getPath();
+        if ("OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().name())
+                || HEALTH_PATH.equals(path)) {
             return chain.filter(exchange);
         }
 
@@ -38,7 +41,7 @@ public class AuthWebFilter implements WebFilter {
 
         if (!properties.getSecretKey().equals(key)) {
             log.warn("Rejecting unauthorized request path={} reason=invalid-secret-key",
-                    exchange.getRequest().getURI().getPath());
+                    path);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
