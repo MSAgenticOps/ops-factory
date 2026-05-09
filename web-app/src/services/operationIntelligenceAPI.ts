@@ -3,7 +3,7 @@
  * Aligned with operation-intelligence QoS REST endpoints (/operation-intelligence/qos/*)
  */
 
-import { OPERATION_INTELLIGENCE_SERVICE_URL, GATEWAY_SECRET_KEY } from '../config/runtime'
+import { OPERATION_INTELLIGENCE_SERVICE_URL, OPERATION_INTELLIGENCE_SECRET_KEY } from '../config/runtime'
 
 import type { HealthIndicatorResponse, IndicatorDetailResponse } from '../types/operationIntelligence';
 
@@ -17,7 +17,7 @@ export interface EnvironmentInfo {
 function operationIntelligenceHeaders(userId?: string | null): Record<string, string> {
   const h: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-secret-key': GATEWAY_SECRET_KEY,
+    'x-secret-key': OPERATION_INTELLIGENCE_SECRET_KEY,
   }
   if (userId) h['x-user-id'] = userId
   return h

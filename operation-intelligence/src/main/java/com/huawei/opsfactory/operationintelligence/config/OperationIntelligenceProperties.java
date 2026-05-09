@@ -14,10 +14,19 @@ public class OperationIntelligenceProperties {
     private static final Logger log = LoggerFactory.getLogger(OperationIntelligenceProperties.class);
     private static final String CONFIG_PATH_KEY = "OI_CONFIG_PATH";
 
+    private String secretKey = "test";
     private String corsOrigin = "*";
     private String dataRoot = "";
     private Qos qos = new Qos();
     private Logging logging = new Logging();
+
+    public String getSecretKey() {
+        return secretKey;
+    }
+
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
+    }
 
     public String getCorsOrigin() {
         return corsOrigin;

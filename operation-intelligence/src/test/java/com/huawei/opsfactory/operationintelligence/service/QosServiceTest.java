@@ -132,6 +132,42 @@ class QosServiceTest {
         assertTrue(service.getProductConfigRule("UNKNOWN").isEmpty());
     }
 
+    @Test
+    void getHealthIndicator_nullEnvCode_returnsAllData() {
+        IndicatorNormalizeData d1 = new IndicatorNormalizeData();
+        d1.setTimestamp(1000L);
+        d1.setEnvCode("ENV1");
+        d1.setType("A");
+        d1.setIndicatorValue(BigDecimal.ONE);
+
+        IndicatorNormalizeData d2 = new IndicatorNormalizeData();
+        d2.setTimestamp(1000L);
+        d2.setEnvCode("ENV2");
+        d2.setType("A");
+        d2.setIndicatorValue(BigDecimal.ONE);
+
+        when(normalizeStore.loadRange(0L, 2000L)).thenReturn(List.of(d1, d2));
+
+        List<Map<String, Object>> result = service.getHealthIndicator(null, 0L, 2000L);
+        assertNotNull(result);
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void getIndicatorDetail_nullEnvCode_returnsAll() {
+        when(detailStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
+        Map<String, Object> result = service.getIndicatorDetail(null, "A", 0L, 2000L, 1, 10);
+        assertNotNull(result);
+        assertEquals(0, result.get("total"));
+    }
+
+    @Test
+    void getIndicatorDetail_pageSizeOverMax_clamped() {
+        when(detailStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
+        Map<String, Object> result = service.getIndicatorDetail("ENV1", "A", 0L, 2000L, 1, 5000);
+        assertEquals(10, result.get("pageSize"));
+    }
+
     private static BigDecimal bd(String val) {
         return new BigDecimal(val);
     }

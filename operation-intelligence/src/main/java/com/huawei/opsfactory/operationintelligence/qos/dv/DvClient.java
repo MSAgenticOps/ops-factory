@@ -11,8 +11,8 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import jakarta.annotation.PreDestroy;
-import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -65,6 +65,7 @@ public class DvClient {
                     .body(Mono.just(jsonBody), String.class)
                     .retrieve()
                     .bodyToMono(String.class)
+                    .subscribeOn(Schedulers.boundedElastic())
                     .block(Duration.ofSeconds(60));
 
             if (response == null || response.isBlank()) {
@@ -117,6 +118,7 @@ public class DvClient {
                     .body(Mono.just(jsonBody), String.class)
                     .retrieve()
                     .bodyToMono(String.class)
+                    .subscribeOn(Schedulers.boundedElastic())
                     .block(Duration.ofSeconds(60));
 
             if (response == null || response.isBlank()) {
@@ -153,6 +155,7 @@ public class DvClient {
                     .body(Mono.just(jsonBody), String.class)
                     .retrieve()
                     .bodyToMono(String.class)
+                    .subscribeOn(Schedulers.boundedElastic())
                     .block(Duration.ofSeconds(60));
 
             if (response == null || response.isBlank()) {

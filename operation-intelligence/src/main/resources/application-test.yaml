@@ -6,6 +6,7 @@ spring:
     name: operation-intelligence
 
 operation-intelligence:
+  secret-key: test
   cors-origin: "*"
   qos:
     enabled: false

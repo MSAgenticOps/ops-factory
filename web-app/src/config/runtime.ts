@@ -11,6 +11,7 @@ interface RuntimeConfig {
     businessIntelligenceServiceUrl?: string
     skillMarketServiceUrl?: string
     operationIntelligenceServiceUrl?: string
+    operationIntelligenceSecretKey?: string
     logging?: {
         level?: WebappLoggingRuntimeConfig['level']
         consoleEnabled?: boolean
@@ -149,6 +150,7 @@ export let KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(undefined)
 export let BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(undefined)
 export let SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(undefined)
 export let OPERATION_INTELLIGENCE_SERVICE_URL = resolveOperationIntelligenceServiceUrl(undefined)
+export let OPERATION_INTELLIGENCE_SECRET_KEY = DEFAULT_SECRET_KEY
 
 function setRuntimeConfig(config: RuntimeConfig): void {
     GATEWAY_URL = resolveGatewayUrl(config.gatewayUrl)
@@ -159,6 +161,7 @@ function setRuntimeConfig(config: RuntimeConfig): void {
     BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(config.businessIntelligenceServiceUrl)
     SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(config.skillMarketServiceUrl)
     OPERATION_INTELLIGENCE_SERVICE_URL = resolveOperationIntelligenceServiceUrl(config.operationIntelligenceServiceUrl)
+    OPERATION_INTELLIGENCE_SECRET_KEY = config.operationIntelligenceSecretKey || DEFAULT_SECRET_KEY
     configureWebappLogging(config.logging)
 }
 

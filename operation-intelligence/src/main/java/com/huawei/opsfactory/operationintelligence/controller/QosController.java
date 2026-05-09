@@ -32,6 +32,7 @@ public class QosController {
     public Mono<Map<String, Object>> getHealthIndicator(@RequestBody Map<String, Object> req) {
         return Mono.fromCallable(() -> {
             String envCode = (String) req.get("envCode");
+            requireEnvCode(envCode);
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
             validateTimeRange(startTime, endTime);
@@ -56,6 +57,7 @@ public class QosController {
     public Mono<Map<String, Object>> getResourceIndicatorDetail(@RequestBody Map<String, Object> req) {
         return Mono.fromCallable(() -> {
             String envCode = (String) req.get("envCode");
+            requireEnvCode(envCode);
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
             validateTimeRange(startTime, endTime);
@@ -70,6 +72,7 @@ public class QosController {
     public Mono<Map<String, Object>> getContributionData(@RequestBody Map<String, Object> req) {
         return Mono.fromCallable(() -> {
             String envCode = (String) req.get("envCode");
+            requireEnvCode(envCode);
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
             validateTimeRange(startTime, endTime);
@@ -84,6 +87,7 @@ public class QosController {
     public Mono<Map<String, Object>> getAlarmIndicatorDetail(@RequestBody Map<String, Object> req) {
         return Mono.fromCallable(() -> {
             String envCode = (String) req.get("envCode");
+            requireEnvCode(envCode);
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
             validateTimeRange(startTime, endTime);
@@ -119,6 +123,7 @@ public class QosController {
     private Mono<Map<String, Object>> getIndicatorDetail(Map<String, Object> req, String type) {
         return Mono.fromCallable(() -> {
             String envCode = (String) req.get("envCode");
+            requireEnvCode(envCode);
             long startTime = toLong(req.get("startTime"));
             long endTime = toLong(req.get("endTime"));
             validateTimeRange(startTime, endTime);
@@ -135,17 +140,43 @@ public class QosController {
         if (endTime <= startTime) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endTime must be greater than startTime");
         }
+        long maxSpanMs = 90L * 24 * 60 * 60 * 1000;
+        if (endTime - startTime > maxSpanMs) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "time range must not exceed 90 days");
+        }
+    }
+
+    private void requireEnvCode(String envCode) {
+        if (envCode == null || envCode.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "envCode is required");
+        }
     }
 
     static long toLong(Object val) {
         if (val instanceof Number) return ((Number) val).longValue();
-        if (val instanceof String) return Long.parseLong((String) val);
-        return 0;
+        if (val instanceof String) {
+            try {
+                return Long.parseLong((String) val);
+            } catch (NumberFormatException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Invalid numeric value: " + val);
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Invalid numeric value: " + val);
     }
 
     static int toInt(Object val) {
         if (val instanceof Number) return ((Number) val).intValue();
-        if (val instanceof String) return Integer.parseInt((String) val);
-        return 1;
+        if (val instanceof String) {
+            try {
+                return Integer.parseInt((String) val);
+            } catch (NumberFormatException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Invalid numeric value: " + val);
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Invalid numeric value: " + val);
     }
 }

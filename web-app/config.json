@@ -7,6 +7,7 @@
     "businessIntelligenceServiceUrl": "http://127.0.0.1:8093",
     "skillMarketServiceUrl": "http://127.0.0.1:8095",
     "operationIntelligenceServiceUrl": "http://127.0.0.1:8096",
+    "operationIntelligenceSecretKey": "test",
     "logging": {
         "level": "info",
         "consoleEnabled": true,

@@ -83,4 +83,26 @@ class DvClientTest {
         assertThrows(RuntimeException.class,
                 () -> noSleepClient.executeWithRetry(() -> { throw new RuntimeException("fail"); }, "testOp"));
     }
+
+    @Test
+    void parsePerformanceResult_emptyDatas_returnsEmpty() {
+        String json = "{\"result\":{\"datas\":[]}}";
+        assertTrue(client.parsePerformanceResult(json).isEmpty());
+    }
+
+    @Test
+    void parsePerformanceResult_invalidJson_returnsEmpty() {
+        assertTrue(client.parsePerformanceResult("not json").isEmpty());
+    }
+
+    @Test
+    void parseAlarms_invalidJson_returnsEmpty() {
+        assertTrue(client.parseAlarms("not json").isEmpty());
+    }
+
+    @Test
+    void parseAlarms_missingHits_returnsEmpty() {
+        String json = "{\"status\":\"ok\"}";
+        assertTrue(client.parseAlarms(json).isEmpty());
+    }
 }

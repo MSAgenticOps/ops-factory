@@ -10,6 +10,7 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
@@ -83,6 +84,7 @@ public class DvAuthService {
                     .body(Mono.just(loginBody), String.class)
                     .retrieve()
                     .bodyToMono(String.class)
+                    .subscribeOn(Schedulers.boundedElastic())
                     .block(Duration.ofSeconds(30));
 
             if (response == null || response.isBlank()) {
