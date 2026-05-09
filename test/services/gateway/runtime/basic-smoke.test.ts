@@ -34,6 +34,8 @@ describe('repository basic smoke checks', () => {
     'onlyoffice/config.yaml.example',
     'prometheus-exporter/config.yaml',
     'prometheus-exporter/config.yaml.example',
+    'operation-intelligence/config.yaml',
+    'operation-intelligence/config.yaml.example',
     'knowledge-service/pom.xml',
   ]
 
@@ -53,6 +55,7 @@ describe('repository basic smoke checks', () => {
     'langfuse/scripts/ctl.sh',
     'onlyoffice/scripts/ctl.sh',
     'prometheus-exporter/scripts/ctl.sh',
+    'operation-intelligence/scripts/ctl.sh',
   ]
 
   for (const relativePath of shellScripts) {
@@ -69,6 +72,14 @@ describe('repository basic smoke checks', () => {
     expect(content).toContain('ENABLE_ONLYOFFICE')
     expect(content).toContain('ENABLE_LANGFUSE')
     expect(content).toContain('ENABLE_EXPORTER')
+    expect(content).toContain('ENABLE_OPERATION_INTELLIGENCE')
+    expect(content).toContain('operation-intelligence')
+  })
+
+  it('operation-intelligence startup script health check uses the public actuator endpoint', async () => {
+    const content = await readFile(join(PROJECT_ROOT, 'operation-intelligence', 'scripts', 'ctl.sh'), 'utf-8')
+    expect(content).toContain('/actuator/health')
+    expect(content).toContain('wait_http_ok "operation-intelligence"')
   })
 
   it('business intelligence reporting presets avoid UTC date serialization shortcuts', async () => {

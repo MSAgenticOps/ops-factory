@@ -62,7 +62,10 @@ wait_http_ok() {
 check_strict_ssl_false() {
     local file="${SERVICE_DIR}/config.yaml"
     [ -f "${file}" ] || return 1
-    node -e "const y=require('yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.parse(f);const envs=c?.['operation-intelligence']?.qos?.['dv-environments'];if(Array.isArray(envs)&&envs.some(e=>e['strict-ssl']===false)){process.stdout.write('true')}" 2>/dev/null || true
+    awk '
+        /^[[:space:]]*strict-ssl:[[:space:]]*false([[:space:]]*(#.*)?)?$/ { found = 1 }
+        END { if (found) printf "true" }
+    ' "${file}" 2>/dev/null || true
 }
 
 resolve_python() {
@@ -88,9 +91,10 @@ start_dv_server() {
     fi
     local dv_script="${SCRIPT_DIR}/dv_server.py"
     [ -f "${dv_script}" ] || { log_warn "dv_server.py not found at ${dv_script}"; return 0; }
+    mkdir -p "${LOG_DIR}"
     log_info "Starting dv_server (strict-ssl=false detected)..."
     cd "${SCRIPT_DIR}"
-    "${PYTHON}" "${dv_script}" &
+    nohup "${PYTHON}" -u "${dv_script}" > "${LOG_DIR}/dv_server.log" 2>&1 < /dev/null &
     echo $! > "${DV_SERVER_PID_FILE}"
     sleep 1
     if kill -0 "$(cat "${DV_SERVER_PID_FILE}")" 2>/dev/null; then
