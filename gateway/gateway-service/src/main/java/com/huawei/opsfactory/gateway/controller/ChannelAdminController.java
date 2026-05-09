@@ -11,7 +11,6 @@ import com.huawei.opsfactory.gateway.service.channel.WeChatLoginService;
 import com.huawei.opsfactory.gateway.service.channel.WhatsAppMessagePumpService;
 import com.huawei.opsfactory.gateway.service.channel.WhatsAppWebLoginService;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
-import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectivityResult;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelLoginState;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestRequest;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestResult;
@@ -116,10 +115,6 @@ public class ChannelAdminController {
                         .body(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Exception e) {
-                log.error("Failed to create channel", e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(errorBody("Failed to create channel"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -142,10 +137,6 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Exception e) {
-                log.error("Failed to update channel {}", channelId, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(errorBody("Failed to update channel"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -190,10 +181,6 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of("success", true));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Exception e) {
-                log.error("Failed to delete channel {}", channelId, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(errorBody("Failed to delete channel"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -342,10 +329,6 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", state));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Exception e) {
-                log.error("Failed to start login for channel {}", channelId, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(errorBody("Failed to start channel login"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -392,15 +375,21 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", state));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Throwable e) {
+            } catch (IllegalStateException e) {
                 log.error("Failed to logout channel {}", channelId, e);
-                ChannelDetail detail = channelConfigService.getChannel(channelId, userId);
-                if (detail != null) {
-                    detail = channelConfigService.resetChannelRuntimeState(channelId, userId);
+                ChannelDetail detail = null;
+                try {
+                    detail = channelConfigService.getChannel(channelId, userId);
+                    if (detail != null) {
+                        detail = channelConfigService.resetChannelRuntimeState(channelId, userId);
+                    }
+                } catch (IllegalArgumentException resetError) {
+                    log.warn("Failed to reset runtime state for channel {} after logout error: {}",
+                            channelId, resetError.getMessage());
                 }
                 if (detail == null) {
                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(errorBody(e.getMessage() != null ? e.getMessage() : "Failed to clear channel login state"));
+                            .body(errorBody("Failed to clear channel login state"));
                 }
                 String disconnectedMessage = "wechat".equals(detail.type())
                         ? "WeChat login required"
@@ -451,10 +440,6 @@ public class ChannelAdminController {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
             } catch (IllegalStateException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Exception e) {
-                log.error("Failed to run self-test for channel {}", channelId, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(errorBody("Failed to run WhatsApp self-test"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -470,10 +455,6 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
-            } catch (Exception e) {
-                log.error("Failed to set enabled={} for channel {}", enabled, channelId, e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(errorBody("Failed to update channel status"));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

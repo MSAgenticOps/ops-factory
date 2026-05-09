@@ -22,12 +22,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -119,6 +121,51 @@ public class ChannelAdminControllerTest {
                 .jsonPath("$.connectivity.ok").isEqualTo(true);
 
         verify(adapter).testConnectivity("wechat-main", "admin");
+    }
+
+    @Test
+    public void testCreateChannel_unexpectedFailureIsSanitized() {
+        when(channelConfigService.createChannel(any(), eq("admin")))
+                .thenThrow(new IllegalStateException("disk full"));
+
+        webTestClient.post().uri("/gateway/channels")
+                .header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""
+                        {
+                          "id": "wechat-main",
+                          "name": "WeChat Main",
+                          "type": "wechat",
+                          "defaultAgentId": "fo-copilot",
+                          "config": {
+                            "authStateDir": "auth"
+                          }
+                        }
+                        """)
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.error").isEqualTo("Internal server error");
+    }
+
+    @Test
+    public void testLogout_fallsBackToDisconnectedStateWhenHelperCleanupFails() {
+        when(channelConfigService.getChannel("wechat-main", "admin")).thenReturn(channelDetail("wechat"));
+        when(channelConfigService.resetChannelRuntimeState("wechat-main", "admin")).thenReturn(channelDetail("wechat"));
+        when(weChatLoginService.logout("wechat-main", "admin"))
+                .thenThrow(new IllegalStateException("helper process still running"));
+
+        webTestClient.post().uri("/gateway/channels/wechat-main/logout")
+                .header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(true)
+                .jsonPath("$.state.status").isEqualTo("disconnected")
+                .jsonPath("$.state.message").isEqualTo("WeChat login required");
     }
 
     private ChannelDetail channelDetail(String type) {
