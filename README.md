@@ -8,6 +8,7 @@ The current architectural boundary is:
 - `control-center` provides platform health, config, log, and service control views
 - `knowledge-service` and `business-intelligence` provide domain services consumed by the platform
 - `skill-market` provides a reusable skill package catalog that agents can install from
+- `operation-intelligence` provides QoS health curve data collection, scoring, and query APIs
 - optional integrations such as `langfuse`, `onlyoffice`, and `prometheus-exporter` stay optional
 
 ## Demo Media
@@ -98,11 +99,15 @@ Web App (:5173)
     |
     +--> Control Center (:8094)
            - service health, logs, config, service actions
+    |
+    +--> Operation Intelligence (:8096, optional)
+           - QoS health curve data collection, scoring, query APIs
 
 Optional integrations:
 - Langfuse (:3100) for observability
 - OnlyOffice (:8080) for office document preview
 - Prometheus Exporter (:9091) for metrics
+- Operation Intelligence (:8096) for QoS health curve
 ```
 
 Two boundary rules matter across the repo:
@@ -123,6 +128,7 @@ See [docs/architecture/overview.md](./docs/architecture/overview.md) for the ser
 | Skill Market | `skill-market/` | `8095` | Java 21 + Spring Boot | Reusable skill package catalog, validation, metadata, and package downloads |
 | Control Center | `control-center/` | `8094` | Java 21 + Spring Boot | Service health, logs, config access, service control actions |
 | Prometheus Exporter | `prometheus-exporter/` | `9091` | Java 21 + Spring Boot | Gateway-oriented Prometheus metrics export |
+| Operation Intelligence | `operation-intelligence/` | `8096` | Java 21 + Spring Boot | QoS health curve data collection, scoring, and query APIs (optional) |
 | TypeScript SDK | `typescript-sdk/` | n/a | TypeScript | Programmatic gateway client |
 | Langfuse | `langfuse/` | `3100` | Docker Compose | Optional LLM observability integration |
 | OnlyOffice | `onlyoffice/` | `8080` | Docker Compose | Optional office document preview |
@@ -137,6 +143,7 @@ ops-factory/
 ├── business-intelligence/    # BI service
 ├── skill-market/             # Reusable skill package catalog service
 ├── control-center/           # Platform control plane service
+├── operation-intelligence/   # QoS health curve service
 ├── prometheus-exporter/      # Prometheus metrics exporter
 ├── typescript-sdk/           # @goosed/sdk client library
 ├── test/                     # Cross-service integration and E2E coverage
@@ -175,6 +182,7 @@ Optional services:
 
 ```bash
 cp business-intelligence/config.yaml.example business-intelligence/config.yaml
+cp operation-intelligence/config.yaml.example operation-intelligence/config.yaml
 cp prometheus-exporter/config.yaml.example prometheus-exporter/config.yaml
 cp langfuse/config.yaml.example langfuse/config.yaml
 cp onlyoffice/config.yaml.example onlyoffice/config.yaml
@@ -210,6 +218,7 @@ Run the mandatory platform stack without optional integrations:
 ENABLE_ONLYOFFICE=false \
 ENABLE_LANGFUSE=false \
 ENABLE_EXPORTER=false \
+ENABLE_OPERATION_INTELLIGENCE=false \
 ./scripts/ctl.sh startup all
 ```
 
@@ -245,6 +254,7 @@ cd business-intelligence && mvn test
 cd skill-market && mvn test
 cd control-center && mvn test
 cd prometheus-exporter && mvn test
+cd operation-intelligence && mvn test
 ```
 
 ### SDK and Cross-Service Tests
@@ -268,6 +278,7 @@ Main config entry points:
 - [`skill-market/config.yaml.example`](./skill-market/config.yaml.example)
 - [`control-center/config.yaml.example`](./control-center/config.yaml.example)
 - [`prometheus-exporter/config.yaml.example`](./prometheus-exporter/config.yaml.example)
+- [`operation-intelligence/config.yaml.example`](./operation-intelligence/config.yaml.example)
 - [`langfuse/config.yaml.example`](./langfuse/config.yaml.example)
 - [`onlyoffice/config.yaml.example`](./onlyoffice/config.yaml.example)
 - [`web-app/config.json.example`](./web-app/config.json.example)

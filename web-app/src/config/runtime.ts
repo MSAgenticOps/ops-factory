@@ -10,6 +10,8 @@ interface RuntimeConfig {
     knowledgeServiceUrl?: string
     businessIntelligenceServiceUrl?: string
     skillMarketServiceUrl?: string
+    operationIntelligenceServiceUrl?: string
+    operationIntelligenceSecretKey?: string
     logging?: {
         level?: WebappLoggingRuntimeConfig['level']
         consoleEnabled?: boolean
@@ -25,6 +27,7 @@ const CONTROL_CENTER_PATH_PREFIX = '/control-center'
 const KNOWLEDGE_PATH_PREFIX = '/knowledge'
 const BUSINESS_INTELLIGENCE_PATH_PREFIX = '/business-intelligence'
 const SKILL_MARKET_PATH_PREFIX = '/skill-market'
+const OPERATION_INTELLIGENCE_PATH_PREFIX = '/operation-intelligence'
 
 function isLoopbackHost(host: string): boolean {
     return LOOPBACK_HOSTS.has(host)
@@ -120,6 +123,24 @@ function resolveSkillMarketServiceUrl(raw: string | undefined): string {
     }
 }
 
+function resolveOperationIntelligenceServiceUrl(raw: string | undefined): string {
+    const pageHost = window.location.hostname || '127.0.0.1'
+    const pageProtocol = window.location.protocol || 'http:'
+    const fallbackOrigin = `${pageProtocol}//${pageHost}:8096`
+
+    if (!raw) return `${OPERATION_INTELLIGENCE_PATH_PREFIX}`
+
+    try {
+        const url = new URL(raw)
+        if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
+            url.hostname = pageHost
+        }
+        return `${url.origin}${OPERATION_INTELLIGENCE_PATH_PREFIX}`
+    } catch {
+        return `${fallbackOrigin}${OPERATION_INTELLIGENCE_PATH_PREFIX}`
+    }
+}
+
 const DEFAULT_SECRET_KEY = 'test'
 export let GATEWAY_URL = resolveGatewayUrl(undefined)
 export let GATEWAY_SECRET_KEY = DEFAULT_SECRET_KEY
@@ -128,6 +149,8 @@ export let CONTROL_CENTER_SECRET_KEY = DEFAULT_SECRET_KEY
 export let KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(undefined)
 export let BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(undefined)
 export let SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(undefined)
+export let OPERATION_INTELLIGENCE_SERVICE_URL = resolveOperationIntelligenceServiceUrl(undefined)
+export let OPERATION_INTELLIGENCE_SECRET_KEY = DEFAULT_SECRET_KEY
 
 function setRuntimeConfig(config: RuntimeConfig): void {
     GATEWAY_URL = resolveGatewayUrl(config.gatewayUrl)
@@ -137,6 +160,8 @@ function setRuntimeConfig(config: RuntimeConfig): void {
     KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(config.knowledgeServiceUrl)
     BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(config.businessIntelligenceServiceUrl)
     SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(config.skillMarketServiceUrl)
+    OPERATION_INTELLIGENCE_SERVICE_URL = resolveOperationIntelligenceServiceUrl(config.operationIntelligenceServiceUrl)
+    OPERATION_INTELLIGENCE_SECRET_KEY = config.operationIntelligenceSecretKey || DEFAULT_SECRET_KEY
     configureWebappLogging(config.logging)
 }
 

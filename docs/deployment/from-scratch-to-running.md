@@ -22,6 +22,7 @@ flowchart LR
     gateway -.可选观测.-> lf["langfuse\nDocker Compose\n可选 :3100"]
     gateway -.可选预览.-> oo["onlyoffice\nDocker Compose\n可选 :8080"]
     gateway -.可选指标.-> pe["prometheus-exporter\nSpring Boot / Java 21\n可选 :9091"]
+    web -.可选健康曲线.-> oi["operation-intelligence\nSpring Boot / Java 21\n可选 :8096"]
 ```
 
 ## 服务组件清单
@@ -39,6 +40,7 @@ flowchart LR
 | Langfuse | `langfuse/` | `3100` | 否 | LLM 观测，可选 Docker Compose 组件 |
 | OnlyOffice | `onlyoffice/` | `8080` | 否 | Office 文档预览，可选 Docker Compose 组件 |
 | Prometheus Exporter | `prometheus-exporter/` | `9091` | 否 | Gateway 指标导出，可选 Java 服务 |
+| Operation Intelligence | `operation-intelligence/` | `8096` | 否 | QoS 健康曲线数据采集、评分与查询 API |
 | TypeScript SDK | `typescript-sdk/` | 无 | 否 | 前端依赖本地 SDK，也可独立构建测试 |
 
 ## 硬件需求
@@ -283,6 +285,7 @@ chmod +x gateway/scripts/ctl.sh web-app/scripts/ctl.sh
 chmod +x knowledge-service/scripts/ctl.sh business-intelligence/scripts/ctl.sh
 chmod +x skill-market/scripts/ctl.sh control-center/scripts/ctl.sh
 chmod +x prometheus-exporter/scripts/ctl.sh
+chmod +x operation-intelligence/scripts/ctl.sh
 chmod +x langfuse/scripts/ctl.sh onlyoffice/scripts/ctl.sh
 ```
 
@@ -297,6 +300,7 @@ cp knowledge-service/config.yaml.example knowledge-service/config.yaml
 cp business-intelligence/config.yaml.example business-intelligence/config.yaml
 cp skill-market/config.yaml.example skill-market/config.yaml
 cp control-center/config.yaml.example control-center/config.yaml
+cp operation-intelligence/config.yaml.example operation-intelligence/config.yaml
 ```
 
 复制可选配置：
@@ -336,6 +340,7 @@ gateway:
     "knowledgeServiceUrl": "http://127.0.0.1:8092",
     "businessIntelligenceServiceUrl": "http://127.0.0.1:8093",
     "skillMarketServiceUrl": "http://127.0.0.1:8095",
+    "operationIntelligenceServiceUrl": "http://127.0.0.1:8096",
     "port": 5173
 }
 ```
@@ -487,6 +492,7 @@ cd /opt/ops-factory/knowledge-service && mvn package -DskipTests
 cd /opt/ops-factory/business-intelligence && mvn package -DskipTests
 cd /opt/ops-factory/skill-market && mvn package -DskipTests
 cd /opt/ops-factory/control-center && mvn package -DskipTests
+cd /opt/ops-factory/operation-intelligence && mvn package -DskipTests
 cd /opt/ops-factory/web-app && npm run build
 ```
 
@@ -526,7 +532,7 @@ ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
 不启用所有可选组件：
 
 ```bash
-ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
+ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ENABLE_OPERATION_INTELLIGENCE=false ./scripts/ctl.sh startup all
 ```
 
 设置 Gateway REST API password：
@@ -567,7 +573,7 @@ ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ct
 
 ```bash
 ./scripts/ctl.sh status
-lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|9091|3100|8080)'
+lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|8096|9091|3100|8080)'
 ```
 
 检查 HTTP 健康状态：
@@ -578,6 +584,7 @@ curl -fsS http://127.0.0.1:8092/actuator/health
 curl -fsS http://127.0.0.1:8093/actuator/health
 curl -fsS http://127.0.0.1:8094/actuator/health
 curl -fsS http://127.0.0.1:8095/actuator/health
+curl -fsS http://127.0.0.1:8096/actuator/health
 curl -fsS http://127.0.0.1:5173
 ```
 
@@ -612,6 +619,7 @@ UI 验证建议按顺序执行：
 | Skill Market | `skill-market/logs/skill-market.pid` | `skill-market/logs/skill-market.log`、`skill-market/logs/skill-market-console.log` |
 | Control Center | `control-center/logs/control-center.pid` | `control-center/logs/control-center.log` |
 | Prometheus Exporter | `prometheus-exporter/logs/prometheus-exporter.pid` | `prometheus-exporter/logs/exporter.log` |
+| Operation Intelligence | `operation-intelligence/logs/operation-intelligence.pid` | `operation-intelligence/logs/operation-intelligence.log` |
 | Langfuse | Docker | `docker compose -f langfuse/docker-compose.yml logs -f` |
 | OnlyOffice | Docker | `docker compose -f onlyoffice/docker-compose.yml logs -f` |
 
@@ -679,7 +687,7 @@ SKILL_MARKET_LOG_LEVEL_APP=DEBUG ./scripts/ctl.sh restart skill-market
 
 ```bash
 ./scripts/ctl.sh status
-lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|9091|3100|8080)'
+lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|8096|9091|3100|8080)'
 tail -n 200 gateway/logs/gateway.log
 tail -n 200 web-app/logs/webapp.log
 ```
@@ -1007,6 +1015,7 @@ cd /opt/ops-factory
 tar -czf /tmp/ops-factory-config-backup-$(date +%Y%m%d%H%M%S).tar.gz \
   gateway/config.yaml web-app/config.json knowledge-service/config.yaml \
   business-intelligence/config.yaml skill-market/config.yaml control-center/config.yaml \
+  operation-intelligence/config.yaml \
   gateway/agents knowledge-service/data skill-market/data business-intelligence/data
 ```
 
@@ -1023,7 +1032,7 @@ cd ../business-intelligence && mvn package -DskipTests
 cd ../skill-market && mvn package -DskipTests
 cd ../control-center && mvn package -DskipTests
 cd ..
-ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
+ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ENABLE_OPERATION_INTELLIGENCE=false ./scripts/ctl.sh startup all
 ./scripts/ctl.sh status
 ```
 
@@ -1048,7 +1057,7 @@ ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ct
 跳过可选服务：
 
 ```bash
-ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
+ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ENABLE_OPERATION_INTELLIGENCE=false ./scripts/ctl.sh startup all
 ```
 
 端口检查：

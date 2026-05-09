@@ -49,7 +49,7 @@
     "scheduler": "Scheduler",
     "monitoring": "Monitoring",
     "controlCenter": "Control Center",
-    "healthCurve": "Health Curve",
+    "operationIntelligence": "Operation Intelligence",
     "businessIntelligence": "Business Intelligence",
     "remoteDiagnosis": "Remote Diagnosis",
     "faultDiagnosis": "SOP Workflow",
@@ -2245,20 +2245,17 @@
     "noUpstreamClusters": "No upstream clusters",
     "noDownstreamClusters": "No downstream clusters"
   },
-  "healthCurve": {
+  "operationIntelligence": {
     "title": "Business Health Overview",
     "availability": "Availability",
     "product": "Product",
     "environment": "Environment",
     "performance": "Performance",
     "resource": "Resource",
-    "healthCurve": "Health Curve",
-    "detailTitle": "Health Detail",
+    "chart": "Health Curve",
     "availabilityDetail": "Availability Detail",
     "performanceDetail": "Performance Detail",
     "alarmDetail": "Alarm Detail",
-    "selectEnv": "Select Environment",
-    "selectProduct": "Select Product",
     "last15Min": "Last 15 Min",
     "lastHour": "Last Hour",
     "last2Hours": "Last 2 Hours",
@@ -2271,7 +2268,6 @@
     "noData": "No health data available",
     "indicatorName": "Indicator Name",
     "dn": "DN",
-    "value": "Value",
     "score": "Score",
     "successRatio": "Success Ratio",
     "successCount": "Success Count",
@@ -2290,8 +2286,6 @@
     "good": "Good",
     "warning": "Warning",
     "orange": "Orange",
-    "critical": "Critical",
-    "pagePlaceholder": "Page number",
-    "goToPage": "Go"
+    "critical": "Critical"
   }
 }
