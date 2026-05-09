@@ -6,7 +6,7 @@
 - `web-app` 负责统一前端体验与业务页面编排
 - `gateway` 是浏览器、SDK 与渠道接入的主入口，负责鉴权、路由、会话编排与运行时管理
 - `gateway` 按 `(agentId, userId)` 维度托管实际 Agent Runtime
-- `knowledge-service`、`business-intelligence`、`skill-market`、`control-center` 等服务提供独立领域能力
+- `knowledge-service`、`business-intelligence`、`operation-intelligence`、`skill-market`、`control-center` 等服务提供独立领域能力
 - `langfuse`、`onlyoffice`、`prometheus-exporter` 等保持为可选集成，不应成为最小可运行链路的硬依赖
 
 ## System Diagram
@@ -39,8 +39,8 @@
           |--------------------------------|  |---------------------------|  |----------------------|  |----------------------|
           | isolated by (agentId, userId)  |  | knowledge-service         |  | health / logs /      |  | langfuse             |
           | goosed process per runtime     |  | business-intelligence     |  | config / actions     |  | onlyoffice           |
-          |                                |  | skill-market              |  |                      |  |                      |
-          | runtime data under             |  +---------------------------+  +----------------------+  | prometheus-exporter  |
+          |                                |  | operation-intelligence    |  |                      |  |                      |
+          | runtime data under             |  | skill-market              |  +----------------------+  | prometheus-exporter  |
           | gateway/users/<user>/agents/*  |                                                           | observability /      |
           +----------------+---------------+                                                           | preview / metrics    |
                            |                                                                           +----------------------+

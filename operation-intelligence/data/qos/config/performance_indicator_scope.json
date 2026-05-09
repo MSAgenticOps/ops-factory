@@ -1,0 +1,26 @@
+[
+  {
+    "agentSolutionType": "DigitalCRM",
+    "indicatorCode": "success_rate",
+    "indicatorName": "Web处理成功率",
+    "type": "A",
+    "moType": "com.huawei.itpaas.platformservice.nslb",
+    "measUnitKey": "urlClusterKpi",
+    "measObject": "",
+    "measTypeKeys": "urlCluster_successRatio,urlCluster_Success,urlCluster_TotalCount",
+    "thresholds": "30:0;60:0.3;90:0.6;95:0.95",
+    "weight": 1.0
+  },
+  {
+    "agentSolutionType": "DigitalCRM",
+    "indicatorCode": "avg_response_time",
+    "indicatorName": "Web处理平均时延",
+    "type": "P",
+    "moType": "com.huawei.itpaas.platformservice.nslb",
+    "measUnitKey": "urlClusterKpi",
+    "measObject": "",
+    "measTypeKeys": "urlCluster_averageResTime,urlCluster_MinResTime,urlCluster_MaxResTime",
+    "thresholds": "1000:0;800:0.3;500:0.6;200:0.95",
+    "weight": 1.0
+  }
+]

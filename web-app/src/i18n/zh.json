@@ -49,7 +49,7 @@
     "scheduler": "定时任务",
     "monitoring": "监控",
     "controlCenter": "控制中心",
-    "healthCurve": "健康曲线",
+    "operationIntelligence": "智能运维",
     "businessIntelligence": "业务智能",
     "remoteDiagnosis": "远程诊断管理",
     "faultDiagnosis": "SOP 工作流",
@@ -2245,14 +2245,14 @@
     "noUpstreamClusters": "暂无上游集群",
     "noDownstreamClusters": "暂无下游集群"
   },
-  "healthCurve": {
+  "operationIntelligence": {
     "title": "业务健康状态总览",
     "availability": "可用性",
     "product": "产品",
     "environment": "环境",
     "performance": "性能",
     "resource": "资源",
-    "healthCurve": "健康曲线",
+    "chart": "健康曲线",
     "detailTitle": "健康详情",
     "availabilityDetail": "可用性详情",
     "performanceDetail": "性能详情",

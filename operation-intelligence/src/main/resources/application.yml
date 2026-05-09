@@ -1,0 +1,17 @@
+server:
+  port: 8096
+
+spring:
+  application:
+    name: operation-intelligence
+  config:
+    import: optional:file:${OI_CONFIG_PATH:./config.yaml}
+
+logging:
+  config: classpath:log4j2-spring.xml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

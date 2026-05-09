@@ -1,0 +1,108 @@
+package com.huawei.opsfactory.operationintelligence.service;
+
+import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
+import com.huawei.opsfactory.operationintelligence.qos.model.IndicatorNormalizeData;
+import com.huawei.opsfactory.operationintelligence.qos.store.AlarmDetailDataStore;
+import com.huawei.opsfactory.operationintelligence.qos.store.IndicatorDetailDataStore;
+import com.huawei.opsfactory.operationintelligence.qos.store.IndicatorNormalizeDataStore;
+import com.huawei.opsfactory.operationintelligence.qos.store.ProductConfigRuleStore;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class QosServiceTest {
+
+    private QosService service;
+    private IndicatorNormalizeDataStore normalizeStore;
+    private IndicatorDetailDataStore detailStore;
+    private AlarmDetailDataStore alarmStore;
+    private ProductConfigRuleStore ruleStore;
+
+    @BeforeEach
+    void setUp() {
+        QosCalculationService calcService = new QosCalculationService();
+        normalizeStore = mock(IndicatorNormalizeDataStore.class);
+        detailStore = mock(IndicatorDetailDataStore.class);
+        alarmStore = mock(AlarmDetailDataStore.class);
+        ruleStore = mock(ProductConfigRuleStore.class);
+        OperationIntelligenceProperties props = new OperationIntelligenceProperties();
+
+        service = new QosService(calcService, ruleStore, normalizeStore, detailStore, alarmStore, props);
+    }
+
+    @Test
+    void getHealthIndicator_returnsNormalizedData() {
+        IndicatorNormalizeData d1 = new IndicatorNormalizeData();
+        d1.setTimestamp(1000L);
+        d1.setEnvCode("ENV1");
+        d1.setType("A");
+        d1.setIndicatorValue(BigDecimal.ONE);
+
+        IndicatorNormalizeData d2 = new IndicatorNormalizeData();
+        d2.setTimestamp(1000L);
+        d2.setEnvCode("ENV1");
+        d2.setType("P");
+        d2.setIndicatorValue(bd("0.8"));
+
+        when(normalizeStore.loadRange(0L, 2000L)).thenReturn(List.of(d1, d2));
+
+        List<Map<String, Object>> result = service.getHealthIndicator("ENV1", 0L, 2000L);
+        assertNotNull(result);
+        verify(normalizeStore).loadRange(0L, 2000L);
+    }
+
+    @Test
+    void getHealthIndicator_filtersByEnvCode() {
+        IndicatorNormalizeData d1 = new IndicatorNormalizeData();
+        d1.setTimestamp(1000L);
+        d1.setEnvCode("ENV1");
+
+        IndicatorNormalizeData d2 = new IndicatorNormalizeData();
+        d2.setTimestamp(1000L);
+        d2.setEnvCode("ENV2");
+
+        when(normalizeStore.loadRange(0L, 2000L)).thenReturn(List.of(d1, d2));
+
+        List<Map<String, Object>> result = service.getHealthIndicator("ENV1", 0L, 2000L);
+        assertNotNull(result);
+    }
+
+    @Test
+    void getHealthIndicator_emptyData() {
+        when(normalizeStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
+
+        List<Map<String, Object>> result = service.getHealthIndicator("ENV1", 0L, 2000L);
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getEnvironments_returnsFromConfig() {
+        OperationIntelligenceProperties.Qos.DvEnvironment env = new OperationIntelligenceProperties.Qos.DvEnvironment();
+        env.setEnvCode("ENV1");
+        env.setEnvName("Test Env");
+        env.setAgentSolutionType("TYPE1");
+
+        OperationIntelligenceProperties props = new OperationIntelligenceProperties();
+        props.getQos().setDvEnvironments(List.of(env));
+
+        service = new QosService(
+                new QosCalculationService(), ruleStore, normalizeStore, detailStore, alarmStore, props);
+
+        List<Map<String, String>> result = service.getEnvironments();
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("ENV1", result.get(0).get("envCode"));
+        assertEquals("Test Env", result.get(0).get("envName"));
+    }
+
+    private static BigDecimal bd(String val) {
+        return new BigDecimal(val);
+    }
+}

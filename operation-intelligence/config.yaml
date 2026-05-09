@@ -1,0 +1,58 @@
+# Operation Intelligence runtime configuration
+# Spring Boot loads this file directly via OI_CONFIG_PATH.
+
+server:
+  port: 8096                            # env override: OI_PORT
+
+operation-intelligence:
+  cors-origin: "*"                      # env override: OI_CORS_ORIGIN
+
+  # Optional: override data directory (defaults to ./data relative to config file)
+  # Set to "../gateway" to reuse existing gateway/data/qos/ during migration
+  # data-root: "../gateway"
+
+  qos:
+    enabled: true                             # enable health curve collection and API
+    collection-interval-ms: 60000             # metrics collection interval (1 min)
+    rotation-interval-ms: 3600000             # data file rotation interval (1 hour)
+    raw-data-retention-days: 7
+    detail-data-retention-days: 30
+    normalize-data-retention-days: 90
+    weights:
+      availability: 0.4                       # wA (0~1, wA+wP+wR=1)
+      performance: 0.4                        # wP
+      resource: 0.2                           # wR
+    dv-environments: 
+      - env-code: "DigitalCRM.sit"
+        env-name: "DigitalCRM SIT"
+        agent-solution-type: "DigitalCRM"
+        product-type-name: "DigitalCRM"
+        server-url: "https://127.0.0.1:26335"
+        utm-user: "admin"
+        utm-password: "changeit"
+        crt-content: ""                       # Base64 encoded certificate
+        crt-file-name: "client.jks"
+        strict-ssl: false                       # reject insecure SSL fallback (default: true)
+    
+    # DV environments
+    #  - env-code: "DigitalCRM.sit"
+    #    env-name: "DigitalCRM SIT"
+    #    agent-solution-type: "DigitalCRM"
+    #    product-type-name: "DigitalCRM"
+    #    server-url: "https://127.0.0.1:26335"
+    #    utm-user: "admin"
+    #    utm-password: "changeit"
+    #    crt-content: ""                       # Base64 encoded certificate
+    #    crt-file-name: "client.jks"
+    #    strict-ssl: false                       # reject insecure SSL fallback (default: true)
+
+  logging:
+    access-log-enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.huawei.opsfactory.operationintelligence: INFO
+    org.springframework: WARN
+    reactor: WARN
+    io.netty: WARN

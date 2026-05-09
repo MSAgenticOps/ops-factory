@@ -49,7 +49,7 @@
     "scheduler": "Scheduler",
     "monitoring": "Monitoring",
     "controlCenter": "Control Center",
-    "healthCurve": "Health Curve",
+    "operationIntelligence": "Operation Intelligence",
     "businessIntelligence": "Business Intelligence",
     "remoteDiagnosis": "Remote Diagnosis",
     "faultDiagnosis": "SOP Workflow",
@@ -2245,14 +2245,14 @@
     "noUpstreamClusters": "No upstream clusters",
     "noDownstreamClusters": "No downstream clusters"
   },
-  "healthCurve": {
+  "operationIntelligence": {
     "title": "Business Health Overview",
     "availability": "Availability",
     "product": "Product",
     "environment": "Environment",
     "performance": "Performance",
     "resource": "Resource",
-    "healthCurve": "Health Curve",
+    "chart": "Health Curve",
     "detailTitle": "Health Detail",
     "availabilityDetail": "Availability Detail",
     "performanceDetail": "Performance Detail",
