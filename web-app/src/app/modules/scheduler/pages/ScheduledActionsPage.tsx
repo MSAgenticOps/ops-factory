@@ -17,8 +17,9 @@ import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import { slugify } from '../../../../config/runtime'
 import ResourceCard, {
+    ResourceCardActionGroup,
     ResourceCardDeleteAction,
-    ResourceCardEditAction,
+    ResourceCardConfigureAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import '../styles/scheduled-actions.css'
@@ -477,8 +478,8 @@ export default function ScheduledActions() {
                                     { label: t('scheduler.lastRun'), value: job.last_run ? new Date(job.last_run).toLocaleString() : t('scheduler.never') },
                                 ]}
                                 footer={(
-                                    <div className="card-icon-actions">
-                                        <ResourceCardEditAction
+                                    <ResourceCardActionGroup>
+                                        <ResourceCardConfigureAction
                                             onClick={() => void openEditModal(job)}
                                             label={t('scheduler.configure')}
                                         />
@@ -486,7 +487,7 @@ export default function ScheduledActions() {
                                             onClick={() => handleDelete(job)}
                                             label={t('common.delete')}
                                         />
-                                    </div>
+                                    </ResourceCardActionGroup>
                                 )}
                             />
                         ))}

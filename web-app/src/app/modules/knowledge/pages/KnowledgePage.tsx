@@ -6,8 +6,9 @@ import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import ResourceCard, {
+    ResourceCardActionGroup,
+    ResourceCardConfigureAction,
     ResourceCardDeleteAction,
-    ResourceCardEditAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
@@ -417,8 +418,8 @@ export default function Knowledge() {
                                         { label: t('knowledge.updatedAt'), value: formatDate(source.updatedAt) },
                                     ]}
                                     footer={(
-                                        <div className="card-icon-actions">
-                                            <ResourceCardEditAction
+                                        <ResourceCardActionGroup>
+                                            <ResourceCardConfigureAction
                                                 onClick={() => navigate(`/knowledge/${source.id}`)}
                                                 label={t('knowledge.configure')}
                                             />
@@ -426,7 +427,7 @@ export default function Knowledge() {
                                                 onClick={() => setDeleteTarget(source)}
                                                 label={t('common.delete')}
                                             />
-                                        </div>
+                                        </ResourceCardActionGroup>
                                     )}
                                 />
                             )

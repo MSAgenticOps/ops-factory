@@ -4,7 +4,14 @@ import type { EChartsOption } from 'echarts'
 import { useTranslation } from 'react-i18next'
 import ControlCenterChartCard from '../components/ControlCenterChartCard'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
-import ResourceCard, { type ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
+import ResourceCard, {
+  ResourceCardActionGroup,
+  ResourceCardConfigureAction,
+  ResourceCardRestartAction,
+  ResourceCardStartAction,
+  ResourceCardStopAction,
+  type ResourceStatusTone,
+} from '../../../platform/ui/primitives/ResourceCard'
 import Button from '../../../platform/ui/primitives/Button'
 import StatCard from '../../../platform/ui/primitives/StatCard'
 import { useToast } from '../../../platform/providers/ToastContext'
@@ -1220,30 +1227,39 @@ function ServiceCard({
       footer={(
         <div className="control-center-service-footer">
           <div className="control-center-service-footer-left">
-            {hasActions ? (
-              <div className="control-center-service-actions">
-                {showStart && (
-                  <Button size="sm" tone="quiet" onClick={() => onAction(service, 'start')} disabled={!!pendingAction}>
-                    {pendingAction === 'start' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.start')}
-                  </Button>
-                )}
-                {showRestart && (
-                  <Button size="sm" tone="quiet" onClick={() => onAction(service, 'restart')} disabled={!!pendingAction}>
-                    {pendingAction === 'restart' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.restart')}
-                  </Button>
-                )}
-                {showStop && (
-                  <Button size="sm" variant="danger" tone="quiet" onClick={() => onAction(service, 'stop')} disabled={!!pendingAction}>
-                    {pendingAction === 'stop' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.stop')}
-                  </Button>
-                )}
-              </div>
-            ) : null}
             {service.message ? <span className="control-center-service-message">{service.message}</span> : null}
           </div>
-          <Button size="sm" variant="primary" onClick={onConfigure}>
-            {t('controlCenter.configure')}
-          </Button>
+          <ResourceCardActionGroup className="control-center-service-actions">
+            {hasActions && (
+              <>
+                {showStart && (
+                  <ResourceCardStartAction
+                    onClick={() => onAction(service, 'start')}
+                    disabled={!!pendingAction}
+                    label={pendingAction === 'start' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.start')}
+                  />
+                )}
+                {showRestart && (
+                  <ResourceCardRestartAction
+                    onClick={() => onAction(service, 'restart')}
+                    disabled={!!pendingAction}
+                    label={pendingAction === 'restart' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.restart')}
+                  />
+                )}
+                {showStop && (
+                  <ResourceCardStopAction
+                    onClick={() => onAction(service, 'stop')}
+                    disabled={!!pendingAction}
+                    label={pendingAction === 'stop' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.stop')}
+                  />
+                )}
+              </>
+            )}
+            <ResourceCardConfigureAction
+              onClick={onConfigure}
+              label={t('controlCenter.configure')}
+            />
+          </ResourceCardActionGroup>
         </div>
       )}
     />

@@ -1,13 +1,17 @@
 import { useState, useEffect, useMemo, useCallback, type ReactNode, type SVGProps } from 'react'
 import {
     CodeXml,
+    Download,
+    Eye,
     Presentation,
+    Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { usePreview } from '../../../platform/providers/PreviewContext'
 import { useUser } from '../../../platform/providers/UserContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { ItemActionButton, ItemActionGroup, ItemActionLink } from '../../../platform/ui/primitives/ItemAction'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListCard from '../../../platform/ui/list/ListCard'
@@ -474,11 +478,12 @@ export default function FilesPage() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="file-actions">
+                                    <ItemActionGroup className="file-actions">
                                         {isPreviewable(file.type, file.name, file.path) && (
-                                            <button
-                                                className="icon-action-button"
-                                                title={t('files.preview')}
+                                            <ItemActionButton
+                                                icon={Eye}
+                                                label={t('files.preview')}
+                                                tone="primary"
                                                 onClick={() => openPreview({
                                                     name: file.name,
                                                     path: file.path,
@@ -487,35 +492,22 @@ export default function FilesPage() {
                                                     rootId: file.rootId,
                                                     displayPath: file.displayPath,
                                                 })}
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                </svg>
-                                            </button>
+                                            />
                                         )}
-                                        <a
+                                        <ItemActionLink
+                                            icon={Download}
                                             href={getDownloadUrl(file, userId) + '&download=true'}
-                                            className="file-download-btn"
-                                            title={t('files.download')}
+                                            label={t('files.download')}
+                                            tone="success"
                                             download
-                                        >
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                <polyline points="7 10 12 15 17 10" />
-                                                <line x1="12" y1="15" x2="12" y2="3" />
-                                            </svg>
-                                        </a>
-                                        <button className="file-delete-btn" title="删除文件" onClick={() => setDeleteTarget(file)}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                <polyline points="3 6 5 6 21 6" />
-                                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                <line x1="10" y1="11" x2="10" y2="17" />
-                                                <line x1="14" y1="11" x2="14" y2="17" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                                        />
+                                        <ItemActionButton
+                                            icon={Trash2}
+                                            label={t('common.delete')}
+                                            tone="danger"
+                                            onClick={() => setDeleteTarget(file)}
+                                        />
+                                    </ItemActionGroup>
                                 </ListCard>
                             )
                         })}
