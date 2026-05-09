@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,9 +31,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.LinkedHashMap;
@@ -92,7 +95,7 @@ public class SessionController {
                     new TypeReference<java.util.Map<String, Object>>() {});
             bodyMap.put("working_dir", workingDir);
             modifiedBody = MAPPER.writeValueAsString(bodyMap);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             modifiedBody = "{\"working_dir\":\"" + workingDir.replace("\\", "\\\\")
                     .replace("\"", "\\\"") + "\"}";
         }
@@ -139,7 +142,7 @@ public class SessionController {
                     new TypeReference<Map<String, Object>>() {});
             Object id = map.get("id");
             return id != null ? id.toString() : null;
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to parse session ID from start response", e);
         }
     }
@@ -190,14 +193,14 @@ public class SessionController {
                         try {
                             Map<String, Object> m = MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
                             parsed.add(m);
-                        } catch (Exception e) { log.warn("Failed to parse session JSON: {}", e.getMessage()); }
+                        } catch (JsonProcessingException e) { log.warn("Failed to parse session JSON: {}", e.getMessage()); }
                     }
                     parsed.sort((a, b) -> {
                         String ta = a.getOrDefault("created_at", "") instanceof String s ? s : "";
                         String tb = b.getOrDefault("created_at", "") instanceof String s ? s : "";
                         try {
                             return Instant.parse(tb).compareTo(Instant.parse(ta));
-                        } catch (Exception e) {
+                        } catch (DateTimeParseException e) {
                             return tb.compareTo(ta);
                         }
                     });
@@ -241,7 +244,7 @@ public class SessionController {
         response.put("pageSize", pageSize);
         try {
             return MAPPER.writeValueAsString(response);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize paginated response", e);
         }
     }
@@ -266,7 +269,7 @@ public class SessionController {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             // If parsing fails, try treating as a raw array
             try {
                 List<Map<String, Object>> sessions = MAPPER.readValue(json,
@@ -276,7 +279,7 @@ public class SessionController {
                     mutable.put("agentId", agentId);
                     result.add(MAPPER.writeValueAsString(mutable));
                 }
-            } catch (Exception e2) {
+            } catch (JsonProcessingException e2) {
                 log.warn("Failed to parse sessions from instance: {}", e2.getMessage());
             }
         }
@@ -457,7 +460,7 @@ public class SessionController {
                     new TypeReference<java.util.Map<String, Object>>() {});
             map.put("agentId", agentId);
             return MAPPER.writeValueAsString(map);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             // If parsing fails, just return original
             return json;
         }
@@ -473,7 +476,7 @@ public class SessionController {
             if (Files.isDirectory(uploadsDir)) {
                 FileUtil.deleteRecursively(uploadsDir);
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Failed to clean up uploads for session {}: {}", sessionId, e.getMessage());
         }
     }
@@ -511,7 +514,7 @@ public class SessionController {
             }
 
             return new EmptySessionDecision(false, "message_count_unknown");
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             log.warn("Failed to inspect session for empty cleanup: {}", e.getMessage());
             return new EmptySessionDecision(false, "invalid_session_payload");
         }

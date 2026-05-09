@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -38,6 +39,7 @@ import org.springframework.web.util.UriUtils;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -224,7 +226,7 @@ public class ReplyController {
             JsonNode rootNode = MAPPER.readTree(body);
             JsonNode requestIdNode = rootNode.get("request_id");
             return requestIdNode != null && requestIdNode.isTextual() ? requestIdNode.asText() : null;
-        } catch (Exception ignored) {
+        } catch (JsonProcessingException ignored) {
             return null;
         }
     }
@@ -334,7 +336,7 @@ public class ReplyController {
         try {
             List<Map<String, Object>> files = fileService.listCapsuleRelevantFiles(workingDir);
             return files != null ? files : Collections.emptyList();
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.debug("[SESSION-REPLY] file snapshot failed (best-effort): {}", e.getMessage());
             return Collections.emptyList();
         }
@@ -355,7 +357,7 @@ public class ReplyController {
             exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
             DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
             return exchange.getResponse().writeWith(Mono.just(buffer));
-        } catch (Exception writeErr) {
+        } catch (JsonProcessingException writeErr) {
             return Mono.error(writeErr);
         }
     }
@@ -538,7 +540,7 @@ public class ReplyController {
                         previousCreated, created, delta);
             }
             return MAPPER.writeValueAsString(root);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             log.warn("[REPLY] failed to normalize user_message.created: {}", e.getMessage());
             return body;
         }
@@ -677,7 +679,7 @@ public class ReplyController {
 
             log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} total={} createdCount={} inversionCount={} head={}",
                     agentId, userId, sessionId, total, createdCount, inversionCount, head);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} parseFailed err={}",
                     agentId, userId, sessionId, e.getMessage());
         }
