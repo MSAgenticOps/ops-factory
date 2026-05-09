@@ -10,7 +10,6 @@ import reactor.core.publisher.Mono;
 @Component
 @Order(1)
 public class BodyLimitHook implements RequestHook {
-
     private final long maxBytes;
 
     public BodyLimitHook(GatewayProperties properties) {

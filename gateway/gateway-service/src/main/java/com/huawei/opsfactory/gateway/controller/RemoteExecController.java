@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/remote")
 public class RemoteExecController {
-
     private static final Logger log = LoggerFactory.getLogger(RemoteExecController.class);
 
     private final RemoteExecutionService remoteExecutionService;

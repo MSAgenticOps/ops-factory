@@ -9,7 +9,6 @@ import org.junit.Test;
  * @since 2026-05-09
  */
 public class AuthFilterE2ETest extends BaseE2ETest {
-
     // ====================== AuthWebFilter Tests ======================
 
     @Test

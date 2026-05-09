@@ -14,7 +14,6 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @Service
 public class WeChatAdapter implements ChannelAdapter {
-
     private final ChannelConfigService channelConfigService;
 
     public WeChatAdapter(ChannelConfigService channelConfigService) {

@@ -17,7 +17,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 public class MetricsCollectorTest {
-
     private InstanceManager instanceManager;
     private GoosedProxy goosedProxy;
     private MetricsBuffer metricsBuffer;

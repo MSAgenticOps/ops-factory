@@ -4,7 +4,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ManagedInstance {
-
     public enum Status {
         STARTING, RUNNING, STOPPED, ERROR
     }

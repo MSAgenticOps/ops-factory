@@ -26,7 +26,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/agents")
 public class AgentController {
-
     private final AgentConfigService agentConfigService;
     private final InstanceManager instanceManager;
 

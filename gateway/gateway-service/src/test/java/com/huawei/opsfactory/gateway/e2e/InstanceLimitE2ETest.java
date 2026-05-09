@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class InstanceLimitE2ETest extends BaseE2ETest {
-
     @Before
     public void setUp() {
         // HookPipeline passes body through unchanged

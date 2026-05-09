@@ -19,7 +19,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
-
     @Test
     public void system_admin_returnsSystemInfo() {
         when(agentConfigService.getRegistry()).thenReturn(List.of(

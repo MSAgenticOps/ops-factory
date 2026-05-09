@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class FileEndpointE2ETest extends BaseE2ETest {
-
     private static final Path USERS_DIR = Path.of("/tmp/test-gateway/gateway/users");
 
     @Before

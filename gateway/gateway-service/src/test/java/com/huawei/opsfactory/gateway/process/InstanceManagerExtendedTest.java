@@ -36,7 +36,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class InstanceManagerExtendedTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 

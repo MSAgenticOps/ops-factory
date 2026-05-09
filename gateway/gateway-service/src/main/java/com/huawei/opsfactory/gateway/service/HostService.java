@@ -32,7 +32,6 @@ import java.util.UUID;
 
 @Service
 public class HostService {
-
     private static final Logger log = LoggerFactory.getLogger(HostService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";

@@ -23,7 +23,6 @@ import java.util.Set;
 @RequestMapping(value = "/gateway")
 @Order(999)
 public class CatchAllProxyController {
-
     private static final Set<String> USER_ACCESSIBLE_PATHS = Set.of(
             "/system_info", "/status"
     );

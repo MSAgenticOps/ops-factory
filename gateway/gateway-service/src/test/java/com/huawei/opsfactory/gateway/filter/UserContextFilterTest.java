@@ -21,7 +21,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class UserContextFilterTest {
-
     private UserContextFilter filter;
     private GatewayProperties gatewayProperties;
     private PrewarmService prewarmService;

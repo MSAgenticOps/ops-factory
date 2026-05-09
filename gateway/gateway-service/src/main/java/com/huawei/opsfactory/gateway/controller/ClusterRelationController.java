@@ -16,7 +16,6 @@ import java.util.*;
 @RestController
 @RequestMapping("/gateway/cluster-relations")
 public class ClusterRelationController {
-
     private static final Logger log = LoggerFactory.getLogger(ClusterRelationController.class);
 
     private final ClusterRelationService clusterRelationService;

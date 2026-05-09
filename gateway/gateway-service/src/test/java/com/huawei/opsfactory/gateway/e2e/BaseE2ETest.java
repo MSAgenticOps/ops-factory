@@ -29,7 +29,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 public abstract class BaseE2ETest {
-
     protected static final String SECRET_KEY = "test";
     protected static final String HEADER_SECRET_KEY = "x-secret-key";
     protected static final String HEADER_USER_ID = "x-user-id";

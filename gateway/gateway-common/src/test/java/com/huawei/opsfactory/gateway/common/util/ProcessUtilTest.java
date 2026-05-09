@@ -6,7 +6,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ProcessUtilTest {
-
     @Test
     public void testIsAlive_runningProcess() throws Exception {
         Process process = new ProcessBuilder("sleep", "10").start();

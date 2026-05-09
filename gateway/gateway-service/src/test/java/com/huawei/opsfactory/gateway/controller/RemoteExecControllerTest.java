@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(RemoteExecController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class RemoteExecControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

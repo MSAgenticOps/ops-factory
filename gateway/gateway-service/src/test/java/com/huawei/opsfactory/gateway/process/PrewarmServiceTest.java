@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class PrewarmServiceTest {
-
     private InstanceManager instanceManager;
     private GatewayProperties properties;
     private PrewarmService prewarmService;

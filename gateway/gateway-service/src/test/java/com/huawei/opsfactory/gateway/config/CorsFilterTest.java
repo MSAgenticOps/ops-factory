@@ -20,7 +20,6 @@ import static org.junit.Assert.*;
  * @since 2026-05-09
  */
 public class CorsFilterTest {
-
     private GatewayProperties properties;
 
     @Before

@@ -18,7 +18,6 @@ import java.util.Map;
 
 @Service
 public class RemoteExecutionService {
-
     private static final Logger log = LoggerFactory.getLogger(RemoteExecutionService.class);
 
     private final HostService hostService;
@@ -233,7 +232,6 @@ public class RemoteExecutionService {
             result.put("error", errorOutput);
             result.put("duration", duration);
             return result;
-
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());

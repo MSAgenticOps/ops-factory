@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
  * @since 2026-05-09
  */
 public final class ProcessUtil {
-
     private ProcessUtil() {
     }
 

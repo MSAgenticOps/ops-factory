@@ -28,7 +28,6 @@ import org.mockito.ArgumentCaptor;
  * @since 2026-05-09
 /** E2E tests for ReplyController endpoints. */
 public class ReplyEndpointE2ETest extends BaseE2ETest {
-
     private ManagedInstance mockInstance;
 
     @Before
@@ -315,5 +314,4 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
-
 }

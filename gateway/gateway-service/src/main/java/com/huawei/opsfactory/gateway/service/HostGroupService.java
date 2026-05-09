@@ -24,7 +24,6 @@ import java.util.UUID;
 
 @Service
 public class HostGroupService {
-
     private static final Logger log = LoggerFactory.getLogger(HostGroupService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

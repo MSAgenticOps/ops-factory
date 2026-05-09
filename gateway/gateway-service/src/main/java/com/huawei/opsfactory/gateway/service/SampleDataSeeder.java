@@ -13,7 +13,6 @@ import javax.annotation.PostConstruct;
  */
 @Service
 public class SampleDataSeeder {
-
     private static final Logger log = LoggerFactory.getLogger(SampleDataSeeder.class);
 
     public SampleDataSeeder(GatewayProperties properties,

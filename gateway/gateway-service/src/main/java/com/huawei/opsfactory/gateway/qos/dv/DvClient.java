@@ -24,7 +24,6 @@ import java.util.function.Supplier;
 
 @Component
 public class DvClient {
-
     private static final Logger log = LoggerFactory.getLogger(DvClient.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int MAX_RETRIES = 3;

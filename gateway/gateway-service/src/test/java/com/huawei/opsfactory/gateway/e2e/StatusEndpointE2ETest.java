@@ -8,7 +8,6 @@ import org.junit.Test;
  * @since 2026-05-09
  */
 public class StatusEndpointE2ETest extends BaseE2ETest {
-
     // ====================== GET /status ======================
 
     @Test

@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
-
     private ManagedInstance runningInstance;
 
     @Before

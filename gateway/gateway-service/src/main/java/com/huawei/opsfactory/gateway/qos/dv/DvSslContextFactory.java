@@ -21,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class DvSslContextFactory {
-
     private static final Logger log = LoggerFactory.getLogger(DvSslContextFactory.class);
 
     private final ConcurrentHashMap<String, SslContext> sslContextCache = new ConcurrentHashMap<>();

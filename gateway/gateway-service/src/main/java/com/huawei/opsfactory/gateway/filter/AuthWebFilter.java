@@ -16,7 +16,6 @@ import reactor.core.publisher.Mono;
 @Component
 @Order(2)
 public class AuthWebFilter implements WebFilter {
-
     private static final Logger log = LoggerFactory.getLogger(AuthWebFilter.class);
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 

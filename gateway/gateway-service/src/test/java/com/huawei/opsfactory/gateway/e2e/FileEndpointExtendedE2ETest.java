@@ -18,7 +18,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class FileEndpointExtendedE2ETest extends BaseE2ETest {
-
     @Before
     public void setUp() {
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))

@@ -14,7 +14,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class InstanceWatchdogTest {
-
     private InstanceManager instanceManager;
     private GatewayProperties properties;
     private PrewarmService prewarmService;

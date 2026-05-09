@@ -22,7 +22,6 @@ import java.nio.file.Path;
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/file-citations")
 public class FileCitationController {
-
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
 

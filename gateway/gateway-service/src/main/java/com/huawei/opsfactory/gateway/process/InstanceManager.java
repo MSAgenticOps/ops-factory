@@ -46,7 +46,6 @@ import java.util.concurrent.locks.ReentrantLock;
 @Component
 @org.springframework.context.annotation.DependsOn("systemUserMigrationService")
 public class InstanceManager {
-
     private static final Logger log = LoggerFactory.getLogger(InstanceManager.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();

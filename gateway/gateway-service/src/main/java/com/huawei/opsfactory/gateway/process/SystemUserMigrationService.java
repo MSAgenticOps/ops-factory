@@ -14,7 +14,6 @@ import java.util.Comparator;
 
 @Component("systemUserMigrationService")
 public class SystemUserMigrationService {
-
     static final String LEGACY_SYSTEM_USER = "sys";
     private static final Logger log = LoggerFactory.getLogger(SystemUserMigrationService.class);
 

@@ -16,7 +16,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
-
     // ====================== Admin access ======================
 
     @Test

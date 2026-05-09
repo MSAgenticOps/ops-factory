@@ -6,7 +6,6 @@ package com.huawei.opsfactory.gateway.monitoring;
  * @since 2026-05-09
  */
 public class MetricsSnapshot {
-
     private long timestamp;
     private int activeInstances;
     private long totalTokens;

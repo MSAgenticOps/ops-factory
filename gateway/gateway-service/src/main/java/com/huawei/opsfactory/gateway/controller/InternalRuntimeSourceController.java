@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/gateway/runtime-source")
 public class InternalRuntimeSourceController {
-
     private final InstanceManager instanceManager;
     private final AgentConfigService agentConfigService;
     private final LangfuseService langfuseService;

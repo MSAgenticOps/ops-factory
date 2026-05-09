@@ -25,7 +25,6 @@ import static org.mockito.Mockito.*;
 @WebFluxTest(CommandWhitelistController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class CommandWhitelistControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

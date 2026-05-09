@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 public class MetricsBuffer {
-
     private static final Logger log = LoggerFactory.getLogger(MetricsBuffer.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int SNAPSHOT_CAPACITY = 120;

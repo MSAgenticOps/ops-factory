@@ -20,7 +20,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
 public class JsonFileStore<T> {
-
     private static final Logger log = LoggerFactory.getLogger(JsonFileStore.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final DateTimeFormatter TS_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");

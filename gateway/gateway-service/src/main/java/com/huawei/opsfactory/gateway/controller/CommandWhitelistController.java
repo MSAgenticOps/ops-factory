@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/command-whitelist")
 public class CommandWhitelistController {
-
     private static final Logger log = LoggerFactory.getLogger(CommandWhitelistController.class);
 
     private final CommandWhitelistService commandWhitelistService;

@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class DvAuthService {
-
     private static final Logger log = LoggerFactory.getLogger(DvAuthService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final long TOKEN_TTL_MS = 30 * 60 * 1000L; // 30 minutes

@@ -8,7 +8,6 @@ import java.util.Set;
 import static org.junit.Assert.assertTrue;
 
 public class PortAllocatorTest {
-
     @Test
     public void testAllocate_returnsValidPort() {
         PortAllocator allocator = new PortAllocator();

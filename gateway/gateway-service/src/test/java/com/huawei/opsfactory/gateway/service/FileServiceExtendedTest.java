@@ -31,7 +31,6 @@ import static org.junit.Assert.assertTrue;
  * @since 2026-05-09
  */
 public class FileServiceExtendedTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -310,7 +309,6 @@ public class FileServiceExtendedTest {
         assertEquals("example-file.md", files.get(1).get("path"));
         assertEquals("output/example-file.md", files.get(1).get("displayPath"));
     }
-
 
     @Test
     public void testListFiles_recursiveScanRootIncludesNestedFiles() throws IOException {

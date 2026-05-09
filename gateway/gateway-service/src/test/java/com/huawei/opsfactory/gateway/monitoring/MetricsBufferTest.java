@@ -14,7 +14,6 @@ import static org.junit.Assert.*;
  * @since 2026-05-09
  */
 public class MetricsBufferTest {
-
     private MetricsBuffer buffer;
 
     @Before

@@ -23,7 +23,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class CatchAllProxyControllerTest {
-
     private InstanceManager instanceManager;
     private GoosedProxy goosedProxy;
     private CatchAllProxyController controller;

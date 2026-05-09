@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/sops")
 public class SopController {
-
     private static final Logger log = LoggerFactory.getLogger(SopController.class);
 
     private final SopService sopService;

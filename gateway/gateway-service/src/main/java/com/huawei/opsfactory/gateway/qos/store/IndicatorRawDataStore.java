@@ -10,7 +10,6 @@ import java.util.List;
 
 @Component
 public class IndicatorRawDataStore {
-
     private final JsonFileStore<IndicatorRawData> store;
 
     public IndicatorRawDataStore(GatewayProperties properties) {

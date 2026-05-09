@@ -23,7 +23,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class AgentEndpointE2ETest extends BaseE2ETest {
-
     // ====================== GET /agents ======================
 
     @Test

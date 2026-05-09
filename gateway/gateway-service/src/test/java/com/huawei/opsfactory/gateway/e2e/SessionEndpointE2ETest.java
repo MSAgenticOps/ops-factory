@@ -1,8 +1,10 @@
 package com.huawei.opsfactory.gateway.e2e;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.service.SessionCacheService;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import reactor.core.publisher.Mono;
@@ -29,11 +31,14 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class SessionEndpointE2ETest extends BaseE2ETest {
+    @Autowired
+    private SessionCacheService sessionCacheService;
 
     private ManagedInstance runningInstance;
 
     @Before
     public void setUp() {
+        sessionCacheService.invalidate("alice");
         runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
         // Mock getUserAgentDir for startSession working_dir injection
@@ -154,7 +159,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_USER_ID, "alice")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("{\"sessions\":[]}");
+                .expectBody()
+                .jsonPath("$.sessions.length()").isEqualTo(0)
+                .jsonPath("$.total").isEqualTo(0)
+                .jsonPath("$.pageIndex").isEqualTo(1)
+                .jsonPath("$.pageSize").isEqualTo(20);
     }
 
     @Test
@@ -195,7 +204,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_USER_ID, "alice")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("{\"sessions\":[]}");
+                .expectBody()
+                .jsonPath("$.sessions.length()").isEqualTo(0)
+                .jsonPath("$.total").isEqualTo(0)
+                .jsonPath("$.pageIndex").isEqualTo(1)
+                .jsonPath("$.pageSize").isEqualTo(20);
     }
 
     @Test

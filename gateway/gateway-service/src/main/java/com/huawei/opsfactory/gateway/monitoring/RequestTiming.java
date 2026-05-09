@@ -6,7 +6,6 @@ package com.huawei.opsfactory.gateway.monitoring;
  * @since 2026-05-09
  */
 public class RequestTiming {
-
     private final long startTime;
     private final long ttftMs;
     private final long totalMs;

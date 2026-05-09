@@ -7,7 +7,6 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.test.StepVerifier;
 
 public class BodyLimitHookTest {
-
     private BodyLimitHook hook;
 
     @Before

@@ -24,7 +24,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class McpEndpointE2ETest extends BaseE2ETest {
-
     private ManagedInstance sysInstance;
 
     @Before

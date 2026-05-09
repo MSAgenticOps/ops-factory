@@ -29,7 +29,6 @@ import org.yaml.snakeyaml.Yaml;
 
 @Service
 public class AgentSkillInstallService {
-
     private static final Logger log = LoggerFactory.getLogger(AgentSkillInstallService.class);
     private static final Pattern SKILL_ID_PATTERN = Pattern.compile("^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$");
 

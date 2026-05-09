@@ -33,7 +33,6 @@ import java.util.UUID;
 
 @Service
 public class SessionBridgeService {
-
     private static final Logger log = LoggerFactory.getLogger(SessionBridgeService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

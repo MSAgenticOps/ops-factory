@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 
 @Component
 public class QosCollectionScheduler {
-
     private static final Logger log = LoggerFactory.getLogger(QosCollectionScheduler.class);
 
     private final GatewayProperties properties;

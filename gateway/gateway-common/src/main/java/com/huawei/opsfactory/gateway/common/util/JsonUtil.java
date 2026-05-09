@@ -6,7 +6,6 @@ package com.huawei.opsfactory.gateway.common.util;
  * @since 2026-05-09
  */
 public final class JsonUtil {
-
     private JsonUtil() {}
 
     /**

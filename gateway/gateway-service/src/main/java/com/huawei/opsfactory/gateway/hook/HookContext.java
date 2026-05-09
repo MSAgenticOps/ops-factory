@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class HookContext {
-
     private String body;
     private final String agentId;
     private final String userId;

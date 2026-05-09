@@ -9,7 +9,6 @@ import java.util.List;
 
 @Component
 public class HookPipeline {
-
     private static final Logger log = LoggerFactory.getLogger(HookPipeline.class);
 
     private final List<RequestHook> hooks;

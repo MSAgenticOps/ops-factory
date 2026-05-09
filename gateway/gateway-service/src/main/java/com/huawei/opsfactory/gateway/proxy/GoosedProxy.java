@@ -42,7 +42,6 @@ import java.util.function.Function;
 
 @Component
 public class GoosedProxy {
-
     private static final Logger log = LoggerFactory.getLogger(GoosedProxy.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Duration EVENT_AUGMENT_TIMEOUT = Duration.ofSeconds(3);
@@ -363,7 +362,6 @@ public class GoosedProxy {
     public WebClient getWebClient() {
         return webClient;
     }
-
 
     private boolean isProxyError(Throwable e) {
         return e instanceof WebClientRequestException || e instanceof TimeoutException;

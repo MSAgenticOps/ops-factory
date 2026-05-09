@@ -36,7 +36,6 @@ import static org.junit.Assert.assertTrue;
  * @since 2026-05-09
  */
 public class GoosedProxyExtendedTest {
-
     private GoosedProxy proxy;
 
     @Before
