@@ -39,7 +39,6 @@ import org.springframework.http.MediaType;
 @RestController
 @RequestMapping(value = "/gateway")
 public class SessionController {
-
     private static final Logger log = LoggerFactory.getLogger(SessionController.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

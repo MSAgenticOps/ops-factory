@@ -25,7 +25,6 @@ import reactor.core.scheduler.Schedulers;
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/mcp")
 public class McpController {
-
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
     private static final String KNOWLEDGE_CLI_MCP = "knowledge-cli";
 

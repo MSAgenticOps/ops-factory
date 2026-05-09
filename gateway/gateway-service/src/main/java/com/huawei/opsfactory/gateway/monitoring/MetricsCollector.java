@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
  */
 @Component
 public class MetricsCollector {
-
     private static final Logger log = LoggerFactory.getLogger(MetricsCollector.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

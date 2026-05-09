@@ -21,7 +21,6 @@ import java.util.*;
 @RestController
 @RequestMapping("/gateway/host-relations")
 public class HostRelationController {
-
     private static final Logger log = LoggerFactory.getLogger(HostRelationController.class);
 
     private final HostRelationService hostRelationService;

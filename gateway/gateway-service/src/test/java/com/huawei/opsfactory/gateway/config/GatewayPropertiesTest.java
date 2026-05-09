@@ -11,7 +11,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class GatewayPropertiesTest {
-
     @Test
     public void testDefaults() {
         GatewayProperties props = new GatewayProperties();

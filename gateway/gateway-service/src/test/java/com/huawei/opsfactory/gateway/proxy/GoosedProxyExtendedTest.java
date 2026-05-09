@@ -32,9 +32,10 @@ import static org.junit.Assert.assertTrue;
  * - copyHeaders: secret key injection
  * - copyUpstreamHeaders: CORS header filtering
  * - fetchJson: returns non-null Mono (construction-level)
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class GoosedProxyExtendedTest {
-
     private GoosedProxy proxy;
 
     @Before

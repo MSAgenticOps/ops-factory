@@ -21,7 +21,6 @@ import java.util.Set;
 @RestController
 @RequestMapping("/gateway/clusters")
 public class ClusterController {
-
     private static final Logger log = LoggerFactory.getLogger(ClusterController.class);
 
     private final ClusterService clusterService;

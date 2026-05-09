@@ -5,9 +5,10 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Process management utility using JDK 21 APIs.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public final class ProcessUtil {
-
     private ProcessUtil() {
     }
 

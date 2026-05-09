@@ -13,7 +13,6 @@ import reactor.netty.http.client.HttpClient;
 
 @Service
 public class SkillMarketClient {
-
     private final GatewayProperties properties;
     private final WebClient webClient;
 

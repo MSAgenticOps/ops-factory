@@ -26,7 +26,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/file-capsules")
 public class FileCapsuleController {
-
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
 

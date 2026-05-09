@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(HostGroupController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class HostGroupControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

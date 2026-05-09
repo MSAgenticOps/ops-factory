@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 public class MetricsBuffer {
-
     private static final Logger log = LoggerFactory.getLogger(MetricsBuffer.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int SNAPSHOT_CAPACITY = 120;
@@ -47,6 +46,8 @@ public class MetricsBuffer {
 
     /**
      * Accumulated per-agent statistics.
+ * @author x00000000
+ * @since 2026-05-09
      */
     public static class AgentStats {
         public int requestCount;

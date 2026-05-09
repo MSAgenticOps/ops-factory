@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class WhatsAppAdapterTest {
-
     private static final String OWNER_USER_ID = "alice@example.com";
 
     private ChannelConfigService channelConfigService;

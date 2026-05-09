@@ -19,7 +19,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class InstanceManagerTest {
-
     private InstanceManager instanceManager;
     private GatewayProperties properties;
     private PortAllocator portAllocator;

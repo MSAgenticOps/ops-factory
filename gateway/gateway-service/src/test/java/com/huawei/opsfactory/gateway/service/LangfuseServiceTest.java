@@ -7,7 +7,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class LangfuseServiceTest {
-
     @Test
     public void testIsConfigured_allSet() {
         GatewayProperties props = new GatewayProperties();

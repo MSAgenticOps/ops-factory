@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @Service
 public class WeChatMessagePumpService {
-
     private static final Logger log = LoggerFactory.getLogger(WeChatMessagePumpService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

@@ -21,7 +21,6 @@ import java.util.UUID;
 
 @Service
 public class WhatsAppMessagePumpService {
-
     private static final Logger log = LoggerFactory.getLogger(WhatsAppMessagePumpService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

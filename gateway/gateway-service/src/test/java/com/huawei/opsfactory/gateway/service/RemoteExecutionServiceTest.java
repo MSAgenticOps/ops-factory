@@ -21,7 +21,6 @@ import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class RemoteExecutionServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 

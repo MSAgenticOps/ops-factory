@@ -28,7 +28,6 @@ import java.util.UUID;
 @Deprecated
 @Service
 public class HostRelationService {
-
     private static final Logger log = LoggerFactory.getLogger(HostRelationService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(AgentController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class AgentControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

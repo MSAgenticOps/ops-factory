@@ -21,7 +21,6 @@ import reactor.core.scheduler.Schedulers;
 @RestController
 @RequestMapping("/gateway/agents")
 public class AgentSkillController {
-
     private final AgentSkillInstallService installService;
 
     public AgentSkillController(AgentSkillInstallService installService) {

@@ -25,7 +25,6 @@ import java.util.UUID;
 
 @Service
 public class ClusterService {
-
     private static final Logger log = LoggerFactory.getLogger(ClusterService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

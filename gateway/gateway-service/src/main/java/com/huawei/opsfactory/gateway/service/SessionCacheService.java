@@ -16,7 +16,6 @@ import java.util.function.Supplier;
  */
 @Service
 public class SessionCacheService {
-
     private static final Logger log = LoggerFactory.getLogger(SessionCacheService.class);
     private static final long DEFAULT_TTL_MS = 30_000;
     private static final int MAX_ENTRIES = 500;

@@ -28,7 +28,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class ReplyControllerRealProxyTest {
-
     @Test
     public void sessionReply_realGoosed400ReturnsGatewayErrorEnvelope() throws Exception {
         DisposableServer server = HttpServer.create()

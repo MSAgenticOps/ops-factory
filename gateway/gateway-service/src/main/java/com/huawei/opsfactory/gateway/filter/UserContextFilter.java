@@ -24,7 +24,6 @@ import java.util.Set;
 @Component
 @Order(3)
 public class UserContextFilter implements WebFilter {
-
     private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 

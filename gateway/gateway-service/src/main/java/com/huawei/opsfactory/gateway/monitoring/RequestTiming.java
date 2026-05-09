@@ -2,9 +2,10 @@ package com.huawei.opsfactory.gateway.monitoring;
 
 /**
  * Immutable timing record captured per proxied agent request.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class RequestTiming {
-
     private final long startTime;
     private final long ttftMs;
     private final long totalMs;

@@ -17,7 +17,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @WebFluxTest(StatusController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class StatusControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

@@ -417,6 +417,50 @@
     box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
 }
 
+.card-icon-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--color-fill-tertiary, #f8fafc);
+    color: var(--color-text-muted, #64748b);
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.card-icon-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+.card-icon-action:hover:not(:disabled) {
+    color: var(--color-primary, #2563eb);
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    transform: translateY(-1px);
+}
+
+.card-icon-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.card-icon-action-danger:hover:not(:disabled) {
+    color: var(--color-error, #ef4444);
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
 .session-type-badge {
     display: inline-flex;
     align-items: center;

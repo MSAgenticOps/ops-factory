@@ -15,7 +15,6 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class SopServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 

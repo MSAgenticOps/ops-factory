@@ -17,7 +17,6 @@ import java.util.Set;
 
 @Component
 public class InstanceWatchdog {
-
     private static final Logger log = LoggerFactory.getLogger(InstanceWatchdog.class);
 
     private final InstanceManager instanceManager;

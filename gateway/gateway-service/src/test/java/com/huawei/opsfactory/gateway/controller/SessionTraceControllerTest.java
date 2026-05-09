@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
 @WebFluxTest(SessionTraceController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
 public class SessionTraceControllerTest {
-
     @Autowired
     private WebTestClient webTestClient;
 

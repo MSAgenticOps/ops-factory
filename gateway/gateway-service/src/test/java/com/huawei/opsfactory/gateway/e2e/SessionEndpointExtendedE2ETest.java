@@ -22,9 +22,10 @@ import static org.mockito.Mockito.when;
  * GET /sessions/{sessionId}?agentId=X (global session get)
  * DELETE /sessions/{sessionId}?agentId=X (global session delete)
  * PUT /agents/{agentId}/sessions/{sessionId}/name (rename session)
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
-
     private ManagedInstance runningInstance;
 
     @Before

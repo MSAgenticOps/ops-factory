@@ -22,7 +22,6 @@ import java.util.UUID;
 
 @Service
 public class BusinessTypeService {
-
     private static final Logger log = LoggerFactory.getLogger(BusinessTypeService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

@@ -13,7 +13,6 @@ import java.util.List;
 @Component
 @ConfigurationProperties(prefix = "gateway")
 public class GatewayProperties {
-
     private static final Logger log = LoggerFactory.getLogger(GatewayProperties.class);
     private static final String CONFIG_PATH_KEY = "GATEWAY_CONFIG_PATH";
 

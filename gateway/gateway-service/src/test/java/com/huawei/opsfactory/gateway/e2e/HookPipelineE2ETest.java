@@ -22,9 +22,10 @@ import static org.mockito.Mockito.when;
  * E2E tests verifying HookPipeline integration with ReplyController.
  * Tests that hook rejections (413, 403) are properly propagated to the client,
  * and that successful hooks allow the request through to goosed session reply.
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class HookPipelineE2ETest extends BaseE2ETest {
-
     private ManagedInstance mockInstance;
 
     @Before

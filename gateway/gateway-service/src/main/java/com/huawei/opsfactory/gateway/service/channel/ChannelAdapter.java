@@ -4,7 +4,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 public interface ChannelAdapter {
-
     String type();
 
     Mono<String> verifyWebhook(String channelId, ServerWebExchange exchange);

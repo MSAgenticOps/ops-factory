@@ -18,7 +18,6 @@ import java.util.Map;
 
 @Service
 public class ChannelDedupService {
-
     private static final Logger log = LoggerFactory.getLogger(ChannelDedupService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int MAX_MESSAGES = 500;
