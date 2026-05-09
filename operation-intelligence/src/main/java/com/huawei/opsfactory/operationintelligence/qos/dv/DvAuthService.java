@@ -6,6 +6,7 @@ import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -25,6 +26,7 @@ public class DvAuthService {
 
     private final DvSslContextFactory sslFactory;
     private final ConcurrentHashMap<String, TokenInfo> tokenCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, WebClient> clientCache = new ConcurrentHashMap<>();
 
     public DvAuthService(DvSslContextFactory sslFactory) {
         this.sslFactory = sslFactory;
@@ -58,16 +60,17 @@ public class DvAuthService {
 
     private TokenInfo fetchNewToken(DvEnvironmentInfo env) {
         try {
-            SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
-            HttpClient httpClient = HttpClient.create()
-                    .secure(t -> t.sslContext(sslContext)
-                            .handshakeTimeout(Duration.ofSeconds(10)))
-                    .responseTimeout(Duration.ofSeconds(30));
-
-            WebClient webClient = WebClient.builder()
-                    .clientConnector(new ReactorClientHttpConnector(httpClient))
-                    .baseUrl(env.getServerUrl())
-                    .build();
+            WebClient webClient = clientCache.computeIfAbsent(env.getServerUrl(), url -> {
+                SslContext sslCtx = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
+                HttpClient httpClient = HttpClient.create()
+                        .secure(t -> t.sslContext(sslCtx)
+                                .handshakeTimeout(Duration.ofSeconds(10)))
+                        .responseTimeout(Duration.ofSeconds(30));
+                return WebClient.builder()
+                        .clientConnector(new ReactorClientHttpConnector(httpClient))
+                        .baseUrl(url)
+                        .build();
+            });
 
             String loginBody = MAPPER.writeValueAsString(Map.of(
                     "grantType", "password",
@@ -81,6 +84,10 @@ public class DvAuthService {
                     .retrieve()
                     .bodyToMono(String.class)
                     .block(Duration.ofSeconds(30));
+
+            if (response == null || response.isBlank()) {
+                throw new RuntimeException("Empty response from SSO login at " + env.getServerUrl());
+            }
 
             JsonNode json = MAPPER.readTree(response);
             String token = json.has("accessSession") ? json.get("accessSession").asText() : null;
@@ -107,6 +114,11 @@ public class DvAuthService {
             log.error("Failed to get SSO token from {}: {}", env.getServerUrl(), e.getMessage());
             throw new RuntimeException("DV SSO login failed", e);
         }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        clientCache.clear();
     }
 
     private static class TokenInfo {

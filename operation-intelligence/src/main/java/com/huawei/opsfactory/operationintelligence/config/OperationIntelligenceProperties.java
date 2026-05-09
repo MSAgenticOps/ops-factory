@@ -83,6 +83,13 @@ public class OperationIntelligenceProperties {
         return Path.of("").toAbsolutePath().normalize();
     }
 
+    /**
+     * Resolve the runtime config file path from the same OI_CONFIG_PATH source used by
+     * Spring's {@code spring.config.import} in application.yml. This method does NOT load
+     * or parse the config file (Spring handles that); it only resolves the filesystem
+     * location so that {@link #getConfigDirectory()} and {@link #resolveDataRoot()} can
+     * place the data directory relative to the config file.
+     */
     private String configuredConfigPath() {
         String configuredPath = System.getProperty(CONFIG_PATH_KEY);
         if (configuredPath == null || configuredPath.isBlank()) {
@@ -156,6 +163,7 @@ public class OperationIntelligenceProperties {
             private String crtContent;
             private String crtFileName;
             private String dns;
+            private String keystorePassword = "";
             private boolean strictSsl = true;
             public String getEnvCode() { return envCode; }
             public void setEnvCode(String envCode) { this.envCode = envCode; }
@@ -178,6 +186,8 @@ public class OperationIntelligenceProperties {
             public void setCrtFileName(String crtFileName) { this.crtFileName = crtFileName; }
             public String getDns() { return dns; }
             public void setDns(String dns) { this.dns = dns; }
+            public String getKeystorePassword() { return keystorePassword; }
+            public void setKeystorePassword(String keystorePassword) { this.keystorePassword = keystorePassword; }
             public boolean isStrictSsl() { return strictSsl; }
             public void setStrictSsl(boolean strictSsl) { this.strictSsl = strictSsl; }
         }

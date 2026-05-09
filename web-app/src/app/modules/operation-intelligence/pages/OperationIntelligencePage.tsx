@@ -64,7 +64,7 @@ export default function OperationIntelligencePage() {
                 />
             </div>
 
-            <div className="mon-section hc-cards-row">
+            <div className="mon-section oi-cards-row">
                 <DimensionScoreCards envCode={envCode} startTime={startTime} endTime={endTime} />
                 <ContributionAnalysis envCode={envCode} startTime={startTime} endTime={endTime} />
             </div>
@@ -74,7 +74,7 @@ export default function OperationIntelligencePage() {
                 <OperationIntelligenceChart points={points} loading={loading} />
             </div>
 
-            <div className="config-tabs hc-tabs">
+            <div className="config-tabs oi-tabs">
                 {tabs.map(tab => (
                     <button
                         key={tab.key}
@@ -87,7 +87,7 @@ export default function OperationIntelligencePage() {
                 ))}
             </div>
 
-            <div className="mon-section hc-detail-section">
+            <div className="mon-section oi-detail-section">
                 {activeTab === 'alarm' ? (
                     <AlarmDetailTable envCode={envCode} startTime={startTime} endTime={endTime} />
                 ) : (

@@ -625,7 +625,7 @@ public class WebConfig {
 
 ### 14.2 依赖启动顺序
 
-当前启动顺序：gateway → knowledge-service → business-intelligence → control-center → skill-market → operation-intelligence → prometheus-exporter
+当前启动顺序：gateway → knowledge-service → business-intelligence → skill-market → operation-intelligence → prometheus-exporter → control-center → webapp
 
 新服务应按依赖关系插入合适位置。如无特殊依赖，通常放在 skill-market 之后、prometheus-exporter 之前。
 

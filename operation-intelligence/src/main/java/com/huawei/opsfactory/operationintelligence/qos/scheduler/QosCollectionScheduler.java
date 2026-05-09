@@ -77,7 +77,7 @@ public class QosCollectionScheduler {
         this.alarmWeightStore = alarmWeightStore;
     }
 
-    @Scheduled(fixedDelayString = "${gateway.qos.collection-interval-ms:300000}")
+    @Scheduled(fixedDelayString = "${operation-intelligence.qos.collection-interval-ms:300000}")
     public void collectAvailabilityAndPerformance() {
         if (!properties.getQos().isEnabled()) return;
         log.info("QoS collection: starting availability and performance collection");
@@ -104,6 +104,9 @@ public class QosCollectionScheduler {
                 List<DnCluster> clusters = loadClusters(envCode);
                 // type -> dn -> indicator scores
                 Map<String, Map<String, List<BigDecimal>>> neScoreSums = new LinkedHashMap<>();
+                List<IndicatorRawData> rawBatch = new ArrayList<>();
+                List<IndicatorDetailData> detailBatch = new ArrayList<>();
+                List<IndicatorNormalizeData> normalizeBatch = new ArrayList<>();
 
                 for (DnCluster cluster : clusters) {
                     for (DnElement element : (cluster.getElements() != null ? cluster.getElements() : List.<DnElement>of())) {
@@ -114,9 +117,9 @@ public class QosCollectionScheduler {
                             if (perfData == null || perfData.isEmpty()) continue;
 
                             for (PerformanceDataResult pr : perfData) {
-                                appendRawData(envCode, pr, endTime);
+                                rawBatch.add(buildRawData(envCode, pr, endTime));
                                 BigDecimal score = collectScore(neScoreSums, scope, pr);
-                                appendDetailData(envCode, scope, pr, endTime, score);
+                                detailBatch.add(buildDetailData(envCode, scope, pr, endTime, score));
                             }
                         }
                     }
@@ -133,9 +136,13 @@ public class QosCollectionScheduler {
                         }
                     }
                     if (neCount > 0) {
-                        appendNormalize(envCode, typeEntry.getKey(), totalAvg.divide(BigDecimal.valueOf(neCount), 2, RoundingMode.HALF_UP), endTime);
+                        normalizeBatch.add(buildNormalize(envCode, typeEntry.getKey(), totalAvg.divide(BigDecimal.valueOf(neCount), 2, RoundingMode.HALF_UP), endTime));
                     }
                 }
+
+                rawDataStore.appendAll(rawBatch);
+                detailDataStore.appendAll(detailBatch);
+                normalizeDataStore.appendAll(normalizeBatch);
             } catch (Exception e) {
                 log.error("QoS collection: failed for environment {}: {}", dvEnvConfig.getEnvCode(), e.getMessage());
             }
@@ -143,7 +150,7 @@ public class QosCollectionScheduler {
         log.info("QoS collection: availability and performance collection completed");
     }
 
-    @Scheduled(fixedDelayString = "${gateway.qos.collection-interval-ms:300000}")
+    @Scheduled(fixedDelayString = "${operation-intelligence.qos.collection-interval-ms:300000}")
     public void collectResourceData() {
         if (!properties.getQos().isEnabled()) return;
         log.info("QoS collection: starting resource (alarm) collection");
@@ -180,6 +187,7 @@ public class QosCollectionScheduler {
                     }
                 }
 
+                List<AlarmDetailData> alarmBatch = new ArrayList<>();
                 for (AlarmInfo alarm : allAlarms) {
                     AlarmDetailData detail = new AlarmDetailData();
                     detail.setCode(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE);
@@ -194,12 +202,13 @@ public class QosCollectionScheduler {
                     detail.setMoi(alarm.getMoi());
                     detail.setAdditionalInformation(alarm.getAdditionalInformation());
                     detail.setTimestamp(endTime);
-                    alarmDetailDataStore.append(detail);
+                    alarmBatch.add(detail);
                 }
+                alarmDetailDataStore.appendAll(alarmBatch);
 
                 if (!allAlarms.isEmpty()) {
                     BigDecimal rScore = calculationService.calculateResourceScore(allAlarms, alarmWeights, alarmIdWeights, iMax);
-                    appendNormalize(envCode, "R", rScore, endTime);
+                    normalizeDataStore.append(buildNormalize(envCode, "R", rScore, endTime));
                 }
             } catch (Exception e) {
                 log.error("QoS collection: resource collection failed for environment {}: {}", dvEnvConfig.getEnvCode(), e.getMessage());
@@ -233,7 +242,7 @@ public class QosCollectionScheduler {
         return dns;
     }
 
-    private void appendRawData(String envCode, PerformanceDataResult pr, long ts) {
+    private IndicatorRawData buildRawData(String envCode, PerformanceDataResult pr, long ts) {
         IndicatorRawData raw = new IndicatorRawData();
         raw.setCode(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE);
         raw.setEnvCode(envCode);
@@ -242,10 +251,10 @@ public class QosCollectionScheduler {
         raw.setNeName(pr.getNeName());
         raw.setValues(pr.getValues());
         raw.setTimestamp(ts);
-        rawDataStore.append(raw);
+        return raw;
     }
 
-    private void appendDetailData(String envCode, PerformanceIndicatorScope scope, PerformanceDataResult pr,
+    private IndicatorDetailData buildDetailData(String envCode, PerformanceIndicatorScope scope, PerformanceDataResult pr,
         long ts, BigDecimal score) {
         Map<String, String> filtered = new LinkedHashMap<>();
         if (scope.getMeasTypeKeys() != null && pr.getValues() != null) {
@@ -264,7 +273,7 @@ public class QosCollectionScheduler {
         detail.setDnIndicatorValue(score == null ? BigDecimal.ZERO : score.setScale(2, RoundingMode.HALF_UP));
         detail.setValues(filtered);
         detail.setTimestamp(ts);
-        detailDataStore.append(detail);
+        return detail;
     }
 
     private BigDecimal collectScore(Map<String, Map<String, List<BigDecimal>>> neScoreSums,
@@ -287,14 +296,14 @@ public class QosCollectionScheduler {
         }
     }
 
-    private void appendNormalize(String envCode, String type, BigDecimal value, long timestamp) {
+    private IndicatorNormalizeData buildNormalize(String envCode, String type, BigDecimal value, long timestamp) {
         IndicatorNormalizeData data = new IndicatorNormalizeData();
         data.setCode(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE);
         data.setEnvCode(envCode);
         data.setType(type);
         data.setIndicatorValue(value);
         data.setTimestamp(timestamp);
-        normalizeDataStore.append(data);
+        return data;
     }
 
     private DvEnvironmentInfo toDvEnvironmentInfo(OperationIntelligenceProperties.Qos.DvEnvironment config) {
@@ -302,6 +311,7 @@ public class QosCollectionScheduler {
                 config.getServerUrl(), config.getUtmUser(), config.getUtmPassword(),
                 config.getCrtContent(), config.getCrtFileName(), config.getDns());
         info.setStrictSsl(config.isStrictSsl());
+        info.setKeystorePassword(config.getKeystorePassword());
         return info;
     }
 

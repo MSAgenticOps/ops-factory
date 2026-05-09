@@ -11,7 +11,9 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import jakarta.annotation.PreDestroy;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 @Component
@@ -32,6 +35,7 @@ public class DvClient {
 
     private final DvAuthService authService;
     private final DvSslContextFactory sslFactory;
+    private final ConcurrentHashMap<String, WebClient> clientCache = new ConcurrentHashMap<>();
 
     public DvClient(DvAuthService authService, DvSslContextFactory sslFactory) {
         this.authService = authService;
@@ -47,7 +51,7 @@ public class DvClient {
 
     private List<String> doFetchMos(DvEnvironmentInfo env, List<String> dns) {
         try {
-            WebClient webClient = buildWebClient(env);
+            WebClient webClient = getOrCreateWebClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/rest/eammimservice/v1/openapi/mit/mos";
@@ -60,6 +64,10 @@ public class DvClient {
                     .retrieve()
                     .bodyToMono(String.class)
                     .block(Duration.ofSeconds(60));
+
+            if (response == null || response.isBlank()) {
+                return Collections.emptyList();
+            }
 
             return parseChildren(response);
         } catch (Exception e) {
@@ -79,7 +87,7 @@ public class DvClient {
     private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, String moType,
             String measUnitKey, List<String> dns, long startTime, long endTime) {
         try {
-            WebClient webClient = buildWebClient(env);
+            WebClient webClient = getOrCreateWebClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl()
@@ -109,6 +117,10 @@ public class DvClient {
                     .bodyToMono(String.class)
                     .block(Duration.ofSeconds(60));
 
+            if (response == null || response.isBlank()) {
+                return Collections.emptyList();
+            }
+
             return parsePerformanceResult(response);
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch performance data from " + env.getServerUrl()
@@ -127,7 +139,7 @@ public class DvClient {
     private List<AlarmInfo> doFetchCurrentAlarms(DvEnvironmentInfo env, long startTime, long endTime,
             List<String> severities, List<String> dns) {
         try {
-            WebClient webClient = buildWebClient(env);
+            WebClient webClient = getOrCreateWebClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/rest/fault/v1/current-alarms/scroll";
@@ -141,6 +153,10 @@ public class DvClient {
                     .bodyToMono(String.class)
                     .block(Duration.ofSeconds(60));
 
+            if (response == null || response.isBlank()) {
+                return Collections.emptyList();
+            }
+
             return parseAlarms(response);
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch alarms from " + env.getServerUrl()
@@ -150,7 +166,7 @@ public class DvClient {
 
     // --- 11.8 通用重试机制 ---
 
-    private <T> T executeWithRetry(Supplier<T> action, String operationName) {
+    <T> T executeWithRetry(Supplier<T> action, String operationName) {
         int retryCount = 0;
         Exception lastException = null;
         while (retryCount <= MAX_RETRIES) {
@@ -178,15 +194,22 @@ public class DvClient {
 
     // --- 内部工具方法 ---
 
-    private WebClient buildWebClient(DvEnvironmentInfo env) {
-        SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
-        HttpClient httpClient = HttpClient.create()
-                .secure(t -> t.sslContext(sslContext)
-                        .handshakeTimeout(Duration.ofSeconds(10)))
-                .responseTimeout(Duration.ofSeconds(60));
-        return WebClient.builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .build();
+    private WebClient getOrCreateWebClient(DvEnvironmentInfo env) {
+        return clientCache.computeIfAbsent(env.getServerUrl(), url -> {
+            SslContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
+            HttpClient httpClient = HttpClient.create(ConnectionProvider.builder("dv-" + url.hashCode()).maxConnections(10).build())
+                    .secure(t -> t.sslContext(sslContext)
+                            .handshakeTimeout(Duration.ofSeconds(10)))
+                    .responseTimeout(Duration.ofSeconds(60));
+            return WebClient.builder()
+                    .clientConnector(new ReactorClientHttpConnector(httpClient))
+                    .build();
+        });
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        clientCache.clear();
     }
 
     private Map<String, Object> buildAlarmQuery(long startTime, long endTime,
@@ -230,7 +253,7 @@ public class DvClient {
         return body;
     }
 
-    private List<PerformanceDataResult> parsePerformanceResult(String response) {
+    List<PerformanceDataResult> parsePerformanceResult(String response) {
         List<PerformanceDataResult> results = new ArrayList<>();
         if (response == null) return results;
         try {
@@ -262,7 +285,7 @@ public class DvClient {
         return results;
     }
 
-    private List<AlarmInfo> parseAlarms(String response) {
+    List<AlarmInfo> parseAlarms(String response) {
         List<AlarmInfo> alarms = new ArrayList<>();
         if (response == null) return alarms;
         try {
@@ -292,7 +315,7 @@ public class DvClient {
         return node.has(field) && !node.get(field).isNull() ? node.get(field).asText() : null;
     }
 
-    private List<String> parseChildren(String response) {
+    List<String> parseChildren(String response) {
         List<String> children = new ArrayList<>();
         if (response == null) return children;
         try {

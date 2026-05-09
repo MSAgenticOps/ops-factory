@@ -13,6 +13,7 @@ public class DvEnvironmentInfo {
     private String crtContent;
     private String crtFileName;
     private String dns;
+    private String keystorePassword = "";
     private boolean strictSsl = true;
 
     public DvEnvironmentInfo() {}
@@ -52,6 +53,8 @@ public class DvEnvironmentInfo {
     public void setCrtFileName(String crtFileName) { this.crtFileName = crtFileName; }
     public String getDns() { return dns; }
     public void setDns(String dns) { this.dns = dns; }
+    public String getKeystorePassword() { return keystorePassword; }
+    public void setKeystorePassword(String keystorePassword) { this.keystorePassword = keystorePassword; }
     public boolean isStrictSsl() { return strictSsl; }
     public void setStrictSsl(boolean strictSsl) { this.strictSsl = strictSsl; }
 

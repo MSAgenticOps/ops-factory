@@ -98,7 +98,7 @@ export default function OperationIntelligenceFilters({
 
     return (
         <div className="operation-intelligence-filters">
-            <span className="hc-filter-label">{t('operationIntelligence.product')}</span>
+            <span className="oi-filter-label">{t('operationIntelligence.product')}</span>
             <select value={selectedProduct} onChange={e => {
                 setSelectedProduct(e.target.value)
                 const envsOfProduct = envOptions.filter(env => env.agentSolutionType === e.target.value)
@@ -108,7 +108,7 @@ export default function OperationIntelligenceFilters({
                     <option key={p.agentSolutionType} value={p.agentSolutionType}>{p.productTypeName}</option>
                 ))}
             </select>
-            <span className="hc-filter-label">{t('operationIntelligence.environment')}</span>
+            <span className="oi-filter-label">{t('operationIntelligence.environment')}</span>
             <select value={envCode} onChange={e => onEnvCodeChange(e.target.value)}>
                 {filteredEnvs.map(e => (
                     <option key={e.envCode} value={e.envCode}>{e.envName || e.envCode}</option>
@@ -120,10 +120,10 @@ export default function OperationIntelligenceFilters({
                 ))}
             </select>
             {alarmScoreMax != null && (
-                <span className="hc-filter-label">{t('operationIntelligence.alarmScoreMax')}: {alarmScoreMax}</span>
+                <span className="oi-filter-label">{t('operationIntelligence.alarmScoreMax')}: {alarmScoreMax}</span>
             )}
             {weights && (
-                <span className="hc-filter-label">
+                <span className="oi-filter-label">
                     {t('operationIntelligence.availability')}: {weights.a}  {t('operationIntelligence.performance')}: {weights.p}  {t('operationIntelligence.resource')}: {weights.r}
                 </span>
             )}

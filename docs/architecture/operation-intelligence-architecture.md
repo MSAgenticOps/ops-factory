@@ -79,7 +79,7 @@
 
 4. 定时调度层
    - `QosDataScheduler`
-   - 按 `cron` 表达式定时触发数据采集任务
+   - 按固定间隔定时触发数据采集任务
    - 调用 `DvClient` 从 DV 系统拉取原始数据
    - 触发归一化与评分计算
    - 将结果写入 `JsonFileStore`
@@ -111,7 +111,7 @@
 ```text
 QosDataScheduler         DvClient           DV 系统          JsonFileStore
      |                      |                  |                  |
-     | trigger (cron)       |                  |                  |
+     | trigger (fixedDelay) |                  |                  |
      |--------------------->|                  |                  |
      |                      | fetch metrics    |                  |
      |                      |----------------->|                  |
@@ -132,7 +132,7 @@ QosDataScheduler         DvClient           DV 系统          JsonFileStore
 
 采集流程说明：
 
-1. `QosDataScheduler` 按 `cron` 表达式定时触发
+1. `QosDataScheduler` 按固定间隔定时触发
 2. `DvClient` 向 DV 系统发起性能指标与告警数据查询请求
 3. `DvAuthService` 自动处理认证与 token 刷新
 4. 原始数据写入 `JsonFileStore` 的 `raw/` 目录
@@ -183,8 +183,8 @@ HS = wA × A + wP × P + wR × R
 - `P`：性能维度评分，取值范围 `[0, 100]`
 - `R`：资源/告警维度评分，取值范围 `[0, 100]`
 - `wA`：可用性权重，默认 `0.4`
-- `wP`：性能权重，默认 `0.3`
-- `wR`：资源/告警权重，默认 `0.3`
+- `wP`：性能权重，默认 `0.4`
+- `wR`：资源/告警权重，默认 `0.2`
 
 权重约束：`wA + wP + wR = 1.0`
 
@@ -265,11 +265,17 @@ operation-intelligence/data/
 
 ### 6.2 轮转间隔
 
-数据按可配置的轮转间隔进行写入。每次采集任务完成后，生成一个新的 JSON 文件。轮转间隔通过 `config.yaml` 中的 `operation-intelligence.qos.rotation-interval` 配置。
+数据按可配置的轮转间隔进行写入。每次采集任务完成后，生成一个新的 JSON 文件。轮转间隔通过 `config.yaml` 中的 `operation-intelligence.qos.rotation-interval-ms` 配置。
 
 ### 6.3 数据保留天数
 
-过期数据按保留天数自动清理。保留天数通过 `operation-intelligence.qos.retention-days` 配置。超出保留天数的 JSON 文件会在采集任务执行时被清理。
+过期数据按保留天数自动清理。保留天数通过以下配置项分别管理：
+
+- `operation-intelligence.qos.raw-data-retention-days`（默认 7 天）
+- `operation-intelligence.qos.detail-data-retention-days`（默认 30 天）
+- `operation-intelligence.qos.normalize-data-retention-days`（默认 90 天）
+
+超出保留天数的 JSON 文件会在定时清理任务执行时被删除。
 
 ## 7. 接口列表
 

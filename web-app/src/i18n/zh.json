@@ -2253,7 +2253,6 @@
     "performance": "性能",
     "resource": "资源",
     "chart": "健康曲线",
-    "detailTitle": "健康详情",
     "availabilityDetail": "可用性详情",
     "performanceDetail": "性能详情",
     "alarmDetail": "告警详情",
@@ -2271,7 +2270,6 @@
     "noData": "暂无健康数据",
     "indicatorName": "指标名称",
     "dn": "网元DN",
-    "value": "值",
     "score": "得分",
     "successRatio": "成功率",
     "successCount": "成功数",
@@ -2290,8 +2288,6 @@
     "good": "健康",
     "warning": "亚健康",
     "orange": "异常",
-    "critical": "严重",
-    "pagePlaceholder": "页码",
-    "goToPage": "跳转"
+    "critical": "严重"
   }
 }

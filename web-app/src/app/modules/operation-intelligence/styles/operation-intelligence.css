@@ -15,13 +15,13 @@
 }
 
 /* ---- Cards + Contribution row ---- */
-.hc-cards-row {
+.oi-cards-row {
     display: flex;
     gap: 16px;
     align-items: stretch;
 }
 
-.hc-cards-row .dimension-score-cards {
+.oi-cards-row .dimension-score-cards {
     flex: 1;
 }
 
@@ -63,7 +63,7 @@
     background: var(--color-border, #eee);
 }
 
-.hc-filter-label {
+.oi-filter-label {
     font-size: 13px;
     color: var(--color-text-secondary, #666);
     white-space: nowrap;
@@ -89,12 +89,6 @@
     font-size: 13px;
     color: var(--color-text-secondary, #666);
     margin-bottom: 4px;
-}
-
-.score-value {
-    display: block;
-    font-size: 28px;
-    font-weight: 700;
 }
 
 .score-card-chart {
@@ -123,12 +117,12 @@
 }
 
 /* ---- Tabs (use platform config-tabs + local tweaks) ---- */
-.hc-tabs {
+.oi-tabs {
     margin-bottom: 0;
     border-bottom: 1px solid var(--color-border, #e0e0e0);
 }
 
-.hc-detail-section {
+.oi-detail-section {
     border-top-left-radius: 0;
 }
 

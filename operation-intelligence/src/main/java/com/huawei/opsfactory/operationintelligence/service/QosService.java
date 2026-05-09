@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,11 +47,13 @@ public class QosService {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
         Map<Long, List<IndicatorNormalizeData>> byTimestamp = data.stream()
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
+                .filter(d -> d.getTimestamp() != null)
                 .collect(Collectors.groupingBy(IndicatorNormalizeData::getTimestamp));
 
-        BigDecimal wA = resolveWeight("A");
-        BigDecimal wP = resolveWeight("P");
-        BigDecimal wR = resolveWeight("R");
+        ProductConfigRule weightRule = productConfigRuleStore.loadAll().stream().findFirst().orElse(null);
+        BigDecimal wA = resolveWeight("A", weightRule);
+        BigDecimal wP = resolveWeight("P", weightRule);
+        BigDecimal wR = resolveWeight("R", weightRule);
 
         List<Map<String, Object>> results = new ArrayList<>();
         byTimestamp.entrySet().stream()
@@ -74,6 +77,8 @@ public class QosService {
 
     public Map<String, Object> getIndicatorDetail(String envCode, String type, long startTime, long endTime,
             int pageIndex, int pageSize) {
+        if (pageIndex < 1) pageIndex = 1;
+        if (pageSize < 1) pageSize = 10;
         List<IndicatorDetailData> data = detailDataStore.loadRange(startTime, endTime);
         List<IndicatorDetailData> filtered = data.stream()
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
@@ -94,15 +99,16 @@ public class QosService {
         return result;
     }
 
-    public ProductConfigRule getProductConfigRule(String agentSolutionType) {
+    public Optional<ProductConfigRule> getProductConfigRule(String agentSolutionType) {
         return productConfigRuleStore.loadAll().stream()
                 .filter(r -> agentSolutionType == null || agentSolutionType.equals(r.getAgentSolutionType()))
-                .findFirst()
-                .orElse(null);
+                .findFirst();
     }
 
     public Map<String, Object> getAlarmDetail(String envCode, long startTime, long endTime,
             int pageIndex, int pageSize) {
+        if (pageIndex < 1) pageIndex = 1;
+        if (pageSize < 1) pageSize = 10;
         List<AlarmDetailData> data = alarmDetailDataStore.loadRange(startTime, endTime);
         List<AlarmDetailData> filtered = data.stream()
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
@@ -142,6 +148,7 @@ public class QosService {
                 .collect(Collectors.toList());
 
         List<Map<String, Object>> results = new ArrayList<>();
+        ProductConfigRule weightRule = productConfigRuleStore.loadAll().stream().findFirst().orElse(null);
         for (String type : List.of("A", "P", "R")) {
             List<BigDecimal> values = filtered.stream()
                     .filter(d -> type.equals(d.getType()))
@@ -150,7 +157,7 @@ public class QosService {
             BigDecimal avg = values.isEmpty() ? BigDecimal.ZERO
                     : values.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
                             .divide(BigDecimal.valueOf(values.size()), 4, java.math.RoundingMode.HALF_UP);
-            BigDecimal weight = resolveWeight(type);
+            BigDecimal weight = resolveWeight(type, weightRule);
             BigDecimal contribution = avg.multiply(weight).setScale(4, java.math.RoundingMode.HALF_UP);
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("type", type);
@@ -168,8 +175,7 @@ public class QosService {
                 .collect(Collectors.toList());
     }
 
-    private BigDecimal resolveWeight(String dimension) {
-        ProductConfigRule rule = productConfigRuleStore.loadAll().stream().findFirst().orElse(null);
+    private BigDecimal resolveWeight(String dimension, ProductConfigRule rule) {
         if (rule != null && rule.getHealthWeight() != null && !rule.getHealthWeight().isBlank()) {
             String[] parts = rule.getHealthWeight().split(",");
             if (parts.length == 3) {

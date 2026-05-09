@@ -11,10 +11,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +23,7 @@ public class DvSslContextFactory {
 
     private final ConcurrentHashMap<String, SslContext> sslContextCache = new ConcurrentHashMap<>();
 
-    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl) {
+    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl, String keystorePassword) {
         if (crtContent == null || crtContent.isBlank()) {
             if (strictSsl) {
                 throw new IllegalStateException("No SSL certificate configured and strict-ssl is enabled");
@@ -35,28 +32,30 @@ public class DvSslContextFactory {
             return createInsecureSslContext();
         }
 
-        return sslContextCache.computeIfAbsent(crtContent, k -> doCreateSslContext(k, fileName, strictSsl));
+        return sslContextCache.computeIfAbsent(crtContent, k -> doCreateSslContext(k, fileName, strictSsl, keystorePassword));
+    }
+
+    public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl) {
+        return createSslContext(crtContent, fileName, strictSsl, "");
     }
 
     public SslContext createSslContext(String crtContent, String fileName) {
-        return createSslContext(crtContent, fileName, true);
+        return createSslContext(crtContent, fileName, true, "");
     }
 
-    private SslContext doCreateSslContext(String crtContent, String fileName, boolean strictSsl) {
-        Path tempFile = null;
+    private SslContext doCreateSslContext(String crtContent, String fileName, boolean strictSsl, String keystorePassword) {
         try {
             byte[] certBytes = java.util.Base64.getDecoder().decode(crtContent);
-            tempFile = Files.createTempFile("dv_", fileName != null ? fileName : "cert");
-            Files.write(tempFile, certBytes);
-
             String type = (fileName != null && fileName.endsWith(".p12")) ? "PKCS12" : "JKS";
             KeyStore keyStore = KeyStore.getInstance(type);
-            try (InputStream is = new FileInputStream(tempFile.toFile())) {
-                keyStore.load(is, "".toCharArray());
+            char[] pwd = (keystorePassword != null && !keystorePassword.isEmpty())
+                    ? keystorePassword.toCharArray() : new char[0];
+            try (InputStream is = new ByteArrayInputStream(certBytes)) {
+                keyStore.load(is, pwd);
             }
 
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            kmf.init(keyStore, "".toCharArray());
+            kmf.init(keyStore, pwd);
 
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init((KeyStore) null);
@@ -73,12 +72,9 @@ public class DvSslContextFactory {
             if (strictSsl) {
                 throw new RuntimeException("Failed to create SSL context with certificate (strict-ssl enabled)", e);
             }
-            log.warn("INSECURE SSL: failed to create SSL context with certificate, falling back to insecure: {}", e.getMessage());
+            log.error("INSECURE SSL: SSL context creation failed, falling back to insecure trust manager. "
+                    + "This is a security risk. Set strict-ssl=true to enforce certificate validation. Error: {}", e.getMessage());
             return createInsecureSslContext();
-        } finally {
-            if (tempFile != null) {
-                try { Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
-            }
         }
     }
 

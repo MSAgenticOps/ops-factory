@@ -26,12 +26,13 @@ public class WebConfig {
         if (StringUtils.hasText(corsOrigin)) {
             String[] origins = StringUtils.commaDelimitedListToStringArray(corsOrigin);
             config.setAllowedOriginPatterns(Arrays.asList(origins));
+            config.setAllowCredentials(true);
         } else {
             config.setAllowedOriginPatterns(List.of("*"));
+            config.setAllowCredentials(false);
         }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

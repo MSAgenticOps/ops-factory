@@ -22,7 +22,7 @@ operation-intelligence:
       availability: 0.4                       # wA (0~1, wA+wP+wR=1)
       performance: 0.4                        # wP
       resource: 0.2                           # wR
-    dv-environments: 
+    dv-environments:
       - env-code: "DigitalCRM.sit"
         env-name: "DigitalCRM SIT"
         agent-solution-type: "DigitalCRM"
@@ -32,19 +32,8 @@ operation-intelligence:
         utm-password: "changeit"
         crt-content: ""                       # Base64 encoded certificate
         crt-file-name: "client.jks"
-        strict-ssl: false                       # reject insecure SSL fallback (default: true)
-    
-    # DV environments
-    #  - env-code: "DigitalCRM.sit"
-    #    env-name: "DigitalCRM SIT"
-    #    agent-solution-type: "DigitalCRM"
-    #    product-type-name: "DigitalCRM"
-    #    server-url: "https://127.0.0.1:26335"
-    #    utm-user: "admin"
-    #    utm-password: "changeit"
-    #    crt-content: ""                       # Base64 encoded certificate
-    #    crt-file-name: "client.jks"
-    #    strict-ssl: false                       # reject insecure SSL fallback (default: true)
+        keystore-password: ""                 # keystore password (default: empty)
+        strict-ssl: false                     # reject insecure SSL fallback (default: true)
 
   logging:
     access-log-enabled: true

@@ -72,29 +72,25 @@ java -jar target/operation-intelligence.jar
 
 ```yaml
 operation-intelligence:
-  server:
-    port: 8096
-    address: "0.0.0.0"
+  cors-origin: "*"
   qos:
-    enabled: true
-    collect-interval: "0 */5 * * * *"
-    rotation-interval: 300
-    retention-days: 30
-  logging:
-    level:
-      root: INFO
-      com.huawei.opsfactory.operationintelligence: INFO
+    enabled: false
+    collection-interval-ms: 300000
+    rotation-interval-ms: 3600000
+    raw-data-retention-days: 7
+    detail-data-retention-days: 30
+    normalize-data-retention-days: 90
+    weights:
+      availability: 0.4
+      performance: 0.4
+      resource: 0.2
+    dv-environments: []
 ```
 
-#### `operation-intelligence.server.port`
+#### 服务端口
 
-- 含义：服务监听端口
+- 含义：服务监听端口，使用标准 Spring Boot `server.port` 配置
 - 默认值：`8096`
-
-#### `operation-intelligence.server.address`
-
-- 含义：服务监听地址
-- 默认值：`0.0.0.0`
 
 ### 3.2 QoS 配置
 
@@ -104,23 +100,31 @@ operation-intelligence:
 - 默认值：`true`
 - 说明：设为 `false` 时服务仅提供查询 API，不执行定时采集任务
 
-#### `operation-intelligence.qos.collect-interval`
+#### `operation-intelligence.qos.collection-interval-ms`
 
-- 含义：数据采集调度 cron 表达式
-- 默认值：`0 */5 * * * *`（每 5 分钟执行一次）
-- 说明：遵循标准 `cron` 格式
+- 含义：数据采集调度间隔，单位毫秒
+- 默认值：`300000`（5 分钟）
+- 说明：调度器按此间隔定时执行采集任务
 
-#### `operation-intelligence.qos.rotation-interval`
+#### `operation-intelligence.qos.rotation-interval-ms`
 
-- 含义：数据轮转间隔，单位秒
-- 默认值：`300`
-- 说明：采集任务按此间隔写入新 JSON 文件
+- 含义：数据轮转间隔，单位毫秒
+- 默认值：`3600000`（1 小时）
 
-#### `operation-intelligence.qos.retention-days`
+#### `operation-intelligence.qos.raw-data-retention-days`
 
-- 含义：数据保留天数
+- 含义：原始数据保留天数
+- 默认值：`7`
+
+#### `operation-intelligence.qos.detail-data-retention-days`
+
+- 含义：明细数据保留天数
 - 默认值：`30`
-- 说明：超出保留天数的 JSON 文件会在采集任务执行时被清理
+
+#### `operation-intelligence.qos.normalize-data-retention-days`
+
+- 含义：归一化数据保留天数
+- 默认值：`90`
 
 ### 3.3 评分权重配置
 
@@ -129,8 +133,8 @@ operation-intelligence:
   qos:
     weights:
       availability: 0.4
-      performance: 0.3
-      resource: 0.3
+      performance: 0.4
+      resource: 0.2
 ```
 
 #### `operation-intelligence.qos.weights.availability`
@@ -142,107 +146,85 @@ operation-intelligence:
 #### `operation-intelligence.qos.weights.performance`
 
 - 含义：性能维度权重
-- 默认值：`0.3`
+- 默认值：`0.4`
 
 #### `operation-intelligence.qos.weights.resource`
 
 - 含义：资源/告警维度权重
-- 默认值：`0.3`
+- 默认值：`0.2`
 
 ### 3.4 评分阈值配置
 
-```yaml
-operation-intelligence:
-  qos:
-    thresholds:
-      availability:
-        - 99.99
-        - 99.9
-        - 99.0
-        - 95.0
-      performance:
-        p50: 200
-        p90: 500
-        p95: 1000
-        p99: 3000
-      alarm:
-        low: 5
-        medium: 20
-        high: 50
-```
-
-#### `operation-intelligence.qos.thresholds.availability`
-
-- 含义：可用性分段阈值（百分比），从高到低排列
-- 说明：对应评分 100/90/70/50/30 五档
-
-#### `operation-intelligence.qos.thresholds.performance`
-
-- 含义：性能分段阈值（毫秒）
-- 说明：`p50`/`p90`/`p95`/`p99` 分别对应响应时间百分位阈值
-
-#### `operation-intelligence.qos.thresholds.alarm`
-
-- 含义：告警密度分段阈值
-- 说明：`low`/`medium`/`high` 对应告警数量阈值
+当前评分阈值通过 `PerformanceIndicatorScope` 配置文件和 `ProductConfigRule` 管理，存储在 `operation-intelligence/data/qos/config/` 目录下的 JSON 文件中，不通过 `config.yaml` 配置。
 
 ### 3.5 DV 环境配置
 
 ```yaml
 operation-intelligence:
-  dv:
-    environments:
-      - name: "production"
-        baseUrl: "https://dv.example.com"
-        authType: "token"
-        token: "${DV_PRODUCTION_TOKEN}"
-        sslVerify: true
-        connectTimeout: 5000
-        readTimeout: 30000
-      - name: "staging"
-        baseUrl: "https://dv-staging.example.com"
-        authType: "token"
-        token: "${DV_STAGING_TOKEN}"
-        sslVerify: true
-        connectTimeout: 5000
-        readTimeout: 30000
+  qos:
+    dv-environments:
+      - env-code: "DigitalCRM.sit"
+        env-name: "DigitalCRM SIT"
+        agent-solution-type: "DigitalCRM"
+        product-type-name: "DigitalCRM"
+        server-url: "https://10.44.212.216:26335"
+        utm-user: "admin"
+        utm-password: "changeit"
+        crt-content: ""
+        crt-file-name: "client.jks"
+        keystore-password: ""
+        strict-ssl: false
 ```
 
-#### `operation-intelligence.dv.environments[].name`
+#### `operation-intelligence.qos.dv-environments[].env-code`
 
-- 含义：环境标识，用于查询接口中指定目标环境
+- 含义：环境编码，用于查询接口中指定目标环境
 - 说明：全局唯一
 
-#### `operation-intelligence.dv.environments[].baseUrl`
+#### `operation-intelligence.qos.dv-environments[].env-name`
+
+- 含义：环境显示名称
+- 说明：用于前端展示
+
+#### `operation-intelligence.qos.dv-environments[].agent-solution-type`
+
+- 含义：Agent 解决方案类型
+
+#### `operation-intelligence.qos.dv-environments[].product-type-name`
+
+- 含义：产品类型名称
+
+#### `operation-intelligence.qos.dv-environments[].server-url`
 
 - 含义：DV 系统 API 地址
 - 说明：必须包含协议前缀 `https://` 或 `http://`
 
-#### `operation-intelligence.dv.environments[].authType`
+#### `operation-intelligence.qos.dv-environments[].utm-user`
 
-- 含义：认证方式
-- 当前支持：`token`
+- 含义：UTM 认证用户名
 
-#### `operation-intelligence.dv.environments[].token`
+#### `operation-intelligence.qos.dv-environments[].utm-password`
 
-- 含义：认证 token
-- 说明：支持环境变量引用，例如 `${DV_PRODUCTION_TOKEN}`
+- 含义：UTM 认证密码
 
-#### `operation-intelligence.dv.environments[].sslVerify`
+#### `operation-intelligence.qos.dv-environments[].crt-content`
 
-- 含义：是否验证 SSL 证书
+- 含义：Base64 编码的客户端证书内容
+
+#### `operation-intelligence.qos.dv-environments[].crt-file-name`
+
+- 含义：客户端证书文件名
+
+#### `operation-intelligence.qos.dv-environments[].keystore-password`
+
+- 含义：keystore 密码
+- 默认值：空
+
+#### `operation-intelligence.qos.dv-environments[].strict-ssl`
+
+- 含义：是否严格验证 SSL 证书
 - 默认值：`true`
 - 说明：生产环境应保持 `true`，仅在测试环境可设为 `false`
-
-#### `operation-intelligence.dv.environments[].connectTimeout`
-
-- 含义：连接超时，单位毫秒
-- 默认值：`5000`
-
-#### `operation-intelligence.dv.environments[].readTimeout`
-
-- 含义：读取超时，单位毫秒
-- 默认值：`30000`
 
 ## 4. API 规范
 
@@ -254,9 +236,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -293,9 +275,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -305,9 +287,9 @@ operation-intelligence:
 {
   "healthScore": 85.6,
   "availability": { "score": 90, "weight": 0.4 },
-  "performance": { "score": 82, "weight": 0.3 },
-  "resource": { "score": 84, "weight": 0.3 },
-  "timestamp": "2026-05-08T00:00:00Z"
+  "performance": { "score": 82, "weight": 0.4 },
+  "resource": { "score": 84, "weight": 0.2 },
+  "timestamp": 1746662400000
 }
 ```
 
@@ -319,9 +301,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -345,9 +327,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -373,9 +355,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -399,9 +381,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -425,9 +407,9 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production",
-  "startTime": "2026-05-01T00:00:00Z",
-  "endTime": "2026-05-08T00:00:00Z"
+  "envCode": "production",
+  "startTime": 1746057600000,
+  "endTime": 1746662400000
 }
 ```
 
@@ -437,10 +419,10 @@ operation-intelligence:
 {
   "contributions": [
     { "name": "availabilityRate", "weight": 0.4, "value": 90, "contribution": 36.0 },
-    { "name": "responseTime", "weight": 0.3, "value": 82, "contribution": 24.6 },
-    { "name": "alarmDensity", "weight": 0.3, "value": 84, "contribution": 25.2 }
+    { "name": "responseTime", "weight": 0.4, "value": 82, "contribution": 32.8 },
+    { "name": "alarmDensity", "weight": 0.2, "value": 84, "contribution": 16.8 }
   ],
-  "totalScore": 85.8
+  "totalScore": 85.6
 }
 ```
 
@@ -452,7 +434,7 @@ operation-intelligence:
 
 ```json
 {
-  "environment": "production"
+  "envCode": "production"
 }
 ```
 
@@ -460,12 +442,7 @@ operation-intelligence:
 
 ```json
 {
-  "weights": { "availability": 0.4, "performance": 0.3, "resource": 0.3 },
-  "thresholds": {
-    "availability": [99.99, 99.9, 99.0, 95.0],
-    "performance": { "p50": 200, "p90": 500, "p95": 1000, "p99": 3000 },
-    "alarm": { "low": 5, "medium": 20, "high": 50 }
-  }
+  "weights": { "availability": 0.4, "performance": 0.4, "resource": 0.2 }
 }
 ```
 
@@ -502,7 +479,7 @@ operation-intelligence:
 
 - 由网关统一暴露外部稳定接口和鉴权
 - 网关可按业务侧需要再封装环境隔离、调用审计、限流和租户维度控制
-- 不建议让浏览器直接绕过网关访问 `operation-intelligence`
+- 当前版本前端直接访问 `operation-intelligence`（独立服务部署模式），不经过网关。如后续需要统一鉴权或限流，可在网关层增加代理路由
 
 ### 5.3 如果你是其他后端服务
 
@@ -526,9 +503,9 @@ curl http://127.0.0.1:8096/operation-intelligence/qos/getEnvironments
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getHealthIndicator \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production",
-    "startTime": "2026-05-01T00:00:00Z",
-    "endTime": "2026-05-08T00:00:00Z"
+    "envCode": "production",
+    "startTime": 1746057600000,
+    "endTime": 1746662400000
   }'
 ```
 
@@ -538,9 +515,9 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getHealthIndicator
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getAvailableIndicatorDetail \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production",
-    "startTime": "2026-05-01T00:00:00Z",
-    "endTime": "2026-05-08T00:00:00Z"
+    "envCode": "production",
+    "startTime": 1746057600000,
+    "endTime": 1746662400000
   }'
 ```
 
@@ -550,9 +527,9 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getAvailableIndica
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getPerformanceIndicatorDetail \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production",
-    "startTime": "2026-05-01T00:00:00Z",
-    "endTime": "2026-05-08T00:00:00Z"
+    "envCode": "production",
+    "startTime": 1746057600000,
+    "endTime": 1746662400000
   }'
 ```
 
@@ -562,9 +539,9 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getPerformanceIndi
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getResourceIndicatorDetail \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production",
-    "startTime": "2026-05-01T00:00:00Z",
-    "endTime": "2026-05-08T00:00:00Z"
+    "envCode": "production",
+    "startTime": 1746057600000,
+    "endTime": 1746662400000
   }'
 ```
 
@@ -574,9 +551,9 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getResourceIndicat
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getAlarmIndicatorDetail \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production",
-    "startTime": "2026-05-01T00:00:00Z",
-    "endTime": "2026-05-08T00:00:00Z"
+    "envCode": "production",
+    "startTime": 1746057600000,
+    "endTime": 1746662400000
   }'
 ```
 
@@ -586,9 +563,9 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getAlarmIndicatorD
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getContributionData \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production",
-    "startTime": "2026-05-01T00:00:00Z",
-    "endTime": "2026-05-08T00:00:00Z"
+    "envCode": "production",
+    "startTime": 1746057600000,
+    "endTime": 1746662400000
   }'
 ```
 
@@ -598,7 +575,7 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getContributionDat
 curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getProductConfigRule \
   -H 'Content-Type: application/json' \
   -d '{
-    "environment": "production"
+    "envCode": "production"
   }'
 ```
 
@@ -608,7 +585,7 @@ curl -X POST http://127.0.0.1:8096/operation-intelligence/qos/getProductConfigRu
 
 - 当前仅支持 JSON 文件存储，不支持数据库持久化
 - 采集任务依赖定时调度，不支持实时推送
-- DV 系统集成当前仅支持 `token` 认证方式
+- DV 系统集成当前仅支持 UTM 用户名/密码认证方式
 - 评分算法的权重与阈值通过配置文件管理，不支持运行时动态调整
 - 前端当前直接访问 `operation-intelligence`，与独立服务部署模式一致
 

@@ -15,7 +15,7 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
     const latest = points.length > 0 ? parseFloat(points[points.length - 1].value) : null
 
     const statusColor = (v: number | null) => {
-        if (v === null) return '#999'
+        if (v === null) return CHART_COLORS.neutral
         if (v >= 0.9) return CHART_COLORS.good
         if (v >= 0.7) return CHART_COLORS.warning
         if (v >= 0.5) return CHART_COLORS.orange
@@ -64,7 +64,7 @@ export default function TopologyView({ points, envCode }: TopologyViewProps) {
                 edgeSymbolSize: [4, 10],
                 nodes,
                 links,
-                lineStyle: { color: '#aaa', width: 1.5, curveness: 0 }
+                lineStyle: { color: CHART_COLORS.neutral, width: 1.5, curveness: 0 }
             }]
         }
     }, [points, envCode, t])

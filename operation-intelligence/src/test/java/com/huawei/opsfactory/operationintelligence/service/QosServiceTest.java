@@ -102,6 +102,35 @@ class QosServiceTest {
         assertEquals("Test Env", result.get(0).get("envName"));
     }
 
+    @Test
+    void getIndicatorDetail_pageIndexZero_clampedToOne() {
+        when(detailStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
+        Map<String, Object> result = service.getIndicatorDetail("ENV1", "A", 0L, 2000L, 0, 10);
+        assertNotNull(result);
+        assertEquals(0, result.get("total"));
+    }
+
+    @Test
+    void getIndicatorDetail_pageSizeZero_clampedToTen() {
+        when(detailStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
+        Map<String, Object> result = service.getIndicatorDetail("ENV1", "A", 0L, 2000L, 1, 0);
+        assertNotNull(result);
+    }
+
+    @Test
+    void getIndicatorDetail_pageBeyondTotal_returnsEmpty() {
+        when(detailStore.loadRange(anyLong(), anyLong())).thenReturn(List.of());
+        Map<String, Object> result = service.getIndicatorDetail("ENV1", "A", 0L, 2000L, 999, 10);
+        assertNotNull(result);
+        assertEquals(0, ((List<?>) result.get("results")).size());
+    }
+
+    @Test
+    void getProductConfigRule_notFound_returnsEmpty() {
+        when(ruleStore.loadAll()).thenReturn(List.of());
+        assertTrue(service.getProductConfigRule("UNKNOWN").isEmpty());
+    }
+
     private static BigDecimal bd(String val) {
         return new BigDecimal(val);
     }

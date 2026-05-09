@@ -1,5 +1,6 @@
 package com.huawei.opsfactory.operationintelligence.controller;
 
+import com.huawei.opsfactory.operationintelligence.qos.model.ProductConfigRule;
 import com.huawei.opsfactory.operationintelligence.service.QosService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import reactor.core.scheduler.Schedulers;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/operation-intelligence/qos")
@@ -95,9 +97,13 @@ public class QosController {
     public Mono<ResponseEntity<Map<String, Object>>> getProductConfigRule(@RequestBody Map<String, Object> req) {
         return Mono.fromCallable(() -> {
             String agentSolutionType = (String) req.get("agentSolutionType");
-            Map<String, Object> rule = new LinkedHashMap<>();
-            rule.put("result", qosService.getProductConfigRule(agentSolutionType));
-            return ResponseEntity.ok(rule);
+            Optional<ProductConfigRule> rule = qosService.getProductConfigRule(agentSolutionType);
+            if (rule.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body((Map<String, Object>) null);
+            }
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("result", rule.get());
+            return ResponseEntity.ok(body);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

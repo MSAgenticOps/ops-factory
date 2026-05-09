@@ -49,7 +49,7 @@ export default function ContributionAnalysis({ envCode, startTime, endTime }: Co
             data: data.map(d => typeLabel(d.type)),
             axisLine: { show: false },
             axisTick: { show: false },
-            axisLabel: { fontSize: 13, color: '#666' }
+            axisLabel: { fontSize: 13, color: 'var(--color-text-secondary, #666)' }
         },
         series: [{
             type: 'bar' as const,

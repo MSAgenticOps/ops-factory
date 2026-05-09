@@ -9,6 +9,7 @@ export const CHART_COLORS = {
   warning: '#f59e0b',       // --chart-3
   orange: '#f59e0b',        // --chart-3
   critical: '#ef4444',      // --chart-4
+  neutral: '#999',          // fallback / secondary
 } as const
 
 function hexToRgba(hex: string, alpha: number): string {
