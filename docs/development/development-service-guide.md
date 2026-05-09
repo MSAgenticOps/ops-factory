@@ -653,8 +653,11 @@ public class WebConfig {
 在 `web-app/config.json` 和 `config.json.example` 中添加：
 
 ```json
-"<serviceName>ServiceUrl": "http://127.0.0.1:<port>"
+"<serviceName>ServiceUrl": "http://127.0.0.1:<port>",
+"<serviceName>SecretKey": "<shared-secret-if-required>"
 ```
+
+如果新服务使用 `x-secret-key` 认证，前端运行时配置里的 `<serviceName>SecretKey` 必须和该服务的 `config.yaml` / `config.yaml.example` 中对应 secret key 保持一致，避免示例配置启动后静默回退到默认密钥。
 
 ### 15.4 i18n 检查
 
