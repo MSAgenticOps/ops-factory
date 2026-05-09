@@ -23,8 +23,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class AgentEndpointE2ETest extends BaseE2ETest {
-    // ====================== GET /agents ======================
-
     @Test
     public void listAgents_authenticated_returnsAgentList() {
         when(agentConfigService.getRegistry()).thenReturn(List.of(
@@ -89,8 +87,6 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.agents").isArray();
     }
-
-    // ====================== POST /agents (Create) ======================
 
     @Test
     public void createAgent_admin_success() throws Exception {
@@ -169,8 +165,6 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
-    // ====================== DELETE /agents/{id} ======================
-
     @Test
     public void deleteAgent_admin_success() throws Exception {
         doNothing().when(instanceManager).stopAllForAgent("test-agent");
@@ -209,8 +203,6 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
-    // ====================== GET /agents/{id}/skills ======================
-
     @Test
     public void listSkills_admin_returnsSkillsList() {
         when(agentConfigService.listSkills("universal-agent")).thenReturn(List.of(
@@ -238,8 +230,6 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // ====================== GET /agents/{id}/config ======================
 
     @Test
     public void getConfig_admin_returnsAgentConfig() {
@@ -290,8 +280,6 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.provider").isEqualTo("")
                 .jsonPath("$.model").isEqualTo("");
     }
-
-    // ====================== PUT /agents/{id}/config ======================
 
     @Test
     public void updateConfig_admin_success() throws Exception {

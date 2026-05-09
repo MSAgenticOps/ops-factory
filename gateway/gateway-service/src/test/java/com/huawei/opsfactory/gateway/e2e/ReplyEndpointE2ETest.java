@@ -24,9 +24,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
 
+/**
+ * E2E tests for ReplyController endpoints.
+ *
  * @author x00000000
  * @since 2026-05-09
-/** E2E tests for ReplyController endpoints. */
+ */
 public class ReplyEndpointE2ETest extends BaseE2ETest {
     private ManagedInstance mockInstance;
 
