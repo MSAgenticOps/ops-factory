@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
@@ -15,6 +19,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST controller for CRUD operations on business service definitions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/business-services")
 public class BusinessServiceController {
@@ -26,6 +36,12 @@ public class BusinessServiceController {
         this.businessServiceService = businessServiceService;
     }
 
+    /**
+     * Lists business services, optionally filtered by group, host, or keyword.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listBusinessServices(
             @RequestParam(value = "groupId", required = false) String groupId,
@@ -46,6 +62,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a business service by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getBusinessService(
             @PathVariable("id") String id,
@@ -67,6 +89,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a business service with its associated hosts resolved.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/resolved")
     public Mono<ResponseEntity<Map<String, Object>>> getResolved(
             @PathVariable("id") String id,
@@ -88,6 +116,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Lists hosts associated with a business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/hosts")
     public Mono<Map<String, Object>> getHosts(
             @PathVariable("id") String id,
@@ -101,6 +135,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets the topology data for a business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/topology")
     public Mono<Map<String, Object>> getTopology(
             @PathVariable("id") String id,
@@ -110,6 +150,12 @@ public class BusinessServiceController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createBusinessService(
             @RequestBody Map<String, Object> request,
@@ -132,6 +178,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a business service by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateBusinessService(
             @PathVariable("id") String id,
@@ -160,6 +212,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a business service by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteBusinessService(
             @PathVariable("id") String id,
@@ -179,6 +237,12 @@ public class BusinessServiceController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Migrates business data from the legacy business field to the business service table.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/migrate")
     public Mono<Map<String, Object>> migrate(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);

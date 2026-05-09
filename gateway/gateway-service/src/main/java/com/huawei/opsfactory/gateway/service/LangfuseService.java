@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,6 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * Integrates with the Langfuse observability API to fetch traces, observations, and aggregated overviews.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class LangfuseService {
     private static final Logger log = LoggerFactory.getLogger(LangfuseService.class);
@@ -35,12 +45,24 @@ public class LangfuseService {
                 .build();
     }
 
+    /**
+     * Checks whether the Langfuse integration is properly configured with host, public key, and secret key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean isConfigured() {
         return config.getHost() != null && !config.getHost().isBlank()
                 && config.getPublicKey() != null && !config.getPublicKey().isBlank()
                 && config.getSecretKey() != null && !config.getSecretKey().isBlank();
     }
 
+    /**
+     * Checks whether the Langfuse server is reachable via a health check endpoint.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<Boolean> checkReachable() {
         if (!isConfigured()) {
             return Mono.just(false);
@@ -61,6 +83,12 @@ public class LangfuseService {
                 });
     }
 
+    /**
+     * Fetches raw traces from the Langfuse API within the given time range.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<String> getTraces(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
             return Mono.just("[]");
@@ -70,6 +98,12 @@ public class LangfuseService {
         return doGet(url);
     }
 
+    /**
+     * Fetches raw observations from the Langfuse API within the given time range.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<String> getObservations(String from, String to) {
         if (!isConfigured()) {
             return Mono.just("[]");

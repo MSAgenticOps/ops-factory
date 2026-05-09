@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.monitoring;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,6 +46,12 @@ public class MetricsCollector {
         this.metricsBuffer = metricsBuffer;
     }
 
+    /**
+     * Collects metrics from all running goosed instances on a 30-second interval.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Scheduled(fixedDelay = 30000)
     public void collect() {
         try {

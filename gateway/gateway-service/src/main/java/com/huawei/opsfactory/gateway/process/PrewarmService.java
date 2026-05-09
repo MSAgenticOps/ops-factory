@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
@@ -9,6 +13,12 @@ import org.springframework.stereotype.Service;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Triggers eager agent instance spawning on first user activity to reduce cold-start latency.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class PrewarmService {
     private static final Logger log = LoggerFactory.getLogger(PrewarmService.class);

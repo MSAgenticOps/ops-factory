@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
@@ -11,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +23,12 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * Manages WhatsApp Web channel login lifecycle including QR code login, logout, and runtime state file management.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class WhatsAppWebLoginService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -31,10 +42,22 @@ public class WhatsAppWebLoginService {
         this.runtimeStorageService = runtimeStorageService;
     }
 
+    /**
+     * Gets the current login state for a WhatsApp channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelLoginState getLoginState(String channelId) {
         return getLoginState(channelId, "admin");
     }
 
+    /**
+     * Gets the current login state for a WhatsApp channel, merging configuration and runtime state.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelLoginState getLoginState(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
@@ -75,10 +98,22 @@ public class WhatsAppWebLoginService {
         );
     }
 
+    /**
+     * Starts the WhatsApp Web QR login flow using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelLoginState startLogin(String channelId) {
         return startLogin(channelId, "admin");
     }
 
+    /**
+     * Starts the WhatsApp Web QR login flow, preparing the auth directory and launching the helper process.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelLoginState startLogin(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path authDir = resolveAuthDir(channel);
@@ -109,10 +144,22 @@ public class WhatsAppWebLoginService {
         return getLoginState(channelId, ownerUserId);
     }
 
+    /**
+     * Logs out of a WhatsApp channel using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelLoginState logout(String channelId) {
         return logout(channelId, "admin");
     }
 
+    /**
+     * Logs out of a WhatsApp channel, stopping the helper process and clearing auth state.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelLoginState logout(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         Path authDir = resolveAuthDir(channel);
@@ -369,6 +416,6 @@ public class WhatsAppWebLoginService {
         if (raw == null || raw.isBlank()) {
             return "disconnected";
         }
-        return raw.trim().toLowerCase();
+        return raw.trim().toLowerCase(Locale.ROOT);
     }
 }

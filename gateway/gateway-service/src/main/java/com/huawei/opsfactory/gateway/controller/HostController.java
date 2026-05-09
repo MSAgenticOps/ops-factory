@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
@@ -21,6 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * REST controller for CRUD operations and connectivity testing on host entries.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/hosts")
 public class HostController {
@@ -40,6 +50,12 @@ public class HostController {
         this.hostGroupService = hostGroupService;
     }
 
+    /**
+     * Lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listHosts(
             @RequestParam(value = "tags", required = false) String tags,
@@ -115,6 +131,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a host by its IP address.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/by-ip")
     public Mono<ResponseEntity<Map<String, Object>>> getHostByIp(
             @RequestParam("ip") String ip,
@@ -135,6 +157,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a host by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getHost(
             @PathVariable("id") String id,
@@ -163,6 +191,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new host.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createHost(
             @RequestBody Map<String, Object> request,
@@ -185,6 +219,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a host by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateHost(
             @PathVariable("id") String id,
@@ -214,6 +254,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a host by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteHost(
             @PathVariable("id") String id,
@@ -233,6 +279,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns all unique host tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/tags")
     public Mono<Map<String, Object>> getTags(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -244,6 +296,12 @@ public class HostController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Tests SSH connectivity to a host.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{id}/test")
     public Mono<Map<String, Object>> testConnectivity(
             @PathVariable("id") String id,

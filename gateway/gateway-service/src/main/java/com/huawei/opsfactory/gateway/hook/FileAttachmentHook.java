@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.hook;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,6 +22,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Request hook that validates file paths referenced in user messages against the user's agent directory.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @Order(2)
 public class FileAttachmentHook implements RequestHook {
@@ -30,6 +40,12 @@ public class FileAttachmentHook implements RequestHook {
         this.agentConfigService = agentConfigService;
     }
 
+    /**
+     * Validates file paths referenced in user messages against the user's agent directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<HookContext> process(HookContext ctx) {
         try {

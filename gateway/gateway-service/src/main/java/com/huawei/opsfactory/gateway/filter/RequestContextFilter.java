@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -13,6 +17,12 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+/**
+ * Web filter that assigns a unique request ID and logs access details for each HTTP request.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @Order(1)
 public class RequestContextFilter implements WebFilter {
@@ -27,6 +37,12 @@ public class RequestContextFilter implements WebFilter {
         this.properties = properties;
     }
 
+    /**
+     * Assigns a unique request ID and logs access details for each HTTP request.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();

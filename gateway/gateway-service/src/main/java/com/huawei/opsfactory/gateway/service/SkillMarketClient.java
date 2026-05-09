@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -11,6 +15,12 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
+/**
+ * HTTP client for the Skill Market API that fetches skill metadata and downloads packages.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class SkillMarketClient {
     private final GatewayProperties properties;
@@ -28,6 +38,12 @@ public class SkillMarketClient {
                 .build();
     }
 
+    /**
+     * Fetches skill metadata from the skill market by skill ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getSkill(String skillId) {
         Object response = webClient.get()
@@ -45,6 +61,12 @@ public class SkillMarketClient {
         return (Map<String, Object>) map;
     }
 
+    /**
+     * Downloads a skill package as a byte array from the skill market.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public byte[] downloadPackage(String skillId) {
         try {
             byte[] data = webClient.get()

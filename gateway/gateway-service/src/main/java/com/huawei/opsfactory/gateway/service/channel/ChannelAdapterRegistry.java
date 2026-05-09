@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import org.springframework.stereotype.Service;
@@ -7,6 +11,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Spring-managed registry that collects all {@link ChannelAdapter} beans and resolves them by channel type.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ChannelAdapterRegistry {
     private final Map<String, ChannelAdapter> adaptersByType;
@@ -16,6 +26,12 @@ public class ChannelAdapterRegistry {
                 .collect(Collectors.toMap(ChannelAdapter::type, Function.identity()));
     }
 
+    /**
+     * Resolves the adapter for the given channel type, throwing if not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelAdapter require(String type) {
         ChannelAdapter adapter = adaptersByType.get(type);
         if (adapter == null) {

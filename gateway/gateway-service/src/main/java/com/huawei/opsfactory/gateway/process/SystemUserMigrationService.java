@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -12,6 +16,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 
+/**
+ * Migrates the legacy system user directory from "sys" to the current canonical system user name on startup.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component("systemUserMigrationService")
 public class SystemUserMigrationService {
     static final String LEGACY_SYSTEM_USER = "sys";
@@ -23,6 +33,12 @@ public class SystemUserMigrationService {
         this.properties = properties;
     }
 
+    /**
+     * Performs the legacy system user directory migration if needed on startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void migrateIfNeeded() throws IOException {
         migrateLegacySystemUser();

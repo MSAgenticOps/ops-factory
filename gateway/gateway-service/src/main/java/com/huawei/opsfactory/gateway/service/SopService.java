@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -19,6 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Manages Standard Operating Procedure documents with command whitelist validation and name uniqueness checks.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class SopService {
     private static final Logger log = LoggerFactory.getLogger(SopService.class);
@@ -34,6 +44,12 @@ public class SopService {
         this.commandWhitelistService = commandWhitelistService;
     }
 
+    /**
+     * Initializes the SOPs data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         this.gatewayRoot = properties.getGatewayRootPath();
@@ -50,6 +66,12 @@ public class SopService {
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists all SOP documents.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listSops() {
         List<Map<String, Object>> sops = new ArrayList<>();
         if (!Files.isDirectory(sopsDir)) {
@@ -75,6 +97,12 @@ public class SopService {
         return sops;
     }
 
+    /**
+     * Gets an SOP document by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getSop(String id) {
         Path file = resolveSopFile(id);
         Map<String, Object> sop = readSopFile(file);
@@ -84,6 +112,12 @@ public class SopService {
         return sop;
     }
 
+    /**
+     * Creates a new SOP document from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createSop(Map<String, Object> body) {
         String mode = String.valueOf(body.getOrDefault("mode", "structured"));
         if (!"natural_language".equals(mode)) {
@@ -111,6 +145,12 @@ public class SopService {
         return sop;
     }
 
+    /**
+     * Updates an existing SOP document with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateSop(String id, Map<String, Object> body) {
         Path file = resolveSopFile(id);
         Map<String, Object> sop = readSopFile(file);
@@ -164,6 +204,12 @@ public class SopService {
         return sop;
     }
 
+    /**
+     * Deletes an SOP document by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteSop(String id) {
         Path file = resolveSopFile(id);
         try {

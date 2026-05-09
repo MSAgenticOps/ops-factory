@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
@@ -31,6 +35,12 @@ public class HostRelationController {
         this.businessServiceService = businessServiceService;
     }
 
+    /**
+     * Lists host relations, optionally filtered by host, group, cluster, or source.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listRelations(
             @RequestParam(value = "hostId", required = false) String hostId,
@@ -48,6 +58,12 @@ public class HostRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns the host relation graph data enriched with business services.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/graph")
     public Mono<Map<String, Object>> getGraph(
             @RequestParam(value = "groupId", required = false) String groupId,
@@ -61,6 +77,12 @@ public class HostRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns the neighbor hosts for a given host.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/hosts/{hostId}/neighbors")
     public Mono<Map<String, Object>> getHostNeighbors(
             @PathVariable("hostId") String hostId,
@@ -70,6 +92,12 @@ public class HostRelationController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new host relation edge.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createRelation(
             @RequestBody Map<String, Object> request,
@@ -97,6 +125,12 @@ public class HostRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a host relation by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateRelation(
             @PathVariable("id") String id,
@@ -125,6 +159,12 @@ public class HostRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a host relation by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteRelation(
             @PathVariable("id") String id,

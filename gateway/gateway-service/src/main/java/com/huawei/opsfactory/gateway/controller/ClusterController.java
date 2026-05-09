@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.ClusterService;
@@ -18,6 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * REST controller for CRUD operations on cluster definitions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/clusters")
 public class ClusterController {
@@ -34,6 +44,12 @@ public class ClusterController {
         this.hostGroupService = hostGroupService;
     }
 
+    /**
+     * Lists clusters, optionally filtered by group, type, or enabled status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listClusters(
             @RequestParam(value = "groupId", required = false) String groupId,
@@ -55,6 +71,12 @@ public class ClusterController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a cluster by ID with its associated hosts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getCluster(
             @PathVariable("id") String id,
@@ -79,6 +101,12 @@ public class ClusterController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns all distinct cluster types.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/types")
     public Mono<Map<String, Object>> getClusterTypes(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -90,6 +118,12 @@ public class ClusterController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Lists all hosts belonging to a cluster.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/hosts")
     public Mono<Map<String, Object>> getClusterHosts(
             @PathVariable("id") String id,
@@ -103,6 +137,12 @@ public class ClusterController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new cluster.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createCluster(
             @RequestBody Map<String, Object> request,
@@ -125,6 +165,12 @@ public class ClusterController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a cluster by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateCluster(
             @PathVariable("id") String id,
@@ -153,6 +199,12 @@ public class ClusterController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a cluster by ID, optionally forcing deletion of associated hosts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteCluster(
             @PathVariable("id") String id,

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.config;
 
 import java.util.Arrays;
@@ -12,6 +16,12 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+/**
+ * WebFlux configuration that registers the CORS filter and related web-layer beans.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Configuration
 public class WebFluxConfig {
     private final GatewayProperties properties;
@@ -20,6 +30,12 @@ public class WebFluxConfig {
         this.properties = properties;
     }
 
+    /**
+     * Creates and configures the CORS filter bean.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Bean
     @Order(0)
     public WebFilter corsFilter() {

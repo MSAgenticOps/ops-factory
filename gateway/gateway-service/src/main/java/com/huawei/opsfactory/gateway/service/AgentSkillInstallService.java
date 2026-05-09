@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
@@ -27,6 +31,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
 
+/**
+ * Handles downloading, validating, extracting, and uninstalling skills from the skill market for agents.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class AgentSkillInstallService {
     private static final Logger log = LoggerFactory.getLogger(AgentSkillInstallService.class);
@@ -46,6 +56,12 @@ public class AgentSkillInstallService {
         this.properties = properties;
     }
 
+    /**
+     * Downloads, validates, and installs a skill from the skill market for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> install(String agentId, String requestedSkillId) throws IOException {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
@@ -104,6 +120,12 @@ public class AgentSkillInstallService {
                 "restartRequired", true);
     }
 
+    /**
+     * Uninstalls a previously installed skill from the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> uninstall(String agentId, String requestedSkillId) throws IOException {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
@@ -197,7 +219,7 @@ public class AgentSkillInstallService {
             }
             StringBuilder hex = new StringBuilder();
             for (byte b : digest.digest()) {
-                hex.append(String.format("%02x", b));
+                hex.append(String.format(Locale.ROOT, "%02x", b));
             }
             return hex.toString();
         } catch (IOException e) {

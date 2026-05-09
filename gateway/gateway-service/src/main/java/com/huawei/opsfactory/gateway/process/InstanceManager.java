@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -35,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.Collection;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +48,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Manages the lifecycle of goosed agent processes including spawning, health checks, and termination.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @org.springframework.context.annotation.DependsOn("systemUserMigrationService")
 public class InstanceManager {
@@ -473,7 +484,7 @@ public class InstanceManager {
         SECURE_RANDOM.nextBytes(secretBytes);
         StringBuilder hexSecret = new StringBuilder(64);
         for (byte b : secretBytes) {
-            hexSecret.append(String.format("%02x", b));
+            hexSecret.append(String.format(Locale.ROOT, "%02x", b));
         }
         env.put("GOOSE_SERVER__SECRET_KEY", hexSecret.toString());
         env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
@@ -566,14 +577,32 @@ public class InstanceManager {
                 + " on port " + port + ". Output: " + output);
     }
 
+    /**
+     * Gets a managed instance by agent and user identifiers.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ManagedInstance getInstance(String agentId, String userId) {
         return instances.get(ManagedInstance.buildKey(agentId, userId));
     }
 
+    /**
+     * Gets all managed instances regardless of status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Collection<ManagedInstance> getAllInstances() {
         return instances.values();
     }
 
+    /**
+     * Stops a managed instance gracefully and removes it from the registry.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void stopInstance(ManagedInstance instance) {
         log.info("Stopping instance {}:{} (port={})", instance.getAgentId(), instance.getUserId(), instance.getPort());
         instance.setStatus(ManagedInstance.Status.STOPPED);

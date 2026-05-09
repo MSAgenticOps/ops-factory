@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
@@ -22,6 +26,12 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+/**
+ * REST controller for managing MCP (Model Context Protocol) extensions on agent instances.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/mcp")
 public class McpController {
@@ -38,6 +48,12 @@ public class McpController {
         this.agentConfigService = agentConfigService;
     }
 
+    /**
+     * Lists MCP extensions configured on the agent's system instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Void> getMcpExtensions(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
         requireAdmin(exchange);
@@ -48,6 +64,12 @@ public class McpController {
                         instance.getPort(), "/config/extensions", instance.getSecretKey()));
     }
 
+    /**
+     * Creates a new MCP extension on the agent's system instance and recycles running instances.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<String> createMcpExtension(@PathVariable("agentId") String agentId,
                                             @RequestBody String body,
@@ -75,6 +97,12 @@ public class McpController {
                 });
     }
 
+    /**
+     * Deletes an MCP extension by name and recycles running instances.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{name}")
     public Mono<String> deleteMcpExtension(@PathVariable("agentId") String agentId,
                                             @PathVariable("name") String name,
@@ -99,6 +127,12 @@ public class McpController {
                 });
     }
 
+    /**
+     * Gets the settings for a specific MCP extension.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{name}/settings")
     public Mono<ResponseEntity<Map<String, Object>>> getMcpSettings(@PathVariable("agentId") String agentId,
                                                                     @PathVariable("name") String name,
@@ -132,6 +166,12 @@ public class McpController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates the settings for a specific MCP extension.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{name}/settings")
     public Mono<ResponseEntity<Map<String, Object>>> putMcpSettings(@PathVariable("agentId") String agentId,
                                                                     @PathVariable("name") String name,

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -31,6 +35,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Bridges external channel conversations to internal agent sessions, handling session creation, SSE streaming, and reply extraction.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class SessionBridgeService {
     private static final Logger log = LoggerFactory.getLogger(SessionBridgeService.class);
@@ -56,10 +66,22 @@ public class SessionBridgeService {
         this.webClient = goosedProxy.getWebClient();
     }
 
+    /**
+     * Ensures a session exists for the given channel and external user ID, creating one if necessary.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<ChannelBinding> ensureSession(String channelId, String externalUserId) {
         return ensureConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
     }
 
+    /**
+     * Ensures a conversation session exists using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<ChannelBinding> ensureConversationSession(String channelId,
                                                           String accountId,
                                                           String peerId,
@@ -69,6 +91,12 @@ public class SessionBridgeService {
         return ensureConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
     }
 
+    /**
+     * Ensures a conversation session exists for the given channel, creating a binding and starting a session if needed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<ChannelBinding> ensureConversationSession(String channelId,
                                                           String ownerUserId,
                                                           String accountId,
@@ -100,10 +128,22 @@ public class SessionBridgeService {
                 ));
     }
 
+    /**
+     * Sends text to a channel conversation using the default owner user ID and direct conversation parameters.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<ChannelReplyResult> sendText(String channelId, String externalUserId, String text) {
         return sendConversationText(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", text);
     }
 
+    /**
+     * Sends text to a conversation session using the default owner user ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<ChannelReplyResult> sendConversationText(String channelId,
                                                          String accountId,
                                                          String peerId,
@@ -114,6 +154,12 @@ public class SessionBridgeService {
         return sendConversationText(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType, text);
     }
 
+    /**
+     * Sends text to a conversation session, ensuring the session exists and extracting the agent reply.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<ChannelReplyResult> sendConversationText(String channelId,
                                                          String ownerUserId,
                                                          String accountId,

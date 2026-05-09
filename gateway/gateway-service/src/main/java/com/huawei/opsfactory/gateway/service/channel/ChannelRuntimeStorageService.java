@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,11 +15,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+/**
+ * Manages channel runtime directory layout and provides path resolution for auth, inbox, outbox, bindings, dedup, and event files.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ChannelRuntimeStorageService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -29,14 +40,32 @@ public class ChannelRuntimeStorageService {
         this.properties = properties;
     }
 
+    /**
+     * Resolves the runtime directory for a channel detail.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path runtimeDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel.ownerUserId(), channel.type(), channel.id());
     }
 
+    /**
+     * Resolves the runtime directory for a channel instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path runtimeDirectory(ChannelInstance channel) {
         return runtimeDirectory(channel.ownerUserId(), channel.type(), channel.id());
     }
 
+    /**
+     * Resolves the runtime directory for a channel by owner user, type, and channel ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path runtimeDirectory(String ownerUserId, String type, String channelId) {
         Path typeRoot = properties.getGatewayRootPath()
                 .resolve("users")
@@ -51,6 +80,12 @@ public class ChannelRuntimeStorageService {
         return runtimeDirectory;
     }
 
+    /**
+     * Resolves the auth directory for a channel, validating that it stays within the runtime directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path authDirectory(ChannelDetail channel) {
         String configured = channel.config() == null ? "" : channel.config().authStateDir();
         Path relative = Path.of(configured == null || configured.isBlank() ? "auth" : configured.trim());
@@ -65,58 +100,142 @@ public class ChannelRuntimeStorageService {
         return authDirectory;
     }
 
+    /**
+     * Resolves the login state file path for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path loginStateFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("login-state.json");
     }
 
+    /**
+     * Resolves the PID file path for a channel login process.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path pidFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("login.pid");
     }
 
+    /**
+     * Resolves the log file path for a channel login process.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path logFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("login.log");
     }
 
+    /**
+     * Resolves the inbox directory for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path inboxDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("inbox");
     }
 
+    /**
+     * Resolves the processed inbox directory for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path processedInboxDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("processed");
     }
 
+    /**
+     * Resolves the pending outbox directory for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path outboxPendingDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("outbox").resolve("pending");
     }
 
+    /**
+     * Resolves the sent outbox directory for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path outboxSentDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("outbox").resolve("sent");
     }
 
+    /**
+     * Resolves the error outbox directory for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path outboxErrorDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("outbox").resolve("error");
     }
 
+    /**
+     * Resolves the bindings file path for a channel detail.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path bindingsFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("bindings.json");
     }
 
+    /**
+     * Resolves the bindings file path for a channel instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path bindingsFile(ChannelInstance channel) {
         return runtimeDirectory(channel).resolve("bindings.json");
     }
 
+    /**
+     * Resolves the inbound dedup file path for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path dedupFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("inbound-dedup.json");
     }
 
+    /**
+     * Resolves the events file path for a channel detail.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path eventsFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("events.json");
     }
 
+    /**
+     * Resolves the events file path for a channel instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path eventsFile(ChannelInstance channel) {
         return runtimeDirectory(channel).resolve("events.json");
     }
 
+    /**
+     * Initializes the runtime directory structure for a channel instance, creating required files if missing.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void initializeRuntime(ChannelInstance channel) {
         try {
             Files.createDirectories(runtimeDirectory(channel));
@@ -128,6 +247,12 @@ public class ChannelRuntimeStorageService {
         }
     }
 
+    /**
+     * Initializes the runtime directory structure for a channel detail, creating required files if missing.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void initializeRuntime(ChannelDetail channel) {
         try {
             Files.createDirectories(runtimeDirectory(channel));
@@ -139,20 +264,44 @@ public class ChannelRuntimeStorageService {
         }
     }
 
+    /**
+     * Deletes the entire runtime directory for a channel instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void deleteRuntime(ChannelInstance channel) {
         deleteDirectory(runtimeDirectory(channel));
     }
 
+    /**
+     * Deletes the entire runtime directory for a channel detail.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void deleteRuntime(ChannelDetail channel) {
         deleteDirectory(runtimeDirectory(channel));
     }
 
+    /**
+     * Deletes all runtime directories for a channel across all owner users.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void deleteAllRuntimes(String type, String channelId) {
         for (ChannelRuntimeRef runtime : listRuntimeRefs(type, channelId)) {
             deleteDirectory(runtime.runtimeDirectory());
         }
     }
 
+    /**
+     * Lists all runtime references for a channel across all owner users.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ChannelRuntimeRef> listRuntimeRefs(String type, String channelId) {
         String normalizedType = normalizeType(type);
         String normalizedChannelId = requireSafeSegment(channelId, "channelId");
@@ -220,7 +369,7 @@ public class ChannelRuntimeStorageService {
     }
 
     private String normalizeType(String type) {
-        return requireSafeSegment(type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(), "type");
+        return requireSafeSegment(type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(Locale.ROOT), "type");
     }
 
     private String normalizeOwnerUserId(String ownerUserId) {

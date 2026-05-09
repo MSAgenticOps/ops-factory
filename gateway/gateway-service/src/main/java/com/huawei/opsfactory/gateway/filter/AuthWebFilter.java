@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
@@ -13,6 +17,12 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+/**
+ * Web filter that validates the secret key on every non-preflight, non-webhook request.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @Order(2)
 public class AuthWebFilter implements WebFilter {
@@ -25,6 +35,12 @@ public class AuthWebFilter implements WebFilter {
         this.properties = properties;
     }
 
+    /**
+     * Filters incoming HTTP requests by validating the secret key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();

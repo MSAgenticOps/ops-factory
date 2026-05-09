@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.SopService;
@@ -15,6 +19,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST controller for CRUD operations on SOP (Standard Operating Procedure) definitions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/sops")
 public class SopController {
@@ -26,6 +36,12 @@ public class SopController {
         this.sopService = sopService;
     }
 
+    /**
+     * Lists all SOP definitions.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listSops(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -37,6 +53,12 @@ public class SopController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets an SOP by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getSop(
             @PathVariable String id,
@@ -57,6 +79,12 @@ public class SopController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new SOP definition.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createSop(
             @RequestBody Map<String, Object> request,
@@ -85,6 +113,12 @@ public class SopController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates an SOP by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateSop(
             @PathVariable String id,
@@ -120,6 +154,12 @@ public class SopController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes an SOP by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteSop(
             @PathVariable String id,

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
@@ -19,6 +23,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Serves knowledge-base citation file content for inline preview.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/file-citations")
 public class FileCitationController {
@@ -31,6 +41,12 @@ public class FileCitationController {
         this.fileService = fileService;
     }
 
+    /**
+     * Returns the content of a knowledge-base citation file for inline preview.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/content")
     public Mono<ResponseEntity<?>> getCitationFile(@PathVariable String agentId,
                                                    @RequestParam("path") String requestedPath) {

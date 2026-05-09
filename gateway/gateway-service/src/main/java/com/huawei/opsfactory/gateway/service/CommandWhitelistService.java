@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,6 +21,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Manages the command whitelist and validates remote commands against enabled patterns and risk levels.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class CommandWhitelistService {
     private static final Logger log = LoggerFactory.getLogger(CommandWhitelistService.class);
@@ -47,6 +57,12 @@ public class CommandWhitelistService {
         this.properties = properties;
     }
 
+    /**
+     * Initializes the command whitelist from the data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         this.gatewayRoot = properties.getGatewayRootPath();
@@ -58,10 +74,22 @@ public class CommandWhitelistService {
 
     // ── Whitelist Operations ─────────────────────────────────────────
 
+    /**
+     * Returns the full command whitelist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getWhitelist() {
         return readWhitelistFile();
     }
 
+    /**
+     * Adds a new command to the whitelist, rejecting duplicate patterns.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void addCommand(Map<String, Object> command) {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
@@ -84,6 +112,12 @@ public class CommandWhitelistService {
         log.info("Added command to whitelist: {}", command.get("pattern"));
     }
 
+    /**
+     * Updates an existing command in the whitelist matching the given pattern.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void updateCommand(String pattern, Map<String, Object> updates) {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
@@ -111,6 +145,12 @@ public class CommandWhitelistService {
         log.info("Updated command in whitelist: {}", pattern);
     }
 
+    /**
+     * Deletes a command from the whitelist matching the given pattern.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void deleteCommand(String pattern) {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");

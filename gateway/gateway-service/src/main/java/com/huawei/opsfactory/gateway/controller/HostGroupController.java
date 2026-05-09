@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
@@ -19,6 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * REST controller for CRUD operations on host group definitions and the group tree.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/host-groups")
 public class HostGroupController {
@@ -37,6 +47,12 @@ public class HostGroupController {
         this.hostService = hostService;
     }
 
+    /**
+     * Lists host groups, optionally filtered by enabled status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listGroups(
             @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
@@ -54,6 +70,12 @@ public class HostGroupController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns the hierarchical tree of groups, clusters, and business services.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/tree")
     public Mono<Map<String, Object>> getTree(
             @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
@@ -75,6 +97,12 @@ public class HostGroupController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a host group by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getGroup(
             @PathVariable("id") String id,
@@ -96,6 +124,12 @@ public class HostGroupController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new host group.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createGroup(
             @RequestBody Map<String, Object> request,
@@ -118,6 +152,12 @@ public class HostGroupController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a host group by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateGroup(
             @PathVariable("id") String id,
@@ -146,6 +186,12 @@ public class HostGroupController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a host group by ID, optionally forcing deletion of associated resources.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(
             @PathVariable("id") String id,

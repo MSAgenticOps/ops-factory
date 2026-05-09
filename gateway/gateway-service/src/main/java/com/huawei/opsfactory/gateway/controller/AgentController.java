@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
@@ -23,6 +27,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST controller for managing agent registration, configuration, skills, and memory.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/agents")
 public class AgentController {
@@ -34,6 +44,12 @@ public class AgentController {
         this.instanceManager = instanceManager;
     }
 
+    /**
+     * Lists all registered agents with their status, provider, model, and skills.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listAgents() {
         return Mono.fromCallable(() -> {
@@ -76,6 +92,12 @@ public class AgentController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new agent with the given ID and name.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createAgent(@RequestBody Map<String, String> body,
                                                                    ServerWebExchange exchange) {
@@ -102,6 +124,12 @@ public class AgentController {
         }
     }
 
+    /**
+     * Deletes an agent by ID and stops all its running instances.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id,
                                                                    ServerWebExchange exchange) {
@@ -120,12 +148,24 @@ public class AgentController {
         }
     }
 
+    /**
+     * Lists all skills configured for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/skills")
     public Mono<Map<String, Object>> listSkills(@PathVariable String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         return Mono.just(Map.of("skills", agentConfigService.listSkills(id)));
     }
 
+    /**
+     * Gets the full configuration for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable String id,
                                                                  ServerWebExchange exchange) {
@@ -145,6 +185,12 @@ public class AgentController {
         return Mono.just(ResponseEntity.ok(result));
     }
 
+    /**
+     * Updates the agents.md configuration for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable String id,
                                                                     @RequestBody Map<String, String> body,
@@ -173,6 +219,12 @@ public class AgentController {
     private static final java.util.regex.Pattern CATEGORY_PATTERN =
             java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
 
+    /**
+     * Lists all memory files for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/memory")
     public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id,
                                                                   ServerWebExchange exchange) {
@@ -183,6 +235,12 @@ public class AgentController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets the content of a specific memory category for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable String id,
                                                                      @PathVariable String category,
@@ -200,6 +258,12 @@ public class AgentController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Writes content to a specific memory category for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable String id,
                                                                      @PathVariable String category,
@@ -220,6 +284,12 @@ public class AgentController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a specific memory category for the specified agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable String id,
                                                                         @PathVariable String category,

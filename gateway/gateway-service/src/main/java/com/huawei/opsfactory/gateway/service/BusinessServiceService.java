@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,6 +29,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Provides CRUD operations, topology queries, and host-id synchronization for business services.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class BusinessServiceService {
     private static final Logger log = LoggerFactory.getLogger(BusinessServiceService.class);
@@ -41,30 +52,60 @@ public class BusinessServiceService {
         this.properties = properties;
     }
 
+    /**
+     * Sets the cluster service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setClusterService(ClusterService clusterService) {
         this.clusterService = clusterService;
     }
 
+    /**
+     * Sets the host service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setHostService(HostService hostService) {
         this.hostService = hostService;
     }
 
+    /**
+     * Sets the host relation service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setHostRelationService(HostRelationService hostRelationService) {
         this.hostRelationService = hostRelationService;
     }
 
+    /**
+     * Sets the cluster relation service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setClusterRelationService(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
     }
 
+    /**
+     * Initializes the business services data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -79,6 +120,12 @@ public class BusinessServiceService {
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists business services optionally filtered by group ID and host ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listBusinessServices(String groupId, String hostId) {
         List<Map<String, Object>> services = new ArrayList<>();
         if (!Files.isDirectory(businessServicesDir)) {
@@ -120,6 +167,12 @@ public class BusinessServiceService {
         return services;
     }
 
+    /**
+     * Gets a business service by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getBusinessService(String id) {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
@@ -129,6 +182,12 @@ public class BusinessServiceService {
         return bs;
     }
 
+    /**
+     * Creates a new business service from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @SuppressWarnings("unchecked")
     public Map<String, Object> createBusinessService(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -154,6 +213,12 @@ public class BusinessServiceService {
         return bs;
     }
 
+    /**
+     * Updates an existing business service with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @SuppressWarnings("unchecked")
     public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) {
         Path file = businessServicesDir.resolve(id + ".json");
@@ -199,6 +264,12 @@ public class BusinessServiceService {
         return bs;
     }
 
+    /**
+     * Deletes a business service by ID, cascading to related host and cluster relations.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteBusinessService(String id) {
         // Cascade delete related HostRelation records
         if (hostRelationService != null) {
@@ -526,17 +597,17 @@ public class BusinessServiceService {
         if (keyword == null || keyword.trim().isEmpty()) {
             return all;
         }
-        String kw = keyword.trim().toLowerCase();
+        String kw = keyword.trim().toLowerCase(Locale.ROOT);
         List<Map<String, Object>> results = new ArrayList<>();
         for (Map<String, Object> bs : all) {
-            String name = String.valueOf(bs.getOrDefault("name", "")).toLowerCase();
-            String code = String.valueOf(bs.getOrDefault("code", "")).toLowerCase();
+            String name = String.valueOf(bs.getOrDefault("name", "")).toLowerCase(Locale.ROOT);
+            String code = String.valueOf(bs.getOrDefault("code", "")).toLowerCase(Locale.ROOT);
             List<String> tags = (List<String>) bs.getOrDefault("tags", new ArrayList<>());
 
             boolean match = name.contains(kw) || code.contains(kw);
             if (!match) {
                 for (String tag : tags) {
-                    if (tag.toLowerCase().contains(kw)) {
+                    if (tag.toLowerCase(Locale.ROOT).contains(kw)) {
                         match = true;
                         break;
                     }
