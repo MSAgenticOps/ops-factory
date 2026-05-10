@@ -290,7 +290,7 @@ public class AgentConfigService {
                                     "display-order",
                                     "x-display-order"
                             );
-                        } catch (Exception e) {
+                        } catch (IOException e) {
                             log.warn("Failed to parse SKILL.md for skill {}/{}", agentId, dirName, e);
                         }
                     }
@@ -504,7 +504,7 @@ public class AgentConfigService {
                 return cast;
             }
             return null;
-        } catch (Exception e) {
+        } catch (IOException | YAMLException | IllegalArgumentException e) {
             log.warn("Failed to parse MCP settings for {}/{}: {}", agentId, mcpName, e.getMessage());
             return null;
         }

@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.proxy;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -344,7 +345,7 @@ public class GoosedProxy {
             body.put("user_id", userId);
             body.put("trace_id", UUID.randomUUID().toString());
             return "data: " + MAPPER.writeValueAsString(body) + "\n\n";
-        } catch (Exception writeErr) {
+        } catch (JsonProcessingException writeErr) {
             return "data: {\"type\":\"Error\",\"layer\":\"gateway\",\"code\":\"gateway_goosed_unavailable\",\"message\":\"Gateway lost the agent event stream.\",\"retryable\":true}\n\n";
         }
     }
