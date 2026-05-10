@@ -34,6 +34,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.net.ssl.SSLSocketFactory;
 import java.security.cert.X509Certificate;
+import java.security.GeneralSecurityException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -134,8 +135,8 @@ public class InstanceManager {
             SSLContext sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAll, new java.security.SecureRandom());
             return sc.getSocketFactory();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create trust-all SSL factory", e);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Failed to create trust-all SSL factory", e);
         }
     }
 
@@ -154,9 +155,13 @@ public class InstanceManager {
                 log.info("Auto-starting resident instance for {}:{}", target.agentId(), target.userId());
                 ManagedInstance instance = doSpawn(target.agentId(), target.userId());
                 registerDefaultSchedules(target.agentId(), instance.getPort(), instance.getSecretKey());
-            } catch (Exception e) {
+            } catch (IOException e) {
                 log.error("Failed to auto-start resident instance for {}:{}: {}",
                         target.agentId(), target.userId(), e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Interrupted while auto-starting resident instance for {}:{}",
+                        target.agentId(), target.userId());
             }
         });
     }
@@ -193,7 +198,7 @@ public class InstanceManager {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (IOException | IllegalArgumentException e) {
                 log.warn("Failed to list existing schedules for {}: {}", agentId, e.getMessage());
             }
 
@@ -234,12 +239,12 @@ public class InstanceManager {
                         // Pause immediately
                         httpPost(port, "/schedule/" + scheduleId + "/pause", "{}", secretKey);
                         log.info("Registered schedule \"{}\" for {} (paused)", scheduleId, agentId);
-                    } catch (Exception e) {
+                    } catch (IOException | IllegalArgumentException e) {
                         log.warn("Error registering schedule {} for {}: {}", scheduleId, agentId, e.getMessage());
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Error scanning recipes for {}: {}", agentId, e.getMessage());
         }
     }
@@ -270,7 +275,7 @@ public class InstanceManager {
             } finally {
                 conn.disconnect();
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.debug("Health check failed for port {}: {}", port, e.getMessage());
             return false;
         }
@@ -361,7 +366,7 @@ public class InstanceManager {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
-    private ManagedInstance doSpawn(String agentId, String userId) throws Exception {
+    private ManagedInstance doSpawn(String agentId, String userId) throws IOException, InterruptedException {
         String key = ManagedInstance.buildKey(agentId, userId);
         long spawnStart = System.currentTimeMillis();
         ReentrantLock lock = spawnLocks.computeIfAbsent(key, k -> new ReentrantLock());
@@ -459,11 +464,7 @@ public class InstanceManager {
                     readyMs,
                     System.currentTimeMillis() - spawnStart
             );
-
             return instance;
-        } catch (Exception e) {
-            log.error("Failed to spawn {}:{}", agentId, userId, e);
-            throw e;
         } finally {
             lock.unlock();
         }
@@ -500,7 +501,7 @@ public class InstanceManager {
                         StandardCharsets.UTF_8);
                 log.info("Reset stuck currently_running flags in {}", scheduleFile);
             }
-        } catch (Exception e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to reset schedule state in {}: {}", scheduleFile, e.getMessage());
         }
     }
@@ -569,7 +570,7 @@ public class InstanceManager {
         return env;
     }
 
-    private void waitForReady(int port, Process process) throws Exception {
+    private void waitForReady(int port, Process process) throws IOException, InterruptedException {
         String baseUrl = goosedBaseUrl(port);
         URL url = new URL(baseUrl + "/status");
         String healthCheckUrl = url.toString();
@@ -616,17 +617,17 @@ public class InstanceManager {
                 GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS,
                 healthCheckUrl
         );
-        throw new RuntimeException("goosed failed to start on port " + port
+        throw new IllegalStateException("goosed failed to start on port " + port
                 + " (process alive but not responding after "
                 + GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS + " attempts)");
     }
 
-    private RuntimeException processExitedException(Process process, int port) {
+    private IllegalStateException processExitedException(Process process, int port) {
         int exitCode = process.exitValue();
         String output = ProcessUtil.readOutput(process, 4096);
         log.error("goosed process exited unexpectedly on port {}, exitCode={}, output (first 4KB): {}",
                 port, exitCode, output);
-        return new RuntimeException("goosed process exited with code " + exitCode
+        return new IllegalStateException("goosed process exited with code " + exitCode
                 + " on port " + port + ". Output: " + output);
     }
 
@@ -731,12 +732,12 @@ public class InstanceManager {
     @PreDestroy
     public void stopAll() {
         log.info("Stopping all instances...");
-        for (ManagedInstance inst : instances.values()) {
-            try {
-                stopInstance(inst);
-            } catch (Exception e) {
-                log.error("Error stopping {}:{}", inst.getAgentId(), inst.getUserId(), e);
-            }
+        for (ManagedInstance inst : List.copyOf(instances.values())) {
+            Mono.fromRunnable(() -> stopInstance(inst))
+                    .doOnError(error -> log.error("Error stopping {}:{}",
+                            inst.getAgentId(), inst.getUserId(), error))
+                    .onErrorResume(error -> Mono.empty())
+                    .block();
         }
     }
 }
