@@ -116,7 +116,7 @@ public class SessionTraceController {
 
         try {
             exchange.getResponse().getHeaders().setContentLength(Files.size(archive));
-        } catch (IOException ignored) {
+        } catch (IOException e) {
             // Content length is optional for download correctness.
         }
         exchange.getResponse().getHeaders().setContentType(mediaType);

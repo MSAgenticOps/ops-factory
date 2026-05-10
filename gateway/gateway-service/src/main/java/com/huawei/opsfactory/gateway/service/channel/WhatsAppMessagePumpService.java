@@ -159,7 +159,7 @@ public class WhatsAppMessagePumpService {
         Map<String, Object> payload;
         try {
             payload = MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
-        } catch (Exception e) {
+        } catch (IOException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "whatsapp.inbox_invalid",
                     "Failed to parse inbound WhatsApp file " + file.getFileName());
             moveToProcessed(channel, file, "invalid");
@@ -239,7 +239,7 @@ public class WhatsAppMessagePumpService {
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(file);
-            } catch (IOException ignored) {
+            } catch (IOException deleteError) {
                 // ignore
             }
         }

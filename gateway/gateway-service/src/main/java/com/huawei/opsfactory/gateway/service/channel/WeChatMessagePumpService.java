@@ -91,7 +91,7 @@ public class WeChatMessagePumpService {
         Map<String, Object> payload;
         try {
             payload = MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
-        } catch (Exception e) {
+        } catch (IOException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
                     "Failed to parse inbound WeChat file " + file.getFileName());
             moveToProcessed(channel, file, "invalid");
@@ -173,7 +173,7 @@ public class WeChatMessagePumpService {
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(file);
-            } catch (IOException ignored) {
+            } catch (IOException deleteError) {
                 // ignore
             }
         }

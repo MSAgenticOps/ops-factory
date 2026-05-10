@@ -7,12 +7,14 @@ package com.huawei.opsfactory.gateway.service;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -118,7 +120,7 @@ public class RemoteExecutionService {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.debug("Could not resolve cluster type for host {}: {}", hostId, e.getMessage());
             }
         }
@@ -227,7 +229,7 @@ public class RemoteExecutionService {
 
                 if (System.currentTimeMillis() > deadline) {
                     log.warn("Command execution timed out after {} seconds for host {}", timeoutSeconds, hostId);
-                    channel.sendSignal("KILL");
+                    channel.disconnect();
                     break;
                 }
 
@@ -252,7 +254,7 @@ public class RemoteExecutionService {
             result.put("error", errorOutput);
             result.put("duration", duration);
             return result;
-        } catch (Exception e) {
+        } catch (JSchException | IOException e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());
 
@@ -266,18 +268,27 @@ public class RemoteExecutionService {
             result.put("error", "SSH execution failed: " + e.getMessage());
             result.put("duration", duration);
             return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long duration = System.currentTimeMillis() - startTime;
+            log.warn("SSH execution interrupted for host {}", hostId);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("hostId", hostId);
+            result.put("hostIp", hostname);
+            result.put("username", username);
+            result.put("hostName", hostName);
+            result.put("exitCode", -1);
+            result.put("output", "");
+            result.put("error", "SSH execution interrupted");
+            result.put("duration", duration);
+            return result;
         } finally {
             if (channel != null) {
-                try {
-                    channel.disconnect();
-                } catch (Exception ignored) {
-                }
+                channel.disconnect();
             }
             if (session != null) {
-                try {
-                    session.disconnect();
-                } catch (Exception ignored) {
-                }
+                session.disconnect();
             }
         }
     }

@@ -341,7 +341,7 @@ public class ChannelRuntimeStorageService {
                             if (runtimeDirectory.equals(expected) && Files.isDirectory(runtimeDirectory)) {
                                 refs.add(new ChannelRuntimeRef(ownerUserId, normalizedType, normalizedChannelId, runtimeDirectory));
                             }
-                        } catch (IllegalArgumentException ignored) {
+                        } catch (IllegalArgumentException e) {
                             // Ignore unrelated/unsafe user directories when scanning channel runtime state.
                         }
                     });
