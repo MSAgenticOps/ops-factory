@@ -88,7 +88,7 @@ public class InstanceWatchdog {
                 if (instance.getProcess() != null) {
                     exitCode = instance.getProcess().exitValue();
                 }
-            } catch (IllegalThreadStateException ignored) {
+            } catch (IllegalThreadStateException e) {
                 // Should not happen since isAlive() returned false
             }
 

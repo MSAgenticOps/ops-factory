@@ -232,7 +232,7 @@ public class ReplyController {
             JsonNode rootNode = MAPPER.readTree(body);
             JsonNode requestIdNode = rootNode.get("request_id");
             return requestIdNode != null && requestIdNode.isTextual() ? requestIdNode.asText() : null;
-        } catch (JsonProcessingException ignored) {
+        } catch (JsonProcessingException e) {
             return null;
         }
     }

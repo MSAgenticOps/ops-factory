@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelLoginState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -30,6 +33,7 @@ import java.util.Map;
  */
 @Service
 public class WeChatLoginService {
+    private static final Logger log = LoggerFactory.getLogger(WeChatLoginService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
@@ -182,19 +186,15 @@ public class WeChatLoginService {
         Path pidFile = pidFile(channel);
         try {
             killIfRunning(pidFile);
-        } catch (Throwable ignored) {
-            // best-effort
+        } catch (IllegalStateException e) {
+            log.debug("Failed to stop existing WeChat helper for {}", channelId, e);
         }
         try {
             clearDirectory(authDir);
-        } catch (Throwable ignored) {
-            // best-effort
+        } catch (IllegalStateException e) {
+            log.debug("Failed to clear WeChat auth dir for {}", channelId, e);
         }
-        try {
-            deleteQuietly(stateFile);
-        } catch (Throwable ignored) {
-            // best-effort
-        }
+        deleteQuietly(stateFile);
 
         writeDisconnectedStateFile(channel, stateFile);
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.logged_out",
@@ -384,15 +384,18 @@ public class WeChatLoginService {
                 handle.destroy();
                 try {
                     handle.onExit().get();
-                } catch (Exception ignored) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    handle.destroyForcibly();
+                } catch (ExecutionException e) {
                     handle.destroyForcibly();
                 }
             });
             Files.deleteIfExists(pidFile);
-        } catch (Exception ignored) {
+        } catch (IOException | NumberFormatException e) {
             try {
                 Files.deleteIfExists(pidFile);
-            } catch (IOException ignoredAgain) {
+            } catch (IOException deleteError) {
                 // ignore
             }
         }
@@ -429,7 +432,7 @@ public class WeChatLoginService {
     private void deleteQuietly(Path path) {
         try {
             Files.deleteIfExists(path);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
             // best-effort cleanup
         }
     }

@@ -55,10 +55,45 @@ public class MetricsBuffer {
      * @since 2026-05-09
      */
     public static class AgentStats {
-        public int requestCount;
-        public int errorCount;
-        public long latencySum;
-        public long ttftSum;
+        private int requestCount;
+        private int errorCount;
+        private long latencySum;
+        private long ttftSum;
+
+        /**
+         * Records a new request sample.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void record(long totalMs, long ttftMs, boolean error) {
+            requestCount++;
+            latencySum += totalMs;
+            ttftSum += ttftMs;
+            if (error) {
+                errorCount++;
+            }
+        }
+
+        /**
+         * Gets the request count.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getRequestCount() {
+            return requestCount;
+        }
+
+        /**
+         * Gets the error count.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getErrorCount() {
+            return errorCount;
+        }
 
         /**
          * Gets the average request latency in milliseconds.
@@ -122,11 +157,10 @@ public class MetricsBuffer {
         String agentId = timing.getAgentId();
         if (agentId != null) {
             agentStatsMap.compute(agentId, (k, stats) -> {
-                if (stats == null) stats = new AgentStats();
-                stats.requestCount++;
-                stats.latencySum += timing.getTotalMs();
-                stats.ttftSum += timing.getTtftMs();
-                if (timing.isError()) stats.errorCount++;
+                if (stats == null) {
+                    stats = new AgentStats();
+                }
+                stats.record(timing.getTotalMs(), timing.getTtftMs(), timing.isError());
                 return stats;
             });
         }
@@ -143,8 +177,8 @@ public class MetricsBuffer {
         for (var entry : agentStatsMap.entrySet()) {
             AgentStats s = entry.getValue();
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("requestCount", s.requestCount);
-            m.put("errorCount", s.errorCount);
+            m.put("requestCount", s.getRequestCount());
+            m.put("errorCount", s.getErrorCount());
             m.put("avgLatencyMs", Math.round(s.getAvgLatencyMs() * 100.0) / 100.0);
             m.put("avgTtftMs", Math.round(s.getAvgTtftMs() * 100.0) / 100.0);
             result.put(entry.getKey(), m);
