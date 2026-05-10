@@ -543,21 +543,57 @@ public class GatewayProperties {
         private String agentsDir = "agents";
         private String usersDir = "users";
 
+        /**
+         * Gets the project root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getProjectRoot() {
             return projectRoot;
         }
+        /**
+         * Sets the project root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setProjectRoot(String projectRoot) {
             this.projectRoot = projectRoot;
         }
+        /**
+         * Gets the agents dir.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getAgentsDir() {
             return agentsDir;
         }
+        /**
+         * Sets the agents dir.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setAgentsDir(String agentsDir) {
             this.agentsDir = agentsDir;
         }
+        /**
+         * Gets the users dir.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getUsersDir() {
             return usersDir;
         }
+        /**
+         * Sets the users dir.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setUsersDir(String usersDir) {
             this.usersDir = usersDir;
         }
@@ -569,27 +605,75 @@ public class GatewayProperties {
         private int maxRestartAttempts = 3;
         private long restartBaseDelayMs = 5000L;
 
+        /**
+         * Gets the timeout minutes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getTimeoutMinutes() {
             return timeoutMinutes;
         }
+        /**
+         * Sets the timeout minutes.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setTimeoutMinutes(int timeoutMinutes) {
             this.timeoutMinutes = timeoutMinutes;
         }
+        /**
+         * Gets the check interval ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public long getCheckIntervalMs() {
             return checkIntervalMs;
         }
+        /**
+         * Sets the check interval ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setCheckIntervalMs(long checkIntervalMs) {
             this.checkIntervalMs = checkIntervalMs;
         }
+        /**
+         * Gets the max restart attempts.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxRestartAttempts() {
             return maxRestartAttempts;
         }
+        /**
+         * Sets the max restart attempts.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxRestartAttempts(int maxRestartAttempts) {
             this.maxRestartAttempts = maxRestartAttempts;
         }
+        /**
+         * Gets the restart base delay ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public long getRestartBaseDelayMs() {
             return restartBaseDelayMs;
         }
+        /**
+         * Sets the restart base delay ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setRestartBaseDelayMs(long restartBaseDelayMs) {
             this.restartBaseDelayMs = restartBaseDelayMs;
         }
@@ -599,15 +683,39 @@ public class GatewayProperties {
         private int maxFileSizeMb = 50;
         private int maxImageSizeMb = 20;
 
+        /**
+         * Gets the max file size mb.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxFileSizeMb() {
             return maxFileSizeMb;
         }
+        /**
+         * Sets the max file size mb.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxFileSizeMb(int maxFileSizeMb) {
             this.maxFileSizeMb = maxFileSizeMb;
         }
+        /**
+         * Gets the max image size mb.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxImageSizeMb() {
             return maxImageSizeMb;
         }
+        /**
+         * Sets the max image size mb.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxImageSizeMb(int maxImageSizeMb) {
             this.maxImageSizeMb = maxImageSizeMb;
         }
@@ -618,21 +726,57 @@ public class GatewayProperties {
         private String publicKey = "";
         private String secretKey = "";
 
+        /**
+         * Gets the host.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getHost() {
             return host;
         }
+        /**
+         * Sets the host.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setHost(String host) {
             this.host = host;
         }
+        /**
+         * Gets the public key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getPublicKey() {
             return publicKey;
         }
+        /**
+         * Sets the public key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setPublicKey(String publicKey) {
             this.publicKey = publicKey;
         }
+        /**
+         * Gets the secret key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getSecretKey() {
             return secretKey;
         }
+        /**
+         * Sets the secret key.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setSecretKey(String secretKey) {
             this.secretKey = secretKey;
         }
@@ -642,15 +786,39 @@ public class GatewayProperties {
         private int maxInstancesPerUser = 5;
         private int maxInstancesGlobal = 50;
 
+        /**
+         * Gets the max instances per user.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxInstancesPerUser() {
             return maxInstancesPerUser;
         }
+        /**
+         * Sets the max instances per user.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxInstancesPerUser(int maxInstancesPerUser) {
             this.maxInstancesPerUser = maxInstancesPerUser;
         }
+        /**
+         * Gets the max instances global.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxInstancesGlobal() {
             return maxInstancesGlobal;
         }
+        /**
+         * Sets the max instances global.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxInstancesGlobal(int maxInstancesGlobal) {
             this.maxInstancesGlobal = maxInstancesGlobal;
         }
@@ -661,21 +829,57 @@ public class GatewayProperties {
         private int idleTimeoutSec = 600;
         private int maxDurationSec = 1200;
 
+        /**
+         * Gets the first byte timeout sec.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getFirstByteTimeoutSec() {
             return firstByteTimeoutSec;
         }
+        /**
+         * Sets the first byte timeout sec.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setFirstByteTimeoutSec(int firstByteTimeoutSec) {
             this.firstByteTimeoutSec = firstByteTimeoutSec;
         }
+        /**
+         * Gets the idle timeout sec.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getIdleTimeoutSec() {
             return idleTimeoutSec;
         }
+        /**
+         * Sets the idle timeout sec.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setIdleTimeoutSec(int idleTimeoutSec) {
             this.idleTimeoutSec = idleTimeoutSec;
         }
+        /**
+         * Gets the max duration sec.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxDurationSec() {
             return maxDurationSec;
         }
+        /**
+         * Sets the max duration sec.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxDurationSec(int maxDurationSec) {
             this.maxDurationSec = maxDurationSec;
         }
@@ -685,15 +889,39 @@ public class GatewayProperties {
         private boolean enabled = true;
         private String defaultAgentId = "universal-agent";
 
+        /**
+         * Returns the enabled flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public boolean isEnabled() {
             return enabled;
         }
+        /**
+         * Updates the enabled flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
         }
+        /**
+         * Gets the default agent id.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getDefaultAgentId() {
             return defaultAgentId;
         }
+        /**
+         * Sets the default agent id.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setDefaultAgentId(String defaultAgentId) {
             this.defaultAgentId = defaultAgentId;
         }
@@ -704,21 +932,57 @@ public class GatewayProperties {
         private String onlyofficeUrl = "";
         private String fileBaseUrl = "";
 
+        /**
+         * Returns the enabled flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public boolean isEnabled() {
             return enabled;
         }
+        /**
+         * Updates the enabled flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
         }
+        /**
+         * Gets the onlyoffice url.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getOnlyofficeUrl() {
             return onlyofficeUrl;
         }
+        /**
+         * Sets the onlyoffice url.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setOnlyofficeUrl(String onlyofficeUrl) {
             this.onlyofficeUrl = onlyofficeUrl;
         }
+        /**
+         * Gets the file base url.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getFileBaseUrl() {
             return fileBaseUrl;
         }
+        /**
+         * Sets the file base url.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setFileBaseUrl(String fileBaseUrl) {
             this.fileBaseUrl = fileBaseUrl;
         }
@@ -730,27 +994,75 @@ public class GatewayProperties {
         private boolean includeSseChunkPreview = false;
         private int sseChunkPreviewMaxChars = 160;
 
+        /**
+         * Returns the access log enabled flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public boolean isAccessLogEnabled() {
             return accessLogEnabled;
         }
+        /**
+         * Updates the access log enabled flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setAccessLogEnabled(boolean accessLogEnabled) {
             this.accessLogEnabled = accessLogEnabled;
         }
+        /**
+         * Returns the include upstream error body flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public boolean isIncludeUpstreamErrorBody() {
             return includeUpstreamErrorBody;
         }
+        /**
+         * Updates the include upstream error body flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setIncludeUpstreamErrorBody(boolean includeUpstreamErrorBody) {
             this.includeUpstreamErrorBody = includeUpstreamErrorBody;
         }
+        /**
+         * Returns the include sse chunk preview flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public boolean isIncludeSseChunkPreview() {
             return includeSseChunkPreview;
         }
+        /**
+         * Updates the include sse chunk preview flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setIncludeSseChunkPreview(boolean includeSseChunkPreview) {
             this.includeSseChunkPreview = includeSseChunkPreview;
         }
+        /**
+         * Gets the sse chunk preview max chars.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getSseChunkPreviewMaxChars() {
             return sseChunkPreviewMaxChars;
         }
+        /**
+         * Sets the sse chunk preview max chars.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setSseChunkPreviewMaxChars(int sseChunkPreviewMaxChars) {
             this.sseChunkPreviewMaxChars = sseChunkPreviewMaxChars;
         }
@@ -760,15 +1072,39 @@ public class GatewayProperties {
         private int defaultTimeout = 30;
         private int maxTimeout = 120;
 
+        /**
+         * Gets the default timeout.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getDefaultTimeout() {
             return defaultTimeout;
         }
+        /**
+         * Sets the default timeout.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setDefaultTimeout(int defaultTimeout) {
             this.defaultTimeout = defaultTimeout;
         }
+        /**
+         * Gets the max timeout.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxTimeout() {
             return maxTimeout;
         }
+        /**
+         * Sets the max timeout.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxTimeout(int maxTimeout) {
             this.maxTimeout = maxTimeout;
         }
@@ -786,9 +1122,21 @@ public class GatewayProperties {
                 "md", "markdown",
                 "html", "htm");
 
+        /**
+         * Gets the allowed extensions.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public List<String> getAllowedExtensions() {
             return allowedExtensions;
         }
+        /**
+         * Sets the allowed extensions.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setAllowedExtensions(List<String> allowedExtensions) {
             this.allowedExtensions = allowedExtensions;
         }
@@ -799,9 +1147,21 @@ public class GatewayProperties {
                 new FileScanRoot("workingDir", "${userAgentDir}", false),
                 new FileScanRoot("output", "${userAgentDir}/output", false));
 
+        /**
+         * Gets the scan roots.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public List<FileScanRoot> getScanRoots() {
             return scanRoots;
         }
+        /**
+         * Sets the scan roots.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setScanRoots(List<FileScanRoot> scanRoots) {
             this.scanRoots = scanRoots;
         }
@@ -825,45 +1185,129 @@ public class GatewayProperties {
             this.recursive = recursive;
         }
 
+        /**
+         * Gets the id.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getId() {
             return id;
         }
+        /**
+         * Sets the id.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setId(String id) {
             this.id = id;
         }
+        /**
+         * Gets the path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getPath() {
             return path;
         }
+        /**
+         * Sets the path.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setPath(String path) {
             this.path = path;
         }
+        /**
+         * Returns the recursive flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public boolean isRecursive() {
             return recursive;
         }
+        /**
+         * Updates the recursive flag.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setRecursive(boolean recursive) {
             this.recursive = recursive;
         }
+        /**
+         * Gets the exclude dirs.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public List<String> getExcludeDirs() {
             return excludeDirs;
         }
+        /**
+         * Sets the exclude dirs.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setExcludeDirs(List<String> excludeDirs) {
             this.excludeDirs = excludeDirs;
         }
+        /**
+         * Gets the max depth.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxDepth() {
             return maxDepth;
         }
+        /**
+         * Sets the max depth.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxDepth(int maxDepth) {
             this.maxDepth = maxDepth;
         }
+        /**
+         * Gets the max files.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxFiles() {
             return maxFiles;
         }
+        /**
+         * Sets the max files.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxFiles(int maxFiles) {
             this.maxFiles = maxFiles;
         }
+        /**
+         * Gets the scan timeout ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public long getScanTimeoutMs() {
             return scanTimeoutMs;
         }
+        /**
+         * Sets the scan timeout ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setScanTimeoutMs(long scanTimeoutMs) {
             this.scanTimeoutMs = scanTimeoutMs;
         }
@@ -874,21 +1318,57 @@ public class GatewayProperties {
         private int requestTimeoutMs = 10000;
         private int maxPackageSizeMb = 200;
 
+        /**
+         * Gets the base url.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getBaseUrl() {
             return baseUrl;
         }
+        /**
+         * Sets the base url.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setBaseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
         }
+        /**
+         * Gets the request timeout ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getRequestTimeoutMs() {
             return requestTimeoutMs;
         }
+        /**
+         * Sets the request timeout ms.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setRequestTimeoutMs(int requestTimeoutMs) {
             this.requestTimeoutMs = requestTimeoutMs;
         }
+        /**
+         * Gets the max package size mb.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public int getMaxPackageSizeMb() {
             return maxPackageSizeMb;
         }
+        /**
+         * Sets the max package size mb.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setMaxPackageSizeMb(int maxPackageSizeMb) {
             this.maxPackageSizeMb = maxPackageSizeMb;
         }
@@ -897,9 +1377,21 @@ public class GatewayProperties {
     public static class Knowledge {
         private String artifactsRoot = "../knowledge-service/data/artifacts";
 
+        /**
+         * Gets the artifacts root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public String getArtifactsRoot() {
             return artifactsRoot;
         }
+        /**
+         * Sets the artifacts root.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
         public void setArtifactsRoot(String artifactsRoot) {
             this.artifactsRoot = artifactsRoot;
         }
