@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -217,7 +218,7 @@ public class MetricsBuffer {
                     "snapshots", toWrite
             );
             MAPPER.writeValue(persistPath.toFile(), wrapper);
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Failed to persist metrics to {}: {}", persistPath, e.getMessage());
         }
     }
@@ -254,7 +255,7 @@ public class MetricsBuffer {
             dirty = false;
             log.info("Restored {} metrics snapshots from {} (discarded {} stale)",
                     restored, persistPath, loaded.size() - restored);
-        } catch (Exception e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to load persisted metrics from {}: {}", persistPath, e.getMessage());
         }
     }
