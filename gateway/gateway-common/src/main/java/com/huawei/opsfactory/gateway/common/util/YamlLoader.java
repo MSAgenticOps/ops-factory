@@ -39,9 +39,9 @@ public final class YamlLoader {
             Map<String, Object> result = yaml.load(is);
             return result != null ? result : Collections.emptyMap();
         } catch (YAMLException e) {
-            throw new RuntimeException("Invalid YAML: " + path + ": " + e.getMessage(), e);
+            throw new IllegalStateException("Invalid YAML: " + path + ": " + e.getMessage(), e);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load YAML: " + path, e);
+            throw new IllegalStateException("Failed to load YAML: " + path, e);
         }
     }
 

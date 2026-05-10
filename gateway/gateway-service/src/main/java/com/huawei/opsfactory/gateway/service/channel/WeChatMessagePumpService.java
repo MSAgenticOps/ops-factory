@@ -132,7 +132,7 @@ public class WeChatMessagePumpService {
                 writeOutboxCommand(channel, peerId, reply.replyText(), contextToken);
             }
             moveToProcessed(channel, file, "processed");
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_failed",
                     "Failed to process inbound WeChat message: " + e.getMessage());
             moveToProcessed(channel, file, "error");

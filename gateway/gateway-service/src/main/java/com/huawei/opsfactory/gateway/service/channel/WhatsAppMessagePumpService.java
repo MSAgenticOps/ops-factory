@@ -199,7 +199,7 @@ public class WhatsAppMessagePumpService {
                 writeOutboxCommand(channel, peerId, reply.replyText());
             }
             moveToProcessed(channel, file, "processed");
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "whatsapp.inbox_failed",
                     "Failed to process inbound WhatsApp message: " + e.getMessage());
             moveToProcessed(channel, file, "error");

@@ -67,7 +67,7 @@ public class AgentController {
                         String error = null;
                         try {
                             config = agentConfigService.loadAgentConfigYaml(entry.id());
-                        } catch (RuntimeException e) {
+                        } catch (IllegalStateException e) {
                             status = "invalid_config";
                             error = e.getMessage();
                         }
@@ -75,7 +75,7 @@ public class AgentController {
                         List<Map<String, String>> skills;
                         try {
                             skills = agentConfigService.listSkills(entry.id());
-                        } catch (RuntimeException e) {
+                        } catch (IllegalStateException e) {
                             skills = List.of();
                             if (error == null) {
                                 status = "invalid_config";
