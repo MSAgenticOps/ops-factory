@@ -93,7 +93,8 @@ public class AgentSkillInstallService {
         Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
         Path destination = skillsDir.resolve(skillId);
         if (Files.exists(destination)) {
-            throw new SkillInstallConflictException("Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
+            throw new SkillInstallConflictException("Skill '" + skillId + "' is already installed for agent '" +
+                    agentId + "'");
         }
 
         Files.createDirectories(skillsDir);
@@ -141,7 +142,8 @@ public class AgentSkillInstallService {
         }
 
         String skillId = validateSkillId(requestedSkillId);
-        Path skillDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").resolve(skillId).normalize();
+        Path skillDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").resolve(
+                skillId).normalize();
         Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").normalize();
         if (!skillDir.startsWith(skillsDir)) {
             throw new IllegalArgumentException("Skill id must use lowercase letters, numbers, and hyphens");
@@ -168,7 +170,8 @@ public class AgentSkillInstallService {
                     continue;
                 }
                 String safeName = safeZipName(entry.getName());
-                if (safeName.startsWith("__MACOSX/") || safeName.endsWith("/.DS_Store") || ".DS_Store".equals(safeName)) {
+                if (safeName.startsWith("__MACOSX/") || safeName.endsWith("/.DS_Store") ||
+                        ".DS_Store".equals(safeName)) {
                     continue;
                 }
                 Path destination = targetDir.resolve(safeName).normalize();

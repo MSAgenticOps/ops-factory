@@ -293,7 +293,8 @@ public class AgentConfigServiceTest {
 
         // Add SKILL.md with frontmatter to skill-a
         Files.writeString(skillsDir.resolve("skill-a").resolve("SKILL.md"),
-                "---\nname: Skill A\ndescription: Description of skill A\npinned: true\ndisplay-order: -100\n---\n# Skill A\n");
+                "---\nname: Skill A\ndescription: Description of skill A\npinned: true\ndisplay-order: " +
+                        "-100\n---\n# Skill A\n");
 
         List<Map<String, String>> skills = service.listSkills("test-agent");
         assertEquals(2, skills.size());

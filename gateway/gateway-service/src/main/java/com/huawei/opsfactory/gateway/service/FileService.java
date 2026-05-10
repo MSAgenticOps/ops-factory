@@ -145,7 +145,8 @@ public class FileService {
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
-        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6, 1000, 2000),
+        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6,
+                        1000, 2000),
                 files, fileCapsuleAllowedExtensions());
         return files;
     }
@@ -209,8 +210,8 @@ public class FileService {
         }
     }
 
-    private boolean isScanLimitReached(FileScanRoot root, List<Map<String, Object>> files, int depth, long deadlineNanos,
-                                       int rootStartCount) {
+    private boolean isScanLimitReached(FileScanRoot root, List<Map<String, Object>> files, int depth,
+                                       long deadlineNanos, int rootStartCount) {
         return depth > root.maxDepth()
                 || (root.maxFiles() > 0 && files.size() - rootStartCount >= root.maxFiles())
                 || (deadlineNanos > 0 && System.nanoTime() > deadlineNanos);
