@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -16,6 +17,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -135,14 +137,14 @@ public class LangfuseService {
         return Mono.zip(tracesMono, obsMono).map(tuple -> {
             try {
                 return buildOverview(tuple.getT1(), tuple.getT2());
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Failed to build overview: {}", e.getMessage());
                 return emptyOverview();
             }
         });
     }
 
-    private Map<String, Object> buildOverview(String tracesJson, String obsJson) throws Exception {
+    private Map<String, Object> buildOverview(String tracesJson, String obsJson) throws JsonProcessingException {
         JsonNode tracesRoot = MAPPER.readTree(tracesJson);
         JsonNode obsRoot = MAPPER.readTree(obsJson);
 
@@ -180,7 +182,7 @@ public class LangfuseService {
                 try {
                     String date = OffsetDateTime.parse(ts).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
                     dailyMap.computeIfAbsent(date, k -> new int[]{0, 0})[0]++;
-                } catch (Exception ignored) {
+                } catch (DateTimeParseException e) {
                     // skip unparseable timestamps
                 }
             }
@@ -193,7 +195,8 @@ public class LangfuseService {
                 try {
                     String date = OffsetDateTime.parse(ts).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
                     dailyMap.computeIfAbsent(date, k -> new int[]{0, 0})[1]++;
-                } catch (Exception ignored) {
+                } catch (DateTimeParseException e) {
+                    // skip unparseable timestamps
                 }
             }
         }
@@ -238,14 +241,14 @@ public class LangfuseService {
         return getTraces(from, to, limit, errorsOnly).map(raw -> {
             try {
                 return parseTraces(raw);
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Failed to parse traces: {}", e.getMessage());
                 return List.<Map<String, Object>>of();
             }
         });
     }
 
-    private List<Map<String, Object>> parseTraces(String json) throws Exception {
+    private List<Map<String, Object>> parseTraces(String json) throws JsonProcessingException {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
         if (!data.isArray()) {
@@ -303,14 +306,14 @@ public class LangfuseService {
         return getObservations(from, to).map(raw -> {
             try {
                 return parseObservations(raw);
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Failed to parse observations: {}", e.getMessage());
                 return Map.<String, Object>of("observations", List.of());
             }
         });
     }
 
-    private Map<String, Object> parseObservations(String json) throws Exception {
+    private Map<String, Object> parseObservations(String json) throws JsonProcessingException {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
         if (!data.isArray()) {

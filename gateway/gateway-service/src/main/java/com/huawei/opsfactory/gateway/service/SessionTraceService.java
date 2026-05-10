@@ -203,7 +203,12 @@ public class SessionTraceService implements DisposableBean {
             job.status = TraceStatus.SUCCEEDED;
             job.message = "trace collection complete";
             log.info("[SESSION-TRACE] succeeded jobId={} archive={}", job.jobId, archive);
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            job.status = TraceStatus.FAILED;
+            job.message = "trace collection interrupted";
+            log.warn("[SESSION-TRACE] interrupted jobId={}", job.jobId);
+        } catch (IOException | IllegalStateException e) {
             job.status = TraceStatus.FAILED;
             job.message = e.getMessage() == null ? "trace collection failed" : e.getMessage();
             log.warn("[SESSION-TRACE] failed jobId={} error={}", job.jobId, job.message);
@@ -305,11 +310,11 @@ public class SessionTraceService implements DisposableBean {
             stream.sorted(Comparator.reverseOrder()).forEach(current -> {
                 try {
                     Files.deleteIfExists(current);
-                } catch (IOException ignored) {
+                } catch (IOException e) {
                     // best-effort cleanup
                 }
             });
-        } catch (IOException ignored) {
+        } catch (IOException e) {
             // best-effort cleanup
         }
     }
