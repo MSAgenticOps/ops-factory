@@ -331,7 +331,8 @@ public class HostController {
             Object reachable = result.get("reachable");
             Object latencyMs = result.get("latencyMs");
             log.info(
-                    "Host connectivity test completed hostId={} userId={} success={} reachable={} latencyMs={} durationMs={} testResultKeys={}",
+                    "Host connectivity test completed hostId={} userId={} success={} reachable={} latencyMs={} "
+                            + "durationMs={} testResultKeys={}",
                     id,
                     userId,
                     success,
@@ -341,10 +342,15 @@ public class HostController {
                     testResult.keySet()
             );
             if (Boolean.FALSE.equals(success) && (reachable == null || latencyMs == null)) {
-                    log.warn(
-                            "Host connectivity test returned missing fields hostId={} userId={} reachable={} latencyMs={} testResultKeys={}",
-                            id, userId, reachable, latencyMs, testResult.keySet()
-                    );
+                log.warn(
+                        "Host connectivity test returned missing fields hostId={} userId={} reachable={} latencyMs={} "
+                                + "testResultKeys={}",
+                        id,
+                        userId,
+                        reachable,
+                        latencyMs,
+                        testResult.keySet()
+                );
                 if (testResult.containsKey("message")) {
                     log.warn(
                             "Host connectivity test failure message hostId={} userId={} message={}",

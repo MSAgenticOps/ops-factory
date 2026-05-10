@@ -447,9 +447,18 @@ public class InstanceManager {
             long readyMs = System.currentTimeMillis() - readyStart;
             instance.setStatus(ManagedInstance.Status.RUNNING);
             log.info("Instance {}:{} ready on port {} (pid={})", agentId, userId, port, pid);
-            log.info("[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} totalMs={}",
-                    agentId, userId, port, pid, prepareMs, processStartMs, readyMs,
-                    System.currentTimeMillis() - spawnStart);
+            log.info(
+                    "[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} "
+                            + "totalMs={}",
+                    agentId,
+                    userId,
+                    port,
+                    pid,
+                    prepareMs,
+                    processStartMs,
+                    readyMs,
+                    System.currentTimeMillis() - spawnStart
+            );
 
             return instance;
         } catch (Exception e) {
@@ -600,8 +609,13 @@ public class InstanceManager {
         if (!ProcessUtil.isAlive(process)) {
             throw processExitedException(process, port);
         }
-        log.error("goosed failed to start on port {} after {} attempts - process is alive but not responding. Health check URL: {}",
-                port, GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS, healthCheckUrl);
+        log.error(
+                "goosed failed to start on port {} after {} attempts - process is alive but not responding. "
+                        + "Health check URL: {}",
+                port,
+                GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS,
+                healthCheckUrl
+        );
         throw new RuntimeException("goosed failed to start on port " + port
                 + " (process alive but not responding after "
                 + GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS + " attempts)");

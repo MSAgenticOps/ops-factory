@@ -450,7 +450,8 @@ public class AgentConfigService {
      * @since 2026-05-09
      */
     public void writeMemoryFile(String agentId, String category, String content) throws IOException {
-        if (content != null && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+        if (content != null
+                && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = getGooseMemoryDir(agentId);
@@ -706,7 +707,9 @@ public class AgentConfigService {
 
     private String relativizeForAgentConfig(String agentId, Path targetPath) {
         Path configDir = getAgentConfigDir(agentId).normalize();
-        Path projectRoot = gatewayRoot.getParent() != null ? gatewayRoot.getParent().normalize() : properties.getProjectRootPath();
+        Path projectRoot = gatewayRoot.getParent() != null
+                ? gatewayRoot.getParent().normalize()
+                : properties.getProjectRootPath();
         Path normalizedTarget = targetPath.normalize();
 
         if (normalizedTarget.startsWith(projectRoot)) {
@@ -732,7 +735,9 @@ public class AgentConfigService {
         // Validate ID format
         if (!id.matches("^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$") || id.length() < 2) {
             throw new IllegalArgumentException(
-                    "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only (no leading/trailing hyphens)");
+                    "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only "
+                            + "(no leading/trailing hyphens)"
+            );
         }
 
         // Check duplicate ID
@@ -883,7 +888,9 @@ public class AgentConfigService {
         }
 
         Object rootDirObj = scope.get("rootDir");
-        String configuredRoot = rootDirObj instanceof String s && !s.isBlank() ? s.trim() : DEFAULT_KNOWLEDGE_CLI_ROOT_DIR;
+        String configuredRoot = rootDirObj instanceof String s && !s.isBlank()
+                ? s.trim()
+                : DEFAULT_KNOWLEDGE_CLI_ROOT_DIR;
         Path configDir = getAgentConfigDir(agentId);
         return Path.of(configuredRoot).isAbsolute()
                 ? Path.of(configuredRoot).normalize()

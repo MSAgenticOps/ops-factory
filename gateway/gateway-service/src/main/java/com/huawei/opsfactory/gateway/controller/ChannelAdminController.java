@@ -274,7 +274,10 @@ public class ChannelAdminController {
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(detail -> {
                     if (detail == null) {
-                        return Mono.just(ResponseEntity.badRequest().body(errorBody("Channel '" + channelId + "' not found")));
+                        return Mono.just(
+                                ResponseEntity.badRequest()
+                                        .body(errorBody("Channel '" + channelId + "' not found"))
+                        );
                     }
                     return channelAdapterRegistry.require(detail.type()).testConnectivity(channelId, userId)
                             .map(result -> ResponseEntity.ok(Map.<String, Object>of(
@@ -441,7 +444,8 @@ public class ChannelAdminController {
                     return ResponseEntity.badRequest().body(errorBody("wechat self-test is not implemented yet"));
                 }
                 if (!"whatsapp".equals(detail.type())) {
-                    return ResponseEntity.badRequest().body(errorBody(detail.type() + " self-test is not implemented yet"));
+                    return ResponseEntity.badRequest()
+                            .body(errorBody(detail.type() + " self-test is not implemented yet"));
                 }
                 ChannelSelfTestResult result = whatsAppMessagePumpService.runSelfTest(
                         channelId,
