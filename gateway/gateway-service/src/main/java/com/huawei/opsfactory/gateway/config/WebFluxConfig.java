@@ -78,7 +78,9 @@ public class WebFluxConfig {
     }
 
     private String resolveAllowOrigin(String configured, String requestOrigin) {
-        if (requestOrigin == null || requestOrigin.isBlank()) return null;
+        if (requestOrigin == null || requestOrigin.isBlank()) {
+            return null;
+        }
         if (configured == null || configured.isBlank() || "*".equals(configured.trim())) {
             return requestOrigin;
         }

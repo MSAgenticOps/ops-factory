@@ -157,7 +157,9 @@ public class MetricsBuffer {
      */
     public synchronized List<RequestTiming> drainTimings() {
         List<RequestTiming> result = new ArrayList<>();
-        if (pendingTimingCount == 0) return result;
+        if (pendingTimingCount == 0) {
+            return result;
+        }
 
         int count = pendingTimingCount;
         int start = (timingWriteIndex - count + TIMING_CAPACITY) % TIMING_CAPACITY;
@@ -200,7 +202,9 @@ public class MetricsBuffer {
     public void persistToDisk() {
         List<MetricsSnapshot> toWrite;
         synchronized (this) {
-            if (!dirty) return;
+            if (!dirty) {
+                return;
+            }
             toWrite = getSnapshots(SNAPSHOT_CAPACITY);
             dirty = false;
         }
@@ -231,7 +235,9 @@ public class MetricsBuffer {
             Map<String, Object> wrapper = MAPPER.readValue(persistPath.toFile(),
                     new TypeReference<Map<String, Object>>() {});
             Object snapshotObj = wrapper.get("snapshots");
-            if (snapshotObj == null) return;
+            if (snapshotObj == null) {
+                return;
+            }
 
             List<MetricsSnapshot> loaded = MAPPER.convertValue(snapshotObj,
                     new TypeReference<List<MetricsSnapshot>>() {});

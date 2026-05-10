@@ -136,17 +136,23 @@ public class ClusterRelationService {
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
             for (Path file : stream) {
-                if (!Files.isRegularFile(file)) continue;
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
                 try {
                     Map<String, Object> rel = readFile(file);
-                    if (rel == null) continue;
+                    if (rel == null) {
+                        continue;
+                    }
                     if (clusterId != null && !clusterId.isEmpty()) {
                         String sourceId = (String) rel.get("sourceId");
                         String targetId = (String) rel.get("targetId");
                         String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
                         boolean match = clusterId.equals(targetId)
                                 || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
-                        if (!match) continue;
+                        if (!match) {
+                            continue;
+                        }
                     }
                     relations.add(rel);
                 } catch (Exception e) {
@@ -638,7 +644,9 @@ public class ClusterRelationService {
             String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
 
             // Skip business-service relations for cluster topology
-            if ("business-service".equals(sourceType)) continue;
+            if ("business-service".equals(sourceType)) {
+                continue;
+            }
 
             if (clusterId.equals(sourceId)) {
                 // Current cluster is source -> downstream
@@ -732,7 +740,9 @@ public class ClusterRelationService {
     // ── Helpers ──────────────────────────────────────────────────────
 
     private String resolveClusterTypeMode(String typeName) {
-        if (typeName == null || typeName.isEmpty() || clusterTypeService == null) return "peer";
+        if (typeName == null || typeName.isEmpty() || clusterTypeService == null) {
+            return "peer";
+        }
         for (Map<String, Object> ct : clusterTypeService.listClusterTypes()) {
             String ctName = ct.get("name") != null ? ct.get("name").toString() : "";
             if (typeName.equals(ctName)) {

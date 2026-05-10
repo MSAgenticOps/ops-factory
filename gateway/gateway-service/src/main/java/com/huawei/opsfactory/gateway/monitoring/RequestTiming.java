@@ -42,7 +42,9 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public long getStartTime() { return startTime; }
+    public long getStartTime() {
+        return startTime;
+    }
 
     /**
      * Gets the time-to-first-token in milliseconds.
@@ -50,7 +52,9 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public long getTtftMs() { return ttftMs; }
+    public long getTtftMs() {
+        return ttftMs;
+    }
 
     /**
      * Gets the total request duration in milliseconds.
@@ -58,7 +62,9 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public long getTotalMs() { return totalMs; }
+    public long getTotalMs() {
+        return totalMs;
+    }
 
     /**
      * Gets the total number of bytes transferred.
@@ -66,7 +72,9 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public long getTotalBytes() { return totalBytes; }
+    public long getTotalBytes() {
+        return totalBytes;
+    }
 
     /**
      * Checks whether the request resulted in an error.
@@ -74,7 +82,9 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public boolean isError() { return error; }
+    public boolean isError() {
+        return error;
+    }
 
     /**
      * Gets the agent identifier associated with this request.
@@ -82,7 +92,9 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public String getAgentId() { return agentId; }
+    public String getAgentId() {
+        return agentId;
+    }
 
     /**
      * Gets the user identifier associated with this request.
@@ -90,5 +102,7 @@ public class RequestTiming {
      * @author x00000000
      * @since 2026-05-09
      */
-    public String getUserId() { return userId; }
+    public String getUserId() {
+        return userId;
+    }
 }

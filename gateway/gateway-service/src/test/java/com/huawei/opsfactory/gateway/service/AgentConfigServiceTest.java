@@ -294,8 +294,10 @@ public class AgentConfigServiceTest {
         assertEquals(2, skills.size());
 
         List<String> names = skills.stream().map(s -> s.get("name")).toList();
-        assertTrue(names.contains("Skill A"));  // parsed from frontmatter
-        assertTrue(names.contains("skill-b"));  // fallback to dir name
+        // parsed from frontmatter
+        assertTrue(names.contains("Skill A"));
+        // fallback to dir name
+        assertTrue(names.contains("skill-b"));
 
         // Verify skill-a has parsed description
         Map<String, String> skillA = skills.stream()

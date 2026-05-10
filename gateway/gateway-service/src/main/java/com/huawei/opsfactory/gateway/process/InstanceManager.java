@@ -109,7 +109,9 @@ public class InstanceManager {
                  * @author x00000000
                  * @since 2026-05-09
                  */
-                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
 
                 /**
                  * Executes the check client trusted operation.
@@ -117,7 +119,8 @@ public class InstanceManager {
                  * @author x00000000
                  * @since 2026-05-09
                  */
-                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                }
 
                 /**
                  * Executes the check server trusted operation.
@@ -125,7 +128,8 @@ public class InstanceManager {
                  * @author x00000000
                  * @since 2026-05-09
                  */
-                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                }
             }};
             SSLContext sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAll, new java.security.SecureRandom());
@@ -166,7 +170,9 @@ public class InstanceManager {
     private void registerDefaultSchedules(String agentId, int port, String secretKey) {
         Path recipesDir = agentConfigService.getAgentsDir()
                 .resolve(agentId).resolve("config").resolve("recipes");
-        if (!Files.isDirectory(recipesDir)) return;
+        if (!Files.isDirectory(recipesDir)) {
+            return;
+        }
 
         try {
             // Fetch existing schedules
@@ -461,7 +467,9 @@ public class InstanceManager {
      */
     private void resetStuckRunningSchedules(Path runtimeRoot) {
         Path scheduleFile = runtimeRoot.resolve("data").resolve("schedule.json");
-        if (!Files.exists(scheduleFile)) return;
+        if (!Files.exists(scheduleFile)) {
+            return;
+        }
         try {
             String content = Files.readString(scheduleFile, StandardCharsets.UTF_8);
             if (!content.contains("\"currently_running\":true") && !content.contains("\"currently_running\": true")) {

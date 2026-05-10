@@ -24,7 +24,8 @@ public class BodyLimitHookTest {
     @Before
     public void setUp() {
         GatewayProperties properties = new GatewayProperties();
-        properties.getUpload().setMaxFileSizeMb(1); // 1MB limit for testing
+        // 1MB limit for testing
+        properties.getUpload().setMaxFileSizeMb(1);
         hook = new BodyLimitHook(properties);
     }
 

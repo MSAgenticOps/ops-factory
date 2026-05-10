@@ -50,7 +50,8 @@ public class PrewarmService {
             return;
         }
         if (!warmedUsers.add(userId)) {
-            return; // already warmed
+            // already warmed
+            return;
         }
 
         String agentId = properties.getPrewarm().getDefaultAgentId();

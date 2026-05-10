@@ -523,7 +523,9 @@ public class BusinessServiceService {
                     break;
                 }
             }
-            if (exists) continue;
+            if (exists) {
+                continue;
+            }
 
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("name", business);
@@ -578,9 +580,13 @@ public class BusinessServiceService {
         for (Map<String, Object> rel : allClusterRels) {
             String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
             String sourceId = (String) rel.get("sourceId");
-            if (!"business-service".equals(sourceType) || !bsId.equals(sourceId)) continue;
+            if (!"business-service".equals(sourceType) || !bsId.equals(sourceId)) {
+                continue;
+            }
             String targetClusterId = (String) rel.get("targetId");
-            if (targetClusterId == null) continue;
+            if (targetClusterId == null) {
+                continue;
+            }
             List<Map<String, Object>> clusterHosts = hostService.listHostsByCluster(targetClusterId);
             for (Map<String, Object> h : clusterHosts) {
                 String hid = (String) h.get("id");
@@ -660,7 +666,9 @@ public class BusinessServiceService {
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(relDir, "*.json")) {
             for (Path file : stream) {
-                if (!Files.isRegularFile(file)) continue;
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
                 try {
                     Map<String, Object> rel = readFile(file);
                     if (rel != null) {

@@ -248,7 +248,9 @@ public class FileService {
             return allowed;
         }
         for (String ext : configured) {
-            if (ext == null) continue;
+            if (ext == null) {
+                continue;
+            }
             String normalized = ext.trim().toLowerCase(Locale.ROOT);
             if (!normalized.isEmpty()) {
                 allowed.add(normalized);
@@ -306,7 +308,9 @@ public class FileService {
         Set<String> excludeDirs = new HashSet<>(SKIP_DIRS);
         if (configuredExcludeDirs != null) {
             for (String dir : configuredExcludeDirs) {
-                if (dir == null) continue;
+                if (dir == null) {
+                    continue;
+                }
                 String normalized = dir.trim();
                 if (!normalized.isEmpty()) {
                     excludeDirs.add(normalized);
@@ -447,8 +451,12 @@ public class FileService {
         int slash = normalized.lastIndexOf('/');
         String baseName = slash >= 0 ? normalized.substring(slash + 1) : normalized;
         String lowerBaseName = baseName.toLowerCase(Locale.ROOT);
-        if ("dockerfile".equals(lowerBaseName)) return "dockerfile";
-        if ("makefile".equals(lowerBaseName)) return "makefile";
+        if ("dockerfile".equals(lowerBaseName)) {
+            return "dockerfile";
+        }
+        if ("makefile".equals(lowerBaseName)) {
+            return "makefile";
+        }
         return getExtension(baseName);
     }
 
@@ -498,7 +506,9 @@ public class FileService {
                 : null;
         if (configuredAllowed != null) {
             for (String ext : configuredAllowed) {
-                if (ext == null) continue;
+                if (ext == null) {
+                    continue;
+                }
                 String normalized = ext.trim().toLowerCase(Locale.ROOT);
                 if (!normalized.isEmpty()) {
                     allowedExtensions.add(normalized);

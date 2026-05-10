@@ -314,7 +314,8 @@ public class BusinessServiceServiceTest {
         createBs("bs-3", "ShippingService", "SHIP", null, List.of(), List.of("order"));
 
         List<Map<String, Object>> byName = businessServiceService.searchByKeyword("order");
-        assertEquals(2, byName.size()); // OrderService (name) + ShippingService (tag "order")
+        // OrderService (name) + ShippingService (tag "order")
+        assertEquals(2, byName.size());
 
         List<Map<String, Object>> byCode = businessServiceService.searchByKeyword("pay");
         assertEquals(1, byCode.size());

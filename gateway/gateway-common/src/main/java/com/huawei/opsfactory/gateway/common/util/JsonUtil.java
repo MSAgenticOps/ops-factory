@@ -11,7 +11,8 @@ package com.huawei.opsfactory.gateway.common.util;
  * @since 2026-05-09
  */
 public final class JsonUtil {
-    private JsonUtil() {}
+    private JsonUtil() {
+    }
 
     /**
      * Extracts the value of a string field from a JSON body.
@@ -24,13 +25,21 @@ public final class JsonUtil {
         for (String fieldName : fieldNames) {
             String key = "\"" + fieldName + "\"";
             int idx = json.indexOf(key);
-            if (idx < 0) continue;
+            if (idx < 0) {
+                continue;
+            }
             int colonIdx = json.indexOf(':', idx + key.length());
-            if (colonIdx < 0) continue;
+            if (colonIdx < 0) {
+                continue;
+            }
             int startQuote = json.indexOf('"', colonIdx + 1);
-            if (startQuote < 0) continue;
+            if (startQuote < 0) {
+                continue;
+            }
             int endQuote = json.indexOf('"', startQuote + 1);
-            if (endQuote < 0) continue;
+            if (endQuote < 0) {
+                continue;
+            }
             return json.substring(startQuote + 1, endQuote);
         }
         return null;

@@ -155,7 +155,8 @@ public class InstanceWatchdogTest {
     public void testWatchdog_respectsMaxRestartAttempts() {
         Process deadProcess = mockDeadProcess(1);
         ManagedInstance dead = createInstance("agent1", "user1", ManagedInstance.Status.RUNNING, deadProcess);
-        dead.setRestartCount(3); // Already at max
+        // Already at max
+        dead.setRestartCount(3);
 
         when(instanceManager.getAllInstances()).thenReturn(List.of(dead));
 
@@ -176,7 +177,8 @@ public class InstanceWatchdogTest {
         Process deadProcess = mockDeadProcess(1);
         ManagedInstance dead = createInstance("agent1", "user1", ManagedInstance.Status.RUNNING, deadProcess);
         dead.setRestartCount(1);
-        dead.setLastRestartTime(System.currentTimeMillis() - 1000); // Only 1s ago, backoff is 10s
+        // Only 1s ago, backoff is 10s
+        dead.setLastRestartTime(System.currentTimeMillis() - 1000);
 
         when(instanceManager.getAllInstances()).thenReturn(List.of(dead));
 
@@ -198,7 +200,8 @@ public class InstanceWatchdogTest {
         Process deadProcess = mockDeadProcess(1);
         ManagedInstance dead = createInstance("agent1", "user1", ManagedInstance.Status.RUNNING, deadProcess);
         dead.setRestartCount(1);
-        dead.setLastRestartTime(System.currentTimeMillis() - 20_000); // 20s ago, backoff is 10s
+        // 20s ago, backoff is 10s
+        dead.setLastRestartTime(System.currentTimeMillis() - 20_000);
 
         when(instanceManager.getAllInstances()).thenReturn(List.of(dead));
 

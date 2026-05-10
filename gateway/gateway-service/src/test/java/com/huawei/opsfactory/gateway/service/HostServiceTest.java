@@ -430,7 +430,8 @@ public class HostServiceTest {
         String id = getFirstHostId();
 
         String createdAt = (String) hostService.getHost(id).get("createdAt");
-        Thread.sleep(10); // Ensure timestamp difference
+        // Ensure timestamp difference
+        Thread.sleep(10);
 
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "Updated");

@@ -158,7 +158,8 @@ public class LangfuseService {
         double sumLatency = 0;
         int errorCount = 0;
         List<Double> latencies = new ArrayList<>();
-        TreeMap<String, int[]> dailyMap = new TreeMap<>(); // date -> [traces, observations]
+        // date -> [traces, observations]
+        TreeMap<String, int[]> dailyMap = new TreeMap<>();
 
         for (JsonNode t : traces) {
             double latency = t.path("latency").asDouble(0);
@@ -207,7 +208,8 @@ public class LangfuseService {
             day.put("date", entry.getKey());
             day.put("traces", entry.getValue()[0]);
             day.put("observations", entry.getValue()[1]);
-            day.put("cost", 0); // per-day cost not easily available from trace-level data
+            // per-day cost not easily available from trace-level data
+            day.put("cost", 0);
             daily.add(day);
         }
 
@@ -245,7 +247,9 @@ public class LangfuseService {
     private List<Map<String, Object>> parseTraces(String json) throws Exception {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
-        if (!data.isArray()) return List.of();
+        if (!data.isArray()) {
+            return List.of();
+        }
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (JsonNode t : data) {
@@ -308,7 +312,9 @@ public class LangfuseService {
     private Map<String, Object> parseObservations(String json) throws Exception {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
-        if (!data.isArray()) return Map.of("observations", List.of());
+        if (!data.isArray()) {
+            return Map.of("observations", List.of());
+        }
 
         // Group by observation name
         Map<String, List<JsonNode>> groups = new LinkedHashMap<>();
@@ -352,7 +358,9 @@ public class LangfuseService {
     }
 
     private static double computeP95(List<Double> latencies) {
-        if (latencies.isEmpty()) return 0;
+        if (latencies.isEmpty()) {
+            return 0;
+        }
         Collections.sort(latencies);
         int idx = (int) Math.ceil(latencies.size() * 0.95) - 1;
         return latencies.get(Math.max(0, idx));

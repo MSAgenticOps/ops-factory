@@ -204,7 +204,9 @@ public class SessionController {
                         try {
                             Map<String, Object> m = MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
                             parsed.add(m);
-                        } catch (JsonProcessingException e) { log.warn("Failed to parse session JSON: {}", e.getMessage()); }
+                        } catch (JsonProcessingException e) {
+                            log.warn("Failed to parse session JSON: {}", e.getMessage());
+                        }
                     }
                     parsed.sort((a, b) -> {
                         String ta = a.getOrDefault("created_at", "") instanceof String s ? s : "";
@@ -235,16 +237,24 @@ public class SessionController {
             String search, String agentId, String type) {
         List<Map<String, Object>> filtered = new ArrayList<>();
         for (Map<String, Object> m : sortedSessions) {
-            if (agentId != null && !agentId.isBlank() && !agentId.equals(m.get("agentId"))) continue;
+            if (agentId != null && !agentId.isBlank() && !agentId.equals(m.get("agentId"))) {
+                continue;
+            }
             if (type != null && !type.isBlank()) {
                 String sessionType = m.getOrDefault("session_type", "user") instanceof String s ? s : "user";
                 String scheduleId = m.get("schedule_id") instanceof String s && !s.isBlank() ? s : null;
-                if ("user".equals(type) && (!"user".equals(sessionType) || scheduleId != null)) continue;
-                if ("scheduled".equals(type) && (scheduleId == null && !"scheduled".equals(sessionType))) continue;
+                if ("user".equals(type) && (!"user".equals(sessionType) || scheduleId != null)) {
+                    continue;
+                }
+                if ("scheduled".equals(type) && (scheduleId == null && !"scheduled".equals(sessionType))) {
+                    continue;
+                }
             }
             if (search != null && !search.isBlank()) {
                 String name = m.getOrDefault("name", "") instanceof String s ? s.toLowerCase(Locale.ROOT) : "";
-                if (!name.contains(search.toLowerCase(Locale.ROOT))) continue;
+                if (!name.contains(search.toLowerCase(Locale.ROOT))) {
+                    continue;
+                }
             }
             filtered.add(m);
         }

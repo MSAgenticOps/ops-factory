@@ -178,7 +178,10 @@ public class HostService {
     private void validateHostRole(Map<String, Object> host) {
         Object roleObj = host.get("role");
         String role = roleObj != null ? roleObj.toString() : null;
-        if (role == null || role.isEmpty()) return; // null role is always valid
+        if (role == null || role.isEmpty()) {
+            // null role is always valid
+            return;
+        }
 
         Object clusterIdObj = host.get("clusterId");
         if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
@@ -207,7 +210,9 @@ public class HostService {
         try {
             Map<String, Object> cluster = clusterService.getCluster(clusterId);
             String typeName = cluster.get("type") != null ? cluster.get("type").toString() : null;
-            if (typeName == null || typeName.isEmpty() || clusterTypeService == null) return "peer";
+            if (typeName == null || typeName.isEmpty() || clusterTypeService == null) {
+                return "peer";
+            }
             for (Map<String, Object> ct : clusterTypeService.listClusterTypes()) {
                 String ctName = ct.get("name") != null ? ct.get("name").toString() : "";
                 if (typeName.equals(ctName)) {
@@ -225,9 +230,13 @@ public class HostService {
      */
     @SuppressWarnings("unchecked")
     private void syncClusterTypeToTags(Map<String, Object> host) {
-        if (clusterService == null) return;
+        if (clusterService == null) {
+            return;
+        }
         Object clusterIdObj = host.get("clusterId");
-        if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) return;
+        if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
+            return;
+        }
 
         String clusterId = clusterIdObj.toString();
         String clusterTypeRaw = null;
@@ -608,7 +617,10 @@ public class HostService {
 
     private void collectHostsByGroup(String groupId, ClusterService clusterService,
                                      Set<String> visited, List<Map<String, Object>> result) {
-        if (!visited.add(groupId)) return; // avoid cycles
+        if (!visited.add(groupId)) {
+            // avoid cycles
+            return;
+        }
         // Direct clusters under this group
         List<Map<String, Object>> clusters = clusterService.listClusters(groupId, null);
         for (Map<String, Object> cluster : clusters) {

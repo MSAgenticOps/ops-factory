@@ -383,7 +383,8 @@ public class AgentConfigService {
 
     // ── Memory file management ──────────────────────────────────────────
 
-    private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024; // 100KB
+    // 100KB
+    private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024;
 
     private Path getGooseMemoryDir(String agentId) {
         return getAgentConfigDir(agentId).resolve("goose").resolve("memory");
@@ -405,7 +406,8 @@ public class AgentConfigService {
             for (Path entry : stream) {
                 if (Files.isRegularFile(entry)) {
                     String fileName = entry.getFileName().toString();
-                    String category = fileName.substring(0, fileName.length() - 4); // strip .txt
+                    // strip .txt
+                    String category = fileName.substring(0, fileName.length() - 4);
                     Map<String, String> file = new HashMap<>();
                     file.put("category", category);
                     try {

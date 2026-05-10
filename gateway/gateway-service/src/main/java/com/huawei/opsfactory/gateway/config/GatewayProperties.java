@@ -543,12 +543,24 @@ public class GatewayProperties {
         private String agentsDir = "agents";
         private String usersDir = "users";
 
-        public String getProjectRoot() { return projectRoot; }
-        public void setProjectRoot(String projectRoot) { this.projectRoot = projectRoot; }
-        public String getAgentsDir() { return agentsDir; }
-        public void setAgentsDir(String agentsDir) { this.agentsDir = agentsDir; }
-        public String getUsersDir() { return usersDir; }
-        public void setUsersDir(String usersDir) { this.usersDir = usersDir; }
+        public String getProjectRoot() {
+            return projectRoot;
+        }
+        public void setProjectRoot(String projectRoot) {
+            this.projectRoot = projectRoot;
+        }
+        public String getAgentsDir() {
+            return agentsDir;
+        }
+        public void setAgentsDir(String agentsDir) {
+            this.agentsDir = agentsDir;
+        }
+        public String getUsersDir() {
+            return usersDir;
+        }
+        public void setUsersDir(String usersDir) {
+            this.usersDir = usersDir;
+        }
     }
 
     public static class Idle {
@@ -557,24 +569,48 @@ public class GatewayProperties {
         private int maxRestartAttempts = 3;
         private long restartBaseDelayMs = 5000L;
 
-        public int getTimeoutMinutes() { return timeoutMinutes; }
-        public void setTimeoutMinutes(int timeoutMinutes) { this.timeoutMinutes = timeoutMinutes; }
-        public long getCheckIntervalMs() { return checkIntervalMs; }
-        public void setCheckIntervalMs(long checkIntervalMs) { this.checkIntervalMs = checkIntervalMs; }
-        public int getMaxRestartAttempts() { return maxRestartAttempts; }
-        public void setMaxRestartAttempts(int maxRestartAttempts) { this.maxRestartAttempts = maxRestartAttempts; }
-        public long getRestartBaseDelayMs() { return restartBaseDelayMs; }
-        public void setRestartBaseDelayMs(long restartBaseDelayMs) { this.restartBaseDelayMs = restartBaseDelayMs; }
+        public int getTimeoutMinutes() {
+            return timeoutMinutes;
+        }
+        public void setTimeoutMinutes(int timeoutMinutes) {
+            this.timeoutMinutes = timeoutMinutes;
+        }
+        public long getCheckIntervalMs() {
+            return checkIntervalMs;
+        }
+        public void setCheckIntervalMs(long checkIntervalMs) {
+            this.checkIntervalMs = checkIntervalMs;
+        }
+        public int getMaxRestartAttempts() {
+            return maxRestartAttempts;
+        }
+        public void setMaxRestartAttempts(int maxRestartAttempts) {
+            this.maxRestartAttempts = maxRestartAttempts;
+        }
+        public long getRestartBaseDelayMs() {
+            return restartBaseDelayMs;
+        }
+        public void setRestartBaseDelayMs(long restartBaseDelayMs) {
+            this.restartBaseDelayMs = restartBaseDelayMs;
+        }
     }
 
     public static class Upload {
         private int maxFileSizeMb = 50;
         private int maxImageSizeMb = 20;
 
-        public int getMaxFileSizeMb() { return maxFileSizeMb; }
-        public void setMaxFileSizeMb(int maxFileSizeMb) { this.maxFileSizeMb = maxFileSizeMb; }
-        public int getMaxImageSizeMb() { return maxImageSizeMb; }
-        public void setMaxImageSizeMb(int maxImageSizeMb) { this.maxImageSizeMb = maxImageSizeMb; }
+        public int getMaxFileSizeMb() {
+            return maxFileSizeMb;
+        }
+        public void setMaxFileSizeMb(int maxFileSizeMb) {
+            this.maxFileSizeMb = maxFileSizeMb;
+        }
+        public int getMaxImageSizeMb() {
+            return maxImageSizeMb;
+        }
+        public void setMaxImageSizeMb(int maxImageSizeMb) {
+            this.maxImageSizeMb = maxImageSizeMb;
+        }
     }
 
     public static class Langfuse {
@@ -582,22 +618,42 @@ public class GatewayProperties {
         private String publicKey = "";
         private String secretKey = "";
 
-        public String getHost() { return host; }
-        public void setHost(String host) { this.host = host; }
-        public String getPublicKey() { return publicKey; }
-        public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
-        public String getSecretKey() { return secretKey; }
-        public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+        public String getHost() {
+            return host;
+        }
+        public void setHost(String host) {
+            this.host = host;
+        }
+        public String getPublicKey() {
+            return publicKey;
+        }
+        public void setPublicKey(String publicKey) {
+            this.publicKey = publicKey;
+        }
+        public String getSecretKey() {
+            return secretKey;
+        }
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
+        }
     }
 
     public static class Limits {
         private int maxInstancesPerUser = 5;
         private int maxInstancesGlobal = 50;
 
-        public int getMaxInstancesPerUser() { return maxInstancesPerUser; }
-        public void setMaxInstancesPerUser(int maxInstancesPerUser) { this.maxInstancesPerUser = maxInstancesPerUser; }
-        public int getMaxInstancesGlobal() { return maxInstancesGlobal; }
-        public void setMaxInstancesGlobal(int maxInstancesGlobal) { this.maxInstancesGlobal = maxInstancesGlobal; }
+        public int getMaxInstancesPerUser() {
+            return maxInstancesPerUser;
+        }
+        public void setMaxInstancesPerUser(int maxInstancesPerUser) {
+            this.maxInstancesPerUser = maxInstancesPerUser;
+        }
+        public int getMaxInstancesGlobal() {
+            return maxInstancesGlobal;
+        }
+        public void setMaxInstancesGlobal(int maxInstancesGlobal) {
+            this.maxInstancesGlobal = maxInstancesGlobal;
+        }
     }
 
     public static class Sse {
@@ -605,22 +661,42 @@ public class GatewayProperties {
         private int idleTimeoutSec = 600;
         private int maxDurationSec = 1200;
 
-        public int getFirstByteTimeoutSec() { return firstByteTimeoutSec; }
-        public void setFirstByteTimeoutSec(int firstByteTimeoutSec) { this.firstByteTimeoutSec = firstByteTimeoutSec; }
-        public int getIdleTimeoutSec() { return idleTimeoutSec; }
-        public void setIdleTimeoutSec(int idleTimeoutSec) { this.idleTimeoutSec = idleTimeoutSec; }
-        public int getMaxDurationSec() { return maxDurationSec; }
-        public void setMaxDurationSec(int maxDurationSec) { this.maxDurationSec = maxDurationSec; }
+        public int getFirstByteTimeoutSec() {
+            return firstByteTimeoutSec;
+        }
+        public void setFirstByteTimeoutSec(int firstByteTimeoutSec) {
+            this.firstByteTimeoutSec = firstByteTimeoutSec;
+        }
+        public int getIdleTimeoutSec() {
+            return idleTimeoutSec;
+        }
+        public void setIdleTimeoutSec(int idleTimeoutSec) {
+            this.idleTimeoutSec = idleTimeoutSec;
+        }
+        public int getMaxDurationSec() {
+            return maxDurationSec;
+        }
+        public void setMaxDurationSec(int maxDurationSec) {
+            this.maxDurationSec = maxDurationSec;
+        }
     }
 
     public static class Prewarm {
         private boolean enabled = true;
         private String defaultAgentId = "universal-agent";
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public String getDefaultAgentId() { return defaultAgentId; }
-        public void setDefaultAgentId(String defaultAgentId) { this.defaultAgentId = defaultAgentId; }
+        public boolean isEnabled() {
+            return enabled;
+        }
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+        public String getDefaultAgentId() {
+            return defaultAgentId;
+        }
+        public void setDefaultAgentId(String defaultAgentId) {
+            this.defaultAgentId = defaultAgentId;
+        }
     }
 
     public static class OfficePreview {
@@ -628,12 +704,24 @@ public class GatewayProperties {
         private String onlyofficeUrl = "";
         private String fileBaseUrl = "";
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public String getOnlyofficeUrl() { return onlyofficeUrl; }
-        public void setOnlyofficeUrl(String onlyofficeUrl) { this.onlyofficeUrl = onlyofficeUrl; }
-        public String getFileBaseUrl() { return fileBaseUrl; }
-        public void setFileBaseUrl(String fileBaseUrl) { this.fileBaseUrl = fileBaseUrl; }
+        public boolean isEnabled() {
+            return enabled;
+        }
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+        public String getOnlyofficeUrl() {
+            return onlyofficeUrl;
+        }
+        public void setOnlyofficeUrl(String onlyofficeUrl) {
+            this.onlyofficeUrl = onlyofficeUrl;
+        }
+        public String getFileBaseUrl() {
+            return fileBaseUrl;
+        }
+        public void setFileBaseUrl(String fileBaseUrl) {
+            this.fileBaseUrl = fileBaseUrl;
+        }
     }
 
     public static class Logging {
@@ -642,24 +730,48 @@ public class GatewayProperties {
         private boolean includeSseChunkPreview = false;
         private int sseChunkPreviewMaxChars = 160;
 
-        public boolean isAccessLogEnabled() { return accessLogEnabled; }
-        public void setAccessLogEnabled(boolean accessLogEnabled) { this.accessLogEnabled = accessLogEnabled; }
-        public boolean isIncludeUpstreamErrorBody() { return includeUpstreamErrorBody; }
-        public void setIncludeUpstreamErrorBody(boolean includeUpstreamErrorBody) { this.includeUpstreamErrorBody = includeUpstreamErrorBody; }
-        public boolean isIncludeSseChunkPreview() { return includeSseChunkPreview; }
-        public void setIncludeSseChunkPreview(boolean includeSseChunkPreview) { this.includeSseChunkPreview = includeSseChunkPreview; }
-        public int getSseChunkPreviewMaxChars() { return sseChunkPreviewMaxChars; }
-        public void setSseChunkPreviewMaxChars(int sseChunkPreviewMaxChars) { this.sseChunkPreviewMaxChars = sseChunkPreviewMaxChars; }
+        public boolean isAccessLogEnabled() {
+            return accessLogEnabled;
+        }
+        public void setAccessLogEnabled(boolean accessLogEnabled) {
+            this.accessLogEnabled = accessLogEnabled;
+        }
+        public boolean isIncludeUpstreamErrorBody() {
+            return includeUpstreamErrorBody;
+        }
+        public void setIncludeUpstreamErrorBody(boolean includeUpstreamErrorBody) {
+            this.includeUpstreamErrorBody = includeUpstreamErrorBody;
+        }
+        public boolean isIncludeSseChunkPreview() {
+            return includeSseChunkPreview;
+        }
+        public void setIncludeSseChunkPreview(boolean includeSseChunkPreview) {
+            this.includeSseChunkPreview = includeSseChunkPreview;
+        }
+        public int getSseChunkPreviewMaxChars() {
+            return sseChunkPreviewMaxChars;
+        }
+        public void setSseChunkPreviewMaxChars(int sseChunkPreviewMaxChars) {
+            this.sseChunkPreviewMaxChars = sseChunkPreviewMaxChars;
+        }
     }
 
     public static class RemoteExecution {
         private int defaultTimeout = 30;
         private int maxTimeout = 120;
 
-        public int getDefaultTimeout() { return defaultTimeout; }
-        public void setDefaultTimeout(int defaultTimeout) { this.defaultTimeout = defaultTimeout; }
-        public int getMaxTimeout() { return maxTimeout; }
-        public void setMaxTimeout(int maxTimeout) { this.maxTimeout = maxTimeout; }
+        public int getDefaultTimeout() {
+            return defaultTimeout;
+        }
+        public void setDefaultTimeout(int defaultTimeout) {
+            this.defaultTimeout = defaultTimeout;
+        }
+        public int getMaxTimeout() {
+            return maxTimeout;
+        }
+        public void setMaxTimeout(int maxTimeout) {
+            this.maxTimeout = maxTimeout;
+        }
     }
 
     public static class FileCapsules {
@@ -674,8 +786,12 @@ public class GatewayProperties {
                 "md", "markdown",
                 "html", "htm");
 
-        public List<String> getAllowedExtensions() { return allowedExtensions; }
-        public void setAllowedExtensions(List<String> allowedExtensions) { this.allowedExtensions = allowedExtensions; }
+        public List<String> getAllowedExtensions() {
+            return allowedExtensions;
+        }
+        public void setAllowedExtensions(List<String> allowedExtensions) {
+            this.allowedExtensions = allowedExtensions;
+        }
     }
 
     public static class FileBrowser {
@@ -683,8 +799,12 @@ public class GatewayProperties {
                 new FileScanRoot("workingDir", "${userAgentDir}", false),
                 new FileScanRoot("output", "${userAgentDir}/output", false));
 
-        public List<FileScanRoot> getScanRoots() { return scanRoots; }
-        public void setScanRoots(List<FileScanRoot> scanRoots) { this.scanRoots = scanRoots; }
+        public List<FileScanRoot> getScanRoots() {
+            return scanRoots;
+        }
+        public void setScanRoots(List<FileScanRoot> scanRoots) {
+            this.scanRoots = scanRoots;
+        }
     }
 
     public static class FileScanRoot {
@@ -705,20 +825,48 @@ public class GatewayProperties {
             this.recursive = recursive;
         }
 
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
-        public String getPath() { return path; }
-        public void setPath(String path) { this.path = path; }
-        public boolean isRecursive() { return recursive; }
-        public void setRecursive(boolean recursive) { this.recursive = recursive; }
-        public List<String> getExcludeDirs() { return excludeDirs; }
-        public void setExcludeDirs(List<String> excludeDirs) { this.excludeDirs = excludeDirs; }
-        public int getMaxDepth() { return maxDepth; }
-        public void setMaxDepth(int maxDepth) { this.maxDepth = maxDepth; }
-        public int getMaxFiles() { return maxFiles; }
-        public void setMaxFiles(int maxFiles) { this.maxFiles = maxFiles; }
-        public long getScanTimeoutMs() { return scanTimeoutMs; }
-        public void setScanTimeoutMs(long scanTimeoutMs) { this.scanTimeoutMs = scanTimeoutMs; }
+        public String getId() {
+            return id;
+        }
+        public void setId(String id) {
+            this.id = id;
+        }
+        public String getPath() {
+            return path;
+        }
+        public void setPath(String path) {
+            this.path = path;
+        }
+        public boolean isRecursive() {
+            return recursive;
+        }
+        public void setRecursive(boolean recursive) {
+            this.recursive = recursive;
+        }
+        public List<String> getExcludeDirs() {
+            return excludeDirs;
+        }
+        public void setExcludeDirs(List<String> excludeDirs) {
+            this.excludeDirs = excludeDirs;
+        }
+        public int getMaxDepth() {
+            return maxDepth;
+        }
+        public void setMaxDepth(int maxDepth) {
+            this.maxDepth = maxDepth;
+        }
+        public int getMaxFiles() {
+            return maxFiles;
+        }
+        public void setMaxFiles(int maxFiles) {
+            this.maxFiles = maxFiles;
+        }
+        public long getScanTimeoutMs() {
+            return scanTimeoutMs;
+        }
+        public void setScanTimeoutMs(long scanTimeoutMs) {
+            this.scanTimeoutMs = scanTimeoutMs;
+        }
     }
 
     public static class SkillMarket {
@@ -726,19 +874,35 @@ public class GatewayProperties {
         private int requestTimeoutMs = 10000;
         private int maxPackageSizeMb = 200;
 
-        public String getBaseUrl() { return baseUrl; }
-        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-        public int getRequestTimeoutMs() { return requestTimeoutMs; }
-        public void setRequestTimeoutMs(int requestTimeoutMs) { this.requestTimeoutMs = requestTimeoutMs; }
-        public int getMaxPackageSizeMb() { return maxPackageSizeMb; }
-        public void setMaxPackageSizeMb(int maxPackageSizeMb) { this.maxPackageSizeMb = maxPackageSizeMb; }
+        public String getBaseUrl() {
+            return baseUrl;
+        }
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+        public int getRequestTimeoutMs() {
+            return requestTimeoutMs;
+        }
+        public void setRequestTimeoutMs(int requestTimeoutMs) {
+            this.requestTimeoutMs = requestTimeoutMs;
+        }
+        public int getMaxPackageSizeMb() {
+            return maxPackageSizeMb;
+        }
+        public void setMaxPackageSizeMb(int maxPackageSizeMb) {
+            this.maxPackageSizeMb = maxPackageSizeMb;
+        }
     }
 
     public static class Knowledge {
         private String artifactsRoot = "../knowledge-service/data/artifacts";
 
-        public String getArtifactsRoot() { return artifactsRoot; }
-        public void setArtifactsRoot(String artifactsRoot) { this.artifactsRoot = artifactsRoot; }
+        public String getArtifactsRoot() {
+            return artifactsRoot;
+        }
+        public void setArtifactsRoot(String artifactsRoot) {
+            this.artifactsRoot = artifactsRoot;
+        }
     }
 
     @Override

@@ -234,7 +234,9 @@ public class SopService {
     // ── Name Uniqueness Validation ────────────────────────────────
 
     private void validateSopNameUnique(String name, String excludeId) {
-        if (name == null || name.isBlank()) return;
+        if (name == null || name.isBlank()) {
+            return;
+        }
         List<Map<String, Object>> existing = listSops();
         for (Map<String, Object> sop : existing) {
             String existingName = sop.get("name") != null ? sop.get("name").toString() : "";
@@ -250,12 +252,18 @@ public class SopService {
     @SuppressWarnings("unchecked")
     private void validateNodeCommands(Map<String, Object> body) {
         Object nodesObj = body.get("nodes");
-        if (!(nodesObj instanceof List<?> nodes)) return;
+        if (!(nodesObj instanceof List<?> nodes)) {
+            return;
+        }
         for (int i = 0; i < nodes.size(); i++) {
-            if (!(nodes.get(i) instanceof Map<?, ?>)) continue;
+            if (!(nodes.get(i) instanceof Map<?, ?>)) {
+                continue;
+            }
             Map<String, Object> node = (Map<String, Object>) nodes.get(i);
             Object cmdObj = node.get("command");
-            if (cmdObj == null || cmdObj.toString().isBlank()) continue;
+            if (cmdObj == null || cmdObj.toString().isBlank()) {
+                continue;
+            }
             List<String> rejected = commandWhitelistService.validateCommand(cmdObj.toString());
             if (!rejected.isEmpty()) {
                 throw new IllegalArgumentException(
@@ -281,7 +289,9 @@ public class SopService {
         if (Files.isDirectory(sopsDir)) {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(sopsDir, "*.json")) {
                 for (Path file : stream) {
-                    if (!Files.isRegularFile(file)) continue;
+                    if (!Files.isRegularFile(file)) {
+                        continue;
+                    }
                     try {
                         Map<String, Object> sop = readSopFile(file);
                         if (sop != null && id.equals(sop.get("id"))) {

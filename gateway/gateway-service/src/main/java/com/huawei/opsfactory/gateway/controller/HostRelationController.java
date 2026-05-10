@@ -211,9 +211,14 @@ public class HostRelationController {
             List<String> bsHostIds = (List<String>) bs.getOrDefault("hostIds", Collections.emptyList());
             boolean hasOverlap = false;
             for (String hid : bsHostIds) {
-                if (hostNodeIds.contains(hid)) { hasOverlap = true; break; }
+                if (hostNodeIds.contains(hid)) {
+                    hasOverlap = true;
+                    break;
+                }
             }
-            if (!hasOverlap) continue;
+            if (!hasOverlap) {
+                continue;
+            }
 
             // Add BS node
             Map<String, Object> bsNode = new LinkedHashMap<>();

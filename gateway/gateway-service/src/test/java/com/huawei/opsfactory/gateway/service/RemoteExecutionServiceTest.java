@@ -120,7 +120,8 @@ public class RemoteExecutionServiceTest {
     public void testExecute_sshConnectionFails() {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "BadHost");
-        host.put("ip", "256.256.256.256"); // invalid IP
+        // invalid IP
+        host.put("ip", "256.256.256.256");
         host.put("port", 22);
         host.put("username", "root");
         host.put("authType", "password");

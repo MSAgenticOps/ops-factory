@@ -379,13 +379,19 @@ public class HostRelationService {
         List<Map<String, Object>> allRelations = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
             for (Path file : stream) {
-                if (!Files.isRegularFile(file)) continue;
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
                 try {
                     Map<String, Object> rel = readFile(file);
-                    if (rel == null) continue;
+                    if (rel == null) {
+                        continue;
+                    }
                     // Skip business-service relations; they are synthesized by enrichWithBusinessServices
                     String relSourceType = (String) rel.getOrDefault("sourceType", "host");
-                    if ("business-service".equals(relSourceType)) continue;
+                    if ("business-service".equals(relSourceType)) {
+                        continue;
+                    }
                     String sourceId = (String) rel.get("sourceHostId");
                     String targetId = (String) rel.get("targetHostId");
                     boolean added = false;

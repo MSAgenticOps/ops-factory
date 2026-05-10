@@ -78,7 +78,8 @@ public class LangfuseServiceBuildOverviewTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> daily = (List<Map<String, Object>>) result.get("daily");
         assertNotNull(daily);
-        assertEquals(2, daily.size()); // 2024-01-15 and 2024-01-16
+        // 2024-01-15 and 2024-01-16
+        assertEquals(2, daily.size());
         assertEquals("2024-01-15", daily.get(0).get("date"));
         assertEquals(2, daily.get(0).get("traces"));
         assertEquals(1, daily.get(0).get("observations"));
@@ -229,7 +230,8 @@ public class LangfuseServiceBuildOverviewTest {
         Map<String, Object> genGroup = groups.get(0);
         assertEquals("generation", genGroup.get("name"));
         assertEquals(2, genGroup.get("count"));
-        assertEquals(3.0, (double) genGroup.get("avgLatency"), 0.001); // (2+4)/2
+        // (2+4)/2
+        assertEquals(3.0, (double) genGroup.get("avgLatency"), 0.001);
         assertEquals(4.0, (double) genGroup.get("p95Latency"), 0.001);
         assertEquals(300L, genGroup.get("totalTokens"));
         assertEquals(0.03, (double) genGroup.get("totalCost"), 0.001);

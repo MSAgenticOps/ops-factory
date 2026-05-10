@@ -340,7 +340,9 @@ public class HostGroupService {
             changed = false;
             for (Map<String, Object> g : groups) {
                 String id = (String) g.get("id");
-                if (disabled.contains(id)) continue;
+                if (disabled.contains(id)) {
+                    continue;
+                }
                 boolean selfOff = Boolean.FALSE.equals(g.get("enabled"));
                 String pid = (String) g.get("parentId");
                 boolean parentOff = pid != null && disabled.contains(pid);
