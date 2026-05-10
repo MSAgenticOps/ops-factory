@@ -42,8 +42,6 @@ public class CorsFilterTest {
         return ex -> Mono.empty();
     }
 
-    // ====================== Wildcard mode ======================
-
     /**
      * Executes the wildcard any origin returns request origin operation.
      *
@@ -86,8 +84,6 @@ public class CorsFilterTest {
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
 
-    // ====================== Exact match ======================
-
     /**
      * Executes the exact match matching origin returns origin operation.
      *
@@ -126,8 +122,6 @@ public class CorsFilterTest {
 
         assertNull(exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
-
-    // ====================== Multi-value match ======================
 
     /**
      * Executes the multi value second origin matches operation.
@@ -168,8 +162,6 @@ public class CorsFilterTest {
         assertNull(exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
 
-    // ====================== No origin in request ======================
-
     /**
      * Executes the no origin header no acao header operation.
      *
@@ -186,8 +178,6 @@ public class CorsFilterTest {
 
         assertNull(exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
-
-    // ====================== OPTIONS preflight ======================
 
     /**
      * Executes the options preflight matching origin returns204 operation.
@@ -245,8 +235,6 @@ public class CorsFilterTest {
 
         assertEquals(HttpStatus.NO_CONTENT, exchange.getResponse().getStatusCode());
     }
-
-    // ====================== Regression: private network no longer auto-allowed ======================
 
     /**
      * Executes the regression private network5173 not auto allowed operation.
@@ -308,8 +296,6 @@ public class CorsFilterTest {
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
 
-    // ====================== Common response headers always present ======================
-
     /**
      * Executes the common headers always present operation.
      *
@@ -333,8 +319,6 @@ public class CorsFilterTest {
         assertTrue(headers.getFirst("Access-Control-Allow-Headers").contains("x-request-id"));
         assertEquals("3600", headers.getFirst("Access-Control-Max-Age"));
     }
-
-    // ====================== Edge cases ======================
 
     /**
      * Executes the empty config treated as wildcard operation.
@@ -375,8 +359,6 @@ public class CorsFilterTest {
         assertEquals("http://any.site.com",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
-
-    // ====================== HTTPS origin support ======================
 
     /**
      * Executes the https origin exact match operation.

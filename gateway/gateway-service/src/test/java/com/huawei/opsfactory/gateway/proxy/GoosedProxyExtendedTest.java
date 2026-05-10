@@ -52,8 +52,6 @@ public class GoosedProxyExtendedTest {
         proxy = new GoosedProxy(properties);
     }
 
-    // ====================== copyHeaders ======================
-
     /**
      * Tests copy headers injects secret key.
      *
@@ -107,8 +105,6 @@ public class GoosedProxyExtendedTest {
         // Should be overridden by gateway's secret key
         assertEquals("my-secret", target.getFirst("x-secret-key"));
     }
-
-    // ====================== copyUpstreamHeaders ======================
 
     /**
      * Tests copy upstream headers filters cors headers.
@@ -173,8 +169,6 @@ public class GoosedProxyExtendedTest {
         assertTrue(target.isEmpty());
     }
 
-    // ====================== fetchJson ======================
-
     /**
      * Tests fetch json returns non null mono.
      *
@@ -186,8 +180,6 @@ public class GoosedProxyExtendedTest {
         // Construction-level test: verifies Mono is created without errors
         assertNotNull(proxy.fetchJson(99999, "/test", "test-secret"));
     }
-
-    // ====================== proxyWithBody ======================
 
     /**
      * Tests proxy with body returns non null mono.

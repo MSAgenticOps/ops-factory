@@ -189,8 +189,6 @@ public class GatewayPropertiesTest {
         assertEquals("", langfuse.getSecretKey());
     }
 
-    // ====================== TLS properties ======================
-
     /**
      * Tests goose tls default true.
      *

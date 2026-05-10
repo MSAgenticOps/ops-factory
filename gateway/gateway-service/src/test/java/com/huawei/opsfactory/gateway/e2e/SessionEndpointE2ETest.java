@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * GET /agents/{agentId}/sessions
  * GET /agents/{agentId}/sessions/{sessionId}
  * DELETE /agents/{agentId}/sessions/{sessionId}
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -53,8 +54,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                         .resolve(inv.getArgument(0, String.class))
                         .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
-
-    // ====================== POST /agents/{agentId}/agent/start ======================
 
     /**
      * Executes the start session authenticated calls start then resume operation.

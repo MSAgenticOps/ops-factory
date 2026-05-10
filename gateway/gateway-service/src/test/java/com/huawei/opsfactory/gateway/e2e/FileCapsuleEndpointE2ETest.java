@@ -38,8 +38,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                         .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
 
-    // ====================== GET /agents/{agentId}/file-capsules ======================
-
     /**
      * Returns the file capsules authenticated returns entries.
      *
@@ -123,8 +121,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.entries.msg_001.length()").isEqualTo(1)
                 .jsonPath("$.entries.msg_002.length()").isEqualTo(2);
     }
-
-    // ====================== POST /agents/{agentId}/file-capsules ======================
 
     /**
      * Executes the save file capsule valid body returns ok operation.
@@ -219,8 +215,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // ====================== User isolation ======================
 
     /**
      * Executes the file capsules different users resolve different paths operation.

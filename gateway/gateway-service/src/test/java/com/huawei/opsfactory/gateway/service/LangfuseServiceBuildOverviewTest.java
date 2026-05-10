@@ -39,8 +39,6 @@ public class LangfuseServiceBuildOverviewTest {
         service = new LangfuseService(props);
     }
 
-    // ====================== buildOverview ======================
-
     /**
      * Tests build overview with traces and observations.
      *
@@ -133,8 +131,6 @@ public class LangfuseServiceBuildOverviewTest {
         assertEquals(3.0, (double) result.get("avgLatency"), 0.001);
     }
 
-    // ====================== parseTraces ======================
-
     /**
      * Tests parse traces normal data.
      *
@@ -205,8 +201,6 @@ public class LangfuseServiceBuildOverviewTest {
 
         assertTrue(result.isEmpty());
     }
-
-    // ====================== parseObservations ======================
 
     /**
      * Tests parse observations grouped by name.
@@ -285,8 +279,6 @@ public class LangfuseServiceBuildOverviewTest {
         assertEquals(80L, groups.get(0).get("totalTokens"));
     }
 
-    // ====================== emptyOverview ======================
-
     /**
      * Tests empty overview.
      *
@@ -308,8 +300,6 @@ public class LangfuseServiceBuildOverviewTest {
         assertEquals(0, result.get("errorCount"));
         assertNotNull(result.get("daily"));
     }
-
-    // ====================== getTracesFormatted / getObservationsFormatted when not configured ======================
 
     /**
      * Tests get traces formatted not configured returns empty list.

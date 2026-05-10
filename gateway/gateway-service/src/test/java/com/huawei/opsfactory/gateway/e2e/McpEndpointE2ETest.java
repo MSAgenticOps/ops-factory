@@ -45,8 +45,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
                 "http://127.0.0.1:" + inv.getArgument(0));
     }
 
-    // ====================== GET /agents/{agentId}/mcp ======================
-
     /**
      * Returns the mcp extensions admin proxies to sys instance.
      *
@@ -96,8 +94,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isUnauthorized();
     }
 
-    // ====================== POST /agents/{agentId}/mcp ======================
-
     /**
      * Executes the create mcp extension admin forwards to sys instance operation.
      *
@@ -138,8 +134,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
-
-    // ====================== DELETE /agents/{agentId}/mcp/{name} ======================
 
     /**
      * Executes the delete mcp extension non admin returns403 operation.

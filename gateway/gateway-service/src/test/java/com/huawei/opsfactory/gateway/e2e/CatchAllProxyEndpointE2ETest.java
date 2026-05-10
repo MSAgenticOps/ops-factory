@@ -16,7 +16,6 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
-    // ====================== Admin access ======================
 
     /**
      * Executes the admin access to schedules proxies to goosed operation.
@@ -39,8 +38,6 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
 
         verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"), any());
     }
-
-    // ====================== User-accessible routes ======================
 
     /**
      * Executes the user access to system info allowed operation.
@@ -81,8 +78,6 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
-
-    // ====================== Access denied ======================
 
     /**
      * Executes the user access to admin route returns403 operation.
@@ -144,8 +139,6 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isNotFound();
     }
 
-    // ====================== Authentication ======================
-
     /**
      * Executes the unauthenticated returns401 operation.
      *
@@ -158,8 +151,6 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // ====================== Query string forwarding ======================
 
     /**
      * Executes the query string forwarded to goosed operation.

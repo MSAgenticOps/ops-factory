@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
  * GET /sessions/{sessionId}?agentId=X (global session get)
  * DELETE /sessions/{sessionId}?agentId=X (global session delete)
  * PUT /agents/{agentId}/sessions/{sessionId}/name (rename session)
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -43,8 +44,6 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                         .resolve(inv.getArgument(0, String.class))
                         .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
-
-    // ====================== GET /sessions/{sessionId}?agentId=X ======================
 
     /**
      * Returns the session global authenticated returns session with agent id.
@@ -82,8 +81,6 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .expectStatus().isUnauthorized();
     }
 
-    // ====================== DELETE /sessions/{sessionId}?agentId=X ======================
-
     /**
      * Executes the delete session global authenticated removes owner and proxies operation.
      *
@@ -118,8 +115,6 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // ====================== POST /agents/{agentId}/sessions/{sessionId}/cleanup-empty ======================
 
     /**
      * Executes the cleanup empty session empty user session deletes session operation.
@@ -228,8 +223,6 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 eq(null), anyInt(), anyString());
     }
 
-    // ====================== PUT /agents/{agentId}/sessions/{sessionId}/name ======================
-
     /**
      * Executes the rename session authenticated proxies to goosed operation.
      *
@@ -270,8 +263,6 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // ====================== Session not found ======================
 
     /**
      * Returns the session not found from goosed returns404.

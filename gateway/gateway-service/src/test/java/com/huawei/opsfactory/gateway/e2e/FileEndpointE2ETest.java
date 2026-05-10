@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
  * PUT /agents/{agentId}/files/**
  * DELETE /agents/{agentId}/files/**
  * POST /agents/{agentId}/files/upload
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -41,8 +42,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .thenAnswer(inv -> USERS_DIR.resolve(inv.getArgument(0, String.class))
                         .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
-
-    // ====================== GET /agents/{agentId}/files ======================
 
     /**
      * Executes the list files authenticated returns file list operation.
@@ -116,8 +115,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().is5xxServerError();
     }
-
-    // ====================== GET /agents/{agentId}/files/** (Download) ======================
 
     /**
      * Returns the file existing text file returns inline content.
@@ -289,8 +286,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectHeader().valueEquals("Content-Type", "text/markdown");
     }
 
-    // ====================== PUT /agents/{agentId}/files/** ======================
-
     /**
      * Executes the update file existing text file returns updated operation.
      *
@@ -393,8 +388,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isUnauthorized();
     }
 
-    // ====================== DELETE /agents/{agentId}/files/** ======================
-
     /**
      * Executes the delete file existing file returns deleted operation.
      *
@@ -464,8 +457,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isUnauthorized();
     }
 
-    // ====================== POST /agents/{agentId}/files/upload ======================
-
     // Note: Upload testing with multipart in WebTestClient requires special setup.
     // These tests verify auth and routing, not actual file transfer.
 
@@ -481,8 +472,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // ====================== User isolation ======================
 
     /**
      * Executes the list files different users resolve different paths operation.

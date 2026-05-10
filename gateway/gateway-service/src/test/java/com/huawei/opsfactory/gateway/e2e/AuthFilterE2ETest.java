@@ -9,7 +9,6 @@ import org.junit.Test;
  * @since 2026-05-09
  */
 public class AuthFilterE2ETest extends BaseE2ETest {
-    // ====================== AuthWebFilter Tests ======================
 
     /**
      * Executes the status endpoint no auth returns401 operation.
@@ -105,8 +104,6 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .expectStatus().isNoContent();
     }
 
-    // ====================== UserContextFilter Tests ======================
-
     /**
      * Executes the me endpoint no user id header returns unknown operation.
      *
@@ -180,8 +177,6 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .jsonPath("$.userId").isEqualTo("unknown")
                 .jsonPath("$.role").isEqualTo("user");
     }
-
-    // ====================== Cross-Cutting Auth + Admin Tests ======================
 
     /**
      * Executes the admin endpoint regular user returns403 operation.

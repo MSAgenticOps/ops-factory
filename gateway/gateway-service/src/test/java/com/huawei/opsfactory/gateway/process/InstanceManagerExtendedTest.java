@@ -67,8 +67,6 @@ public class InstanceManagerExtendedTest {
                 3000, false, "");
     }
 
-    // ====================== buildEnvironment ======================
-
     /**
      * Tests build environment core env vars.
      *
@@ -189,8 +187,6 @@ public class InstanceManagerExtendedTest {
         assertNull(env.get("NESTED"));
     }
 
-    // ====================== GATEWAY_URL injection ======================
-
     /**
      * Tests build environment gateway url http when ssl disabled.
      *
@@ -261,8 +257,6 @@ public class InstanceManagerExtendedTest {
 
         assertEquals("http://127.0.0.1:8080", env.get("GATEWAY_URL"));
     }
-
-    // ====================== GATEWAY_API_PASSWORD injection ======================
 
     /**
      * Tests build environment gateway api password set when provided.
@@ -387,8 +381,6 @@ public class InstanceManagerExtendedTest {
         assertEquals(specialPassword, env.get("GATEWAY_API_PASSWORD"));
     }
 
-    // ====================== getOrSpawn with dead process ======================
-
     /**
      * Tests get or spawn dead process removes stale entry.
      *
@@ -417,8 +409,6 @@ public class InstanceManagerExtendedTest {
         assertNull(instanceManager.getInstance("agent1", "user1"));
         assertEquals(ManagedInstance.Status.STOPPED, staleInstance.getStatus());
     }
-
-    // ====================== resetStuckRunningSchedules ======================
 
     /**
      * Tests reset stuck running schedules fixes stuck jobs.
@@ -486,8 +476,6 @@ public class InstanceManagerExtendedTest {
         reset.setAccessible(true);
         reset.invoke(instanceManager, tempFolder.getRoot().toPath());
     }
-
-    // ====================== Instance limit enforcement ======================
 
     /**
      * Tests per user limit enforced.

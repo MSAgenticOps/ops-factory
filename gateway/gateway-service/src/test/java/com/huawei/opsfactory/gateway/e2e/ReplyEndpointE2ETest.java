@@ -48,8 +48,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
     }
 
-    // ====================== Session event transport ======================
-
     /**
      * Executes the session reply authenticated user proxies to goosed session reply operation.
      *
@@ -328,8 +326,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayCancelFailed");
     }
 
-    // ====================== POST /agents/{agentId}/resume ======================
-
     /**
      * Executes the resume authenticated user proxies to goosed operation.
      *
@@ -370,8 +366,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
-
-    // ====================== POST /agents/{agentId}/restart ======================
 
     /**
      * Executes the restart authenticated user proxies to goosed operation.

@@ -47,8 +47,6 @@ public class GoosedProxyTest {
         assertNotNull(proxy.getWebClient());
     }
 
-    // ====================== TLS tests ======================
-
     /**
      * Tests goosed base url tls disabled uses http.
      *

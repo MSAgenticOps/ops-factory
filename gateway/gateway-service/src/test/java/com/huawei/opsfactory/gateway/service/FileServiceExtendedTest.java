@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
  * - SKIP_FILES filtering in listFiles
  * - resolveFile fallback search
  * - Hidden directory filtering
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -46,8 +47,6 @@ public class FileServiceExtendedTest {
     public void setUp() {
         fileService = new FileService(new GatewayProperties());
     }
-
-    // ====================== isAllowedExtension ======================
 
     /**
      * Tests is allowed extension allowed types.
@@ -122,8 +121,6 @@ public class FileServiceExtendedTest {
         assertTrue(fileService.isAllowedExtension("doc.PDF"));
         assertFalse(fileService.isAllowedExtension("virus.EXE"));
     }
-
-    // ====================== SKIP_DIRS filtering ======================
 
     /**
      * Tests list files skips dirs data.
@@ -207,8 +204,6 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
-    // ====================== Hidden dirs (starting with .) ======================
-
     /**
      * Tests list files skips hidden dirs.
      *
@@ -225,8 +220,6 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
         assertEquals("visible.txt", files.get(0).get("name"));
     }
-
-    // ====================== SKIP_FILES filtering ======================
 
     /**
      * Tests list files skips dsstore.
@@ -275,8 +268,6 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
-    // ====================== resolveFile fallback search ======================
-
     /**
      * Tests resolve file fallback search finds in subdir.
      *
@@ -324,8 +315,6 @@ public class FileServiceExtendedTest {
         assertNotNull(resource);
         assertTrue(resource.exists());
     }
-
-    // ====================== output file diff filtering ======================
 
     /**
      * Tests diff files ignores internal mcp logs.

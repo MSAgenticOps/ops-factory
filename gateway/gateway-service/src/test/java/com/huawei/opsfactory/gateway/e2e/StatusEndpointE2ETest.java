@@ -4,12 +4,11 @@ import org.junit.Test;
 
 /**
  * E2E tests for StatusController endpoints: /status, /me, /config.
+ * 
  * @author x00000000
  * @since 2026-05-09
  */
 public class StatusEndpointE2ETest extends BaseE2ETest {
-    // ====================== GET /status ======================
-
     /**
      * Returns the status returns ok.
      *
@@ -24,8 +23,6 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isOk()
                 .expectBody(String.class).isEqualTo("ok");
     }
-
-    // ====================== GET /me ======================
 
     /**
      * Returns the me sys user returns sys.
@@ -62,8 +59,6 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.userId").isEqualTo("user-123")
                 .jsonPath("$.role").isEqualTo("user");
     }
-
-    // ====================== GET /config ======================
 
     /**
      * Returns the config returns office preview defaults.
