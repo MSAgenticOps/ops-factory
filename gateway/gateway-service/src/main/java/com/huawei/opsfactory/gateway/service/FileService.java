@@ -608,7 +608,7 @@ public class FileService {
                     StandardCharsets.UTF_8);
 
             log.debug("Persisted {} file capsules for session {} message {}", files.size(), sessionId, messageId);
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Failed to persist file capsules for session {}: {}", sessionId, e.getMessage());
         }
     }
@@ -645,7 +645,7 @@ public class FileService {
                 }
             }
             return result;
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Failed to read file capsules for session {}: {}", sessionId, e.getMessage());
             return Map.of();
         }

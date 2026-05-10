@@ -403,7 +403,7 @@ public class CommandWhitelistService {
 
             writeWhitelistFile(whitelist);
             log.info("Initialized default command whitelist with {} commands", commands.size());
-        } catch (Exception e) {
+        } catch (IOException | IllegalStateException e) {
             log.error("Failed to initialize default command whitelist", e);
         }
     }
@@ -434,7 +434,7 @@ public class CommandWhitelistService {
             Files.writeString(whitelistFile, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to write command whitelist file: {}", whitelistFile, e);
-            throw new RuntimeException("Failed to save command whitelist", e);
+            throw new IllegalStateException("Failed to save command whitelist", e);
         }
     }
 

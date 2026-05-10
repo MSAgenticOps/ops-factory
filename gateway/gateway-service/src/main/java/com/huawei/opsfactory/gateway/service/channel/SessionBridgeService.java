@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -29,7 +30,6 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -306,7 +306,7 @@ public class SessionBridgeService {
         String requestBody;
         try {
             requestBody = MAPPER.writeValueAsString(Map.of("working_dir", workingDir.toString()));
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return Mono.error(new IllegalStateException("Failed to build session start payload", e));
         }
 
@@ -327,7 +327,7 @@ public class SessionBridgeService {
                                         "session_id", sessionId,
                                         "load_model_and_extensions", true
                                 ));
-                            } catch (Exception e) {
+                            } catch (JsonProcessingException e) {
                                 return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
                             }
                             return goosedProxy.fetchJson(
@@ -368,7 +368,7 @@ public class SessionBridgeService {
                             instance.getSecretKey()
                     )
                     .thenReturn(sessionId);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
         }
     }
@@ -387,7 +387,7 @@ public class SessionBridgeService {
                     "request_id", requestId,
                     "user_message", userMessage
             ));
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return Flux.error(new IllegalStateException("Failed to build reply payload", e));
         }
 
@@ -474,7 +474,7 @@ public class SessionBridgeService {
     private Map<String, Object> parseEventJson(String json) {
         try {
             return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse SSE event: " + json, e);
         }
     }
@@ -541,16 +541,17 @@ public class SessionBridgeService {
     }
 
     private String extractSessionId(String startResponse) {
+        Map<String, Object> map;
         try {
-            Map<String, Object> map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {});
-            Object id = map.get("id");
-            if (id == null) {
-                throw new IllegalStateException("Session ID missing from start response");
-            }
-            return id.toString();
-        } catch (Exception e) {
+            map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {});
+        } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse session start response", e);
         }
+        Object id = map.get("id");
+        if (id == null) {
+            throw new IllegalStateException("Session ID missing from start response");
+        }
+        return id.toString();
     }
 
     private ChannelDetail requireChannel(String channelId) {
