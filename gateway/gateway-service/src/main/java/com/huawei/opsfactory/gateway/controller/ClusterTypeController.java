@@ -76,7 +76,7 @@ public class ClusterTypeController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Cluster type not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -103,7 +103,7 @@ public class ClusterTypeController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Invalid cluster type request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -131,7 +131,7 @@ public class ClusterTypeController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Cluster type not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());

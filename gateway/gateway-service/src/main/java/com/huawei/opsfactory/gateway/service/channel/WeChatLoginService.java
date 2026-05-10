@@ -76,12 +76,16 @@ public class WeChatLoginService {
             status = normalizeStatus(runtimeStatus);
         }
         String message = switch (status) {
-            case "connected" -> "WeChat session connected";
-            case "pending" -> "WeChat QR login is pending";
-            case "error" -> config.lastError() == null || config.lastError().isBlank()
-                    ? "WeChat connection error"
-                    : config.lastError();
-            default -> "WeChat login required";
+            case "connected":
+                yield "WeChat session connected";
+            case "pending":
+                yield "WeChat QR login is pending";
+            case "error":
+                yield config.lastError() == null || config.lastError().isBlank()
+                        ? "WeChat connection error"
+                        : config.lastError();
+            default:
+                yield "WeChat login required";
         };
 
         String stateMessage = asString(runtimeState.get("message"));

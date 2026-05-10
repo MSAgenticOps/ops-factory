@@ -424,7 +424,7 @@ public class InstanceManager {
             // Drain stdout/stderr to prevent pipe buffer full → goosed write() blocks → tokio deadlock.
             // goosed's tracing subscriber writes every log to both file and stderr; if the pipe buffer
             // (~64KB) fills up, the write() syscall blocks a tokio worker thread, freezing the runtime.
-            Thread drainThread = new Thread(() -> {
+            Thread.ofPlatform().daemon(true).name("goosed-drain-" + agentId + "-" + userId).start(() -> {
                 try (var in = process.getInputStream()) {
                     byte[] buf = new byte[8192];
                     long totalBytes = 0;
@@ -438,9 +438,7 @@ public class InstanceManager {
                     log.debug("Drain thread for {}:{} ended with IOException: {}",
                             agentId, userId, e.getMessage());
                 }
-            }, "goosed-drain-" + agentId + "-" + userId);
-            drainThread.setDaemon(true);
-            drainThread.start();
+            });
 
             ManagedInstance instance = new ManagedInstance(agentId, userId, port, pid, process, instanceSecret);
             instances.put(key, instance);

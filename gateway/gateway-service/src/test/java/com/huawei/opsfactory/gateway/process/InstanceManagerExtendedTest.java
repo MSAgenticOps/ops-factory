@@ -14,7 +14,6 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,8 +23,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -402,12 +401,7 @@ public class InstanceManagerExtendedTest {
 
         // getOrSpawn should detect dead process, remove it, then try to spawn
         // Since doSpawn requires a real goosed binary, it will fail
-        try {
-            instanceManager.getOrSpawn("agent1", "user1").block();
-            fail("Expected exception from doSpawn");
-        } catch (Exception e) {
-            // Expected — doSpawn fails without real binary
-        }
+        assertThrows(RuntimeException.class, () -> instanceManager.getOrSpawn("agent1", "user1").block());
 
         // Stale instance should have been removed
         assertNull(instanceManager.getInstance("agent1", "user1"));
@@ -504,12 +498,11 @@ public class InstanceManagerExtendedTest {
         addInstanceDirectly(inst2);
 
         // Third spawn for user1 should fail with limit error
-        try {
-            instanceManager.getOrSpawn("agent3", "user1").block();
-            fail("Expected per-user limit error");
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Per-user instance limit"));
-        }
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> instanceManager.getOrSpawn("agent3", "user1").block()
+        );
+        assertTrue(error.getMessage().contains("Per-user instance limit"));
     }
 
     /**
@@ -534,12 +527,11 @@ public class InstanceManagerExtendedTest {
         addInstanceDirectly(inst2);
 
         // Third spawn should fail with global limit error
-        try {
-            instanceManager.getOrSpawn("agent1", "user3").block();
-            fail("Expected global limit error");
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Global instance limit"));
-        }
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> instanceManager.getOrSpawn("agent1", "user3").block()
+        );
+        assertTrue(error.getMessage().contains("Global instance limit"));
     }
 
     /**
@@ -563,13 +555,11 @@ public class InstanceManagerExtendedTest {
 
         // Spawning a new agent should still fail (doSpawn will fail without binary),
         // but NOT because of per-user limit — the stopped instance doesn't count.
-        try {
-            instanceManager.getOrSpawn("agent2", "user1").block();
-            fail("Expected exception from doSpawn, not limit error");
-        } catch (Exception e) {
-            // Should fail because goosed binary doesn't exist, not because of per-user limit
-            assertFalse(e.getMessage().contains("Per-user instance limit"));
-        }
+        RuntimeException error = assertThrows(
+                RuntimeException.class,
+                () -> instanceManager.getOrSpawn("agent2", "user1").block()
+        );
+        assertFalse(error.getMessage().contains("Per-user instance limit"));
     }
 
     /**
@@ -586,7 +576,7 @@ public class InstanceManagerExtendedTest {
             java.util.concurrent.ConcurrentHashMap<String, ManagedInstance> instances =
                     (java.util.concurrent.ConcurrentHashMap<String, ManagedInstance>) field.get(instanceManager);
             instances.put(instance.getKey(), instance);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }

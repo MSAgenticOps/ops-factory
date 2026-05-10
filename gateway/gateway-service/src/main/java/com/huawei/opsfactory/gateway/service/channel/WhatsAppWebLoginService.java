@@ -77,12 +77,16 @@ public class WhatsAppWebLoginService {
             status = normalizeStatus(runtimeStatus);
         }
         String message = switch (status) {
-            case "connected" -> "WhatsApp Web session connected";
-            case "pending" -> "Login pending. QR runtime will be attached next.";
-            case "error" -> config.lastError() == null || config.lastError().isBlank()
-                    ? "WhatsApp Web connection error"
-                    : config.lastError();
-            default -> "WhatsApp Web login required";
+            case "connected":
+                yield "WhatsApp Web session connected";
+            case "pending":
+                yield "Login pending. QR runtime will be attached next.";
+            case "error":
+                yield config.lastError() == null || config.lastError().isBlank()
+                        ? "WhatsApp Web connection error"
+                        : config.lastError();
+            default:
+                yield "WhatsApp Web login required";
         };
 
         String stateMessage = asString(runtimeState.get("message"));

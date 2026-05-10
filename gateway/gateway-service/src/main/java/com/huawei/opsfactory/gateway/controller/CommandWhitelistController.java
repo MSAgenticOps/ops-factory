@@ -73,7 +73,7 @@ public class CommandWhitelistController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Command whitelist entry conflict");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());

@@ -107,7 +107,7 @@ public class SopController {
                 log.warn("Duplicate SOP name: {}", e.getMessage());
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "SOP name already exists");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -142,7 +142,7 @@ public class SopController {
                 log.warn("SOP update conflict: {}", e.getMessage());
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "SOP update conflict");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());

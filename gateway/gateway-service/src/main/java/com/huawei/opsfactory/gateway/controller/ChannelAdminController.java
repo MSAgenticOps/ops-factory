@@ -123,7 +123,7 @@ public class ChannelAdminController {
                 return ResponseEntity.status(HttpStatus.CREATED)
                         .body(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -145,7 +145,7 @@ public class ChannelAdminController {
                 ChannelDetail detail = channelConfigService.updateChannel(channelId, request, userId);
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -189,7 +189,7 @@ public class ChannelAdminController {
                 channelConfigService.deleteChannel(channelId);
                 return ResponseEntity.ok(Map.<String, Object>of("success", true));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -210,7 +210,7 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of(
                         "bindings", channelConfigService.listBindings(channelId, userId)));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -231,7 +231,7 @@ public class ChannelAdminController {
                 return ResponseEntity.ok(Map.<String, Object>of(
                         "events", channelConfigService.listEvents(channelId, userId)));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -254,7 +254,7 @@ public class ChannelAdminController {
                         "success", result.ok(),
                         "verification", result));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -305,13 +305,16 @@ public class ChannelAdminController {
                     return ResponseEntity.badRequest().body(errorBody("Channel '" + channelId + "' not found"));
                 }
                 ChannelLoginState state = switch (detail.type()) {
-                    case "wechat" -> weChatLoginService.getLoginState(channelId, userId);
-                    case "whatsapp" -> whatsAppWebLoginService.getLoginState(channelId, userId);
-                    default -> throw new IllegalArgumentException(detail.type() + " login is not implemented yet");
+                    case "wechat":
+                        yield weChatLoginService.getLoginState(channelId, userId);
+                    case "whatsapp":
+                        yield whatsAppWebLoginService.getLoginState(channelId, userId);
+                    default:
+                        throw new IllegalArgumentException(detail.type() + " login is not implemented yet");
                 };
                 return ResponseEntity.ok(Map.<String, Object>of("state", state));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -334,13 +337,16 @@ public class ChannelAdminController {
                     return ResponseEntity.badRequest().body(errorBody("Channel '" + channelId + "' not found"));
                 }
                 ChannelLoginState state = switch (detail.type()) {
-                    case "wechat" -> weChatLoginService.startLogin(channelId, userId);
-                    case "whatsapp" -> whatsAppWebLoginService.startLogin(channelId, userId);
-                    default -> throw new IllegalArgumentException(detail.type() + " login is not implemented yet");
+                    case "wechat":
+                        yield weChatLoginService.startLogin(channelId, userId);
+                    case "whatsapp":
+                        yield whatsAppWebLoginService.startLogin(channelId, userId);
+                    default:
+                        throw new IllegalArgumentException(detail.type() + " login is not implemented yet");
                 };
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", state));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -386,7 +392,7 @@ public class ChannelAdminController {
                 );
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", state));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             } catch (IllegalStateException e) {
                 log.error("Failed to logout channel {}", channelId, e);
                 ChannelDetail detail = null;
@@ -454,9 +460,9 @@ public class ChannelAdminController {
                 );
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "result", result));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             } catch (IllegalStateException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(channelSelfTestFailedBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -471,9 +477,17 @@ public class ChannelAdminController {
                 ChannelDetail detail = channelConfigService.setEnabled(channelId, enabled, userId);
                 return ResponseEntity.ok(Map.<String, Object>of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+                return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Map<String, Object> invalidChannelRequestBody() {
+        return errorBody("Invalid channel request");
+    }
+
+    private Map<String, Object> channelSelfTestFailedBody() {
+        return errorBody("Channel self-test failed");
     }
 
     private Map<String, Object> errorBody(String error) {

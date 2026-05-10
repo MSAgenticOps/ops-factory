@@ -280,7 +280,7 @@ public class InstanceWatchdogTest {
             java.lang.reflect.Field field = ManagedInstance.class.getDeclaredField("lastActivity");
             field.setAccessible(true);
             field.setLong(instance, timestamp);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }

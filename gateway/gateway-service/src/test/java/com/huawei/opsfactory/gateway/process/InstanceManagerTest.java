@@ -16,6 +16,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -229,11 +230,7 @@ public class InstanceManagerTest {
 
         // getOrSpawn detects the dead process, removes the stale entry, then
         // tries to spawn a new one — which fails in unit tests (no goosed binary).
-        try {
-            instanceManager.getOrSpawn("agent1", "user1").block();
-        } catch (Exception ignored) {
-            // Expected: spawn fails without real goosed binary
-        }
+        assertThrows(RuntimeException.class, () -> instanceManager.getOrSpawn("agent1", "user1").block());
 
         // The stale entry should have been removed
         assertNull(instanceManager.getInstance("agent1", "user1"));
@@ -253,7 +250,7 @@ public class InstanceManagerTest {
             java.util.concurrent.ConcurrentHashMap<String, ManagedInstance> instances =
                     (java.util.concurrent.ConcurrentHashMap<String, ManagedInstance>) field.get(instanceManager);
             instances.put(instance.getKey(), instance);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }

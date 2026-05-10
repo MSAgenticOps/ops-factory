@@ -129,7 +129,7 @@ public class HostRelationController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Invalid host relation request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -157,7 +157,7 @@ public class HostRelationController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host relation not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());

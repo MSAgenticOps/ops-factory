@@ -486,37 +486,63 @@ public class ReplyController {
 
     private List<String> sessionSuggestedActions(String code) {
         return switch (code) {
-            case "gateway_unauthorized" -> List.of("contact_support");
-            case "gateway_agent_not_found", "gateway_agent_unavailable" -> List.of("retry", "contact_support");
-            case "gateway_submit_timeout", "gateway_goosed_unavailable", "gateway_rate_limited" -> List.of("retry");
-            case "goosed_active_request_conflict" -> List.of("wait", "cancel", "retry");
-            case "goosed_request_rejected" -> List.of("retry");
-            default -> List.of("contact_support");
+            case "gateway_unauthorized":
+                yield List.of("contact_support");
+            case "gateway_agent_not_found", "gateway_agent_unavailable":
+                yield List.of("retry", "contact_support");
+            case "gateway_submit_timeout", "gateway_goosed_unavailable", "gateway_rate_limited":
+                yield List.of("retry");
+            case "goosed_active_request_conflict":
+                yield List.of("wait", "cancel", "retry");
+            case "goosed_request_rejected":
+                yield List.of("retry");
+            default:
+                yield List.of("contact_support");
         };
     }
 
     private String sessionErrorMessageKey(String code) {
         return switch (code) {
-            case "gateway_submit_timeout" -> "chat.sessionErrors.gatewaySubmitTimeout";
-            case "gateway_submit_failed" -> "chat.sessionErrors.gatewaySubmitFailed";
-            case "gateway_events_failed" -> "chat.sessionErrors.gatewayEventsFailed";
-            case "gateway_cancel_failed" -> "chat.sessionErrors.gatewayCancelFailed";
-            case "gateway_unauthorized" -> "chat.sessionErrors.gatewayUnauthorized";
-            case "gateway_agent_not_found" -> "chat.sessionErrors.gatewayAgentNotFound";
-            case "gateway_agent_unavailable" -> "chat.sessionErrors.gatewayAgentUnavailable";
-            case "gateway_goosed_unavailable" -> "chat.sessionErrors.gatewayGoosedUnavailable";
-            case "gateway_max_duration_reached" -> "chat.sessionErrors.gatewayMaxDurationReached";
-            case "gateway_rate_limited" -> "chat.sessionErrors.gatewayRateLimited";
-            case "goosed_active_request_conflict" -> "chat.sessionErrors.goosedActiveRequestConflict";
-            case "goosed_request_rejected" -> "chat.sessionErrors.goosedRequestRejected";
-            case "goosed_error" -> "chat.sessionErrors.goosedError";
-            case "provider_timeout" -> "chat.sessionErrors.providerTimeout";
-            case "provider_rate_limited" -> "chat.sessionErrors.providerRateLimited";
-            case "provider_auth_or_quota_failed" -> "chat.sessionErrors.providerAuthOrQuotaFailed";
-            case "tool_execution_failed" -> "chat.sessionErrors.toolExecutionFailed";
-            case "mcp_unavailable" -> "chat.sessionErrors.mcpUnavailable";
-            case "context_too_large" -> "chat.sessionErrors.contextTooLarge";
-            default -> "chat.sessionErrors.unknown";
+            case "gateway_submit_timeout":
+                yield "chat.sessionErrors.gatewaySubmitTimeout";
+            case "gateway_submit_failed":
+                yield "chat.sessionErrors.gatewaySubmitFailed";
+            case "gateway_events_failed":
+                yield "chat.sessionErrors.gatewayEventsFailed";
+            case "gateway_cancel_failed":
+                yield "chat.sessionErrors.gatewayCancelFailed";
+            case "gateway_unauthorized":
+                yield "chat.sessionErrors.gatewayUnauthorized";
+            case "gateway_agent_not_found":
+                yield "chat.sessionErrors.gatewayAgentNotFound";
+            case "gateway_agent_unavailable":
+                yield "chat.sessionErrors.gatewayAgentUnavailable";
+            case "gateway_goosed_unavailable":
+                yield "chat.sessionErrors.gatewayGoosedUnavailable";
+            case "gateway_max_duration_reached":
+                yield "chat.sessionErrors.gatewayMaxDurationReached";
+            case "gateway_rate_limited":
+                yield "chat.sessionErrors.gatewayRateLimited";
+            case "goosed_active_request_conflict":
+                yield "chat.sessionErrors.goosedActiveRequestConflict";
+            case "goosed_request_rejected":
+                yield "chat.sessionErrors.goosedRequestRejected";
+            case "goosed_error":
+                yield "chat.sessionErrors.goosedError";
+            case "provider_timeout":
+                yield "chat.sessionErrors.providerTimeout";
+            case "provider_rate_limited":
+                yield "chat.sessionErrors.providerRateLimited";
+            case "provider_auth_or_quota_failed":
+                yield "chat.sessionErrors.providerAuthOrQuotaFailed";
+            case "tool_execution_failed":
+                yield "chat.sessionErrors.toolExecutionFailed";
+            case "mcp_unavailable":
+                yield "chat.sessionErrors.mcpUnavailable";
+            case "context_too_large":
+                yield "chat.sessionErrors.contextTooLarge";
+            default:
+                yield "chat.sessionErrors.unknown";
         };
     }
 

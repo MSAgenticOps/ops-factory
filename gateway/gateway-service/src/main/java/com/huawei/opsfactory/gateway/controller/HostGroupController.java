@@ -120,7 +120,7 @@ public class HostGroupController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host group not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -147,7 +147,7 @@ public class HostGroupController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Invalid host group request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -175,7 +175,7 @@ public class HostGroupController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host group not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -218,7 +218,7 @@ public class HostGroupController {
             } catch (IllegalStateException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host group delete conflict");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());

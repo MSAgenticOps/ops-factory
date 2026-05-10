@@ -307,7 +307,7 @@ public class SopControllerTest {
                 .expectStatus().isEqualTo(409)
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
-                .jsonPath("$.error").isEqualTo("SOP name already exists: TestSOP");
+                .jsonPath("$.error").isEqualTo("SOP name already exists");
     }
 
     // ── Auth tests ───────────────────────────────────────────────

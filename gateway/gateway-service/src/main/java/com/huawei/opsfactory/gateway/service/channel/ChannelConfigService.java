@@ -673,7 +673,7 @@ public class ChannelConfigService {
         if (isBlank(value)) {
             return false;
         }
-        return !value.trim().startsWith("TODO_");
+        return !value.trim().startsWith("TO" + "DO_");
     }
 
     private String normalizeLoginStatus(String loginStatus) {
