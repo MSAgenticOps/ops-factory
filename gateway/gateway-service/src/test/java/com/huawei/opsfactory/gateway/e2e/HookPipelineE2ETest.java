@@ -27,25 +27,25 @@ import static org.mockito.Mockito.when;
  */
 public class HookPipelineE2ETest extends BaseE2ETest {
     private ManagedInstance mockInstance;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         mockInstance.setStatus(ManagedInstance.Status.RUNNING);
     }
+
     /**
      * Executes the session reply hook pass through relays to goosed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_hookPassThrough_relaysToGoosed() {
         when(hookPipeline.executeRequest(any(HookContext.class)))
@@ -66,13 +66,13 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
+
     /**
      * Executes the session reply hook rejects with payload too large returns413 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_hookRejectsWithPayloadTooLarge_returns413() {
         when(hookPipeline.executeRequest(any(HookContext.class)))
@@ -89,13 +89,13 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
         verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
     }
+
     /**
      * Executes the session reply hook rejects with forbidden returns403 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_hookRejectsWithForbidden_returns403() {
         when(hookPipeline.executeRequest(any(HookContext.class)))
@@ -112,13 +112,13 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
         verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
     }
+
     /**
      * Executes the session reply hook throws unexpected exception returns500 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_hookThrowsUnexpectedException_returns500() {
         when(hookPipeline.executeRequest(any(HookContext.class)))
@@ -134,13 +134,13 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
         verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
     }
+
     /**
      * Executes the session reply hook modifies body modified body reaches goosed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_hookModifiesBody_modifiedBodyReachesGoosed() {
         // Hook transforms the body (e.g., injects file content)

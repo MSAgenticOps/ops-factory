@@ -13,37 +13,37 @@ import java.util.List;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 /**
  * Test coverage for Whats App Adapter.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class WhatsAppAdapterTest {
     private static final String OWNER_USER_ID = "alice@example.com";
 
     private ChannelConfigService channelConfigService;
     private WhatsAppAdapter adapter;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         channelConfigService = mock(ChannelConfigService.class);
         adapter = new WhatsAppAdapter(channelConfigService);
     }
+
     /**
      * Tests connected connectivity uses owner runtime.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testConnectedConnectivityUsesOwnerRuntime() {
         when(channelConfigService.getChannel("whatsapp-main", OWNER_USER_ID)).thenReturn(channelWithStatus("connected", ""));

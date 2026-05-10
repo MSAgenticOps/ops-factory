@@ -51,13 +51,13 @@ public class AgentConfigService {
     private final ConcurrentHashMap<String, Map<String, Object>> secretsCache = new ConcurrentHashMap<>();
     private final Set<String> residentInstanceKeys = ConcurrentHashMap.newKeySet();
     private Path gatewayRoot;
+
     /**
      * Creates the agent config service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public AgentConfigService(GatewayProperties properties) {
         this.properties = properties;
     }

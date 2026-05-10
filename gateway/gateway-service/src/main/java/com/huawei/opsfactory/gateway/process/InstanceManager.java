@@ -72,15 +72,16 @@ public class InstanceManager {
 
     /** key = "agentId:userId" -> ManagedInstance */
     private final ConcurrentHashMap<String, ManagedInstance> instances = new ConcurrentHashMap<>();
+
     /** Per-key spawn locks to prevent concurrent spawns */
     private final ConcurrentHashMap<String, ReentrantLock> spawnLocks = new ConcurrentHashMap<>();
+
     /**
      * Creates the instance manager instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public InstanceManager(GatewayProperties properties,
                            PortAllocator portAllocator,
                            RuntimePreparer runtimePreparer,
@@ -101,6 +102,7 @@ public class InstanceManager {
     private static SSLSocketFactory createTrustAllSslFactory() {
         try {
             TrustManager[] trustAll = { new X509TrustManager() {
+
                 /**
                  * Returns the accepted issuers.
                  *
@@ -108,6 +110,7 @@ public class InstanceManager {
                  * @since 2026-05-09
                  */
                 public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+
                 /**
                  * Executes the check client trusted operation.
                  *
@@ -115,6 +118,7 @@ public class InstanceManager {
                  * @since 2026-05-09
                  */
                 public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+
                 /**
                  * Executes the check server trusted operation.
                  *
@@ -686,13 +690,13 @@ public class InstanceManager {
                       agentId, userId, err.getMessage())
           );
     }
+
     /**
      * Executes the stop all operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @PreDestroy
     public void stopAll() {
         log.info("Stopping all instances...");

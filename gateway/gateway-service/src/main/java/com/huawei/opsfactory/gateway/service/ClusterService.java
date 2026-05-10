@@ -41,13 +41,13 @@ public class ClusterService {
     private final GatewayProperties properties;
     private Path clustersDir;
     private ClusterRelationService clusterRelationService;
+
     /**
      * Creates the cluster service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ClusterService(GatewayProperties properties) {
         this.properties = properties;
     }

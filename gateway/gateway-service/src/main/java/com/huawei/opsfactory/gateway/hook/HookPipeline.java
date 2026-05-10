@@ -22,13 +22,13 @@ public class HookPipeline {
     private static final Logger log = LoggerFactory.getLogger(HookPipeline.class);
 
     private final List<RequestHook> hooks;
+
     /**
      * Creates the hook pipeline instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public HookPipeline(List<RequestHook> hooks) {
         this.hooks = hooks;
         log.info("Registered {} request hooks", hooks.size());

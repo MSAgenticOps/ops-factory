@@ -6,14 +6,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.Assert.assertTrue;
+
 /**
  * Test coverage for Port Allocator.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class PortAllocatorTest {
+
     /**
      * Tests allocate returns valid port.
      *
@@ -26,13 +27,13 @@ public class PortAllocatorTest {
         int port = allocator.allocate();
         assertTrue("Port should be in valid range", port > 0 && port <= 65535);
     }
+
     /**
      * Tests allocate returns different ports.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testAllocate_returnsDifferentPorts() {
         PortAllocator allocator = new PortAllocator();

@@ -11,26 +11,26 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.Assert.assertTrue;
+
 /**
  * Test coverage for Runtime Preparer.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class RuntimePreparerTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private RuntimePreparer preparer;
     private Path gatewayRoot;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() throws IOException {
         gatewayRoot = tempFolder.getRoot().toPath().resolve("gateway");
@@ -48,13 +48,13 @@ public class RuntimePreparerTest {
 
         preparer = new RuntimePreparer(properties);
     }
+
     /**
      * Tests prepare creates directories.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPrepare_createsDirectories() throws IOException {
         Path result = preparer.prepare("test-agent", "user1");
@@ -64,13 +64,13 @@ public class RuntimePreparerTest {
         assertTrue(Files.isDirectory(result.resolve("uploads")));
         assertTrue(Files.isDirectory(result.resolve("home")));
     }
+
     /**
      * Tests prepare creates config symlink.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPrepare_createsConfigSymlink() throws IOException {
         Path result = preparer.prepare("test-agent", "user1");
@@ -79,13 +79,13 @@ public class RuntimePreparerTest {
         assertTrue(Files.exists(configLink));
         assertTrue(Files.isSymbolicLink(configLink));
     }
+
     /**
      * Tests prepare creates agents md symlink.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPrepare_createsAgentsMdSymlink() throws IOException {
         Path result = preparer.prepare("test-agent", "user1");
@@ -94,13 +94,13 @@ public class RuntimePreparerTest {
         assertTrue(Files.exists(mdLink));
         assertTrue(Files.isSymbolicLink(mdLink));
     }
+
     /**
      * Tests prepare idempotent.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPrepare_idempotent() throws IOException {
         Path result1 = preparer.prepare("test-agent", "user1");
@@ -109,13 +109,13 @@ public class RuntimePreparerTest {
         assertEquals(result1, result2);
         assertTrue(Files.isSymbolicLink(result2.resolve("config")));
     }
+
     /**
      * Tests prepare removes disallowed skill directories.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPrepare_removesDisallowedSkillDirectories() throws IOException {
         Path runtimeRoot = gatewayRoot.resolve("users").resolve("user1").resolve("agents").resolve("test-agent");

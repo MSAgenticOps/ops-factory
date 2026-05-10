@@ -21,37 +21,37 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+
 /**
  * Test coverage for Catch All Proxy Controller.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class CatchAllProxyControllerTest {
     private InstanceManager instanceManager;
     private GoosedProxy goosedProxy;
     private CatchAllProxyController controller;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         instanceManager = mock(InstanceManager.class);
         goosedProxy = mock(GoosedProxy.class);
         controller = new CatchAllProxyController(instanceManager, goosedProxy);
     }
+
     /**
      * Tests admin access to admin route proxies.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testAdminAccessToAdminRoute_proxies() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/schedules/list").build();
@@ -68,13 +68,13 @@ public class CatchAllProxyControllerTest {
         verify(instanceManager).getOrSpawn("test-agent", "admin");
         verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"), any());
     }
+
     /**
      * Tests user access to user accessible route allowed.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUserAccessToUserAccessibleRoute_allowed() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/system_info").build();
@@ -90,13 +90,13 @@ public class CatchAllProxyControllerTest {
 
         verify(instanceManager).getOrSpawn("test-agent", "alice");
     }
+
     /**
      * Tests user access to ops gateway prefixed system info allowed.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUserAccessToOpsGatewayPrefixedSystemInfo_allowed() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/gateway/agents/test-agent/system_info").build();
@@ -113,13 +113,13 @@ public class CatchAllProxyControllerTest {
         verify(instanceManager).getOrSpawn("test-agent", "alice");
         verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/system_info"), any());
     }
+
     /**
      * Tests user access to status route allowed.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUserAccessToStatusRoute_allowed() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/status").build();
@@ -135,13 +135,13 @@ public class CatchAllProxyControllerTest {
 
         verify(instanceManager).getOrSpawn("test-agent", "alice");
     }
+
     /**
      * Tests user access to admin route returns403.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUserAccessToAdminRoute_returns403() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/schedules/list").build();
@@ -156,13 +156,13 @@ public class CatchAllProxyControllerTest {
             assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
         }
     }
+
     /**
      * Tests short path returns404.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testShortPath_returns404() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent").build();
@@ -177,13 +177,13 @@ public class CatchAllProxyControllerTest {
             assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
         }
     }
+
     /**
      * Tests query string forwarding.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testQueryStringForwarding() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/schedules/list?limit=5").build();
@@ -199,13 +199,13 @@ public class CatchAllProxyControllerTest {
 
         verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"), any());
     }
+
     /**
      * Tests ops gateway prefixed query string forwarding.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOpsGatewayPrefixedQueryStringForwarding() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/gateway/agents/test-agent/schedules/list?limit=5").build();
@@ -221,13 +221,13 @@ public class CatchAllProxyControllerTest {
 
         verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list?limit=5"), any());
     }
+
     /**
      * Tests admin uses own user id.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testAdminUsesOwnUserId() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/config/prompts").build();
@@ -243,13 +243,13 @@ public class CatchAllProxyControllerTest {
 
         verify(instanceManager).getOrSpawn("test-agent", "admin-user");
     }
+
     /**
      * Tests user access to system info subpath allowed.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUserAccessToSystemInfoSubpath_allowed() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/system_info/details").build();
@@ -265,13 +265,13 @@ public class CatchAllProxyControllerTest {
 
         verify(instanceManager).getOrSpawn("test-agent", "alice");
     }
+
     /**
      * Tests null role treated as non admin returns403 for admin route.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testNullRole_treatedAsNonAdmin_returns403ForAdminRoute() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents/test-agent/schedules/list").build();
@@ -286,13 +286,13 @@ public class CatchAllProxyControllerTest {
             assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
         }
     }
+
     /**
      * Tests removed legacy reply path returns404 without proxying.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testRemovedLegacyReplyPath_returns404WithoutProxying() {
         MockServerHttpRequest request = MockServerHttpRequest.post("/agents/test-agent/reply").build();
@@ -309,13 +309,13 @@ public class CatchAllProxyControllerTest {
 
         verifyNoInteractions(instanceManager, goosedProxy);
     }
+
     /**
      * Tests removed legacy agent stop path returns404 without proxying.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testRemovedLegacyAgentStopPath_returns404WithoutProxying() {
         MockServerHttpRequest request = MockServerHttpRequest.post("/agents/test-agent/agent/stop").build();

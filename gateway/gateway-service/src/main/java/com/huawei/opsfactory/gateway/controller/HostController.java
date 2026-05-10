@@ -40,13 +40,13 @@ public class HostController {
     private final ClusterService clusterService;
     private final BusinessServiceService businessServiceService;
     private final HostGroupService hostGroupService;
+
     /**
      * Creates the host controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public HostController(HostService hostService, ClusterService clusterService,
                           BusinessServiceService businessServiceService,
                           HostGroupService hostGroupService) {

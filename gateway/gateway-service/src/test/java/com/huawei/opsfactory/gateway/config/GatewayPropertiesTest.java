@@ -9,14 +9,15 @@ import java.nio.file.Path;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 /**
  * Test coverage for Gateway Properties.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class GatewayPropertiesTest {
+
     /**
      * Tests defaults.
      *
@@ -31,13 +32,13 @@ public class GatewayPropertiesTest {
         assertEquals("http://127.0.0.1:5173", props.getCorsOrigin());
         assertEquals("goosed", props.getGoosedBin());
     }
+
     /**
      * Tests path defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPathDefaults() {
         GatewayProperties.Paths paths = new GatewayProperties.Paths();
@@ -45,39 +46,39 @@ public class GatewayPropertiesTest {
         assertEquals("agents", paths.getAgentsDir());
         assertEquals("users", paths.getUsersDir());
     }
+
     /**
      * Tests idle defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testIdleDefaults() {
         GatewayProperties.Idle idle = new GatewayProperties.Idle();
         assertEquals(15, idle.getTimeoutMinutes());
         assertEquals(60000L, idle.getCheckIntervalMs());
     }
+
     /**
      * Tests upload defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUploadDefaults() {
         GatewayProperties.Upload upload = new GatewayProperties.Upload();
         assertEquals(50, upload.getMaxFileSizeMb());
         assertEquals(20, upload.getMaxImageSizeMb());
     }
+
     /**
      * Tests files scan root defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testFilesScanRootDefaults() {
         GatewayProperties.FileBrowser files = new GatewayProperties.FileBrowser();
@@ -93,13 +94,13 @@ public class GatewayPropertiesTest {
         assertEquals("${userAgentDir}/output", files.getScanRoots().get(1).getPath());
         assertFalse(files.getScanRoots().get(1).isRecursive());
     }
+
     /**
      * Tests skill market defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testSkillMarketDefaults() {
         GatewayProperties.SkillMarket skillMarket = new GatewayProperties.SkillMarket();
@@ -107,26 +108,26 @@ public class GatewayPropertiesTest {
         assertEquals(10000, skillMarket.getRequestTimeoutMs());
         assertEquals(200, skillMarket.getMaxPackageSizeMb());
     }
+
     /**
      * Tests office preview defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOfficePreviewDefaults() {
         GatewayProperties.OfficePreview op = new GatewayProperties.OfficePreview();
         assertFalse(op.isEnabled());
         assertEquals("", op.getOnlyofficeUrl());
     }
+
     /**
      * Tests logging defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testLoggingDefaults() {
         GatewayProperties.Logging logging = new GatewayProperties.Logging();
@@ -135,13 +136,13 @@ public class GatewayPropertiesTest {
         assertFalse(logging.isIncludeSseChunkPreview());
         assertEquals(160, logging.getSseChunkPreviewMaxChars());
     }
+
     /**
      * Tests setters.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testSetters() {
         GatewayProperties props = new GatewayProperties();
@@ -153,13 +154,13 @@ public class GatewayPropertiesTest {
         assertEquals("http://localhost:8080", props.getCorsOrigin());
         assertEquals("/usr/bin/goosed", props.getGoosedBin());
     }
+
     /**
      * Tests logging setters.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testLoggingSetters() {
         GatewayProperties.Logging logging = new GatewayProperties.Logging();
@@ -173,13 +174,13 @@ public class GatewayPropertiesTest {
         assertTrue(logging.isIncludeSseChunkPreview());
         assertEquals(80, logging.getSseChunkPreviewMaxChars());
     }
+
     /**
      * Tests langfuse defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testLangfuseDefaults() {
         GatewayProperties.Langfuse langfuse = new GatewayProperties.Langfuse();
@@ -189,64 +190,64 @@ public class GatewayPropertiesTest {
     }
 
     // ====================== TLS properties ======================
+
     /**
      * Tests goose tls default true.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGooseTlsDefaultTrue() {
         GatewayProperties props = new GatewayProperties();
         assertTrue(props.isGooseTls());
     }
+
     /**
      * Tests goose tls set true.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGooseTlsSetTrue() {
         GatewayProperties props = new GatewayProperties();
         props.setGooseTls(true);
         assertTrue(props.isGooseTls());
     }
+
     /**
      * Tests goose scheme https when tls true.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGooseSchemeHttpsWhenTlsTrue() {
         GatewayProperties props = new GatewayProperties();
         props.setGooseTls(true);
         assertEquals("https", props.gooseScheme());
     }
+
     /**
      * Tests goose scheme http when tls false.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGooseSchemeHttpWhenTlsFalse() {
         GatewayProperties props = new GatewayProperties();
         props.setGooseTls(false);
         assertEquals("http", props.gooseScheme());
     }
+
     /**
      * Tests resolves paths relative to gateway config path.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testResolvesPathsRelativeToGatewayConfigPath() throws IOException {
         Path tempRoot = Files.createTempDirectory("gateway-props");

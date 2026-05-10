@@ -30,13 +30,13 @@ public class HostRelationController {
 
     private final HostRelationService hostRelationService;
     private final BusinessServiceService businessServiceService;
+
     /**
      * Creates the host relation controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public HostRelationController(
             HostRelationService hostRelationService,
             BusinessServiceService businessServiceService

@@ -5,35 +5,35 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.test.StepVerifier;
+
 /**
  * Test coverage for Body Limit Hook.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class BodyLimitHookTest {
     private BodyLimitHook hook;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         GatewayProperties properties = new GatewayProperties();
         properties.getUpload().setMaxFileSizeMb(1); // 1MB limit for testing
         hook = new BodyLimitHook(properties);
     }
+
     /**
      * Tests small body passes.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testSmallBody_passes() {
         HookContext ctx = new HookContext("{\"message\": \"hello\"}", "agent1", "user1");
@@ -41,13 +41,13 @@ public class BodyLimitHookTest {
                 .expectNext(ctx)
                 .verifyComplete();
     }
+
     /**
      * Tests oversized body fails.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOversizedBody_fails() {
         // Create a body larger than 1MB * 4/3 ≈ 1.33MB
@@ -61,13 +61,13 @@ public class BodyLimitHookTest {
                 .expectError(ResponseStatusException.class)
                 .verify();
     }
+
     /**
      * Tests null body passes.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testNullBody_passes() {
         HookContext ctx = new HookContext(null, "agent1", "user1");

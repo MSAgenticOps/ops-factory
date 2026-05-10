@@ -40,13 +40,13 @@ public class WhatsAppMessagePumpService {
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
     private final WhatsAppWebLoginService whatsAppWebLoginService;
+
     /**
      * Creates the whats app message pump service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public WhatsAppMessagePumpService(ChannelConfigService channelConfigService,
                                       ChannelRuntimeStorageService runtimeStorageService,
                                       ChannelDedupService channelDedupService,

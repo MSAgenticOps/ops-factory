@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -26,14 +27,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 /**
  * Test coverage for Reply Controller Real Proxy.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class ReplyControllerRealProxyTest {
+
     /**
      * Executes the session reply real goosed400 returns gateway error envelope operation.
      *
@@ -110,13 +112,13 @@ public class ReplyControllerRealProxyTest {
             server.disposeNow();
         }
     }
+
     /**
      * Executes the session events real goosed404 returns gateway error envelope operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionEvents_realGoosed404ReturnsGatewayErrorEnvelope() {
         DisposableServer server = HttpServer.create()
@@ -177,13 +179,13 @@ public class ReplyControllerRealProxyTest {
             server.disposeNow();
         }
     }
+
     /**
      * Executes the session events active requests drained emits output files after original event operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionEvents_activeRequestsDrainedEmitsOutputFilesAfterOriginalEvent() throws Exception {
         DisposableServer server = HttpServer.create()
@@ -269,6 +271,121 @@ public class ReplyControllerRealProxyTest {
                         org.junit.Assert.assertTrue(body.contains("\"displayPath\":\"goose-intro.md\""));
                         org.junit.Assert.assertTrue(body.indexOf("\"type\":\"ActiveRequests\"") < body.indexOf("\"type\":\"OutputFiles\""));
                     });
+        } finally {
+            server.disposeNow();
+        }
+    }
+
+    /**
+     * Executes the session reply invalid json body still returns gateway error envelope operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
+    @Test
+    public void sessionReply_invalidJsonBodyStillReturnsGatewayErrorEnvelope() {
+        InstanceManager instanceManager = mock(InstanceManager.class);
+        HookPipeline hookPipeline = mock(HookPipeline.class);
+        AgentConfigService agentConfigService = mock(AgentConfigService.class);
+        FileService fileService = mock(FileService.class);
+
+        when(hookPipeline.executeRequest(any(HookContext.class)))
+                .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+                .thenReturn(Mono.error(new IllegalStateException("spawn failed")));
+
+        GatewayProperties properties = new GatewayProperties();
+        properties.setGooseTls(false);
+        GoosedProxy goosedProxy = new GoosedProxy(properties);
+        ReplyController controller = new ReplyController(
+                instanceManager,
+                goosedProxy,
+                hookPipeline,
+                agentConfigService,
+                fileService
+        );
+        WebTestClient client = WebTestClient.bindToController(controller)
+                .webFilter((exchange, chain) -> {
+                    exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
+                    return chain.filter(exchange);
+                })
+                .build();
+
+        client.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("not-json")
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.type").isEqualTo("Error")
+                .jsonPath("$.code").isEqualTo("gateway_submit_failed")
+                .jsonPath("$.session_id").isEqualTo("session-123")
+                .jsonPath("$.agent_id").isEqualTo("test-agent");
+    }
+
+    /**
+     * Executes the session reply snapshot io failure still proxies request operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
+    @Test
+    public void sessionReply_snapshotIoFailureStillProxiesRequest() throws Exception {
+        DisposableServer server = HttpServer.create()
+                .host("127.0.0.1")
+                .port(0)
+                .route(routes -> routes
+                        .post("/agent/resume", (request, response) ->
+                                response.header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                                        .sendString(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}")))
+                        .post("/sessions/session-123/reply", (request, response) ->
+                                response.header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                                        .sendString(Mono.just("{\"ok\":true}"))))
+                .bindNow();
+
+        try {
+            InstanceManager instanceManager = mock(InstanceManager.class);
+            HookPipeline hookPipeline = mock(HookPipeline.class);
+            AgentConfigService agentConfigService = mock(AgentConfigService.class);
+            FileService fileService = mock(FileService.class);
+            ManagedInstance instance = new ManagedInstance(
+                    "test-agent",
+                    "alice",
+                    server.port(),
+                    12345L,
+                    null,
+                    "test-secret"
+            );
+            instance.setStatus(ManagedInstance.Status.RUNNING);
+
+            when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(instance));
+            when(hookPipeline.executeRequest(any(HookContext.class)))
+                    .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
+            when(agentConfigService.getUserAgentDir("alice", "test-agent")).thenReturn(Path.of("."));
+            when(fileService.listCapsuleRelevantFiles(any())).thenThrow(new IOException("disk busy"));
+
+            GatewayProperties properties = new GatewayProperties();
+            properties.setGooseTls(false);
+            GoosedProxy goosedProxy = new GoosedProxy(properties);
+            ReplyController controller = new ReplyController(
+                    instanceManager,
+                    goosedProxy,
+                    hookPipeline,
+                    agentConfigService,
+                    fileService
+            );
+            WebTestClient client = WebTestClient.bindToController(controller)
+                    .webFilter((exchange, chain) -> {
+                        exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
+                        return chain.filter(exchange);
+                    })
+                    .build();
+
+            client.post().uri("/gateway/agents/test-agent/sessions/session-123/reply")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807}}")
+                    .exchange()
+                    .expectStatus().isOk();
         } finally {
             server.disposeNow();
         }

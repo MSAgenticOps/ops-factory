@@ -37,13 +37,13 @@ public class ClusterTypeService {
 
     private final GatewayProperties properties;
     private Path clusterTypesDir;
+
     /**
      * Creates the cluster type service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ClusterTypeService(GatewayProperties properties) {
         this.properties = properties;
     }

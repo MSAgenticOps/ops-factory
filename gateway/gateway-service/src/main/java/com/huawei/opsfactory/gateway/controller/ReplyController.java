@@ -73,13 +73,13 @@ public class ReplyController {
     private final ConcurrentHashMap<String, Mono<String>> inFlightResumes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<Map<String, Object>>> fileSnapshots = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> pendingFileSnapshotRequests = new ConcurrentHashMap<>();
+
     /**
      * Creates the reply controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ReplyController(InstanceManager instanceManager,
                            GoosedProxy goosedProxy,
                            HookPipeline hookPipeline,

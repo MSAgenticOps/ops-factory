@@ -41,13 +41,13 @@ public class HostRelationService {
     private Path relationsDir;
 
     private BusinessServiceService businessServiceService;
+
     /**
      * Creates the host relation service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public HostRelationService(GatewayProperties properties, HostService hostService, ClusterService clusterService) {
         this.properties = properties;
         this.hostService = hostService;

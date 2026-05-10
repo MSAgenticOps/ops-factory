@@ -32,13 +32,13 @@ import org.mockito.ArgumentCaptor;
  */
 public class ReplyEndpointE2ETest extends BaseE2ETest {
     private ManagedInstance mockInstance;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         mockInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
@@ -49,13 +49,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== Session event transport ======================
+
     /**
      * Executes the session reply authenticated user proxies to goosed session reply operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_authenticatedUser_proxiesToGoosedSessionReply() throws Exception {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -90,13 +90,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
         org.junit.Assert.assertTrue(normalizedCreated >= before);
         org.junit.Assert.assertTrue(normalizedCreated <= after);
     }
+
     /**
      * Executes the session events authenticated user proxies last event id without legacy relay operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionEvents_authenticatedUser_proxiesLastEventIdWithoutLegacyRelay() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -120,13 +120,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
         verify(goosedProxy).proxySessionEvents(any(), eq(9999), eq("/sessions/session-123/events"),
                 eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq("session-123"), any());
     }
+
     /**
      * Executes the session cancel authenticated user proxies to goosed cancel only operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionCancel_authenticatedUser_proxiesToGoosedCancelOnly() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -149,13 +149,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
         verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
                 anyString(), anyInt(), anyString());
     }
+
     /**
      * Executes the session reply get or spawn failure returns structured error operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_getOrSpawnFailure_returnsStructuredError() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -179,13 +179,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.session_id").isEqualTo("session-123")
                 .jsonPath("$.agent_id").isEqualTo("test-agent");
     }
+
     /**
      * Executes the session reply goosed active request400 returns conflict actions operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_goosedActiveRequest400_returnsConflictActions() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -219,13 +219,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.suggested_actions[2]").isEqualTo("retry")
                 .jsonPath("$.request_id").isEqualTo("00000000-0000-0000-0000-000000000001");
     }
+
     /**
      * Executes the session reply proxy failure returns stable fallback message key operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionReply_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -247,13 +247,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.code").isEqualTo("gateway_submit_failed")
                 .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewaySubmitFailed");
     }
+
     /**
      * Executes the session events proxy failure returns stable fallback message key operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionEvents_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -274,13 +274,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.code").isEqualTo("gateway_events_failed")
                 .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayEventsFailed");
     }
+
     /**
      * Executes the session cancel proxy failure returns stable fallback message key operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionCancel_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -300,13 +300,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.code").isEqualTo("gateway_cancel_failed")
                 .jsonPath("$.message_key").isEqualTo("chat.sessionErrors.gatewayCancelFailed");
     }
+
     /**
      * Executes the session cancel gateway timeout returns cancel failure code operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void sessionCancel_gatewayTimeout_returnsCancelFailureCode() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -329,13 +329,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== POST /agents/{agentId}/resume ======================
+
     /**
      * Executes the resume authenticated user proxies to goosed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void resume_authenticatedUser_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
@@ -355,13 +355,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString());
     }
+
     /**
      * Executes the resume unauthenticated returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void resume_unauthenticated_returns401() {
         webClient.post().uri("/gateway/agents/test-agent/resume")
@@ -372,13 +372,13 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== POST /agents/{agentId}/restart ======================
+
     /**
      * Executes the restart authenticated user proxies to goosed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void restart_authenticatedUser_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))

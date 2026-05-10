@@ -11,37 +11,37 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 /**
  * Test coverage for Prewarm Service.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class PrewarmServiceTest {
     private InstanceManager instanceManager;
     private GatewayProperties properties;
     private PrewarmService prewarmService;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         instanceManager = mock(InstanceManager.class);
         properties = new GatewayProperties();
         prewarmService = new PrewarmService(instanceManager, properties);
     }
+
     /**
      * Tests on user activity disabled does not spawn.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOnUserActivity_disabled_doesNotSpawn() {
         properties.getPrewarm().setEnabled(false);
@@ -50,26 +50,26 @@ public class PrewarmServiceTest {
 
         verify(instanceManager, never()).getOrSpawn(eq("universal-agent"), eq("alice"));
     }
+
     /**
      * Tests on user activity sys user does not spawn.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOnUserActivity_sysUser_doesNotSpawn() {
         prewarmService.onUserActivity("admin");
 
         verify(instanceManager, never()).getOrSpawn(eq("universal-agent"), eq("admin"));
     }
+
     /**
      * Tests on user activity new user triggers spawn.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOnUserActivity_newUser_triggersSpawn() {
         ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null, "test-secret");
@@ -79,13 +79,13 @@ public class PrewarmServiceTest {
 
         verify(instanceManager).getOrSpawn("universal-agent", "alice");
     }
+
     /**
      * Tests on user activity already warmed user does not spawn again.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOnUserActivity_alreadyWarmedUser_doesNotSpawnAgain() {
         ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null, "test-secret");
@@ -97,13 +97,13 @@ public class PrewarmServiceTest {
         // Should only be called once
         verify(instanceManager).getOrSpawn("universal-agent", "alice");
     }
+
     /**
      * Tests clear user allows rewarm.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testClearUser_allowsRewarm() {
         ManagedInstance instance = new ManagedInstance("universal-agent", "alice", 9000, 123L, null, "test-secret");
@@ -116,13 +116,13 @@ public class PrewarmServiceTest {
         // Should be called twice: once before clear, once after
         verify(instanceManager, org.mockito.Mockito.times(2)).getOrSpawn("universal-agent", "alice");
     }
+
     /**
      * Tests on user activity custom default agent.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOnUserActivity_customDefaultAgent() {
         properties.getPrewarm().setDefaultAgentId("kb-agent");
@@ -136,13 +136,13 @@ public class PrewarmServiceTest {
 
         verify(instanceManager).getOrSpawn("kb-agent", "bob");
     }
+
     /**
      * Tests on user activity spawn error does not throw.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testOnUserActivity_spawnError_doesNotThrow() {
         when(instanceManager.getOrSpawn("universal-agent", "alice"))

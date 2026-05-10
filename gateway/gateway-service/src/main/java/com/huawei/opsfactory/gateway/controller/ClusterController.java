@@ -32,13 +32,13 @@ public class ClusterController {
     private final ClusterService clusterService;
     private final HostService hostService;
     private final HostGroupService hostGroupService;
+
     /**
      * Creates the cluster controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ClusterController(ClusterService clusterService, HostService hostService,
                              HostGroupService hostGroupService) {
         this.clusterService = clusterService;

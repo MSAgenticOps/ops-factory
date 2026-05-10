@@ -32,13 +32,13 @@ public class RequestContextFilter implements WebFilter {
     private static final Logger log = LoggerFactory.getLogger(RequestContextFilter.class);
 
     private final GatewayProperties properties;
+
     /**
      * Creates the request context filter instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public RequestContextFilter(GatewayProperties properties) {
         this.properties = properties;
     }

@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
  * @since 2026-05-09
  */
 public class FileEndpointExtendedE2ETest extends BaseE2ETest {
+
     /**
      * Sets the up.
      *
@@ -33,13 +34,13 @@ public class FileEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== Path traversal ======================
+
     /**
      * Returns the file path traversal returns403.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_pathTraversal_returns403() {
         // The PathSanitizer.isSafe check in the controller should block this
@@ -53,13 +54,13 @@ public class FileEndpointExtendedE2ETest extends BaseE2ETest {
     }
 
     // ====================== Upload without multipart ======================
+
     /**
      * Executes the upload file not multipart returns400 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void uploadFile_notMultipart_returns400() {
         webClient.post().uri("/gateway/agents/test-agent/files/upload")

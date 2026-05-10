@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 2026-05-09
  */
 public class ManagedInstance {
+
     /**
      * Runtime status of a managed instance.
      *
@@ -34,6 +35,7 @@ public class ManagedInstance {
     private volatile int restartCount = 0;
     private volatile long lastRestartTime = 0;
     private transient Process process;
+
     /** Sessions that have been resumed (provider+extensions loaded) on this instance. */
     private final Set<String> resumedSessions = ConcurrentHashMap.newKeySet();
 

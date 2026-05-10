@@ -13,26 +13,26 @@ import java.nio.file.Path;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 /**
  * Test coverage for System User Migration Service.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class SystemUserMigrationServiceTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private Path usersDir;
     private SystemUserMigrationService migrationService;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() throws IOException {
         Path gatewayRoot = tempFolder.getRoot().toPath().resolve("gateway");
@@ -46,13 +46,13 @@ public class SystemUserMigrationServiceTest {
 
         migrationService = new SystemUserMigrationService(properties);
     }
+
     /**
      * Executes the migrate legacy system user renames sys directory operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void migrateLegacySystemUser_renamesSysDirectory() throws IOException {
         Path legacyDir = usersDir.resolve(SystemUserMigrationService.LEGACY_SYSTEM_USER);
@@ -63,26 +63,26 @@ public class SystemUserMigrationServiceTest {
         assertFalse(Files.exists(legacyDir));
         assertTrue(Files.isDirectory(usersDir.resolve(GatewayConstants.SYSTEM_USER).resolve("agents").resolve("test-agent")));
     }
+
     /**
      * Executes the migrate legacy system user skips when no legacy directory operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void migrateLegacySystemUser_skipsWhenNoLegacyDirectory() throws IOException {
         migrationService.migrateLegacySystemUser();
 
         assertFalse(Files.exists(usersDir.resolve(GatewayConstants.SYSTEM_USER)));
     }
+
     /**
      * Executes the migrate legacy system user merges on conflict operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void migrateLegacySystemUser_mergesOnConflict() throws IOException {
         Path legacyFile = usersDir.resolve(SystemUserMigrationService.LEGACY_SYSTEM_USER)

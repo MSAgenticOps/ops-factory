@@ -51,13 +51,13 @@ public class ChannelAdminController {
     private final WhatsAppWebLoginService whatsAppWebLoginService;
     private final WhatsAppMessagePumpService whatsAppMessagePumpService;
     private final WeChatLoginService weChatLoginService;
+
     /**
      * Creates the channel admin controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ChannelAdminController(ChannelConfigService channelConfigService,
                                   ChannelAdapterRegistry channelAdapterRegistry,
                                   WhatsAppWebLoginService whatsAppWebLoginService,

@@ -28,13 +28,13 @@ public class SystemUserMigrationService {
     private static final Logger log = LoggerFactory.getLogger(SystemUserMigrationService.class);
 
     private final GatewayProperties properties;
+
     /**
      * Creates the system user migration service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public SystemUserMigrationService(GatewayProperties properties) {
         this.properties = properties;
     }

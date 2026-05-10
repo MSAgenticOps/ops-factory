@@ -53,13 +53,13 @@ public class SessionBridgeService {
     private final GoosedProxy goosedProxy;
     private final AgentConfigService agentConfigService;
     private final WebClient webClient;
+
     /**
      * Creates the session bridge service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public SessionBridgeService(ChannelConfigService channelConfigService,
                                 ChannelBindingService channelBindingService,
                                 InstanceManager instanceManager,

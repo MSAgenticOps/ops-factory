@@ -33,13 +33,13 @@ public class ChannelWebhookController {
     private static final Logger log = LoggerFactory.getLogger(ChannelWebhookController.class);
 
     private final ChannelAdapterRegistry channelAdapterRegistry;
+
     /**
      * Creates the channel webhook controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ChannelWebhookController(ChannelAdapterRegistry channelAdapterRegistry) {
         this.channelAdapterRegistry = channelAdapterRegistry;
     }

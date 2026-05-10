@@ -35,13 +35,13 @@ public class WhatsAppWebLoginService {
 
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
+
     /**
      * Creates the whats app web login service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public WhatsAppWebLoginService(ChannelConfigService channelConfigService,
                                    ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;

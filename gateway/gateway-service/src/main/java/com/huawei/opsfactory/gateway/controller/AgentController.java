@@ -39,13 +39,13 @@ import java.util.Map;
 public class AgentController {
     private final AgentConfigService agentConfigService;
     private final InstanceManager instanceManager;
+
     /**
      * Creates the agent controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public AgentController(AgentConfigService agentConfigService, InstanceManager instanceManager) {
         this.agentConfigService = agentConfigService;
         this.instanceManager = instanceManager;

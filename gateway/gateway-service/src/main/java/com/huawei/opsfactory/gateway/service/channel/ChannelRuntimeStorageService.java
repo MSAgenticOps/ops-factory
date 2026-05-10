@@ -34,21 +34,21 @@ public class ChannelRuntimeStorageService {
     private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("^[A-Za-z0-9._-]+$");
 
     private final GatewayProperties properties;
+
     /**
      * Type definition for Channel Runtime Ref.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {}
+
     /**
      * Creates the channel runtime storage service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ChannelRuntimeStorageService(GatewayProperties properties) {
         this.properties = properties;
     }

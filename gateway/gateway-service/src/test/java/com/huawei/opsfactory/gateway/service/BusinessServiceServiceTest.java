@@ -13,13 +13,13 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.Assert.*;
+
 /**
  * Test coverage for Business Service Service.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class BusinessServiceServiceTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -27,13 +27,13 @@ public class BusinessServiceServiceTest {
     private BusinessServiceService businessServiceService;
     private GatewayProperties properties;
     private Path businessServicesDir;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() throws IOException {
         properties = new GatewayProperties();
@@ -49,13 +49,13 @@ public class BusinessServiceServiceTest {
     }
 
     // ── createBusinessService ──────────────────────────────────────
+
     /**
      * Tests create business service.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCreateBusinessService() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -82,13 +82,13 @@ public class BusinessServiceServiceTest {
         assertNotNull(result.get("createdAt"));
         assertNotNull(result.get("updatedAt"));
     }
+
     /**
      * Tests create business service defaults.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCreateBusinessService_defaults() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -108,13 +108,13 @@ public class BusinessServiceServiceTest {
     }
 
     // ── getBusinessService ─────────────────────────────────────────
+
     /**
      * Tests get business service.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetBusinessService() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -128,38 +128,38 @@ public class BusinessServiceServiceTest {
         assertEquals("GetTest", result.get("name"));
         assertEquals("GT", result.get("code"));
     }
+
     /**
      * Tests get business service not found.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test(expected = IllegalArgumentException.class)
     public void testGetBusinessService_notFound() {
         businessServiceService.getBusinessService("nonexistent");
     }
 
     // ── listBusinessServices ───────────────────────────────────────
+
     /**
      * Tests list business services empty.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testListBusinessServices_empty() {
         List<Map<String, Object>> services = businessServiceService.listBusinessServices(null, null);
         assertTrue(services.isEmpty());
     }
+
     /**
      * Tests list business services returns all.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testListBusinessServices_returnsAll() {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of());
@@ -169,13 +169,13 @@ public class BusinessServiceServiceTest {
         List<Map<String, Object>> services = businessServiceService.listBusinessServices(null, null);
         assertEquals(3, services.size());
     }
+
     /**
      * Tests list business services filter by group id.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testListBusinessServices_filterByGroupId() {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of());
@@ -185,13 +185,13 @@ public class BusinessServiceServiceTest {
         assertEquals(1, services.size());
         assertEquals("Svc1", services.get(0).get("name"));
     }
+
     /**
      * Tests list business services filter by host id.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testListBusinessServices_filterByHostId() {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of("host-1", "host-2"));
@@ -203,13 +203,13 @@ public class BusinessServiceServiceTest {
     }
 
     // ── updateBusinessService ──────────────────────────────────────
+
     /**
      * Tests update business service.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUpdateBusinessService() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -230,13 +230,13 @@ public class BusinessServiceServiceTest {
         assertEquals("UPD", result.get("code"));
         assertEquals(List.of("v2"), result.get("tags"));
     }
+
     /**
      * Tests update business service partial update.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testUpdateBusinessService_partialUpdate() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -255,13 +255,13 @@ public class BusinessServiceServiceTest {
         assertEquals("ORIG", result.get("code"));
         assertEquals("new desc", result.get("description"));
     }
+
     /**
      * Tests update business service not found.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateBusinessService_notFound() {
         Map<String, Object> updates = new LinkedHashMap<>();
@@ -270,13 +270,13 @@ public class BusinessServiceServiceTest {
     }
 
     // ── deleteBusinessService ──────────────────────────────────────
+
     /**
      * Tests delete business service.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testDeleteBusinessService() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -287,26 +287,26 @@ public class BusinessServiceServiceTest {
         assertTrue(businessServiceService.deleteBusinessService(id));
         assertFalse(Files.exists(businessServicesDir.resolve(id + ".json")));
     }
+
     /**
      * Tests delete business service not found.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testDeleteBusinessService_notFound() {
         assertFalse(businessServiceService.deleteBusinessService("nonexistent"));
     }
 
     // ── searchByKeyword ────────────────────────────────────────────
+
     /**
      * Tests search by keyword.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testSearchByKeyword() {
         createBs("bs-1", "OrderService", "ORDER", null, List.of(), List.of("core"));
@@ -323,13 +323,13 @@ public class BusinessServiceServiceTest {
         List<Map<String, Object>> byTag = businessServiceService.searchByKeyword("billing");
         assertEquals(1, byTag.size());
     }
+
     /**
      * Tests search by keyword empty keyword.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testSearchByKeyword_emptyKeyword() {
         createBs("bs-1", "Svc1", "S1", null, List.of());

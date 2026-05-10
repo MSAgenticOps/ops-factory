@@ -20,13 +20,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class LangfuseServiceBuildOverviewTest {
     private LangfuseService service;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         GatewayProperties props = new GatewayProperties();
@@ -40,13 +40,13 @@ public class LangfuseServiceBuildOverviewTest {
     }
 
     // ====================== buildOverview ======================
+
     /**
      * Tests build overview with traces and observations.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildOverview_withTracesAndObservations() throws Exception {
         String tracesJson = "{\"data\":[" +
@@ -86,13 +86,13 @@ public class LangfuseServiceBuildOverviewTest {
         assertEquals("2024-01-16", daily.get(1).get("date"));
         assertEquals(1, daily.get(1).get("traces"));
     }
+
     /**
      * Tests build overview empty data.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildOverview_emptyData() throws Exception {
         String tracesJson = "{\"data\":[]}";
@@ -110,13 +110,13 @@ public class LangfuseServiceBuildOverviewTest {
         assertEquals(0.0, (double) result.get("p95Latency"), 0.001);
         assertEquals(0, result.get("errorCount"));
     }
+
     /**
      * Tests build overview raw array format.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildOverview_rawArrayFormat() throws Exception {
         // When Langfuse API returns data without "data" wrapper
@@ -134,13 +134,13 @@ public class LangfuseServiceBuildOverviewTest {
     }
 
     // ====================== parseTraces ======================
+
     /**
      * Tests parse traces normal data.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testParseTraces_normalData() throws Exception {
         String json = "{\"data\":[" +
@@ -173,13 +173,13 @@ public class LangfuseServiceBuildOverviewTest {
         // Complex input is stringified
         assertTrue(((String) t2.get("input")).contains("complex"));
     }
+
     /**
      * Tests parse traces empty array.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testParseTraces_emptyArray() throws Exception {
         Method parseTraces = LangfuseService.class.getDeclaredMethod("parseTraces", String.class);
@@ -189,13 +189,13 @@ public class LangfuseServiceBuildOverviewTest {
 
         assertTrue(result.isEmpty());
     }
+
     /**
      * Tests parse traces non array data.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testParseTraces_nonArrayData() throws Exception {
         Method parseTraces = LangfuseService.class.getDeclaredMethod("parseTraces", String.class);
@@ -207,13 +207,13 @@ public class LangfuseServiceBuildOverviewTest {
     }
 
     // ====================== parseObservations ======================
+
     /**
      * Tests parse observations grouped by name.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testParseObservations_groupedByName() throws Exception {
         String json = "{\"data\":[" +
@@ -243,13 +243,13 @@ public class LangfuseServiceBuildOverviewTest {
         assertEquals("embedding", embGroup.get("name"));
         assertEquals(1, embGroup.get("count"));
     }
+
     /**
      * Tests parse observations empty data.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testParseObservations_emptyData() throws Exception {
         Method parseObs = LangfuseService.class.getDeclaredMethod("parseObservations", String.class);
@@ -261,13 +261,13 @@ public class LangfuseServiceBuildOverviewTest {
         List<?> groups = (List<?>) result.get("observations");
         assertTrue(groups.isEmpty());
     }
+
     /**
      * Tests parse observations fallback token count.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testParseObservations_fallbackTokenCount() throws Exception {
         // When totalTokens is missing, falls back to promptTokens + completionTokens
@@ -286,13 +286,13 @@ public class LangfuseServiceBuildOverviewTest {
     }
 
     // ====================== emptyOverview ======================
+
     /**
      * Tests empty overview.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testEmptyOverview() throws Exception {
         Method emptyOverview = LangfuseService.class.getDeclaredMethod("emptyOverview");
@@ -310,13 +310,13 @@ public class LangfuseServiceBuildOverviewTest {
     }
 
     // ====================== getTracesFormatted / getObservationsFormatted when not configured ======================
+
     /**
      * Tests get traces formatted not configured returns empty list.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetTracesFormatted_notConfigured_returnsEmptyList() {
         GatewayProperties props = new GatewayProperties();
@@ -326,13 +326,13 @@ public class LangfuseServiceBuildOverviewTest {
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
+
     /**
      * Tests get observations formatted not configured returns empty map.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetObservationsFormatted_notConfigured_returnsEmptyMap() {
         GatewayProperties props = new GatewayProperties();
@@ -344,13 +344,13 @@ public class LangfuseServiceBuildOverviewTest {
         List<?> obs = (List<?>) result.get("observations");
         assertTrue(obs.isEmpty());
     }
+
     /**
      * Tests get overview not configured returns empty overview.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetOverview_notConfigured_returnsEmptyOverview() {
         GatewayProperties props = new GatewayProperties();
@@ -360,13 +360,13 @@ public class LangfuseServiceBuildOverviewTest {
         assertNotNull(result);
         assertEquals(0, result.get("totalTraces"));
     }
+
     /**
      * Tests get traces not configured returns empty array.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetTraces_notConfigured_returnsEmptyArray() {
         GatewayProperties props = new GatewayProperties();
@@ -375,13 +375,13 @@ public class LangfuseServiceBuildOverviewTest {
         String result = unconfiguredService.getTraces("2024-01-01", "2024-01-02", 20, false).block();
         assertEquals("[]", result);
     }
+
     /**
      * Tests get observations not configured returns empty array.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetObservations_notConfigured_returnsEmptyArray() {
         GatewayProperties props = new GatewayProperties();

@@ -34,13 +34,13 @@ public class ChannelDedupService {
 
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
+
     /**
      * Creates the channel dedup service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ChannelDedupService(ChannelConfigService channelConfigService,
                                ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;

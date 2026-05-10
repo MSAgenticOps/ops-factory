@@ -61,6 +61,7 @@ public class SessionController {
     private final GoosedProxy goosedProxy;
     private final AgentConfigService agentConfigService;
     private final SessionCacheService sessionCacheService;
+
     /**
      * Creates the session controller instance.
      *

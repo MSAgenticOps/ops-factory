@@ -34,13 +34,13 @@ public class WeChatLoginService {
 
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
+
     /**
      * Creates the we chat login service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public WeChatLoginService(ChannelConfigService channelConfigService,
                               ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;

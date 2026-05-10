@@ -28,13 +28,13 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 /**
  * Test coverage for Agent Skill Install Service.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class AgentSkillInstallServiceTest {
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -43,13 +43,13 @@ public class AgentSkillInstallServiceTest {
     private SkillMarketClient skillMarketClient;
     private AgentSkillInstallService service;
     private Path configDir;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() throws IOException {
         agentConfigService = Mockito.mock(AgentConfigService.class);
@@ -62,13 +62,13 @@ public class AgentSkillInstallServiceTest {
         when(agentConfigService.findAgent("agent1")).thenReturn(new AgentRegistryEntry("agent1", "Agent One"));
         when(agentConfigService.getAgentConfigDir("agent1")).thenReturn(configDir);
     }
+
     /**
      * Executes the install copies package into agent skills directory operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void installCopiesPackageIntoAgentSkillsDirectory() throws Exception {
         byte[] zip = zipBytes(
@@ -91,13 +91,13 @@ public class AgentSkillInstallServiceTest {
         assertTrue(metadata.contains("source: skill-market"));
         assertTrue(metadata.contains("skillId: log-analysis"));
     }
+
     /**
      * Executes the install rejects duplicate skill operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void installRejectsDuplicateSkill() throws Exception {
         Files.createDirectories(configDir.resolve("skills/log-analysis"));
@@ -107,13 +107,13 @@ public class AgentSkillInstallServiceTest {
 
         assertThrows(SkillInstallConflictException.class, () -> service.install("agent1", "log-analysis"));
     }
+
     /**
      * Executes the install rejects checksum mismatch operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void installRejectsChecksumMismatch() throws Exception {
         byte[] zip = zipBytes(entry("SKILL.md", "# Log Analysis\n"));
@@ -122,13 +122,13 @@ public class AgentSkillInstallServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.install("agent1", "log-analysis"));
     }
+
     /**
      * Executes the install rejects unsafe package path operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void installRejectsUnsafePackagePath() throws Exception {
         byte[] zip = zipBytes(entry("../SKILL.md", "# Unsafe\n"));
@@ -137,26 +137,26 @@ public class AgentSkillInstallServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.install("agent1", "unsafe-skill"));
     }
+
     /**
      * Executes the install requires existing agent operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void installRequiresExistingAgent() {
         when(agentConfigService.findAgent("missing")).thenReturn(null);
 
         assertThrows(IllegalArgumentException.class, () -> service.install("missing", "log-analysis"));
     }
+
     /**
      * Executes the uninstall deletes installed skill directory operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void uninstallDeletesInstalledSkillDirectory() throws Exception {
         Path skillDir = configDir.resolve("skills/log-analysis");
@@ -171,13 +171,13 @@ public class AgentSkillInstallServiceTest {
         assertFalse(Files.exists(skillDir));
         verify(agentConfigService).invalidateCache("agent1");
     }
+
     /**
      * Executes the uninstall rejects missing skill operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void uninstallRejectsMissingSkill() {
         assertThrows(IllegalArgumentException.class, () -> service.uninstall("agent1", "missing-skill"));

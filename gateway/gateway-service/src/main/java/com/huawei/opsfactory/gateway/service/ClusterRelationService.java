@@ -44,13 +44,13 @@ public class ClusterRelationService {
     private ClusterService clusterService;
     private ClusterTypeService clusterTypeService;
     private BusinessServiceService businessServiceService;
+
     /**
      * Creates the cluster relation service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ClusterRelationService(GatewayProperties properties) {
         this.properties = properties;
     }

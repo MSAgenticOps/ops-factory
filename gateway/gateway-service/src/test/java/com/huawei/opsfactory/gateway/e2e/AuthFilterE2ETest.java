@@ -10,39 +10,39 @@ import org.junit.Test;
  */
 public class AuthFilterE2ETest extends BaseE2ETest {
     // ====================== AuthWebFilter Tests ======================
+
     /**
      * Executes the status endpoint no auth returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void statusEndpoint_noAuth_returns401() {
         webClient.get().uri("/gateway/status")
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Executes the protected endpoint no secret key returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void protectedEndpoint_noSecretKey_returns401() {
         webClient.get().uri("/gateway/me")
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Executes the protected endpoint wrong secret key returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void protectedEndpoint_wrongSecretKey_returns401() {
         webClient.get().uri("/gateway/me")
@@ -50,13 +50,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Executes the protected endpoint empty secret key returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void protectedEndpoint_emptySecretKey_returns401() {
         webClient.get().uri("/gateway/me")
@@ -64,13 +64,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Executes the protected endpoint valid secret key in header returns200 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void protectedEndpoint_validSecretKeyInHeader_returns200() {
         webClient.get().uri("/gateway/me")
@@ -78,26 +78,26 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
+
     /**
      * Executes the protected endpoint valid secret key in query param returns200 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void protectedEndpoint_validSecretKeyInQueryParam_returns200() {
         webClient.get().uri("/gateway/me?key=" + SECRET_KEY)
                 .exchange()
                 .expectStatus().isOk();
     }
+
     /**
      * Executes the options request no auth passes through operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void optionsRequest_noAuth_passesThrough() {
         webClient.options().uri("/gateway/me")
@@ -106,13 +106,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     }
 
     // ====================== UserContextFilter Tests ======================
+
     /**
      * Executes the me endpoint no user id header returns unknown operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void meEndpoint_noUserIdHeader_returnsUnknown() {
         // /me is excluded from UserContextFilter's user-id requirement;
@@ -125,13 +125,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .jsonPath("$.userId").isEqualTo("unknown")
                 .jsonPath("$.role").isEqualTo("user");
     }
+
     /**
      * Executes the me endpoint sys user returns sys operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void meEndpoint_sysUser_returnsSys() {
         webClient.get().uri("/gateway/me")
@@ -143,13 +143,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .jsonPath("$.userId").isEqualTo("admin")
                 .jsonPath("$.role").isEqualTo("admin");
     }
+
     /**
      * Executes the me endpoint regular user returns user operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void meEndpoint_regularUser_returnsUser() {
         webClient.get().uri("/gateway/me")
@@ -161,13 +161,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .jsonPath("$.userId").isEqualTo("alice")
                 .jsonPath("$.role").isEqualTo("user");
     }
+
     /**
      * Executes the me endpoint blank user id header returns unknown operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void meEndpoint_blankUserIdHeader_returnsUnknown() {
         // /me is a system endpoint: blank x-user-id does not reject, falls back to unknown
@@ -182,13 +182,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     }
 
     // ====================== Cross-Cutting Auth + Admin Tests ======================
+
     /**
      * Executes the admin endpoint regular user returns403 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void adminEndpoint_regularUser_returns403() {
         webClient.get().uri("/gateway/runtime-source/system")
@@ -197,13 +197,13 @@ public class AuthFilterE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+
     /**
      * Executes the admin endpoint no auth returns401before forbidden operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void adminEndpoint_noAuth_returns401beforeForbidden() {
         // Auth filter runs before user context filter

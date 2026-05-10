@@ -15,25 +15,25 @@ import java.util.List;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
 /**
  * Test coverage for Metrics Collector.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class MetricsCollectorTest {
     private InstanceManager instanceManager;
     private GoosedProxy goosedProxy;
     private MetricsBuffer metricsBuffer;
     private MetricsCollector collector;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         instanceManager = mock(InstanceManager.class);
@@ -46,13 +46,13 @@ public class MetricsCollectorTest {
 
         collector = new MetricsCollector(instanceManager, goosedProxy, metricsBuffer);
     }
+
     /**
      * Tests collect no running instances.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_noRunningInstances() {
         when(instanceManager.getAllInstances()).thenReturn(Collections.emptyList());
@@ -66,13 +66,13 @@ public class MetricsCollectorTest {
         assertEquals(0, s.getTotalTokens());
         assertEquals(0, s.getRequestCount());
     }
+
     /**
      * Tests collect with running instances.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_withRunningInstances() {
         ManagedInstance inst1 = createRunningInstance(8001);
@@ -93,13 +93,13 @@ public class MetricsCollectorTest {
         assertEquals(300, s.getTotalTokens());
         assertEquals(5, s.getTotalSessions());
     }
+
     /**
      * Tests collect instance fetch error gracefully handled.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_instanceFetchError_gracefullyHandled() {
         ManagedInstance inst = createRunningInstance(8001);
@@ -115,13 +115,13 @@ public class MetricsCollectorTest {
         assertEquals(1, snapshots.size());
         assertEquals(0, snapshots.get(0).getTotalTokens());
     }
+
     /**
      * Tests collect tokens per sec computed on second call.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_tokensPerSec_computedOnSecondCall() {
         ManagedInstance inst = createRunningInstance(8001);
@@ -147,13 +147,13 @@ public class MetricsCollectorTest {
         // Second snapshot: delta=300 over 30s = 10 tok/s
         assertEquals(10.0, second.getTokensPerSec(), 0.001);
     }
+
     /**
      * Tests collect with request timings latency stats.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_withRequestTimings_latencyStats() {
         when(instanceManager.getAllInstances()).thenReturn(Collections.emptyList());
@@ -184,13 +184,13 @@ public class MetricsCollectorTest {
         assertEquals(600.0, s.getP95LatencyMs(), 0.001);
         assertEquals(150.0, s.getP95TtftMs(), 0.001);
     }
+
     /**
      * Tests collect with single timing.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_withSingleTiming() {
         when(instanceManager.getAllInstances()).thenReturn(Collections.emptyList());
@@ -211,13 +211,13 @@ public class MetricsCollectorTest {
         assertEquals(300.0, s.getP95LatencyMs(), 0.001);
         assertEquals(80.0, s.getP95TtftMs(), 0.001);
     }
+
     /**
      * Tests collect filters non running instances.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_filtersNonRunningInstances() {
         ManagedInstance running = createRunningInstance(8001);
@@ -236,13 +236,13 @@ public class MetricsCollectorTest {
         assertEquals(1, s.getActiveInstances());
         assertEquals(50, s.getTotalTokens());
     }
+
     /**
      * Tests collect malformed json response.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCollect_malformedJsonResponse() {
         ManagedInstance inst = createRunningInstance(8001);

@@ -58,13 +58,13 @@ public class GoosedProxy {
 
     private final WebClient webClient;
     private final GatewayProperties properties;
+
     /**
      * Creates the goosed proxy instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public GoosedProxy(GatewayProperties properties) {
         this.properties = properties;
 

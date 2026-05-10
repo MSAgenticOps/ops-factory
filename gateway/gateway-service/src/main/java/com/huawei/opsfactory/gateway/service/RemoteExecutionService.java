@@ -36,13 +36,13 @@ public class RemoteExecutionService {
     private final GatewayProperties properties;
     private final ClusterService clusterService;
     private final ClusterTypeService clusterTypeService;
+
     /**
      * Creates the remote execution service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public RemoteExecutionService(HostService hostService,
                                   CommandWhitelistService commandWhitelistService,
                                   GatewayProperties properties,

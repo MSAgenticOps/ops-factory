@@ -22,13 +22,13 @@ public class MetricsSnapshot {
     private long totalBytes;
     private int errorCount;
     private double tokensPerSec;
+
     /**
      * Creates the metrics snapshot instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public MetricsSnapshot() {}
 
     /**
@@ -38,6 +38,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public long getTimestamp() { return timestamp; }
+
     /**
      * Sets the snapshot timestamp in milliseconds since epoch.
      *
@@ -53,6 +54,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public int getActiveInstances() { return activeInstances; }
+
     /**
      * Sets the number of active goosed instances.
      *
@@ -68,6 +70,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public long getTotalTokens() { return totalTokens; }
+
     /**
      * Sets the total number of tokens consumed across all sessions.
      *
@@ -83,6 +86,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public long getTotalSessions() { return totalSessions; }
+
     /**
      * Sets the total number of sessions across all instances.
      *
@@ -98,6 +102,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public int getRequestCount() { return requestCount; }
+
     /**
      * Sets the number of requests in this collection window.
      *
@@ -113,6 +118,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public double getAvgLatencyMs() { return avgLatencyMs; }
+
     /**
      * Sets the average request latency in milliseconds.
      *
@@ -128,6 +134,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public double getAvgTtftMs() { return avgTtftMs; }
+
     /**
      * Sets the average time-to-first-token in milliseconds.
      *
@@ -143,6 +150,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public double getP95LatencyMs() { return p95LatencyMs; }
+
     /**
      * Sets the p95 request latency in milliseconds.
      *
@@ -158,6 +166,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public double getP95TtftMs() { return p95TtftMs; }
+
     /**
      * Sets the p95 time-to-first-token in milliseconds.
      *
@@ -173,6 +182,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public long getTotalBytes() { return totalBytes; }
+
     /**
      * Sets the total number of bytes transferred in this window.
      *
@@ -188,6 +198,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public int getErrorCount() { return errorCount; }
+
     /**
      * Sets the number of error responses in this window.
      *
@@ -203,6 +214,7 @@ public class MetricsSnapshot {
      * @since 2026-05-09
      */
     public double getTokensPerSec() { return tokensPerSec; }
+
     /**
      * Sets the token throughput rate per second.
      *

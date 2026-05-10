@@ -25,13 +25,13 @@ import java.util.*;
 @RequestMapping("/gateway/cluster-relations")
 public class ClusterRelationController {
     private final ClusterRelationService clusterRelationService;
+
     /**
      * Creates the cluster relation controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ClusterRelationController(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
     }

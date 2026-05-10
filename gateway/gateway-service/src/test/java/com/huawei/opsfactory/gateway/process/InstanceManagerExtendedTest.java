@@ -44,13 +44,13 @@ public class InstanceManagerExtendedTest {
     private PortAllocator portAllocator;
     private RuntimePreparer runtimePreparer;
     private AgentConfigService agentConfigService;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         properties = new GatewayProperties();
@@ -68,13 +68,13 @@ public class InstanceManagerExtendedTest {
     }
 
     // ====================== buildEnvironment ======================
+
     /**
      * Tests build environment core env vars.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_coreEnvVars() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -101,13 +101,13 @@ public class InstanceManagerExtendedTest {
         assertEquals(runtimeRoot.resolve("home").toString(), env.get("USERPROFILE"));
         assertEquals(configRoot.toAbsolutePath().normalize().toString(), env.get("XDG_CONFIG_HOME"));
     }
+
     /**
      * Tests build environment merges agent config.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_mergesAgentConfig() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -134,13 +134,13 @@ public class InstanceManagerExtendedTest {
         // Core vars still present
         assertEquals("9000", env.get("GOOSE_PORT"));
     }
+
     /**
      * Tests build environment secrets override config.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_secretsOverrideConfig() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -163,13 +163,13 @@ public class InstanceManagerExtendedTest {
         // Secrets should override config
         assertEquals("from-secrets", env.get("API_KEY"));
     }
+
     /**
      * Tests build environment non scalar values skipped.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_nonScalarValuesSkipped() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -190,13 +190,13 @@ public class InstanceManagerExtendedTest {
     }
 
     // ====================== GATEWAY_URL injection ======================
+
     /**
      * Tests build environment gateway url http when ssl disabled.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayUrl_httpWhenSslDisabled() throws Exception {
         // Default setUp uses serverSslEnabled=false, serverPort=3000
@@ -213,13 +213,13 @@ public class InstanceManagerExtendedTest {
         assertNull("NODE_TLS_REJECT_UNAUTHORIZED should not be set when SSL disabled",
                 env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
     }
+
     /**
      * Tests build environment gateway url https when ssl enabled.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayUrl_httpsWhenSslEnabled() throws Exception {
         // Create a new InstanceManager with SSL enabled and custom port
@@ -238,13 +238,13 @@ public class InstanceManagerExtendedTest {
         assertEquals("https://127.0.0.1:3443", env.get("GATEWAY_URL"));
         assertEquals("0", env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
     }
+
     /**
      * Tests build environment gateway url default port.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayUrl_defaultPort() throws Exception {
         InstanceManager defaultManager = new InstanceManager(properties, portAllocator, runtimePreparer,
@@ -263,13 +263,13 @@ public class InstanceManagerExtendedTest {
     }
 
     // ====================== GATEWAY_API_PASSWORD injection ======================
+
     /**
      * Tests build environment gateway api password set when provided.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayApiPassword_setWhenProvided() throws Exception {
         // Create InstanceManager with API password set
@@ -287,13 +287,13 @@ public class InstanceManagerExtendedTest {
 
         assertEquals("my-secret-password", env.get("GATEWAY_API_PASSWORD"));
     }
+
     /**
      * Tests build environment gateway api password set to different value.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayApiPassword_setToDifferentValue() throws Exception {
         // Create InstanceManager with a different API password
@@ -311,13 +311,13 @@ public class InstanceManagerExtendedTest {
 
         assertEquals("another-password-123", env.get("GATEWAY_API_PASSWORD"));
     }
+
     /**
      * Tests build environment gateway api password not set when empty.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayApiPassword_notSetWhenEmpty() throws Exception {
         // Create InstanceManager with empty API password (default behavior)
@@ -336,13 +336,13 @@ public class InstanceManagerExtendedTest {
         assertNull("GATEWAY_API_PASSWORD should not be set when password is empty",
                 env.get("GATEWAY_API_PASSWORD"));
     }
+
     /**
      * Tests build environment gateway api password not set when null.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayApiPassword_notSetWhenNull() throws Exception {
         // Create InstanceManager with null API password
@@ -361,13 +361,13 @@ public class InstanceManagerExtendedTest {
         assertNull("GATEWAY_API_PASSWORD should not be set when password is null",
                 env.get("GATEWAY_API_PASSWORD"));
     }
+
     /**
      * Tests build environment gateway api password with special characters.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testBuildEnvironment_gatewayApiPassword_withSpecialCharacters() throws Exception {
         // Test password with special characters to ensure it's properly escaped
@@ -388,13 +388,13 @@ public class InstanceManagerExtendedTest {
     }
 
     // ====================== getOrSpawn with dead process ======================
+
     /**
      * Tests get or spawn dead process removes stale entry.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetOrSpawn_deadProcess_removesStaleEntry() {
         Process deadProcess = mock(Process.class);
@@ -419,13 +419,13 @@ public class InstanceManagerExtendedTest {
     }
 
     // ====================== resetStuckRunningSchedules ======================
+
     /**
      * Tests reset stuck running schedules fixes stuck jobs.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testResetStuckRunningSchedules_fixesStuckJobs() throws Exception {
         File dataDir = tempFolder.newFolder("data");
@@ -446,13 +446,13 @@ public class InstanceManagerExtendedTest {
         // job2 should remain unchanged
         assertTrue(updated.contains("\"id\" : \"job2\""));
     }
+
     /**
      * Tests reset stuck running schedules no stuck jobs no change.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testResetStuckRunningSchedules_noStuckJobs_noChange() throws Exception {
         File dataDir = tempFolder.newFolder("data");
@@ -472,13 +472,13 @@ public class InstanceManagerExtendedTest {
         // File should not have been modified
         assertEquals(modifiedBefore, scheduleFile.lastModified());
     }
+
     /**
      * Tests reset stuck running schedules no schedule file noop.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testResetStuckRunningSchedules_noScheduleFile_noop() throws Exception {
         // No data/schedule.json exists — should not throw
@@ -488,13 +488,13 @@ public class InstanceManagerExtendedTest {
     }
 
     // ====================== Instance limit enforcement ======================
+
     /**
      * Tests per user limit enforced.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testPerUserLimitEnforced() {
         properties.getLimits().setMaxInstancesPerUser(2);
@@ -519,13 +519,13 @@ public class InstanceManagerExtendedTest {
             assertTrue(e.getMessage().contains("Per-user instance limit"));
         }
     }
+
     /**
      * Tests global limit enforced.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGlobalLimitEnforced() {
         properties.getLimits().setMaxInstancesPerUser(50);
@@ -549,13 +549,13 @@ public class InstanceManagerExtendedTest {
             assertTrue(e.getMessage().contains("Global instance limit"));
         }
     }
+
     /**
      * Tests stopped instances not counted for per user limit.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testStoppedInstancesNotCountedForPerUserLimit() {
         properties.getLimits().setMaxInstancesPerUser(1);

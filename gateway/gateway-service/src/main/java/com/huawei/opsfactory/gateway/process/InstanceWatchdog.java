@@ -33,13 +33,13 @@ public class InstanceWatchdog {
     private final GatewayProperties properties;
     private final PrewarmService prewarmService;
     private final AgentConfigService agentConfigService;
+
     /**
      * Creates the instance watchdog instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public InstanceWatchdog(InstanceManager instanceManager, GatewayProperties properties,
                             PrewarmService prewarmService,
                             AgentConfigService agentConfigService) {

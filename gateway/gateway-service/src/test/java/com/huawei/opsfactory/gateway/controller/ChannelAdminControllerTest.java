@@ -34,13 +34,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 /**
  * Test coverage for Channel Admin Controller.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 @RunWith(SpringRunner.class)
 @WebFluxTest(ChannelAdminController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
@@ -65,13 +65,13 @@ public class ChannelAdminControllerTest {
 
     @MockBean
     private PrewarmService prewarmService;
+
     /**
      * Tests get login state dispatches to we chat service.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testGetLoginStateDispatchesToWeChatService() {
         when(channelConfigService.getChannel("wechat-main", "admin")).thenReturn(channelDetail("wechat"));
@@ -92,13 +92,13 @@ public class ChannelAdminControllerTest {
         verify(weChatLoginService).getLoginState("wechat-main", "admin");
         verify(whatsAppWebLoginService, never()).getLoginState(Mockito.anyString(), Mockito.anyString());
     }
+
     /**
      * Tests start login dispatches to we chat service.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testStartLoginDispatchesToWeChatService() {
         when(channelConfigService.getChannel("wechat-main", "admin")).thenReturn(channelDetail("wechat"));
@@ -119,13 +119,13 @@ public class ChannelAdminControllerTest {
         verify(weChatLoginService).startLogin("wechat-main", "admin");
         verify(whatsAppWebLoginService, never()).startLogin(eq("wechat-main"), eq("admin"));
     }
+
     /**
      * Tests probe passes current user to adapter.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testProbePassesCurrentUserToAdapter() {
         ChannelAdapter adapter = Mockito.mock(ChannelAdapter.class);
@@ -146,13 +146,13 @@ public class ChannelAdminControllerTest {
 
         verify(adapter).testConnectivity("wechat-main", "admin");
     }
+
     /**
      * Tests create channel unexpected failure is sanitized.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testCreateChannel_unexpectedFailureIsSanitized() {
         when(channelConfigService.createChannel(any(), eq("admin")))
@@ -179,13 +179,13 @@ public class ChannelAdminControllerTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.error").isEqualTo("Internal server error");
     }
+
     /**
      * Tests logout falls back to disconnected state when helper cleanup fails.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testLogout_fallsBackToDisconnectedStateWhenHelperCleanupFails() {
         when(channelConfigService.getChannel("wechat-main", "admin")).thenReturn(channelDetail("wechat"));

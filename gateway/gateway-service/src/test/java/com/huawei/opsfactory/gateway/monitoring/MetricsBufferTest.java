@@ -15,13 +15,13 @@ import static org.junit.Assert.*;
  */
 public class MetricsBufferTest {
     private MetricsBuffer buffer;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         GatewayProperties props = new GatewayProperties();
@@ -31,25 +31,25 @@ public class MetricsBufferTest {
     }
 
     // ---- Snapshot tests ----
+
     /**
      * Returns the snapshots empty.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getSnapshots_empty() {
         List<MetricsSnapshot> result = buffer.getSnapshots(120);
         assertTrue(result.isEmpty());
     }
+
     /**
      * Returns the snapshots single entry.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getSnapshots_singleEntry() {
         MetricsSnapshot s = makeSnapshot(1000L, 10);
@@ -59,13 +59,13 @@ public class MetricsBufferTest {
         assertEquals(1, result.size());
         assertEquals(1000L, result.get(0).getTimestamp());
     }
+
     /**
      * Returns the snapshots ordered oldest first.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getSnapshots_orderedOldestFirst() {
         buffer.record(makeSnapshot(100L, 1));
@@ -78,13 +78,13 @@ public class MetricsBufferTest {
         assertEquals(200L, result.get(1).getTimestamp());
         assertEquals(300L, result.get(2).getTimestamp());
     }
+
     /**
      * Returns the snapshots max slots limits result.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getSnapshots_maxSlotsLimitsResult() {
         for (int i = 0; i < 10; i++) {
@@ -98,13 +98,13 @@ public class MetricsBufferTest {
         assertEquals(800L, result.get(1).getTimestamp());
         assertEquals(900L, result.get(2).getTimestamp());
     }
+
     /**
      * Returns the snapshots circular overwrite.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getSnapshots_circularOverwrite() {
         // Fill beyond capacity (120) to test wrap-around
@@ -121,25 +121,25 @@ public class MetricsBufferTest {
     }
 
     // ---- Timing tests ----
+
     /**
      * Executes the drain timings empty operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_empty() {
         List<RequestTiming> result = buffer.drainTimings();
         assertTrue(result.isEmpty());
     }
+
     /**
      * Executes the drain timings single timing operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_singleTiming() {
         buffer.recordTiming(makeTiming(1000L, 100, 500, false));
@@ -149,13 +149,13 @@ public class MetricsBufferTest {
         assertEquals(100, result.get(0).getTtftMs());
         assertEquals(500, result.get(0).getTotalMs());
     }
+
     /**
      * Executes the drain timings drains all operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_drainsAll() {
         buffer.recordTiming(makeTiming(1000L, 100, 500, false));
@@ -169,13 +169,13 @@ public class MetricsBufferTest {
         List<RequestTiming> result2 = buffer.drainTimings();
         assertTrue(result2.isEmpty());
     }
+
     /**
      * Executes the drain timings multiple windows operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_multipleWindows() {
         // Window 1
@@ -190,13 +190,13 @@ public class MetricsBufferTest {
         assertEquals(1, w2.size());
         assertEquals(300, w2.get(0).getTtftMs());
     }
+
     /**
      * Executes the drain timings buffer wrap around operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_bufferWrapAround() {
         // Fill the 500-slot timing buffer completely then drain
@@ -216,13 +216,13 @@ public class MetricsBufferTest {
         // Most recent should be the last one written
         assertEquals(1599, result2.get(499).getTtftMs());
     }
+
     /**
      * Executes the drain timings wrap without drain does not lose data operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_wrapWithoutDrain_doesNotLoseData() {
         // This tests the critical bug fix: when write index wraps around to
@@ -236,13 +236,13 @@ public class MetricsBufferTest {
     }
 
     // ---- Persistence tests ----
+
     /**
      * Executes the persist to disk and restore operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void persistToDisk_andRestore() {
         buffer.record(makeSnapshot(System.currentTimeMillis(), 5));
@@ -256,13 +256,13 @@ public class MetricsBufferTest {
         List<MetricsSnapshot> result = buffer.getSnapshots(120);
         assertEquals(3, result.size());
     }
+
     /**
      * Executes the persist to disk skips when not dirty operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void persistToDisk_skipsWhenNotDirty() {
         // No data recorded, should skip
@@ -271,13 +271,13 @@ public class MetricsBufferTest {
     }
 
     // ---- Error counting ----
+
     /**
      * Executes the drain timings error flag operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void drainTimings_errorFlag() {
         buffer.recordTiming(makeTiming(1000L, 100, 500, false));

@@ -57,6 +57,7 @@ public class SessionTraceController {
     @PostMapping(
             value = "/agents/{agentId}/sessions/{sessionId}/trace",
             produces = MediaType.APPLICATION_JSON_VALUE)
+
     /**
      * Executes the start trace operation.
      *
@@ -80,6 +81,7 @@ public class SessionTraceController {
     @GetMapping(
             value = "/session-traces/{jobId}",
             produces = MediaType.APPLICATION_JSON_VALUE)
+
     /**
      * Returns the trace.
      *

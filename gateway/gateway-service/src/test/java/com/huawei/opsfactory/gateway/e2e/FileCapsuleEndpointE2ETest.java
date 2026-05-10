@@ -24,13 +24,13 @@ import static org.mockito.Mockito.when;
  */
 public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
     private static final Path USERS_DIR = Path.of("/tmp/test-gateway/gateway/users");
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
@@ -39,13 +39,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /agents/{agentId}/file-capsules ======================
+
     /**
      * Returns the file capsules authenticated returns entries.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFileCapsules_authenticated_returnsEntries() {
         Map<String, List<Map<String, String>>> entries = new LinkedHashMap<>();
@@ -63,13 +63,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.entries.msg_001.length()").isEqualTo(1)
                 .jsonPath("$.entries.msg_001[0].name").isEqualTo("output.csv");
     }
+
     /**
      * Returns the file capsules empty entries returns empty map.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFileCapsules_emptyEntries_returnsEmptyMap() {
         when(fileService.loadOutputFiles(any(Path.class), eq("session-1")))
@@ -84,26 +84,26 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.entries").isMap()
                 .jsonPath("$.entries.length()").isEqualTo(0);
     }
+
     /**
      * Returns the file capsules unauthenticated returns401.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFileCapsules_unauthenticated_returns401() {
         webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=session-1")
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Returns the file capsules multiple messages returns all.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFileCapsules_multipleMessages_returnsAll() {
         Map<String, List<Map<String, String>>> entries = new LinkedHashMap<>();
@@ -125,13 +125,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== POST /agents/{agentId}/file-capsules ======================
+
     /**
      * Executes the save file capsule valid body returns ok operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void saveFileCapsule_validBody_returnsOk() {
         webClient.post().uri("/gateway/agents/test-agent/file-capsules")
@@ -147,13 +147,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
         verify(fileService).persistOutputFiles(
                 any(Path.class), eq("s1"), eq("msg_001"), any(List.class));
     }
+
     /**
      * Executes the save file capsule missing session id returns error operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void saveFileCapsule_missingSessionId_returnsError() {
         webClient.post().uri("/gateway/agents/test-agent/file-capsules")
@@ -166,13 +166,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("error");
     }
+
     /**
      * Executes the save file capsule missing message id returns error operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void saveFileCapsule_missingMessageId_returnsError() {
         webClient.post().uri("/gateway/agents/test-agent/file-capsules")
@@ -185,13 +185,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("error");
     }
+
     /**
      * Executes the save file capsule missing files returns error operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void saveFileCapsule_missingFiles_returnsError() {
         webClient.post().uri("/gateway/agents/test-agent/file-capsules")
@@ -204,13 +204,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("error");
     }
+
     /**
      * Executes the save file capsule unauthenticated returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void saveFileCapsule_unauthenticated_returns401() {
         webClient.post().uri("/gateway/agents/test-agent/file-capsules")
@@ -221,13 +221,13 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== User isolation ======================
+
     /**
      * Executes the file capsules different users resolve different paths operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void fileCapsules_differentUsers_resolveDifferentPaths() {
         Path aliceDir = USERS_DIR.resolve("alice").resolve("agents").resolve("test-agent");

@@ -49,13 +49,13 @@ public class FileController {
     private final InstanceManager instanceManager;
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
+
     /**
      * Creates the file controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public FileController(InstanceManager instanceManager,
                           AgentConfigService agentConfigService,
                           FileService fileService) {

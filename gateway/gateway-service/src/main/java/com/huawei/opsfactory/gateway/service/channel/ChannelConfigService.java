@@ -56,13 +56,13 @@ public class ChannelConfigService {
     private final ChannelRuntimeStorageService runtimeStorageService;
 
     private Path channelsDir;
+
     /**
      * Creates the channel config service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public ChannelConfigService(GatewayProperties properties,
                                 AgentConfigService agentConfigService,
                                 ChannelRuntimeStorageService runtimeStorageService) {

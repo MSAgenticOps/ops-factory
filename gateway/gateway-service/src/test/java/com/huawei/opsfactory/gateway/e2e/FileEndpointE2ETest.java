@@ -28,13 +28,13 @@ import static org.mockito.Mockito.when;
  */
 public class FileEndpointE2ETest extends BaseE2ETest {
     private static final Path USERS_DIR = Path.of("/tmp/test-gateway/gateway/users");
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
@@ -43,13 +43,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /agents/{agentId}/files ======================
+
     /**
      * Executes the list files authenticated returns file list operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void listFiles_authenticated_returnsFileList() throws IOException {
         when(fileService.listFiles(any(Path.class))).thenReturn(List.of(
@@ -67,13 +67,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.files[0].size").isEqualTo(1024)
                 .jsonPath("$.files[1].name").isEqualTo("notes.txt");
     }
+
     /**
      * Executes the list files empty dir returns empty array operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void listFiles_emptyDir_returnsEmptyArray() throws IOException {
         when(fileService.listFiles(any(Path.class))).thenReturn(Collections.emptyList());
@@ -86,26 +86,26 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.files.length()").isEqualTo(0);
     }
+
     /**
      * Executes the list files unauthenticated returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void listFiles_unauthenticated_returns401() {
         webClient.get().uri("/gateway/agents/test-agent/files")
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Executes the list files io exception returns500 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void listFiles_ioException_returns500() throws IOException {
         when(fileService.listFiles(any(Path.class))).thenThrow(new IOException("disk error"));
@@ -118,16 +118,17 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== GET /agents/{agentId}/files/** (Download) ======================
+
     /**
      * Returns the file existing text file returns inline content.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_existingTextFile_returnsInlineContent() {
         ByteArrayResource resource = new ByteArrayResource("Hello World".getBytes()) {
+
             /**
              * Returns the filename.
              *
@@ -152,16 +153,17 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectHeader().valueEquals("Content-Type", "text/plain")
                 .expectHeader().valueMatches("Content-Disposition", "inline.*readme\\.txt.*");
     }
+
     /**
      * Returns the file binary file returns as attachment.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_binaryFile_returnsAsAttachment() {
         ByteArrayResource resource = new ByteArrayResource(new byte[]{0x50, 0x4B}) {
+
             /**
              * Returns the filename.
              *
@@ -186,13 +188,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectHeader().valueEquals("Content-Type", "application/zip")
                 .expectHeader().valueMatches("Content-Disposition", "attachment.*archive\\.zip.*");
     }
+
     /**
      * Returns the file not found returns404.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_notFound_returns404() {
         when(fileService.resolveFile(any(Path.class), eq("nonexistent.txt")))
@@ -204,29 +206,30 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isNotFound();
     }
+
     /**
      * Returns the file unauthenticated returns401.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_unauthenticated_returns401() {
         webClient.get().uri("/gateway/agents/test-agent/files/data/secret.txt")
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
     /**
      * Returns the file nested path resolves correctly.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_nestedPath_resolvesCorrectly() {
         ByteArrayResource resource = new ByteArrayResource("nested".getBytes()) {
+
             /**
              * Returns the filename.
              *
@@ -249,18 +252,19 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .exchange()
                 .expectStatus().isOk();
     }
+
     /**
      * Returns the file root id resolves from scan root.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void getFile_rootId_resolvesFromScanRoot() {
         Path userAgentDir = USERS_DIR.resolve("alice").resolve("agents").resolve("test-agent");
         Path outputDir = userAgentDir.resolve("output");
         ByteArrayResource resource = new ByteArrayResource("output".getBytes()) {
+
             /**
              * Returns the filename.
              *
@@ -286,13 +290,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== PUT /agents/{agentId}/files/** ======================
+
     /**
      * Executes the update file existing text file returns updated operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void updateFile_existingTextFile_returnsUpdated() throws IOException {
         when(fileService.isEditableTextFile("data/readme.md")).thenReturn(true);
@@ -310,13 +314,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.status").isEqualTo("updated")
                 .jsonPath("$.path").isEqualTo("data/readme.md");
     }
+
     /**
      * Executes the update file not found returns404 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void updateFile_notFound_returns404() throws IOException {
         when(fileService.isEditableTextFile("data/missing.txt")).thenReturn(true);
@@ -333,13 +337,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("file not found");
     }
+
     /**
      * Executes the update file unsupported type returns415 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void updateFile_unsupportedType_returns415() {
         when(fileService.isEditableTextFile("deck.pptx")).thenReturn(false);
@@ -354,13 +358,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("file type is not editable");
     }
+
     /**
      * Executes the update file path traversal returns403 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void updateFile_pathTraversal_returns403() {
         webClient.put().uri("/gateway/agents/test-agent/files/..%2F..%2Fsecret.txt")
@@ -373,13 +377,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("path traversal not allowed");
     }
+
     /**
      * Executes the update file unauthenticated returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void updateFile_unauthenticated_returns401() {
         webClient.put().uri("/gateway/agents/test-agent/files/data/readme.txt")
@@ -390,13 +394,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== DELETE /agents/{agentId}/files/** ======================
+
     /**
      * Executes the delete file existing file returns deleted operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void deleteFile_existingFile_returnsDeleted() throws IOException {
         when(fileService.deleteFile(any(Path.class), eq("data/readme.txt"))).thenReturn(true);
@@ -410,13 +414,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.status").isEqualTo("deleted")
                 .jsonPath("$.path").isEqualTo("data/readme.txt");
     }
+
     /**
      * Executes the delete file not found returns404 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void deleteFile_notFound_returns404() throws IOException {
         when(fileService.deleteFile(any(Path.class), eq("data/missing.txt"))).thenReturn(false);
@@ -429,13 +433,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("file not found");
     }
+
     /**
      * Executes the delete file path traversal returns403 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void deleteFile_pathTraversal_returns403() {
         webClient.delete().uri("/gateway/agents/test-agent/files/..%2F..%2Fsecret.txt")
@@ -446,13 +450,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.error").isEqualTo("path traversal not allowed");
     }
+
     /**
      * Executes the delete file unauthenticated returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void deleteFile_unauthenticated_returns401() {
         webClient.delete().uri("/gateway/agents/test-agent/files/data/readme.txt")
@@ -464,13 +468,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     // Note: Upload testing with multipart in WebTestClient requires special setup.
     // These tests verify auth and routing, not actual file transfer.
+
     /**
      * Executes the upload file unauthenticated returns401 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void uploadFile_unauthenticated_returns401() {
         webClient.post().uri("/gateway/agents/test-agent/files/upload?sessionId=s1")
@@ -479,13 +483,13 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     }
 
     // ====================== User isolation ======================
+
     /**
      * Executes the list files different users resolve different paths operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void listFiles_differentUsers_resolveDifferentPaths() throws IOException {
         when(fileService.listFiles(USERS_DIR.resolve("alice").resolve("agents").resolve("test-agent")))

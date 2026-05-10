@@ -41,13 +41,13 @@ import static java.util.Map.entry;
 @Service
 public class FileService {
     private final GatewayProperties gatewayProperties;
+
     /**
      * Creates the file service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public FileService(GatewayProperties gatewayProperties) {
         this.gatewayProperties = gatewayProperties;
     }

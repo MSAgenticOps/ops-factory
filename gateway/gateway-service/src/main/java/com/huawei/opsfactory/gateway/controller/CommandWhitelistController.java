@@ -26,13 +26,13 @@ import java.util.Map;
 @RequestMapping("/gateway/command-whitelist")
 public class CommandWhitelistController {
     private final CommandWhitelistService commandWhitelistService;
+
     /**
      * Creates the command whitelist controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public CommandWhitelistController(CommandWhitelistService commandWhitelistService) {
         this.commandWhitelistService = commandWhitelistService;
     }

@@ -58,13 +58,13 @@ public class HostService {
     private BusinessServiceService businessServiceService;
     private ClusterTypeService clusterTypeService;
     private ClusterRelationService clusterRelationService;
+
     /**
      * Creates the host service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public HostService(GatewayProperties properties) {
         this.properties = properties;
     }

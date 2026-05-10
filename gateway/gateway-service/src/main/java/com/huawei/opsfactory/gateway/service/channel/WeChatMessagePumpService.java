@@ -38,13 +38,13 @@ public class WeChatMessagePumpService {
     private final ChannelRuntimeStorageService runtimeStorageService;
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
+
     /**
      * Creates the we chat message pump service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public WeChatMessagePumpService(ChannelConfigService channelConfigService,
                                     ChannelRuntimeStorageService runtimeStorageService,
                                     ChannelDedupService channelDedupService,

@@ -12,6 +12,12 @@ import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 
+/**
+ * Test appender for capturing log events during assertions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public final class TestLogAppender extends AbstractAppender implements AutoCloseable {
     private final Logger logger;
     private final List<LogEvent> events = new CopyOnWriteArrayList<>();
@@ -20,13 +26,13 @@ public final class TestLogAppender extends AbstractAppender implements AutoClose
         super(name, null, layout, false, Property.EMPTY_ARRAY);
         this.logger = logger;
     }
+
     /**
      * Executes the attach to operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public static TestLogAppender attachTo(Class<?> type) {
         Logger logger = (Logger) LogManager.getLogger(type);
         TestLogAppender appender = new TestLogAppender(
@@ -38,36 +44,36 @@ public final class TestLogAppender extends AbstractAppender implements AutoClose
         logger.addAppender(appender);
         return appender;
     }
+
     /**
      * Executes the append operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Override
     public void append(LogEvent event) {
         events.add(event.toImmutable());
     }
+
     /**
      * Executes the formatted messages operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public List<String> formattedMessages() {
         return events.stream()
             .map(event -> event.getMessage().getFormattedMessage())
             .toList();
     }
+
     /**
      * Executes the close operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Override
     public void close() {
         logger.removeAppender((Appender) this);

@@ -31,13 +31,13 @@ public class SopController {
     private static final Logger log = LoggerFactory.getLogger(SopController.class);
 
     private final SopService sopService;
+
     /**
      * Creates the sop controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public SopController(SopService sopService) {
         this.sopService = sopService;
     }

@@ -37,13 +37,13 @@ public class LangfuseService {
 
     private final GatewayProperties.Langfuse config;
     private final WebClient webClient;
+
     /**
      * Creates the langfuse service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public LangfuseService(GatewayProperties properties) {
         this.config = properties.getLangfuse();
         this.webClient = WebClient.builder()

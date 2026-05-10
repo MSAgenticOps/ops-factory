@@ -27,13 +27,13 @@ import java.util.Map;
 @RequestMapping("/gateway/business-types")
 public class BusinessTypeController {
     private final BusinessTypeService businessTypeService;
+
     /**
      * Creates the business type controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public BusinessTypeController(BusinessTypeService businessTypeService) {
         this.businessTypeService = businessTypeService;
     }

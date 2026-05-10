@@ -19,49 +19,49 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+
 /**
  * Test coverage for Session Trace Service.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-
 public class SessionTraceServiceTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private String previousUserDir;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         previousUserDir = System.getProperty("user.dir");
     }
+
     /**
      * Executes the tear down operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @After
     public void tearDown() {
         if (previousUserDir != null) {
             System.setProperty("user.dir", previousUserDir);
         }
     }
+
     /**
      * Tests start trace reuses running job for same session.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testStartTrace_reusesRunningJobForSameSession() throws Exception {
         Path repoRoot = createRepoRoot();
@@ -96,13 +96,13 @@ public class SessionTraceServiceTest {
             service.destroy();
         }
     }
+
     /**
      * Tests start trace allows new job after previous completes.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testStartTrace_allowsNewJobAfterPreviousCompletes() throws Exception {
         Path repoRoot = createRepoRoot();
@@ -121,13 +121,13 @@ public class SessionTraceServiceTest {
             service.destroy();
         }
     }
+
     /**
      * Tests constructor deletes expired trace directories.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void testConstructorDeletesExpiredTraceDirectories() throws Exception {
         Path repoRoot = createRepoRoot();

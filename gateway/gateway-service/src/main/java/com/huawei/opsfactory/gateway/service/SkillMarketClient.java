@@ -25,13 +25,13 @@ import reactor.netty.http.client.HttpClient;
 public class SkillMarketClient {
     private final GatewayProperties properties;
     private final WebClient webClient;
+
     /**
      * Creates the skill market client instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public SkillMarketClient(GatewayProperties properties) {
         this.properties = properties;
         int maxBytes = properties.getSkillMarket().getMaxPackageSizeMb() * 1024 * 1024;

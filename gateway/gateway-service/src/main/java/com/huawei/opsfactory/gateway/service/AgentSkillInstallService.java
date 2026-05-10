@@ -46,13 +46,13 @@ public class AgentSkillInstallService {
     private final SkillMarketClient skillMarketClient;
     private final GatewayProperties properties;
     private final Yaml yaml = new Yaml();
+
     /**
      * Creates the agent skill install service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public AgentSkillInstallService(
             AgentConfigService agentConfigService,
             SkillMarketClient skillMarketClient,
@@ -249,6 +249,7 @@ public class AgentSkillInstallService {
             return;
         }
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
+
             /**
              * Executes the visit file operation.
              *
@@ -260,13 +261,13 @@ public class AgentSkillInstallService {
                 Files.deleteIfExists(file);
                 return FileVisitResult.CONTINUE;
             }
+
             /**
              * Executes the post visit directory operation.
              *
              * @author x00000000
              * @since 2026-05-09
              */
-
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
                 Files.deleteIfExists(dir);

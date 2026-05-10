@@ -16,18 +16,19 @@ import static org.junit.Assert.*;
 /**
  * Unit tests for the CORS filter in WebFluxConfig.
  * Covers all origin matching scenarios after removal of isLocalDevOrigin fallback.
+ *
  * @author x00000000
  * @since 2026-05-09
  */
 public class CorsFilterTest {
     private GatewayProperties properties;
+
     /**
      * Sets the up.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Before
     public void setUp() {
         properties = new GatewayProperties();
@@ -42,13 +43,13 @@ public class CorsFilterTest {
     }
 
     // ====================== Wildcard mode ======================
+
     /**
      * Executes the wildcard any origin returns request origin operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void wildcard_anyOrigin_returnsRequestOrigin() {
         properties.setCorsOrigin("*");
@@ -64,13 +65,13 @@ public class CorsFilterTest {
         assertEquals("Origin",
                 exchange.getResponse().getHeaders().getFirst("Vary"));
     }
+
     /**
      * Executes the wildcard localhost origin returns request origin operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void wildcard_localhostOrigin_returnsRequestOrigin() {
         properties.setCorsOrigin("*");
@@ -86,13 +87,13 @@ public class CorsFilterTest {
     }
 
     // ====================== Exact match ======================
+
     /**
      * Executes the exact match matching origin returns origin operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void exactMatch_matchingOrigin_returnsOrigin() {
         properties.setCorsOrigin("http://app.example.com");
@@ -106,13 +107,13 @@ public class CorsFilterTest {
         assertEquals("http://app.example.com",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the exact match non matching origin no acao header operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void exactMatch_nonMatchingOrigin_noAcaoHeader() {
         properties.setCorsOrigin("http://app.example.com");
@@ -127,13 +128,13 @@ public class CorsFilterTest {
     }
 
     // ====================== Multi-value match ======================
+
     /**
      * Executes the multi value second origin matches operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void multiValue_secondOriginMatches() {
         properties.setCorsOrigin("http://a.com, http://b.com");
@@ -147,13 +148,13 @@ public class CorsFilterTest {
         assertEquals("http://b.com",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the multi value no match no acao header operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void multiValue_noMatch_noAcaoHeader() {
         properties.setCorsOrigin("http://a.com,http://b.com");
@@ -168,13 +169,13 @@ public class CorsFilterTest {
     }
 
     // ====================== No origin in request ======================
+
     /**
      * Executes the no origin header no acao header operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void noOriginHeader_noAcaoHeader() {
         properties.setCorsOrigin("http://app.example.com");
@@ -187,13 +188,13 @@ public class CorsFilterTest {
     }
 
     // ====================== OPTIONS preflight ======================
+
     /**
      * Executes the options preflight matching origin returns204 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void optionsPreflight_matchingOrigin_returns204() {
         properties.setCorsOrigin("http://app.example.com");
@@ -208,13 +209,13 @@ public class CorsFilterTest {
         assertEquals("http://app.example.com",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the options preflight non matching origin returns403 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void optionsPreflight_nonMatchingOrigin_returns403() {
         properties.setCorsOrigin("http://app.example.com");
@@ -227,13 +228,13 @@ public class CorsFilterTest {
 
         assertEquals(HttpStatus.FORBIDDEN, exchange.getResponse().getStatusCode());
     }
+
     /**
      * Executes the options preflight no origin returns204 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void optionsPreflight_noOrigin_returns204() {
         properties.setCorsOrigin("http://app.example.com");
@@ -246,13 +247,13 @@ public class CorsFilterTest {
     }
 
     // ====================== Regression: private network no longer auto-allowed ======================
+
     /**
      * Executes the regression private network5173 not auto allowed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void regression_privateNetwork5173_notAutoAllowed() {
         properties.setCorsOrigin("http://app.example.com");
@@ -266,13 +267,13 @@ public class CorsFilterTest {
         assertNull("Private network origin should NOT be auto-allowed",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the regression localhost5173 not auto allowed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void regression_localhost5173_notAutoAllowed() {
         properties.setCorsOrigin("http://app.example.com");
@@ -286,13 +287,13 @@ public class CorsFilterTest {
         assertNull("localhost:5173 should NOT be auto-allowed when not in configured origins",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the regression 10network5173 not auto allowed operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void regression_10network5173_notAutoAllowed() {
         properties.setCorsOrigin("http://app.example.com");
@@ -308,13 +309,13 @@ public class CorsFilterTest {
     }
 
     // ====================== Common response headers always present ======================
+
     /**
      * Executes the common headers always present operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void commonHeaders_alwaysPresent() {
         properties.setCorsOrigin("http://app.example.com");
@@ -334,13 +335,13 @@ public class CorsFilterTest {
     }
 
     // ====================== Edge cases ======================
+
     /**
      * Executes the empty config treated as wildcard operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void emptyConfig_treatedAsWildcard() {
         properties.setCorsOrigin("");
@@ -354,13 +355,13 @@ public class CorsFilterTest {
         assertEquals("http://any.site.com",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the null config treated as wildcard operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void nullConfig_treatedAsWildcard() {
         properties.setCorsOrigin(null);
@@ -376,13 +377,13 @@ public class CorsFilterTest {
     }
 
     // ====================== HTTPS origin support ======================
+
     /**
      * Executes the https origin exact match operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void httpsOrigin_exactMatch() {
         properties.setCorsOrigin("https://127.0.0.1:5173");
@@ -396,13 +397,13 @@ public class CorsFilterTest {
         assertEquals("https://127.0.0.1:5173",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the https origin wildcard returns https origin operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void httpsOrigin_wildcard_returnsHttpsOrigin() {
         properties.setCorsOrigin("*");
@@ -416,13 +417,13 @@ public class CorsFilterTest {
         assertEquals("https://app.example.com",
                 exchange.getResponse().getHeaders().getFirst("Access-Control-Allow-Origin"));
     }
+
     /**
      * Executes the https origin options preflight returns204 operation.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     @Test
     public void httpsOrigin_optionsPreflight_returns204() {
         properties.setCorsOrigin("https://127.0.0.1:5173");

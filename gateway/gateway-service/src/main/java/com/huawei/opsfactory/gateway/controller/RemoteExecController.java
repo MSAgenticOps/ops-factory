@@ -28,13 +28,13 @@ import java.util.Map;
 public class RemoteExecController {
     private final RemoteExecutionService remoteExecutionService;
     private final CommandWhitelistService commandWhitelistService;
+
     /**
      * Creates the remote exec controller instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public RemoteExecController(RemoteExecutionService remoteExecutionService,
                                 CommandWhitelistService commandWhitelistService) {
         this.remoteExecutionService = remoteExecutionService;

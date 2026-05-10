@@ -27,13 +27,13 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 @Service
 public class WhatsAppAdapter implements ChannelAdapter {
     private final ChannelConfigService channelConfigService;
+
     /**
      * Creates the whats app adapter instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public WhatsAppAdapter(ChannelConfigService channelConfigService) {
         this.channelConfigService = channelConfigService;
     }

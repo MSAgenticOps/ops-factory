@@ -51,13 +51,13 @@ public class SessionTraceService implements DisposableBean {
     private final Path gatewayRoot;
     private final Path scriptPath;
     private final Path traceRoot;
+
     /**
      * Creates the session trace service instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public SessionTraceService() {
         this.repoRoot = resolveRepoRoot();
         this.gatewayRoot = repoRoot.resolve("gateway").normalize();
@@ -324,25 +324,25 @@ public class SessionTraceService implements DisposableBean {
     public void destroy() {
         executor.shutdownNow();
     }
+
     /**
      * Type definition for Trace Status.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public enum TraceStatus {
         RUNNING,
         SUCCEEDED,
         FAILED
     }
+
     /**
      * Type definition for Trace Job Snapshot.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public record TraceJobSnapshot(
             String jobId,
             String status,

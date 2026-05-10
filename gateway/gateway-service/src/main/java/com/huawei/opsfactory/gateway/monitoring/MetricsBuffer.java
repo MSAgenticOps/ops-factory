@@ -79,13 +79,13 @@ public class MetricsBuffer {
             return requestCount > 0 ? (double) ttftSum / requestCount : 0;
         }
     }
+
     /**
      * Creates the metrics buffer instance.
      *
      * @author x00000000
      * @since 2026-05-09
      */
-
     public MetricsBuffer(GatewayProperties properties) {
         Path gatewayRoot = properties.getGatewayRootPath();
         this.persistPath = gatewayRoot.resolve("data").resolve("monitoring").resolve("metrics.json");
