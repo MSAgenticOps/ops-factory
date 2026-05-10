@@ -127,6 +127,9 @@ public class UserContextFilter implements WebFilter {
 
     /**
      * Shared admin check — throws 403 if the current user is not an admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static void requireAdmin(ServerWebExchange exchange) {
         UserRole role = exchange.getAttribute(USER_ROLE_ATTR);

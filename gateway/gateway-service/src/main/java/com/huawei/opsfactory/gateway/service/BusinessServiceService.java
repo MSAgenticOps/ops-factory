@@ -304,6 +304,9 @@ public class BusinessServiceService {
 
     /**
      * Get business service with resolved host info.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getWithResolvedHosts(String id) {
@@ -329,6 +332,9 @@ public class BusinessServiceService {
 
     /**
      * Get hosts for the entry resources of a business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getHostsForBusinessService(String id) {
@@ -457,6 +463,9 @@ public class BusinessServiceService {
 
     /**
      * Migrate from Host.business field: group by (businessName, groupId) -> create BusinessService.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> migrateFromBusinessField() {
@@ -540,6 +549,9 @@ public class BusinessServiceService {
 
     /**
      * Sync hostIds on a business service from its HostRelation records.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public void syncHostIdsFromRelations(String bsId) {
@@ -584,6 +596,9 @@ public class BusinessServiceService {
 
     /**
      * Remove a host from all business services' hostIds (called when a host is deleted).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public void removeHostFromAllBusinessServices(String hostId) {
@@ -602,6 +617,9 @@ public class BusinessServiceService {
 
     /**
      * Search business services by keyword matching against name, code, and tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> searchByKeyword(String keyword) {

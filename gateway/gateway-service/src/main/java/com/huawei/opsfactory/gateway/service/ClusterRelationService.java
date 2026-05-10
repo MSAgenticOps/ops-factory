@@ -316,6 +316,9 @@ public class ClusterRelationService {
 
     /**
      * Delete all relations involving a specific cluster (cascade delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteRelationsByCluster(String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -338,6 +341,9 @@ public class ClusterRelationService {
 
     /**
      * Delete all relations where source is a specific business service (cascade delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -416,6 +422,9 @@ public class ClusterRelationService {
 
     /**
      * Delete the 包含 relation for a host (used on host delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteConstituteRelationByHost(String hostId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -435,6 +444,9 @@ public class ClusterRelationService {
 
     /**
      * Build cluster-level graph data for a given group.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getGraphData(String groupId) {
@@ -600,6 +612,9 @@ public class ClusterRelationService {
 
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given cluster.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getClusterNeighbors(String clusterId) {
@@ -672,6 +687,9 @@ public class ClusterRelationService {
 
     /**
      * Get host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten to host list.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getHostNeighborsByCluster(String hostId) {

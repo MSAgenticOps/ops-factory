@@ -224,6 +224,9 @@ public class LangfuseService {
 
     /**
      * Fetch traces and transform into frontend TraceRow[] format.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<List<Map<String, Object>>> getTracesFormatted(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
@@ -284,6 +287,9 @@ public class LangfuseService {
 
     /**
      * Fetch observations and transform into frontend { observations: ObservationGroup[] } format.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<Map<String, Object>> getObservationsFormatted(String from, String to) {
         if (!isConfigured()) {

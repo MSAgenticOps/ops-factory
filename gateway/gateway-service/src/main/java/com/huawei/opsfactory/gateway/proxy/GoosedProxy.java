@@ -106,6 +106,9 @@ public class GoosedProxy {
 
     /**
      * Proxy an arbitrary request to a goosed instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<Void> proxy(
             ServerHttpRequest request,
@@ -138,6 +141,9 @@ public class GoosedProxy {
 
     /**
      * Proxy with a pre-read JSON body string (for routes that need body inspection).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path,
                                      HttpMethod method, String body, String secretKey) {
@@ -345,6 +351,9 @@ public class GoosedProxy {
 
     /**
      * Fetch JSON from a goosed instance and return the raw body string.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<String> fetchJson(int port, String path, String secretKey) {
         String target = goosedBaseUrl(port) + path;

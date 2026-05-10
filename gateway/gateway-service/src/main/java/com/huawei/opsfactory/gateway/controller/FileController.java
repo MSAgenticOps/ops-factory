@@ -258,6 +258,9 @@ public class FileController {
 
     /**
      * Fallback for upload requests that are not multipart/form-data.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @PostMapping(value = "/upload")
     public Mono<Map<String, Object>> uploadFileNotMultipart() {

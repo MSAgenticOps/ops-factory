@@ -349,6 +349,9 @@ public class SessionController {
 
     /**
      * Global session detail: GET /sessions/{sessionId}?agentId=X
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @GetMapping(value = "/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> getSessionGlobal(@PathVariable String sessionId,
@@ -487,6 +490,9 @@ public class SessionController {
 
     /**
      * Inject agentId into a session JSON response.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private String injectAgentId(String json, String agentId) {
         try {
@@ -502,6 +508,9 @@ public class SessionController {
 
     /**
      * Clean up uploaded files for a deleted session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private void cleanupUploads(String userId, String agentId, String sessionId) {
         try {
@@ -578,6 +587,9 @@ public class SessionController {
 
     /**
      * Rename session: PUT /agents/{agentId}/sessions/{sessionId}/name
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @PutMapping("/agents/{agentId}/sessions/{sessionId}/name")
     public Mono<Void> renameSession(@PathVariable String agentId,

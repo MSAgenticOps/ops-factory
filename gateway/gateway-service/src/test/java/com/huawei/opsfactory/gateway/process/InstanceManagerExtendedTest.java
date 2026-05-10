@@ -570,6 +570,9 @@ public class InstanceManagerExtendedTest {
 
     /**
      * Helper to add instances directly to the internal map via reflection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private void addInstanceDirectly(ManagedInstance instance) {
         try {

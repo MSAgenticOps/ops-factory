@@ -66,6 +66,9 @@ public class PrewarmService {
 
     /**
      * Reset pre-warm state for a user (called when all their instances are reaped).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void clearUser(String userId) {
         warmedUsers.remove(userId);

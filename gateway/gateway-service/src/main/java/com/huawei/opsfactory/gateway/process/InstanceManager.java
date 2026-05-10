@@ -159,6 +159,9 @@ public class InstanceManager {
 
     /**
      * Scan agent's config/recipes/ directory and register each recipe as a paused schedule.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private void registerDefaultSchedules(String agentId, int port, String secretKey) {
         Path recipesDir = agentConfigService.getAgentsDir()
@@ -653,6 +656,9 @@ public class InstanceManager {
 
     /**
      * Stop all instances for a given agent across all users.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void stopAllForAgent(String agentId) {
         instances.values().stream()
@@ -663,6 +669,9 @@ public class InstanceManager {
 
     /**
      * Touch all instances for a user (keep them alive together).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void touchAllForUser(String userId) {
         for (ManagedInstance inst : instances.values()) {

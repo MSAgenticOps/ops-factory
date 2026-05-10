@@ -213,6 +213,9 @@ public class AgentConfigService {
 
     /**
      * Load the agent's config.yaml as a Map (cached).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> loadAgentConfigYaml(String agentId) {
         return configCache.computeIfAbsent(agentId, id -> {
@@ -223,6 +226,9 @@ public class AgentConfigService {
 
     /**
      * Load the agent's secrets.yaml as a Map (cached).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> loadAgentSecretsYaml(String agentId) {
         return secretsCache.computeIfAbsent(agentId, id -> {
@@ -233,6 +239,9 @@ public class AgentConfigService {
 
     /**
      * Invalidate cached config/secrets for an agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void invalidateCache(String agentId) {
         configCache.remove(agentId);
@@ -241,6 +250,9 @@ public class AgentConfigService {
 
     /**
      * List skills for an agent, parsing SKILL.md frontmatter for metadata.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, String>> listSkills(String agentId) {
         Path skillsDir = getAgentConfigDir(agentId).resolve("skills");
@@ -306,6 +318,9 @@ public class AgentConfigService {
 
     /**
      * Parse YAML frontmatter (between --- delimiters) from a Markdown file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private Map<String, String> parseMarkdownFrontmatter(Path mdPath) throws IOException {
         Map<String, String> result = new HashMap<>();
@@ -338,6 +353,9 @@ public class AgentConfigService {
 
     /**
      * Read AGENTS.md content for an agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public String readAgentsMd(String agentId) {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
@@ -354,6 +372,9 @@ public class AgentConfigService {
 
     /**
      * Write AGENTS.md content for an agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void writeAgentsMd(String agentId, String content) throws IOException {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
@@ -370,6 +391,9 @@ public class AgentConfigService {
 
     /**
      * List all memory files (*.txt) for an agent, returning category name + content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, String>> listMemoryFiles(String agentId) {
         Path memoryDir = getGooseMemoryDir(agentId);
@@ -401,6 +425,9 @@ public class AgentConfigService {
 
     /**
      * Read a single memory file content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public String readMemoryFile(String agentId, String category) {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
@@ -416,6 +443,9 @@ public class AgentConfigService {
 
     /**
      * Write (create/update) a memory file. Creates the memory directory if needed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void writeMemoryFile(String agentId, String category, String content) throws IOException {
         if (content != null && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
@@ -428,6 +458,9 @@ public class AgentConfigService {
 
     /**
      * Delete a memory file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteMemoryFile(String agentId, String category) throws IOException {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
@@ -689,6 +722,9 @@ public class AgentConfigService {
 
     /**
      * Create a new agent: directory structure, config files, registry update.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> createAgent(String id, String name) throws IOException {
         // Validate ID format
@@ -747,6 +783,9 @@ public class AgentConfigService {
 
     /**
      * Delete an agent: stop instances, remove files, update registry.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteAgent(String id) throws IOException {
         AgentRegistryEntry entry = findAgent(id);

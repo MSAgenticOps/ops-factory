@@ -5,6 +5,7 @@ import org.junit.Test;
 /**
  * E2E tests for the authentication filter chain.
  * Verifies AuthWebFilter and UserContextFilter behavior through real HTTP requests.
+ *
  * @author x00000000
  * @since 2026-05-09
  */

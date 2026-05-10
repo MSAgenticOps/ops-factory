@@ -117,6 +117,9 @@ public class FileService {
 
     /**
      * List files for the Files module from configured scan roots.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, Object>> listFiles(Path userAgentDir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
@@ -134,6 +137,9 @@ public class FileService {
 
     /**
      * List only top-level files under a directory, excluding subdirectories.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
@@ -353,6 +359,9 @@ public class FileService {
 
     /**
      * Resolve and validate a file path within a base directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Resource resolveFile(Path baseDir, String relativePath) {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
@@ -413,6 +422,9 @@ public class FileService {
 
     /**
      * Check if a file extension is allowed for upload.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public boolean isAllowedExtension(String filename) {
         String ext = getExtension(filename);
@@ -457,6 +469,9 @@ public class FileService {
 
     /**
      * Whether this MIME type should be displayed inline (vs download).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public boolean isInline(String mimeType) {
         return mimeType.startsWith("text/")

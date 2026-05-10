@@ -199,6 +199,9 @@ public class HostService {
 
     /**
      * Resolve the mode of a cluster by looking up its type -> ClusterType.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private String resolveClusterMode(String clusterId) {
         try {
@@ -560,6 +563,9 @@ public class HostService {
 
     /**
      * List hosts filtered by clusterId.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, Object>> listHostsByCluster(String clusterId) {
         List<Map<String, Object>> hosts = new ArrayList<>();

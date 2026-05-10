@@ -28,6 +28,9 @@ import java.util.UUID;
 
 /**
  * @deprecated Use {@link ClusterRelationService} instead. Host-level relations are replaced by cluster-level relations.
+ *
+ * @author x00000000
+ * @since 2026-05-09
  */
 @Deprecated
 @Service
@@ -88,6 +91,9 @@ public class HostRelationService {
 
     /**
      * List relations with optional filters.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, Object>> listRelations(
             String hostId,
@@ -318,6 +324,9 @@ public class HostRelationService {
 
     /**
      * Delete all relations involving a specific host (for cascade delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteRelationsByHost(String hostId) {
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
@@ -332,6 +341,9 @@ public class HostRelationService {
 
     /**
      * Delete all relations where source is a specific business service (for cascade delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null, null, null, "business-service", bsId);
@@ -436,6 +448,9 @@ public class HostRelationService {
 
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given host.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> getNeighbors(String hostId) {
         // 1. Validate host exists

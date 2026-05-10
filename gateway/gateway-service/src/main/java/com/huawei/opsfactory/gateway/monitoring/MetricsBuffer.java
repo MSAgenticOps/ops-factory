@@ -94,6 +94,9 @@ public class MetricsBuffer {
 
     /**
      * Record a collected metrics snapshot.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public synchronized void record(MetricsSnapshot snapshot) {
         snapshots[snapshotWriteIndex] = snapshot;
@@ -130,6 +133,9 @@ public class MetricsBuffer {
 
     /**
      * Get per-agent statistics accumulated over the buffer lifetime.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Map<String, Object>> getAgentStats() {
         Map<String, Map<String, Object>> result = new LinkedHashMap<>();
@@ -168,6 +174,9 @@ public class MetricsBuffer {
 
     /**
      * Get the most recent snapshots, ordered oldest-first (for charting).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public synchronized List<MetricsSnapshot> getSnapshots(int maxSlots) {
         int count = Math.min(this.snapshotCount, maxSlots);
