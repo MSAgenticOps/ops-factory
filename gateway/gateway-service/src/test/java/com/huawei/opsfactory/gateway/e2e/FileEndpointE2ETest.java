@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.e2e;
 
 import org.junit.Before;
@@ -6,6 +10,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -124,7 +129,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void getFile_existingTextFile_returnsInlineContent() {
-        ByteArrayResource resource = new ByteArrayResource("Hello World".getBytes()) {
+        ByteArrayResource resource = new ByteArrayResource("Hello World".getBytes(StandardCharsets.UTF_8)) {
 
             /**
              * Returns the filename.
@@ -225,7 +230,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void getFile_nestedPath_resolvesCorrectly() {
-        ByteArrayResource resource = new ByteArrayResource("nested".getBytes()) {
+        ByteArrayResource resource = new ByteArrayResource("nested".getBytes(StandardCharsets.UTF_8)) {
 
             /**
              * Returns the filename.
@@ -260,7 +265,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     public void getFile_rootId_resolvesFromScanRoot() {
         Path userAgentDir = USERS_DIR.resolve("alice").resolve("agents").resolve("test-agent");
         Path outputDir = userAgentDir.resolve("output");
-        ByteArrayResource resource = new ByteArrayResource("output".getBytes()) {
+        ByteArrayResource resource = new ByteArrayResource("output".getBytes(StandardCharsets.UTF_8)) {
 
             /**
              * Returns the filename.

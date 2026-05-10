@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.config;
 
 import static org.junit.Assert.assertEquals;
@@ -7,7 +11,6 @@ import static org.junit.Assert.assertTrue;
 import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
 import com.huawei.opsfactory.gateway.support.TestLogAppender;
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.junit.Test;
@@ -68,7 +71,7 @@ public class GatewayConfigImportTest {
      */
     @Test
     public void shouldApplyLoggingLevelsToLog4jRuntime() {
-        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        LoggerContext context = LoggerContext.getContext(false);
         Configuration configuration = context.getConfiguration();
 
         assertEquals(Level.WARN, configuration.getRootLogger().getLevel());

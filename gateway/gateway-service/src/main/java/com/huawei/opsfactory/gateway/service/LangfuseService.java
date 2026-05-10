@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -75,7 +76,7 @@ public class LangfuseService {
         }
         String url = config.getHost() + "/api/public/health";
         String auth = Base64.getEncoder().encodeToString(
-                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes());
+                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes(StandardCharsets.UTF_8));
         return webClient.get()
                 .uri(url)
                 .header("Authorization", "Basic " + auth)
@@ -380,7 +381,7 @@ public class LangfuseService {
 
     private Mono<String> doGet(String url) {
         String auth = Base64.getEncoder().encodeToString(
-                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes());
+                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes(StandardCharsets.UTF_8));
         return webClient.get()
                 .uri(url)
                 .header("Authorization", "Basic " + auth)

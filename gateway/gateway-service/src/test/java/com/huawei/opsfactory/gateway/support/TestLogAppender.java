@@ -1,13 +1,17 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.support;
 
 import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.layout.PatternLayout;
@@ -34,7 +38,7 @@ public final class TestLogAppender extends AbstractAppender implements AutoClose
      * @since 2026-05-09
      */
     public static TestLogAppender attachTo(Class<?> type) {
-        Logger logger = (Logger) LogManager.getLogger(type);
+        Logger logger = LoggerContext.getContext(false).getLogger(type.getName());
         TestLogAppender appender = new TestLogAppender(
             "test-appender-" + type.getSimpleName() + "-" + System.nanoTime(),
             logger,
