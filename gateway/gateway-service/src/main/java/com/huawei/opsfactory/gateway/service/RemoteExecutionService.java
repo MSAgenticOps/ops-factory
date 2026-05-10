@@ -5,10 +5,12 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -133,7 +135,8 @@ public class RemoteExecutionService {
             String value = envVars.get(key);
             effectiveCommand = effectiveCommand.replace("${" + key + "}", value);
             // Also replace $VAR when not followed by a valid identifier char
-            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key) + "(?![A-Za-z0-9_])",
+            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key)
+                            + "(?![A-Za-z0-9_])",
                     java.util.regex.Matcher.quoteReplacement(value));
         }
 

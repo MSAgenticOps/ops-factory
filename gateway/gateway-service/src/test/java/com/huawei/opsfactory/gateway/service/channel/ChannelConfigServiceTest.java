@@ -4,27 +4,6 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.huawei.opsfactory.gateway.service.AgentConfigService;
-import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
-import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
-import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
-import com.huawei.opsfactory.gateway.service.channel.model.ChannelUpsertRequest;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -33,6 +12,30 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelUpsertRequest;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import reactor.core.publisher.Mono;
+
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Test coverage for Channel Config Service.
@@ -62,7 +65,8 @@ public class ChannelConfigServiceTest {
         when(properties.getGatewayRootPath()).thenReturn(gatewayRoot);
 
         AgentConfigService agentConfigService = mock(AgentConfigService.class);
-        when(agentConfigService.findAgent("fo-copilot")).thenReturn(new AgentRegistryEntry("fo-copilot", "FO Copilot"));
+        when(agentConfigService.findAgent("fo-copilot")).thenReturn(new AgentRegistryEntry("fo-copilot",
+                "FO Copilot"));
 
         ChannelRuntimeStorageService runtimeStorageService = new ChannelRuntimeStorageService(properties);
         service = new ChannelConfigService(properties, agentConfigService, runtimeStorageService);
@@ -120,7 +124,8 @@ public class ChannelConfigServiceTest {
     public void runtimeStateIsReadFromUserDirectoryOnly() throws Exception {
         service.createChannel(upsertRequest("whatsapp-main", "whatsapp"), "admin");
 
-        Path oldState = gatewayRoot.resolve("channels").resolve("whatsapp").resolve("whatsapp-main").resolve("login-state.json");
+        Path oldState = gatewayRoot.resolve("channels").resolve("whatsapp").resolve(
+                "whatsapp-main").resolve("login-state.json");
         Files.writeString(oldState, MAPPER.writeValueAsString(Map.of(
                 "status", "connected",
                 "selfPhone", "+10000000000"
@@ -322,7 +327,8 @@ public class ChannelConfigServiceTest {
 
         ChannelBindingService bindingService = new ChannelBindingService(service, runtimeStorageService);
         bindingService.ensureConversationBinding(
-                "whatsapp-main", "default", "+8613800000000", "+8613800000000", null, "direct");
+                "whatsapp-main", "default", "+8613800000000", "+8613800000000",
+                null, "direct");
 
         ChannelDedupService dedupService = new ChannelDedupService(service, runtimeStorageService);
         assertTrue(dedupService.markIfNew("whatsapp-main", "message-1"));
@@ -439,7 +445,8 @@ public class ChannelConfigServiceTest {
         assertTrue(Files.readString(runtimeDir.resolve("inbound-dedup.json")).contains("message-1"));
         assertTrue(Files.exists(runtimeDir.resolve("processed").resolve("message-1-processed.json")));
         try (var stream = Files.list(runtimeDir.resolve("outbox").resolve("pending"))) {
-            Optional<Path> outboxFile = stream.filter(path -> path.getFileName().toString().endsWith(".json")).findFirst();
+            Optional<Path> outboxFile = stream.filter(path -> path.getFileName().toString().endsWith(
+                    ".json")).findFirst();
             assertTrue(outboxFile.isPresent());
             assertTrue(Files.readString(outboxFile.get()).contains("reply from agent"));
         }
@@ -485,7 +492,8 @@ public class ChannelConfigServiceTest {
                 type,
                 true,
                 "fo-copilot",
-                new ChannelConnectionConfig("connected", "auth", "old", "old", "old", "+1", "wxid", "Tester")
+                new ChannelConnectionConfig("connected", "auth", "old",
+                        "old", "old", "+1", "wxid", "Tester")
         );
     }
 }

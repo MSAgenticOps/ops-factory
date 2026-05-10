@@ -4,7 +4,10 @@
 
 package com.huawei.opsfactory.gateway.process;
 
+import static org.junit.Assert.assertTrue;
+
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -13,8 +16,6 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static org.junit.Assert.assertTrue;
 
 /**
  * Test coverage for Runtime Preparer.
@@ -122,15 +123,20 @@ public class RuntimePreparerTest {
      */
     @Test
     public void testPrepare_removesDisallowedSkillDirectories() throws IOException {
-        Path runtimeRoot = gatewayRoot.resolve("users").resolve("user1").resolve("agents").resolve("test-agent");
+        Path runtimeRoot = gatewayRoot.resolve("users").resolve("user1").resolve("agents").resolve(
+                "test-agent");
         Files.createDirectories(runtimeRoot.resolve(".goose").resolve("skills").resolve("local-skill"));
         Files.createDirectories(runtimeRoot.resolve(".claude").resolve("skills").resolve("local-skill"));
         Files.createDirectories(runtimeRoot.resolve(".agents").resolve("skills").resolve("local-skill"));
-        Files.createDirectories(runtimeRoot.resolve("home").resolve(".agents").resolve("skills").resolve("global-skill"));
-        Files.createDirectories(runtimeRoot.resolve("home").resolve(".claude").resolve("skills").resolve("global-skill"));
-        Files.createDirectories(runtimeRoot.resolve("home").resolve(".config").resolve("agents").resolve("skills").resolve("global-skill"));
+        Files.createDirectories(runtimeRoot.resolve("home").resolve(".agents").resolve(
+                "skills").resolve("global-skill"));
+        Files.createDirectories(runtimeRoot.resolve("home").resolve(".claude").resolve(
+                "skills").resolve("global-skill"));
+        Files.createDirectories(runtimeRoot.resolve("home").resolve(".config").resolve(
+                "agents").resolve("skills").resolve("global-skill"));
         Files.createDirectories(runtimeRoot.resolve(".goose").resolve("memory"));
-        Files.writeString(runtimeRoot.resolve(".goose").resolve("memory").resolve("notes.txt"), "keep");
+        Files.writeString(runtimeRoot.resolve(".goose").resolve("memory").resolve(
+                "notes.txt"), "keep");
 
         Path result = preparer.prepare("test-agent", "user1");
 
@@ -139,7 +145,8 @@ public class RuntimePreparerTest {
         org.junit.Assert.assertFalse(Files.exists(result.resolve(".agents").resolve("skills")));
         org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".agents").resolve("skills")));
         org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".claude").resolve("skills")));
-        org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".config").resolve("agents").resolve("skills")));
+        org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".config").resolve(
+                "agents").resolve("skills")));
         assertTrue(Files.exists(result.resolve(".goose").resolve("memory").resolve("notes.txt")));
     }
 

@@ -4,23 +4,25 @@
 
 package com.huawei.opsfactory.gateway.hook;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
+import reactor.test.StepVerifier;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.test.StepVerifier;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Test coverage for File Attachment Hook.
@@ -126,7 +128,8 @@ public class FileAttachmentHookTest {
         Files.writeString(validFile, "content");
 
         String filePath = validFile.toAbsolutePath().normalize().toString();
-        String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See file " + filePath + "\"}]}}";
+        String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See file " +
+                filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
 
         StepVerifier.create(hook.process(ctx))

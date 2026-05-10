@@ -4,16 +4,21 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
-import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
+import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -21,11 +26,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriUtils;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -80,7 +83,8 @@ public class SessionBridgeService {
      * @since 2026-05-09
      */
     public Mono<ChannelBinding> ensureSession(String channelId, String externalUserId) {
-        return ensureConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
+        return ensureConversationSession(channelId, "admin", "default", externalUserId,
+                externalUserId, null, "direct");
     }
 
     /**
@@ -282,7 +286,8 @@ public class SessionBridgeService {
                                         conversationId,
                                         threadId
                                 );
-                                channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info", "session.reply",
+                                channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info",
+                                        "session.reply",
                                         "Delivered text reply for session " + binding.sessionId());
                                 return new ChannelReplyResult(
                                         channelId,
@@ -328,7 +333,8 @@ public class SessionBridgeService {
                                         "load_model_and_extensions", true
                                 ));
                             } catch (JsonProcessingException e) {
-                                return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
+                                return Mono.error(new IllegalStateException(
+                                        "Failed to build session resume payload", e));
                             }
                             return goosedProxy.fetchJson(
                                             instance.getPort(),
@@ -473,7 +479,8 @@ public class SessionBridgeService {
 
     private Map<String, Object> parseEventJson(String json) {
         try {
-            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
+            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse SSE event: " + json, e);
         }
@@ -543,7 +550,8 @@ public class SessionBridgeService {
     private String extractSessionId(String startResponse) {
         Map<String, Object> map;
         try {
-            map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {});
+            map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {
+            });
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse session start response", e);
         }

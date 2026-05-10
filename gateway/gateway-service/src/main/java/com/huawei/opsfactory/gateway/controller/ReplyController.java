@@ -4,21 +4,26 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.JsonUtil;
-import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
+import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.hook.HookContext;
-import com.huawei.opsfactory.gateway.logging.GatewayLogContext;
 import com.huawei.opsfactory.gateway.hook.HookPipeline;
+import com.huawei.opsfactory.gateway.logging.GatewayLogContext;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.FileService;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -36,8 +41,6 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriUtils;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -46,10 +49,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.LinkedHashMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -107,7 +110,8 @@ public class ReplyController {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         HookContext ctx = new HookContext(body, agentId, userId);
-        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-REPLY] request received agentId={} userId={} sessionId={} bodyLen={}",
+        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-REPLY] request received " +
+                        "agentId={} userId={} sessionId={} bodyLen={}",
                 agentId, userId, sessionId, body.length()));
         String chatRequestId = extractRequestId(body);
 
@@ -120,28 +124,35 @@ public class ReplyController {
                             String path = goosedSessionPath(sessionId, "reply");
                             return ensureSessionResumed(instance, sessionId)
                                     .then(snapshotFilesBeforeReply(agentId, userId, sessionId, chatRequestId))
-                                    .then(goosedProxy.proxySessionCommandWithBody(exchange.getResponse(), instance.getPort(), path,
+                                    .then(goosedProxy.proxySessionCommandWithBody(exchange.getResponse(),
+                                            instance.getPort(), path,
                                             HttpMethod.POST, processedBody, instance.getSecretKey()))
-                                    .doOnSubscribe(sub -> GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-REPLY] forwarding agentId={} userId={} sessionId={} port={} path={}",
-                                            agentId, userId, sessionId, instance.getPort(), path)))
+                                    .doOnSubscribe(sub -> GatewayLogContext.run(requestId, userId,
+                                            sessionId, () -> log.info("[SESSION-REPLY] forwarding agentId={} " +
+                                                            "userId={} sessionId={} port={} path={}",
+                                                    agentId, userId, sessionId, instance.getPort(), path)))
                                     .doOnSuccess(ignored -> {
                                         if (exchange.getResponse().getStatusCode() == null
                                                 || !exchange.getResponse().getStatusCode().is2xxSuccessful()) {
                                             removeFileSnapshot(agentId, userId, sessionId, chatRequestId);
                                         }
-                                        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-REPLY] completed agentId={} userId={} sessionId={} totalMs={} status={}",
+                                        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info(
+                                                "[SESSION-REPLY] completed agentId={} userId={} sessionId={} " +
+                                                        "totalMs={} status={}",
                                                 agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
                                                 exchange.getResponse().getStatusCode()));
                                     })
                                     .doOnError(err -> {
                                         removeFileSnapshot(agentId, userId, sessionId, chatRequestId);
-                                        GatewayLogContext.run(requestId, userId, sessionId, () -> log.warn("[SESSION-REPLY] failed agentId={} userId={} sessionId={} totalMs={} error={}",
+                                        GatewayLogContext.run(requestId, userId, sessionId, () -> log.warn(
+                                                "[SESSION-REPLY] failed agentId={} userId={} sessionId={} " +
+                                                        "totalMs={} error={}",
                                                 agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
                                                 err.getMessage()));
                                     });
                         }))
-                .onErrorResume(err -> writeSessionError(exchange, err, agentId, userId, sessionId, chatRequestId,
-                        "gateway_submit_failed", requestStart));
+                .onErrorResume(err -> writeSessionError(exchange, err, agentId, userId, sessionId,
+                        chatRequestId, "gateway_submit_failed", requestStart));
     }
 
     /**
@@ -158,7 +169,8 @@ public class ReplyController {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-EVENTS] subscribe agentId={} userId={} sessionId={} lastEventId={}",
+        GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-EVENTS] subscribe agentId={} " +
+                        "userId={} sessionId={} lastEventId={}",
                 agentId, userId, sessionId, lastEventId));
 
         return instanceManager.getOrSpawn(agentId, userId)
@@ -169,15 +181,22 @@ public class ReplyController {
                     return ensureSessionResumed(instance, sessionId)
                             .then(goosedProxy.proxySessionEvents(exchange.getResponse(), instance.getPort(), path,
                                     instance.getSecretKey(), lastEventId, agentId, userId, sessionId,
-                                    eventJson -> outputFilesBeforeTerminalEvent(agentId, userId, sessionId, eventJson)))
-                            .doOnSubscribe(sub -> GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-EVENTS] forwarding agentId={} userId={} sessionId={} port={} path={}",
-                                    agentId, userId, sessionId, instance.getPort(), path)))
-                            .doOnSuccess(ignored -> GatewayLogContext.run(requestId, userId, sessionId, () -> log.info("[SESSION-EVENTS] ended agentId={} userId={} sessionId={} totalMs={} status={}",
-                                    agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
-                                    exchange.getResponse().getStatusCode())))
-                            .doOnError(err -> GatewayLogContext.run(requestId, userId, sessionId, () -> log.warn("[SESSION-EVENTS] failed agentId={} userId={} sessionId={} totalMs={} error={}",
-                                    agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
-                                    err.getMessage())));
+                                    eventJson -> outputFilesBeforeTerminalEvent(agentId, userId, sessionId,
+                                            eventJson)))
+                            .doOnSubscribe(sub -> GatewayLogContext.run(requestId, userId, sessionId,
+                                    () -> log.info("[SESSION-EVENTS] forwarding agentId={} userId={} sessionId={} " +
+                                                    "port={} path={}",
+                                            agentId, userId, sessionId, instance.getPort(), path)))
+                            .doOnSuccess(ignored -> GatewayLogContext.run(requestId, userId, sessionId,
+                                    () -> log.info("[SESSION-EVENTS] ended agentId={} userId={} sessionId={} " +
+                                                    "totalMs={} status={}",
+                                            agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
+                                            exchange.getResponse().getStatusCode())))
+                            .doOnError(err -> GatewayLogContext.run(requestId, userId, sessionId,
+                                    () -> log.warn("[SESSION-EVENTS] failed agentId={} userId={} sessionId={} " +
+                                                    "totalMs={} error={}",
+                                            agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
+                                            err.getMessage())));
                 })
                 .onErrorResume(err -> writeSessionError(exchange, err, agentId, userId, sessionId, null,
                         "gateway_events_failed", requestStart));
@@ -207,12 +226,15 @@ public class ReplyController {
                     String path = goosedSessionPath(sessionId, "cancel");
                     return goosedProxy.proxySessionCommandWithBody(exchange.getResponse(), instance.getPort(), path,
                                     HttpMethod.POST, body, instance.getSecretKey())
-                            .doOnSubscribe(sub -> log.info("[SESSION-CANCEL] forwarding agentId={} userId={} sessionId={} port={} path={}",
+                            .doOnSubscribe(sub -> log.info("[SESSION-CANCEL] forwarding agentId={} " +
+                                            "userId={} sessionId={} port={} path={}",
                                     agentId, userId, sessionId, instance.getPort(), path))
-                            .doOnSuccess(ignored -> log.info("[SESSION-CANCEL] completed agentId={} userId={} sessionId={} totalMs={} status={}",
+                            .doOnSuccess(ignored -> log.info("[SESSION-CANCEL] completed agentId={} userId={} " +
+                                            "sessionId={} totalMs={} status={}",
                                     agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
                                     exchange.getResponse().getStatusCode()))
-                            .doOnError(err -> log.warn("[SESSION-CANCEL] failed agentId={} userId={} sessionId={} totalMs={} error={}",
+                            .doOnError(err -> log.warn("[SESSION-CANCEL] failed agentId={} userId={} " +
+                                            "sessionId={} totalMs={} error={}",
                                     agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
                                     err.getMessage()));
                 })
@@ -249,7 +271,8 @@ public class ReplyController {
                     fileSnapshots.put(key, beforeFiles);
                     pendingFileSnapshotRequests.put(sessionKey, requestId);
                     scheduleFileSnapshotRemoval(key, sessionKey, requestId);
-                    log.debug("[SESSION-REPLY] captured {} file snapshot entries agentId={} userId={} sessionId={} requestId={}",
+                    log.debug("[SESSION-REPLY] captured {} file snapshot entries agentId={} userId={} sessionId={} " +
+                                    "requestId={}",
                             beforeFiles.size(), agentId, userId, sessionId, requestId);
                 })
                 .subscribeOn(Schedulers.boundedElastic())
@@ -428,7 +451,8 @@ public class ReplyController {
             }
             if (status == HttpStatus.BAD_REQUEST) {
                 String message = sessionErrorMessage(err, status);
-                if (message != null && message.toLowerCase(Locale.ROOT).contains("session already has an active request")) {
+                if (message != null && message.toLowerCase(Locale.ROOT).contains("session already has an active " +
+                        "request")) {
                     return "goosed_active_request_conflict";
                 }
                 return "goosed_request_rejected";
@@ -586,7 +610,7 @@ public class ReplyController {
     /**
      * Ensure that any follow-up reply against an existing session first restores that
      * session on the current goosed instance (provider + extensions loaded).
-     *
+     * <p>
      * We intentionally do not trust the gateway's local resumed-session cache here:
      * stop/recycle/page-switch flows can leave the cache and goosed's real state out
      * of sync. Treating resume as the standard precondition for session continuation
@@ -625,20 +649,21 @@ public class ReplyController {
             log.info("{} session {} not yet resumed on instance {}:{} (port={}), calling /agent/resume",
                     logPrefix, sessionId, instance.getAgentId(), instance.getUserId(), instance.getPort());
             return goosedProxy.fetchJson(
-                    instance.getPort(),
-                    HttpMethod.POST,
-                    "/agent/resume",
-                    body,
-                    120,
-                    instance.getSecretKey()
-            )
+                            instance.getPort(),
+                            HttpMethod.POST,
+                            "/agent/resume",
+                            body,
+                            120,
+                            instance.getSecretKey()
+                    )
                     .doOnNext(r -> {
                         long resumeMs = System.currentTimeMillis() - resumeStart;
                         instance.markSessionResumed(sessionId);
                         log.info("{} session {} resumed in {}ms on instance {}:{}",
                                 logPrefix, sessionId, resumeMs, instance.getAgentId(), instance.getUserId());
                     })
-                    .doOnSubscribe(sub -> log.debug("{} joining in-flight resume key={}", logPrefix, dedupeKey))
+                    .doOnSubscribe(sub -> log.debug("{} joining in-flight resume key={}", logPrefix,
+                            dedupeKey))
                     .doFinally(signalType -> inFlightResumes.remove(dedupeKey))
                     .cache();
         });
@@ -728,7 +753,8 @@ public class ReplyController {
                 }
             }
 
-            log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} total={} createdCount={} inversionCount={} head={}",
+            log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} total={} createdCount={} " +
+                            "inversionCount={} head={}",
                     agentId, userId, sessionId, total, createdCount, inversionCount, head);
         } catch (JsonProcessingException e) {
             log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} parseFailed err={}",
@@ -744,8 +770,8 @@ public class ReplyController {
      */
     @PostMapping({"/restart", "/agent/restart"})
     public Mono<Void> restart(@PathVariable String agentId,
-                               @RequestBody String body,
-                               ServerWebExchange exchange) {
+                              @RequestBody String body,
+                              ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
                 .flatMap(instance -> goosedProxy.proxyWithBody(

@@ -4,10 +4,12 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -59,7 +61,8 @@ public class ChannelBindingService {
      * @since 2026-05-09
      */
     public ChannelBinding ensureBinding(String channelId, String externalUserId) {
-        return ensureConversationBinding(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
+        return ensureConversationBinding(channelId, "admin", "default", externalUserId,
+                externalUserId, null, "direct");
     }
 
     /**
@@ -197,7 +200,8 @@ public class ChannelBindingService {
                     binding.conversationId(),
                     binding.threadId(),
                     binding.conversationType(),
-                    binding.ownerUserId() == null || binding.ownerUserId().isBlank() ? channel.ownerUserId() : binding.ownerUserId(),
+                    binding.ownerUserId() == null || binding.ownerUserId().isBlank() ?
+                            channel.ownerUserId() : binding.ownerUserId(),
                     binding.syntheticUserId(),
                     agentId,
                     sessionId,
@@ -373,7 +377,8 @@ public class ChannelBindingService {
         Path file = runtimeStorageService.bindingsFile(channel);
         Map<String, Object> wrapper = readJson(file);
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
-                new TypeReference<List<ChannelBinding>>() {});
+                new TypeReference<List<ChannelBinding>>() {
+                });
     }
 
     private void writeBindings(ChannelDetail channel, List<ChannelBinding> bindings) {

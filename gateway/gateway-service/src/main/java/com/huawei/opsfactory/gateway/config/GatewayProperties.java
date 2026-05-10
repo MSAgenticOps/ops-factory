@@ -552,6 +552,7 @@ public class GatewayProperties {
         public String getProjectRoot() {
             return projectRoot;
         }
+
         /**
          * Sets the project root.
          *
@@ -561,6 +562,7 @@ public class GatewayProperties {
         public void setProjectRoot(String projectRoot) {
             this.projectRoot = projectRoot;
         }
+
         /**
          * Gets the agents dir.
          *
@@ -570,6 +572,7 @@ public class GatewayProperties {
         public String getAgentsDir() {
             return agentsDir;
         }
+
         /**
          * Sets the agents dir.
          *
@@ -579,6 +582,7 @@ public class GatewayProperties {
         public void setAgentsDir(String agentsDir) {
             this.agentsDir = agentsDir;
         }
+
         /**
          * Gets the users dir.
          *
@@ -588,6 +592,7 @@ public class GatewayProperties {
         public String getUsersDir() {
             return usersDir;
         }
+
         /**
          * Sets the users dir.
          *
@@ -614,6 +619,7 @@ public class GatewayProperties {
         public int getTimeoutMinutes() {
             return timeoutMinutes;
         }
+
         /**
          * Sets the timeout minutes.
          *
@@ -623,6 +629,7 @@ public class GatewayProperties {
         public void setTimeoutMinutes(int timeoutMinutes) {
             this.timeoutMinutes = timeoutMinutes;
         }
+
         /**
          * Gets the check interval ms.
          *
@@ -632,6 +639,7 @@ public class GatewayProperties {
         public long getCheckIntervalMs() {
             return checkIntervalMs;
         }
+
         /**
          * Sets the check interval ms.
          *
@@ -641,6 +649,7 @@ public class GatewayProperties {
         public void setCheckIntervalMs(long checkIntervalMs) {
             this.checkIntervalMs = checkIntervalMs;
         }
+
         /**
          * Gets the max restart attempts.
          *
@@ -650,6 +659,7 @@ public class GatewayProperties {
         public int getMaxRestartAttempts() {
             return maxRestartAttempts;
         }
+
         /**
          * Sets the max restart attempts.
          *
@@ -659,6 +669,7 @@ public class GatewayProperties {
         public void setMaxRestartAttempts(int maxRestartAttempts) {
             this.maxRestartAttempts = maxRestartAttempts;
         }
+
         /**
          * Gets the restart base delay ms.
          *
@@ -668,6 +679,7 @@ public class GatewayProperties {
         public long getRestartBaseDelayMs() {
             return restartBaseDelayMs;
         }
+
         /**
          * Sets the restart base delay ms.
          *
@@ -692,6 +704,7 @@ public class GatewayProperties {
         public int getMaxFileSizeMb() {
             return maxFileSizeMb;
         }
+
         /**
          * Sets the max file size mb.
          *
@@ -701,6 +714,7 @@ public class GatewayProperties {
         public void setMaxFileSizeMb(int maxFileSizeMb) {
             this.maxFileSizeMb = maxFileSizeMb;
         }
+
         /**
          * Gets the max image size mb.
          *
@@ -710,6 +724,7 @@ public class GatewayProperties {
         public int getMaxImageSizeMb() {
             return maxImageSizeMb;
         }
+
         /**
          * Sets the max image size mb.
          *
@@ -735,6 +750,7 @@ public class GatewayProperties {
         public String getHost() {
             return host;
         }
+
         /**
          * Sets the host.
          *
@@ -744,6 +760,7 @@ public class GatewayProperties {
         public void setHost(String host) {
             this.host = host;
         }
+
         /**
          * Gets the public key.
          *
@@ -753,6 +770,7 @@ public class GatewayProperties {
         public String getPublicKey() {
             return publicKey;
         }
+
         /**
          * Sets the public key.
          *
@@ -762,6 +780,7 @@ public class GatewayProperties {
         public void setPublicKey(String publicKey) {
             this.publicKey = publicKey;
         }
+
         /**
          * Gets the secret key.
          *
@@ -771,6 +790,7 @@ public class GatewayProperties {
         public String getSecretKey() {
             return secretKey;
         }
+
         /**
          * Sets the secret key.
          *
@@ -795,6 +815,7 @@ public class GatewayProperties {
         public int getMaxInstancesPerUser() {
             return maxInstancesPerUser;
         }
+
         /**
          * Sets the max instances per user.
          *
@@ -804,6 +825,7 @@ public class GatewayProperties {
         public void setMaxInstancesPerUser(int maxInstancesPerUser) {
             this.maxInstancesPerUser = maxInstancesPerUser;
         }
+
         /**
          * Gets the max instances global.
          *
@@ -813,6 +835,7 @@ public class GatewayProperties {
         public int getMaxInstancesGlobal() {
             return maxInstancesGlobal;
         }
+
         /**
          * Sets the max instances global.
          *
@@ -838,6 +861,7 @@ public class GatewayProperties {
         public int getFirstByteTimeoutSec() {
             return firstByteTimeoutSec;
         }
+
         /**
          * Sets the first byte timeout sec.
          *
@@ -847,6 +871,7 @@ public class GatewayProperties {
         public void setFirstByteTimeoutSec(int firstByteTimeoutSec) {
             this.firstByteTimeoutSec = firstByteTimeoutSec;
         }
+
         /**
          * Gets the idle timeout sec.
          *
@@ -856,6 +881,7 @@ public class GatewayProperties {
         public int getIdleTimeoutSec() {
             return idleTimeoutSec;
         }
+
         /**
          * Sets the idle timeout sec.
          *
@@ -865,6 +891,7 @@ public class GatewayProperties {
         public void setIdleTimeoutSec(int idleTimeoutSec) {
             this.idleTimeoutSec = idleTimeoutSec;
         }
+
         /**
          * Gets the max duration sec.
          *
@@ -874,6 +901,7 @@ public class GatewayProperties {
         public int getMaxDurationSec() {
             return maxDurationSec;
         }
+
         /**
          * Sets the max duration sec.
          *
@@ -898,6 +926,7 @@ public class GatewayProperties {
         public boolean isEnabled() {
             return enabled;
         }
+
         /**
          * Updates the enabled flag.
          *
@@ -907,6 +936,7 @@ public class GatewayProperties {
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
         }
+
         /**
          * Gets the default agent id.
          *
@@ -916,6 +946,7 @@ public class GatewayProperties {
         public String getDefaultAgentId() {
             return defaultAgentId;
         }
+
         /**
          * Sets the default agent id.
          *
@@ -941,6 +972,7 @@ public class GatewayProperties {
         public boolean isEnabled() {
             return enabled;
         }
+
         /**
          * Updates the enabled flag.
          *
@@ -950,6 +982,7 @@ public class GatewayProperties {
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
         }
+
         /**
          * Gets the onlyoffice url.
          *
@@ -959,6 +992,7 @@ public class GatewayProperties {
         public String getOnlyofficeUrl() {
             return onlyofficeUrl;
         }
+
         /**
          * Sets the onlyoffice url.
          *
@@ -968,6 +1002,7 @@ public class GatewayProperties {
         public void setOnlyofficeUrl(String onlyofficeUrl) {
             this.onlyofficeUrl = onlyofficeUrl;
         }
+
         /**
          * Gets the file base url.
          *
@@ -977,6 +1012,7 @@ public class GatewayProperties {
         public String getFileBaseUrl() {
             return fileBaseUrl;
         }
+
         /**
          * Sets the file base url.
          *
@@ -1003,6 +1039,7 @@ public class GatewayProperties {
         public boolean isAccessLogEnabled() {
             return accessLogEnabled;
         }
+
         /**
          * Updates the access log enabled flag.
          *
@@ -1012,6 +1049,7 @@ public class GatewayProperties {
         public void setAccessLogEnabled(boolean accessLogEnabled) {
             this.accessLogEnabled = accessLogEnabled;
         }
+
         /**
          * Returns the include upstream error body flag.
          *
@@ -1021,6 +1059,7 @@ public class GatewayProperties {
         public boolean isIncludeUpstreamErrorBody() {
             return includeUpstreamErrorBody;
         }
+
         /**
          * Updates the include upstream error body flag.
          *
@@ -1030,6 +1069,7 @@ public class GatewayProperties {
         public void setIncludeUpstreamErrorBody(boolean includeUpstreamErrorBody) {
             this.includeUpstreamErrorBody = includeUpstreamErrorBody;
         }
+
         /**
          * Returns the include sse chunk preview flag.
          *
@@ -1039,6 +1079,7 @@ public class GatewayProperties {
         public boolean isIncludeSseChunkPreview() {
             return includeSseChunkPreview;
         }
+
         /**
          * Updates the include sse chunk preview flag.
          *
@@ -1048,6 +1089,7 @@ public class GatewayProperties {
         public void setIncludeSseChunkPreview(boolean includeSseChunkPreview) {
             this.includeSseChunkPreview = includeSseChunkPreview;
         }
+
         /**
          * Gets the sse chunk preview max chars.
          *
@@ -1057,6 +1099,7 @@ public class GatewayProperties {
         public int getSseChunkPreviewMaxChars() {
             return sseChunkPreviewMaxChars;
         }
+
         /**
          * Sets the sse chunk preview max chars.
          *
@@ -1081,6 +1124,7 @@ public class GatewayProperties {
         public int getDefaultTimeout() {
             return defaultTimeout;
         }
+
         /**
          * Sets the default timeout.
          *
@@ -1090,6 +1134,7 @@ public class GatewayProperties {
         public void setDefaultTimeout(int defaultTimeout) {
             this.defaultTimeout = defaultTimeout;
         }
+
         /**
          * Gets the max timeout.
          *
@@ -1099,6 +1144,7 @@ public class GatewayProperties {
         public int getMaxTimeout() {
             return maxTimeout;
         }
+
         /**
          * Sets the max timeout.
          *
@@ -1131,6 +1177,7 @@ public class GatewayProperties {
         public List<String> getAllowedExtensions() {
             return allowedExtensions;
         }
+
         /**
          * Sets the allowed extensions.
          *
@@ -1156,6 +1203,7 @@ public class GatewayProperties {
         public List<FileScanRoot> getScanRoots() {
             return scanRoots;
         }
+
         /**
          * Sets the scan roots.
          *
@@ -1194,6 +1242,7 @@ public class GatewayProperties {
         public String getId() {
             return id;
         }
+
         /**
          * Sets the id.
          *
@@ -1203,6 +1252,7 @@ public class GatewayProperties {
         public void setId(String id) {
             this.id = id;
         }
+
         /**
          * Gets the path.
          *
@@ -1212,6 +1262,7 @@ public class GatewayProperties {
         public String getPath() {
             return path;
         }
+
         /**
          * Sets the path.
          *
@@ -1221,6 +1272,7 @@ public class GatewayProperties {
         public void setPath(String path) {
             this.path = path;
         }
+
         /**
          * Returns the recursive flag.
          *
@@ -1230,6 +1282,7 @@ public class GatewayProperties {
         public boolean isRecursive() {
             return recursive;
         }
+
         /**
          * Updates the recursive flag.
          *
@@ -1239,6 +1292,7 @@ public class GatewayProperties {
         public void setRecursive(boolean recursive) {
             this.recursive = recursive;
         }
+
         /**
          * Gets the exclude dirs.
          *
@@ -1248,6 +1302,7 @@ public class GatewayProperties {
         public List<String> getExcludeDirs() {
             return excludeDirs;
         }
+
         /**
          * Sets the exclude dirs.
          *
@@ -1257,6 +1312,7 @@ public class GatewayProperties {
         public void setExcludeDirs(List<String> excludeDirs) {
             this.excludeDirs = excludeDirs;
         }
+
         /**
          * Gets the max depth.
          *
@@ -1266,6 +1322,7 @@ public class GatewayProperties {
         public int getMaxDepth() {
             return maxDepth;
         }
+
         /**
          * Sets the max depth.
          *
@@ -1275,6 +1332,7 @@ public class GatewayProperties {
         public void setMaxDepth(int maxDepth) {
             this.maxDepth = maxDepth;
         }
+
         /**
          * Gets the max files.
          *
@@ -1284,6 +1342,7 @@ public class GatewayProperties {
         public int getMaxFiles() {
             return maxFiles;
         }
+
         /**
          * Sets the max files.
          *
@@ -1293,6 +1352,7 @@ public class GatewayProperties {
         public void setMaxFiles(int maxFiles) {
             this.maxFiles = maxFiles;
         }
+
         /**
          * Gets the scan timeout ms.
          *
@@ -1302,6 +1362,7 @@ public class GatewayProperties {
         public long getScanTimeoutMs() {
             return scanTimeoutMs;
         }
+
         /**
          * Sets the scan timeout ms.
          *
@@ -1327,6 +1388,7 @@ public class GatewayProperties {
         public String getBaseUrl() {
             return baseUrl;
         }
+
         /**
          * Sets the base url.
          *
@@ -1336,6 +1398,7 @@ public class GatewayProperties {
         public void setBaseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
         }
+
         /**
          * Gets the request timeout ms.
          *
@@ -1345,6 +1408,7 @@ public class GatewayProperties {
         public int getRequestTimeoutMs() {
             return requestTimeoutMs;
         }
+
         /**
          * Sets the request timeout ms.
          *
@@ -1354,6 +1418,7 @@ public class GatewayProperties {
         public void setRequestTimeoutMs(int requestTimeoutMs) {
             this.requestTimeoutMs = requestTimeoutMs;
         }
+
         /**
          * Gets the max package size mb.
          *
@@ -1363,6 +1428,7 @@ public class GatewayProperties {
         public int getMaxPackageSizeMb() {
             return maxPackageSizeMb;
         }
+
         /**
          * Sets the max package size mb.
          *
@@ -1386,6 +1452,7 @@ public class GatewayProperties {
         public String getArtifactsRoot() {
             return artifactsRoot;
         }
+
         /**
          * Sets the artifacts root.
          *

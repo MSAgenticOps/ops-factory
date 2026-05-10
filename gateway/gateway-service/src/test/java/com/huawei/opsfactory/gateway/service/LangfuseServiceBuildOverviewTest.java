@@ -203,7 +203,8 @@ public class LangfuseServiceBuildOverviewTest {
         Method parseTraces = LangfuseService.class.getDeclaredMethod("parseTraces", String.class);
         parseTraces.setAccessible(true);
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> result = (List<Map<String, Object>>) parseTraces.invoke(service, "{\"data\":\"not-array\"}");
+        List<Map<String, Object>> result = (List<Map<String, Object>>) parseTraces.invoke(service,
+                "{\"data\":\"not-array\"}");
 
         assertTrue(result.isEmpty());
     }
@@ -319,7 +320,8 @@ public class LangfuseServiceBuildOverviewTest {
         GatewayProperties props = new GatewayProperties();
         LangfuseService unconfiguredService = new LangfuseService(props);
 
-        List<Map<String, Object>> result = unconfiguredService.getTracesFormatted("2024-01-01", "2024-01-02", 20, false).block();
+        List<Map<String, Object>> result = unconfiguredService.getTracesFormatted("2024-01-01",
+                "2024-01-02", 20, false).block();
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }

@@ -4,21 +4,19 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -35,6 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.annotation.PostConstruct;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Manages host entities with AES-GCM encrypted credentials, SSH connection testing, and cluster-based filtering.
@@ -193,11 +196,13 @@ public class HostService {
         String clusterId = clusterIdObj.toString();
         String mode = resolveClusterMode(clusterId);
         if ("peer".equals(mode)) {
-            throw new IllegalArgumentException("Host role is not allowed in peer cluster mode. Cluster ID: " + clusterId);
+            throw new IllegalArgumentException("Host role is not allowed in peer cluster mode. Cluster ID: "
+                    + clusterId);
         }
         if ("primary-backup".equals(mode)) {
             if (!"primary".equals(role) && !"backup".equals(role)) {
-                throw new IllegalArgumentException("Invalid host role '" + role + "'. Must be 'primary' or 'backup' for primary-backup cluster.");
+                throw new IllegalArgumentException("Invalid host role '" + role + "'. Must be 'primary' or " +
+                        "'backup' for primary-backup cluster.");
             }
         }
     }
@@ -743,7 +748,8 @@ public class HostService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
+            });
         } catch (IOException e) {
             log.error("Failed to read host file: {}", file, e);
             return null;

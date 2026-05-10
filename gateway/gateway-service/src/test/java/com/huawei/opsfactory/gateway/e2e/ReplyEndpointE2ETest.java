@@ -4,29 +4,31 @@
 
 package com.huawei.opsfactory.gateway.e2e;
 
-import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
-import com.huawei.opsfactory.gateway.hook.HookContext;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
-
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.hook.HookContext;
+
+import reactor.core.publisher.Mono;
+
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * E2E tests for ReplyController endpoints.
@@ -62,7 +64,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void sessionReply_authenticatedUser_proxiesToGoosedSessionReply() throws Exception {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), anyString(), eq("test-secret")))
@@ -73,7 +76,9 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"id\":\"u1\",\"role\":\"user\",\"created\":9999999999,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"id\":\"u1\"," +
+                        "\"role\":\"user\",\"created\":9999999999,\"content\":[{\"type\":\"text\",\"text\":" +
+                        "\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().isOk();
         long after = System.currentTimeMillis() / 1000;
@@ -103,10 +108,12 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void sessionEvents_authenticatedUser_proxiesLastEventIdWithoutLegacyRelay() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionEvents(any(), eq(9999), eq("/sessions/session-123/events"),
-                eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq("session-123"), any()))
+                eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq(
+                        "session-123"), any()))
                 .thenReturn(Mono.empty());
 
         webClient.get().uri("/gateway/agents/test-agent/sessions/session-123/events")
@@ -168,7 +175,9 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":" +
+                        "\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}]," +
+                        "\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
                 .expectBody()
@@ -192,7 +201,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void sessionReply_goosedActiveRequest400_returnsConflictActions() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), anyString(), eq("test-secret")))
@@ -207,7 +217,9 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":" +
+                        "\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}]," +
+                        "\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
@@ -232,7 +244,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void sessionReply_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), anyString(), eq("test-secret")))
@@ -242,7 +255,9 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{" +
+                        "\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\"," +
+                        "\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().is5xxServerError()
                 .expectBody()
@@ -260,7 +275,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void sessionEvents_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionEvents(any(), eq(9999), eq("/sessions/session-123/events"),
                 eq("test-secret"), eq(null), eq("test-agent"), eq("alice"), eq("session-123"), any()))
@@ -340,7 +356,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     public void resume_authenticatedUser_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/resume")
@@ -353,7 +370,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .expectBody()
                 .jsonPath("$.session.id").isEqualTo("session-123");
 
-        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString());
     }
 
     /**

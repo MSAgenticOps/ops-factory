@@ -4,6 +4,11 @@
 
 package com.huawei.opsfactory.gateway.e2e;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.MediaType;
@@ -14,15 +19,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * E2E tests for FileCapsuleController endpoints:
  * GET  /agents/{agentId}/file-capsules?sessionId=xxx
  * POST /agents/{agentId}/file-capsules
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -138,7 +139,8 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\",\"files\":[{\"name\":\"out.csv\",\"path\":\"data/out.csv\"}]}")
+                .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\",\"files\":[{\"name\":\"out.csv\"," +
+                        "\"path\":\"data/out.csv\"}]}")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()

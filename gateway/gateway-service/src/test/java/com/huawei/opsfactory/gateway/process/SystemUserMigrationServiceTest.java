@@ -4,8 +4,12 @@
 
 package com.huawei.opsfactory.gateway.process;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -14,9 +18,6 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Test coverage for System User Migration Service.
@@ -65,7 +66,8 @@ public class SystemUserMigrationServiceTest {
         migrationService.migrateLegacySystemUser();
 
         assertFalse(Files.exists(legacyDir));
-        assertTrue(Files.isDirectory(usersDir.resolve(GatewayConstants.SYSTEM_USER).resolve("agents").resolve("test-agent")));
+        assertTrue(Files.isDirectory(usersDir.resolve(GatewayConstants.SYSTEM_USER).resolve(
+                "agents").resolve("test-agent")));
     }
 
     /**
@@ -102,7 +104,8 @@ public class SystemUserMigrationServiceTest {
         migrationService.migrateLegacySystemUser();
 
         assertFalse(Files.exists(usersDir.resolve(SystemUserMigrationService.LEGACY_SYSTEM_USER)));
-        assertTrue(Files.exists(usersDir.resolve(GatewayConstants.SYSTEM_USER).resolve("agents").resolve("legacy-agent").resolve("state.txt")));
+        assertTrue(Files.exists(usersDir.resolve(GatewayConstants.SYSTEM_USER).resolve(
+                "agents").resolve("legacy-agent").resolve("state.txt")));
         assertTrue(Files.exists(existingFile));
     }
 }

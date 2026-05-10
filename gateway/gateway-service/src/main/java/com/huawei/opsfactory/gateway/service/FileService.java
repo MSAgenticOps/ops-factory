@@ -4,10 +4,14 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import static java.util.Map.entry;
+
+import com.huawei.opsfactory.gateway.common.util.PathSanitizer;
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.huawei.opsfactory.gateway.common.util.PathSanitizer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -20,17 +24,15 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-
-import static java.util.Map.entry;
 
 /**
  * Provides file browsing, upload validation, MIME-type resolution, and file-capsule persistence for the gateway.
@@ -148,7 +150,8 @@ public class FileService {
         return files;
     }
 
-    private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
+    private void listRootFiles(
+            FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
         Path dir = root.path();
         if (!Files.isDirectory(dir)) {
             return;
@@ -220,7 +223,8 @@ public class FileService {
         return System.nanoTime() + timeoutMs * 1_000_000L;
     }
 
-    private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
+    private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files,
+                              Set<String> allowedExtensions) throws IOException {
         String name = entry.getFileName().toString();
         int dot = name.lastIndexOf('.');
         String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
@@ -499,7 +503,7 @@ public class FileService {
      * Returns files that are new or have been modified (size or modifiedAt changed).
      */
     public List<Map<String, String>> diffFiles(List<Map<String, Object>> before,
-                                                List<Map<String, Object>> after) {
+                                               List<Map<String, Object>> after) {
         Set<String> allowedExtensions = new HashSet<>();
         List<String> configuredAllowed = gatewayProperties.getFileCapsules() != null
                 ? gatewayProperties.getFileCapsules().getAllowedExtensions()
@@ -568,7 +572,7 @@ public class FileService {
      * Path: {workingDir}/data/{sessionId}/file-capsules.json
      */
     public void persistOutputFiles(Path workingDir, String sessionId, String messageId,
-                                    List<Map<String, String>> files) {
+                                   List<Map<String, String>> files) {
         Path dir = workingDir.resolve("data").resolve(sessionId);
         Path file = dir.resolve(CAPSULE_FILE);
         try {
@@ -579,7 +583,8 @@ public class FileService {
             if (Files.exists(file)) {
                 Map<String, Object> existing = MAPPER.readValue(
                         Files.readString(file, StandardCharsets.UTF_8),
-                        new TypeReference<>() {});
+                        new TypeReference<>() {
+                        });
                 Object raw = existing.get("entries");
                 if (raw instanceof Map<?, ?> rawMap) {
                     for (Map.Entry<?, ?> e : rawMap.entrySet()) {
@@ -625,7 +630,8 @@ public class FileService {
         try {
             Map<String, Object> data = MAPPER.readValue(
                     Files.readString(file, StandardCharsets.UTF_8),
-                    new TypeReference<>() {});
+                    new TypeReference<>() {
+                    });
             Object raw = data.get("entries");
             if (!(raw instanceof Map<?, ?> rawMap)) {
                 return Map.of();

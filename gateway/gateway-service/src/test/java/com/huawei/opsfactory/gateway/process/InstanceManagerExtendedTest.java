@@ -4,9 +4,20 @@
 
 package com.huawei.opsfactory.gateway.process;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -19,22 +30,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 /**
  * Extended tests for InstanceManager covering:
  * - buildEnvironment
  * - Instance limits (per-user and global)
  * - Dead process detection (getOrSpawn with stale entry)
  * - resetStuckRunningSchedules
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -64,7 +66,8 @@ public class InstanceManagerExtendedTest {
         when(agentConfigService.loadAgentConfigYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.loadAgentSecretsYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.getAgentConfigDir(anyString()))
-                .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(0, String.class)));
+                .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(
+                        0, String.class)));
 
         instanceManager = new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService,
                 3000, false, "");
@@ -395,7 +398,8 @@ public class InstanceManagerExtendedTest {
         Process deadProcess = mock(Process.class);
         when(deadProcess.isAlive()).thenReturn(false);
 
-        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L, deadProcess, "test-secret");
+        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L,
+                deadProcess, "test-secret");
         staleInstance.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(staleInstance);
 

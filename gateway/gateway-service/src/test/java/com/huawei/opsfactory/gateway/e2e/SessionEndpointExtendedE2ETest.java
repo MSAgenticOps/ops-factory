@@ -4,15 +4,6 @@
 
 package com.huawei.opsfactory.gateway.e2e;
 
-import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import reactor.core.publisher.Mono;
-
-import java.nio.file.Path;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,6 +11,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+
+import reactor.core.publisher.Mono;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+
+import java.nio.file.Path;
 
 /**
  * Extended E2E tests for SessionController covering previously missing endpoints:
@@ -131,7 +133,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-empty"), anyString()))
-                .thenReturn(Mono.just("{\"id\":\"session-empty\",\"session_type\":\"user\",\"message_count\":0,\"conversation\":[]}"));
+                .thenReturn(Mono.just("{\"id\":\"session-empty\",\"session_type\":\"user\",\"message_count\"" +
+                        ":0,\"conversation\":[]}"));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-empty"),
                 eq(null), anyInt(), anyString()))
                 .thenReturn(Mono.empty());
@@ -186,7 +189,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-conversation"), anyString()))
-                .thenReturn(Mono.just("{\"id\":\"session-conversation\",\"session_type\":\"user\",\"message_count\":0,\"conversation\":[{\"role\":\"user\"}]}"));
+                .thenReturn(Mono.just("{\"id\":\"session-conversation\",\"session_type\":\"user\"," +
+                        "\"message_count\":0,\"conversation\":[{\"role\":\"user\"}]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/sessions/session-conversation/cleanup-empty")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -197,7 +201,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .jsonPath("$.deleted").isEqualTo(false)
                 .jsonPath("$.reason").isEqualTo("has_conversation");
 
-        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-conversation"),
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq(
+                "/sessions/session-conversation"),
                 eq(null), anyInt(), anyString());
     }
 
@@ -212,7 +217,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-scheduled"), anyString()))
-                .thenReturn(Mono.just("{\"id\":\"session-scheduled\",\"session_type\":\"scheduled\",\"message_count\":0,\"conversation\":[]}"));
+                .thenReturn(Mono.just("{\"id\":\"session-scheduled\",\"session_type\"" +
+                        ":\"scheduled\",\"message_count\":0,\"conversation\":[]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/sessions/session-scheduled/cleanup-empty")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -223,7 +229,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .jsonPath("$.deleted").isEqualTo(false)
                 .jsonPath("$.reason").isEqualTo("not_user_session");
 
-        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-scheduled"),
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq(
+                "/sessions/session-scheduled"),
                 eq(null), anyInt(), anyString());
     }
 
@@ -280,7 +287,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
                 .thenReturn(Mono.just(runningInstance));
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions/nonexistent"), anyString()))
                 .thenReturn(Mono.error(org.springframework.web.reactive.function.client.WebClientResponseException
-                        .create(404, "Not Found", org.springframework.http.HttpHeaders.EMPTY, new byte[0], null)));
+                        .create(404, "Not Found", org.springframework.http.HttpHeaders.EMPTY,
+                                new byte[0], null)));
 
         webClient.get().uri("/gateway/agents/test-agent/sessions/nonexistent")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)

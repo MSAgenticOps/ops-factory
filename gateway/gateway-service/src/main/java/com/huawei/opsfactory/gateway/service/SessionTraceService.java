@@ -20,8 +20,8 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -233,7 +233,8 @@ public class SessionTraceService implements DisposableBean {
     private synchronized void cleanupExpiredJobs() {
         Instant cutoff = Instant.now().minus(JOB_TTL);
         jobs.values().stream()
-                .filter(job -> job.status != TraceStatus.RUNNING && job.completedAt != null && job.completedAt.isBefore(cutoff))
+                .filter(job -> job.status != TraceStatus.RUNNING && job.completedAt != null &&
+                        job.completedAt.isBefore(cutoff))
                 .map(job -> job.jobId)
                 .toList()
                 .forEach(this::deleteJob);
@@ -269,14 +270,16 @@ public class SessionTraceService implements DisposableBean {
             return cwd.getParent() != null ? cwd.getParent() : cwd;
         }
         Path parent = cwd.getParent();
-        if (parent != null && Files.isDirectory(parent.resolve("gateway")) && Files.isDirectory(parent.resolve("web-app"))) {
+        if (parent != null && Files.isDirectory(parent.resolve("gateway")) && Files.isDirectory(parent.resolve(
+                "web-app"))) {
             return parent;
         }
         return cwd;
     }
 
     private static Path resolveScriptPath(Path repoRoot) {
-        Path rootScript = repoRoot.resolve("gateway").resolve("scripts").resolve("collect-session-debug.sh").normalize();
+        Path rootScript = repoRoot.resolve("gateway").resolve("scripts").resolve(
+                "collect-session-debug.sh").normalize();
         if (Files.isRegularFile(rootScript)) {
             return rootScript;
         }

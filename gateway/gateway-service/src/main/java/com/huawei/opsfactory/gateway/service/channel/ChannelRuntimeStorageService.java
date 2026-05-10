@@ -4,10 +4,12 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelInstance;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,9 +17,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -41,7 +43,8 @@ public class ChannelRuntimeStorageService {
      * @author x00000000
      * @since 2026-05-09
      */
-    public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {}
+    public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {
+    }
 
     /**
      * Creates the channel runtime storage service instance.
@@ -253,7 +256,8 @@ public class ChannelRuntimeStorageService {
         try {
             Files.createDirectories(runtimeDirectory(channel));
             initializeIfMissing(bindingsFile(channel), Map.of("bindings", List.of()));
-            initializeIfMissing(runtimeDirectory(channel).resolve("inbound-dedup.json"), Map.of("messages", List.of()));
+            initializeIfMissing(runtimeDirectory(channel).resolve("inbound-dedup.json"), Map.of(
+                    "messages", List.of()));
             initializeIfMissing(eventsFile(channel), Map.of("events", List.of()));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to initialize channel runtime for " + channel.id(), e);
@@ -339,7 +343,8 @@ public class ChannelRuntimeStorageService {
                                     .normalize();
                             Path expected = runtimeDirectory(ownerUserId, normalizedType, normalizedChannelId);
                             if (runtimeDirectory.equals(expected) && Files.isDirectory(runtimeDirectory)) {
-                                refs.add(new ChannelRuntimeRef(ownerUserId, normalizedType, normalizedChannelId, runtimeDirectory));
+                                refs.add(new ChannelRuntimeRef(ownerUserId, normalizedType, normalizedChannelId,
+                                        runtimeDirectory));
                             }
                         } catch (IllegalArgumentException e) {
                             // Ignore unrelated/unsafe user directories when scanning channel runtime state.

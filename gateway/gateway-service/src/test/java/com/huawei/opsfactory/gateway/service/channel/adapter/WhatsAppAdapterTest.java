@@ -4,19 +4,21 @@
 
 package com.huawei.opsfactory.gateway.service.channel.adapter;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.huawei.opsfactory.gateway.service.channel.ChannelConfigService;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelVerificationResult;
-import org.junit.Before;
-import org.junit.Test;
+
 import reactor.test.StepVerifier;
 
-import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import java.util.List;
 
 /**
  * Test coverage for Whats App Adapter.
@@ -50,10 +52,12 @@ public class WhatsAppAdapterTest {
      */
     @Test
     public void testConnectedConnectivityUsesOwnerRuntime() {
-        when(channelConfigService.getChannel("whatsapp-main", OWNER_USER_ID)).thenReturn(channelWithStatus("connected", ""));
+        when(channelConfigService.getChannel("whatsapp-main", OWNER_USER_ID)).thenReturn(channelWithStatus(
+                "connected", ""));
 
         StepVerifier.create(adapter.testConnectivity("whatsapp-main", OWNER_USER_ID))
-                .expectNextMatches(result -> result.ok() && "WhatsApp Web session connected".equals(result.message()))
+                .expectNextMatches(result -> result.ok() && "WhatsApp Web session connected".equals(
+                        result.message()))
                 .verifyComplete();
 
         verify(channelConfigService).recordEvent("whatsapp-main", OWNER_USER_ID, "info", "whatsapp.status",

@@ -4,12 +4,19 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.springframework.core.io.Resource;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -17,12 +24,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Extended tests for FileService covering:
@@ -329,9 +330,11 @@ public class FileServiceExtendedTest {
     @Test
     public void testDiffFiles_ignoresInternalMcpLogs() {
         List<Map<String, Object>> before = List.of(
-                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 100L, "2026-04-08T06:58:57Z"));
+                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 100L,
+                        "2026-04-08T06:58:57Z"));
         List<Map<String, Object>> after = List.of(
-                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 120L, "2026-04-08T07:00:27Z"));
+                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 120L,
+                        "2026-04-08T07:00:27Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -348,7 +351,8 @@ public class FileServiceExtendedTest {
     public void testDiffFiles_keepsUserGeneratedFiles() {
         List<Map<String, Object>> before = new ArrayList<>();
         List<Map<String, Object>> after = List.of(
-                snapshot("reports/platform-status.md", "platform-status.md", "md", 256L, "2026-04-08T07:00:27Z"));
+                snapshot("reports/platform-status.md", "platform-status.md", "md", 256L,
+                        "2026-04-08T07:00:27Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -368,8 +372,10 @@ public class FileServiceExtendedTest {
     public void testDiffFiles_keepsSameRelativePathFromDifferentRoots() {
         List<Map<String, Object>> before = new ArrayList<>();
         List<Map<String, Object>> after = List.of(
-                snapshotWithRoot("workingDir", "example-file.md", "example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"),
-                snapshotWithRoot("output", "example-file.md", "output/example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"));
+                snapshotWithRoot("workingDir", "example-file.md", "example-file.md",
+                        "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"),
+                snapshotWithRoot("output", "example-file.md", "output/example-file.md",
+                        "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -488,7 +494,8 @@ public class FileServiceExtendedTest {
     public void testListFiles_recursiveScanRootHonorsConfiguredExcludeDirs() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir",
+                "${userAgentDir}", true);
         root.setExcludeDirs(List.of("tmp-output"));
         filesConfig.setScanRoots(List.of(root));
         properties.setFiles(filesConfig);
@@ -518,7 +525,8 @@ public class FileServiceExtendedTest {
     public void testListFiles_recursiveScanRootHonorsMaxDepth() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir",
+                "${userAgentDir}", true);
         root.setMaxDepth(1);
         filesConfig.setScanRoots(List.of(root));
         properties.setFiles(filesConfig);
@@ -550,7 +558,8 @@ public class FileServiceExtendedTest {
     public void testListFiles_recursiveScanRootHonorsMaxFiles() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir",
+                "${userAgentDir}", true);
         root.setMaxFiles(2);
         filesConfig.setScanRoots(List.of(root));
         properties.setFiles(filesConfig);

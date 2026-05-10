@@ -56,7 +56,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), anyString(), eq("test-secret")))
@@ -66,7 +67,9 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807," +
+                        "\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true," +
+                        "\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().isOk();
     }
@@ -87,11 +90,14 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807," +
+                        "\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true," +
+                        "\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().isEqualTo(413);
 
-        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
+        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(),
+                anyString());
     }
 
     /**
@@ -110,11 +116,14 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807," +
+                        "\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true," +
+                        "\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().isForbidden();
 
-        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
+        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(),
+                anyString());
     }
 
     /**
@@ -132,11 +141,14 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "alice")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
+                .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807," +
+                        "\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true," +
+                        "\"agentVisible\":true}}}")
                 .exchange()
                 .expectStatus().is5xxServerError();
 
-        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(), anyString());
+        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(),
+                anyString());
     }
 
     /**
@@ -152,7 +164,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
                 .thenReturn(Mono.just("{\"modified\":true}"));
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
         when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
                 eq(HttpMethod.POST), eq("{\"modified\":true}"), eq("test-secret")))

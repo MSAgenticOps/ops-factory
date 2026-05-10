@@ -4,25 +4,27 @@
 
 package com.huawei.opsfactory.gateway.e2e;
 
-import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
-import com.huawei.opsfactory.gateway.service.SessionCacheService;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import reactor.core.publisher.Mono;
-
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.service.SessionCacheService;
+
+import reactor.core.publisher.Mono;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * E2E tests for SessionController endpoints:
@@ -50,7 +52,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     @Before
     public void setUp() {
         sessionCacheService.invalidate("alice");
-        runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
+        runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null,
+                "test-secret");
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
         // Mock getUserAgentDir for startSession working_dir injection
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
@@ -69,9 +72,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void startSession_authenticated_callsStartThenResume() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(),
+                anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-123\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/agent/start")
@@ -85,7 +90,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.id").isEqualTo("session-123");
 
         // Verify canonical flow: start → resume(load_model_and_extensions=true)
-        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(),
+                anyInt(), anyString());
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
                 org.mockito.ArgumentMatchers.contains("\"load_model_and_extensions\":true"), anyInt(), anyString());
     }
@@ -100,9 +106,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void startSession_resumeFails_propagatesError() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-123\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.error(new RuntimeException("Extension loading failed")));
 
         webClient.post().uri("/gateway/agents/test-agent/agent/start")
@@ -124,9 +132,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void startSession_resumeReceivesCorrectSessionId() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"abc-def-456\",\"name\":\"New Chat\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"abc-def-456\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/agent/start")
@@ -153,10 +163,13 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
         String startResponse = "{\"id\":\"session-123\",\"name\":\"New Chat\",\"working_dir\":\"/tmp\"}";
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just(startResponse));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
-                .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[{\"name\":\"developer\",\"success\":true}]}"));
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
+                .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":" +
+                        "[{\"name\":\"developer\",\"success\":true}]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/agent/start")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
@@ -182,9 +195,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     public void startSession_invalidJsonBodyFallsBackToWorkingDirPayload() {
         when(instanceManager.getOrSpawn("test-agent", "alice"))
                 .thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"id\":\"session-123\"}"));
-        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(), anyString()))
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(),
+                anyInt(), anyString()))
                 .thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post().uri("/gateway/agents/test-agent/agent/start")
@@ -252,11 +267,14 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listAllSessions_withRunningInstances_aggregatesSessions() {
-        ManagedInstance userInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null, "test-secret");
+        ManagedInstance userInstance = new ManagedInstance("agent-a", "alice", 8001, 111L,
+                null, "test-secret");
         userInstance.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance sysInstance = new ManagedInstance("agent-b", "admin", 8002, 222L, null, "test-secret");
+        ManagedInstance sysInstance = new ManagedInstance("agent-b", "admin", 8002, 222L,
+                null, "test-secret");
         sysInstance.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance otherUserInstance = new ManagedInstance("agent-a", "bob", 8003, 333L, null, "test-secret");
+        ManagedInstance otherUserInstance = new ManagedInstance("agent-a", "bob", 8003, 333L,
+                null, "test-secret");
         otherUserInstance.setStatus(ManagedInstance.Status.RUNNING);
 
         when(instanceManager.getAllInstances())
@@ -283,7 +301,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listAllSessions_stoppedInstancesExcluded() {
-        ManagedInstance stoppedInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null, "test-secret");
+        ManagedInstance stoppedInstance = new ManagedInstance("agent-a", "alice", 8001, 111L,
+                null, "test-secret");
         stoppedInstance.setStatus(ManagedInstance.Status.STOPPED);
 
         when(instanceManager.getAllInstances())
@@ -309,9 +328,11 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listAllSessions_invalidPayloadSkippedAndInvalidDatesUseStringFallback() {
-        ManagedInstance invalidPayloadInstance = new ManagedInstance("agent-a", "alice", 8001, 111L, null, "test-secret");
+        ManagedInstance invalidPayloadInstance = new ManagedInstance("agent-a", "alice", 8001,
+                111L, null, "test-secret");
         invalidPayloadInstance.setStatus(ManagedInstance.Status.RUNNING);
-        ManagedInstance rawArrayInstance = new ManagedInstance("agent-b", "alice", 8002, 222L, null, "test-secret");
+        ManagedInstance rawArrayInstance = new ManagedInstance("agent-b", "alice", 8002, 222L,
+                null, "test-secret");
         rawArrayInstance.setStatus(ManagedInstance.Status.RUNNING);
 
         when(instanceManager.getAllInstances()).thenReturn(List.of(invalidPayloadInstance, rawArrayInstance));

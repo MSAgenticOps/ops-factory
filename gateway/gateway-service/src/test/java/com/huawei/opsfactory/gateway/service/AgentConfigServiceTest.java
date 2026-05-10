@@ -4,8 +4,15 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -17,12 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Test coverage for Agent Config Service.
@@ -350,8 +351,10 @@ public class AgentConfigServiceTest {
         assertNotNull(service.findAgent("new-agent"));
 
         assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve("AGENTS.md")));
-        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve("config").resolve("config.yaml")));
-        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve("config").resolve("secrets.yaml")));
+        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve(
+                "config").resolve("config.yaml")));
+        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve(
+                "config").resolve("secrets.yaml")));
     }
 
     /**
