@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -220,7 +222,9 @@ public class HostService {
                     return modeObj != null ? modeObj.toString() : "peer";
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (IllegalArgumentException e) {
+            log.debug("Unable to resolve cluster mode for missing cluster {}", clusterId);
+        }
         return "peer";
     }
 
@@ -245,7 +249,9 @@ public class HostService {
             if (cluster != null && cluster.get("type") != null) {
                 clusterTypeRaw = cluster.get("type").toString();
             }
-        } catch (Exception ignored) {}
+        } catch (IllegalArgumentException e) {
+            log.debug("Skipping missing cluster {} while syncing host tags", clusterId);
+        }
 
         final String clusterType = clusterTypeRaw;
 
@@ -288,33 +294,29 @@ public class HostService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> host = readHostFile(file);
-                    if (host != null) {
-                        // Mask credential for listing
-                        host.put("credential", "***");
+                Map<String, Object> host = readHostFile(file);
+                if (host != null) {
+                    // Mask credential for listing
+                    host.put("credential", "***");
 
-                        // Filter by tags if provided
-                        if (tags != null && tags.length > 0) {
-                            Object hostTagsObj = host.get("tags");
-                            if (!(hostTagsObj instanceof List<?> hostTags)) {
-                                continue;
-                            }
-                            boolean matches = false;
-                            for (String tag : tags) {
-                                if (hostTags.stream().anyMatch(ht -> String.valueOf(ht).equalsIgnoreCase(tag))) {
-                                    matches = true;
-                                    break;
-                                }
-                            }
-                            if (!matches) {
-                                continue;
+                    // Filter by tags if provided
+                    if (tags != null && tags.length > 0) {
+                        Object hostTagsObj = host.get("tags");
+                        if (!(hostTagsObj instanceof List<?> hostTags)) {
+                            continue;
+                        }
+                        boolean matches = false;
+                        for (String tag : tags) {
+                            if (hostTags.stream().anyMatch(ht -> String.valueOf(ht).equalsIgnoreCase(tag))) {
+                                matches = true;
+                                break;
                             }
                         }
-                        hosts.add(host);
+                        if (!matches) {
+                            continue;
+                        }
                     }
-                } catch (Exception e) {
-                    log.warn("Failed to read host file: {}", file, e);
+                    hosts.add(host);
                 }
             }
         } catch (IOException e) {
@@ -357,7 +359,7 @@ public class HostService {
         if (credentialObj instanceof String credentialValue && !credentialValue.isEmpty()) {
             try {
                 host.put("credential", decrypt(credentialValue));
-            } catch (Exception e) {
+            } catch (GeneralSecurityException | IllegalArgumentException e) {
                 log.warn("Failed to decrypt credential for host {}: {}", id, e.getMessage());
                 // Leave the encrypted value as-is
             }
@@ -408,7 +410,7 @@ public class HostService {
         String rawCredential = credentialObj != null ? credentialObj.toString() : "";
         try {
             host.put("credential", encrypt(rawCredential));
-        } catch (Exception e) {
+        } catch (GeneralSecurityException e) {
             log.error("Failed to encrypt credential for new host {}", id, e);
             throw new RuntimeException("Failed to encrypt credential", e);
         }
@@ -509,7 +511,7 @@ public class HostService {
             if (!"***".equals(rawCredential)) {
                 try {
                     host.put("credential", encrypt(rawCredential));
-                } catch (Exception e) {
+                } catch (GeneralSecurityException e) {
                     log.error("Failed to encrypt credential for host {}", id, e);
                     throw new RuntimeException("Failed to encrypt credential", e);
                 }
@@ -586,17 +588,13 @@ public class HostService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> host = readHostFile(file);
-                    if (host != null) {
-                        Object hostClusterId = host.get("clusterId");
-                        if (clusterId.equals(hostClusterId)) {
-                            host.put("credential", "***");
-                            hosts.add(host);
-                        }
+                Map<String, Object> host = readHostFile(file);
+                if (host != null) {
+                    Object hostClusterId = host.get("clusterId");
+                    if (clusterId.equals(hostClusterId)) {
+                        host.put("credential", "***");
+                        hosts.add(host);
                     }
-                } catch (Exception e) {
-                    log.warn("Failed to read host file: {}", file, e);
                 }
             }
         } catch (IOException e) {
@@ -723,7 +721,7 @@ public class HostService {
             result.put("message", "Connection successful");
             result.put("latency", latency + "ms");
             log.info("SSH connection test succeeded hostId={} ip={} port={} latencyMs={}", id, hostname, port, latency);
-        } catch (Exception e) {
+        } catch (JSchException | RuntimeException e) {
             long latency = System.currentTimeMillis() - start;
             log.warn(
                     "SSH connection test failed hostId={} ip={} port={} latencyMs={} error={}",
@@ -766,7 +764,7 @@ public class HostService {
 
     // ── AES-GCM Encryption ───────────────────────────────────────────
 
-    private String encrypt(String plaintext) throws Exception {
+    private String encrypt(String plaintext) throws GeneralSecurityException {
         byte[] iv = new byte[GCM_IV_LENGTH];
         new SecureRandom().nextBytes(iv);
 
@@ -784,7 +782,7 @@ public class HostService {
         return Base64.getEncoder().encodeToString(combined);
     }
 
-    private String decrypt(String encryptedBase64) throws Exception {
+    private String decrypt(String encryptedBase64) throws GeneralSecurityException {
         byte[] combined = Base64.getDecoder().decode(encryptedBase64);
 
         byte[] iv = new byte[GCM_IV_LENGTH];

@@ -142,30 +142,26 @@ public class BusinessServiceService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> bs = readFile(file);
-                    if (bs == null) {
+                Map<String, Object> bs = readFile(file);
+                if (bs == null) {
+                    continue;
+                }
+                // Filter by groupId
+                if (groupId != null && !groupId.isEmpty()) {
+                    Object bsGroupId = bs.get("groupId");
+                    if (!groupId.equals(bsGroupId)) {
                         continue;
                     }
-                    // Filter by groupId
-                    if (groupId != null && !groupId.isEmpty()) {
-                        Object bsGroupId = bs.get("groupId");
-                        if (!groupId.equals(bsGroupId)) {
-                            continue;
-                        }
-                    }
-                    // Filter by hostId — check if hostIds list contains it
-                    if (hostId != null && !hostId.isEmpty()) {
-                        @SuppressWarnings("unchecked")
-                        List<String> hostIds = (List<String>) bs.get("hostIds");
-                        if (hostIds == null || !hostIds.contains(hostId)) {
-                            continue;
-                        }
-                    }
-                    services.add(bs);
-                } catch (Exception e) {
-                    log.warn("Failed to read business-service file: {}", file, e);
                 }
+                // Filter by hostId — check if hostIds list contains it
+                if (hostId != null && !hostId.isEmpty()) {
+                    @SuppressWarnings("unchecked")
+                    List<String> hostIds = (List<String>) bs.get("hostIds");
+                    if (hostIds == null || !hostIds.contains(hostId)) {
+                        continue;
+                    }
+                }
+                services.add(bs);
             }
         } catch (IOException e) {
             log.error("Failed to list business-services from {}", businessServicesDir, e);
@@ -319,7 +315,7 @@ public class BusinessServiceService {
             try {
                 Map<String, Object> host = hostService.getHost(hid);
                 resolvedHosts.add(host);
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.warn("Host {} not found for business service {}", hid, id);
             }
         }
@@ -345,7 +341,7 @@ public class BusinessServiceService {
         for (String hid : hostIds) {
             try {
                 hosts.add(hostService.getHost(hid));
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.warn("Host {} not found for business service {}", hid, id);
             }
         }
@@ -370,7 +366,7 @@ public class BusinessServiceService {
                 Map<String, Object> h = hostService.getHost(hid);
                 hostMap.put(hid, h);
                 entryHostIds.put(hid, true);
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.warn("Entry host {} not found for business service {}", hid, id);
             }
         }
@@ -390,7 +386,9 @@ public class BusinessServiceService {
                         Map<String, Object> th = hostService.getHost(targetId);
                         hostMap.put(targetId, th);
                         nextFrontier.add(targetId);
-                    } catch (Exception ignored) {}
+                    } catch (IllegalArgumentException e) {
+                        log.debug("Skipping missing downstream host {} for business service {}", targetId, id);
+                    }
                 }
             }
             frontier = nextFrontier;
@@ -669,13 +667,9 @@ public class BusinessServiceService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel != null) {
-                        relations.add(rel);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read relation file: {}", file, e);
+                Map<String, Object> rel = readFile(file);
+                if (rel != null) {
+                    relations.add(rel);
                 }
             }
         } catch (IOException e) {

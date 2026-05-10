@@ -127,45 +127,41 @@ public class HostRelationService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel == null) {
+                Map<String, Object> rel = readFile(file);
+                if (rel == null) {
+                    continue;
+                }
+                // Filter by hostId
+                if (hostId != null && !hostId.isEmpty()) {
+                    String relSourceId = (String) rel.get("sourceHostId");
+                    String targetId = (String) rel.get("targetHostId");
+                    if (!hostId.equals(relSourceId) && !hostId.equals(targetId)) {
                         continue;
                     }
-                    // Filter by hostId
-                    if (hostId != null && !hostId.isEmpty()) {
-                        String relSourceId = (String) rel.get("sourceHostId");
-                        String targetId = (String) rel.get("targetHostId");
-                        if (!hostId.equals(relSourceId) && !hostId.equals(targetId)) {
-                            continue;
-                        }
-                    }
-                    // Filter by groupId/clusterId
-                    if (targetHostIds != null) {
-                        String relSourceId = (String) rel.get("sourceHostId");
-                        String targetId = (String) rel.get("targetHostId");
-                        if (!targetHostIds.contains(relSourceId) && !targetHostIds.contains(targetId)) {
-                            continue;
-                        }
-                    }
-                    // Filter by sourceType
-                    if (sourceType != null && !sourceType.isEmpty()) {
-                        String relSourceType = (String) rel.getOrDefault("sourceType", "host");
-                        if (!sourceType.equals(relSourceType)) {
-                            continue;
-                        }
-                    }
-                    // Filter by sourceId (sourceHostId)
-                    if (sourceId != null && !sourceId.isEmpty()) {
-                        String relSourceId = (String) rel.get("sourceHostId");
-                        if (!sourceId.equals(relSourceId)) {
-                            continue;
-                        }
-                    }
-                    relations.add(rel);
-                } catch (Exception e) {
-                    log.warn("Failed to read relation file: {}", file, e);
                 }
+                // Filter by groupId/clusterId
+                if (targetHostIds != null) {
+                    String relSourceId = (String) rel.get("sourceHostId");
+                    String targetId = (String) rel.get("targetHostId");
+                    if (!targetHostIds.contains(relSourceId) && !targetHostIds.contains(targetId)) {
+                        continue;
+                    }
+                }
+                // Filter by sourceType
+                if (sourceType != null && !sourceType.isEmpty()) {
+                    String relSourceType = (String) rel.getOrDefault("sourceType", "host");
+                    if (!sourceType.equals(relSourceType)) {
+                        continue;
+                    }
+                }
+                // Filter by sourceId (sourceHostId)
+                if (sourceId != null && !sourceId.isEmpty()) {
+                    String relSourceId = (String) rel.get("sourceHostId");
+                    if (!sourceId.equals(relSourceId)) {
+                        continue;
+                    }
+                }
+                relations.add(rel);
             }
         } catch (IOException e) {
             log.error("Failed to list relations from {}", relationsDir, e);
@@ -382,42 +378,42 @@ public class HostRelationService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel == null) {
-                        continue;
-                    }
-                    // Skip business-service relations; they are synthesized by enrichWithBusinessServices
-                    String relSourceType = (String) rel.getOrDefault("sourceType", "host");
-                    if ("business-service".equals(relSourceType)) {
-                        continue;
-                    }
-                    String sourceId = (String) rel.get("sourceHostId");
-                    String targetId = (String) rel.get("targetHostId");
-                    boolean added = false;
-                    // Outgoing: source is in the selected group/cluster → fetch target as +1-hop
-                    if (hostMap.containsKey(sourceId)) {
-                        allRelations.add(rel);
-                        added = true;
-                        if (!hostMap.containsKey(targetId)) {
-                            try {
-                                Map<String, Object> th = hostService.getHost(targetId);
-                                hostMap.put(targetId, th);
-                            } catch (Exception ignored) {}
+                Map<String, Object> rel = readFile(file);
+                if (rel == null) {
+                    continue;
+                }
+                // Skip business-service relations; they are synthesized by enrichWithBusinessServices
+                String relSourceType = (String) rel.getOrDefault("sourceType", "host");
+                if ("business-service".equals(relSourceType)) {
+                    continue;
+                }
+                String sourceId = (String) rel.get("sourceHostId");
+                String targetId = (String) rel.get("targetHostId");
+                boolean added = false;
+                // Outgoing: source is in the selected group/cluster → fetch target as +1-hop
+                if (hostMap.containsKey(sourceId)) {
+                    allRelations.add(rel);
+                    added = true;
+                    if (!hostMap.containsKey(targetId)) {
+                        try {
+                            Map<String, Object> th = hostService.getHost(targetId);
+                            hostMap.put(targetId, th);
+                        } catch (IllegalArgumentException e) {
+                            log.debug("Skipping missing target host {} while building topology", targetId);
                         }
                     }
-                    // Incoming: target is in the selected group/cluster → fetch source as +1-hop
-                    if (hostMap.containsKey(targetId) && !added) {
-                        allRelations.add(rel);
-                        if (!hostMap.containsKey(sourceId)) {
-                            try {
-                                Map<String, Object> sh = hostService.getHost(sourceId);
-                                hostMap.put(sourceId, sh);
-                            } catch (Exception ignored) {}
+                }
+                // Incoming: target is in the selected group/cluster → fetch source as +1-hop
+                if (hostMap.containsKey(targetId) && !added) {
+                    allRelations.add(rel);
+                    if (!hostMap.containsKey(sourceId)) {
+                        try {
+                            Map<String, Object> sh = hostService.getHost(sourceId);
+                            hostMap.put(sourceId, sh);
+                        } catch (IllegalArgumentException e) {
+                            log.debug("Skipping missing source host {} while building topology", sourceId);
                         }
                     }
-                } catch (Exception e) {
-                    log.warn("Failed to read relation file: {}", file, e);
                 }
             }
         } catch (IOException e) {
@@ -509,8 +505,8 @@ public class HostRelationService {
                 } else {
                     downstream.add(entry);
                 }
-            } catch (Exception ignored) {
-                // Neighbor host may have been deleted
+            } catch (IllegalArgumentException e) {
+                log.debug("Skipping missing neighbor host {} while building host relation topology", neighborId);
             }
         }
 
