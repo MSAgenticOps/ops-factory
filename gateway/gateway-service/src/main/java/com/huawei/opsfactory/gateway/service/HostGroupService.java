@@ -86,13 +86,9 @@ public class HostGroupService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> group = readFile(file);
-                    if (group != null) {
-                        groups.add(group);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read group file: {}", file, e);
+                Map<String, Object> group = readFile(file);
+                if (group != null) {
+                    groups.add(group);
                 }
             }
         } catch (IOException e) {

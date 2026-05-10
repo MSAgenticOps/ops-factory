@@ -88,13 +88,9 @@ public class SopService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> sop = readSopFile(file);
-                    if (sop != null) {
-                        sops.add(sop);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read SOP file: {}", file, e);
+                Map<String, Object> sop = readSopFile(file);
+                if (sop != null) {
+                    sops.add(sop);
                 }
             }
         } catch (IOException e) {
@@ -292,13 +288,9 @@ public class SopService {
                     if (!Files.isRegularFile(file)) {
                         continue;
                     }
-                    try {
-                        Map<String, Object> sop = readSopFile(file);
-                        if (sop != null && id.equals(sop.get("id"))) {
-                            return file;
-                        }
-                    } catch (Exception e) {
-                        // skip unreadable files
+                    Map<String, Object> sop = readSopFile(file);
+                    if (sop != null && id.equals(sop.get("id"))) {
+                        return file;
                     }
                 }
             } catch (IOException e) {

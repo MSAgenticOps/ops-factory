@@ -84,13 +84,9 @@ public class ClusterTypeService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> ct = readFile(file);
-                    if (ct != null) {
-                        types.add(ct);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read cluster-type file: {}", file, e);
+                Map<String, Object> ct = readFile(file);
+                if (ct != null) {
+                    types.add(ct);
                 }
             }
         } catch (IOException e) {

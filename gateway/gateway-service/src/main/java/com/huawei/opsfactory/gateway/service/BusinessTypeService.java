@@ -84,13 +84,9 @@ public class BusinessTypeService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> bt = readFile(file);
-                    if (bt != null) {
-                        types.add(bt);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read business-type file: {}", file, e);
+                Map<String, Object> bt = readFile(file);
+                if (bt != null) {
+                    types.add(bt);
                 }
             }
         } catch (IOException e) {

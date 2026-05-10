@@ -99,29 +99,25 @@ public class ClusterService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> cluster = readFile(file);
-                    if (cluster == null) {
+                Map<String, Object> cluster = readFile(file);
+                if (cluster == null) {
+                    continue;
+                }
+                // Filter by groupId
+                if (groupId != null && !groupId.isEmpty()) {
+                    Object cg = cluster.get("groupId");
+                    if (!groupId.equals(cg)) {
                         continue;
                     }
-                    // Filter by groupId
-                    if (groupId != null && !groupId.isEmpty()) {
-                        Object cg = cluster.get("groupId");
-                        if (!groupId.equals(cg)) {
-                            continue;
-                        }
-                    }
-                    // Filter by type
-                    if (type != null && !type.isEmpty()) {
-                        Object ct = cluster.get("type");
-                        if (!type.equalsIgnoreCase(ct != null ? ct.toString() : "")) {
-                            continue;
-                        }
-                    }
-                    clusters.add(cluster);
-                } catch (Exception e) {
-                    log.warn("Failed to read cluster file: {}", file, e);
                 }
+                // Filter by type
+                if (type != null && !type.isEmpty()) {
+                    Object ct = cluster.get("type");
+                    if (!type.equalsIgnoreCase(ct != null ? ct.toString() : "")) {
+                        continue;
+                    }
+                }
+                clusters.add(cluster);
             }
         } catch (IOException e) {
             log.error("Failed to list clusters from {}", clustersDir, e);
