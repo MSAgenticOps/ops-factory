@@ -58,9 +58,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests system as admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSystem_asAdmin() {
@@ -84,9 +81,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests system non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSystem_nonAdminForbidden() {
@@ -99,9 +93,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests instances.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testInstances() {
@@ -129,9 +120,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests instances non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testInstances_nonAdminForbidden() {
@@ -144,9 +132,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests metrics empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMetrics_empty() {
@@ -169,9 +154,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests metrics with snapshots.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMetrics_withSnapshots() {
@@ -224,9 +206,6 @@ public class InternalRuntimeSourceControllerTest {
 
     /**
      * Tests metrics non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMetrics_nonAdminForbidden() {

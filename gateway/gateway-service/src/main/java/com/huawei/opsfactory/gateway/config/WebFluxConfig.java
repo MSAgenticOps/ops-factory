@@ -4,9 +4,6 @@
 
 package com.huawei.opsfactory.gateway.config;
 
-import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -14,7 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Mono;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * WebFlux configuration that registers the CORS filter and related web-layer beans.
@@ -39,8 +39,7 @@ public class WebFluxConfig {
     /**
      * Creates and configures the CORS filter bean.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @Bean
     @Order(0)
@@ -57,10 +56,8 @@ public class WebFluxConfig {
                 headers.set("Vary", "Origin");
             }
             headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            headers.set(
-                    "Access-Control-Allow-Headers",
-                    "x-secret-key, x-user-id, x-request-id, content-type, authorization"
-            );
+            headers.set("Access-Control-Allow-Headers",
+                "x-secret-key, x-user-id, x-request-id, content-type, authorization");
             headers.set("Access-Control-Expose-Headers", "*");
             headers.set("Access-Control-Max-Age", "3600");
 
@@ -86,9 +83,9 @@ public class WebFluxConfig {
         }
 
         Set<String> exactOrigins = Arrays.stream(configured.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.toSet());
         return exactOrigins.contains(requestOrigin) ? requestOrigin : null;
     }
 }

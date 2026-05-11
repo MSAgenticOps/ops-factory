@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.common.model.ResidentInstanceTarget;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 
@@ -28,6 +29,7 @@ import java.io.FileWriter;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,16 +47,17 @@ public class InstanceManagerExtendedTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private InstanceManager instanceManager;
+
     private GatewayProperties properties;
+
     private PortAllocator portAllocator;
+
     private RuntimePreparer runtimePreparer;
+
     private AgentConfigService agentConfigService;
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -65,19 +68,18 @@ public class InstanceManagerExtendedTest {
         agentConfigService = mock(AgentConfigService.class);
         when(agentConfigService.loadAgentConfigYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.loadAgentSecretsYaml(anyString())).thenReturn(Map.of());
+        when(agentConfigService.getResidentInstances()).thenReturn(List.of());
         when(agentConfigService.getAgentConfigDir(anyString()))
-                .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(
-                        0, String.class)));
+            .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(0, String.class)));
 
-        instanceManager = new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService,
-                3000, false, "");
+        instanceManager =
+            new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 3000, false, "");
     }
 
     /**
      * Tests build environment core env vars.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_coreEnvVars() throws Exception {
@@ -87,12 +89,12 @@ public class InstanceManagerExtendedTest {
         when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of());
         when(agentConfigService.getAgentConfigDir("agent1")).thenReturn(configRoot);
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(instanceManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("9000", env.get("GOOSE_PORT"));
         assertEquals("127.0.0.1", env.get("GOOSE_HOST"));
@@ -109,28 +111,23 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment merges agent config.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_mergesAgentConfig() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
         Path configRoot = tempFolder.getRoot().toPath().resolve("agent-config");
-        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of(
-                "GOOSE_PROVIDER", "openai",
-                "GOOSE_MODEL", "gpt-4"
-        ));
-        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of(
-                "OPENAI_API_KEY", "sk-test"
-        ));
+        when(agentConfigService.loadAgentConfigYaml("agent1"))
+            .thenReturn(Map.of("GOOSE_PROVIDER", "openai", "GOOSE_MODEL", "gpt-4"));
+        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of("OPENAI_API_KEY", "sk-test"));
         when(agentConfigService.getAgentConfigDir("agent1")).thenReturn(configRoot);
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(instanceManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("openai", env.get("GOOSE_PROVIDER"));
         assertEquals("gpt-4", env.get("GOOSE_MODEL"));
@@ -142,27 +139,22 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment secrets override config.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_secretsOverrideConfig() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
         Path configRoot = tempFolder.getRoot().toPath().resolve("agent-config");
-        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of(
-                "API_KEY", "from-config"
-        ));
-        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of(
-                "API_KEY", "from-secrets"
-        ));
+        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of("API_KEY", "from-config"));
+        when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of("API_KEY", "from-secrets"));
         when(agentConfigService.getAgentConfigDir("agent1")).thenReturn(configRoot);
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(instanceManager, "agent1", "user1", 9000, runtimeRoot);
 
         // Secrets should override config
         assertEquals("from-secrets", env.get("API_KEY"));
@@ -171,23 +163,21 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment non scalar values skipped.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_nonScalarValuesSkipped() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
-        when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of(
-                "SIMPLE", "value",
-                "NESTED", Map.of("key", "val") // non-scalar, should be skipped
-        ));
+        when(agentConfigService.loadAgentConfigYaml("agent1"))
+            .thenReturn(Map.of("SIMPLE", "value", "NESTED", Map.of("key", "val") // non-scalar, should be skipped
+            ));
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(instanceManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("value", env.get("SIMPLE"));
         assertNull(env.get("NESTED"));
@@ -196,46 +186,44 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment gateway url http when ssl disabled.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayUrl_httpWhenSslDisabled() throws Exception {
         // Default setUp uses serverSslEnabled=false, serverPort=3000
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                instanceManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(instanceManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("http://127.0.0.1:3000", env.get("GATEWAY_URL"));
         assertNull("NODE_TLS_REJECT_UNAUTHORIZED should not be set when SSL disabled",
-                env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
+            env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
     }
 
     /**
      * Tests build environment gateway url https when ssl enabled.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayUrl_httpsWhenSslEnabled() throws Exception {
         // Create a new InstanceManager with SSL enabled and custom port
-        InstanceManager sslManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 3443, true, "");
+        InstanceManager sslManager =
+            new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 3443, true, "");
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                sslManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(sslManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("https://127.0.0.1:3443", env.get("GATEWAY_URL"));
         assertEquals("0", env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
@@ -244,22 +232,21 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment gateway url default port.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayUrl_defaultPort() throws Exception {
-        InstanceManager defaultManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 8080, false, "");
+        InstanceManager defaultManager =
+            new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 8080, false, "");
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                defaultManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(defaultManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("http://127.0.0.1:8080", env.get("GATEWAY_URL"));
     }
@@ -267,23 +254,22 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment gateway api password set when provided.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_setWhenProvided() throws Exception {
         // Create InstanceManager with API password set
         InstanceManager passwordManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 8080, false, "my-secret-password");
+            agentConfigService, 8080, false, "my-secret-password");
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                passwordManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(passwordManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("my-secret-password", env.get("GATEWAY_API_PASSWORD"));
     }
@@ -291,23 +277,22 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment gateway api password set to different value.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_setToDifferentValue() throws Exception {
         // Create InstanceManager with a different API password
         InstanceManager passwordManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 8080, false, "another-password-123");
+            agentConfigService, 8080, false, "another-password-123");
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                passwordManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(passwordManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals("another-password-123", env.get("GATEWAY_API_PASSWORD"));
     }
@@ -315,91 +300,82 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests build environment gateway api password not set when empty.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_notSetWhenEmpty() throws Exception {
         // Create InstanceManager with empty API password (default behavior)
-        InstanceManager noPasswordManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 8080, false, "");
+        InstanceManager noPasswordManager =
+            new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 8080, false, "");
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                noPasswordManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(noPasswordManager, "agent1", "user1", 9000, runtimeRoot);
 
-        assertNull("GATEWAY_API_PASSWORD should not be set when password is empty",
-                env.get("GATEWAY_API_PASSWORD"));
+        assertNull("GATEWAY_API_PASSWORD should not be set when password is empty", env.get("GATEWAY_API_PASSWORD"));
     }
 
     /**
      * Tests build environment gateway api password not set when null.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_notSetWhenNull() throws Exception {
         // Create InstanceManager with null API password
-        InstanceManager nullPasswordManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 8080, false, null);
+        InstanceManager nullPasswordManager =
+            new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 8080, false, null);
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                nullPasswordManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(nullPasswordManager, "agent1", "user1", 9000, runtimeRoot);
 
-        assertNull("GATEWAY_API_PASSWORD should not be set when password is null",
-                env.get("GATEWAY_API_PASSWORD"));
+        assertNull("GATEWAY_API_PASSWORD should not be set when password is null", env.get("GATEWAY_API_PASSWORD"));
     }
 
     /**
      * Tests build environment gateway api password with special characters.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_withSpecialCharacters() throws Exception {
         // Test password with special characters to ensure it's properly escaped
         String specialPassword = "p@$$w0rd!#*&^%$";
         InstanceManager specialPasswordManager = new InstanceManager(properties, portAllocator, runtimePreparer,
-                agentConfigService, 8080, false, specialPassword);
+            agentConfigService, 8080, false, specialPassword);
 
         Path runtimeRoot = tempFolder.getRoot().toPath();
 
-        Method buildEnv = InstanceManager.class.getDeclaredMethod(
-                "buildEnvironment", String.class, String.class, int.class, Path.class);
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
         buildEnv.setAccessible(true);
         @SuppressWarnings("unchecked")
-        Map<String, String> env = (Map<String, String>) buildEnv.invoke(
-                specialPasswordManager, "agent1", "user1", 9000, runtimeRoot);
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(specialPasswordManager, "agent1", "user1", 9000, runtimeRoot);
 
         assertEquals(specialPassword, env.get("GATEWAY_API_PASSWORD"));
     }
 
     /**
      * Tests get or spawn dead process removes stale entry.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetOrSpawn_deadProcess_removesStaleEntry() {
         Process deadProcess = mock(Process.class);
         when(deadProcess.isAlive()).thenReturn(false);
 
-        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L,
-                deadProcess, "test-secret");
+        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L, deadProcess, "test-secret");
         staleInstance.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(staleInstance);
 
@@ -415,15 +391,14 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests reset stuck running schedules fixes stuck jobs.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testResetStuckRunningSchedules_fixesStuckJobs() throws Exception {
         File dataDir = tempFolder.newFolder("data");
         File scheduleFile = new File(dataDir, "schedule.json");
-        String content = "[{\"id\":\"job1\",\"currently_running\":true,\"current_session_id\":\"s1\"," +
-                "\"process_start_time\":\"2024-01-01\"},{\"id\":\"job2\",\"currently_running\":false}]";
+        String content = "[{\"id\":\"job1\",\"currently_running\":true,\"current_session_id\":\"s1\","
+            + "\"process_start_time\":\"2024-01-01\"},{\"id\":\"job2\",\"currently_running\":false}]";
         try (FileWriter w = new FileWriter(scheduleFile)) {
             w.write(content);
         }
@@ -442,8 +417,7 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests reset stuck running schedules no stuck jobs no change.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testResetStuckRunningSchedules_noStuckJobs_noChange() throws Exception {
@@ -468,8 +442,7 @@ public class InstanceManagerExtendedTest {
     /**
      * Tests reset stuck running schedules no schedule file noop.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testResetStuckRunningSchedules_noScheduleFile_noop() throws Exception {
@@ -481,9 +454,6 @@ public class InstanceManagerExtendedTest {
 
     /**
      * Tests per user limit enforced.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPerUserLimitEnforced() {
@@ -502,18 +472,13 @@ public class InstanceManagerExtendedTest {
         addInstanceDirectly(inst2);
 
         // Third spawn for user1 should fail with limit error
-        IllegalStateException error = assertThrows(
-                IllegalStateException.class,
-                () -> instanceManager.getOrSpawn("agent3", "user1").block()
-        );
+        IllegalStateException error =
+            assertThrows(IllegalStateException.class, () -> instanceManager.getOrSpawn("agent3", "user1").block());
         assertTrue(error.getMessage().contains("Per-user instance limit"));
     }
 
     /**
      * Tests global limit enforced.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGlobalLimitEnforced() {
@@ -531,18 +496,13 @@ public class InstanceManagerExtendedTest {
         addInstanceDirectly(inst2);
 
         // Third spawn should fail with global limit error
-        IllegalStateException error = assertThrows(
-                IllegalStateException.class,
-                () -> instanceManager.getOrSpawn("agent1", "user3").block()
-        );
+        IllegalStateException error =
+            assertThrows(IllegalStateException.class, () -> instanceManager.getOrSpawn("agent1", "user3").block());
         assertTrue(error.getMessage().contains("Global instance limit"));
     }
 
     /**
      * Tests stopped instances not counted for per user limit.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStoppedInstancesNotCountedForPerUserLimit() {
@@ -559,11 +519,34 @@ public class InstanceManagerExtendedTest {
 
         // Spawning a new agent should still fail (doSpawn will fail without binary),
         // but NOT because of per-user limit — the stopped instance doesn't count.
-        RuntimeException error = assertThrows(
-                RuntimeException.class,
-                () -> instanceManager.getOrSpawn("agent2", "user1").block()
-        );
+        RuntimeException error =
+            assertThrows(RuntimeException.class, () -> instanceManager.getOrSpawn("agent2", "user1").block());
         assertFalse(error.getMessage().contains("Per-user instance limit"));
+    }
+
+    /**
+     * Tests auto start resident instances ignores instance limit errors.
+     */
+    @Test
+    public void testAutoStartResidentInstances_ignoresInstanceLimitErrors() {
+        properties.getLimits().setMaxInstancesPerUser(1);
+        properties.getLimits().setMaxInstancesGlobal(50);
+
+        Process aliveProcess = mock(Process.class);
+        when(aliveProcess.isAlive()).thenReturn(true);
+
+        ManagedInstance existing = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess, "test-secret");
+        existing.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(existing);
+
+        when(agentConfigService.getResidentInstances())
+            .thenReturn(List.of(new ResidentInstanceTarget("user1", "agent2")));
+
+        instanceManager.autoStartResidentInstances();
+
+        assertEquals(1, instanceManager.getAllInstances().size());
+        assertNotNull(instanceManager.getInstance("agent1", "user1"));
+        assertNull(instanceManager.getInstance("agent2", "user1"));
     }
 
     /**
@@ -578,7 +561,7 @@ public class InstanceManagerExtendedTest {
             field.setAccessible(true);
             @SuppressWarnings("unchecked")
             java.util.concurrent.ConcurrentHashMap<String, ManagedInstance> instances =
-                    (java.util.concurrent.ConcurrentHashMap<String, ManagedInstance>) field.get(instanceManager);
+                (java.util.concurrent.ConcurrentHashMap<String, ManagedInstance>) field.get(instanceManager);
             instances.put(instance.getKey(), instance);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);

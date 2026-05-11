@@ -35,9 +35,6 @@ public class WeChatAdapterTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -47,9 +44,6 @@ public class WeChatAdapterTest {
 
     /**
      * Tests connected connectivity.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConnectedConnectivity() {
@@ -66,9 +60,6 @@ public class WeChatAdapterTest {
 
     /**
      * Tests pending connectivity.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPendingConnectivity() {
@@ -85,9 +76,6 @@ public class WeChatAdapterTest {
 
     /**
      * Tests error connectivity uses last error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testErrorConnectivityUsesLastError() {

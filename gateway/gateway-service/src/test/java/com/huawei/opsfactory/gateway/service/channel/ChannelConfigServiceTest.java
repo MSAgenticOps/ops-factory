@@ -54,9 +54,6 @@ public class ChannelConfigServiceTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -76,8 +73,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the create channel separates config and runtime state operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void createChannelSeparatesConfigAndRuntimeState() throws Exception {
@@ -117,8 +113,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the runtime state is read from user directory only operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void runtimeStateIsReadFromUserDirectoryOnly() throws Exception {
@@ -152,8 +147,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the shared config uses independent runtime per user operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void sharedConfigUsesIndependentRuntimePerUser() throws Exception {
@@ -190,8 +184,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the delete channel removes config and user runtime directories operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void deleteChannelRemovesConfigAndUserRuntimeDirectories() throws Exception {
@@ -216,9 +209,6 @@ public class ChannelConfigServiceTest {
 
     /**
      * Executes the update channel rejects type changes operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void updateChannelRejectsTypeChanges() {
@@ -234,9 +224,6 @@ public class ChannelConfigServiceTest {
 
     /**
      * Executes the auth state dir cannot escape user runtime directory operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void authStateDirCannotEscapeUserRuntimeDirectory() {
@@ -267,9 +254,6 @@ public class ChannelConfigServiceTest {
 
     /**
      * Executes the owner user id allows existing user id characters but rejects path traversal operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void ownerUserIdAllowsExistingUserIdCharactersButRejectsPathTraversal() {
@@ -288,8 +272,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the invalid config channel id is ignored operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void invalidConfigChannelIdIsIgnored() throws Exception {
@@ -315,8 +298,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the binding and dedup write only to user runtime directory operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void bindingAndDedupWriteOnlyToUserRuntimeDirectory() throws Exception {
@@ -346,8 +328,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the whatsapp login initializes user runtime directory only operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void whatsappLoginInitializesUserRuntimeDirectoryOnly() throws Exception {
@@ -379,8 +360,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the whatsapp message pump uses user runtime directories only operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void whatsappMessagePumpUsesUserRuntimeDirectoriesOnly() throws Exception {
@@ -455,8 +435,7 @@ public class ChannelConfigServiceTest {
     /**
      * Executes the wechat login initializes user runtime directory only operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void wechatLoginInitializesUserRuntimeDirectoryOnly() throws Exception {

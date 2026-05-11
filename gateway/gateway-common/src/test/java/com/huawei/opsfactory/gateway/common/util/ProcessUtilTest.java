@@ -20,8 +20,7 @@ public class ProcessUtilTest {
     /**
      * Tests is alive running process.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testIsAlive_runningProcess() throws Exception {
@@ -36,8 +35,7 @@ public class ProcessUtilTest {
     /**
      * Tests is alive dead process.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testIsAlive_deadProcess() throws Exception {
@@ -49,8 +47,7 @@ public class ProcessUtilTest {
     /**
      * Tests get pid returns positive.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testGetPid_returnsPositive() throws Exception {
@@ -66,8 +63,7 @@ public class ProcessUtilTest {
     /**
      * Tests stop gracefully.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testStopGracefully() throws Exception {
@@ -83,8 +79,7 @@ public class ProcessUtilTest {
     /**
      * Tests stop gracefully already dead.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testStopGracefully_alreadyDead() throws Exception {

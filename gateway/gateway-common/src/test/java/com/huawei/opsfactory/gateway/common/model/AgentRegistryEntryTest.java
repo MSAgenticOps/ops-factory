@@ -18,9 +18,6 @@ public class AgentRegistryEntryTest {
 
     /**
      * Tests record accessors.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRecordAccessors() {
@@ -31,9 +28,6 @@ public class AgentRegistryEntryTest {
 
     /**
      * Tests record equality.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRecordEquality() {
@@ -45,9 +39,6 @@ public class AgentRegistryEntryTest {
 
     /**
      * Tests record accessors with different values.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRecordAccessors_withDifferentValues() {

@@ -4,16 +4,17 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -26,9 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
+
 /**
  * @deprecated Use {@link ClusterRelationService} instead. Host-level relations are replaced by cluster-level relations.
- *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -36,11 +38,15 @@ import java.util.UUID;
 @Service
 public class HostRelationService {
     private static final Logger log = LoggerFactory.getLogger(HostRelationService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private final HostService hostService;
+
     private final ClusterService clusterService;
+
     private Path relationsDir;
 
     private BusinessServiceService businessServiceService;
@@ -60,8 +66,7 @@ public class HostRelationService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param businessServiceService the businessServiceService parameter
      */
     @Lazy
     @Autowired
@@ -71,9 +76,6 @@ public class HostRelationService {
 
     /**
      * Initializes the host relations data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -92,16 +94,15 @@ public class HostRelationService {
     /**
      * List relations with optional filters.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
+     * @param groupId the groupId parameter
+     * @param clusterId the clusterId parameter
+     * @param sourceType the sourceType parameter
+     * @param sourceId the sourceId parameter
+     * @return the result
      */
-    public List<Map<String, Object>> listRelations(
-            String hostId,
-            String groupId,
-            String clusterId,
-            String sourceType,
-            String sourceId
-    ) {
+    public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType,
+        String sourceId) {
         List<Map<String, Object>> relations = new ArrayList<>();
         if (!Files.isDirectory(relationsDir)) {
             return relations;
@@ -172,8 +173,8 @@ public class HostRelationService {
     /**
      * Creates a new host relation from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceHostId = (String) body.get("sourceHostId");
@@ -214,13 +215,8 @@ public class HostRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info(
-                "Created host relation: id={}, sourceType={}, source={}, target={}",
-                id,
-                sourceType,
-                sourceHostId,
-                targetHostId
-        );
+        log.info("Created host relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceHostId,
+            targetHostId);
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -233,8 +229,9 @@ public class HostRelationService {
     /**
      * Updates an existing host relation with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
@@ -290,8 +287,8 @@ public class HostRelationService {
     /**
      * Deletes a host relation by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
@@ -321,8 +318,7 @@ public class HostRelationService {
     /**
      * Delete all relations involving a specific host (for cascade delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
      */
     public void deleteRelationsByHost(String hostId) {
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
@@ -338,8 +334,7 @@ public class HostRelationService {
     /**
      * Delete all relations where source is a specific business service (for cascade delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param bsId the bsId parameter
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null, null, null, "business-service", bsId);
@@ -354,6 +349,10 @@ public class HostRelationService {
     /**
      * Build ECharts graph data (nodes + edges) for a given group.
      * Includes all hosts in the group plus any related hosts from other groups.
+     *
+     * @param groupId the groupId parameter
+     * @param clusterId the clusterId parameter
+     * @return the result
      */
     public Map<String, Object> getGraphData(String groupId, String clusterId) {
         // Collect hosts in this group or cluster
@@ -451,8 +450,8 @@ public class HostRelationService {
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given host.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
+     * @return the result
      */
     public Map<String, Object> getNeighbors(String hostId) {
         // 1. Validate host exists
@@ -519,8 +518,7 @@ public class HostRelationService {
         return result;
     }
 
-    private Map<String, Object> buildHostNode(Map<String, Object> h,
-            Map<String, Map<String, Object>> clusterMap) {
+    private Map<String, Object> buildHostNode(Map<String, Object> h, Map<String, Map<String, Object>> clusterMap) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("id", h.get("id"));
         node.put("name", h.get("name"));

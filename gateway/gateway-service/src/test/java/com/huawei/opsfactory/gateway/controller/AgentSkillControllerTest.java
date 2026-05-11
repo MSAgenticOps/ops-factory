@@ -44,8 +44,7 @@ public class AgentSkillControllerTest {
     /**
      * Executes the install skill as admin operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void installSkill_asAdmin() throws Exception {
@@ -70,9 +69,6 @@ public class AgentSkillControllerTest {
 
     /**
      * Executes the install skill non admin forbidden operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void installSkill_nonAdminForbidden() {
@@ -88,8 +84,7 @@ public class AgentSkillControllerTest {
     /**
      * Executes the install skill conflict operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void installSkill_conflict() throws Exception {
@@ -110,8 +105,7 @@ public class AgentSkillControllerTest {
     /**
      * Executes the uninstall skill as admin operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void uninstallSkill_asAdmin() throws Exception {
@@ -134,9 +128,6 @@ public class AgentSkillControllerTest {
 
     /**
      * Executes the uninstall skill non admin forbidden operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void uninstallSkill_nonAdminForbidden() {

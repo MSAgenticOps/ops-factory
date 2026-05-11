@@ -29,9 +29,6 @@ public class PrewarmServiceTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -42,9 +39,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests on user activity disabled does not spawn.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOnUserActivity_disabled_doesNotSpawn() {
@@ -57,9 +51,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests on user activity sys user does not spawn.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOnUserActivity_sysUser_doesNotSpawn() {
@@ -70,9 +61,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests on user activity new user triggers spawn.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOnUserActivity_newUser_triggersSpawn() {
@@ -86,9 +74,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests on user activity already warmed user does not spawn again.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOnUserActivity_alreadyWarmedUser_doesNotSpawnAgain() {
@@ -104,9 +89,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests clear user allows rewarm.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testClearUser_allowsRewarm() {
@@ -123,9 +105,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests on user activity custom default agent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOnUserActivity_customDefaultAgent() {
@@ -143,9 +122,6 @@ public class PrewarmServiceTest {
 
     /**
      * Tests on user activity spawn error does not throw.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOnUserActivity_spawnError_doesNotThrow() {

@@ -51,9 +51,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute missing host id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_missingHostId() {
@@ -74,9 +71,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute blank host id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_blankHostId() {
@@ -97,9 +91,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute missing command.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_missingCommand() {
@@ -120,9 +111,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute blank command.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_blankCommand() {
@@ -145,9 +133,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_success() {
@@ -180,9 +165,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute custom timeout.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_customTimeout() {
@@ -215,9 +197,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute whitelist rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_whitelistRejected() {
@@ -252,9 +231,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute whitelist rejected with success false.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_whitelistRejected_withSuccessFalse() {
@@ -293,9 +269,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_hostNotFound() {
@@ -325,9 +298,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute unexpected failure is sanitized.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_unexpectedFailure_isSanitized() {
@@ -354,9 +324,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_unauthorized_noKey() {
@@ -374,9 +341,6 @@ public class RemoteExecControllerTest {
 
     /**
      * Tests execute forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_forbidden_nonAdmin() {

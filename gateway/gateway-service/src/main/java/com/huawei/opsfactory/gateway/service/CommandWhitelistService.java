@@ -4,14 +4,15 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,6 +21,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.annotation.PostConstruct;
 
 /**
  * Manages the command whitelist and validates remote commands against enabled patterns and risk levels.
@@ -30,27 +33,24 @@ import java.util.Map;
 @Service
 public class CommandWhitelistService {
     private static final Logger log = LoggerFactory.getLogger(CommandWhitelistService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final List<String> DEFAULT_COMMANDS = List.of(
-            "ps", "tail", "grep", "cat", "ls", "df", "free", "netstat",
-            "top", "cd", "find", "wc", "head", "date", "uptime", "echo",
-            "iostat", "ping"
-    );
+    private static final List<String> DEFAULT_COMMANDS = List.of("ps", "tail", "grep", "cat", "ls", "df", "free",
+        "netstat", "top", "cd", "find", "wc", "head", "date", "uptime", "echo", "iostat", "ping");
 
-    private static final Map<String, String> DEFAULT_RISK_LEVELS = Map.ofEntries(
-            Map.entry("ps", "low"), Map.entry("tail", "low"), Map.entry("grep", "low"),
-            Map.entry("cat", "low"), Map.entry("ls", "low"), Map.entry("df", "low"),
-            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("echo", "low"),
-            Map.entry("date", "low"),
-            Map.entry("uptime", "low"), Map.entry("cd", "low"), Map.entry("find", "low"),
-            Map.entry("wc", "low"),
-            Map.entry("netstat", "medium"), Map.entry("top", "medium"),
-            Map.entry("iostat", "medium"), Map.entry("ping", "medium")
-    );
+    private static final Map<String,
+        String> DEFAULT_RISK_LEVELS = Map.ofEntries(Map.entry("ps", "low"), Map.entry("tail", "low"),
+            Map.entry("grep", "low"), Map.entry("cat", "low"), Map.entry("ls", "low"), Map.entry("df", "low"),
+            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("echo", "low"), Map.entry("date", "low"),
+            Map.entry("uptime", "low"), Map.entry("cd", "low"), Map.entry("find", "low"), Map.entry("wc", "low"),
+            Map.entry("netstat", "medium"), Map.entry("top", "medium"), Map.entry("iostat", "medium"),
+            Map.entry("ping", "medium"));
 
     private final GatewayProperties properties;
+
     private Path gatewayRoot;
+
     private Path whitelistFile;
 
     /**
@@ -65,9 +65,6 @@ public class CommandWhitelistService {
 
     /**
      * Initializes the command whitelist from the data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -83,8 +80,7 @@ public class CommandWhitelistService {
     /**
      * Returns the full command whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public Map<String, Object> getWhitelist() {
         return readWhitelistFile();
@@ -93,8 +89,7 @@ public class CommandWhitelistService {
     /**
      * Adds a new command to the whitelist, rejecting duplicate patterns.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param command the command parameter
      */
     public void addCommand(Map<String, Object> command) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -121,8 +116,8 @@ public class CommandWhitelistService {
     /**
      * Updates an existing command in the whitelist matching the given pattern.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pattern the pattern parameter
+     * @param updates the updates parameter
      */
     public void updateCommand(String pattern, Map<String, Object> updates) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -154,8 +149,7 @@ public class CommandWhitelistService {
     /**
      * Deletes a command from the whitelist matching the given pattern.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pattern the pattern parameter
      */
     public void deleteCommand(String pattern) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -177,10 +171,11 @@ public class CommandWhitelistService {
      * normalizing each subcommand (stripping path prefixes), and checking
      * against enabled patterns using two matching modes:
      * <ul>
-     *   <li>Simple mode (no spaces in pattern) — matches the command name only</li>
-     *   <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
+     * <li>Simple mode (no spaces in pattern) — matches the command name only</li>
+     * <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
      * </ul>
      *
+     * @param command the command parameter
      * @return a list of rejected command names (empty if all pass)
      */
     public List<String> validateCommand(String command) {
@@ -238,6 +233,9 @@ public class CommandWhitelistService {
      * Returns "high" if any sub-command is not in the whitelist,
      * "medium" if any sub-command is medium, otherwise "low".
      * When multiple patterns match, the longest (most specific) pattern's risk level wins.
+     *
+     * @param command the command parameter
+     * @return the result
      */
     public String getRiskLevel(String command) {
         String highestRisk = "low";
@@ -249,7 +247,8 @@ public class CommandWhitelistService {
         for (Map<String, Object> cmd : commands) {
             Object p = cmd.get("pattern");
             Object r = cmd.get("riskLevel");
-            if (p != null) patternRisks.add(Map.entry(p.toString(), r != null ? r.toString() : "high"));
+            if (p != null)
+                patternRisks.add(Map.entry(p.toString(), r != null ? r.toString() : "high"));
         }
 
         for (String sub : splitShellPipe(command)) {
@@ -277,7 +276,8 @@ public class CommandWhitelistService {
             if ("high".equals(risk)) {
                 return "high";
             }
-            if ("medium".equals(risk) && "low".equals(highestRisk)) highestRisk = "medium";
+            if ("medium".equals(risk) && "low".equals(highestRisk))
+                highestRisk = "medium";
         }
         return highestRisk;
     }
@@ -309,9 +309,9 @@ public class CommandWhitelistService {
     /**
      * Check if a normalized subcommand matches a whitelist pattern.
      * <ul>
-     *   <li>Simple mode (pattern has no spaces): compare only the first word</li>
-     *   <li>Prefix mode (pattern has spaces): subcommand must equal pattern
-     *       or start with {@code pattern + " "} (word-boundary safe)</li>
+     * <li>Simple mode (pattern has no spaces): compare only the first word</li>
+     * <li>Prefix mode (pattern has spaces): subcommand must equal pattern
+     * or start with {@code pattern + " "} (word-boundary safe)</li>
      * </ul>
      */
     private boolean matchesPattern(String normalizedSub, String pattern) {
@@ -342,11 +342,13 @@ public class CommandWhitelistService {
             }
             if (c == '\'' && !inDouble) {
                 inSingle = !inSingle;
-                current.append(c); continue;
+                current.append(c);
+                continue;
             }
-            if (c == '"'  && !inSingle) {
+            if (c == '"' && !inSingle) {
                 inDouble = !inDouble;
-                current.append(c); continue;
+                current.append(c);
+                continue;
             }
             if (!inSingle && !inDouble) {
                 // Handle || (logical OR)
@@ -374,7 +376,8 @@ public class CommandWhitelistService {
             }
             current.append(c);
         }
-        if (current.length() > 0) parts.add(current.toString());
+        if (current.length() > 0)
+            parts.add(current.toString());
         return parts;
     }
 

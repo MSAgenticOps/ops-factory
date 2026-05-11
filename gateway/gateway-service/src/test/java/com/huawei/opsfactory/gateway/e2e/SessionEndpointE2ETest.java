@@ -45,9 +45,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -64,9 +61,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the start session authenticated calls start then resume operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void startSession_authenticated_callsStartThenResume() {
@@ -98,9 +92,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the start session resume fails propagates error operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void startSession_resumeFails_propagatesError() {
@@ -124,9 +115,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the start session resume receives correct session id operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void startSession_resumeReceivesCorrectSessionId() {
@@ -154,9 +142,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the start session returns start response not resume response operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void startSession_returnsStartResponse_notResumeResponse() {
@@ -187,9 +172,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the start session invalid json body falls back to working dir payload operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void startSession_invalidJsonBodyFallsBackToWorkingDirPayload() {
@@ -224,9 +206,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the start session unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void startSession_unauthenticated_returns401() {
@@ -239,9 +218,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list all sessions no instances returns empty array operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listAllSessions_noInstances_returnsEmptyArray() {
@@ -261,9 +237,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list all sessions with running instances aggregates sessions operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listAllSessions_withRunningInstances_aggregatesSessions() {
@@ -295,9 +268,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list all sessions stopped instances excluded operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listAllSessions_stoppedInstancesExcluded() {
@@ -322,9 +292,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list all sessions invalid payload skipped and invalid dates use string fallback operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listAllSessions_invalidPayloadSkippedAndInvalidDatesUseStringFallback() {
@@ -360,9 +327,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list all sessions unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listAllSessions_unauthenticated_returns401() {
@@ -373,9 +337,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list agent sessions authenticated proxies to goosed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listAgentSessions_authenticated_proxiesToGoosed() {
@@ -395,9 +356,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the session authenticated proxies to goosed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getSession_authenticated_proxiesToGoosed() {
@@ -418,9 +376,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the session unauthenticated returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getSession_unauthenticated_returns401() {
@@ -431,9 +386,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete session authenticated removes owner and proxies operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteSession_authenticated_removesOwnerAndProxies() {
@@ -453,9 +405,6 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete session unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteSession_unauthenticated_returns401() {

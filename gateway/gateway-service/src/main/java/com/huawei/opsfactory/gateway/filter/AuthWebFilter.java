@@ -6,6 +6,9 @@ package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
+import reactor.core.publisher.Mono;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -15,7 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Mono;
 
 /**
  * Web filter that validates the secret key on every non-preflight, non-webhook request.
@@ -27,6 +29,7 @@ import reactor.core.publisher.Mono;
 @Order(2)
 public class AuthWebFilter implements WebFilter {
     private static final Logger log = LoggerFactory.getLogger(AuthWebFilter.class);
+
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     private final GatewayProperties properties;
@@ -44,8 +47,9 @@ public class AuthWebFilter implements WebFilter {
     /**
      * Filters incoming HTTP requests by validating the secret key.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @param chain the chain parameter
+     * @return the result
      */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {

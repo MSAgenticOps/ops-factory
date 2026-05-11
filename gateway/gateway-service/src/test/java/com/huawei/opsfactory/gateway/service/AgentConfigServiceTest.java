@@ -43,8 +43,7 @@ public class AgentConfigServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -81,9 +80,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Executes the tear down operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @After
     public void tearDown() {
@@ -96,9 +92,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests load registry.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoadRegistry() {
@@ -113,8 +106,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry when gateway config path points to gateway config.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistryWhenGatewayConfigPathPointsToGatewayConfig() throws IOException {
@@ -152,9 +144,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests load resident instances expands wildcard and specific agent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoadResidentInstances_expandsWildcardAndSpecificAgent() {
@@ -168,8 +157,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load resident instances ignores unknown and duplicate agents.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadResidentInstances_ignoresUnknownAndDuplicateAgents() throws IOException {
@@ -193,9 +181,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests find agent exists.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFindAgent_exists() {
@@ -206,9 +191,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests find agent not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFindAgent_notFound() {
@@ -218,8 +200,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load agent config yaml.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadAgentConfigYaml() throws IOException {
@@ -235,9 +216,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests load agent config yaml no file.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoadAgentConfigYaml_noFile() {
@@ -248,8 +226,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests read write agents md.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testReadWriteAgentsMd() throws IOException {
@@ -267,9 +244,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests read agents md no file.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReadAgentsMd_noFile() {
@@ -280,8 +254,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests list skills.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListSkills() throws IOException {
@@ -321,9 +294,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests list skills no skills dir.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSkills_noSkillsDir() {
@@ -334,8 +304,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testCreateAgent() throws IOException {
@@ -361,8 +330,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent duplicate id.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateAgent_duplicateId() throws IOException {
@@ -372,8 +340,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent invalid id.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateAgent_invalidId() throws IOException {
@@ -383,8 +350,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests delete agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteAgent() throws IOException {
@@ -401,8 +367,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests delete agent not found.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testDeleteAgent_notFound() throws IOException {
@@ -412,8 +377,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load agent secrets yaml.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadAgentSecretsYaml() throws IOException {
@@ -429,9 +393,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests load agent secrets yaml no file.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoadAgentSecretsYaml_noFile() {
@@ -442,8 +403,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent duplicate name.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateAgent_duplicateName() throws IOException {
@@ -453,8 +413,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent no template.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testCreateAgent_noTemplate() throws IOException {
@@ -466,9 +425,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests getters resolve correct paths.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGettersResolveCorrectPaths() {
@@ -481,9 +437,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests get agent config dir.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetAgentConfigDir() {
@@ -494,8 +447,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests delete agent removes from yaml.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteAgent_removesFromYaml() throws IOException {
@@ -514,9 +466,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests registry is unmodifiable.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRegistryIsUnmodifiable() {
@@ -531,8 +480,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent updates agents yaml.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testCreateAgent_updatesAgentsYaml() throws IOException {
@@ -551,8 +499,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent single char id.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateAgent_singleCharId() throws IOException {
@@ -562,8 +509,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests create agent skills directory created.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testCreateAgent_skillsDirectoryCreated() throws IOException {
@@ -576,8 +522,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry empty agents yaml.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_emptyAgentsYaml() throws IOException {
@@ -590,8 +535,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry no agents key.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_noAgentsKey() throws IOException {
@@ -604,8 +548,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry enabled false excludes agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_enabledFalseExcludesAgent() throws IOException {
@@ -628,8 +571,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry enabled true includes agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_enabledTrueIncludesAgent() throws IOException {
@@ -647,8 +589,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry enabled omitted defaults to true.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_enabledOmittedDefaultsToTrue() throws IOException {
@@ -666,8 +607,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry all disabled results in empty registry.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_allDisabledResultsInEmptyRegistry() throws IOException {
@@ -686,9 +626,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests list memory files empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListMemoryFiles_empty() {
@@ -699,8 +636,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests list memory files with files.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListMemoryFiles_withFiles() throws IOException {
@@ -725,8 +661,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests list memory files ignores non txt.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListMemoryFiles_ignoresNonTxt() throws IOException {
@@ -744,8 +679,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests read memory file exists.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testReadMemoryFile_exists() throws IOException {
@@ -760,9 +694,6 @@ public class AgentConfigServiceTest {
 
     /**
      * Tests read memory file not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReadMemoryFile_notFound() {
@@ -773,8 +704,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write memory file creates directory and file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testWriteMemoryFile_createsDirectoryAndFile() throws IOException {
@@ -789,8 +719,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write memory file updates existing.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testWriteMemoryFile_updatesExisting() throws IOException {
@@ -803,8 +732,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write memory file too large.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testWriteMemoryFile_tooLarge() throws IOException {
@@ -815,8 +743,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests delete memory file success.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteMemoryFile_success() throws IOException {
@@ -832,8 +759,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests delete memory file not found.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test(expected = IllegalArgumentException.class)
     public void testDeleteMemoryFile_notFound() throws IOException {
@@ -843,8 +769,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write and read round trip.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testWriteAndReadRoundTrip() throws IOException {
@@ -856,8 +781,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests list memory files after write and delete.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListMemoryFiles_afterWriteAndDelete() throws IOException {
@@ -874,8 +798,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write knowledge cli settings stores source id and relative artifacts root.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testWriteKnowledgeCliSettings_storesSourceIdAndRelativeArtifactsRoot() throws IOException {
@@ -900,8 +823,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write knowledge cli settings uses configured artifacts root.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testWriteKnowledgeCliSettings_usesConfiguredArtifactsRoot() throws IOException {
@@ -926,8 +848,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests write knowledge cli settings clear resets default root.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testWriteKnowledgeCliSettings_clearResetsDefaultRoot() throws IOException {
@@ -951,8 +872,7 @@ public class AgentConfigServiceTest {
     /**
      * Tests load registry disabled agent is excluded from resident expansion.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testLoadRegistry_disabledAgentIsExcludedFromResidentExpansion() throws IOException {

@@ -43,9 +43,6 @@ public class SessionTraceControllerTest {
 
     /**
      * Tests start trace resolves path variables.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStartTrace_resolvesPathVariables() {
@@ -76,9 +73,6 @@ public class SessionTraceControllerTest {
 
     /**
      * Tests start trace non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStartTrace_nonAdminForbidden() {

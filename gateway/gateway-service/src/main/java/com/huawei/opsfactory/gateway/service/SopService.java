@@ -4,14 +4,15 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
+
 /**
  * Manages Standard Operating Procedure documents with command whitelist validation and name uniqueness checks.
  *
@@ -32,11 +35,15 @@ import java.util.UUID;
 @Service
 public class SopService {
     private static final Logger log = LoggerFactory.getLogger(SopService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private final CommandWhitelistService commandWhitelistService;
+
     private Path gatewayRoot;
+
     private Path sopsDir;
 
     /**
@@ -52,9 +59,6 @@ public class SopService {
 
     /**
      * Initializes the SOPs data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -75,8 +79,7 @@ public class SopService {
     /**
      * Lists all SOP documents.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public List<Map<String, Object>> listSops() {
         List<Map<String, Object>> sops = new ArrayList<>();
@@ -102,8 +105,8 @@ public class SopService {
     /**
      * Gets an SOP document by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getSop(String id) {
         Path file = resolveSopFile(id);
@@ -117,8 +120,8 @@ public class SopService {
     /**
      * Creates a new SOP document from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createSop(Map<String, Object> body) {
         String mode = String.valueOf(body.getOrDefault("mode", "structured"));
@@ -150,8 +153,9 @@ public class SopService {
     /**
      * Updates an existing SOP document with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateSop(String id, Map<String, Object> body) {
         Path file = resolveSopFile(id);
@@ -161,9 +165,8 @@ public class SopService {
         }
 
         // Determine effective mode for command validation
-        String effectiveMode = body.containsKey("mode")
-                ? String.valueOf(body.get("mode"))
-                : String.valueOf(sop.getOrDefault("mode", "structured"));
+        String effectiveMode = body.containsKey("mode") ? String.valueOf(body.get("mode"))
+            : String.valueOf(sop.getOrDefault("mode", "structured"));
 
         // Update mutable fields
         if (body.containsKey("name")) {
@@ -209,8 +212,8 @@ public class SopService {
     /**
      * Deletes an SOP document by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteSop(String id) {
         Path file = resolveSopFile(id);
@@ -262,8 +265,7 @@ public class SopService {
             }
             List<String> rejected = commandWhitelistService.validateCommand(cmdObj.toString());
             if (!rejected.isEmpty()) {
-                throw new IllegalArgumentException(
-                    "节点 " + (i + 1) + " 命令包含未白名单授权的命令: " + String.join(", ", rejected));
+                throw new IllegalArgumentException("节点 " + (i + 1) + " 命令包含未白名单授权的命令: " + String.join(", ", rejected));
             }
         }
     }

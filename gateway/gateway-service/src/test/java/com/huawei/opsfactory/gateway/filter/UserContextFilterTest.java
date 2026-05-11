@@ -37,9 +37,6 @@ public class UserContextFilterTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -51,9 +48,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests extracts user id from header.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractsUserIdFromHeader() {
@@ -72,9 +66,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests rejects400 when no user id header.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRejects400WhenNoUserIdHeader() {
@@ -92,9 +83,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests sys user gets admin role.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSysUserGetsAdminRole() {
@@ -112,9 +100,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests empty user id returns400.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testEmptyUserIdReturns400() {
@@ -134,9 +119,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests configured admin user gets admin role.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConfiguredAdminUserGetsAdminRole() {
@@ -156,9 +138,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests non admin user gets user role.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNonAdminUserGetsUserRole() {
@@ -178,9 +157,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests trace start does not prewarm user.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testTraceStartDoesNotPrewarmUser() {
@@ -200,9 +176,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests trace download does not prewarm user.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testTraceDownloadDoesNotPrewarmUser() {
@@ -222,9 +195,6 @@ public class UserContextFilterTest {
 
     /**
      * Tests regular gateway request prewarms user.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRegularGatewayRequestPrewarmsUser() {

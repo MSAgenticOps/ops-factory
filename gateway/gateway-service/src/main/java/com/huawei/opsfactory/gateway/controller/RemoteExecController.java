@@ -7,12 +7,17 @@ package com.huawei.opsfactory.gateway.controller;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 import com.huawei.opsfactory.gateway.service.RemoteExecutionService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
+
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,6 +32,7 @@ import java.util.Map;
 @RequestMapping("/gateway/remote")
 public class RemoteExecController {
     private final RemoteExecutionService remoteExecutionService;
+
     private final CommandWhitelistService commandWhitelistService;
 
     /**
@@ -36,7 +42,7 @@ public class RemoteExecController {
      * @since 2026-05-09
      */
     public RemoteExecController(RemoteExecutionService remoteExecutionService,
-                                CommandWhitelistService commandWhitelistService) {
+        CommandWhitelistService commandWhitelistService) {
         this.remoteExecutionService = remoteExecutionService;
         this.commandWhitelistService = commandWhitelistService;
     }
@@ -44,13 +50,13 @@ public class RemoteExecController {
     /**
      * Executes a remote command on a managed host after whitelist validation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/execute")
-    public Mono<ResponseEntity<Map<String, Object>>> execute(
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> execute(@RequestBody Map<String, Object> request,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
 
         String hostId = (String) request.get("hostId");
@@ -76,8 +82,7 @@ public class RemoteExecController {
             Map<String, Object> result = remoteExecutionService.execute(hostId, command, finalTimeout);
 
             // Check for whitelist rejection
-            if (Boolean.FALSE.equals(result.get("success"))
-                    && result.containsKey("rejectedCommands")) {
+            if (Boolean.FALSE.equals(result.get("success")) && result.containsKey("rejectedCommands")) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
                 body.put("error", "Command rejected by whitelist");
@@ -104,13 +109,13 @@ public class RemoteExecController {
     /**
      * Checks the risk level of a command against the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/check-risk")
-    public Mono<ResponseEntity<Map<String, Object>>> checkRisk(
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> checkRisk(@RequestBody Map<String, Object> request,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
 
         String command = (String) request.get("command");

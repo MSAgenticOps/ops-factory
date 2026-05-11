@@ -72,9 +72,6 @@ public class ChannelAdminControllerTest {
 
     /**
      * Tests get login state dispatches to we chat service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetLoginStateDispatchesToWeChatService() {
@@ -99,9 +96,6 @@ public class ChannelAdminControllerTest {
 
     /**
      * Tests start login dispatches to we chat service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStartLoginDispatchesToWeChatService() {
@@ -126,9 +120,6 @@ public class ChannelAdminControllerTest {
 
     /**
      * Tests probe passes current user to adapter.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testProbePassesCurrentUserToAdapter() {
@@ -153,9 +144,6 @@ public class ChannelAdminControllerTest {
 
     /**
      * Tests create channel unexpected failure is sanitized.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateChannel_unexpectedFailureIsSanitized() {
@@ -186,9 +174,6 @@ public class ChannelAdminControllerTest {
 
     /**
      * Tests logout falls back to disconnected state when helper cleanup fails.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLogout_fallsBackToDisconnectedStateWhenHelperCleanupFails() {

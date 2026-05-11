@@ -4,9 +4,11 @@
 
 package com.huawei.opsfactory.gateway.monitoring;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -23,98 +25,33 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Circular buffer for metrics snapshots and request timings.
  * Persists to a JSON file under gateway/data/monitoring/ for restart resilience.
- *
- * <p>120 snapshot slots × 30s = 1 hour rolling window.
- * 500 request timing slots for per-request latency capture.</p>
+ * <p>
+ * 120 snapshot slots × 30s = 1 hour rolling window.
+ * 500 request timing slots for per-request latency capture.
+ * </p>
  */
 @Component
 public class MetricsBuffer {
     private static final Logger log = LoggerFactory.getLogger(MetricsBuffer.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final int SNAPSHOT_CAPACITY = 120;
+
     private static final int TIMING_CAPACITY = 500;
+
     private static final long ONE_HOUR_MS = 3_600_000L;
 
     private final MetricsSnapshot[] snapshots = new MetricsSnapshot[SNAPSHOT_CAPACITY];
+    private final RequestTiming[] timings = new RequestTiming[TIMING_CAPACITY];
+    // Per-agent stats accumulated over the 1-hour window
+    private final ConcurrentHashMap<String, AgentStats> agentStatsMap = new ConcurrentHashMap<>();
+    private final Path persistPath;
     private int snapshotWriteIndex = 0;
     private int snapshotCount = 0;
     private boolean dirty = false;
-
-    private final RequestTiming[] timings = new RequestTiming[TIMING_CAPACITY];
     private int timingWriteIndex = 0;
     private int pendingTimingCount = 0;
-
-    // Per-agent stats accumulated over the 1-hour window
-    private final ConcurrentHashMap<String, AgentStats> agentStatsMap = new ConcurrentHashMap<>();
-
-    private final Path persistPath;
-
-    /**
-     * Accumulated per-agent statistics.
-     * @author x00000000
-     * @since 2026-05-09
-     */
-    public static class AgentStats {
-        private int requestCount;
-        private int errorCount;
-        private long latencySum;
-        private long ttftSum;
-
-        /**
-         * Records a new request sample.
-         *
-         * @author x00000000
-         * @since 2026-05-09
-         */
-        public void record(long totalMs, long ttftMs, boolean error) {
-            requestCount++;
-            latencySum += totalMs;
-            ttftSum += ttftMs;
-            if (error) {
-                errorCount++;
-            }
-        }
-
-        /**
-         * Gets the request count.
-         *
-         * @author x00000000
-         * @since 2026-05-09
-         */
-        public int getRequestCount() {
-            return requestCount;
-        }
-
-        /**
-         * Gets the error count.
-         *
-         * @author x00000000
-         * @since 2026-05-09
-         */
-        public int getErrorCount() {
-            return errorCount;
-        }
-
-        /**
-         * Gets the average request latency in milliseconds.
-         *
-         * @author x00000000
-         * @since 2026-05-09
-         */
-        public double getAvgLatencyMs() {
-            return requestCount > 0 ? (double) latencySum / requestCount : 0;
-        }
-
-        /**
-         * Gets the average time-to-first-token in milliseconds.
-         *
-         * @author x00000000
-         * @since 2026-05-09
-         */
-        public double getAvgTtftMs() {
-            return requestCount > 0 ? (double) ttftSum / requestCount : 0;
-        }
-    }
 
     /**
      * Creates the metrics buffer instance.
@@ -146,6 +83,8 @@ public class MetricsBuffer {
     /**
      * Record a single request timing (called from SSE relay threads).
      * Uses a separate lock object to avoid contention with snapshot operations.
+     *
+     * @param timing the timing parameter
      */
     public synchronized void recordTiming(RequestTiming timing) {
         timings[timingWriteIndex] = timing;
@@ -169,8 +108,7 @@ public class MetricsBuffer {
     /**
      * Get per-agent statistics accumulated over the buffer lifetime.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public Map<String, Map<String, Object>> getAgentStats() {
         Map<String, Map<String, Object>> result = new LinkedHashMap<>();
@@ -189,6 +127,8 @@ public class MetricsBuffer {
     /**
      * Drain all request timings recorded since the last drain.
      * Uses pendingTimingCount to correctly handle buffer wrap-around.
+     *
+     * @return the result
      */
     public synchronized List<RequestTiming> drainTimings() {
         List<RequestTiming> result = new ArrayList<>();
@@ -212,8 +152,8 @@ public class MetricsBuffer {
     /**
      * Get the most recent snapshots, ordered oldest-first (for charting).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param maxSlots the maxSlots parameter
+     * @return the result
      */
     public synchronized List<MetricsSnapshot> getSnapshots(int maxSlots) {
         int count = Math.min(this.snapshotCount, maxSlots);
@@ -246,11 +186,8 @@ public class MetricsBuffer {
         // I/O outside lock
         try {
             Files.createDirectories(persistPath.getParent());
-            Map<String, Object> wrapper = Map.of(
-                    "version", 1,
-                    "updatedAt", System.currentTimeMillis(),
-                    "snapshots", toWrite
-            );
+            Map<String, Object> wrapper =
+                Map.of("version", 1, "updatedAt", System.currentTimeMillis(), "snapshots", toWrite);
             MAPPER.writeValue(persistPath.toFile(), wrapper);
         } catch (IOException e) {
             log.warn("Failed to persist metrics to {}: {}", persistPath, e.getMessage());
@@ -267,15 +204,15 @@ public class MetricsBuffer {
                 log.info("No persisted metrics file at {}", persistPath);
                 return;
             }
-            Map<String, Object> wrapper = MAPPER.readValue(persistPath.toFile(),
-                    new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> wrapper =
+                MAPPER.readValue(persistPath.toFile(), new TypeReference<Map<String, Object>>() {});
             Object snapshotObj = wrapper.get("snapshots");
             if (snapshotObj == null) {
                 return;
             }
 
-            List<MetricsSnapshot> loaded = MAPPER.convertValue(snapshotObj,
-                    new TypeReference<List<MetricsSnapshot>>() {});
+            List<MetricsSnapshot> loaded =
+                MAPPER.convertValue(snapshotObj, new TypeReference<List<MetricsSnapshot>>() {});
 
             long cutoff = System.currentTimeMillis() - ONE_HOUR_MS;
             int restored = 0;
@@ -287,10 +224,77 @@ public class MetricsBuffer {
             }
             // Reset dirty since this is just a restore, not new data
             dirty = false;
-            log.info("Restored {} metrics snapshots from {} (discarded {} stale)",
-                    restored, persistPath, loaded.size() - restored);
+            log.info("Restored {} metrics snapshots from {} (discarded {} stale)", restored, persistPath,
+                loaded.size() - restored);
         } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to load persisted metrics from {}: {}", persistPath, e.getMessage());
+        }
+    }
+
+    /**
+     * Accumulated per-agent statistics.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
+    public static class AgentStats {
+        private int requestCount;
+
+        private int errorCount;
+
+        private long latencySum;
+
+        private long ttftSum;
+
+        /**
+         * Records a new request sample.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void record(long totalMs, long ttftMs, boolean error) {
+            requestCount++;
+            latencySum += totalMs;
+            ttftSum += ttftMs;
+            if (error) {
+                errorCount++;
+            }
+        }
+
+        /**
+         * Gets the request count.
+         *
+         * @return the result
+         */
+        public int getRequestCount() {
+            return requestCount;
+        }
+
+        /**
+         * Gets the error count.
+         *
+         * @return the result
+         */
+        public int getErrorCount() {
+            return errorCount;
+        }
+
+        /**
+         * Gets the average request latency in milliseconds.
+         *
+         * @return the result
+         */
+        public double getAvgLatencyMs() {
+            return requestCount > 0 ? (double) latencySum / requestCount : 0;
+        }
+
+        /**
+         * Gets the average time-to-first-token in milliseconds.
+         *
+         * @return the result
+         */
+        public double getAvgTtftMs() {
+            return requestCount > 0 ? (double) ttftSum / requestCount : 0;
         }
     }
 }

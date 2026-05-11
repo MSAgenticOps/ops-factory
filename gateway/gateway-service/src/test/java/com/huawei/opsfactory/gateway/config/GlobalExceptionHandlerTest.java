@@ -28,9 +28,6 @@ public class GlobalExceptionHandlerTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -39,9 +36,6 @@ public class GlobalExceptionHandlerTest {
 
     /**
      * Tests handle input exception decoding error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testHandleInputException_decodingError() {
@@ -57,9 +51,6 @@ public class GlobalExceptionHandlerTest {
 
     /**
      * Tests handle input exception other error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testHandleInputException_otherError() {
@@ -74,9 +65,6 @@ public class GlobalExceptionHandlerTest {
 
     /**
      * Tests handle response status exception with reason.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testHandleResponseStatusException_withReason() {
@@ -91,9 +79,6 @@ public class GlobalExceptionHandlerTest {
 
     /**
      * Tests handle response status exception forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testHandleResponseStatusException_forbidden() {
@@ -108,9 +93,6 @@ public class GlobalExceptionHandlerTest {
 
     /**
      * Tests handle response status exception no reason.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testHandleResponseStatusException_noReason() {

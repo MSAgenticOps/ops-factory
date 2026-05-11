@@ -41,8 +41,7 @@ public class FileAttachmentHookTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -55,9 +54,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests no user message passthrough.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNoUserMessage_passthrough() {
@@ -70,9 +66,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests no content passthrough.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNoContent_passthrough() {
@@ -85,9 +78,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests non array content passthrough.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNonArrayContent_passthrough() {
@@ -100,9 +90,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests no file paths passthrough.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNoFilePaths_passthrough() {
@@ -116,8 +103,7 @@ public class FileAttachmentHookTest {
     /**
      * Tests valid file path passthrough.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testValidFilePath_passthrough() throws IOException {
@@ -140,8 +126,7 @@ public class FileAttachmentHookTest {
     /**
      * Tests path traversal forbidden.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testPathTraversal_forbidden() throws IOException {
@@ -167,8 +152,7 @@ public class FileAttachmentHookTest {
     /**
      * Tests non existent file not found.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testNonExistentFile_notFound() throws IOException {
@@ -191,9 +175,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests non text content ignored.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNonTextContent_ignored() {
@@ -207,9 +188,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests invalid json passthrough.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testInvalidJson_passthrough() {
@@ -221,9 +199,6 @@ public class FileAttachmentHookTest {
 
     /**
      * Tests empty content array passthrough.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testEmptyContentArray_passthrough() {

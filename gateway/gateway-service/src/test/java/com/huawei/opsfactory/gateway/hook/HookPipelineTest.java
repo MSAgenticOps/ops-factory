@@ -24,9 +24,6 @@ public class HookPipelineTest {
 
     /**
      * Tests empty pipeline.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testEmptyPipeline() {
@@ -40,9 +37,6 @@ public class HookPipelineTest {
 
     /**
      * Tests single hook pass through.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSingleHook_passThrough() {
@@ -57,9 +51,6 @@ public class HookPipelineTest {
 
     /**
      * Tests multiple hooks executed in order.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMultipleHooks_executedInOrder() {
@@ -82,9 +73,6 @@ public class HookPipelineTest {
 
     /**
      * Tests hook error short circuits.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testHookError_shortCircuits() {

@@ -4,19 +4,29 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
-import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,8 +47,11 @@ public class HostController {
     private static final Logger log = LoggerFactory.getLogger(HostController.class);
 
     private final HostService hostService;
+
     private final ClusterService clusterService;
+
     private final BusinessServiceService businessServiceService;
+
     private final HostGroupService hostGroupService;
 
     /**
@@ -48,8 +61,7 @@ public class HostController {
      * @since 2026-05-09
      */
     public HostController(HostService hostService, ClusterService clusterService,
-                          BusinessServiceService businessServiceService,
-                          HostGroupService hostGroupService) {
+        BusinessServiceService businessServiceService, HostGroupService hostGroupService) {
         this.hostService = hostService;
         this.clusterService = clusterService;
         this.businessServiceService = businessServiceService;
@@ -59,17 +71,21 @@ public class HostController {
     /**
      * Lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param tags the tags parameter
+     * @param clusterId the clusterId parameter
+     * @param groupId the groupId parameter
+     * @param businessServiceId the businessServiceId parameter
+     * @param enabledOnly the enabledOnly parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
-    public Mono<Map<String, Object>> listHosts(
-            @RequestParam(value = "tags", required = false) String tags,
-            @RequestParam(value = "clusterId", required = false) String clusterId,
-            @RequestParam(value = "groupId", required = false) String groupId,
-            @RequestParam(value = "businessServiceId", required = false) String businessServiceId,
-            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
-            ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listHosts(@RequestParam(value = "tags", required = false) String tags,
+        @RequestParam(value = "clusterId", required = false) String clusterId,
+        @RequestParam(value = "groupId", required = false) String groupId,
+        @RequestParam(value = "businessServiceId", required = false) String businessServiceId,
+        @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
 
         return Mono.fromCallable(() -> {
@@ -89,7 +105,7 @@ public class HostController {
                     try {
                         Map<String, Object> cluster = clusterService.getCluster(clusterId);
                         if (Boolean.FALSE.equals(cluster.get("enabled"))
-                                || disabledGroupIds.contains(cluster.get("groupId"))) {
+                            || disabledGroupIds.contains(cluster.get("groupId"))) {
                             Map<String, Object> result = new LinkedHashMap<>();
                             result.put("hosts", List.of());
                             return result;
@@ -102,8 +118,7 @@ public class HostController {
                 List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
                 disabledClusterIds = new java.util.HashSet<>();
                 for (Map<String, Object> c : allClusters) {
-                    if (Boolean.FALSE.equals(c.get("enabled"))
-                            || disabledGroupIds.contains(c.get("groupId"))) {
+                    if (Boolean.FALSE.equals(c.get("enabled")) || disabledGroupIds.contains(c.get("groupId"))) {
                         disabledClusterIds.add((String) c.get("id"));
                     }
                 }
@@ -120,9 +135,8 @@ public class HostController {
             } else if (groupId != null && !groupId.isEmpty()) {
                 hosts = hostService.listHostsByGroup(groupId, clusterService);
             } else {
-                List<String> tagList = (tags != null && !tags.isBlank())
-                        ? Arrays.asList(tags.split(","))
-                        : Collections.emptyList();
+                List<String> tagList =
+                    (tags != null && !tags.isBlank()) ? Arrays.asList(tags.split(",")) : Collections.emptyList();
                 hosts = hostService.listHosts(tagList.toArray(new String[0]));
             }
 
@@ -140,13 +154,13 @@ public class HostController {
     /**
      * Gets a host by its IP address.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ip the ip parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/by-ip")
-    public Mono<ResponseEntity<Map<String, Object>>> getHostByIp(
-            @RequestParam("ip") String ip,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getHostByIp(@RequestParam("ip") String ip,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             Map<String, Object> host = hostService.findByIp(ip);
@@ -166,13 +180,13 @@ public class HostController {
     /**
      * Gets a host by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getHost(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getHost(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             Map<String, Object> host;
@@ -200,13 +214,13 @@ public class HostController {
     /**
      * Creates a new host.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
-    public Mono<ResponseEntity<Map<String, Object>>> createHost(
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> createHost(@RequestBody Map<String, Object> request,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -227,14 +241,14 @@ public class HostController {
     /**
      * Updates a host by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateHost(
-            @PathVariable("id") String id,
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> updateHost(@PathVariable("id") String id,
+        @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -253,8 +267,7 @@ public class HostController {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
                 HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Host not found:")
-                        ? HttpStatus.NOT_FOUND
-                        : HttpStatus.BAD_REQUEST;
+                    ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
                 body.put("error", status == HttpStatus.NOT_FOUND ? "Host not found" : "Invalid host request");
                 return ResponseEntity.status(status).body(body);
             }
@@ -264,13 +277,13 @@ public class HostController {
     /**
      * Deletes a host by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteHost(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteHost(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             boolean deleted = hostService.deleteHost(id);
@@ -289,8 +302,8 @@ public class HostController {
     /**
      * Returns all unique host tags.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/tags")
     public Mono<Map<String, Object>> getTags(ServerWebExchange exchange) {
@@ -306,13 +319,12 @@ public class HostController {
     /**
      * Tests SSH connectivity to a host.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{id}/test")
-    public Mono<Map<String, Object>> testConnectivity(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> testConnectivity(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             long startedAt = System.currentTimeMillis();
@@ -331,31 +343,15 @@ public class HostController {
             Object reachable = result.get("reachable");
             Object latencyMs = result.get("latencyMs");
             log.info(
-                    "Host connectivity test completed hostId={} userId={} success={} reachable={} latencyMs={} "
-                            + "durationMs={} testResultKeys={}",
-                    id,
-                    userId,
-                    success,
-                    reachable,
-                    latencyMs,
-                    System.currentTimeMillis() - startedAt,
-                    testResult.keySet()
-            );
+                "Host connectivity test completed hostId={} userId={} success={} reachable={} latencyMs={} "
+                    + "durationMs={} testResultKeys={}",
+                id, userId, success, reachable, latencyMs, System.currentTimeMillis() - startedAt, testResult.keySet());
             if (Boolean.FALSE.equals(success) && (reachable == null || latencyMs == null)) {
-                log.warn(
-                        "Host connectivity test returned missing fields hostId={} userId={} reachable={} latencyMs={} "
-                                + "testResultKeys={}",
-                        id,
-                        userId,
-                        reachable,
-                        latencyMs,
-                        testResult.keySet()
-                );
+                log.warn("Host connectivity test returned missing fields hostId={} userId={} reachable={} latencyMs={} "
+                    + "testResultKeys={}", id, userId, reachable, latencyMs, testResult.keySet());
                 if (testResult.containsKey("message")) {
-                    log.warn(
-                            "Host connectivity test failure message hostId={} userId={} message={}",
-                            id, userId, String.valueOf(testResult.get("message"))
-                    );
+                    log.warn("Host connectivity test failure message hostId={} userId={} message={}", id, userId,
+                        String.valueOf(testResult.get("message")));
                 }
             }
             return result;

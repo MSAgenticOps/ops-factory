@@ -4,14 +4,24 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
-import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
+import com.huawei.opsfactory.gateway.service.BusinessServiceService;
+
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,15 +51,17 @@ public class BusinessServiceController {
     /**
      * Lists business services, optionally filtered by group, host, or keyword.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groupId the groupId parameter
+     * @param hostId the hostId parameter
+     * @param keyword the keyword parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listBusinessServices(
-            @RequestParam(value = "groupId", required = false) String groupId,
-            @RequestParam(value = "hostId", required = false) String hostId,
-            @RequestParam(value = "keyword", required = false) String keyword,
-            ServerWebExchange exchange) {
+        @RequestParam(value = "groupId", required = false) String groupId,
+        @RequestParam(value = "hostId", required = false) String hostId,
+        @RequestParam(value = "keyword", required = false) String keyword, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> services;
@@ -67,13 +79,13 @@ public class BusinessServiceController {
     /**
      * Gets a business service by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getBusinessService(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getBusinessService(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -94,13 +106,13 @@ public class BusinessServiceController {
     /**
      * Gets a business service with its associated hosts resolved.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/resolved")
-    public Mono<ResponseEntity<Map<String, Object>>> getResolved(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getResolved(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -121,13 +133,12 @@ public class BusinessServiceController {
     /**
      * Lists hosts associated with a business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/hosts")
-    public Mono<Map<String, Object>> getHosts(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> getHosts(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> hosts = businessServiceService.getHostsForBusinessService(id);
@@ -140,28 +151,27 @@ public class BusinessServiceController {
     /**
      * Gets the topology data for a business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/topology")
-    public Mono<Map<String, Object>> getTopology(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> getTopology(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> businessServiceService.getTopologyForBusinessService(id))
-                .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
      * Creates a new business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
-    public Mono<ResponseEntity<Map<String, Object>>> createBusinessService(
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> createBusinessService(@RequestBody Map<String, Object> request,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -182,14 +192,14 @@ public class BusinessServiceController {
     /**
      * Updates a business service by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateBusinessService(
-            @PathVariable("id") String id,
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> updateBusinessService(@PathVariable("id") String id,
+        @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -210,13 +220,13 @@ public class BusinessServiceController {
     /**
      * Deletes a business service by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteBusinessService(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteBusinessService(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             boolean deleted = businessServiceService.deleteBusinessService(id);
@@ -235,13 +245,13 @@ public class BusinessServiceController {
     /**
      * Migrates business data from the legacy business field to the business service table.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/migrate")
     public Mono<Map<String, Object>> migrate(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> businessServiceService.migrateFromBusinessField())
-                .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(Schedulers.boundedElastic());
     }
 }

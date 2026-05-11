@@ -22,9 +22,6 @@ public class UserRoleTest {
 
     /**
      * Tests from user id sys.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFromUserId_sys() {
@@ -33,9 +30,6 @@ public class UserRoleTest {
 
     /**
      * Tests from user id regular user.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFromUserId_regularUser() {
@@ -46,9 +40,6 @@ public class UserRoleTest {
 
     /**
      * Tests from user id with admin set configured admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFromUserId_withAdminSet_configuredAdmin() {
@@ -59,9 +50,6 @@ public class UserRoleTest {
 
     /**
      * Tests from user id with admin set non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFromUserId_withAdminSet_nonAdmin() {
@@ -72,9 +60,6 @@ public class UserRoleTest {
 
     /**
      * Tests is admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsAdmin() {

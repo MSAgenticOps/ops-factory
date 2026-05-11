@@ -41,9 +41,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -57,8 +54,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the session reply authenticated user proxies to goosed session reply operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void sessionReply_authenticatedUser_proxiesToGoosedSessionReply() throws Exception {
@@ -100,9 +96,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session events authenticated user proxies last event id without legacy relay operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionEvents_authenticatedUser_proxiesLastEventIdWithoutLegacyRelay() {
@@ -132,9 +125,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session cancel authenticated user proxies to goosed cancel only operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionCancel_authenticatedUser_proxiesToGoosedCancelOnly() {
@@ -161,9 +151,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply get or spawn failure returns structured error operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_getOrSpawnFailure_returnsStructuredError() {
@@ -193,9 +180,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply goosed active request400 returns conflict actions operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_goosedActiveRequest400_returnsConflictActions() {
@@ -236,9 +220,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply proxy failure returns stable fallback message key operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_proxyFailure_returnsStableFallbackMessageKey() {
@@ -267,9 +248,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session events proxy failure returns stable fallback message key operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionEvents_proxyFailure_returnsStableFallbackMessageKey() {
@@ -295,9 +273,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session cancel proxy failure returns stable fallback message key operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionCancel_proxyFailure_returnsStableFallbackMessageKey() {
@@ -321,9 +296,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session cancel gateway timeout returns cancel failure code operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionCancel_gatewayTimeout_returnsCancelFailureCode() {
@@ -348,9 +320,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the resume authenticated user proxies to goosed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void resume_authenticatedUser_proxiesToGoosed() {
@@ -376,9 +345,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the resume unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void resume_unauthenticated_returns401() {
@@ -391,9 +357,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the restart authenticated user proxies to goosed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void restart_authenticatedUser_proxiesToGoosed() {

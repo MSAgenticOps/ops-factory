@@ -51,9 +51,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -67,9 +64,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_hostNotFound() {
@@ -87,9 +81,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute command rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_commandRejected() {
@@ -116,9 +107,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute ssh connection fails.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_sshConnectionFails() {
@@ -146,9 +134,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute whitelist checked before ssh.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_whitelistCheckedBeforeSsh() {
@@ -176,9 +161,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute host with non default port.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_hostWithNonDefaultPort() {
@@ -202,9 +184,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute key auth type.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_keyAuthType() {
@@ -229,9 +208,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute missing port defaults to22.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_missingPortDefaultsTo22() {
@@ -254,9 +230,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute empty command.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_emptyCommand() {
@@ -279,9 +252,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute host without cluster no prefix no vars.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_hostWithoutCluster_noPrefixNoVars() {
@@ -305,9 +275,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute env vars replaced before whitelist check.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_envVarsReplacedBeforeWhitelistCheck() {
@@ -350,9 +317,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute with cluster type prefix applied to ssh command.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_withClusterTypePrefix_appliedToSshCommand() {
@@ -394,9 +358,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute no matching cluster type no prefix no vars.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_noMatchingClusterType_noPrefixNoVars() {
@@ -428,9 +389,6 @@ public class RemoteExecutionServiceTest {
 
     /**
      * Tests execute cluster service throws handled gracefully.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExecute_clusterServiceThrows_handledGracefully() {

@@ -28,9 +28,6 @@ public class LangfuseServiceBuildOverviewTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -47,8 +44,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests build overview with traces and observations.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildOverview_withTracesAndObservations() throws Exception {
@@ -94,8 +90,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests build overview empty data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildOverview_emptyData() throws Exception {
@@ -118,8 +113,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests build overview raw array format.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testBuildOverview_rawArrayFormat() throws Exception {
@@ -140,8 +134,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests parse traces normal data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testParseTraces_normalData() throws Exception {
@@ -179,8 +172,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests parse traces empty array.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testParseTraces_emptyArray() throws Exception {
@@ -195,8 +187,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests parse traces non array data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testParseTraces_nonArrayData() throws Exception {
@@ -212,8 +203,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests parse observations grouped by name.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testParseObservations_groupedByName() throws Exception {
@@ -249,8 +239,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests parse observations empty data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testParseObservations_emptyData() throws Exception {
@@ -267,8 +256,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests parse observations fallback token count.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testParseObservations_fallbackTokenCount() throws Exception {
@@ -290,8 +278,7 @@ public class LangfuseServiceBuildOverviewTest {
     /**
      * Tests empty overview.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testEmptyOverview() throws Exception {
@@ -311,9 +298,6 @@ public class LangfuseServiceBuildOverviewTest {
 
     /**
      * Tests get traces formatted not configured returns empty list.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetTracesFormatted_notConfigured_returnsEmptyList() {
@@ -328,9 +312,6 @@ public class LangfuseServiceBuildOverviewTest {
 
     /**
      * Tests get observations formatted not configured returns empty map.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetObservationsFormatted_notConfigured_returnsEmptyMap() {
@@ -346,9 +327,6 @@ public class LangfuseServiceBuildOverviewTest {
 
     /**
      * Tests get overview not configured returns empty overview.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetOverview_notConfigured_returnsEmptyOverview() {
@@ -362,9 +340,6 @@ public class LangfuseServiceBuildOverviewTest {
 
     /**
      * Tests get traces not configured returns empty array.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetTraces_notConfigured_returnsEmptyArray() {
@@ -377,9 +352,6 @@ public class LangfuseServiceBuildOverviewTest {
 
     /**
      * Tests get observations not configured returns empty array.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetObservations_notConfigured_returnsEmptyArray() {

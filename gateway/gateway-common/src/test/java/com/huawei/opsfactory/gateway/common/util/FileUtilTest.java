@@ -30,8 +30,7 @@ public class FileUtilTest {
     /**
      * Tests delete recursively single file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteRecursively_singleFile() throws IOException {
@@ -44,8 +43,7 @@ public class FileUtilTest {
     /**
      * Tests delete recursively empty directory.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteRecursively_emptyDirectory() throws IOException {
@@ -58,8 +56,7 @@ public class FileUtilTest {
     /**
      * Tests delete recursively nested directories.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteRecursively_nestedDirectories() throws IOException {
@@ -82,8 +79,7 @@ public class FileUtilTest {
     /**
      * Tests delete recursively non existent path.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteRecursively_nonExistentPath() throws IOException {
@@ -96,8 +92,7 @@ public class FileUtilTest {
     /**
      * Tests delete recursively directory with mixed content.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteRecursively_directoryWithMixedContent() throws IOException {

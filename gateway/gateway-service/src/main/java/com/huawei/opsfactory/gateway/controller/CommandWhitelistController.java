@@ -4,14 +4,23 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
-import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
+import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
+
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -40,8 +49,8 @@ public class CommandWhitelistController {
     /**
      * Returns the current command whitelist configuration.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> getWhitelist(ServerWebExchange exchange) {
@@ -55,13 +64,13 @@ public class CommandWhitelistController {
     /**
      * Adds a command pattern to the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
-    public Mono<ResponseEntity<Map<String, Object>>> addCommand(
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> addCommand(@RequestBody Map<String, Object> request,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -82,14 +91,14 @@ public class CommandWhitelistController {
     /**
      * Updates a command pattern in the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pattern the pattern parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{pattern}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateCommand(
-            @PathVariable String pattern,
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> updateCommand(@PathVariable String pattern,
+        @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -110,13 +119,13 @@ public class CommandWhitelistController {
     /**
      * Deletes a command pattern from the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pattern the pattern parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{pattern}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteCommand(
-            @PathVariable String pattern,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteCommand(@PathVariable String pattern,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {

@@ -26,9 +26,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the system admin returns system info operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void system_admin_returnsSystemInfo() {
@@ -53,9 +50,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the system non admin returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void system_nonAdmin_returns403() {
@@ -68,9 +62,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the system unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void system_unauthenticated_returns401() {
@@ -81,9 +72,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the instances admin returns instance list operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void instances_admin_returnsInstanceList() {
@@ -114,9 +102,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the instances non admin returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void instances_nonAdmin_returns403() {
@@ -129,9 +114,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the metrics admin returns metrics data operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void metrics_admin_returnsMetricsData() {
@@ -176,9 +158,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the metrics non admin returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void metrics_nonAdmin_returns403() {
@@ -191,9 +170,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the metrics unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void metrics_unauthenticated_returns401() {

@@ -4,16 +4,17 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -21,13 +22,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
 
 /**
  * Provides CRUD operations, topology queries, and host-id synchronization for business services.
@@ -38,14 +41,19 @@ import java.util.stream.Collectors;
 @Service
 public class BusinessServiceService {
     private static final Logger log = LoggerFactory.getLogger(BusinessServiceService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private Path businessServicesDir;
 
     private ClusterService clusterService;
+
     private HostService hostService;
+
     private HostRelationService hostRelationService;
+
     private ClusterRelationService clusterRelationService;
 
     /**
@@ -61,8 +69,7 @@ public class BusinessServiceService {
     /**
      * Sets the cluster service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterService the clusterService parameter
      */
     @Lazy
     @Autowired
@@ -73,8 +80,7 @@ public class BusinessServiceService {
     /**
      * Sets the host service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostService the hostService parameter
      */
     @Lazy
     @Autowired
@@ -85,8 +91,7 @@ public class BusinessServiceService {
     /**
      * Sets the host relation service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostRelationService the hostRelationService parameter
      */
     @Lazy
     @Autowired
@@ -97,8 +102,7 @@ public class BusinessServiceService {
     /**
      * Sets the cluster relation service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterRelationService the clusterRelationService parameter
      */
     @Lazy
     @Autowired
@@ -108,9 +112,6 @@ public class BusinessServiceService {
 
     /**
      * Initializes the business services data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -129,8 +130,9 @@ public class BusinessServiceService {
     /**
      * Lists business services optionally filtered by group ID and host ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groupId the groupId parameter
+     * @param hostId the hostId parameter
+     * @return the result
      */
     public List<Map<String, Object>> listBusinessServices(String groupId, String hostId) {
         List<Map<String, Object>> services = new ArrayList<>();
@@ -172,8 +174,8 @@ public class BusinessServiceService {
     /**
      * Gets a business service by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getBusinessService(String id) {
         Path file = businessServicesDir.resolve(id + ".json");
@@ -187,8 +189,8 @@ public class BusinessServiceService {
     /**
      * Creates a new business service from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> createBusinessService(Map<String, Object> body) {
@@ -218,8 +220,9 @@ public class BusinessServiceService {
     /**
      * Updates an existing business service with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) {
@@ -269,8 +272,8 @@ public class BusinessServiceService {
     /**
      * Deletes a business service by ID, cascading to related host and cluster relations.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteBusinessService(String id) {
         // Cascade delete related HostRelation records
@@ -301,8 +304,8 @@ public class BusinessServiceService {
     /**
      * Get business service with resolved host info.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getWithResolvedHosts(String id) {
@@ -329,8 +332,8 @@ public class BusinessServiceService {
     /**
      * Get hosts for the entry resources of a business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getHostsForBusinessService(String id) {
@@ -351,6 +354,9 @@ public class BusinessServiceService {
     /**
      * Get topology for a business service: entry hosts + N-hop downstream expansion.
      * Returns { nodes, edges }
+     *
+     * @param id the id parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getTopologyForBusinessService(String id) {
@@ -434,13 +440,8 @@ public class BusinessServiceService {
         bsNode.put("nodeType", "business-service");
         nodes.add(0, bsNode);
 
-        List<Map<String, Object>> bsRelations = hostRelationService.listRelations(
-                null,
-                null,
-                null,
-                "business-service",
-                id
-        );
+        List<Map<String, Object>> bsRelations =
+            hostRelationService.listRelations(null, null, null, "business-service", id);
         for (Map<String, Object> rel : bsRelations) {
             String targetId = (String) rel.get("targetHostId");
             if (targetId != null && hostMap.containsKey(targetId)) {
@@ -462,8 +463,7 @@ public class BusinessServiceService {
     /**
      * Migrate from Host.business field: group by (businessName, groupId) -> create BusinessService.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> migrateFromBusinessField() {
@@ -550,16 +550,13 @@ public class BusinessServiceService {
     /**
      * Sync hostIds on a business service from its HostRelation records.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param bsId the bsId parameter
      */
     @SuppressWarnings("unchecked")
     public void syncHostIdsFromRelations(String bsId) {
         Map<String, Object> bs = getBusinessService(bsId);
         List<Map<String, Object>> rels = hostRelationService.listRelations(null, null, null, "business-service", bsId);
-        List<String> newHostIds = rels.stream()
-            .map(r -> (String) r.get("targetHostId"))
-            .collect(Collectors.toList());
+        List<String> newHostIds = rels.stream().map(r -> (String) r.get("targetHostId")).collect(Collectors.toList());
         bs.put("hostIds", newHostIds);
         bs.put("updatedAt", Instant.now().toString());
         writeEntityFile(bsId, bs);
@@ -569,6 +566,8 @@ public class BusinessServiceService {
      * Sync hostIds on a business service from its ClusterRelation records.
      * Derives entry hosts from ClusterRelation where sourceType="business-service" and sourceId=bsId.
      * Resolves targetId (cluster) -> get cluster's hosts -> populate BS.hostIds.
+     *
+     * @param bsId the bsId parameter
      */
     @SuppressWarnings("unchecked")
     public void syncHostIdsFromClusterRelations(String bsId) {
@@ -601,8 +600,7 @@ public class BusinessServiceService {
     /**
      * Remove a host from all business services' hostIds (called when a host is deleted).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
      */
     @SuppressWarnings("unchecked")
     public void removeHostFromAllBusinessServices(String hostId) {
@@ -622,8 +620,8 @@ public class BusinessServiceService {
     /**
      * Search business services by keyword matching against name, code, and tags.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param keyword the keyword parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> searchByKeyword(String keyword) {
@@ -678,8 +676,7 @@ public class BusinessServiceService {
         return relations;
     }
 
-    private Map<String, Object> buildHostNode(Map<String, Object> h,
-            Map<String, Map<String, Object>> clusterMap) {
+    private Map<String, Object> buildHostNode(Map<String, Object> h, Map<String, Map<String, Object>> clusterMap) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("id", h.get("id"));
         node.put("name", h.get("name"));

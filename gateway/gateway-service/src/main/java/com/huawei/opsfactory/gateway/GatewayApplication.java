@@ -19,8 +19,7 @@ public class GatewayApplication {
     /**
      * Starts the OpsFactory Gateway application.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param args the args parameter
      */
     public static void main(String[] args) {
         SpringApplication.run(GatewayApplication.class, args);

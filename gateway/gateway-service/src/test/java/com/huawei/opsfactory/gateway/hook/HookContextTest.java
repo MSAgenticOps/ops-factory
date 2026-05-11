@@ -20,9 +20,6 @@ public class HookContextTest {
 
     /**
      * Tests constructor.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConstructor() {
@@ -36,9 +33,6 @@ public class HookContextTest {
 
     /**
      * Tests set body.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSetBody() {
@@ -49,9 +43,6 @@ public class HookContextTest {
 
     /**
      * Tests state.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testState() {

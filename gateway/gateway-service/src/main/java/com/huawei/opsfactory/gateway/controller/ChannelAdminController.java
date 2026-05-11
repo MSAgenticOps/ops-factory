@@ -16,6 +16,10 @@ import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestReques
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelSelfTestResult;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelUpsertRequest;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelVerificationResult;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -29,8 +33,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -47,9 +49,13 @@ public class ChannelAdminController {
     private static final Logger log = LoggerFactory.getLogger(ChannelAdminController.class);
 
     private final ChannelConfigService channelConfigService;
+
     private final ChannelAdapterRegistry channelAdapterRegistry;
+
     private final WhatsAppWebLoginService whatsAppWebLoginService;
+
     private final WhatsAppMessagePumpService whatsAppMessagePumpService;
+
     private final WeChatLoginService weChatLoginService;
 
     /**
@@ -59,10 +65,8 @@ public class ChannelAdminController {
      * @since 2026-05-09
      */
     public ChannelAdminController(ChannelConfigService channelConfigService,
-                                  ChannelAdapterRegistry channelAdapterRegistry,
-                                  WhatsAppWebLoginService whatsAppWebLoginService,
-                                  WhatsAppMessagePumpService whatsAppMessagePumpService,
-                                  WeChatLoginService weChatLoginService) {
+        ChannelAdapterRegistry channelAdapterRegistry, WhatsAppWebLoginService whatsAppWebLoginService,
+        WhatsAppMessagePumpService whatsAppMessagePumpService, WeChatLoginService weChatLoginService) {
         this.channelConfigService = channelConfigService;
         this.channelAdapterRegistry = channelAdapterRegistry;
         this.whatsAppWebLoginService = whatsAppWebLoginService;
@@ -73,22 +77,23 @@ public class ChannelAdminController {
     /**
      * Lists all channels for the current admin user.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listChannels(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
-        return Mono.fromCallable(() -> Map.<String, Object>of("channels", channelConfigService.listChannels(userId)))
-                .subscribeOn(Schedulers.boundedElastic());
+        return Mono.fromCallable(() -> Map.<String, Object> of("channels", channelConfigService.listChannels(userId)))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
      * Gets a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}")
     public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable String channelId, ServerWebExchange exchange) {
@@ -97,7 +102,7 @@ public class ChannelAdminController {
         return Mono.fromCallable(() -> {
             ChannelDetail detail = channelConfigService.getChannel(channelId, userId);
             if (detail == null) {
-                return ResponseEntity.notFound().<ChannelDetail>build();
+                return ResponseEntity.notFound().<ChannelDetail> build();
             }
             return ResponseEntity.ok(detail);
         }).subscribeOn(Schedulers.boundedElastic());
@@ -106,22 +111,21 @@ public class ChannelAdminController {
     /**
      * Creates a new channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createChannel(@RequestBody ChannelUpsertRequest request,
-                                                                   ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String ownerUserId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
-                ChannelDetail detail = channelConfigService.createChannel(
-                        request,
-                        ownerUserId != null ? ownerUserId : "admin"
-                );
+                ChannelDetail detail =
+                    channelConfigService.createChannel(request, ownerUserId != null ? ownerUserId : "admin");
                 return ResponseEntity.status(HttpStatus.CREATED)
-                        .body(Map.<String, Object>of("success", true, "channel", detail));
+                    .body(Map.<String, Object> of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -131,19 +135,20 @@ public class ChannelAdminController {
     /**
      * Updates a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> updateChannel(@PathVariable String channelId,
-                                                                   @RequestBody ChannelUpsertRequest request,
-                                                                   ServerWebExchange exchange) {
+        @RequestBody ChannelUpsertRequest request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
                 ChannelDetail detail = channelConfigService.updateChannel(channelId, request, userId);
-                return ResponseEntity.ok(Map.<String, Object>of("success", true, "channel", detail));
+                return ResponseEntity.ok(Map.<String, Object> of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -153,41 +158,44 @@ public class ChannelAdminController {
     /**
      * Enables a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/enable")
     public Mono<ResponseEntity<Map<String, Object>>> enableChannel(@PathVariable String channelId,
-                                                                   ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         return setEnabled(channelId, true, exchange);
     }
 
     /**
      * Disables a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/disable")
     public Mono<ResponseEntity<Map<String, Object>>> disableChannel(@PathVariable String channelId,
-                                                                    ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         return setEnabled(channelId, false, exchange);
     }
 
     /**
      * Deletes a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteChannel(@PathVariable String channelId,
-                                                                   ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
                 channelConfigService.deleteChannel(channelId);
-                return ResponseEntity.ok(Map.<String, Object>of("success", true));
+                return ResponseEntity.ok(Map.<String, Object> of("success", true));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -197,18 +205,19 @@ public class ChannelAdminController {
     /**
      * Lists all bindings for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}/bindings")
     public Mono<ResponseEntity<Map<String, Object>>> listBindings(@PathVariable String channelId,
-                                                                  ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
-                return ResponseEntity.ok(Map.<String, Object>of(
-                        "bindings", channelConfigService.listBindings(channelId, userId)));
+                return ResponseEntity
+                    .ok(Map.<String, Object> of("bindings", channelConfigService.listBindings(channelId, userId)));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -218,18 +227,19 @@ public class ChannelAdminController {
     /**
      * Lists all events for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}/events")
     public Mono<ResponseEntity<Map<String, Object>>> listEvents(@PathVariable String channelId,
-                                                                ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
-                return ResponseEntity.ok(Map.<String, Object>of(
-                        "events", channelConfigService.listEvents(channelId, userId)));
+                return ResponseEntity
+                    .ok(Map.<String, Object> of("events", channelConfigService.listEvents(channelId, userId)));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -239,20 +249,19 @@ public class ChannelAdminController {
     /**
      * Verifies a channel configuration.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/verify")
     public Mono<ResponseEntity<Map<String, Object>>> verifyChannel(@PathVariable String channelId,
-                                                                   ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
                 ChannelVerificationResult result = channelConfigService.verifyChannel(channelId, userId);
-                return ResponseEntity.ok(Map.<String, Object>of(
-                        "success", result.ok(),
-                        "verification", result));
+                return ResponseEntity.ok(Map.<String, Object> of("success", result.ok(), "verification", result));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -262,40 +271,39 @@ public class ChannelAdminController {
     /**
      * Probes a channel for connectivity status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/probe")
     public Mono<ResponseEntity<Map<String, Object>>> probeChannel(@PathVariable String channelId,
-                                                                  ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> channelConfigService.getChannel(channelId, userId))
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(detail -> {
-                    if (detail == null) {
-                        return Mono.just(
-                                ResponseEntity.badRequest()
-                                        .body(errorBody("Channel '" + channelId + "' not found"))
-                        );
-                    }
-                    return channelAdapterRegistry.require(detail.type()).testConnectivity(channelId, userId)
-                            .map(result -> ResponseEntity.ok(Map.<String, Object>of(
-                                    "success", result.ok(),
-                                    "connectivity", result
-                            )));
-                });
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMap(detail -> {
+                if (detail == null) {
+                    return Mono
+                        .just(ResponseEntity.badRequest().body(errorBody("Channel '" + channelId + "' not found")));
+                }
+                return channelAdapterRegistry.require(detail.type())
+                    .testConnectivity(channelId, userId)
+                    .map(result -> ResponseEntity
+                        .ok(Map.<String, Object> of("success", result.ok(), "connectivity", result)));
+            });
     }
 
     /**
      * Gets the current login state for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}/login-state")
     public Mono<ResponseEntity<Map<String, Object>>> getLoginState(@PathVariable String channelId,
-                                                                   ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
@@ -312,7 +320,7 @@ public class ChannelAdminController {
                     default:
                         throw new IllegalArgumentException(detail.type() + " login is not implemented yet");
                 };
-                return ResponseEntity.ok(Map.<String, Object>of("state", state));
+                return ResponseEntity.ok(Map.<String, Object> of("state", state));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -322,12 +330,13 @@ public class ChannelAdminController {
     /**
      * Starts the login process for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/login")
     public Mono<ResponseEntity<Map<String, Object>>> startLogin(@PathVariable String channelId,
-                                                                ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
@@ -344,7 +353,7 @@ public class ChannelAdminController {
                     default:
                         throw new IllegalArgumentException(detail.type() + " login is not implemented yet");
                 };
-                return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", state));
+                return ResponseEntity.ok(Map.<String, Object> of("success", true, "state", state));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }
@@ -354,12 +363,13 @@ public class ChannelAdminController {
     /**
      * Logs out from a channel and resets its runtime state.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/logout")
     public Mono<ResponseEntity<Map<String, Object>>> logout(@PathVariable String channelId,
-                                                            ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
@@ -376,21 +386,14 @@ public class ChannelAdminController {
                     return ResponseEntity.badRequest().body(errorBody(detail.type() + " login is not implemented yet"));
                 }
                 detail = channelConfigService.resetChannelRuntimeState(channelId, userId);
-                String disconnectedMessage = "wechat".equals(detail.type())
-                        ? "WeChat login required"
-                        : "WhatsApp Web login required";
-                ChannelLoginState state = new ChannelLoginState(
-                        detail.id(),
-                        "disconnected",
-                        disconnectedMessage,
-                        detail.config().authStateDir(),
-                        "wechat".equals(detail.type()) ? detail.config().wechatId() : detail.config().selfPhone(),
-                        detail.config().lastConnectedAt(),
-                        detail.config().lastDisconnectedAt(),
-                        detail.config().lastError(),
-                        null
-                );
-                return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", state));
+                String disconnectedMessage =
+                    "wechat".equals(detail.type()) ? "WeChat login required" : "WhatsApp Web login required";
+                ChannelLoginState state = new ChannelLoginState(detail.id(), "disconnected", disconnectedMessage,
+                    detail.config().authStateDir(),
+                    "wechat".equals(detail.type()) ? detail.config().wechatId() : detail.config().selfPhone(),
+                    detail.config().lastConnectedAt(), detail.config().lastDisconnectedAt(),
+                    detail.config().lastError(), null);
+                return ResponseEntity.ok(Map.<String, Object> of("success", true, "state", state));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             } catch (IllegalStateException e) {
@@ -402,28 +405,20 @@ public class ChannelAdminController {
                         detail = channelConfigService.resetChannelRuntimeState(channelId, userId);
                     }
                 } catch (IllegalArgumentException resetError) {
-                    log.warn("Failed to reset runtime state for channel {} after logout error: {}",
-                            channelId, resetError.getMessage());
+                    log.warn("Failed to reset runtime state for channel {} after logout error: {}", channelId,
+                        resetError.getMessage());
                 }
                 if (detail == null) {
                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(errorBody("Failed to clear channel login state"));
+                        .body(errorBody("Failed to clear channel login state"));
                 }
-                String disconnectedMessage = "wechat".equals(detail.type())
-                        ? "WeChat login required"
-                        : "WhatsApp Web login required";
-                ChannelLoginState fallbackState = new ChannelLoginState(
-                        detail.id(),
-                        "disconnected",
-                        disconnectedMessage,
-                        detail.config().authStateDir(),
-                        "wechat".equals(detail.type()) ? detail.config().wechatId() : "",
-                        detail.config().lastConnectedAt(),
-                        detail.config().lastDisconnectedAt(),
-                        "",
-                        null
-                );
-                return ResponseEntity.ok(Map.<String, Object>of("success", true, "state", fallbackState));
+                String disconnectedMessage =
+                    "wechat".equals(detail.type()) ? "WeChat login required" : "WhatsApp Web login required";
+                ChannelLoginState fallbackState = new ChannelLoginState(detail.id(), "disconnected",
+                    disconnectedMessage, detail.config().authStateDir(),
+                    "wechat".equals(detail.type()) ? detail.config().wechatId() : "", detail.config().lastConnectedAt(),
+                    detail.config().lastDisconnectedAt(), "", null);
+                return ResponseEntity.ok(Map.<String, Object> of("success", true, "state", fallbackState));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -431,13 +426,14 @@ public class ChannelAdminController {
     /**
      * Runs a self-test on a channel to verify end-to-end messaging.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/self-test")
     public Mono<ResponseEntity<Map<String, Object>>> runSelfTest(@PathVariable String channelId,
-                                                                 @RequestBody ChannelSelfTestRequest request,
-                                                                 ServerWebExchange exchange) {
+        @RequestBody ChannelSelfTestRequest request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
@@ -451,14 +447,11 @@ public class ChannelAdminController {
                 }
                 if (!"whatsapp".equals(detail.type())) {
                     return ResponseEntity.badRequest()
-                            .body(errorBody(detail.type() + " self-test is not implemented yet"));
+                        .body(errorBody(detail.type() + " self-test is not implemented yet"));
                 }
-                ChannelSelfTestResult result = whatsAppMessagePumpService.runSelfTest(
-                        channelId,
-                        userId,
-                        request.text()
-                );
-                return ResponseEntity.ok(Map.<String, Object>of("success", true, "result", result));
+                ChannelSelfTestResult result =
+                    whatsAppMessagePumpService.runSelfTest(channelId, userId, request.text());
+                return ResponseEntity.ok(Map.<String, Object> of("success", true, "result", result));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             } catch (IllegalStateException e) {
@@ -467,15 +460,14 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    private Mono<ResponseEntity<Map<String, Object>>> setEnabled(String channelId,
-                                                                 boolean enabled,
-                                                                 ServerWebExchange exchange) {
+    private Mono<ResponseEntity<Map<String, Object>>> setEnabled(String channelId, boolean enabled,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             try {
                 ChannelDetail detail = channelConfigService.setEnabled(channelId, enabled, userId);
-                return ResponseEntity.ok(Map.<String, Object>of("success", true, "channel", detail));
+                return ResponseEntity.ok(Map.<String, Object> of("success", true, "channel", detail));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(invalidChannelRequestBody());
             }

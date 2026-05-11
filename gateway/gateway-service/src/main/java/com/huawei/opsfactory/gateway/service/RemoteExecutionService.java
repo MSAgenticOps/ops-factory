@@ -36,9 +36,13 @@ public class RemoteExecutionService {
     private static final Logger log = LoggerFactory.getLogger(RemoteExecutionService.class);
 
     private final HostService hostService;
+
     private final CommandWhitelistService commandWhitelistService;
+
     private final GatewayProperties properties;
+
     private final ClusterService clusterService;
+
     private final ClusterTypeService clusterTypeService;
 
     /**
@@ -47,11 +51,8 @@ public class RemoteExecutionService {
      * @author x00000000
      * @since 2026-05-09
      */
-    public RemoteExecutionService(HostService hostService,
-                                  CommandWhitelistService commandWhitelistService,
-                                  GatewayProperties properties,
-                                  ClusterService clusterService,
-                                  ClusterTypeService clusterTypeService) {
+    public RemoteExecutionService(HostService hostService, CommandWhitelistService commandWhitelistService,
+        GatewayProperties properties, ClusterService clusterService, ClusterTypeService clusterTypeService) {
         this.hostService = hostService;
         this.commandWhitelistService = commandWhitelistService;
         this.properties = properties;
@@ -62,8 +63,8 @@ public class RemoteExecutionService {
     /**
      * Execute a remote command on the specified host via SSH.
      *
-     * @param hostId         the host ID to connect to
-     * @param command        the shell command to execute
+     * @param hostId the host ID to connect to
+     * @param command the shell command to execute
      * @param timeoutSeconds maximum execution time in seconds
      * @return result map with hostIp, username, hostName, exitCode, output, error, duration
      */
@@ -114,7 +115,8 @@ public class RemoteExecutionService {
                                     if (item instanceof Map<?, ?> m) {
                                         String k = m.get("key") != null ? m.get("key").toString() : null;
                                         String v = m.get("value") != null ? m.get("value").toString() : "";
-                                        if (k != null && !k.isEmpty()) envVars.put(k, v);
+                                        if (k != null && !k.isEmpty())
+                                            envVars.put(k, v);
                                     }
                                 }
                             }
@@ -135,8 +137,8 @@ public class RemoteExecutionService {
             String value = envVars.get(key);
             effectiveCommand = effectiveCommand.replace("${" + key + "}", value);
             // Also replace $VAR when not followed by a valid identifier char
-            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key)
-                            + "(?![A-Za-z0-9_])",
+            effectiveCommand =
+                effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key) + "(?![A-Za-z0-9_])",
                     java.util.regex.Matcher.quoteReplacement(value));
         }
 
@@ -150,10 +152,8 @@ public class RemoteExecutionService {
             result.put("hostName", hostName);
             result.put("exitCode", -1);
             result.put("output", "");
-            result.put(
-                    "error",
-                    "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected)
-            );
+            result.put("error",
+                "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected));
             result.put("rejectedCommands", rejected);
             result.put("duration", 0L);
             return result;
@@ -175,8 +175,7 @@ public class RemoteExecutionService {
             session = jsch.getSession(username, hostname, port);
 
             if ("key".equals(authType)) {
-                jsch.addIdentity("remote-exec", credential.getBytes(StandardCharsets.UTF_8),
-                        null, null);
+                jsch.addIdentity("remote-exec", credential.getBytes(StandardCharsets.UTF_8), null, null);
             } else {
                 session.setPassword(credential);
             }

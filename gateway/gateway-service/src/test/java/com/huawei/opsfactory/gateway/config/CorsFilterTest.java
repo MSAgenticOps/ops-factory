@@ -29,9 +29,6 @@ public class CorsFilterTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -48,9 +45,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the wildcard any origin returns request origin operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void wildcard_anyOrigin_returnsRequestOrigin() {
@@ -70,9 +64,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the wildcard localhost origin returns request origin operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void wildcard_localhostOrigin_returnsRequestOrigin() {
@@ -90,9 +81,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the exact match matching origin returns origin operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void exactMatch_matchingOrigin_returnsOrigin() {
@@ -110,9 +98,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the exact match non matching origin no acao header operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void exactMatch_nonMatchingOrigin_noAcaoHeader() {
@@ -129,9 +114,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the multi value second origin matches operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void multiValue_secondOriginMatches() {
@@ -149,9 +131,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the multi value no match no acao header operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void multiValue_noMatch_noAcaoHeader() {
@@ -168,9 +147,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the no origin header no acao header operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void noOriginHeader_noAcaoHeader() {
@@ -185,9 +161,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the options preflight matching origin returns204 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void optionsPreflight_matchingOrigin_returns204() {
@@ -206,9 +179,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the options preflight non matching origin returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void optionsPreflight_nonMatchingOrigin_returns403() {
@@ -225,9 +195,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the options preflight no origin returns204 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void optionsPreflight_noOrigin_returns204() {
@@ -242,9 +209,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the regression private network5173 not auto allowed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void regression_privateNetwork5173_notAutoAllowed() {
@@ -262,9 +226,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the regression localhost5173 not auto allowed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void regression_localhost5173_notAutoAllowed() {
@@ -282,9 +243,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the regression 10network5173 not auto allowed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void regression_10network5173_notAutoAllowed() {
@@ -302,9 +260,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the common headers always present operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void commonHeaders_alwaysPresent() {
@@ -326,9 +281,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the empty config treated as wildcard operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void emptyConfig_treatedAsWildcard() {
@@ -346,9 +298,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the null config treated as wildcard operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void nullConfig_treatedAsWildcard() {
@@ -366,9 +315,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the https origin exact match operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void httpsOrigin_exactMatch() {
@@ -386,9 +332,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the https origin wildcard returns https origin operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void httpsOrigin_wildcard_returnsHttpsOrigin() {
@@ -406,9 +349,6 @@ public class CorsFilterTest {
 
     /**
      * Executes the https origin options preflight returns204 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void httpsOrigin_optionsPreflight_returns204() {

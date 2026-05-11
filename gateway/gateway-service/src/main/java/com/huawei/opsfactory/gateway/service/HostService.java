@@ -48,20 +48,33 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class HostService {
     private static final Logger log = LoggerFactory.getLogger(HostService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
+
     private static final int GCM_IV_LENGTH = 12;
+
     private static final int GCM_TAG_LENGTH = 128;
 
     private final GatewayProperties properties;
+
     private Path gatewayRoot;
+
     private Path hostsDir;
+
     private SecretKeySpec aesKey;
+
     private HostRelationService hostRelationService;
+
     private HostGroupService hostGroupService;
+
     private ClusterService clusterService;
+
     private BusinessServiceService businessServiceService;
+
     private ClusterTypeService clusterTypeService;
+
     private ClusterRelationService clusterRelationService;
 
     /**
@@ -77,8 +90,7 @@ public class HostService {
     /**
      * Sets the host relation service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostRelationService the hostRelationService parameter
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -89,8 +101,7 @@ public class HostService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param businessServiceService the businessServiceService parameter
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -101,8 +112,7 @@ public class HostService {
     /**
      * Sets the host group service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostGroupService the hostGroupService parameter
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -113,8 +123,7 @@ public class HostService {
     /**
      * Sets the cluster service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterService the clusterService parameter
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -125,8 +134,7 @@ public class HostService {
     /**
      * Sets the cluster type service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterTypeService the clusterTypeService parameter
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -137,8 +145,7 @@ public class HostService {
     /**
      * Sets the cluster relation service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterRelationService the clusterRelationService parameter
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -148,9 +155,6 @@ public class HostService {
 
     /**
      * Initializes the hosts data directory and AES encryption key at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -196,13 +200,13 @@ public class HostService {
         String clusterId = clusterIdObj.toString();
         String mode = resolveClusterMode(clusterId);
         if ("peer".equals(mode)) {
-            throw new IllegalArgumentException("Host role is not allowed in peer cluster mode. Cluster ID: "
-                    + clusterId);
+            throw new IllegalArgumentException(
+                "Host role is not allowed in peer cluster mode. Cluster ID: " + clusterId);
         }
         if ("primary-backup".equals(mode)) {
             if (!"primary".equals(role) && !"backup".equals(role)) {
-                throw new IllegalArgumentException("Invalid host role '" + role + "'. Must be 'primary' or " +
-                        "'backup' for primary-backup cluster.");
+                throw new IllegalArgumentException(
+                    "Invalid host role '" + role + "'. Must be 'primary' or " + "'backup' for primary-backup cluster.");
             }
         }
     }
@@ -286,8 +290,8 @@ public class HostService {
     /**
      * Lists hosts optionally filtered by tags.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param tags the tags parameter
+     * @return the result
      */
     public List<Map<String, Object>> listHosts(String[] tags) {
         List<Map<String, Object>> hosts = new ArrayList<>();
@@ -333,8 +337,8 @@ public class HostService {
     /**
      * Gets a host by its ID with the credential masked.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getHost(String id) {
         Path file = hostsDir.resolve(id + ".json");
@@ -349,8 +353,8 @@ public class HostService {
     /**
      * Gets a host by its ID with the decrypted credential for internal use.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getHostWithCredential(String id) {
         Path file = hostsDir.resolve(id + ".json");
@@ -375,8 +379,8 @@ public class HostService {
     /**
      * Creates a new host from the provided field map with encrypted credential.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createHost(Map<String, Object> body) {
         String name = body.getOrDefault("name", "").toString();
@@ -440,8 +444,9 @@ public class HostService {
     /**
      * Updates an existing host with the provided field map, re-encrypting the credential if changed.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateHost(String id, Map<String, Object> body) {
         Path file = hostsDir.resolve(id + ".json");
@@ -544,8 +549,8 @@ public class HostService {
     /**
      * Deletes a host by ID with cascade deletion of related relations.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteHost(String id) {
         // Cascade delete relations first
@@ -580,8 +585,8 @@ public class HostService {
     /**
      * List hosts filtered by clusterId.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @return the result
      */
     public List<Map<String, Object>> listHostsByCluster(String clusterId) {
         List<Map<String, Object>> hosts = new ArrayList<>();
@@ -611,6 +616,10 @@ public class HostService {
     /**
      * List hosts filtered by groupId (via cluster lookup).
      * Recursively resolves sub-groups so a top-level group finds all descendant hosts.
+     *
+     * @param groupId the groupId parameter
+     * @param clusterService the clusterService parameter
+     * @return the result
      */
     public List<Map<String, Object>> listHostsByGroup(String groupId, ClusterService clusterService) {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -618,8 +627,8 @@ public class HostService {
         return result;
     }
 
-    private void collectHostsByGroup(String groupId, ClusterService clusterService,
-                                     Set<String> visited, List<Map<String, Object>> result) {
+    private void collectHostsByGroup(String groupId, ClusterService clusterService, Set<String> visited,
+        List<Map<String, Object>> result) {
         if (!visited.add(groupId)) {
             // avoid cycles
             return;
@@ -644,8 +653,7 @@ public class HostService {
     /**
      * Returns all unique tags across all hosts.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public List<String> getAllTags() {
         LinkedHashSet<String> allTags = new LinkedHashSet<>();
@@ -666,6 +674,9 @@ public class HostService {
     /**
      * Find a host by IP address, checking both the ip (SSH) and businessIp fields.
      * Returns the first matching host map (with masked credential) or null.
+     *
+     * @param ip the ip parameter
+     * @return the result
      */
     public Map<String, Object> findByIp(String ip) {
         List<Map<String, Object>> hosts = listHosts(new String[0]);
@@ -680,8 +691,8 @@ public class HostService {
     /**
      * Tests the SSH connection to a host by its ID and returns connection status and latency.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> testConnection(String id) {
         Map<String, Object> host;
@@ -710,8 +721,7 @@ public class HostService {
             Session session = jsch.getSession(username, hostname, port);
 
             if ("key".equals(authType)) {
-                jsch.addIdentity("test-connection", credential.getBytes(StandardCharsets.UTF_8),
-                        null, null);
+                jsch.addIdentity("test-connection", credential.getBytes(StandardCharsets.UTF_8), null, null);
             } else {
                 session.setPassword(credential);
             }
@@ -728,10 +738,8 @@ public class HostService {
             log.info("SSH connection test succeeded hostId={} ip={} port={} latencyMs={}", id, hostname, port, latency);
         } catch (JSchException | RuntimeException e) {
             long latency = System.currentTimeMillis() - start;
-            log.warn(
-                    "SSH connection test failed hostId={} ip={} port={} latencyMs={} error={}",
-                    id, hostname, port, latency, e.getMessage()
-            );
+            log.warn("SSH connection test failed hostId={} ip={} port={} latencyMs={} error={}", id, hostname, port,
+                latency, e.getMessage());
             result.put("success", false);
             result.put("message", "Connection failed: " + e.getMessage());
             result.put("latency", latency + "ms");
@@ -748,8 +756,7 @@ public class HostService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
-            });
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
         } catch (IOException e) {
             log.error("Failed to read host file: {}", file, e);
             return null;

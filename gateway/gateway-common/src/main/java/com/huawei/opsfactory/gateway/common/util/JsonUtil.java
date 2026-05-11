@@ -18,8 +18,9 @@ public final class JsonUtil {
      * Extracts the value of a string field from a JSON body.
      * Handles both snake_case and camelCase field names.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param json the json parameter
+     * @param fieldNames the fieldNames parameter
+     * @return the result
      */
     public static String extractStringField(String json, String... fieldNames) {
         for (String fieldName : fieldNames) {
@@ -48,8 +49,8 @@ public final class JsonUtil {
     /**
      * Extracts the session identifier from a JSON request body.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param json the json parameter
+     * @return the result
      */
     public static String extractSessionId(String json) {
         return extractStringField(json, "session_id", "sessionId");

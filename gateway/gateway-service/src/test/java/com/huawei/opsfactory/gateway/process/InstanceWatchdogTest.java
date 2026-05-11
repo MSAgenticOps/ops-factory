@@ -32,9 +32,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -52,9 +49,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests reap idle instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReap_idleInstance() {
@@ -70,9 +64,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests reap active instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReap_activeInstance() {
@@ -88,9 +79,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests reap never reaps resident instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReap_neverReapsResidentInstance() {
@@ -112,9 +100,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests reap skips non running.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReap_skipsNonRunning() {
@@ -132,9 +117,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests watchdog detects dead process respawns.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWatchdog_detectsDeadProcess_respawns() {
@@ -151,9 +133,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests watchdog respects max restart attempts.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWatchdog_respectsMaxRestartAttempts() {
@@ -172,9 +151,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests watchdog backoff delay.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWatchdog_backoffDelay() {
@@ -195,9 +171,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests watchdog backoff expired respawns.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWatchdog_backoffExpired_respawns() {
@@ -217,9 +190,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests watchdog alive process no action.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWatchdog_aliveProcess_noAction() {
@@ -235,9 +205,6 @@ public class InstanceWatchdogTest {
 
     /**
      * Tests watchdog resident dead process still respawns.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWatchdog_residentDeadProcessStillRespawns() {

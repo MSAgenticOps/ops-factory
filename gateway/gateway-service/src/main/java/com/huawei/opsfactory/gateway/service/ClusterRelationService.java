@@ -4,16 +4,17 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -26,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
+
 /**
  * Manages cluster-level relations including topology graph data, neighbor resolution, and cascade deletes.
  *
@@ -35,14 +38,19 @@ import java.util.UUID;
 @Service
 public class ClusterRelationService {
     private static final Logger log = LoggerFactory.getLogger(ClusterRelationService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private Path relationsDir;
 
     private HostService hostService;
+
     private ClusterService clusterService;
+
     private ClusterTypeService clusterTypeService;
+
     private BusinessServiceService businessServiceService;
 
     /**
@@ -58,8 +66,7 @@ public class ClusterRelationService {
     /**
      * Sets the host service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostService the hostService parameter
      */
     @Lazy
     @Autowired
@@ -70,8 +77,7 @@ public class ClusterRelationService {
     /**
      * Sets the cluster service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterService the clusterService parameter
      */
     @Lazy
     @Autowired
@@ -82,8 +88,7 @@ public class ClusterRelationService {
     /**
      * Sets the cluster type service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterTypeService the clusterTypeService parameter
      */
     @Lazy
     @Autowired
@@ -94,8 +99,7 @@ public class ClusterRelationService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param businessServiceService the businessServiceService parameter
      */
     @Lazy
     @Autowired
@@ -105,9 +109,6 @@ public class ClusterRelationService {
 
     /**
      * Initializes the cluster relations data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -126,8 +127,8 @@ public class ClusterRelationService {
     /**
      * Lists cluster relations optionally filtered by cluster ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @return the result
      */
     public List<Map<String, Object>> listRelations(String clusterId) {
         List<Map<String, Object>> relations = new ArrayList<>();
@@ -147,8 +148,8 @@ public class ClusterRelationService {
                     String sourceId = (String) rel.get("sourceId");
                     String targetId = (String) rel.get("targetId");
                     String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
-                    boolean match = clusterId.equals(targetId)
-                            || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
+                    boolean match =
+                        clusterId.equals(targetId) || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
                     if (!match) {
                         continue;
                     }
@@ -164,8 +165,8 @@ public class ClusterRelationService {
     /**
      * Creates a new cluster relation from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
@@ -214,13 +215,8 @@ public class ClusterRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info(
-                "Created cluster relation: id={}, sourceType={}, source={}, target={}",
-                id,
-                sourceType,
-                sourceId,
-                targetId
-        );
+        log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId,
+            targetId);
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -233,8 +229,9 @@ public class ClusterRelationService {
     /**
      * Updates an existing cluster relation with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
@@ -290,8 +287,8 @@ public class ClusterRelationService {
     /**
      * Deletes a cluster relation by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
@@ -319,8 +316,7 @@ public class ClusterRelationService {
     /**
      * Delete all relations involving a specific cluster (cascade delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
      */
     public void deleteRelationsByCluster(String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -329,8 +325,7 @@ public class ClusterRelationService {
             String sourceId = (String) rel.get("sourceId");
             String targetId = (String) rel.get("targetId");
             String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
-            boolean match = clusterId.equals(targetId)
-                    || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
+            boolean match = clusterId.equals(targetId) || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
             if (match) {
                 deleteRelation((String) rel.get("id"));
                 count++;
@@ -344,8 +339,7 @@ public class ClusterRelationService {
     /**
      * Delete all relations where source is a specific business service (cascade delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param bsId the bsId parameter
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -371,6 +365,9 @@ public class ClusterRelationService {
      * - If relation exists and clusterId changed → update sourceId (the cluster).
      * - If relation exists and clusterId cleared → delete relation.
      * - If relation exists and same clusterId → no-op.
+     *
+     * @param hostId the hostId parameter
+     * @param clusterId the clusterId parameter
      */
     public void syncHostClusterRelation(String hostId, String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -412,12 +409,8 @@ public class ClusterRelationService {
                 existing.put("sourceId", clusterId);
                 existing.put("updatedAt", Instant.now().toString());
                 writeEntityFile((String) existing.get("id"), existing);
-                log.info(
-                        "Updated 包含 relation: cluster={} -> host={} (was cluster={})",
-                        clusterId,
-                        hostId,
-                        currentSource
-                );
+                log.info("Updated 包含 relation: cluster={} -> host={} (was cluster={})", clusterId, hostId,
+                    currentSource);
             }
         }
     }
@@ -425,8 +418,7 @@ public class ClusterRelationService {
     /**
      * Delete the 包含 relation for a host (used on host delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
      */
     public void deleteConstituteRelationByHost(String hostId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -447,8 +439,8 @@ public class ClusterRelationService {
     /**
      * Build cluster-level graph data for a given group.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groupId the groupId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getGraphData(String groupId) {
@@ -623,8 +615,8 @@ public class ClusterRelationService {
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given cluster.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getClusterNeighbors(String clusterId) {
@@ -635,8 +627,7 @@ public class ClusterRelationService {
 
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(clusterId);
         // For primary-backup mode, filter to primary hosts only
-        List<Map<String, Object>> activeHosts = "primary-backup".equals(mode)
-                ? filterPrimaryHosts(hosts) : hosts;
+        List<Map<String, Object>> activeHosts = "primary-backup".equals(mode) ? filterPrimaryHosts(hosts) : hosts;
 
         List<Map<String, Object>> allRelations = listRelations(null);
         List<Map<String, Object>> upstream = new ArrayList<>();
@@ -659,8 +650,8 @@ public class ClusterRelationService {
                     String tn = targetCluster.get("type") != null ? targetCluster.get("type").toString() : "";
                     String tm = resolveClusterTypeMode(tn);
                     List<Map<String, Object>> targetHosts = hostService.listHostsByCluster(targetId);
-                    List<Map<String, Object>> activeTargetHosts = "primary-backup".equals(tm)
-                            ? filterPrimaryHosts(targetHosts) : targetHosts;
+                    List<Map<String, Object>> activeTargetHosts =
+                        "primary-backup".equals(tm) ? filterPrimaryHosts(targetHosts) : targetHosts;
 
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("cluster", buildClusterNode(targetCluster, tm, activeTargetHosts.size()));
@@ -679,8 +670,8 @@ public class ClusterRelationService {
                     String sn = sourceCluster.get("type") != null ? sourceCluster.get("type").toString() : "";
                     String sm = resolveClusterTypeMode(sn);
                     List<Map<String, Object>> sourceHosts = hostService.listHostsByCluster(sourceId);
-                    List<Map<String, Object>> activeSourceHosts = "primary-backup".equals(sm)
-                            ? filterPrimaryHosts(sourceHosts) : sourceHosts;
+                    List<Map<String, Object>> activeSourceHosts =
+                        "primary-backup".equals(sm) ? filterPrimaryHosts(sourceHosts) : sourceHosts;
 
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("cluster", buildClusterNode(sourceCluster, sm, activeSourceHosts.size()));
@@ -704,8 +695,8 @@ public class ClusterRelationService {
     /**
      * Get host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten to host list.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getHostNeighborsByCluster(String hostId) {

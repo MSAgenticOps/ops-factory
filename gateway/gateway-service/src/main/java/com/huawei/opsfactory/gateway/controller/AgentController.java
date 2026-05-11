@@ -8,6 +8,10 @@ import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -38,6 +40,7 @@ import java.util.Map;
 @RequestMapping("/gateway/agents")
 public class AgentController {
     private final AgentConfigService agentConfigService;
+
     private final InstanceManager instanceManager;
 
     /**
@@ -54,60 +57,58 @@ public class AgentController {
     /**
      * Lists all registered agents with their status, provider, model, and skills.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listAgents() {
         return Mono.fromCallable(() -> {
-            List<Map<String, Object>> agents = agentConfigService.getRegistry().stream()
-                    .map(entry -> {
-                        Map<String, Object> config = Map.of();
-                        String status = "configured";
-                        String error = null;
-                        try {
-                            config = agentConfigService.loadAgentConfigYaml(entry.id());
-                        } catch (IllegalStateException e) {
-                            status = "invalid_config";
-                            error = e.getMessage();
-                        }
+            List<Map<String, Object>> agents = agentConfigService.getRegistry().stream().map(entry -> {
+                Map<String, Object> config = Map.of();
+                String status = "configured";
+                String error = null;
+                try {
+                    config = agentConfigService.loadAgentConfigYaml(entry.id());
+                } catch (IllegalStateException e) {
+                    status = "invalid_config";
+                    error = e.getMessage();
+                }
 
-                        List<Map<String, String>> skills;
-                        try {
-                            skills = agentConfigService.listSkills(entry.id());
-                        } catch (IllegalStateException e) {
-                            skills = List.of();
-                            if (error == null) {
-                                status = "invalid_config";
-                                error = e.getMessage();
-                            }
-                        }
-                        Map<String, Object> agentMap = new LinkedHashMap<>();
-                        agentMap.put("id", entry.id());
-                        agentMap.put("name", entry.name());
-                        agentMap.put("status", status);
-                        agentMap.put("provider", config.getOrDefault("GOOSE_PROVIDER", ""));
-                        agentMap.put("model", config.getOrDefault("GOOSE_MODEL", ""));
-                        agentMap.put("skills", skills);
-                        if (error != null && !error.isBlank()) {
-                            agentMap.put("error", error);
-                        }
-                        return (Map<String, Object>) agentMap;
-                    })
-                    .toList();
-            return Map.<String, Object>of("agents", agents);
+                List<Map<String, String>> skills;
+                try {
+                    skills = agentConfigService.listSkills(entry.id());
+                } catch (IllegalStateException e) {
+                    skills = List.of();
+                    if (error == null) {
+                        status = "invalid_config";
+                        error = e.getMessage();
+                    }
+                }
+                Map<String, Object> agentMap = new LinkedHashMap<>();
+                agentMap.put("id", entry.id());
+                agentMap.put("name", entry.name());
+                agentMap.put("status", status);
+                agentMap.put("provider", config.getOrDefault("GOOSE_PROVIDER", ""));
+                agentMap.put("model", config.getOrDefault("GOOSE_MODEL", ""));
+                agentMap.put("skills", skills);
+                if (error != null && !error.isBlank()) {
+                    agentMap.put("error", error);
+                }
+                return (Map<String, Object>) agentMap;
+            }).toList();
+            return Map.<String, Object> of("agents", agents);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
      * Creates a new agent with the given ID and name.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createAgent(@RequestBody Map<String, String> body,
-                                                                   ServerWebExchange exchange) {
+        ServerWebExchange exchange) {
         requireAdmin(exchange);
         String id = body.get("id");
         String name = body.get("name");
@@ -119,8 +120,8 @@ public class AgentController {
         }
         try {
             Map<String, Object> agent = agentConfigService.createAgent(id.strip(), name.strip());
-            return Mono.just(ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("success", (Object) true, "agent", agent)));
+            return Mono
+                .just(ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", (Object) true, "agent", agent)));
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);
@@ -134,12 +135,12 @@ public class AgentController {
     /**
      * Deletes an agent by ID and stops all its running instances.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id,
-                                                                   ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         try {
             instanceManager.stopAllForAgent(id);
@@ -158,8 +159,9 @@ public class AgentController {
     /**
      * Lists all skills configured for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/skills")
     public Mono<Map<String, Object>> listSkills(@PathVariable String id, ServerWebExchange exchange) {
@@ -170,12 +172,12 @@ public class AgentController {
     /**
      * Gets the full configuration for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/config")
-    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable String id,
-                                                                 ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
         if (entry == null) {
@@ -195,13 +197,14 @@ public class AgentController {
     /**
      * Updates the agents.md configuration for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable String id,
-                                                                    @RequestBody Map<String, String> body,
-                                                                    ServerWebExchange exchange) {
+        @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         requireAdmin(exchange);
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
         if (entry == null) {
@@ -223,59 +226,60 @@ public class AgentController {
 
     // ── Memory endpoints ──────────────────────────────────────────
 
-    private static final java.util.regex.Pattern CATEGORY_PATTERN =
-            java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
+    private static final java.util.regex.Pattern CATEGORY_PATTERN = java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
 
     /**
      * Lists all memory files for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/memory")
-    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id,
-                                                                  ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, String>> files = agentConfigService.listMemoryFiles(id);
-            return ResponseEntity.ok(Map.<String, Object>of("files", files));
+            return ResponseEntity.ok(Map.<String, Object> of("files", files));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
      * Gets the content of a specific memory category for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param category the category parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable String id,
-                                                                     @PathVariable String category,
-                                                                     ServerWebExchange exchange) {
+        @PathVariable String category, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
         }
-        return Mono.<ResponseEntity<Map<String, Object>>>fromCallable(() -> {
+        return Mono.<ResponseEntity<Map<String, Object>>> fromCallable(() -> {
             String content = agentConfigService.readMemoryFile(id, category);
             if (content == null) {
-                return ResponseEntity.notFound().<Map<String, Object>>build();
+                return ResponseEntity.notFound().<Map<String, Object>> build();
             }
-            return ResponseEntity.ok(Map.<String, Object>of("category", category, "content", content));
+            return ResponseEntity.ok(Map.<String, Object> of("category", category, "content", content));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
      * Writes content to a specific memory category for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param category the category parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable String id,
-                                                                     @PathVariable String category,
-                                                                     @RequestBody Map<String, String> body,
-                                                                     ServerWebExchange exchange) {
+        @PathVariable String category, @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
@@ -283,10 +287,10 @@ public class AgentController {
         return Mono.fromCallable(() -> {
             try {
                 agentConfigService.writeMemoryFile(id, category, body.getOrDefault("content", ""));
-                return ResponseEntity.ok(Map.<String, Object>of("success", (Object) true));
+                return ResponseEntity.ok(Map.<String, Object> of("success", (Object) true));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest()
-                        .body(Map.<String, Object>of("success", (Object) false, "error", e.getMessage()));
+                    .body(Map.<String, Object> of("success", (Object) false, "error", e.getMessage()));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -294,13 +298,14 @@ public class AgentController {
     /**
      * Deletes a specific memory category for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param category the category parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable String id,
-                                                                        @PathVariable String category,
-                                                                        ServerWebExchange exchange) {
+        @PathVariable String category, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
@@ -308,10 +313,10 @@ public class AgentController {
         return Mono.fromCallable(() -> {
             try {
                 agentConfigService.deleteMemoryFile(id, category);
-                return ResponseEntity.ok(Map.<String, Object>of("success", (Object) true));
+                return ResponseEntity.ok(Map.<String, Object> of("success", (Object) true));
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest()
-                        .body(Map.<String, Object>of("success", (Object) false, "error", e.getMessage()));
+                    .body(Map.<String, Object> of("success", (Object) false, "error", e.getMessage()));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -321,8 +326,8 @@ public class AgentController {
     }
 
     private static Mono<ResponseEntity<Map<String, Object>>> badCategory() {
-        return Mono.just(ResponseEntity.badRequest()
-                .body(Map.of("success", (Object) false, "error", "Invalid category name")));
+        return Mono.just(
+            ResponseEntity.badRequest().body(Map.of("success", (Object) false, "error", "Invalid category name")));
     }
 
     private void requireAdmin(ServerWebExchange exchange) {

@@ -51,8 +51,7 @@ public class AgentSkillInstallServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -70,8 +69,7 @@ public class AgentSkillInstallServiceTest {
     /**
      * Executes the install copies package into agent skills directory operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void installCopiesPackageIntoAgentSkillsDirectory() throws Exception {
@@ -99,8 +97,7 @@ public class AgentSkillInstallServiceTest {
     /**
      * Executes the install rejects duplicate skill operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void installRejectsDuplicateSkill() throws Exception {
@@ -115,8 +112,7 @@ public class AgentSkillInstallServiceTest {
     /**
      * Executes the install rejects checksum mismatch operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void installRejectsChecksumMismatch() throws Exception {
@@ -130,8 +126,7 @@ public class AgentSkillInstallServiceTest {
     /**
      * Executes the install rejects unsafe package path operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void installRejectsUnsafePackagePath() throws Exception {
@@ -144,9 +139,6 @@ public class AgentSkillInstallServiceTest {
 
     /**
      * Executes the install requires existing agent operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void installRequiresExistingAgent() {
@@ -158,8 +150,7 @@ public class AgentSkillInstallServiceTest {
     /**
      * Executes the uninstall deletes installed skill directory operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void uninstallDeletesInstalledSkillDirectory() throws Exception {
@@ -178,9 +169,6 @@ public class AgentSkillInstallServiceTest {
 
     /**
      * Executes the uninstall rejects missing skill operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void uninstallRejectsMissingSkill() {

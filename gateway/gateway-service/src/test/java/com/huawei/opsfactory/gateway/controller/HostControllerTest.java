@@ -59,9 +59,6 @@ public class HostControllerTest {
 
     /**
      * Tests list hosts empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_empty() {
@@ -79,9 +76,6 @@ public class HostControllerTest {
 
     /**
      * Tests list hosts with hosts.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_withHosts() {
@@ -103,9 +97,6 @@ public class HostControllerTest {
 
     /**
      * Tests list hosts with tags filter.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_withTagsFilter() {
@@ -122,9 +113,6 @@ public class HostControllerTest {
 
     /**
      * Tests get host existing.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetHost_existing() {
@@ -146,9 +134,6 @@ public class HostControllerTest {
 
     /**
      * Tests get host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetHost_notFound() {
@@ -166,9 +151,6 @@ public class HostControllerTest {
 
     /**
      * Tests create host success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateHost_success() {
@@ -196,9 +178,6 @@ public class HostControllerTest {
 
     /**
      * Tests create host error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateHost_error() {
@@ -224,9 +203,6 @@ public class HostControllerTest {
 
     /**
      * Tests update host success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_success() {
@@ -252,9 +228,6 @@ public class HostControllerTest {
 
     /**
      * Tests update host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_notFound() {
@@ -277,9 +250,6 @@ public class HostControllerTest {
 
     /**
      * Tests delete host success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteHost_success() {
@@ -296,9 +266,6 @@ public class HostControllerTest {
 
     /**
      * Tests delete host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteHost_notFound() {
@@ -317,9 +284,6 @@ public class HostControllerTest {
 
     /**
      * Tests get tags.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetTags() {
@@ -340,9 +304,6 @@ public class HostControllerTest {
 
     /**
      * Tests connectivity success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConnectivity_success() {
@@ -364,9 +325,6 @@ public class HostControllerTest {
 
     /**
      * Tests connectivity failure.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConnectivity_failure() {
@@ -388,9 +346,6 @@ public class HostControllerTest {
 
     /**
      * Tests list hosts unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_unauthorized_noKey() {
@@ -402,9 +357,6 @@ public class HostControllerTest {
 
     /**
      * Tests list hosts forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_forbidden_nonAdmin() {
@@ -417,9 +369,6 @@ public class HostControllerTest {
 
     /**
      * Tests create host forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateHost_forbidden_nonAdmin() {

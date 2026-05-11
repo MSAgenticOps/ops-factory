@@ -27,6 +27,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     private final GatewayProperties properties;
 
     /**
@@ -52,8 +53,8 @@ public class GlobalExceptionHandler {
     /**
      * Handles request input errors such as invalid JSON body.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ex the ex parameter
+     * @return the result
      */
     @ExceptionHandler(ServerWebInputException.class)
     public ResponseEntity<Map<String, Object>> handleInputException(ServerWebInputException ex) {
@@ -71,8 +72,8 @@ public class GlobalExceptionHandler {
     /**
      * Handles response status exceptions and returns a normalized error body.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ex the ex parameter
+     * @return the result
      */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
@@ -87,8 +88,8 @@ public class GlobalExceptionHandler {
      * Catch-all for goosed HTTP errors that controllers didn't handle.
      * Forwards the upstream status code with a sanitized error message.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ex the ex parameter
+     * @return the result
      */
     @ExceptionHandler(WebClientResponseException.class)
     public ResponseEntity<Map<String, Object>> handleWebClientResponse(WebClientResponseException ex) {
@@ -109,11 +110,10 @@ public class GlobalExceptionHandler {
         String path = ex.getRequest() != null ? ex.getRequest().getURI().getPath() : "unknown";
         String responseBody = ex.getResponseBodyAsString();
         if (properties.getLogging().isIncludeUpstreamErrorBody()) {
-            log.warn("Goosed returned {} for {} bodyLength={} body={}",
-                ex.getRawStatusCode(), path, responseBody.length(), truncate(responseBody, 500));
+            log.warn("Goosed returned {} for {} bodyLength={} body={}", ex.getRawStatusCode(), path,
+                responseBody.length(), truncate(responseBody, 500));
         } else {
-            log.warn("Goosed returned {} for {} bodyLength={}",
-                ex.getRawStatusCode(), path, responseBody.length());
+            log.warn("Goosed returned {} for {} bodyLength={}", ex.getRawStatusCode(), path, responseBody.length());
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -126,8 +126,8 @@ public class GlobalExceptionHandler {
      * Last-resort catch-all for any unhandled exception.
      * Returns 500 with a generic message and never leaks internal details.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ex the ex parameter
+     * @return the result
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {

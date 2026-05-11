@@ -37,9 +37,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -51,8 +48,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the list files authenticated returns file list operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void listFiles_authenticated_returnsFileList() throws IOException {
@@ -75,8 +71,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the list files empty dir returns empty array operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void listFiles_emptyDir_returnsEmptyArray() throws IOException {
@@ -93,9 +88,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the list files unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void listFiles_unauthenticated_returns401() {
@@ -107,8 +99,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the list files io exception returns500 operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void listFiles_ioException_returns500() throws IOException {
@@ -123,9 +114,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file existing text file returns inline content.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFile_existingTextFile_returnsInlineContent() {
@@ -134,8 +122,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
             /**
              * Returns the filename.
              *
-             * @author x00000000
-             * @since 2026-05-09
+             * @return the result
              */
             @Override
             public String getFilename() {
@@ -158,9 +145,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file binary file returns as attachment.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFile_binaryFile_returnsAsAttachment() {
@@ -169,8 +153,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
             /**
              * Returns the filename.
              *
-             * @author x00000000
-             * @since 2026-05-09
+             * @return the result
              */
             @Override
             public String getFilename() {
@@ -193,9 +176,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file not found returns404.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFile_notFound_returns404() {
@@ -211,9 +191,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file unauthenticated returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFile_unauthenticated_returns401() {
@@ -224,9 +201,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file nested path resolves correctly.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFile_nestedPath_resolvesCorrectly() {
@@ -235,8 +209,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
             /**
              * Returns the filename.
              *
-             * @author x00000000
-             * @since 2026-05-09
+             * @return the result
              */
             @Override
             public String getFilename() {
@@ -257,9 +230,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file root id resolves from scan root.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFile_rootId_resolvesFromScanRoot() {
@@ -270,8 +240,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
             /**
              * Returns the filename.
              *
-             * @author x00000000
-             * @since 2026-05-09
+             * @return the result
              */
             @Override
             public String getFilename() {
@@ -294,8 +263,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the update file existing text file returns updated operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void updateFile_existingTextFile_returnsUpdated() throws IOException {
@@ -318,8 +286,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the update file not found returns404 operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void updateFile_notFound_returns404() throws IOException {
@@ -340,9 +307,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the update file unsupported type returns415 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void updateFile_unsupportedType_returns415() {
@@ -361,9 +325,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the update file path traversal returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void updateFile_pathTraversal_returns403() {
@@ -380,9 +341,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the update file unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void updateFile_unauthenticated_returns401() {
@@ -396,8 +354,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the delete file existing file returns deleted operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void deleteFile_existingFile_returnsDeleted() throws IOException {
@@ -416,8 +373,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the delete file not found returns404 operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void deleteFile_notFound_returns404() throws IOException {
@@ -434,9 +390,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete file path traversal returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteFile_pathTraversal_returns403() {
@@ -451,9 +404,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete file unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteFile_unauthenticated_returns401() {
@@ -467,9 +417,6 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the upload file unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void uploadFile_unauthenticated_returns401() {
@@ -481,8 +428,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     /**
      * Executes the list files different users resolve different paths operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void listFiles_differentUsers_resolveDifferentPaths() throws IOException {

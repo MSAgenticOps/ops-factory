@@ -38,9 +38,6 @@ public class SessionTraceServiceTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -49,9 +46,6 @@ public class SessionTraceServiceTest {
 
     /**
      * Executes the tear down operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @After
     public void tearDown() {
@@ -63,8 +57,7 @@ public class SessionTraceServiceTest {
     /**
      * Tests start trace reuses running job for same session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testStartTrace_reusesRunningJobForSameSession() throws Exception {
@@ -104,8 +97,7 @@ public class SessionTraceServiceTest {
     /**
      * Tests start trace allows new job after previous completes.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testStartTrace_allowsNewJobAfterPreviousCompletes() throws Exception {
@@ -129,8 +121,7 @@ public class SessionTraceServiceTest {
     /**
      * Tests constructor deletes expired trace directories.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testConstructorDeletesExpiredTraceDirectories() throws Exception {

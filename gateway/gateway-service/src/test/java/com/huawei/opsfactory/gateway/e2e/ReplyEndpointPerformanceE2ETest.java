@@ -36,8 +36,7 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Before
     public void setUp() throws Exception {
@@ -56,9 +55,6 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply response latency includes hook and spawn delay operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_responseLatencyIncludesHookAndSpawnDelay() {
@@ -81,9 +77,6 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply response latency includes resume delay operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_responseLatencyIncludesResumeDelay() {
@@ -112,9 +105,6 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply response latency includes upstream completion delay operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_responseLatencyIncludesUpstreamCompletionDelay() {

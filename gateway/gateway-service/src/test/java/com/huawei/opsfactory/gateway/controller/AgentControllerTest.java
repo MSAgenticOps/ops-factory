@@ -55,9 +55,6 @@ public class AgentControllerTest {
 
     /**
      * Tests list agents.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListAgents() {
@@ -91,9 +88,6 @@ public class AgentControllerTest {
 
     /**
      * Tests list agents empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListAgents_empty() {
@@ -111,8 +105,7 @@ public class AgentControllerTest {
     /**
      * Tests create agent as admin.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCreateAgent_asAdmin() throws Exception {
@@ -137,9 +130,6 @@ public class AgentControllerTest {
 
     /**
      * Tests create agent non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateAgent_nonAdminForbidden() {
@@ -154,9 +144,6 @@ public class AgentControllerTest {
 
     /**
      * Tests create agent missing id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateAgent_missingId() {
@@ -172,8 +159,7 @@ public class AgentControllerTest {
     /**
      * Tests delete agent as admin.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testDeleteAgent_asAdmin() throws Exception {
@@ -191,9 +177,6 @@ public class AgentControllerTest {
 
     /**
      * Tests delete agent non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteAgent_nonAdminForbidden() {
@@ -206,9 +189,6 @@ public class AgentControllerTest {
 
     /**
      * Tests get skills as admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetSkills_asAdmin() {
@@ -230,9 +210,6 @@ public class AgentControllerTest {
 
     /**
      * Tests get config as admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetConfig_asAdmin() {
@@ -259,8 +236,7 @@ public class AgentControllerTest {
     /**
      * Tests update config as admin.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testUpdateConfig_asAdmin() throws Exception {
@@ -281,9 +257,6 @@ public class AgentControllerTest {
 
     /**
      * Tests update config non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateConfig_nonAdminForbidden() {
@@ -298,9 +271,6 @@ public class AgentControllerTest {
 
     /**
      * Tests create agent missing name.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateAgent_missingName() {
@@ -315,9 +285,6 @@ public class AgentControllerTest {
 
     /**
      * Tests create agent blank id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateAgent_blankId() {
@@ -333,8 +300,7 @@ public class AgentControllerTest {
     /**
      * Tests create agent duplicate returns400.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCreateAgent_duplicateReturns400() throws Exception {
@@ -353,8 +319,7 @@ public class AgentControllerTest {
     /**
      * Tests create agent io failure returns500.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCreateAgent_ioFailureReturns500() throws Exception {
@@ -375,9 +340,6 @@ public class AgentControllerTest {
 
     /**
      * Tests get skills non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetSkills_nonAdminForbidden() {
@@ -390,9 +352,6 @@ public class AgentControllerTest {
 
     /**
      * Tests get config non admin forbidden.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetConfig_nonAdminForbidden() {
@@ -405,9 +364,6 @@ public class AgentControllerTest {
 
     /**
      * Tests list agents no auth required.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListAgents_noAuthRequired() {

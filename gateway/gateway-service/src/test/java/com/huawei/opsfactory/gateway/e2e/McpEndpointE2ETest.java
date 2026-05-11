@@ -32,9 +32,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -51,9 +48,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the mcp extensions admin proxies to sys instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getMcpExtensions_admin_proxiesToSysInstance() {
@@ -72,9 +66,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the mcp extensions non admin returns403.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getMcpExtensions_nonAdmin_returns403() {
@@ -87,9 +78,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the mcp extensions unauthenticated returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getMcpExtensions_unauthenticated_returns401() {
@@ -100,9 +88,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the create mcp extension admin forwards to sys instance operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void createMcpExtension_admin_forwardsToSysInstance() {
@@ -124,9 +109,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the create mcp extension non admin returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void createMcpExtension_nonAdmin_returns403() {
@@ -141,9 +123,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete mcp extension non admin returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteMcpExtension_nonAdmin_returns403() {
@@ -156,9 +135,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete mcp extension unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteMcpExtension_unauthenticated_returns401() {
@@ -169,9 +145,6 @@ public class McpEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the delete mcp extension admin attempts proxy to sys operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void deleteMcpExtension_admin_attemptsProxyToSys() {
