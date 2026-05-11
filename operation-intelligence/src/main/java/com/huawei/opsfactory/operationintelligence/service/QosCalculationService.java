@@ -13,6 +13,12 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Qos Calculation Service.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @Service
 public class QosCalculationService {
 
@@ -22,6 +28,17 @@ public class QosCalculationService {
     private static final BigDecimal[] DEFAULT_PERFORMANCE_THRESHOLDS =
         {new BigDecimal("50"), new BigDecimal("100"), new BigDecimal("200")};
 
+/**
+ * calculate Health Score.
+ *
+ * @param availabilityScore the availabilityScore
+ * @param performanceScore the performanceScore
+ * @param resourceScore the resourceScore
+ * @param wA the wA
+ * @param wP the wP
+ * @param wR the wR
+ * @return the result
+ */
     public BigDecimal calculateHealthScore(BigDecimal availabilityScore, BigDecimal performanceScore,
         BigDecimal resourceScore, BigDecimal wA, BigDecimal wP, BigDecimal wR) {
         BigDecimal hs = BigDecimal.ZERO;
@@ -31,11 +48,26 @@ public class QosCalculationService {
         return hs.setScale(2, RoundingMode.HALF_UP);
     }
 
+/**
+ * calculate Availability Score.
+ *
+ * @param successRates the successRates
+ * @param moTypeWeights the moTypeWeights
+ * @return the result
+ */
     public BigDecimal calculateAvailabilityScore(Map<String, BigDecimal> successRates,
         Map<String, BigDecimal> moTypeWeights) {
         return calculateAvailabilityScore(successRates, moTypeWeights, DEFAULT_AVAILABILITY_THRESHOLDS);
     }
 
+/**
+ * calculate Availability Score.
+ *
+ * @param successRates the successRates
+ * @param moTypeWeights the moTypeWeights
+ * @param thresholds the thresholds
+ * @return the result
+ */
     public BigDecimal calculateAvailabilityScore(Map<String, BigDecimal> successRates,
         Map<String, BigDecimal> moTypeWeights, BigDecimal[] thresholds) {
         BigDecimal[] t = thresholds != null && thresholds.length == 3 ? thresholds : DEFAULT_AVAILABILITY_THRESHOLDS;
@@ -50,11 +82,26 @@ public class QosCalculationService {
         return totalScore.setScale(2, RoundingMode.HALF_UP);
     }
 
+/**
+ * calculate Performance Score.
+ *
+ * @param avgResponseTimes the avgResponseTimes
+ * @param moTypeWeights the moTypeWeights
+ * @return the result
+ */
     public BigDecimal calculatePerformanceScore(Map<String, BigDecimal> avgResponseTimes,
         Map<String, BigDecimal> moTypeWeights) {
         return calculatePerformanceScore(avgResponseTimes, moTypeWeights, DEFAULT_PERFORMANCE_THRESHOLDS);
     }
 
+/**
+ * calculate Performance Score.
+ *
+ * @param avgResponseTimes the avgResponseTimes
+ * @param moTypeWeights the moTypeWeights
+ * @param thresholds the thresholds
+ * @return the result
+ */
     public BigDecimal calculatePerformanceScore(Map<String, BigDecimal> avgResponseTimes,
         Map<String, BigDecimal> moTypeWeights, BigDecimal[] thresholds) {
         BigDecimal[] t = thresholds != null && thresholds.length == 3 ? thresholds : DEFAULT_PERFORMANCE_THRESHOLDS;
@@ -69,6 +116,15 @@ public class QosCalculationService {
         return totalScore.setScale(2, RoundingMode.HALF_UP);
     }
 
+/**
+ * calculate Resource Score.
+ *
+ * @param alarms the alarms
+ * @param alarmWeights the alarmWeights
+ * @param alarmIdWeights the alarmIdWeights
+ * @param iMax the iMax
+ * @return the result
+ */
     public BigDecimal calculateResourceScore(List<AlarmInfo> alarms, Map<String, BigDecimal> alarmWeights,
         Map<String, BigDecimal> alarmIdWeights, int iMax) {
         BigDecimal impact = BigDecimal.ZERO;

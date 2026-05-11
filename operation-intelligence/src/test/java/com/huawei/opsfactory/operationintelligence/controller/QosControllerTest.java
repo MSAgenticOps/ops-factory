@@ -42,11 +42,21 @@ class QosControllerTest {
 
     @TestConfiguration
     static class TestConfig {
+/**
+ * qos Service.
+ *
+ * @return the result
+ */
         @Bean
         public QosService qosService() {
             return mock(QosService.class);
         }
 
+/**
+ * properties.
+ *
+ * @return the result
+ */
         @Bean
         public OperationIntelligenceProperties properties() {
             OperationIntelligenceProperties props = new OperationIntelligenceProperties();

@@ -17,6 +17,12 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
+/**
+ * Auth Web Filter.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @Component
 @Order(1)
 public class AuthWebFilter implements WebFilter {
@@ -31,10 +37,18 @@ public class AuthWebFilter implements WebFilter {
 
     private final OperationIntelligenceProperties properties;
 
+/**
+ * Auth Web Filter.
+ *
+ * @param properties the properties
+ */
     public AuthWebFilter(OperationIntelligenceProperties properties) {
         this.properties = properties;
     }
 
+/**
+ * {@inheritDoc}
+ */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();

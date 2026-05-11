@@ -14,11 +14,22 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * Alarm Detail Data Store.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @Component
 public class AlarmDetailDataStore {
 
     private final JsonFileStore<AlarmDetailData> store;
 
+/**
+ * Alarm Detail Data Store.
+ *
+ * @param properties the properties
+ */
     public AlarmDetailDataStore(OperationIntelligenceProperties properties) {
         Path dir = properties.resolveDataRoot().resolve("qos").resolve("raw");
         long rotationMs = properties.getQos().getRotationIntervalMs();
@@ -28,18 +39,38 @@ public class AlarmDetailDataStore {
         this.store.init();
     }
 
+/**
+ * load Range.
+ *
+ * @param startMs the startMs
+ * @param endMs the endMs
+ * @return the result
+ */
     public List<AlarmDetailData> loadRange(long startMs, long endMs) {
         return store.loadRange(startMs, endMs);
     }
 
+/**
+ * append.
+ *
+ * @param item the item
+ */
     public void append(AlarmDetailData item) {
         store.append(item);
     }
 
+/**
+ * append All.
+ *
+ * @param items the items
+ */
     public void appendAll(List<AlarmDetailData> items) {
         store.appendAll(items);
     }
 
+/**
+ * cleanup.
+ */
     public void cleanup() {
         store.cleanup();
     }

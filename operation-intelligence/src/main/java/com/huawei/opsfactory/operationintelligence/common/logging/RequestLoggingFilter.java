@@ -19,6 +19,12 @@ import org.springframework.web.server.WebFilterChain;
 
 import java.util.UUID;
 
+/**
+ * Request Logging Filter.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @Component
 @Order(2)
 public class RequestLoggingFilter implements WebFilter {
@@ -27,10 +33,18 @@ public class RequestLoggingFilter implements WebFilter {
 
     private final OperationIntelligenceProperties properties;
 
+/**
+ * Request Logging Filter.
+ *
+ * @param properties the properties
+ */
     public RequestLoggingFilter(OperationIntelligenceProperties properties) {
         this.properties = properties;
     }
 
+/**
+ * {@inheritDoc}
+ */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String requestId = resolveRequestId(exchange);

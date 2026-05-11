@@ -11,11 +11,22 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Operation Intelligence Application.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @SpringBootApplication
 @EnableConfigurationProperties(OperationIntelligenceProperties.class)
 @EnableScheduling
 public class OperationIntelligenceApplication {
 
+/**
+ * main.
+ *
+ * @param args the args
+ */
     public static void main(String[] args) {
         SpringApplication.run(OperationIntelligenceApplication.class, args);
     }

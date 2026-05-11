@@ -22,6 +22,12 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
+/**
+ * Dv Ssl Context Factory.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @Component
 public class DvSslContextFactory {
 
@@ -29,6 +35,14 @@ public class DvSslContextFactory {
 
     private final ConcurrentHashMap<String, SslContext> sslContextCache = new ConcurrentHashMap<>();
 
+/**
+ * create Ssl Context.
+ *
+ * @param crtContent the crtContent
+ * @param fileName the fileName
+ * @param strictSsl the strictSsl
+ * @return the result
+ */
     public SslContext createSslContext(String crtContent, String fileName, boolean strictSsl) {
         if (crtContent == null || crtContent.isBlank()) {
             if (strictSsl) {
@@ -41,6 +55,13 @@ public class DvSslContextFactory {
         return sslContextCache.computeIfAbsent(crtContent, k -> doCreateSslContext(k, fileName, strictSsl));
     }
 
+/**
+ * create Ssl Context.
+ *
+ * @param crtContent the crtContent
+ * @param fileName the fileName
+ * @return the result
+ */
     public SslContext createSslContext(String crtContent, String fileName) {
         return createSslContext(crtContent, fileName, true);
     }
@@ -76,6 +97,11 @@ public class DvSslContextFactory {
         }
     }
 
+/**
+ * create Insecure Ssl Context.
+ *
+ * @return the result
+ */
     public SslContext createInsecureSslContext() {
         try {
             return SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();

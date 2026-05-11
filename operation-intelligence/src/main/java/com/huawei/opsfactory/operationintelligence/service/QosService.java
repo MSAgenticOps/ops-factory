@@ -24,6 +24,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Qos Service.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 @Service
 public class QosService {
 
@@ -39,6 +45,16 @@ public class QosService {
 
     private final OperationIntelligenceProperties properties;
 
+/**
+ * Qos Service.
+ *
+ * @param calculationService the calculationService
+ * @param productConfigRuleStore the productConfigRuleStore
+ * @param normalizeDataStore the normalizeDataStore
+ * @param detailDataStore the detailDataStore
+ * @param alarmDetailDataStore the alarmDetailDataStore
+ * @param properties the properties
+ */
     public QosService(QosCalculationService calculationService, ProductConfigRuleStore productConfigRuleStore,
         IndicatorNormalizeDataStore normalizeDataStore, IndicatorDetailDataStore detailDataStore,
         AlarmDetailDataStore alarmDetailDataStore, OperationIntelligenceProperties properties) {
@@ -50,6 +66,14 @@ public class QosService {
         this.properties = properties;
     }
 
+/**
+ * Gets the health indicator.
+ *
+ * @param envCode the envCode
+ * @param startTime the startTime
+ * @param endTime the endTime
+ * @return the result
+ */
     public List<Map<String, Object>> getHealthIndicator(String envCode, long startTime, long endTime) {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
         Map<Long,
@@ -79,6 +103,17 @@ public class QosService {
         return results;
     }
 
+/**
+ * Gets the indicator detail.
+ *
+ * @param envCode the envCode
+ * @param type the type
+ * @param startTime the startTime
+ * @param endTime the endTime
+ * @param pageIndex the pageIndex
+ * @param pageSize the pageSize
+ * @return the result
+ */
     public Map<String, Object> getIndicatorDetail(String envCode, String type, long startTime, long endTime,
         int pageIndex, int pageSize) {
         if (pageIndex < 1)
@@ -105,6 +140,12 @@ public class QosService {
         return result;
     }
 
+/**
+ * Gets the product config rule.
+ *
+ * @param agentSolutionType the agentSolutionType
+ * @return the result
+ */
     public Optional<ProductConfigRule> getProductConfigRule(String agentSolutionType) {
         return productConfigRuleStore.loadAll()
             .stream()
@@ -112,6 +153,16 @@ public class QosService {
             .findFirst();
     }
 
+/**
+ * Gets the alarm detail.
+ *
+ * @param envCode the envCode
+ * @param startTime the startTime
+ * @param endTime the endTime
+ * @param pageIndex the pageIndex
+ * @param pageSize the pageSize
+ * @return the result
+ */
     public Map<String, Object> getAlarmDetail(String envCode, long startTime, long endTime, int pageIndex,
         int pageSize) {
         if (pageIndex < 1)
@@ -137,6 +188,11 @@ public class QosService {
         return result;
     }
 
+/**
+ * Gets the environments.
+ *
+ * @return the result
+ */
     public List<Map<String, String>> getEnvironments() {
         return properties.getQos().getDvEnvironments().stream().map(env -> {
             Map<String, String> item = new LinkedHashMap<>();
@@ -149,6 +205,14 @@ public class QosService {
         }).collect(Collectors.toList());
     }
 
+/**
+ * Gets the contribution data.
+ *
+ * @param envCode the envCode
+ * @param startTime the startTime
+ * @param endTime the endTime
+ * @return the result
+ */
     public List<Map<String, Object>> getContributionData(String envCode, long startTime, long endTime) {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
         List<IndicatorNormalizeData> filtered =
@@ -175,6 +239,14 @@ public class QosService {
         return results;
     }
 
+/**
+ * Gets the resource normalize.
+ *
+ * @param envCode the envCode
+ * @param startTime the startTime
+ * @param endTime the endTime
+ * @return the result
+ */
     public List<IndicatorNormalizeData> getResourceNormalize(String envCode, long startTime, long endTime) {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
         return data.stream()
