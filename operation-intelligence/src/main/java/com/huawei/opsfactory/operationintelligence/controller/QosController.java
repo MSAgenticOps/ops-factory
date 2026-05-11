@@ -1,15 +1,22 @@
+
 package com.huawei.opsfactory.operationintelligence.controller;
 
 import com.huawei.opsfactory.operationintelligence.qos.model.ProductConfigRule;
 import com.huawei.opsfactory.operationintelligence.service.QosService;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +33,32 @@ public class QosController {
 
     public QosController(QosService qosService) {
         this.qosService = qosService;
+    }
+
+    static long toLong(Object val) {
+        if (val instanceof Number)
+            return ((Number) val).longValue();
+        if (val instanceof String) {
+            try {
+                return Long.parseLong((String) val);
+            } catch (NumberFormatException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid numeric value: " + val);
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid numeric value: " + val);
+    }
+
+    static int toInt(Object val) {
+        if (val instanceof Number)
+            return ((Number) val).intValue();
+        if (val instanceof String) {
+            try {
+                return Integer.parseInt((String) val);
+            } catch (NumberFormatException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid numeric value: " + val);
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid numeric value: " + val);
     }
 
     @PostMapping("/getHealthIndicator")
@@ -150,33 +183,5 @@ public class QosController {
         if (envCode == null || envCode.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "envCode is required");
         }
-    }
-
-    static long toLong(Object val) {
-        if (val instanceof Number) return ((Number) val).longValue();
-        if (val instanceof String) {
-            try {
-                return Long.parseLong((String) val);
-            } catch (NumberFormatException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Invalid numeric value: " + val);
-            }
-        }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Invalid numeric value: " + val);
-    }
-
-    static int toInt(Object val) {
-        if (val instanceof Number) return ((Number) val).intValue();
-        if (val instanceof String) {
-            try {
-                return Integer.parseInt((String) val);
-            } catch (NumberFormatException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Invalid numeric value: " + val);
-            }
-        }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Invalid numeric value: " + val);
     }
 }

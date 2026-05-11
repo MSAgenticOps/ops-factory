@@ -1,7 +1,9 @@
+
 package com.huawei.opsfactory.operationintelligence.qos.store;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,30 +19,52 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Stream;
 
 public class JsonFileStore<T> {
 
     private static final Logger log = LoggerFactory.getLogger(JsonFileStore.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final DateTimeFormatter TS_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final Path directory;
+
     private final String basename;
+
     private final TypeReference<List<T>> typeRef;
+
     private final boolean rotating;
+
     private final long rotationIntervalMs;
+
     private final long retentionMs;
+
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
-    public JsonFileStore(Path directory, String basename, TypeReference<List<T>> typeRef,
-                         boolean rotating, long rotationIntervalMs, long retentionMs) {
+    public JsonFileStore(Path directory, String basename, TypeReference<List<T>> typeRef, boolean rotating,
+        long rotationIntervalMs, long retentionMs) {
         this.directory = directory;
         this.basename = basename;
         this.typeRef = typeRef;
         this.rotating = rotating;
         this.rotationIntervalMs = rotationIntervalMs;
         this.retentionMs = retentionMs;
+    }
+
+    static long parseTimestampFromName(String fileName) {
+        // basename_yyyyMMddHHmmss.json
+        int lastUnderscore = fileName.lastIndexOf('_');
+        int dot = fileName.lastIndexOf('.');
+        if (lastUnderscore < 0 || dot < 0)
+            return 0;
+        String tsStr = fileName.substring(lastUnderscore + 1, dot);
+        try {
+            LocalDateTime ldt = LocalDateTime.parse(tsStr, TS_FORMAT);
+            return ldt.toInstant(ZoneOffset.UTC).toEpochMilli();
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     public void init() {
@@ -68,7 +92,8 @@ public class JsonFileStore<T> {
                 return readFile(directory.resolve(basename + ".json"));
             }
             Path active = findActiveFile();
-            if (active == null) return new ArrayList<>();
+            if (active == null)
+                return new ArrayList<>();
             return readFile(active);
         } catch (IOException e) {
             log.warn("Failed to load data for {}: {}", basename, e.getMessage());
@@ -85,8 +110,10 @@ public class JsonFileStore<T> {
             List<Path> files = listDataFiles();
             for (Path file : files) {
                 long fileTs = parseTimestampFromName(file.getFileName().toString());
-                if (fileTs + rotationIntervalMs < startMs) continue;
-                if (fileTs > endMs) continue;
+                if (fileTs + rotationIntervalMs < startMs)
+                    continue;
+                if (fileTs > endMs)
+                    continue;
                 List<T> items = readFile(file);
                 result.addAll(items);
             }
@@ -102,7 +129,8 @@ public class JsonFileStore<T> {
     public void append(T item) {
         rwLock.writeLock().lock();
         try {
-            if (rotating) rotateIfNeeded();
+            if (rotating)
+                rotateIfNeeded();
             Path target = rotating ? findOrCreateActiveFile() : directory.resolve(basename + ".json");
             List<T> items = readFile(target);
             items.add(item);
@@ -115,10 +143,12 @@ public class JsonFileStore<T> {
     }
 
     public void appendAll(List<T> newItems) {
-        if (newItems == null || newItems.isEmpty()) return;
+        if (newItems == null || newItems.isEmpty())
+            return;
         rwLock.writeLock().lock();
         try {
-            if (rotating) rotateIfNeeded();
+            if (rotating)
+                rotateIfNeeded();
             Path target = rotating ? findOrCreateActiveFile() : directory.resolve(basename + ".json");
             List<T> items = readFile(target);
             items.addAll(newItems);
@@ -141,13 +171,16 @@ public class JsonFileStore<T> {
     }
 
     public void rotateIfNeeded() {
-        if (!rotating) return;
+        if (!rotating)
+            return;
         try {
             Path active = findActiveFile();
-            if (active == null) return;
+            if (active == null)
+                return;
             long fileTs = parseTimestampFromName(active.getFileName().toString());
             if (System.currentTimeMillis() - fileTs > rotationIntervalMs) {
-                log.info("Rotating {} - active file {} is older than {}ms", basename, active.getFileName(), rotationIntervalMs);
+                log.info("Rotating {} - active file {} is older than {}ms", basename, active.getFileName(),
+                    rotationIntervalMs);
             }
         } catch (Exception e) {
             log.warn("Rotation check failed for {}: {}", basename, e.getMessage());
@@ -155,7 +188,8 @@ public class JsonFileStore<T> {
     }
 
     public void cleanup() {
-        if (!rotating || retentionMs <= 0) return;
+        if (!rotating || retentionMs <= 0)
+            return;
         rwLock.writeLock().lock();
         try {
             long cutoff = System.currentTimeMillis() - retentionMs;
@@ -196,9 +230,9 @@ public class JsonFileStore<T> {
     private List<Path> listDataFiles() throws IOException {
         List<Path> files = new ArrayList<>();
         String prefix = basename + "_";
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory,
-                entry -> entry.getFileName().toString().startsWith(prefix) &&
-                         entry.getFileName().toString().endsWith(".json"))) {
+        try (DirectoryStream<Path> stream =
+            Files.newDirectoryStream(directory, entry -> entry.getFileName().toString().startsWith(prefix)
+                && entry.getFileName().toString().endsWith(".json"))) {
             stream.forEach(files::add);
         }
         files.sort(Comparator.comparing(p -> p.getFileName().toString()));
@@ -207,7 +241,8 @@ public class JsonFileStore<T> {
 
     private List<T> readFile(Path file) {
         try {
-            if (!Files.exists(file)) return new ArrayList<>();
+            if (!Files.exists(file))
+                return new ArrayList<>();
             return MAPPER.readValue(file.toFile(), typeRef);
         } catch (IOException e) {
             log.warn("Failed to read {}: {}", file, e.getMessage());
@@ -220,20 +255,6 @@ public class JsonFileStore<T> {
             MAPPER.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), items);
         } catch (IOException e) {
             log.warn("Failed to write {}: {}", file, e.getMessage());
-        }
-    }
-
-    static long parseTimestampFromName(String fileName) {
-        // basename_yyyyMMddHHmmss.json
-        int lastUnderscore = fileName.lastIndexOf('_');
-        int dot = fileName.lastIndexOf('.');
-        if (lastUnderscore < 0 || dot < 0) return 0;
-        String tsStr = fileName.substring(lastUnderscore + 1, dot);
-        try {
-            LocalDateTime ldt = LocalDateTime.parse(tsStr, TS_FORMAT);
-            return ldt.toInstant(ZoneOffset.UTC).toEpochMilli();
-        } catch (Exception e) {
-            return 0;
         }
     }
 }

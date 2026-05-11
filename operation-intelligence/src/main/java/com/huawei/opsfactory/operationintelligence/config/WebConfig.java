@@ -1,3 +1,4 @@
+
 package com.huawei.opsfactory.operationintelligence.config;
 
 import org.springframework.context.annotation.Bean;

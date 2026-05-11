@@ -1,3 +1,4 @@
+
 package com.huawei.opsfactory.operationintelligence.qos.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -5,10 +6,22 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DnElement {
     private String dn;
+
     private String name;
 
-    public String getDn() { return dn; }
-    public void setDn(String dn) { this.dn = dn; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getDn() {
+        return dn;
+    }
+
+    public void setDn(String dn) {
+        this.dn = dn;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

@@ -1,3 +1,4 @@
+
 package com.huawei.opsfactory.operationintelligence.service;
 
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
@@ -9,6 +10,7 @@ import com.huawei.opsfactory.operationintelligence.qos.store.AlarmDetailDataStor
 import com.huawei.opsfactory.operationintelligence.qos.store.IndicatorDetailDataStore;
 import com.huawei.opsfactory.operationintelligence.qos.store.IndicatorNormalizeDataStore;
 import com.huawei.opsfactory.operationintelligence.qos.store.ProductConfigRuleStore;
+
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,18 +25,20 @@ import java.util.stream.Collectors;
 public class QosService {
 
     private final QosCalculationService calculationService;
+
     private final ProductConfigRuleStore productConfigRuleStore;
+
     private final IndicatorNormalizeDataStore normalizeDataStore;
+
     private final IndicatorDetailDataStore detailDataStore;
+
     private final AlarmDetailDataStore alarmDetailDataStore;
+
     private final OperationIntelligenceProperties properties;
 
-    public QosService(QosCalculationService calculationService,
-            ProductConfigRuleStore productConfigRuleStore,
-            IndicatorNormalizeDataStore normalizeDataStore,
-            IndicatorDetailDataStore detailDataStore,
-            AlarmDetailDataStore alarmDetailDataStore,
-            OperationIntelligenceProperties properties) {
+    public QosService(QosCalculationService calculationService, ProductConfigRuleStore productConfigRuleStore,
+        IndicatorNormalizeDataStore normalizeDataStore, IndicatorDetailDataStore detailDataStore,
+        AlarmDetailDataStore alarmDetailDataStore, OperationIntelligenceProperties properties) {
         this.calculationService = calculationService;
         this.productConfigRuleStore = productConfigRuleStore;
         this.normalizeDataStore = normalizeDataStore;
@@ -45,7 +49,8 @@ public class QosService {
 
     public List<Map<String, Object>> getHealthIndicator(String envCode, long startTime, long endTime) {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
-        Map<Long, List<IndicatorNormalizeData>> byTimestamp = data.stream()
+        Map<Long,
+            List<IndicatorNormalizeData>> byTimestamp = data.stream()
                 .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
                 .filter(d -> d.getTimestamp() != null)
                 .collect(Collectors.groupingBy(IndicatorNormalizeData::getTimestamp));
@@ -56,35 +61,33 @@ public class QosService {
         BigDecimal wR = resolveWeight("R", weightRule);
 
         List<Map<String, Object>> results = new ArrayList<>();
-        byTimestamp.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> {
-                    List<IndicatorNormalizeData> items = entry.getValue();
-                    BigDecimal a = findValue(items, "A");
-                    BigDecimal p = findValue(items, "P");
-                    BigDecimal r = findValue(items, "R");
-                    BigDecimal hs = calculationService.calculateHealthScore(
-                            a != null ? a : BigDecimal.ZERO,
-                            p != null ? p : BigDecimal.ZERO,
-                            r != null ? r : BigDecimal.ZERO, wA, wP, wR);
-                    Map<String, Object> point = new LinkedHashMap<>();
-                    point.put("timestamp", entry.getKey());
-                    point.put("value", hs.toPlainString());
-                    results.add(point);
-                });
+        byTimestamp.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
+            List<IndicatorNormalizeData> items = entry.getValue();
+            BigDecimal a = findValue(items, "A");
+            BigDecimal p = findValue(items, "P");
+            BigDecimal r = findValue(items, "R");
+            BigDecimal hs = calculationService.calculateHealthScore(a != null ? a : BigDecimal.ZERO,
+                p != null ? p : BigDecimal.ZERO, r != null ? r : BigDecimal.ZERO, wA, wP, wR);
+            Map<String, Object> point = new LinkedHashMap<>();
+            point.put("timestamp", entry.getKey());
+            point.put("value", hs.toPlainString());
+            results.add(point);
+        });
         return results;
     }
 
     public Map<String, Object> getIndicatorDetail(String envCode, String type, long startTime, long endTime,
-            int pageIndex, int pageSize) {
-        if (pageIndex < 1) pageIndex = 1;
-        if (pageSize < 1 || pageSize > 1000) pageSize = 10;
+        int pageIndex, int pageSize) {
+        if (pageIndex < 1)
+            pageIndex = 1;
+        if (pageSize < 1 || pageSize > 1000)
+            pageSize = 10;
         List<IndicatorDetailData> data = detailDataStore.loadRange(startTime, endTime);
         List<IndicatorDetailData> filtered = data.stream()
-                .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
-                .filter(d -> type == null || type.equals(d.getType()))
-                .filter(d -> d.getTimestamp() != null && d.getTimestamp() >= startTime && d.getTimestamp() <= endTime)
-                .collect(Collectors.toList());
+            .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
+            .filter(d -> type == null || type.equals(d.getType()))
+            .filter(d -> d.getTimestamp() != null && d.getTimestamp() >= startTime && d.getTimestamp() <= endTime)
+            .collect(Collectors.toList());
 
         int total = filtered.size();
         int from = (pageIndex - 1) * pageSize;
@@ -100,20 +103,23 @@ public class QosService {
     }
 
     public Optional<ProductConfigRule> getProductConfigRule(String agentSolutionType) {
-        return productConfigRuleStore.loadAll().stream()
-                .filter(r -> agentSolutionType == null || agentSolutionType.equals(r.getAgentSolutionType()))
-                .findFirst();
+        return productConfigRuleStore.loadAll()
+            .stream()
+            .filter(r -> agentSolutionType == null || agentSolutionType.equals(r.getAgentSolutionType()))
+            .findFirst();
     }
 
-    public Map<String, Object> getAlarmDetail(String envCode, long startTime, long endTime,
-            int pageIndex, int pageSize) {
-        if (pageIndex < 1) pageIndex = 1;
-        if (pageSize < 1 || pageSize > 1000) pageSize = 10;
+    public Map<String, Object> getAlarmDetail(String envCode, long startTime, long endTime, int pageIndex,
+        int pageSize) {
+        if (pageIndex < 1)
+            pageIndex = 1;
+        if (pageSize < 1 || pageSize > 1000)
+            pageSize = 10;
         List<AlarmDetailData> data = alarmDetailDataStore.loadRange(startTime, endTime);
         List<AlarmDetailData> filtered = data.stream()
-                .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
-                .filter(d -> d.getOccurUtc() != null && d.getOccurUtc() >= startTime && d.getOccurUtc() <= endTime)
-                .collect(Collectors.toList());
+            .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
+            .filter(d -> d.getOccurUtc() != null && d.getOccurUtc() >= startTime && d.getOccurUtc() <= endTime)
+            .collect(Collectors.toList());
 
         int total = filtered.size();
         int from = (pageIndex - 1) * pageSize;
@@ -129,34 +135,33 @@ public class QosService {
     }
 
     public List<Map<String, String>> getEnvironments() {
-        return properties.getQos().getDvEnvironments().stream()
-                .map(env -> {
-                    Map<String, String> item = new LinkedHashMap<>();
-                    item.put("envCode", env.getEnvCode());
-                    item.put("envName", env.getEnvName() != null ? env.getEnvName() : env.getEnvCode());
-                    item.put("agentSolutionType", env.getAgentSolutionType());
-                    item.put("productTypeName", env.getProductTypeName() != null ? env.getProductTypeName() : env.getAgentSolutionType());
-                    return item;
-                })
-                .collect(Collectors.toList());
+        return properties.getQos().getDvEnvironments().stream().map(env -> {
+            Map<String, String> item = new LinkedHashMap<>();
+            item.put("envCode", env.getEnvCode());
+            item.put("envName", env.getEnvName() != null ? env.getEnvName() : env.getEnvCode());
+            item.put("agentSolutionType", env.getAgentSolutionType());
+            item.put("productTypeName",
+                env.getProductTypeName() != null ? env.getProductTypeName() : env.getAgentSolutionType());
+            return item;
+        }).collect(Collectors.toList());
     }
 
     public List<Map<String, Object>> getContributionData(String envCode, long startTime, long endTime) {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
-        List<IndicatorNormalizeData> filtered = data.stream()
-                .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
-                .collect(Collectors.toList());
+        List<IndicatorNormalizeData> filtered =
+            data.stream().filter(d -> envCode == null || envCode.equals(d.getEnvCode())).collect(Collectors.toList());
 
         List<Map<String, Object>> results = new ArrayList<>();
         ProductConfigRule weightRule = productConfigRuleStore.loadAll().stream().findFirst().orElse(null);
         for (String type : List.of("A", "P", "R")) {
             List<BigDecimal> values = filtered.stream()
-                    .filter(d -> type.equals(d.getType()))
-                    .map(IndicatorNormalizeData::getIndicatorValue)
-                    .collect(Collectors.toList());
+                .filter(d -> type.equals(d.getType()))
+                .map(IndicatorNormalizeData::getIndicatorValue)
+                .collect(Collectors.toList());
             BigDecimal avg = values.isEmpty() ? BigDecimal.ZERO
-                    : values.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
-                            .divide(BigDecimal.valueOf(values.size()), 4, java.math.RoundingMode.HALF_UP);
+                : values.stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(values.size()), 4, java.math.RoundingMode.HALF_UP);
             BigDecimal weight = resolveWeight(type, weightRule);
             BigDecimal contribution = avg.multiply(weight).setScale(4, java.math.RoundingMode.HALF_UP);
             Map<String, Object> item = new LinkedHashMap<>();
@@ -170,9 +175,9 @@ public class QosService {
     public List<IndicatorNormalizeData> getResourceNormalize(String envCode, long startTime, long endTime) {
         List<IndicatorNormalizeData> data = normalizeDataStore.loadRange(startTime, endTime);
         return data.stream()
-                .filter(d -> "R".equals(d.getType()))
-                .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
-                .collect(Collectors.toList());
+            .filter(d -> "R".equals(d.getType()))
+            .filter(d -> envCode == null || envCode.equals(d.getEnvCode()))
+            .collect(Collectors.toList());
     }
 
     private BigDecimal resolveWeight(String dimension, ProductConfigRule rule) {
@@ -189,16 +194,15 @@ public class QosService {
         }
         OperationIntelligenceProperties.Qos.Weights weights = properties.getQos().getWeights();
         double val = "A".equals(dimension) ? weights.getAvailability()
-                : "P".equals(dimension) ? weights.getPerformance()
-                : weights.getResource();
+            : "P".equals(dimension) ? weights.getPerformance() : weights.getResource();
         return BigDecimal.valueOf(val);
     }
 
     private BigDecimal findValue(List<IndicatorNormalizeData> items, String type) {
         return items.stream()
-                .filter(d -> type.equals(d.getType()))
-                .map(IndicatorNormalizeData::getIndicatorValue)
-                .findFirst()
-                .orElse(null);
+            .filter(d -> type.equals(d.getType()))
+            .map(IndicatorNormalizeData::getIndicatorValue)
+            .findFirst()
+            .orElse(null);
     }
 }
