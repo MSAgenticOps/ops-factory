@@ -7,6 +7,10 @@ package com.huawei.opsfactory.gateway.controller;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.FileService;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -34,6 +36,7 @@ import java.util.Map;
 @RequestMapping("/gateway/agents/{agentId}/file-capsules")
 public class FileCapsuleController {
     private final AgentConfigService agentConfigService;
+
     private final FileService fileService;
 
     /**
@@ -56,14 +59,13 @@ public class FileCapsuleController {
      * @return the result
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> getFileCapsules(@PathVariable String agentId,
-                                                     @RequestParam String sessionId,
-                                                     ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> getFileCapsules(@PathVariable String agentId, @RequestParam String sessionId,
+        ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
         return Mono.fromCallable(() -> {
             Map<String, List<Map<String, String>>> entries = fileService.loadOutputFiles(workingDir, sessionId);
-            return Map.<String, Object>of("entries", entries);
+            return Map.<String, Object> of("entries", entries);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -73,9 +75,7 @@ public class FileCapsuleController {
      * @author x00000000
      * @since 2026-05-09
      */
-    @PostMapping(
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 
     /**
      * Executes the save file capsule operation.
@@ -86,8 +86,7 @@ public class FileCapsuleController {
      * @return the result
      */
     public Mono<Map<String, Object>> saveFileCapsule(@PathVariable String agentId,
-                                                     @RequestBody Map<String, Object> body,
-                                                     ServerWebExchange exchange) {
+        @RequestBody Map<String, Object> body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
 
@@ -96,26 +95,19 @@ public class FileCapsuleController {
         Object rawFiles = body.get("files");
 
         if (sessionId == null || messageId == null || !(rawFiles instanceof List<?> fileList)) {
-            return Mono.just(Map.of(
-                    "status",
-                    "error",
-                    "message",
-                    "sessionId, messageId, and files are required"));
+            return Mono.just(Map.of("status", "error", "message", "sessionId, messageId, and files are required"));
         }
 
         // Convert List<Object> → List<Map<String, String>>
-        List<Map<String, String>> files = fileList.stream()
-                .filter(item -> item instanceof Map)
-                .map(item -> {
-                    Map<String, String> entry = new java.util.LinkedHashMap<>();
-                    ((Map<?, ?>) item).forEach((k, v) -> entry.put(String.valueOf(k), String.valueOf(v)));
-                    return entry;
-                })
-                .toList();
+        List<Map<String, String>> files = fileList.stream().filter(item -> item instanceof Map).map(item -> {
+            Map<String, String> entry = new java.util.LinkedHashMap<>();
+            ((Map<?, ?>) item).forEach((k, v) -> entry.put(String.valueOf(k), String.valueOf(v)));
+            return entry;
+        }).toList();
 
         return Mono.fromCallable(() -> {
             fileService.persistOutputFiles(workingDir, sessionId, messageId, files);
-            return Map.<String, Object>of("status", "ok");
+            return Map.<String, Object> of("status", "ok");
         }).subscribeOn(Schedulers.boundedElastic());
     }
 }

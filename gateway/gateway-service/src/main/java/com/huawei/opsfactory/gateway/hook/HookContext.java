@@ -15,8 +15,11 @@ import java.util.Map;
  */
 public class HookContext {
     private String body;
+
     private final String agentId;
+
     private final String userId;
+
     private final Map<String, Object> state = new HashMap<>();
 
     /**

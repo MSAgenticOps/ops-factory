@@ -4,17 +4,20 @@
 
 package com.huawei.opsfactory.gateway.hook;
 
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
+import reactor.core.publisher.Mono;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Mono;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +36,7 @@ import java.util.regex.Pattern;
 @Order(2)
 public class FileAttachmentHook implements RequestHook {
     private static final Logger log = LoggerFactory.getLogger(FileAttachmentHook.class);
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AgentConfigService agentConfigService;
@@ -72,8 +76,7 @@ public class FileAttachmentHook implements RequestHook {
             String usersDirStr = usersDir.toAbsolutePath().normalize().toString();
 
             // Pattern to match paths within the users directory
-            Pattern pathPattern = Pattern.compile(
-                    Pattern.quote(usersDirStr) + "[/\\\\][^\\s\"']+");
+            Pattern pathPattern = Pattern.compile(Pattern.quote(usersDirStr) + "[/\\\\][^\\s\"']+");
 
             for (JsonNode item : content) {
                 if (!"text".equals(item.path("type").asText())) {
@@ -89,12 +92,12 @@ public class FileAttachmentHook implements RequestHook {
                     if (!resolved.startsWith(userAgentsDir.toAbsolutePath().normalize())) {
                         log.warn("Path escapes user directory: {}", filePath);
                         return Mono.error(new ResponseStatusException(HttpStatus.FORBIDDEN,
-                                "Access denied: file path outside user directory"));
+                            "Access denied: file path outside user directory"));
                     }
                     if (!Files.exists(resolved)) {
                         log.warn("Referenced file does not exist: {}", filePath);
                         return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "Referenced file not found: " + resolved.getFileName()));
+                            "Referenced file not found: " + resolved.getFileName()));
                     }
                 }
             }

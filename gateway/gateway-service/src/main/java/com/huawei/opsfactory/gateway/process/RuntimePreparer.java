@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -84,13 +85,11 @@ public class RuntimePreparer {
     }
 
     private void cleanDisallowedSkillDirs(Path userAgentDir) throws IOException {
-        List<Path> skillDirs = List.of(
-                userAgentDir.resolve(".goose").resolve("skills"),
-                userAgentDir.resolve(".claude").resolve("skills"),
-                userAgentDir.resolve(".agents").resolve("skills"),
-                userAgentDir.resolve("home").resolve(".agents").resolve("skills"),
-                userAgentDir.resolve("home").resolve(".claude").resolve("skills"),
-                userAgentDir.resolve("home").resolve(".config").resolve("agents").resolve("skills"));
+        List<Path> skillDirs = List.of(userAgentDir.resolve(".goose").resolve("skills"),
+            userAgentDir.resolve(".claude").resolve("skills"), userAgentDir.resolve(".agents").resolve("skills"),
+            userAgentDir.resolve("home").resolve(".agents").resolve("skills"),
+            userAgentDir.resolve("home").resolve(".claude").resolve("skills"),
+            userAgentDir.resolve("home").resolve(".config").resolve("agents").resolve("skills"));
 
         for (Path skillDir : skillDirs) {
             deleteIfExists(skillDir);

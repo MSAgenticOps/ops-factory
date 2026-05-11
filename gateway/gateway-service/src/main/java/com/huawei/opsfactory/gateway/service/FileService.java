@@ -54,68 +54,37 @@ public class FileService {
         this.gatewayProperties = gatewayProperties;
     }
 
-    private static final Map<String, String> MIME_TYPES = Map.ofEntries(
-            entry("json", "application/json"),
-            entry("pdf", "application/pdf"),
-            entry("xml", "application/xml"),
-            entry("zip", "application/zip"),
-            entry("csv", "text/csv"),
-            entry("txt", "text/plain"),
-            entry("md", "text/markdown"),
-            entry("html", "text/html"),
-            entry("css", "text/css"),
-            entry("js", "text/javascript"),
-            entry("ts", "text/typescript"),
-            entry("java", "text/x-java-source"),
-            entry("py", "text/x-python"),
-            entry("yaml", "text/yaml"),
-            entry("yml", "text/yaml"),
-            entry("png", "image/png"),
-            entry("jpg", "image/jpeg"),
-            entry("jpeg", "image/jpeg"),
-            entry("gif", "image/gif"),
-            entry("svg", "image/svg+xml"),
-            entry("webp", "image/webp"),
-            entry("bmp", "image/bmp"),
-            entry("doc", "application/msword"),
+    private static final Map<String,
+        String> MIME_TYPES = Map.ofEntries(entry("json", "application/json"), entry("pdf", "application/pdf"),
+            entry("xml", "application/xml"), entry("zip", "application/zip"), entry("csv", "text/csv"),
+            entry("txt", "text/plain"), entry("md", "text/markdown"), entry("html", "text/html"),
+            entry("css", "text/css"), entry("js", "text/javascript"), entry("ts", "text/typescript"),
+            entry("java", "text/x-java-source"), entry("py", "text/x-python"), entry("yaml", "text/yaml"),
+            entry("yml", "text/yaml"), entry("png", "image/png"), entry("jpg", "image/jpeg"),
+            entry("jpeg", "image/jpeg"), entry("gif", "image/gif"), entry("svg", "image/svg+xml"),
+            entry("webp", "image/webp"), entry("bmp", "image/bmp"), entry("doc", "application/msword"),
             entry("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             entry("xls", "application/vnd.ms-excel"),
             entry("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             entry("ppt", "application/vnd.ms-powerpoint"),
             entry("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"));
 
-    private static final Set<String> SKIP_DIRS = Set.of(
-            "data", "state", "config", "node_modules", ".goose");
+    private static final Set<String> SKIP_DIRS = Set.of("data", "state", "config", "node_modules", ".goose");
 
-    private static final Set<String> SKIP_FILES = Set.of(
-            ".DS_Store", "AGENTS.md", ".gitkeep");
+    private static final Set<String> SKIP_FILES = Set.of(".DS_Store", "AGENTS.md", ".gitkeep");
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "txt", "md", "json", "csv", "xml", "yaml", "yml",
-            "html", "css", "js", "ts", "java", "py", "go", "rs", "rb", "sh",
-            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-            "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp",
-            "zip", "gz", "tar", "log");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("txt", "md", "json", "csv", "xml", "yaml", "yml",
+        "html", "css", "js", "ts", "java", "py", "go", "rs", "rb", "sh", "pdf", "doc", "docx", "xls", "xlsx", "ppt",
+        "pptx", "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "zip", "gz", "tar", "log");
 
-    private static final Set<String> BLOCKED_EXTENSIONS = Set.of(
-            "exe", "bat", "cmd", "com", "msi", "dll", "sys", "scr",
-            "vbs", "vbe", "wsf", "wsh", "ps1");
+    private static final Set<String> BLOCKED_EXTENSIONS =
+        Set.of("exe", "bat", "cmd", "com", "msi", "dll", "sys", "scr", "vbs", "vbe", "wsf", "wsh", "ps1");
 
-    private static final Set<String> EDITABLE_TEXT_EXTENSIONS = Set.of(
-            "txt", "log", "ini", "conf",
-            "js", "ts", "jsx", "tsx", "mjs", "cjs",
-            "py", "sh", "bash", "zsh",
-            "yaml", "yml", "json", "toml",
-            "css", "scss", "less",
-            "xml", "sql", "graphql",
-            "go", "rs", "java", "c", "cpp", "h", "hpp",
-            "rb", "php", "swift", "kt", "scala",
-            "csv", "tsv",
-            "env", "gitignore", "dockerignore", "editorconfig", "prettierrc",
-            "eslintrc", "babelrc",
-            "dockerfile", "makefile",
-            "vue", "svelte",
-            "md", "markdown", "html", "htm");
+    private static final Set<String> EDITABLE_TEXT_EXTENSIONS = Set.of("txt", "log", "ini", "conf", "js", "ts", "jsx",
+        "tsx", "mjs", "cjs", "py", "sh", "bash", "zsh", "yaml", "yml", "json", "toml", "css", "scss", "less", "xml",
+        "sql", "graphql", "go", "rs", "java", "c", "cpp", "h", "hpp", "rb", "php", "swift", "kt", "scala", "csv", "tsv",
+        "env", "gitignore", "dockerignore", "editorconfig", "prettierrc", "eslintrc", "babelrc", "dockerfile",
+        "makefile", "vue", "svelte", "md", "markdown", "html", "htm");
 
     /**
      * List files for the Files module from configured scan roots.
@@ -147,14 +116,13 @@ public class FileService {
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
-        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6,
-                        1000, 2000),
-                files, fileCapsuleAllowedExtensions());
+        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6, 1000, 2000), files,
+            fileCapsuleAllowedExtensions());
         return files;
     }
 
-    private void listRootFiles(
-            FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
+    private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions)
+        throws IOException {
         Path dir = root.path();
         if (!Files.isDirectory(dir)) {
             return;
@@ -181,8 +149,7 @@ public class FileService {
     }
 
     private void listFilesRecursive(FileScanRoot root, Path current, List<Map<String, Object>> files,
-                                    Set<String> allowedExtensions, int depth, long deadlineNanos,
-                                    int rootStartCount) throws IOException {
+        Set<String> allowedExtensions, int depth, long deadlineNanos, int rootStartCount) throws IOException {
         if (!Files.isDirectory(current)) {
             return;
         }
@@ -197,15 +164,8 @@ public class FileService {
                 String name = entry.getFileName().toString();
                 if (Files.isDirectory(entry)) {
                     if (depth < root.maxDepth() && !root.excludeDirs().contains(name) && !name.startsWith(".")) {
-                        listFilesRecursive(
-                                root,
-                                entry,
-                                files,
-                                allowedExtensions,
-                                depth + 1,
-                                deadlineNanos,
-                                rootStartCount
-                        );
+                        listFilesRecursive(root, entry, files, allowedExtensions, depth + 1, deadlineNanos,
+                            rootStartCount);
                     }
                 } else {
                     if (!SKIP_FILES.contains(name)) {
@@ -217,10 +177,9 @@ public class FileService {
     }
 
     private boolean isScanLimitReached(FileScanRoot root, List<Map<String, Object>> files, int depth,
-                                       long deadlineNanos, int rootStartCount) {
-        return depth > root.maxDepth()
-                || (root.maxFiles() > 0 && files.size() - rootStartCount >= root.maxFiles())
-                || (deadlineNanos > 0 && System.nanoTime() > deadlineNanos);
+        long deadlineNanos, int rootStartCount) {
+        return depth > root.maxDepth() || (root.maxFiles() > 0 && files.size() - rootStartCount >= root.maxFiles())
+            || (deadlineNanos > 0 && System.nanoTime() > deadlineNanos);
     }
 
     private long scanDeadlineNanos(long timeoutMs) {
@@ -231,7 +190,7 @@ public class FileService {
     }
 
     private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files,
-                              Set<String> allowedExtensions) throws IOException {
+        Set<String> allowedExtensions) throws IOException {
         String name = entry.getFileName().toString();
         int dot = name.lastIndexOf('.');
         String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
@@ -253,8 +212,7 @@ public class FileService {
     private Set<String> fileCapsuleAllowedExtensions() {
         Set<String> allowed = new HashSet<>();
         List<String> configured = gatewayProperties.getFileCapsules() != null
-                ? gatewayProperties.getFileCapsules().getAllowedExtensions()
-                : null;
+            ? gatewayProperties.getFileCapsules().getAllowedExtensions() : null;
         if (configured == null) {
             return allowed;
         }
@@ -280,15 +238,14 @@ public class FileService {
     public Optional<Path> resolveFileScanRoot(Path userAgentDir, String rootId) {
         String normalizedRootId = normalizeRootId(rootId, 0);
         return fileScanRoots(userAgentDir).stream()
-                .filter(root -> root.id().equals(normalizedRootId))
-                .map(FileScanRoot::path)
-                .findFirst();
+            .filter(root -> root.id().equals(normalizedRootId))
+            .map(FileScanRoot::path)
+            .findFirst();
     }
 
     private List<FileScanRoot> fileScanRoots(Path userAgentDir) {
-        List<GatewayProperties.FileScanRoot> configured = gatewayProperties.getFiles() != null
-                ? gatewayProperties.getFiles().getScanRoots()
-                : null;
+        List<GatewayProperties.FileScanRoot> configured =
+            gatewayProperties.getFiles() != null ? gatewayProperties.getFiles().getScanRoots() : null;
         if (configured == null || configured.isEmpty()) {
             configured = new GatewayProperties.FileBrowser().getScanRoots();
         }
@@ -304,14 +261,11 @@ public class FileService {
             if (!ids.add(id)) {
                 continue;
             }
-            roots.add(new FileScanRoot(
-                    id,
-                    resolveScanRootPath(userAgentDir, configuredRoot.getPath()),
-                    configuredRoot.isRecursive(),
-                    excludeDirs(configuredRoot.getExcludeDirs()),
-                    positiveOrDefault(configuredRoot.getMaxDepth(), 6),
-                    positiveOrDefault(configuredRoot.getMaxFiles(), 1000),
-                    positiveOrDefault(configuredRoot.getScanTimeoutMs(), 2000)));
+            roots.add(new FileScanRoot(id, resolveScanRootPath(userAgentDir, configuredRoot.getPath()),
+                configuredRoot.isRecursive(), excludeDirs(configuredRoot.getExcludeDirs()),
+                positiveOrDefault(configuredRoot.getMaxDepth(), 6),
+                positiveOrDefault(configuredRoot.getMaxFiles(), 1000),
+                positiveOrDefault(configuredRoot.getScanTimeoutMs(), 2000)));
         }
         return roots;
     }
@@ -345,10 +299,8 @@ public class FileService {
     }
 
     private Path resolveScanRootPath(Path userAgentDir, String configuredPath) {
-        String expanded = configuredPath.replace(
-                "${userAgentDir}",
-                userAgentDir.toAbsolutePath().normalize().toString()
-        );
+        String expanded =
+            configuredPath.replace("${userAgentDir}", userAgentDir.toAbsolutePath().normalize().toString());
         Path path = Path.of(expanded);
         return path.isAbsolute() ? path.normalize() : userAgentDir.resolve(path).normalize();
     }
@@ -364,8 +316,8 @@ public class FileService {
         return path.toString().replace('\\', '/');
     }
 
-    private record FileScanRoot(String id, Path path, boolean recursive, Set<String> excludeDirs,
-                                int maxDepth, int maxFiles, long scanTimeoutMs) {
+    private record FileScanRoot(String id, Path path, boolean recursive, Set<String> excludeDirs, int maxDepth,
+        int maxFiles, long scanTimeoutMs) {
         private FileScanRoot {
             Objects.requireNonNull(id);
             Objects.requireNonNull(path);
@@ -500,16 +452,16 @@ public class FileService {
      * @return the result
      */
     public boolean isInline(String mimeType) {
-        return mimeType.startsWith("text/")
-                || mimeType.startsWith("image/")
-                || "application/json".equals(mimeType)
-                || "application/pdf".equals(mimeType);
+        return mimeType.startsWith("text/") || mimeType.startsWith("image/") || "application/json".equals(mimeType)
+            || "application/pdf".equals(mimeType);
     }
 
     // ── File capsule persistence ────────────────────────────────────────
 
     private static final Logger log = LoggerFactory.getLogger(FileService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final String CAPSULE_FILE = "file-capsules.json";
 
     /**
@@ -520,12 +472,10 @@ public class FileService {
      * @param after the after parameter
      * @return the result
      */
-    public List<Map<String, String>> diffFiles(List<Map<String, Object>> before,
-                                               List<Map<String, Object>> after) {
+    public List<Map<String, String>> diffFiles(List<Map<String, Object>> before, List<Map<String, Object>> after) {
         Set<String> allowedExtensions = new HashSet<>();
         List<String> configuredAllowed = gatewayProperties.getFileCapsules() != null
-                ? gatewayProperties.getFileCapsules().getAllowedExtensions()
-                : null;
+            ? gatewayProperties.getFileCapsules().getAllowedExtensions() : null;
         if (configuredAllowed != null) {
             for (String ext : configuredAllowed) {
                 if (ext == null) {
@@ -559,9 +509,8 @@ public class FileService {
             }
             Map<String, Object> prev = beforeMap.get(fileIdentity(f));
             boolean isNew = prev == null;
-            boolean isUpdated = prev != null && (
-                    !prev.get("modifiedAt").equals(f.get("modifiedAt"))
-                            || !prev.get("size").equals(f.get("size")));
+            boolean isUpdated = prev != null
+                && (!prev.get("modifiedAt").equals(f.get("modifiedAt")) || !prev.get("size").equals(f.get("size")));
             if (isNew || isUpdated) {
                 String name = (String) f.get("name");
                 Map<String, String> entry = new LinkedHashMap<>();
@@ -595,7 +544,7 @@ public class FileService {
      * @param files the files parameter
      */
     public void persistOutputFiles(Path workingDir, String sessionId, String messageId,
-                                   List<Map<String, String>> files) {
+        List<Map<String, String>> files) {
         Path dir = workingDir.resolve("data").resolve(sessionId);
         Path file = dir.resolve(CAPSULE_FILE);
         try {
@@ -604,10 +553,8 @@ public class FileService {
             // Read existing entries (if any)
             Map<String, List<Map<String, String>>> entries = new LinkedHashMap<>();
             if (Files.exists(file)) {
-                Map<String, Object> existing = MAPPER.readValue(
-                        Files.readString(file, StandardCharsets.UTF_8),
-                        new TypeReference<>() {
-                        });
+                Map<String, Object> existing =
+                    MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), new TypeReference<>() {});
                 Object raw = existing.get("entries");
                 if (raw instanceof Map<?, ?> rawMap) {
                     for (Map.Entry<?, ?> e : rawMap.entrySet()) {
@@ -633,7 +580,7 @@ public class FileService {
             Map<String, Object> wrapper = new LinkedHashMap<>();
             wrapper.put("entries", entries);
             Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(wrapper),
-                    StandardCharsets.UTF_8);
+                StandardCharsets.UTF_8);
 
             log.debug("Persisted {} file capsules for session {} message {}", files.size(), sessionId, messageId);
         } catch (IOException e) {
@@ -655,10 +602,8 @@ public class FileService {
             return Map.of();
         }
         try {
-            Map<String, Object> data = MAPPER.readValue(
-                    Files.readString(file, StandardCharsets.UTF_8),
-                    new TypeReference<>() {
-                    });
+            Map<String, Object> data =
+                MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), new TypeReference<>() {});
             Object raw = data.get("entries");
             if (!(raw instanceof Map<?, ?> rawMap)) {
                 return Map.of();

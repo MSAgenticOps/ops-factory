@@ -38,9 +38,11 @@ import javax.annotation.PostConstruct;
 @Service
 public class HostGroupService {
     private static final Logger log = LoggerFactory.getLogger(HostGroupService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private Path groupsDir;
 
     /**
@@ -133,7 +135,7 @@ public class HostGroupService {
      * @return the result
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
-                                       List<Map<String, Object>> businessServices) {
+        List<Map<String, Object>> businessServices) {
         Map<String, String> groupNameMap = new LinkedHashMap<>();
         for (Map<String, Object> g : groups) {
             groupNameMap.put((String) g.get("id"), (String) g.get("name"));
@@ -154,8 +156,8 @@ public class HostGroupService {
             String groupId = (String) cluster.get("groupId");
             if (groupId != null && groupNodeMap.containsKey(groupId)) {
                 @SuppressWarnings("unchecked")
-                List<Map<String, Object>> clusterList = (List<Map<String, Object>>) groupNodeMap.get(
-                        groupId).get("clusters");
+                List<Map<String, Object>> clusterList =
+                    (List<Map<String, Object>>) groupNodeMap.get(groupId).get("clusters");
                 clusterList.add(cluster);
             }
         }
@@ -165,8 +167,8 @@ public class HostGroupService {
             String groupId = (String) bs.get("groupId");
             if (groupId != null && groupNodeMap.containsKey(groupId)) {
                 @SuppressWarnings("unchecked")
-                List<Map<String, Object>> bsList = (List<Map<String, Object>>) groupNodeMap.get(
-                        groupId).get("businessServices");
+                List<Map<String, Object>> bsList =
+                    (List<Map<String, Object>>) groupNodeMap.get(groupId).get("businessServices");
                 bsList.add(bs);
             }
         }
@@ -303,8 +305,8 @@ public class HostGroupService {
      * @param businessServiceService the businessServiceService parameter
      * @return the result
      */
-    public boolean forceDeleteGroup(String id, ClusterService clusterService,
-                                    HostService hostService, BusinessServiceService businessServiceService) {
+    public boolean forceDeleteGroup(String id, ClusterService clusterService, HostService hostService,
+        BusinessServiceService businessServiceService) {
         // 1. Delete business services under this group
         for (Map<String, Object> bs : businessServiceService.listBusinessServices(id, null)) {
             businessServiceService.deleteBusinessService((String) bs.get("id"));
@@ -376,8 +378,7 @@ public class HostGroupService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
-            });
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
         } catch (IOException e) {
             log.error("Failed to read group file: {}", file, e);
             return null;

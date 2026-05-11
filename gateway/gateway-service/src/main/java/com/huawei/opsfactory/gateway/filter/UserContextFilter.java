@@ -8,6 +8,9 @@ import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.UserRole;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
+
+import reactor.core.publisher.Mono;
+
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +22,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Mono;
 
 import java.util.HashSet;
 import java.util.List;
@@ -35,16 +37,20 @@ import java.util.Set;
 @Order(3)
 public class UserContextFilter implements WebFilter {
     private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
+
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     public static final String USER_ID_ATTR = "userId";
+
     public static final String USER_ROLE_ATTR = "userRole";
 
     private final PrewarmService prewarmService;
+
     private final GatewayProperties gatewayProperties;
 
     // Cached set for fast lookup; refreshed when the underlying list changes.
     private volatile Set<String> adminUserSet = Set.of();
+
     private volatile List<String> cachedAdminList = List.of();
 
     /**
@@ -68,8 +74,8 @@ public class UserContextFilter implements WebFilter {
     }
 
     private static boolean isSystemEndpoint(String path) {
-        return path.equals("/status") || path.equals("/me") || path.equals("/config") ||
-               path.equals("/gateway/status") || path.equals("/gateway/me") || path.equals("/gateway/config");
+        return path.equals("/status") || path.equals("/me") || path.equals("/config") || path.equals("/gateway/status")
+            || path.equals("/gateway/me") || path.equals("/gateway/config");
     }
 
     private static boolean isTraceEndpoint(String path) {
@@ -134,11 +140,9 @@ public class UserContextFilter implements WebFilter {
     public static void requireAdmin(ServerWebExchange exchange) {
         UserRole role = exchange.getAttribute(USER_ROLE_ATTR);
         if (role == null || !role.isAdmin()) {
-            LoggerFactory.getLogger(UserContextFilter.class).warn(
-                "Rejecting request path={} reason=admin-access-required userRole={}",
-                exchange.getRequest().getURI().getPath(),
-                role
-            );
+            LoggerFactory.getLogger(UserContextFilter.class)
+                .warn("Rejecting request path={} reason=admin-access-required userRole={}",
+                    exchange.getRequest().getURI().getPath(), role);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "admin access required");
         }
     }

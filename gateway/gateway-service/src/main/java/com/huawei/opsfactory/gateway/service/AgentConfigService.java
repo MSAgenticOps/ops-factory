@@ -10,6 +10,7 @@ import com.huawei.opsfactory.gateway.common.model.ResidentInstanceTarget;
 import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.common.util.YamlLoader;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,6 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -31,6 +31,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import javax.annotation.PostConstruct;
+
 /**
  * Manages agent configuration, registry, skills, memory files, and MCP settings.
  *
@@ -40,16 +42,25 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Service
 public class AgentConfigService {
     private static final Logger log = LoggerFactory.getLogger(AgentConfigService.class);
+
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
+
     private static final String KNOWLEDGE_CLI_MCP = "knowledge-cli";
+
     private static final String DEFAULT_KNOWLEDGE_CLI_ROOT_DIR = "../data";
 
     private final GatewayProperties properties;
+
     private final CopyOnWriteArrayList<AgentRegistryEntry> registry = new CopyOnWriteArrayList<>();
+
     private final CopyOnWriteArrayList<ResidentInstanceTarget> residentInstances = new CopyOnWriteArrayList<>();
+
     private final ConcurrentHashMap<String, Map<String, Object>> configCache = new ConcurrentHashMap<>();
+
     private final ConcurrentHashMap<String, Map<String, Object>> secretsCache = new ConcurrentHashMap<>();
+
     private final Set<String> residentInstanceKeys = ConcurrentHashMap.newKeySet();
+
     private Path gatewayRoot;
 
     /**
@@ -175,24 +186,22 @@ public class AgentConfigService {
             }
 
             List<String> agentIds = rawAgentIds.stream()
-                    .filter(String.class::isInstance)
-                    .map(String.class::cast)
-                    .map(String::trim)
-                    .filter(id -> !id.isEmpty())
-                    .toList();
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .map(String::trim)
+                .filter(id -> !id.isEmpty())
+                .toList();
             if (agentIds.contains("*")) {
                 addResidentTargets(userId, configuredAgentIds);
                 continue;
             }
-            List<String> validAgentIds = agentIds.stream()
-                    .filter(agentId -> {
-                        boolean exists = configuredAgentIds.contains(agentId);
-                        if (!exists) {
-                            log.warn("Skipping unknown resident agent {} for user {}", agentId, userId);
-                        }
-                        return exists;
-                    })
-                    .toList();
+            List<String> validAgentIds = agentIds.stream().filter(agentId -> {
+                boolean exists = configuredAgentIds.contains(agentId);
+                if (!exists) {
+                    log.warn("Skipping unknown resident agent {} for user {}", agentId, userId);
+                }
+                return exists;
+            }).toList();
             addResidentTargets(userId, validAgentIds);
         }
     }
@@ -277,14 +286,8 @@ public class AgentConfigService {
                                 skill.put("description", frontmatter.get("description"));
                             }
                             putFrontmatterAlias(skill, frontmatter, "pinned", "pinned");
-                            putFrontmatterAlias(
-                                    skill,
-                                    frontmatter,
-                                    "displayOrder",
-                                    "displayOrder",
-                                    "display-order",
-                                    "x-display-order"
-                            );
+                            putFrontmatterAlias(skill, frontmatter, "displayOrder", "displayOrder", "display-order",
+                                "x-display-order");
                         } catch (IOException e) {
                             log.warn("Failed to parse SKILL.md for skill {}/{}", agentId, dirName, e);
                         }
@@ -298,10 +301,8 @@ public class AgentConfigService {
         return skills;
     }
 
-    private void putFrontmatterAlias(Map<String, String> target,
-                                     Map<String, String> frontmatter,
-                                     String targetKey,
-                                     String... aliases) {
+    private void putFrontmatterAlias(Map<String, String> target, Map<String, String> frontmatter, String targetKey,
+        String... aliases) {
         for (String alias : aliases) {
             String value = frontmatter.get(alias);
             if (value != null && !value.isBlank()) {
@@ -450,7 +451,7 @@ public class AgentConfigService {
      */
     public void writeMemoryFile(String agentId, String category, String content) throws IOException {
         if (content != null
-                && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+            && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = getGooseMemoryDir(agentId);
@@ -697,23 +698,17 @@ public class AgentConfigService {
     }
 
     private Path resolveKnowledgeArtifactsRoot() {
-        String configuredRoot = properties.getKnowledge() != null
-                ? properties.getKnowledge().getArtifactsRoot()
-                : null;
-        String artifactsRoot = configuredRoot != null && !configuredRoot.isBlank()
-                ? configuredRoot.trim()
-                : "../knowledge-service/data/artifacts";
+        String configuredRoot = properties.getKnowledge() != null ? properties.getKnowledge().getArtifactsRoot() : null;
+        String artifactsRoot = configuredRoot != null && !configuredRoot.isBlank() ? configuredRoot.trim()
+            : "../knowledge-service/data/artifacts";
         Path rootPath = Path.of(artifactsRoot);
-        return rootPath.isAbsolute()
-                ? rootPath.normalize()
-                : gatewayRoot.resolve(rootPath).normalize();
+        return rootPath.isAbsolute() ? rootPath.normalize() : gatewayRoot.resolve(rootPath).normalize();
     }
 
     private String relativizeForAgentConfig(String agentId, Path targetPath) {
         Path configDir = getAgentConfigDir(agentId).normalize();
-        Path projectRoot = gatewayRoot.getParent() != null
-                ? gatewayRoot.getParent().normalize()
-                : properties.getProjectRootPath();
+        Path projectRoot =
+            gatewayRoot.getParent() != null ? gatewayRoot.getParent().normalize() : properties.getProjectRootPath();
         Path normalizedTarget = targetPath.normalize();
 
         if (normalizedTarget.startsWith(projectRoot)) {
@@ -741,9 +736,8 @@ public class AgentConfigService {
         // Validate ID format
         if (!id.matches("^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$") || id.length() < 2) {
             throw new IllegalArgumentException(
-                    "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only "
-                            + "(no leading/trailing hyphens)"
-            );
+                "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only "
+                    + "(no leading/trailing hyphens)");
         }
 
         // Check duplicate ID
@@ -787,11 +781,8 @@ public class AgentConfigService {
 
         // Read provider/model from created config
         Map<String, Object> config = YamlLoader.load(targetConfig);
-        return Map.of(
-                "id", id,
-                "name", name,
-                "provider", config.getOrDefault("GOOSE_PROVIDER", ""),
-                "model", config.getOrDefault("GOOSE_MODEL", ""));
+        return Map.of("id", id, "name", name, "provider", config.getOrDefault("GOOSE_PROVIDER", ""), "model",
+            config.getOrDefault("GOOSE_MODEL", ""));
     }
 
     /**
@@ -892,13 +883,11 @@ public class AgentConfigService {
         }
 
         Object rootDirObj = scope.get("rootDir");
-        String configuredRoot = rootDirObj instanceof String s && !s.isBlank()
-                ? s.trim()
-                : DEFAULT_KNOWLEDGE_CLI_ROOT_DIR;
+        String configuredRoot =
+            rootDirObj instanceof String s && !s.isBlank() ? s.trim() : DEFAULT_KNOWLEDGE_CLI_ROOT_DIR;
         Path configDir = getAgentConfigDir(agentId);
-        return Path.of(configuredRoot).isAbsolute()
-                ? Path.of(configuredRoot).normalize()
-                : configDir.resolve(configuredRoot).normalize();
+        return Path.of(configuredRoot).isAbsolute() ? Path.of(configuredRoot).normalize()
+            : configDir.resolve(configuredRoot).normalize();
     }
 
     /**

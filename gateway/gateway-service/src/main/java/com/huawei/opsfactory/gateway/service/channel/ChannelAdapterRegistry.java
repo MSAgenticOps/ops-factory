@@ -28,8 +28,7 @@ public class ChannelAdapterRegistry {
      * @since 2026-05-09
      */
     public ChannelAdapterRegistry(List<ChannelAdapter> adapters) {
-        this.adaptersByType = adapters.stream()
-                .collect(Collectors.toMap(ChannelAdapter::type, Function.identity()));
+        this.adaptersByType = adapters.stream().collect(Collectors.toMap(ChannelAdapter::type, Function.identity()));
     }
 
     /**

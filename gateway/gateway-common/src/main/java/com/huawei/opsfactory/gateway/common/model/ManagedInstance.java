@@ -22,18 +22,30 @@ public class ManagedInstance {
      * @since 2026-05-09
      */
     public enum Status {
-        STARTING, RUNNING, STOPPED, ERROR
+        STARTING,
+        RUNNING,
+        STOPPED,
+        ERROR
     }
 
     private final String agentId;
+
     private final String userId;
+
     private final int port;
+
     private final long pid;
+
     private final String secretKey;
+
     private volatile Status status;
+
     private volatile long lastActivity;
+
     private volatile int restartCount = 0;
+
     private volatile long lastRestartTime = 0;
+
     private transient Process process;
 
     /** Sessions that have been resumed (provider+extensions loaded) on this instance. */

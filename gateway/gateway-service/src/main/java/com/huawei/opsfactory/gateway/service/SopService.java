@@ -4,14 +4,15 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
+
 /**
  * Manages Standard Operating Procedure documents with command whitelist validation and name uniqueness checks.
  *
@@ -32,11 +35,15 @@ import java.util.UUID;
 @Service
 public class SopService {
     private static final Logger log = LoggerFactory.getLogger(SopService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private final CommandWhitelistService commandWhitelistService;
+
     private Path gatewayRoot;
+
     private Path sopsDir;
 
     /**
@@ -158,9 +165,8 @@ public class SopService {
         }
 
         // Determine effective mode for command validation
-        String effectiveMode = body.containsKey("mode")
-                ? String.valueOf(body.get("mode"))
-                : String.valueOf(sop.getOrDefault("mode", "structured"));
+        String effectiveMode = body.containsKey("mode") ? String.valueOf(body.get("mode"))
+            : String.valueOf(sop.getOrDefault("mode", "structured"));
 
         // Update mutable fields
         if (body.containsKey("name")) {
@@ -259,8 +265,7 @@ public class SopService {
             }
             List<String> rejected = commandWhitelistService.validateCommand(cmdObj.toString());
             if (!rejected.isEmpty()) {
-                throw new IllegalArgumentException(
-                    "节点 " + (i + 1) + " 命令包含未白名单授权的命令: " + String.join(", ", rejected));
+                throw new IllegalArgumentException("节点 " + (i + 1) + " 命令包含未白名单授权的命令: " + String.join(", ", rejected));
             }
         }
     }

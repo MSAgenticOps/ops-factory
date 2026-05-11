@@ -4,9 +4,11 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,11 +34,15 @@ import java.util.UUID;
 @Service
 public class WeChatMessagePumpService {
     private static final Logger log = LoggerFactory.getLogger(WeChatMessagePumpService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
+
     private final ChannelRuntimeStorageService runtimeStorageService;
+
     private final ChannelDedupService channelDedupService;
+
     private final SessionBridgeService sessionBridgeService;
 
     /**
@@ -46,9 +52,8 @@ public class WeChatMessagePumpService {
      * @since 2026-05-09
      */
     public WeChatMessagePumpService(ChannelConfigService channelConfigService,
-                                    ChannelRuntimeStorageService runtimeStorageService,
-                                    ChannelDedupService channelDedupService,
-                                    SessionBridgeService sessionBridgeService) {
+        ChannelRuntimeStorageService runtimeStorageService, ChannelDedupService channelDedupService,
+        SessionBridgeService sessionBridgeService) {
         this.channelConfigService = channelConfigService;
         this.runtimeStorageService = runtimeStorageService;
         this.channelDedupService = channelDedupService;
@@ -76,8 +81,8 @@ public class WeChatMessagePumpService {
 
         try (var stream = Files.list(inboxDir)) {
             stream.filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .sorted()
-                    .forEach(path -> processInboundFile(detail, path));
+                .sorted()
+                .forEach(path -> processInboundFile(detail, path));
         } catch (IOException e) {
             log.warn("Failed to scan WeChat inbox for {}: {}", detail.id(), e.getMessage());
         }
@@ -90,7 +95,7 @@ public class WeChatMessagePumpService {
             payload = MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
         } catch (IOException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
-                    "Failed to parse inbound WeChat file " + file.getFileName());
+                "Failed to parse inbound WeChat file " + file.getFileName());
             moveToProcessed(channel, file, "invalid");
             return;
         }
@@ -102,7 +107,7 @@ public class WeChatMessagePumpService {
         String contextToken = asString(payload.get("contextToken"));
         if (messageId == null || peerId == null || conversationId == null || text == null || text.isBlank()) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
-                    "Inbound WeChat file missing required fields");
+                "Inbound WeChat file missing required fields");
             moveToProcessed(channel, file, "invalid");
             return;
         }
@@ -113,17 +118,10 @@ public class WeChatMessagePumpService {
         }
 
         try {
-            ChannelReplyResult reply = sessionBridgeService.sendConversationText(
-                            channel.id(),
-                            channel.ownerUserId(),
-                            "default",
-                            peerId,
-                            conversationId,
-                            null,
-                            "direct",
-                            text
-                    )
-                    .block(Duration.ofMinutes(5));
+            ChannelReplyResult reply = sessionBridgeService
+                .sendConversationText(channel.id(), channel.ownerUserId(), "default", peerId, conversationId, null,
+                    "direct", text)
+                .block(Duration.ofMinutes(5));
 
             if (reply != null && reply.replyText() != null && !reply.replyText().isBlank()) {
                 writeOutboxCommand(channel, peerId, reply.replyText(), contextToken);
@@ -131,7 +129,7 @@ public class WeChatMessagePumpService {
             moveToProcessed(channel, file, "processed");
         } catch (IllegalArgumentException | IllegalStateException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_failed",
-                    "Failed to process inbound WeChat message: " + e.getMessage());
+                "Failed to process inbound WeChat message: " + e.getMessage());
             moveToProcessed(channel, file, "error");
         }
     }
@@ -147,13 +145,10 @@ public class WeChatMessagePumpService {
         Path file = pendingDir.resolve(payload.get("id") + ".json");
         try {
             Files.createDirectories(pendingDir);
-            Files.writeString(
-                    file,
-                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                    StandardCharsets.UTF_8
-            );
+            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                StandardCharsets.UTF_8);
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "wechat.outbox_enqueued",
-                    "Queued WeChat reply for " + peerId);
+                "Queued WeChat reply for " + peerId);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat outbox command", e);
         }
@@ -163,10 +158,8 @@ public class WeChatMessagePumpService {
         Path processedDir = processedInboxDir(channel);
         try {
             Files.createDirectories(processedDir);
-            Files.move(
-                    file,
-                    processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json"))
-            );
+            Files.move(file,
+                processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json")));
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(file);

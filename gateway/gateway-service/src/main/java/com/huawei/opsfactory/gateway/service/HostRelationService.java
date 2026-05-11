@@ -4,16 +4,17 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -26,9 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
+
 /**
  * @deprecated Use {@link ClusterRelationService} instead. Host-level relations are replaced by cluster-level relations.
- *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -36,11 +38,15 @@ import java.util.UUID;
 @Service
 public class HostRelationService {
     private static final Logger log = LoggerFactory.getLogger(HostRelationService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private final HostService hostService;
+
     private final ClusterService clusterService;
+
     private Path relationsDir;
 
     private BusinessServiceService businessServiceService;
@@ -95,13 +101,8 @@ public class HostRelationService {
      * @param sourceId the sourceId parameter
      * @return the result
      */
-    public List<Map<String, Object>> listRelations(
-            String hostId,
-            String groupId,
-            String clusterId,
-            String sourceType,
-            String sourceId
-    ) {
+    public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType,
+        String sourceId) {
         List<Map<String, Object>> relations = new ArrayList<>();
         if (!Files.isDirectory(relationsDir)) {
             return relations;
@@ -214,13 +215,8 @@ public class HostRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info(
-                "Created host relation: id={}, sourceType={}, source={}, target={}",
-                id,
-                sourceType,
-                sourceHostId,
-                targetHostId
-        );
+        log.info("Created host relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceHostId,
+            targetHostId);
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -522,8 +518,7 @@ public class HostRelationService {
         return result;
     }
 
-    private Map<String, Object> buildHostNode(Map<String, Object> h,
-            Map<String, Map<String, Object>> clusterMap) {
+    private Map<String, Object> buildHostNode(Map<String, Object> h, Map<String, Map<String, Object>> clusterMap) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("id", h.get("id"));
         node.put("name", h.get("name"));

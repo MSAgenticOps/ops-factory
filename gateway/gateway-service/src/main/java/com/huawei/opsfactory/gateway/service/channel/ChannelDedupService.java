@@ -4,8 +4,10 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,10 +31,13 @@ import java.util.Map;
 @Service
 public class ChannelDedupService {
     private static final Logger log = LoggerFactory.getLogger(ChannelDedupService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final int MAX_MESSAGES = 500;
 
     private final ChannelConfigService channelConfigService;
+
     private final ChannelRuntimeStorageService runtimeStorageService;
 
     /**
@@ -42,7 +47,7 @@ public class ChannelDedupService {
      * @since 2026-05-09
      */
     public ChannelDedupService(ChannelConfigService channelConfigService,
-                               ChannelRuntimeStorageService runtimeStorageService) {
+        ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
         this.runtimeStorageService = runtimeStorageService;
     }
@@ -72,8 +77,8 @@ public class ChannelDedupService {
         Map<String, Object> wrapper = readJson(file);
         List<Map<String, Object>> messages = castMessages(wrapper.get("messages"));
 
-        boolean exists = messages.stream()
-                .anyMatch(item -> externalMessageId.equals(String.valueOf(item.get("externalMessageId"))));
+        boolean exists =
+            messages.stream().anyMatch(item -> externalMessageId.equals(String.valueOf(item.get("externalMessageId"))));
         if (exists) {
             return false;
         }
@@ -138,9 +143,8 @@ public class ChannelDedupService {
     private void writeJson(Path file, Object payload) {
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file,
-                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                    StandardCharsets.UTF_8);
+            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write dedup file: " + file, e);
         }

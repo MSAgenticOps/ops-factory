@@ -58,10 +58,13 @@ import javax.net.ssl.SSLException;
 @Component
 public class GoosedProxy {
     private static final Logger log = LoggerFactory.getLogger(GoosedProxy.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final Duration EVENT_AUGMENT_TIMEOUT = Duration.ofSeconds(3);
 
     private final WebClient webClient;
+
     private final GatewayProperties properties;
 
     /**
@@ -77,26 +80,22 @@ public class GoosedProxy {
         // Each goosed instance is localhost on a dynamic port; pooled connections
         // become stale when a goosed process restarts on a different port,
         // causing SslHandshakeTimeoutException cascades.
-        HttpClient httpClient = HttpClient.newConnection()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
+        HttpClient httpClient = HttpClient.newConnection().option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
 
         if (properties.isGooseTls()) {
             try {
-                SslContext sslContext = SslContextBuilder.forClient()
-                        .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                        .build();
-                httpClient = httpClient.secure(t -> t.sslContext(sslContext)
-                        .handshakeTimeout(Duration.ofSeconds(5)));
+                SslContext sslContext =
+                    SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                httpClient = httpClient.secure(t -> t.sslContext(sslContext).handshakeTimeout(Duration.ofSeconds(5)));
             } catch (SSLException e) {
                 throw new RuntimeException("Failed to configure TLS for goosed proxy", e);
             }
         }
 
         this.webClient = WebClient.builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .codecs(configurer -> configurer.defaultCodecs()
-                        .maxInMemorySize(50 * 1024 * 1024))
-                .build();
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(50 * 1024 * 1024))
+            .build();
     }
 
     /**
@@ -119,19 +118,14 @@ public class GoosedProxy {
      * @param secretKey the secretKey parameter
      * @return the result
      */
-    public Mono<Void> proxy(
-            ServerHttpRequest request,
-            ServerHttpResponse response,
-            int port,
-            String path,
-            String secretKey
-    ) {
+    public Mono<Void> proxy(ServerHttpRequest request, ServerHttpResponse response, int port, String path,
+        String secretKey) {
         String target = goosedBaseUrl(port) + path;
         HttpMethod method = request.getMethod();
 
         WebClient.RequestBodySpec spec = webClient.method(method != null ? method : HttpMethod.GET)
-                .uri(target)
-                .headers(h -> copyHeaders(request.getHeaders(), h, secretKey));
+            .uri(target)
+            .headers(h -> copyHeaders(request.getHeaders(), h, secretKey));
 
         WebClient.RequestHeadersSpec<?> ready;
         if (method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH) {
@@ -141,11 +135,10 @@ public class GoosedProxy {
         }
 
         return ready.exchangeToMono(upstream -> {
-                    response.setStatusCode(upstream.statusCode());
-                    copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
-                    return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-                }).timeout(Duration.ofSeconds(60))
-                .onErrorMap(this::isProxyError, this::mapProxyError);
+            response.setStatusCode(upstream.statusCode());
+            copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
+            return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
+        }).timeout(Duration.ofSeconds(60)).onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
@@ -159,21 +152,22 @@ public class GoosedProxy {
      * @param secretKey the secretKey parameter
      * @return the result
      */
-    public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path,
-                                    HttpMethod method, String body, String secretKey) {
+    public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path, HttpMethod method, String body,
+        String secretKey) {
         String target = goosedBaseUrl(port) + path;
 
         return webClient.method(method)
-                .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
-                .header(HttpHeaders.CONTENT_TYPE, "application/json")
-                .bodyValue(body)
-                .exchangeToMono(upstream -> {
-                    response.setStatusCode(upstream.statusCode());
-                    copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
-                    return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-                }).timeout(Duration.ofSeconds(60))
-                .onErrorMap(this::isProxyError, this::mapProxyError);
+            .uri(target)
+            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+            .header(HttpHeaders.CONTENT_TYPE, "application/json")
+            .bodyValue(body)
+            .exchangeToMono(upstream -> {
+                response.setStatusCode(upstream.statusCode());
+                copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
+                return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
+            })
+            .timeout(Duration.ofSeconds(60))
+            .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
@@ -188,37 +182,37 @@ public class GoosedProxy {
      * @param secretKey the secretKey parameter
      * @return the result
      */
-    public Mono<Void> proxySessionCommandWithBody(ServerHttpResponse response, int port, String path,
-                                                  HttpMethod method, String body, String secretKey) {
+    public Mono<Void> proxySessionCommandWithBody(ServerHttpResponse response, int port, String path, HttpMethod method,
+        String body, String secretKey) {
         String target = goosedBaseUrl(port) + path;
         long start = System.currentTimeMillis();
         log.info("[GOOSED-PROXY] request method={} path={} port={}", method, path, port);
 
         return webClient.method(method)
-                .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
-                .header(HttpHeaders.CONTENT_TYPE, "application/json")
-                .bodyValue(body)
-                .exchangeToMono(upstream -> {
-                    if (upstream.statusCode().isError()) {
-                        return upstream.bodyToMono(String.class)
-                                .defaultIfEmpty("")
-                                .flatMap(errorBody -> {
-                                    log.warn("[GOOSED-PROXY] upstream-error method={} path={} port={} status={} " +
-                                                    "error={} durationMs={}",
-                                            method, path, port, upstream.rawStatusCode(),
-                                            truncate(errorBody, 200), System.currentTimeMillis() - start);
-                                    return Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
-                                            upstream.headers().asHttpHeaders(), errorBody));
-                                });
-                    }
-                    log.info("[GOOSED-PROXY] response method={} path={} port={} status={} durationMs={}",
-                            method, path, port, upstream.statusCode(), System.currentTimeMillis() - start);
-                    response.setStatusCode(upstream.statusCode());
-                    copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
-                    return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-                }).timeout(Duration.ofSeconds(60))
-                .onErrorMap(this::isProxyError, this::mapProxyError);
+            .uri(target)
+            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+            .header(HttpHeaders.CONTENT_TYPE, "application/json")
+            .bodyValue(body)
+            .exchangeToMono(upstream -> {
+                if (upstream.statusCode().isError()) {
+                    return upstream.bodyToMono(String.class).defaultIfEmpty("").flatMap(errorBody -> {
+                        log.warn(
+                            "[GOOSED-PROXY] upstream-error method={} path={} port={} status={} "
+                                + "error={} durationMs={}",
+                            method, path, port, upstream.rawStatusCode(), truncate(errorBody, 200),
+                            System.currentTimeMillis() - start);
+                        return Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
+                            upstream.headers().asHttpHeaders(), errorBody));
+                    });
+                }
+                log.info("[GOOSED-PROXY] response method={} path={} port={} status={} durationMs={}", method, path,
+                    port, upstream.statusCode(), System.currentTimeMillis() - start);
+                response.setStatusCode(upstream.statusCode());
+                copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
+                return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
+            })
+            .timeout(Duration.ofSeconds(60))
+            .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
@@ -237,112 +231,101 @@ public class GoosedProxy {
      * @param beforeTerminalEventFactory the beforeTerminalEventFactory parameter
      * @return the result
      */
-    public Mono<Void> proxySessionEvents(ServerHttpResponse response, int port, String path,
-                                         String secretKey, String lastEventId,
-                                         String agentId, String userId, String sessionId,
-                                         Function<String, Mono<String>> beforeTerminalEventFactory) {
+    public Mono<Void> proxySessionEvents(ServerHttpResponse response, int port, String path, String secretKey,
+        String lastEventId, String agentId, String userId, String sessionId,
+        Function<String, Mono<String>> beforeTerminalEventFactory) {
         String target = goosedBaseUrl(port) + path;
-        log.info("[GOOSED-PROXY] sse-connect port={} path={} agentId={} userId={} sessionId={} lastEventId={}",
-                port, path, agentId, userId, sessionId, lastEventId);
+        log.info("[GOOSED-PROXY] sse-connect port={} path={} agentId={} userId={} sessionId={} lastEventId={}", port,
+            path, agentId, userId, sessionId, lastEventId);
 
         WebClient.RequestHeadersSpec<?> spec = webClient.get()
-                .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
-                .accept(MediaType.TEXT_EVENT_STREAM);
+            .uri(target)
+            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+            .accept(MediaType.TEXT_EVENT_STREAM);
         if (lastEventId != null && !lastEventId.isBlank()) {
             spec = spec.header("Last-Event-ID", lastEventId);
         }
 
         return spec.exchangeToMono(upstream -> {
-                    if (upstream.statusCode().isError()) {
-                        log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}",
-                                port, path, upstream.rawStatusCode(), agentId, sessionId);
-                        return upstream.bodyToMono(String.class)
-                                .defaultIfEmpty("")
-                                .flatMap(errorBody -> Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
-                                        upstream.headers().asHttpHeaders(), errorBody)));
-                    }
-                    log.info("[GOOSED-PROXY] sse-connected port={} path={} status={} agentId={} sessionId={}",
-                            port, path, upstream.statusCode(), agentId, sessionId);
-                    response.setStatusCode(upstream.statusCode());
-                    copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
-                    Flux<DataBuffer> body = transformSessionEventStream(
-                            upstream.bodyToFlux(DataBuffer.class)
-                                    .onErrorResume(err -> Flux.just(response.bufferFactory().wrap(
-                                            gatewayEventStreamError(err, agentId, userId, sessionId)
-                                                    .getBytes(StandardCharsets.UTF_8)))),
-                            response.bufferFactory(),
-                            beforeTerminalEventFactory);
-                    return response.writeWith(body);
-                })
-                .onErrorMap(this::isProxyError, this::mapProxyError);
+            if (upstream.statusCode().isError()) {
+                log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}", port,
+                    path, upstream.rawStatusCode(), agentId, sessionId);
+                return upstream.bodyToMono(String.class)
+                    .defaultIfEmpty("")
+                    .flatMap(errorBody -> Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
+                        upstream.headers().asHttpHeaders(), errorBody)));
+            }
+            log.info("[GOOSED-PROXY] sse-connected port={} path={} status={} agentId={} sessionId={}", port, path,
+                upstream.statusCode(), agentId, sessionId);
+            response.setStatusCode(upstream.statusCode());
+            copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
+            Flux<DataBuffer> body =
+                transformSessionEventStream(
+                    upstream.bodyToFlux(DataBuffer.class)
+                        .onErrorResume(err -> Flux.just(response.bufferFactory()
+                            .wrap(gatewayEventStreamError(err, agentId, userId, sessionId)
+                                .getBytes(StandardCharsets.UTF_8)))),
+                    response.bufferFactory(), beforeTerminalEventFactory);
+            return response.writeWith(body);
+        }).onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
-    private Flux<DataBuffer> transformSessionEventStream(Flux<DataBuffer> upstream,
-                                                         DataBufferFactory bufferFactory,
-                                                         Function<String, Mono<String>> beforeTerminalEventFactory) {
+    private Flux<DataBuffer> transformSessionEventStream(Flux<DataBuffer> upstream, DataBufferFactory bufferFactory,
+        Function<String, Mono<String>> beforeTerminalEventFactory) {
         StringBuilder buffer = new StringBuilder();
 
-        return Flux.concat(
-                upstream.concatMap(dataBuffer -> {
-                    byte[] bytes = new byte[dataBuffer.readableByteCount()];
-                    dataBuffer.read(bytes);
-                    DataBufferUtils.release(dataBuffer);
-                    buffer.append(new String(bytes, StandardCharsets.UTF_8));
+        return Flux.concat(upstream.concatMap(dataBuffer -> {
+            byte[] bytes = new byte[dataBuffer.readableByteCount()];
+            dataBuffer.read(bytes);
+            DataBufferUtils.release(dataBuffer);
+            buffer.append(new String(bytes, StandardCharsets.UTF_8));
 
-                    List<String> frames = new ArrayList<>();
-                    int separatorIndex;
-                    int separatorLength;
-                    while (true) {
-                        int lfIndex = buffer.indexOf("\n\n");
-                        int crlfIndex = buffer.indexOf("\r\n\r\n");
-                        if (lfIndex < 0 && crlfIndex < 0) {
-                            break;
-                        }
-                        if (crlfIndex >= 0 && (lfIndex < 0 || crlfIndex < lfIndex)) {
-                            separatorIndex = crlfIndex;
-                            separatorLength = 4;
-                        } else {
-                            separatorIndex = lfIndex;
-                            separatorLength = 2;
-                        }
-                        String frame = buffer.substring(0, separatorIndex);
-                        buffer.delete(0, separatorIndex + separatorLength);
-                        frames.add(frame);
-                    }
+            List<String> frames = new ArrayList<>();
+            int separatorIndex;
+            int separatorLength;
+            while (true) {
+                int lfIndex = buffer.indexOf("\n\n");
+                int crlfIndex = buffer.indexOf("\r\n\r\n");
+                if (lfIndex < 0 && crlfIndex < 0) {
+                    break;
+                }
+                if (crlfIndex >= 0 && (lfIndex < 0 || crlfIndex < lfIndex)) {
+                    separatorIndex = crlfIndex;
+                    separatorLength = 4;
+                } else {
+                    separatorIndex = lfIndex;
+                    separatorLength = 2;
+                }
+                String frame = buffer.substring(0, separatorIndex);
+                buffer.delete(0, separatorIndex + separatorLength);
+                frames.add(frame);
+            }
 
-                    return Flux.fromIterable(frames)
-                            .concatMap(frame -> emitTransformedFrame(frame, bufferFactory, beforeTerminalEventFactory));
-                }),
-                Mono.defer(() -> {
-                    if (buffer.isEmpty()) {
-                        return Mono.empty();
-                    }
-                    String remaining = buffer.toString();
-                    buffer.setLength(0);
-                    return Mono.just(bufferFactory.wrap(remaining.getBytes(StandardCharsets.UTF_8)));
-                })
-        );
+            return Flux.fromIterable(frames)
+                .concatMap(frame -> emitTransformedFrame(frame, bufferFactory, beforeTerminalEventFactory));
+        }), Mono.defer(() -> {
+            if (buffer.isEmpty()) {
+                return Mono.empty();
+            }
+            String remaining = buffer.toString();
+            buffer.setLength(0);
+            return Mono.just(bufferFactory.wrap(remaining.getBytes(StandardCharsets.UTF_8)));
+        }));
     }
 
-    private Flux<DataBuffer> emitTransformedFrame(String frame,
-                                                  DataBufferFactory bufferFactory,
-                                                  Function<String, Mono<String>> beforeTerminalEventFactory) {
+    private Flux<DataBuffer> emitTransformedFrame(String frame, DataBufferFactory bufferFactory,
+        Function<String, Mono<String>> beforeTerminalEventFactory) {
         String data = extractSseData(frame);
-        Mono<String> injected = data == null || data.isBlank()
-                ? Mono.empty()
-                : beforeTerminalEventFactory.apply(data);
+        Mono<String> injected = data == null || data.isBlank() ? Mono.empty() : beforeTerminalEventFactory.apply(data);
 
-        Mono<DataBuffer> originalFrame = Mono.just(bufferFactory.wrap((frame + "\n\n").getBytes(
-                StandardCharsets.UTF_8)));
-        Mono<DataBuffer> extraFrame = injected
-                .timeout(EVENT_AUGMENT_TIMEOUT)
-                .onErrorResume(err -> {
-                    log.warn("[SESSION-EVENTS] skipped supplemental event after original frame: {}", err.getMessage());
-                    return Mono.empty();
-                })
-                .filter(extraPayload -> extraPayload != null && !extraPayload.isBlank())
-                .map(extraPayload -> bufferFactory.wrap(extraPayload.getBytes(StandardCharsets.UTF_8)));
+        Mono<DataBuffer> originalFrame =
+            Mono.just(bufferFactory.wrap((frame + "\n\n").getBytes(StandardCharsets.UTF_8)));
+        Mono<DataBuffer> extraFrame = injected.timeout(EVENT_AUGMENT_TIMEOUT).onErrorResume(err -> {
+            log.warn("[SESSION-EVENTS] skipped supplemental event after original frame: {}", err.getMessage());
+            return Mono.empty();
+        })
+            .filter(extraPayload -> extraPayload != null && !extraPayload.isBlank())
+            .map(extraPayload -> bufferFactory.wrap(extraPayload.getBytes(StandardCharsets.UTF_8)));
 
         return Flux.concat(originalFrame, extraFrame);
     }
@@ -380,8 +363,8 @@ public class GoosedProxy {
             body.put("trace_id", UUID.randomUUID().toString());
             return "data: " + MAPPER.writeValueAsString(body) + "\n\n";
         } catch (JsonProcessingException writeErr) {
-            return "data: {\"type\":\"Error\",\"layer\":\"gateway\",\"code\":\"gateway_goosed_unavailable\"," +
-                    "\"message\":\"Gateway lost the agent event stream.\",\"retryable\":true}\n\n";
+            return "data: {\"type\":\"Error\",\"layer\":\"gateway\",\"code\":\"gateway_goosed_unavailable\","
+                + "\"message\":\"Gateway lost the agent event stream.\",\"retryable\":true}\n\n";
         }
     }
 
@@ -398,17 +381,16 @@ public class GoosedProxy {
         long start = System.currentTimeMillis();
         log.info("[GOOSED-PROXY] request method=GET path={} port={}", path, port);
         return webClient.get()
-                .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(30))
-                .doOnNext(body -> log.info("[GOOSED-PROXY] response method=GET path={} port={} status=200" +
-                                " bodyLen={} durationMs={}",
-                        path, port, body != null ? body.length() : 0, System.currentTimeMillis() - start))
-                .doOnError(err -> log.warn("[GOOSED-PROXY] error method=GET path={} port={} error={} " +
-                                "durationMs={}",
-                        path, port, err.getMessage(), System.currentTimeMillis() - start));
+            .uri(target)
+            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+            .retrieve()
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(30))
+            .doOnNext(body -> log.info(
+                "[GOOSED-PROXY] response method=GET path={} port={} status=200" + " bodyLen={} durationMs={}", path,
+                port, body != null ? body.length() : 0, System.currentTimeMillis() - start))
+            .doOnError(err -> log.warn("[GOOSED-PROXY] error method=GET path={} port={} error={} " + "durationMs={}",
+                path, port, err.getMessage(), System.currentTimeMillis() - start));
     }
 
     /**
@@ -436,34 +418,27 @@ public class GoosedProxy {
      * @param secretKey the secretKey parameter
      * @return the result
      */
-    public Mono<String> fetchJson(
-            int port,
-            HttpMethod method,
-            String path,
-            String body,
-            int timeoutSec,
-            String secretKey
-    ) {
+    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec,
+        String secretKey) {
         String target = goosedBaseUrl(port) + path;
         long start = System.currentTimeMillis();
         log.info("[GOOSED-PROXY] request method={} path={} port={}", method, path, port);
         WebClient.RequestBodySpec spec = webClient.method(method)
-                .uri(target)
-                .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
-                .header(HttpHeaders.CONTENT_TYPE, "application/json");
+            .uri(target)
+            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+            .header(HttpHeaders.CONTENT_TYPE, "application/json");
 
         WebClient.RequestHeadersSpec<?> ready = body != null ? spec.bodyValue(body) : spec;
 
         return ready.retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(timeoutSec))
-                .doOnNext(resp -> log.info("[GOOSED-PROXY] response method={} path={} port={} status=200 " +
-                                "bodyLen={} durationMs={}",
-                        method, path, port, resp != null ? resp.length() : 0, System.currentTimeMillis() - start))
-                .doOnError(err -> log.warn("[GOOSED-PROXY] error method={} path={} port={} error={} " +
-                                "durationMs={}",
-                        method, path, port, err.getMessage(), System.currentTimeMillis() - start))
-                .onErrorMap(this::isProxyError, this::mapProxyError);
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(timeoutSec))
+            .doOnNext(resp -> log.info(
+                "[GOOSED-PROXY] response method={} path={} port={} status=200 " + "bodyLen={} durationMs={}", method,
+                path, port, resp != null ? resp.length() : 0, System.currentTimeMillis() - start))
+            .doOnError(err -> log.warn("[GOOSED-PROXY] error method={} path={} port={} error={} " + "durationMs={}",
+                method, path, port, err.getMessage(), System.currentTimeMillis() - start))
+            .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
@@ -486,27 +461,19 @@ public class GoosedProxy {
     private Throwable mapProxyError(Throwable e) {
         if (e instanceof TimeoutException) {
             log.warn("Goosed proxy timeout: {}", e.getMessage());
-            return new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT,
-                    "Agent did not respond in time");
+            return new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Agent did not respond in time");
         }
         log.warn("Goosed connection error: {}", e.getMessage());
         return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Agent temporarily unavailable: " + e.getMessage());
+            "Agent temporarily unavailable: " + e.getMessage());
     }
 
-    private WebClientResponseException toUpstreamResponseException(
-            int rawStatusCode,
-            HttpHeaders headers,
-            String body
-    ) {
+    private WebClientResponseException toUpstreamResponseException(int rawStatusCode, HttpHeaders headers,
+        String body) {
         HttpStatus status = HttpStatus.resolve(rawStatusCode);
         String statusText = status != null ? status.getReasonPhrase() : "HTTP " + rawStatusCode;
-        return WebClientResponseException.create(
-                rawStatusCode,
-                statusText,
-                headers,
-                body.getBytes(StandardCharsets.UTF_8),
-                StandardCharsets.UTF_8);
+        return WebClientResponseException.create(rawStatusCode, statusText, headers,
+            body.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
     }
 
     private void copyHeaders(HttpHeaders source, HttpHeaders target, String secretKey) {
@@ -518,11 +485,11 @@ public class GoosedProxy {
         // CORS is handled by gateway filter; do not forward upstream CORS headers.
         source.forEach((name, values) -> {
             if (HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN.equalsIgnoreCase(name)
-                    || HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS.equalsIgnoreCase(name)
-                    || HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS.equalsIgnoreCase(name)
-                    || HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS.equalsIgnoreCase(name)
-                    || HttpHeaders.ACCESS_CONTROL_MAX_AGE.equalsIgnoreCase(name)
-                    || HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS.equalsIgnoreCase(name)) {
+                || HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS.equalsIgnoreCase(name)
+                || HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS.equalsIgnoreCase(name)
+                || HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS.equalsIgnoreCase(name)
+                || HttpHeaders.ACCESS_CONTROL_MAX_AGE.equalsIgnoreCase(name)
+                || HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS.equalsIgnoreCase(name)) {
                 return;
             }
             target.put(name, values);

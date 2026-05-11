@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 @Service
 public class ChannelRuntimeStorageService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("^[A-Za-z0-9._-]+$");
 
     private final GatewayProperties properties;
@@ -86,11 +87,11 @@ public class ChannelRuntimeStorageService {
      */
     public Path runtimeDirectory(String ownerUserId, String type, String channelId) {
         Path typeRoot = properties.getGatewayRootPath()
-                .resolve("users")
-                .resolve(normalizeOwnerUserId(ownerUserId))
-                .resolve("channels")
-                .resolve(normalizeType(type))
-                .normalize();
+            .resolve("users")
+            .resolve(normalizeOwnerUserId(ownerUserId))
+            .resolve("channels")
+            .resolve(normalizeType(type))
+            .normalize();
         Path runtimeDirectory = typeRoot.resolve(requireSafeSegment(channelId, "channelId")).normalize();
         if (!runtimeDirectory.startsWith(typeRoot)) {
             throw new IllegalArgumentException("channelId must stay within the channel runtime directory");
@@ -257,8 +258,7 @@ public class ChannelRuntimeStorageService {
         try {
             Files.createDirectories(runtimeDirectory(channel));
             initializeIfMissing(bindingsFile(channel), Map.of("bindings", List.of()));
-            initializeIfMissing(runtimeDirectory(channel).resolve("inbound-dedup.json"), Map.of(
-                    "messages", List.of()));
+            initializeIfMissing(runtimeDirectory(channel).resolve("inbound-dedup.json"), Map.of("messages", List.of()));
             initializeIfMissing(eventsFile(channel), Map.of("events", List.of()));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to initialize channel runtime for " + channel.id(), e);
@@ -328,27 +328,24 @@ public class ChannelRuntimeStorageService {
 
         List<ChannelRuntimeRef> refs = new ArrayList<>();
         try (var users = Files.list(usersRoot)) {
-            users.filter(Files::isDirectory)
-                    .forEach(userDir -> {
-                        Path userName = userDir.getFileName();
-                        if (userName == null) {
-                            return;
-                        }
-                        String ownerUserId = userName.toString();
-                        try {
-                            Path runtimeDirectory = userDir.resolve("channels")
-                                    .resolve(normalizedType)
-                                    .resolve(normalizedChannelId)
-                                    .normalize();
-                            Path expected = runtimeDirectory(ownerUserId, normalizedType, normalizedChannelId);
-                            if (runtimeDirectory.equals(expected) && Files.isDirectory(runtimeDirectory)) {
-                                refs.add(new ChannelRuntimeRef(ownerUserId, normalizedType, normalizedChannelId,
-                                        runtimeDirectory));
-                            }
-                        } catch (IllegalArgumentException e) {
-                            // Ignore unrelated/unsafe user directories when scanning channel runtime state.
-                        }
-                    });
+            users.filter(Files::isDirectory).forEach(userDir -> {
+                Path userName = userDir.getFileName();
+                if (userName == null) {
+                    return;
+                }
+                String ownerUserId = userName.toString();
+                try {
+                    Path runtimeDirectory =
+                        userDir.resolve("channels").resolve(normalizedType).resolve(normalizedChannelId).normalize();
+                    Path expected = runtimeDirectory(ownerUserId, normalizedType, normalizedChannelId);
+                    if (runtimeDirectory.equals(expected) && Files.isDirectory(runtimeDirectory)) {
+                        refs.add(
+                            new ChannelRuntimeRef(ownerUserId, normalizedType, normalizedChannelId, runtimeDirectory));
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Ignore unrelated/unsafe user directories when scanning channel runtime state.
+                }
+            });
         } catch (IOException e) {
             throw new IllegalStateException("Failed to list channel runtime directories", e);
         }
@@ -360,9 +357,8 @@ public class ChannelRuntimeStorageService {
             return;
         }
         Files.createDirectories(file.getParent());
-        Files.writeString(file,
-                MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                StandardCharsets.UTF_8);
+        Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+            StandardCharsets.UTF_8);
     }
 
     private void deleteDirectory(Path dir) {
@@ -371,14 +367,13 @@ public class ChannelRuntimeStorageService {
                 return;
             }
             try (var walk = Files.walk(dir)) {
-                walk.sorted(Comparator.reverseOrder())
-                        .forEach(path -> {
-                            try {
-                                Files.deleteIfExists(path);
-                            } catch (IOException e) {
-                                throw new IllegalStateException("Failed to delete " + path, e);
-                            }
-                        });
+                walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Failed to delete " + path, e);
+                    }
+                });
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to delete channel runtime directory " + dir, e);
@@ -386,24 +381,22 @@ public class ChannelRuntimeStorageService {
     }
 
     private String normalizeType(String type) {
-        return requireSafeSegment(
-                type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(Locale.ROOT),
-                "type"
-        );
+        return requireSafeSegment(type == null || type.isBlank() ? "whatsapp" : type.trim().toLowerCase(Locale.ROOT),
+            "type");
     }
 
     private String normalizeOwnerUserId(String ownerUserId) {
         String normalized = ownerUserId == null || ownerUserId.isBlank() ? "admin" : ownerUserId.trim();
-        if (normalized.contains("/") || normalized.contains("\\")
-                || ".".equals(normalized) || "..".equals(normalized)) {
+        if (normalized.contains("/") || normalized.contains("\\") || ".".equals(normalized)
+            || "..".equals(normalized)) {
             throw new IllegalArgumentException("ownerUserId contains unsafe path characters");
         }
         return normalized;
     }
 
     private String requireSafeSegment(String value, String fieldName) {
-        if (value == null || value.isBlank() || !SAFE_PATH_SEGMENT.matcher(value).matches()
-                || ".".equals(value) || "..".equals(value)) {
+        if (value == null || value.isBlank() || !SAFE_PATH_SEGMENT.matcher(value).matches() || ".".equals(value)
+            || "..".equals(value)) {
             throw new IllegalArgumentException(fieldName + " contains unsafe path characters");
         }
         return value;

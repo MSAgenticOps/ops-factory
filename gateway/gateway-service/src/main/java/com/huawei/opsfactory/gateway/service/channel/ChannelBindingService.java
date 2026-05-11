@@ -37,9 +37,11 @@ import java.util.Map;
 @Service
 public class ChannelBindingService {
     private static final Logger log = LoggerFactory.getLogger(ChannelBindingService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
+
     private final ChannelRuntimeStorageService runtimeStorageService;
 
     /**
@@ -49,7 +51,7 @@ public class ChannelBindingService {
      * @since 2026-05-09
      */
     public ChannelBindingService(ChannelConfigService channelConfigService,
-                                 ChannelRuntimeStorageService runtimeStorageService) {
+        ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
         this.runtimeStorageService = runtimeStorageService;
     }
@@ -62,8 +64,7 @@ public class ChannelBindingService {
      * @return the result
      */
     public ChannelBinding ensureBinding(String channelId, String externalUserId) {
-        return ensureConversationBinding(channelId, "admin", "default", externalUserId,
-                externalUserId, null, "direct");
+        return ensureConversationBinding(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
     }
 
     /**
@@ -77,21 +78,10 @@ public class ChannelBindingService {
      * @param conversationType the conversationType parameter
      * @return the result
      */
-    public ChannelBinding ensureConversationBinding(String channelId,
-                                                    String accountId,
-                                                    String peerId,
-                                                    String conversationId,
-                                                    String threadId,
-                                                    String conversationType) {
-        return ensureConversationBinding(
-                channelId,
-                "admin",
-                accountId,
-                peerId,
-                conversationId,
-                threadId,
-                conversationType
-        );
+    public ChannelBinding ensureConversationBinding(String channelId, String accountId, String peerId,
+        String conversationId, String threadId, String conversationType) {
+        return ensureConversationBinding(channelId, "admin", accountId, peerId, conversationId, threadId,
+            conversationType);
     }
 
     /**
@@ -107,13 +97,8 @@ public class ChannelBindingService {
      * @param conversationType the conversationType parameter
      * @return the result
      */
-    public ChannelBinding ensureConversationBinding(String channelId,
-                                                    String ownerUserId,
-                                                    String accountId,
-                                                    String peerId,
-                                                    String conversationId,
-                                                    String threadId,
-                                                    String conversationType) {
+    public ChannelBinding ensureConversationBinding(String channelId, String ownerUserId, String accountId,
+        String peerId, String conversationId, String threadId, String conversationType) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         List<ChannelBinding> bindings = new ArrayList<>(readBindings(channel));
         for (ChannelBinding binding : bindings) {
@@ -122,24 +107,14 @@ public class ChannelBindingService {
             }
         }
 
-        ChannelBinding created = new ChannelBinding(
-                channelId,
-                normalizeAccountId(accountId),
-                peerId,
-                conversationId,
-                normalizeThreadId(threadId),
-                normalizeConversationType(conversationType),
-                channel.ownerUserId(),
-                buildSyntheticUserId(channel.type(), channelId, accountId, conversationId, threadId),
-                channel.defaultAgentId(),
-                null,
-                null,
-                null
-        );
+        ChannelBinding created = new ChannelBinding(channelId, normalizeAccountId(accountId), peerId, conversationId,
+            normalizeThreadId(threadId), normalizeConversationType(conversationType), channel.ownerUserId(),
+            buildSyntheticUserId(channel.type(), channelId, accountId, conversationId, threadId),
+            channel.defaultAgentId(), null, null, null);
         bindings.add(created);
         writeBindings(channel, bindings);
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "binding.created",
-                "Created binding for " + summarizeConversation(peerId, conversationId, threadId));
+            "Created binding for " + summarizeConversation(peerId, conversationId, threadId));
         return created;
     }
 
@@ -153,17 +128,8 @@ public class ChannelBindingService {
      * @return the result
      */
     public ChannelBinding attachSession(String channelId, String externalUserId, String sessionId, String agentId) {
-        return attachConversationSession(
-                channelId,
-                "admin",
-                "default",
-                externalUserId,
-                externalUserId,
-                null,
-                "direct",
-                sessionId,
-                agentId
-        );
+        return attachConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct",
+            sessionId, agentId);
     }
 
     /**
@@ -179,16 +145,10 @@ public class ChannelBindingService {
      * @param agentId the agentId parameter
      * @return the result
      */
-    public ChannelBinding attachConversationSession(String channelId,
-                                                    String accountId,
-                                                    String peerId,
-                                                    String conversationId,
-                                                    String threadId,
-                                                    String conversationType,
-                                                    String sessionId,
-                                                    String agentId) {
+    public ChannelBinding attachConversationSession(String channelId, String accountId, String peerId,
+        String conversationId, String threadId, String conversationType, String sessionId, String agentId) {
         return attachConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId,
-                conversationType, sessionId, agentId);
+            conversationType, sessionId, agentId);
     }
 
     /**
@@ -205,15 +165,9 @@ public class ChannelBindingService {
      * @param agentId the agentId parameter
      * @return the result
      */
-    public ChannelBinding attachConversationSession(String channelId,
-                                                    String ownerUserId,
-                                                    String accountId,
-                                                    String peerId,
-                                                    String conversationId,
-                                                    String threadId,
-                                                    String conversationType,
-                                                    String sessionId,
-                                                    String agentId) {
+    public ChannelBinding attachConversationSession(String channelId, String ownerUserId, String accountId,
+        String peerId, String conversationId, String threadId, String conversationType, String sessionId,
+        String agentId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         List<ChannelBinding> bindings = new ArrayList<>(readBindings(channel));
         ChannelBinding nextBinding = null;
@@ -223,46 +177,26 @@ public class ChannelBindingService {
             if (!matches(binding, accountId, conversationId, threadId)) {
                 continue;
             }
-            nextBinding = new ChannelBinding(
-                    binding.channelId(),
-                    binding.accountId(),
-                    choose(peerId, binding.peerId()),
-                    binding.conversationId(),
-                    binding.threadId(),
-                    binding.conversationType(),
-                    binding.ownerUserId() == null || binding.ownerUserId().isBlank() ?
-                            channel.ownerUserId() : binding.ownerUserId(),
-                    binding.syntheticUserId(),
-                    agentId,
-                    sessionId,
-                    binding.lastInboundAt(),
-                    binding.lastOutboundAt()
-            );
+            nextBinding = new ChannelBinding(binding.channelId(), binding.accountId(), choose(peerId, binding.peerId()),
+                binding.conversationId(), binding.threadId(), binding.conversationType(),
+                binding.ownerUserId() == null || binding.ownerUserId().isBlank() ? channel.ownerUserId()
+                    : binding.ownerUserId(),
+                binding.syntheticUserId(), agentId, sessionId, binding.lastInboundAt(), binding.lastOutboundAt());
             bindings.set(i, nextBinding);
             break;
         }
 
         if (nextBinding == null) {
-            nextBinding = new ChannelBinding(
-                    channelId,
-                    normalizeAccountId(accountId),
-                    peerId,
-                    conversationId,
-                    normalizeThreadId(threadId),
-                    normalizeConversationType(conversationType),
-                    channel.ownerUserId(),
-                    buildSyntheticUserId(channel.type(), channelId, accountId, conversationId, threadId),
-                    agentId,
-                    sessionId,
-                    null,
-                    null
-            );
+            nextBinding = new ChannelBinding(channelId, normalizeAccountId(accountId), peerId, conversationId,
+                normalizeThreadId(threadId), normalizeConversationType(conversationType), channel.ownerUserId(),
+                buildSyntheticUserId(channel.type(), channelId, accountId, conversationId, threadId), agentId,
+                sessionId, null, null);
             bindings.add(nextBinding);
         }
 
         writeBindings(channel, bindings);
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "binding.session_attached",
-                "Bound session " + sessionId + " to " + summarizeConversation(peerId, conversationId, threadId));
+            "Bound session " + sessionId + " to " + summarizeConversation(peerId, conversationId, threadId));
         return nextBinding;
     }
 
@@ -297,10 +231,8 @@ public class ChannelBindingService {
      * @param threadId the threadId parameter
      * @return the result
      */
-    public ChannelBinding markConversationInbound(String channelId,
-                                                  String accountId,
-                                                  String conversationId,
-                                                  String threadId) {
+    public ChannelBinding markConversationInbound(String channelId, String accountId, String conversationId,
+        String threadId) {
         return markConversationInbound(channelId, "admin", accountId, conversationId, threadId);
     }
 
@@ -314,20 +246,10 @@ public class ChannelBindingService {
      * @param threadId the threadId parameter
      * @return the result
      */
-    public ChannelBinding markConversationInbound(String channelId,
-                                                  String ownerUserId,
-                                                  String accountId,
-                                                  String conversationId,
-                                                  String threadId) {
-        return updateTimestamps(
-                channelId,
-                ownerUserId,
-                accountId,
-                conversationId,
-                threadId,
-                Instant.now().toString(),
-                null
-        );
+    public ChannelBinding markConversationInbound(String channelId, String ownerUserId, String accountId,
+        String conversationId, String threadId) {
+        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, Instant.now().toString(),
+            null);
     }
 
     /**
@@ -339,10 +261,8 @@ public class ChannelBindingService {
      * @param threadId the threadId parameter
      * @return the result
      */
-    public ChannelBinding markConversationOutbound(String channelId,
-                                                   String accountId,
-                                                   String conversationId,
-                                                   String threadId) {
+    public ChannelBinding markConversationOutbound(String channelId, String accountId, String conversationId,
+        String threadId) {
         return markConversationOutbound(channelId, "admin", accountId, conversationId, threadId);
     }
 
@@ -356,29 +276,14 @@ public class ChannelBindingService {
      * @param threadId the threadId parameter
      * @return the result
      */
-    public ChannelBinding markConversationOutbound(String channelId,
-                                                   String ownerUserId,
-                                                   String accountId,
-                                                   String conversationId,
-                                                   String threadId) {
-        return updateTimestamps(
-                channelId,
-                ownerUserId,
-                accountId,
-                conversationId,
-                threadId,
-                null,
-                Instant.now().toString()
-        );
+    public ChannelBinding markConversationOutbound(String channelId, String ownerUserId, String accountId,
+        String conversationId, String threadId) {
+        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, null,
+            Instant.now().toString());
     }
 
-    private ChannelBinding updateTimestamps(String channelId,
-                                            String ownerUserId,
-                                            String accountId,
-                                            String conversationId,
-                                            String threadId,
-                                            String lastInboundAt,
-                                            String lastOutboundAt) {
+    private ChannelBinding updateTimestamps(String channelId, String ownerUserId, String accountId,
+        String conversationId, String threadId, String lastInboundAt, String lastOutboundAt) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         List<ChannelBinding> bindings = new ArrayList<>(readBindings(channel));
         for (int i = 0; i < bindings.size(); i++) {
@@ -386,20 +291,11 @@ public class ChannelBindingService {
             if (!matches(binding, accountId, conversationId, threadId)) {
                 continue;
             }
-            ChannelBinding updated = new ChannelBinding(
-                    binding.channelId(),
-                    binding.accountId(),
-                    binding.peerId(),
-                    binding.conversationId(),
-                    binding.threadId(),
-                    binding.conversationType(),
-                    binding.ownerUserId(),
-                    binding.syntheticUserId(),
-                    binding.agentId(),
-                    binding.sessionId(),
-                    lastInboundAt != null ? lastInboundAt : binding.lastInboundAt(),
-                    lastOutboundAt != null ? lastOutboundAt : binding.lastOutboundAt()
-            );
+            ChannelBinding updated = new ChannelBinding(binding.channelId(), binding.accountId(), binding.peerId(),
+                binding.conversationId(), binding.threadId(), binding.conversationType(), binding.ownerUserId(),
+                binding.syntheticUserId(), binding.agentId(), binding.sessionId(),
+                lastInboundAt != null ? lastInboundAt : binding.lastInboundAt(),
+                lastOutboundAt != null ? lastOutboundAt : binding.lastOutboundAt());
             bindings.set(i, updated);
             writeBindings(channel, bindings);
             return updated;
@@ -423,8 +319,7 @@ public class ChannelBindingService {
         Path file = runtimeStorageService.bindingsFile(channel);
         Map<String, Object> wrapper = readJson(file);
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
-                new TypeReference<List<ChannelBinding>>() {
-                });
+            new TypeReference<List<ChannelBinding>>() {});
     }
 
     private void writeBindings(ChannelDetail channel, List<ChannelBinding> bindings) {
@@ -451,19 +346,15 @@ public class ChannelBindingService {
     private void writeJson(Path file, Object payload) {
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file,
-                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                    StandardCharsets.UTF_8);
+            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write channel bindings: " + file, e);
         }
     }
 
-    private String buildSyntheticUserId(String type,
-                                        String channelId,
-                                        String accountId,
-                                        String conversationId,
-                                        String threadId) {
+    private String buildSyntheticUserId(String type, String channelId, String accountId, String conversationId,
+        String threadId) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String raw = normalizeAccountId(accountId) + "::" + conversationId + "::" + normalizeThreadId(threadId);
@@ -477,8 +368,8 @@ public class ChannelBindingService {
 
     private boolean matches(ChannelBinding binding, String accountId, String conversationId, String threadId) {
         return normalizeAccountId(accountId).equals(normalizeAccountId(binding.accountId()))
-                && normalizeConversationId(conversationId).equals(normalizeConversationId(binding.conversationId()))
-                && normalizeThreadId(threadId).equals(normalizeThreadId(binding.threadId()));
+            && normalizeConversationId(conversationId).equals(normalizeConversationId(binding.conversationId()))
+            && normalizeThreadId(threadId).equals(normalizeThreadId(binding.threadId()));
     }
 
     private String choose(String candidate, String fallback) {

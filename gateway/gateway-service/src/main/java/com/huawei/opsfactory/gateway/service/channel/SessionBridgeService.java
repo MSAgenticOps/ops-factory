@@ -48,13 +48,19 @@ import java.util.UUID;
 @Service
 public class SessionBridgeService {
     private static final Logger log = LoggerFactory.getLogger(SessionBridgeService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
+
     private final ChannelBindingService channelBindingService;
+
     private final InstanceManager instanceManager;
+
     private final GoosedProxy goosedProxy;
+
     private final AgentConfigService agentConfigService;
+
     private final WebClient webClient;
 
     /**
@@ -63,11 +69,8 @@ public class SessionBridgeService {
      * @author x00000000
      * @since 2026-05-09
      */
-    public SessionBridgeService(ChannelConfigService channelConfigService,
-                                ChannelBindingService channelBindingService,
-                                InstanceManager instanceManager,
-                                GoosedProxy goosedProxy,
-                                AgentConfigService agentConfigService) {
+    public SessionBridgeService(ChannelConfigService channelConfigService, ChannelBindingService channelBindingService,
+        InstanceManager instanceManager, GoosedProxy goosedProxy, AgentConfigService agentConfigService) {
         this.channelConfigService = channelConfigService;
         this.channelBindingService = channelBindingService;
         this.instanceManager = instanceManager;
@@ -84,8 +87,7 @@ public class SessionBridgeService {
      * @return the result
      */
     public Mono<ChannelBinding> ensureSession(String channelId, String externalUserId) {
-        return ensureConversationSession(channelId, "admin", "default", externalUserId,
-                externalUserId, null, "direct");
+        return ensureConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
     }
 
     /**
@@ -99,21 +101,10 @@ public class SessionBridgeService {
      * @param conversationType the conversationType parameter
      * @return the result
      */
-    public Mono<ChannelBinding> ensureConversationSession(String channelId,
-                                                          String accountId,
-                                                          String peerId,
-                                                          String conversationId,
-                                                          String threadId,
-                                                          String conversationType) {
-        return ensureConversationSession(
-                channelId,
-                "admin",
-                accountId,
-                peerId,
-                conversationId,
-                threadId,
-                conversationType
-        );
+    public Mono<ChannelBinding> ensureConversationSession(String channelId, String accountId, String peerId,
+        String conversationId, String threadId, String conversationType) {
+        return ensureConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId,
+            conversationType);
     }
 
     /**
@@ -128,35 +119,20 @@ public class SessionBridgeService {
      * @param conversationType the conversationType parameter
      * @return the result
      */
-    public Mono<ChannelBinding> ensureConversationSession(String channelId,
-                                                          String ownerUserId,
-                                                          String accountId,
-                                                          String peerId,
-                                                          String conversationId,
-                                                          String threadId,
-                                                          String conversationType) {
+    public Mono<ChannelBinding> ensureConversationSession(String channelId, String ownerUserId, String accountId,
+        String peerId, String conversationId, String threadId, String conversationType) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
-        ChannelBinding binding = channelBindingService.ensureConversationBinding(
-                channelId, ownerUserId, accountId, peerId, conversationId, threadId, conversationType);
+        ChannelBinding binding = channelBindingService.ensureConversationBinding(channelId, ownerUserId, accountId,
+            peerId, conversationId, threadId, conversationType);
         if (binding.sessionId() != null && !binding.sessionId().isBlank()) {
             return Mono.just(binding);
         }
 
         String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
-                ? channel.ownerUserId()
-                : binding.ownerUserId();
+            ? channel.ownerUserId() : binding.ownerUserId();
         return startSession(channel.defaultAgentId(), effectiveOwnerUserId)
-                .map(sessionId -> channelBindingService.attachConversationSession(
-                        channelId,
-                        effectiveOwnerUserId,
-                        accountId,
-                        peerId,
-                        conversationId,
-                        threadId,
-                        conversationType,
-                        sessionId,
-                        channel.defaultAgentId()
-                ));
+            .map(sessionId -> channelBindingService.attachConversationSession(channelId, effectiveOwnerUserId,
+                accountId, peerId, conversationId, threadId, conversationType, sessionId, channel.defaultAgentId()));
     }
 
     /**
@@ -168,16 +144,8 @@ public class SessionBridgeService {
      * @return the result
      */
     public Mono<ChannelReplyResult> sendText(String channelId, String externalUserId, String text) {
-        return sendConversationText(
-                channelId,
-                "admin",
-                "default",
-                externalUserId,
-                externalUserId,
-                null,
-                "direct",
-                text
-        );
+        return sendConversationText(channelId, "admin", "default", externalUserId, externalUserId, null, "direct",
+            text);
     }
 
     /**
@@ -192,23 +160,10 @@ public class SessionBridgeService {
      * @param text the text parameter
      * @return the result
      */
-    public Mono<ChannelReplyResult> sendConversationText(String channelId,
-                                                         String accountId,
-                                                         String peerId,
-                                                         String conversationId,
-                                                         String threadId,
-                                                         String conversationType,
-                                                         String text) {
-        return sendConversationText(
-                channelId,
-                "admin",
-                accountId,
-                peerId,
-                conversationId,
-                threadId,
-                conversationType,
-                text
-        );
+    public Mono<ChannelReplyResult> sendConversationText(String channelId, String accountId, String peerId,
+        String conversationId, String threadId, String conversationType, String text) {
+        return sendConversationText(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType,
+            text);
     }
 
     /**
@@ -224,117 +179,57 @@ public class SessionBridgeService {
      * @param text the text parameter
      * @return the result
      */
-    public Mono<ChannelReplyResult> sendConversationText(String channelId,
-                                                         String ownerUserId,
-                                                         String accountId,
-                                                         String peerId,
-                                                         String conversationId,
-                                                         String threadId,
-                                                         String conversationType,
-                                                         String text) {
+    public Mono<ChannelReplyResult> sendConversationText(String channelId, String ownerUserId, String accountId,
+        String peerId, String conversationId, String threadId, String conversationType, String text) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         if (text == null || text.isBlank()) {
             return Mono.error(new IllegalArgumentException("Text is required"));
         }
 
-        return ensureConversationSession(
-                channelId,
-                ownerUserId,
-                accountId,
-                peerId,
-                conversationId,
-                threadId,
-                conversationType
-        )
-                .flatMap(binding -> {
-                    channelBindingService.markConversationInbound(
-                            channelId,
-                            ownerUserId,
-                            accountId,
-                            conversationId,
-                            threadId
-                    );
-                    String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
-                            ? channel.ownerUserId()
-                            : binding.ownerUserId();
-                    return sendTextToSession(binding.agentId(), effectiveOwnerUserId, binding.sessionId(), text.trim())
-                            .onErrorResume(WebClientResponseException.class, error -> {
-                                if (error.getStatusCode().value() != 404) {
-                                    return Mono.error(error);
-                                }
-                                return startSession(binding.agentId(), effectiveOwnerUserId)
-                                        .map(sessionId -> channelBindingService.attachConversationSession(
-                                                channelId,
-                                                effectiveOwnerUserId,
-                                                accountId,
-                                                peerId,
-                                                conversationId,
-                                                threadId,
-                                                conversationType,
-                                                sessionId,
-                                                binding.agentId()
-                                        ))
-                                        .flatMap(rebound -> sendTextToSession(
-                                                rebound.agentId(),
-                                                effectiveOwnerUserId,
-                                                rebound.sessionId(),
-                                                text.trim()
-                                        ));
-                            })
-                            .onErrorResume(IllegalStateException.class, error -> {
-                                String message = error.getMessage() == null ? "" : error.getMessage();
-                                if (!message.contains("404")) {
-                                    return Mono.error(error);
-                                }
-                                return startSession(binding.agentId(), effectiveOwnerUserId)
-                                        .map(sessionId -> channelBindingService.attachConversationSession(
-                                                channelId,
-                                                effectiveOwnerUserId,
-                                                accountId,
-                                                peerId,
-                                                conversationId,
-                                                threadId,
-                                                conversationType,
-                                                sessionId,
-                                                binding.agentId()
-                                        ))
-                                        .flatMap(rebound -> sendTextToSession(
-                                                rebound.agentId(),
-                                                effectiveOwnerUserId,
-                                                rebound.sessionId(),
-                                                text.trim()
-                                        ));
-                            })
-                            .map(replyText -> {
-                                channelBindingService.markConversationOutbound(
-                                        channelId,
-                                        effectiveOwnerUserId,
-                                        accountId,
-                                        conversationId,
-                                        threadId
-                                );
-                                channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info",
-                                        "session.reply",
-                                        "Delivered text reply for session " + binding.sessionId());
-                                return new ChannelReplyResult(
-                                        channelId,
-                                        binding.accountId(),
-                                        binding.peerId(),
-                                        binding.conversationId(),
-                                        binding.threadId(),
-                                        binding.conversationType(),
-                                        effectiveOwnerUserId,
-                                        binding.agentId(),
-                                        binding.sessionId(),
-                                        replyText
-                                );
-                            });
-                });
+        return ensureConversationSession(channelId, ownerUserId, accountId, peerId, conversationId, threadId,
+            conversationType).flatMap(binding -> {
+                channelBindingService.markConversationInbound(channelId, ownerUserId, accountId, conversationId,
+                    threadId);
+                String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
+                    ? channel.ownerUserId() : binding.ownerUserId();
+                return sendTextToSession(binding.agentId(), effectiveOwnerUserId, binding.sessionId(), text.trim())
+                    .onErrorResume(WebClientResponseException.class, error -> {
+                        if (error.getStatusCode().value() != 404) {
+                            return Mono.error(error);
+                        }
+                        return startSession(binding.agentId(), effectiveOwnerUserId)
+                            .map(sessionId -> channelBindingService.attachConversationSession(channelId,
+                                effectiveOwnerUserId, accountId, peerId, conversationId, threadId, conversationType,
+                                sessionId, binding.agentId()))
+                            .flatMap(rebound -> sendTextToSession(rebound.agentId(), effectiveOwnerUserId,
+                                rebound.sessionId(), text.trim()));
+                    })
+                    .onErrorResume(IllegalStateException.class, error -> {
+                        String message = error.getMessage() == null ? "" : error.getMessage();
+                        if (!message.contains("404")) {
+                            return Mono.error(error);
+                        }
+                        return startSession(binding.agentId(), effectiveOwnerUserId)
+                            .map(sessionId -> channelBindingService.attachConversationSession(channelId,
+                                effectiveOwnerUserId, accountId, peerId, conversationId, threadId, conversationType,
+                                sessionId, binding.agentId()))
+                            .flatMap(rebound -> sendTextToSession(rebound.agentId(), effectiveOwnerUserId,
+                                rebound.sessionId(), text.trim()));
+                    })
+                    .map(replyText -> {
+                        channelBindingService.markConversationOutbound(channelId, effectiveOwnerUserId, accountId,
+                            conversationId, threadId);
+                        channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info", "session.reply",
+                            "Delivered text reply for session " + binding.sessionId());
+                        return new ChannelReplyResult(channelId, binding.accountId(), binding.peerId(),
+                            binding.conversationId(), binding.threadId(), binding.conversationType(),
+                            effectiveOwnerUserId, binding.agentId(), binding.sessionId(), replyText);
+                    });
+            });
     }
 
     private Mono<String> startSession(String agentId, String ownerUserId) {
-        Path workingDir = agentConfigService.getUserAgentDir(ownerUserId, agentId)
-                .toAbsolutePath().normalize();
+        Path workingDir = agentConfigService.getUserAgentDir(ownerUserId, agentId).toAbsolutePath().normalize();
         String requestBody;
         try {
             requestBody = MAPPER.writeValueAsString(Map.of("working_dir", workingDir.toString()));
@@ -343,64 +238,41 @@ public class SessionBridgeService {
         }
 
         return instanceManager.getOrSpawn(agentId, ownerUserId)
-                .flatMap(instance -> goosedProxy.fetchJson(
-                                instance.getPort(),
-                                HttpMethod.POST,
-                                "/agent/start",
-                                requestBody,
-                                120,
-                                instance.getSecretKey()
-                        )
-                        .flatMap(startResponse -> {
-                            String sessionId = extractSessionId(startResponse);
-                            String resumeBody;
-                            try {
-                                resumeBody = MAPPER.writeValueAsString(Map.of(
-                                        "session_id", sessionId,
-                                        "load_model_and_extensions", true
-                                ));
-                            } catch (JsonProcessingException e) {
-                                return Mono.error(new IllegalStateException(
-                                        "Failed to build session resume payload", e));
-                            }
-                            return goosedProxy.fetchJson(
-                                            instance.getPort(),
-                                            HttpMethod.POST,
-                                            "/agent/resume",
-                                            resumeBody,
-                                            120,
-                                            instance.getSecretKey()
-                                    )
-                                    .thenReturn(sessionId);
-                        }));
+            .flatMap(
+                instance -> goosedProxy
+                    .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/start", requestBody, 120,
+                        instance.getSecretKey())
+                    .flatMap(startResponse -> {
+                        String sessionId = extractSessionId(startResponse);
+                        String resumeBody;
+                        try {
+                            resumeBody = MAPPER
+                                .writeValueAsString(Map.of("session_id", sessionId, "load_model_and_extensions", true));
+                        } catch (JsonProcessingException e) {
+                            return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
+                        }
+                        return goosedProxy
+                            .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120,
+                                instance.getSecretKey())
+                            .thenReturn(sessionId);
+                    }));
     }
 
-    private Mono<String> sendTextToSession(String agentId,
-                                           String ownerUserId,
-                                           String sessionId,
-                                           String text) {
+    private Mono<String> sendTextToSession(String agentId, String ownerUserId, String sessionId, String text) {
         return instanceManager.getOrSpawn(agentId, ownerUserId)
-                .flatMap(instance -> resumeSession(instance, sessionId)
-                        .thenMany(streamReply(instance, sessionId, text))
-                        .collectList()
-                        .map(events -> extractFinalAssistantText(events, sessionId)));
+            .flatMap(instance -> resumeSession(instance, sessionId).thenMany(streamReply(instance, sessionId, text))
+                .collectList()
+                .map(events -> extractFinalAssistantText(events, sessionId)));
     }
 
     private Mono<String> resumeSession(ManagedInstance instance, String sessionId) {
         try {
-            String resumeBody = MAPPER.writeValueAsString(Map.of(
-                    "session_id", sessionId,
-                    "load_model_and_extensions", true
-            ));
-            return goosedProxy.fetchJson(
-                            instance.getPort(),
-                            HttpMethod.POST,
-                            "/agent/resume",
-                            resumeBody,
-                            120,
-                            instance.getSecretKey()
-                    )
-                    .thenReturn(sessionId);
+            String resumeBody =
+                MAPPER.writeValueAsString(Map.of("session_id", sessionId, "load_model_and_extensions", true));
+            return goosedProxy
+                .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120,
+                    instance.getSecretKey())
+                .thenReturn(sessionId);
         } catch (JsonProcessingException e) {
             return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
         }
@@ -416,47 +288,41 @@ public class SessionBridgeService {
             userMessage.put("content", List.of(Map.of("type", "text", "text", text)));
             userMessage.put("metadata", Map.of("userVisible", true, "agentVisible", true));
 
-            body = MAPPER.writeValueAsString(Map.of(
-                    "request_id", requestId,
-                    "user_message", userMessage
-            ));
+            body = MAPPER.writeValueAsString(Map.of("request_id", requestId, "user_message", userMessage));
         } catch (JsonProcessingException e) {
             return Flux.error(new IllegalStateException("Failed to build reply payload", e));
         }
 
         Mono<Void> submit = webClient.post()
-                .uri(goosedSessionUrl(instance, sessionId, "reply"))
-                .header("x-secret-key", instance.getSecretKey())
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .then();
+            .uri(goosedSessionUrl(instance, sessionId, "reply"))
+            .header("x-secret-key", instance.getSecretKey())
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .bodyValue(body)
+            .retrieve()
+            .bodyToMono(String.class)
+            .then();
 
         Flux<Map<String, Object>> events = webClient.get()
-                .uri(goosedSessionUrl(instance, sessionId, "events"))
-                .header("x-secret-key", instance.getSecretKey())
-                .accept(MediaType.TEXT_EVENT_STREAM)
-                .retrieve()
-                .bodyToFlux(DataBuffer.class)
-                .transform(this::decodeSseEvents)
-                .timeout(Duration.ofMinutes(5))
-                .map(this::parseEventJson)
-                .filter(event -> belongsToRequest(event, requestId))
-                .takeUntil(event -> {
-                    String type = String.valueOf(event.getOrDefault("type", ""));
-                    return "Finish".equals(type) || "Error".equals(type);
-                });
+            .uri(goosedSessionUrl(instance, sessionId, "events"))
+            .header("x-secret-key", instance.getSecretKey())
+            .accept(MediaType.TEXT_EVENT_STREAM)
+            .retrieve()
+            .bodyToFlux(DataBuffer.class)
+            .transform(this::decodeSseEvents)
+            .timeout(Duration.ofMinutes(5))
+            .map(this::parseEventJson)
+            .filter(event -> belongsToRequest(event, requestId))
+            .takeUntil(event -> {
+                String type = String.valueOf(event.getOrDefault("type", ""));
+                return "Finish".equals(type) || "Error".equals(type);
+            });
 
         return Flux.merge(events, submit.thenMany(Flux.empty()));
     }
 
     private String goosedSessionUrl(ManagedInstance instance, String sessionId, String suffix) {
-        return goosedProxy.goosedBaseUrl(instance.getPort())
-                + "/sessions/"
-                + UriUtils.encodePathSegment(sessionId, StandardCharsets.UTF_8)
-                + "/"
-                + suffix;
+        return goosedProxy.goosedBaseUrl(instance.getPort()) + "/sessions/"
+            + UriUtils.encodePathSegment(sessionId, StandardCharsets.UTF_8) + "/" + suffix;
     }
 
     private boolean belongsToRequest(Map<String, Object> event, String requestId) {
@@ -469,8 +335,7 @@ public class SessionBridgeService {
         if (chatRequestId == null && eventRequestId == null) {
             return true;
         }
-        return requestId.equals(String.valueOf(chatRequestId))
-                || requestId.equals(String.valueOf(eventRequestId));
+        return requestId.equals(String.valueOf(chatRequestId)) || requestId.equals(String.valueOf(eventRequestId));
     }
 
     private Flux<String> decodeSseEvents(Flux<DataBuffer> buffers) {
@@ -506,8 +371,7 @@ public class SessionBridgeService {
 
     private Map<String, Object> parseEventJson(String json) {
         try {
-            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
-            });
+            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse SSE event: " + json, e);
         }
@@ -577,8 +441,7 @@ public class SessionBridgeService {
     private String extractSessionId(String startResponse) {
         Map<String, Object> map;
         try {
-            map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {
-            });
+            map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse session start response", e);
         }

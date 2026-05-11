@@ -4,19 +4,21 @@
 
 package com.huawei.opsfactory.gateway.monitoring;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,11 +34,15 @@ import java.util.stream.Collectors;
 @Component
 public class MetricsCollector {
     private static final Logger log = LoggerFactory.getLogger(MetricsCollector.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final InstanceManager instanceManager;
+
     private final GoosedProxy goosedProxy;
+
     private final MetricsBuffer metricsBuffer;
+
     private long previousTotalTokens = -1;
 
     /**
@@ -45,9 +51,7 @@ public class MetricsCollector {
      * @author x00000000
      * @since 2026-05-09
      */
-    public MetricsCollector(InstanceManager instanceManager,
-                            GoosedProxy goosedProxy,
-                            MetricsBuffer metricsBuffer) {
+    public MetricsCollector(InstanceManager instanceManager, GoosedProxy goosedProxy, MetricsBuffer metricsBuffer) {
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;
         this.metricsBuffer = metricsBuffer;
@@ -66,30 +70,27 @@ public class MetricsCollector {
     }
 
     private void doCollect() {
-        List<ManagedInstance> running = instanceManager.getAllInstances().stream()
-                .filter(i -> i.getStatus() == ManagedInstance.Status.RUNNING)
-                .collect(Collectors.toList());
+        List<ManagedInstance> running = instanceManager.getAllInstances()
+            .stream()
+            .filter(i -> i.getStatus() == ManagedInstance.Status.RUNNING)
+            .collect(Collectors.toList());
 
         // Collect insights from all running instances concurrently
         List<Mono<long[]>> fetches = running.stream()
-                .map(inst -> goosedProxy.fetchJson(inst.getPort(), "/sessions/insights", inst.getSecretKey())
-                        .timeout(Duration.ofSeconds(5))
-                        .map(json -> {
-                            try {
-                                JsonNode node = MAPPER.readTree(json);
-                                return new long[]{
-                                        node.path("total_tokens").asLong(0),
-                                        node.path("total_sessions").asLong(0)
-                                };
-                            } catch (JsonProcessingException e) {
-                                return new long[]{0, 0};
-                            }
-                        })
-                        .onErrorReturn(new long[]{0, 0}))
-                .collect(Collectors.toList());
+            .map(inst -> goosedProxy.fetchJson(inst.getPort(), "/sessions/insights", inst.getSecretKey())
+                .timeout(Duration.ofSeconds(5))
+                .map(json -> {
+                    try {
+                        JsonNode node = MAPPER.readTree(json);
+                        return new long[] {node.path("total_tokens").asLong(0), node.path("total_sessions").asLong(0)};
+                    } catch (JsonProcessingException e) {
+                        return new long[] {0, 0};
+                    }
+                })
+                .onErrorReturn(new long[] {0, 0}))
+            .collect(Collectors.toList());
 
-        List<long[]> results = Flux.merge(fetches).collectList()
-                .block(Duration.ofSeconds(10));
+        List<long[]> results = Flux.merge(fetches).collectList().block(Duration.ofSeconds(10));
 
         long totalTokens = 0;
         long totalSessions = 0;
@@ -123,7 +124,8 @@ public class MetricsCollector {
                 latencySum += t.getTotalMs();
                 ttftSum += t.getTtftMs();
                 byteSum += t.getTotalBytes();
-                if (t.isError()) errorCount++;
+                if (t.isError())
+                    errorCount++;
             }
 
             avgLatency = (double) latencySum / requestCount;
@@ -163,7 +165,7 @@ public class MetricsCollector {
         metricsBuffer.record(snapshot);
         metricsBuffer.persistToDisk();
 
-        log.debug("Metrics collected: instances={} tokens={} sessions={} requests={} avgLatency={}ms",
-                running.size(), totalTokens, totalSessions, requestCount, Math.round(avgLatency));
+        log.debug("Metrics collected: instances={} tokens={} sessions={} requests={} avgLatency={}ms", running.size(),
+            totalTokens, totalSessions, requestCount, Math.round(avgLatency));
     }
 }

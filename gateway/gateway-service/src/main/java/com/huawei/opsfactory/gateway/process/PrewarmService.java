@@ -6,6 +6,7 @@ package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,9 @@ public class PrewarmService {
     private static final Logger log = LoggerFactory.getLogger(PrewarmService.class);
 
     private final InstanceManager instanceManager;
+
     private final GatewayProperties properties;
+
     private final Set<String> warmedUsers = ConcurrentHashMap.newKeySet();
 
     /**
@@ -59,12 +62,8 @@ public class PrewarmService {
         String agentId = properties.getPrewarm().getDefaultAgentId();
         log.info("Pre-warming {} for user {}", agentId, userId);
         instanceManager.getOrSpawn(agentId, userId)
-                .subscribe(
-                        inst -> log.info("Pre-warm complete: {}:{} on port {}",
-                                agentId, userId, inst.getPort()),
-                        err -> log.warn("Pre-warm failed for {}:{}: {}",
-                                agentId, userId, err.getMessage())
-                );
+            .subscribe(inst -> log.info("Pre-warm complete: {}:{} on port {}", agentId, userId, inst.getPort()),
+                err -> log.warn("Pre-warm failed for {}:{}: {}", agentId, userId, err.getMessage()));
     }
 
     /**

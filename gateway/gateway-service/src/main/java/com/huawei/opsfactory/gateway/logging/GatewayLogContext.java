@@ -4,8 +4,9 @@
 
 package com.huawei.opsfactory.gateway.logging;
 
-import java.util.function.Supplier;
 import org.apache.logging.log4j.ThreadContext;
+
+import java.util.function.Supplier;
 
 /**
  * Utility that temporarily sets and restores Log4j ThreadContext entries for request logging.

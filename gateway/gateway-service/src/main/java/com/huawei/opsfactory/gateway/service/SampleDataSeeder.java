@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,11 +26,8 @@ public class SampleDataSeeder {
      * @author x00000000
      * @since 2026-05-09
      */
-    public SampleDataSeeder(GatewayProperties properties,
-                            HostService hostService,
-                            HostGroupService hostGroupService,
-                            ClusterService clusterService,
-                            HostRelationService hostRelationService) {
+    public SampleDataSeeder(GatewayProperties properties, HostService hostService, HostGroupService hostGroupService,
+        ClusterService clusterService, HostRelationService hostRelationService) {
         // Dependencies kept for injection compatibility but not used
     }
 

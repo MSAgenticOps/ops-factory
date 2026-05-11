@@ -39,17 +39,27 @@ import java.util.regex.Pattern;
 @Service
 public class SessionTraceService implements DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(SessionTraceService.class);
+
     private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9_.-]+");
+
     private static final Duration JOB_TTL = Duration.ofHours(1);
+
     private static final Duration COLLECTION_TIMEOUT = Duration.ofMinutes(10);
+
     private static final long CLEANUP_FIXED_DELAY_MS = 15 * 60 * 1000L;
 
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
+
     private final Map<String, TraceJob> jobs = new ConcurrentHashMap<>();
+
     private final Map<String, String> runningBySession = new ConcurrentHashMap<>();
+
     private final Path repoRoot;
+
     private final Path gatewayRoot;
+
     private final Path scriptPath;
+
     private final Path traceRoot;
 
     /**
@@ -159,29 +169,19 @@ public class SessionTraceService implements DisposableBean {
 
             Path stdout = job.jobDir.resolve("collector.stdout.log");
             Path stderr = job.jobDir.resolve("collector.stderr.log");
-            List<String> command = List.of(
-                    "bash",
-                    scriptPath.toString(),
-                    "--session", job.sessionId,
-                    "--user", job.userId,
-                    "--agent", job.agentId,
-                    "--root", repoRoot.toString(),
-                    "--gateway-root", gatewayRoot.toString(),
-                    "--out-dir", job.outDir.toString()
-            );
+            List<String> command = List.of("bash", scriptPath.toString(), "--session", job.sessionId, "--user",
+                job.userId, "--agent", job.agentId, "--root", repoRoot.toString(), "--gateway-root",
+                gatewayRoot.toString(), "--out-dir", job.outDir.toString());
 
-            ProcessBuilder pb = new ProcessBuilder(command)
-                    .directory(repoRoot.toFile())
-                    .redirectOutput(stdout.toFile())
-                    .redirectError(stderr.toFile());
+            ProcessBuilder pb = new ProcessBuilder(command).directory(repoRoot.toFile())
+                .redirectOutput(stdout.toFile())
+                .redirectError(stderr.toFile());
 
-            log.info("[SESSION-TRACE] start jobId={} userId={} agentId={} sessionId={}",
-                    job.jobId, job.userId, job.agentId, job.sessionId);
+            log.info("[SESSION-TRACE] start jobId={} userId={} agentId={} sessionId={}", job.jobId, job.userId,
+                job.agentId, job.sessionId);
             Process process = pb.start();
-            boolean finished = process.waitFor(
-                    COLLECTION_TIMEOUT.toMillis(),
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-            );
+            boolean finished =
+                process.waitFor(COLLECTION_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
             if (!finished) {
                 process.destroyForcibly();
                 throw new IllegalStateException("trace collection timed out");
@@ -195,8 +195,8 @@ public class SessionTraceService implements DisposableBean {
             if (!Files.isRegularFile(generatedArchive)) {
                 throw new IllegalStateException("trace archive was not created");
             }
-            String fileName = "session-trace-" + job.userId + "-" + job.agentId + "-" + job.sessionId + "-"
-                    + job.jobId + ".tar.gz";
+            String fileName =
+                "session-trace-" + job.userId + "-" + job.agentId + "-" + job.sessionId + "-" + job.jobId + ".tar.gz";
             Path archive = job.jobDir.resolve(fileName).normalize();
             Files.move(generatedArchive, archive, StandardCopyOption.REPLACE_EXISTING);
             job.archivePath = archive.normalize();
@@ -230,12 +230,13 @@ public class SessionTraceService implements DisposableBean {
 
     private synchronized void cleanupExpiredJobs() {
         Instant cutoff = Instant.now().minus(JOB_TTL);
-        jobs.values().stream()
-                .filter(job -> job.status != TraceStatus.RUNNING && job.completedAt != null &&
-                        job.completedAt.isBefore(cutoff))
-                .map(job -> job.jobId)
-                .toList()
-                .forEach(this::deleteJob);
+        jobs.values()
+            .stream()
+            .filter(
+                job -> job.status != TraceStatus.RUNNING && job.completedAt != null && job.completedAt.isBefore(cutoff))
+            .map(job -> job.jobId)
+            .toList()
+            .forEach(this::deleteJob);
     }
 
     private void cleanupExpiredTraceDirectories() {
@@ -243,17 +244,15 @@ public class SessionTraceService implements DisposableBean {
             return;
         }
         Instant cutoff = Instant.now().minus(JOB_TTL);
-        List<Path> liveJobDirs = jobs.values().stream()
-                .map(job -> job.jobDir)
-                .toList();
+        List<Path> liveJobDirs = jobs.values().stream().map(job -> job.jobDir).toList();
         try (var stream = Files.list(traceRoot)) {
             stream.filter(Files::isDirectory)
-                    .filter(path -> liveJobDirs.stream().noneMatch(path::equals))
-                    .filter(path -> isOlderThan(path, cutoff))
-                    .forEach(path -> {
-                        log.info("[SESSION-TRACE] deleting expired trace directory {}", path);
-                        deleteRecursively(path);
-                    });
+                .filter(path -> liveJobDirs.stream().noneMatch(path::equals))
+                .filter(path -> isOlderThan(path, cutoff))
+                .forEach(path -> {
+                    log.info("[SESSION-TRACE] deleting expired trace directory {}", path);
+                    deleteRecursively(path);
+                });
         } catch (IOException e) {
             log.warn("[SESSION-TRACE] failed to scan trace root {}: {}", traceRoot, e.getMessage());
         }
@@ -268,16 +267,16 @@ public class SessionTraceService implements DisposableBean {
             return cwd.getParent() != null ? cwd.getParent() : cwd;
         }
         Path parent = cwd.getParent();
-        if (parent != null && Files.isDirectory(parent.resolve("gateway")) && Files.isDirectory(parent.resolve(
-                "web-app"))) {
+        if (parent != null && Files.isDirectory(parent.resolve("gateway"))
+            && Files.isDirectory(parent.resolve("web-app"))) {
             return parent;
         }
         return cwd;
     }
 
     private static Path resolveScriptPath(Path repoRoot) {
-        Path rootScript = repoRoot.resolve("gateway").resolve("scripts").resolve(
-                "collect-session-debug.sh").normalize();
+        Path rootScript =
+            repoRoot.resolve("gateway").resolve("scripts").resolve("collect-session-debug.sh").normalize();
         if (Files.isRegularFile(rootScript)) {
             return rootScript;
         }
@@ -346,33 +345,37 @@ public class SessionTraceService implements DisposableBean {
      * @author x00000000
      * @since 2026-05-09
      */
-    public record TraceJobSnapshot(
-            String jobId,
-            String status,
-            String userId,
-            String agentId,
-            String sessionId,
-            String fileName,
-            String message
-    ) {
+    public record TraceJobSnapshot(String jobId, String status, String userId, String agentId, String sessionId,
+        String fileName, String message) {
     }
 
     private static final class TraceJob {
         private final String jobId;
+
         private final String sessionKey;
+
         private final String userId;
+
         private final String agentId;
+
         private final String sessionId;
+
         private final Path jobDir;
+
         private final Path outDir;
+
         private volatile Instant completedAt;
+
         private volatile TraceStatus status = TraceStatus.RUNNING;
+
         private volatile Path archivePath;
+
         private volatile String fileName;
+
         private volatile String message = "trace collection running";
 
-        private TraceJob(String jobId, String sessionKey, String userId, String agentId, String sessionId,
-                         Path jobDir, Path outDir) {
+        private TraceJob(String jobId, String sessionKey, String userId, String agentId, String sessionId, Path jobDir,
+            Path outDir) {
             this.jobId = jobId;
             this.sessionKey = sessionKey;
             this.userId = userId;
@@ -383,15 +386,8 @@ public class SessionTraceService implements DisposableBean {
         }
 
         private TraceJobSnapshot snapshot() {
-            return new TraceJobSnapshot(
-                    jobId,
-                    status.name().toLowerCase(Locale.ROOT),
-                    userId,
-                    agentId,
-                    sessionId,
-                    fileName,
-                    message
-            );
+            return new TraceJobSnapshot(jobId, status.name().toLowerCase(Locale.ROOT), userId, agentId, sessionId,
+                fileName, message);
         }
     }
 }

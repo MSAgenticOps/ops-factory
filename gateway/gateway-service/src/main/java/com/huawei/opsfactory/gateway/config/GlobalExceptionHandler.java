@@ -27,6 +27,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     private final GatewayProperties properties;
 
     /**
@@ -109,11 +110,10 @@ public class GlobalExceptionHandler {
         String path = ex.getRequest() != null ? ex.getRequest().getURI().getPath() : "unknown";
         String responseBody = ex.getResponseBodyAsString();
         if (properties.getLogging().isIncludeUpstreamErrorBody()) {
-            log.warn("Goosed returned {} for {} bodyLength={} body={}",
-                ex.getRawStatusCode(), path, responseBody.length(), truncate(responseBody, 500));
+            log.warn("Goosed returned {} for {} bodyLength={} body={}", ex.getRawStatusCode(), path,
+                responseBody.length(), truncate(responseBody, 500));
         } else {
-            log.warn("Goosed returned {} for {} bodyLength={}",
-                ex.getRawStatusCode(), path, responseBody.length());
+            log.warn("Goosed returned {} for {} bodyLength={}", ex.getRawStatusCode(), path, responseBody.length());
         }
 
         Map<String, Object> body = new LinkedHashMap<>();

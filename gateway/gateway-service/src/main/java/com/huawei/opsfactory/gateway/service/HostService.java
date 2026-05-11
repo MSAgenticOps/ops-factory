@@ -48,20 +48,33 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class HostService {
     private static final Logger log = LoggerFactory.getLogger(HostService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
+
     private static final int GCM_IV_LENGTH = 12;
+
     private static final int GCM_TAG_LENGTH = 128;
 
     private final GatewayProperties properties;
+
     private Path gatewayRoot;
+
     private Path hostsDir;
+
     private SecretKeySpec aesKey;
+
     private HostRelationService hostRelationService;
+
     private HostGroupService hostGroupService;
+
     private ClusterService clusterService;
+
     private BusinessServiceService businessServiceService;
+
     private ClusterTypeService clusterTypeService;
+
     private ClusterRelationService clusterRelationService;
 
     /**
@@ -187,13 +200,13 @@ public class HostService {
         String clusterId = clusterIdObj.toString();
         String mode = resolveClusterMode(clusterId);
         if ("peer".equals(mode)) {
-            throw new IllegalArgumentException("Host role is not allowed in peer cluster mode. Cluster ID: "
-                    + clusterId);
+            throw new IllegalArgumentException(
+                "Host role is not allowed in peer cluster mode. Cluster ID: " + clusterId);
         }
         if ("primary-backup".equals(mode)) {
             if (!"primary".equals(role) && !"backup".equals(role)) {
-                throw new IllegalArgumentException("Invalid host role '" + role + "'. Must be 'primary' or " +
-                        "'backup' for primary-backup cluster.");
+                throw new IllegalArgumentException(
+                    "Invalid host role '" + role + "'. Must be 'primary' or " + "'backup' for primary-backup cluster.");
             }
         }
     }
@@ -614,8 +627,8 @@ public class HostService {
         return result;
     }
 
-    private void collectHostsByGroup(String groupId, ClusterService clusterService,
-                                     Set<String> visited, List<Map<String, Object>> result) {
+    private void collectHostsByGroup(String groupId, ClusterService clusterService, Set<String> visited,
+        List<Map<String, Object>> result) {
         if (!visited.add(groupId)) {
             // avoid cycles
             return;
@@ -708,8 +721,7 @@ public class HostService {
             Session session = jsch.getSession(username, hostname, port);
 
             if ("key".equals(authType)) {
-                jsch.addIdentity("test-connection", credential.getBytes(StandardCharsets.UTF_8),
-                        null, null);
+                jsch.addIdentity("test-connection", credential.getBytes(StandardCharsets.UTF_8), null, null);
             } else {
                 session.setPassword(credential);
             }
@@ -726,10 +738,8 @@ public class HostService {
             log.info("SSH connection test succeeded hostId={} ip={} port={} latencyMs={}", id, hostname, port, latency);
         } catch (JSchException | RuntimeException e) {
             long latency = System.currentTimeMillis() - start;
-            log.warn(
-                    "SSH connection test failed hostId={} ip={} port={} latencyMs={} error={}",
-                    id, hostname, port, latency, e.getMessage()
-            );
+            log.warn("SSH connection test failed hostId={} ip={} port={} latencyMs={} error={}", id, hostname, port,
+                latency, e.getMessage());
             result.put("success", false);
             result.put("message", "Connection failed: " + e.getMessage());
             result.put("latency", latency + "ms");
@@ -746,8 +756,7 @@ public class HostService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
-            });
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
         } catch (IOException e) {
             log.error("Failed to read host file: {}", file, e);
             return null;

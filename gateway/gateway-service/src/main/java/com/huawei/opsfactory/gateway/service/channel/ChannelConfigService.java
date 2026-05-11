@@ -4,24 +4,25 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
+import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelEvent;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelInstance;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelSummary;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelUpsertRequest;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelVerificationResult;
-import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -29,13 +30,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
+import javax.annotation.PostConstruct;
 
 /**
  * Central service for channel CRUD, configuration persistence, runtime state merging, and event recording.
@@ -46,13 +49,19 @@ import java.util.regex.Pattern;
 @Service
 public class ChannelConfigService {
     private static final Logger log = LoggerFactory.getLogger(ChannelConfigService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private static final Pattern CHANNEL_ID_PATTERN = Pattern.compile("^[a-z0-9-]+$");
+
     private static final int MAX_EVENTS = 200;
+
     private static final List<String> SUPPORTED_TYPES = List.of("whatsapp", "wechat");
 
     private final GatewayProperties properties;
+
     private final AgentConfigService agentConfigService;
+
     private final ChannelRuntimeStorageService runtimeStorageService;
 
     private Path channelsDir;
@@ -63,9 +72,8 @@ public class ChannelConfigService {
      * @author x00000000
      * @since 2026-05-09
      */
-    public ChannelConfigService(GatewayProperties properties,
-                                AgentConfigService agentConfigService,
-                                ChannelRuntimeStorageService runtimeStorageService) {
+    public ChannelConfigService(GatewayProperties properties, AgentConfigService agentConfigService,
+        ChannelRuntimeStorageService runtimeStorageService) {
         this.properties = properties;
         this.agentConfigService = agentConfigService;
         this.runtimeStorageService = runtimeStorageService;
@@ -106,9 +114,9 @@ public class ChannelConfigService {
         List<ChannelBinding> bindings = readBindings(ownerUserId);
 
         return channels.stream()
-                .map(channel -> toSummary(applyRuntimeState(withRuntimeUser(channel, ownerUserId)), bindings))
-                .sorted(Comparator.comparing(ChannelSummary::name, String.CASE_INSENSITIVE_ORDER))
-                .toList();
+            .map(channel -> toSummary(applyRuntimeState(withRuntimeUser(channel, ownerUserId)), bindings))
+            .sorted(Comparator.comparing(ChannelSummary::name, String.CASE_INSENSITIVE_ORDER))
+            .toList();
     }
 
     /**
@@ -136,32 +144,22 @@ public class ChannelConfigService {
         ChannelInstance effectiveChannel = applyRuntimeState(withRuntimeUser(channel, ownerUserId));
 
         List<ChannelBinding> bindings = readBindings(effectiveChannel).stream()
-                .filter(binding -> channelId.equals(binding.channelId()))
-                .sorted(Comparator.comparing(ChannelBinding::lastInboundAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
+            .filter(binding -> channelId.equals(binding.channelId()))
+            .sorted(
+                Comparator.comparing(ChannelBinding::lastInboundAt, Comparator.nullsLast(Comparator.reverseOrder())))
+            .toList();
 
         List<ChannelEvent> events = readEvents(effectiveChannel).stream()
-                .filter(event -> channelId.equals(event.channelId()))
-                .sorted(Comparator.comparing(ChannelEvent::createdAt, Comparator.reverseOrder()))
-                .limit(20)
-                .toList();
+            .filter(event -> channelId.equals(event.channelId()))
+            .sorted(Comparator.comparing(ChannelEvent::createdAt, Comparator.reverseOrder()))
+            .limit(20)
+            .toList();
 
-        return new ChannelDetail(
-                effectiveChannel.id(),
-                effectiveChannel.name(),
-                effectiveChannel.type(),
-                effectiveChannel.enabled(),
-                effectiveChannel.defaultAgentId(),
-                effectiveChannel.ownerUserId(),
-                effectiveChannel.createdAt(),
-                effectiveChannel.updatedAt(),
-                usesWebhook(effectiveChannel.type()) ? webhookPath(effectiveChannel) : "",
-                effectiveChannel.config(),
-                verifyChannel(effectiveChannel),
-                bindings,
-                events
-        );
+        return new ChannelDetail(effectiveChannel.id(), effectiveChannel.name(), effectiveChannel.type(),
+            effectiveChannel.enabled(), effectiveChannel.defaultAgentId(), effectiveChannel.ownerUserId(),
+            effectiveChannel.createdAt(), effectiveChannel.updatedAt(),
+            usesWebhook(effectiveChannel.type()) ? webhookPath(effectiveChannel) : "", effectiveChannel.config(),
+            verifyChannel(effectiveChannel), bindings, events);
     }
 
     /**
@@ -173,11 +171,12 @@ public class ChannelConfigService {
     public List<ChannelDetail> listRuntimeChannels(String type) {
         String normalizedType = normalizeType(type);
         return readInstances().stream()
-                .filter(channel -> normalizedType.equals(channel.type()))
-                .flatMap(channel -> runtimeStorageService.listRuntimeRefs(channel.type(), channel.id()).stream()
-                        .map(ref -> getChannel(channel.id(), ref.ownerUserId()))
-                        .filter(detail -> detail != null))
-                .toList();
+            .filter(channel -> normalizedType.equals(channel.type()))
+            .flatMap(channel -> runtimeStorageService.listRuntimeRefs(channel.type(), channel.id())
+                .stream()
+                .map(ref -> getChannel(channel.id(), ref.ownerUserId()))
+                .filter(detail -> detail != null))
+            .toList();
     }
 
     /**
@@ -196,17 +195,10 @@ public class ChannelConfigService {
         }
 
         String now = Instant.now().toString();
-        ChannelInstance created = new ChannelInstance(
-                request.id().trim(),
-                request.name().trim(),
-                normalizeType(request.type()),
-                request.enabled() == null || request.enabled(),
-                request.defaultAgentId().trim(),
-                normalizeOwnerUserId(ownerUserId),
-                now,
-                now,
-                    normalizeConfig(request.type(), request.config())
-        );
+        ChannelInstance created =
+            new ChannelInstance(request.id().trim(), request.name().trim(), normalizeType(request.type()),
+                request.enabled() == null || request.enabled(), request.defaultAgentId().trim(),
+                normalizeOwnerUserId(ownerUserId), now, now, normalizeConfig(request.type(), request.config()));
         channels.add(created);
         writeChannelConfig(created);
         runtimeStorageService.initializeRuntime(created);
@@ -244,17 +236,12 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel type cannot be changed after creation");
         }
 
-        ChannelInstance updated = new ChannelInstance(
-                existing.id(),
-                normalizeName(request.name(), existing.name()),
-                normalizeType(request.type() != null ? request.type() : existing.type()),
-                request.enabled() != null ? request.enabled() : existing.enabled(),
-                normalizeAgentId(request.defaultAgentId(), existing.defaultAgentId()),
-                normalizeOwnerUserId(ownerUserId),
-                existing.createdAt(),
-                Instant.now().toString(),
-                mergeConfig(existing.type(), existing.config(), request.config())
-        );
+        ChannelInstance updated = new ChannelInstance(existing.id(), normalizeName(request.name(), existing.name()),
+            normalizeType(request.type() != null ? request.type() : existing.type()),
+            request.enabled() != null ? request.enabled() : existing.enabled(),
+            normalizeAgentId(request.defaultAgentId(), existing.defaultAgentId()), normalizeOwnerUserId(ownerUserId),
+            existing.createdAt(), Instant.now().toString(),
+            mergeConfig(existing.type(), existing.config(), request.config()));
 
         writeChannelConfig(updated);
         appendEvent(channelId, ownerUserId, "info", "channel.updated", "Channel updated");
@@ -286,21 +273,13 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
 
-        ChannelInstance updated = new ChannelInstance(
-                existing.id(),
-                existing.name(),
-                existing.type(),
-                enabled,
-                existing.defaultAgentId(),
-                normalizeOwnerUserId(ownerUserId),
-                existing.createdAt(),
-                Instant.now().toString(),
-                existing.config()
-        );
+        ChannelInstance updated =
+            new ChannelInstance(existing.id(), existing.name(), existing.type(), enabled, existing.defaultAgentId(),
+                normalizeOwnerUserId(ownerUserId), existing.createdAt(), Instant.now().toString(), existing.config());
 
         writeChannelConfig(updated);
         appendEvent(channelId, ownerUserId, "info", enabled ? "channel.enabled" : "channel.disabled",
-                enabled ? "Channel enabled" : "Channel disabled");
+            enabled ? "Channel enabled" : "Channel disabled");
         return getChannel(channelId, ownerUserId);
     }
 
@@ -341,10 +320,10 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
         return readBindings(withRuntimeUser(findChannel(channelId), ownerUserId)).stream()
-                .filter(binding -> channelId.equals(binding.channelId()))
-                .sorted(Comparator.comparing(ChannelBinding::lastInboundAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
+            .filter(binding -> channelId.equals(binding.channelId()))
+            .sorted(
+                Comparator.comparing(ChannelBinding::lastInboundAt, Comparator.nullsLast(Comparator.reverseOrder())))
+            .toList();
     }
 
     /**
@@ -369,10 +348,10 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
         return readEvents(withRuntimeUser(findChannel(channelId), ownerUserId)).stream()
-                .filter(event -> channelId.equals(event.channelId()))
-                .sorted(Comparator.comparing(ChannelEvent::createdAt, Comparator.reverseOrder()))
-                .limit(50)
-                .toList();
+            .filter(event -> channelId.equals(event.channelId()))
+            .sorted(Comparator.comparing(ChannelEvent::createdAt, Comparator.reverseOrder()))
+            .limit(50)
+            .toList();
     }
 
     /**
@@ -398,10 +377,8 @@ public class ChannelConfigService {
             throw new IllegalArgumentException("Channel '" + channelId + "' not found");
         }
         ChannelVerificationResult result = verifyChannel(applyRuntimeState(withRuntimeUser(existing, ownerUserId)));
-        appendEvent(channelId, ownerUserId,
-                result.ok() ? "info" : "warning",
-                "channel.verified",
-                result.ok() ? "Channel configuration verified" : String.join("; ", result.issues()));
+        appendEvent(channelId, ownerUserId, result.ok() ? "info" : "warning", "channel.verified",
+            result.ok() ? "Channel configuration verified" : String.join("; ", result.issues()));
         return result;
     }
 
@@ -456,10 +433,8 @@ public class ChannelConfigService {
         Map<String, Object> runtimeState = new LinkedHashMap<>();
         runtimeState.put("channelId", existing.id());
         runtimeState.put("status", "disconnected");
-        runtimeState.put(
-                "message",
-                "wechat".equals(existing.type()) ? "WeChat login required" : "WhatsApp Web login required"
-        );
+        runtimeState.put("message",
+            "wechat".equals(existing.type()) ? "WeChat login required" : "WhatsApp Web login required");
         runtimeState.put("authStateDir", normalizeConfig(existing.type(), existing.config()).authStateDir());
         runtimeState.put("lastConnectedAt", "");
         runtimeState.put("lastDisconnectedAt", Instant.now().toString());
@@ -470,9 +445,8 @@ public class ChannelConfigService {
     }
 
     private ChannelSummary toSummary(ChannelInstance channel, List<ChannelBinding> allBindings) {
-        List<ChannelBinding> bindings = allBindings.stream()
-                .filter(binding -> channel.id().equals(binding.channelId()))
-                .toList();
+        List<ChannelBinding> bindings =
+            allBindings.stream().filter(binding -> channel.id().equals(binding.channelId())).toList();
         ChannelVerificationResult verification = verifyChannel(channel);
         String status;
         if (!channel.enabled()) {
@@ -490,28 +464,18 @@ public class ChannelConfigService {
         }
 
         String lastInboundAt = bindings.stream()
-                .map(ChannelBinding::lastInboundAt)
-                .filter(value -> value != null && !value.isBlank())
-                .max(String::compareTo)
-                .orElse(null);
+            .map(ChannelBinding::lastInboundAt)
+            .filter(value -> value != null && !value.isBlank())
+            .max(String::compareTo)
+            .orElse(null);
         String lastOutboundAt = bindings.stream()
-                .map(ChannelBinding::lastOutboundAt)
-                .filter(value -> value != null && !value.isBlank())
-                .max(String::compareTo)
-                .orElse(null);
+            .map(ChannelBinding::lastOutboundAt)
+            .filter(value -> value != null && !value.isBlank())
+            .max(String::compareTo)
+            .orElse(null);
 
-        return new ChannelSummary(
-                channel.id(),
-                channel.name(),
-                channel.type(),
-                channel.enabled(),
-                channel.defaultAgentId(),
-                channel.ownerUserId(),
-                status,
-                lastInboundAt,
-                lastOutboundAt,
-                bindings.size()
-        );
+        return new ChannelSummary(channel.id(), channel.name(), channel.type(), channel.enabled(),
+            channel.defaultAgentId(), channel.ownerUserId(), status, lastInboundAt, lastOutboundAt, bindings.size());
     }
 
     private ChannelVerificationResult verifyChannel(ChannelInstance channel) {
@@ -528,7 +492,8 @@ public class ChannelConfigService {
         if (config == null) {
             issues.add("Channel config is required");
         } else {
-            if (!isConfiguredValue(config.authStateDir())) issues.add("authStateDir is required");
+            if (!isConfiguredValue(config.authStateDir()))
+                issues.add("authStateDir is required");
             if ("error".equals(config.loginStatus()) && isConfiguredValue(config.lastError())) {
                 issues.add(config.lastError());
             } else if (channel.enabled() && !"connected".equals(config.loginStatus())) {
@@ -540,10 +505,7 @@ public class ChannelConfigService {
     }
 
     private ChannelInstance findChannel(String channelId) {
-        return readInstances().stream()
-                .filter(channel -> channel.id().equals(channelId))
-                .findFirst()
-                .orElse(null);
+        return readInstances().stream().filter(channel -> channel.id().equals(channelId)).findFirst().orElse(null);
     }
 
     private void validateCreateRequest(ChannelUpsertRequest request) {
@@ -612,8 +574,8 @@ public class ChannelConfigService {
 
     private String normalizeOwnerUserId(String ownerUserId) {
         String normalized = isBlank(ownerUserId) ? "admin" : ownerUserId.trim();
-        if (normalized.contains("/") || normalized.contains("\\")
-                || ".".equals(normalized) || "..".equals(normalized)) {
+        if (normalized.contains("/") || normalized.contains("\\") || ".".equals(normalized)
+            || "..".equals(normalized)) {
             throw new IllegalArgumentException("ownerUserId contains unsafe path characters");
         }
         return normalized;
@@ -623,37 +585,28 @@ public class ChannelConfigService {
         if (config == null) {
             return defaultConfig(type);
         }
-        return new ChannelConnectionConfig(
-                normalizeLoginStatus(config.loginStatus()),
-                emptyIfNull(config.authStateDir()).isBlank() ? "auth" : config.authStateDir().trim(),
-                emptyIfNull(config.lastConnectedAt()),
-                emptyIfNull(config.lastDisconnectedAt()),
-                emptyIfNull(config.lastError()),
-                "whatsapp".equals(type) ? emptyIfNull(config.selfPhone()) : "",
-                "wechat".equals(type) ? emptyIfNull(config.wechatId()) : "",
-                "wechat".equals(type) ? emptyIfNull(config.displayName()) : ""
-        );
+        return new ChannelConnectionConfig(normalizeLoginStatus(config.loginStatus()),
+            emptyIfNull(config.authStateDir()).isBlank() ? "auth" : config.authStateDir().trim(),
+            emptyIfNull(config.lastConnectedAt()), emptyIfNull(config.lastDisconnectedAt()),
+            emptyIfNull(config.lastError()), "whatsapp".equals(type) ? emptyIfNull(config.selfPhone()) : "",
+            "wechat".equals(type) ? emptyIfNull(config.wechatId()) : "",
+            "wechat".equals(type) ? emptyIfNull(config.displayName()) : "");
     }
 
-    private ChannelConnectionConfig mergeConfig(
-            String type,
-            ChannelConnectionConfig existing,
-            ChannelConnectionConfig updates
-    ) {
+    private ChannelConnectionConfig mergeConfig(String type, ChannelConnectionConfig existing,
+        ChannelConnectionConfig updates) {
         ChannelConnectionConfig current = normalizeConfig(type, existing);
         if (updates == null) {
             return current;
         }
-        return new ChannelConnectionConfig(
-                normalizeLoginStatus(choose(updates.loginStatus(), current.loginStatus())),
-                choose(updates.authStateDir(), current.authStateDir()),
-                choose(updates.lastConnectedAt(), current.lastConnectedAt()),
-                choose(updates.lastDisconnectedAt(), current.lastDisconnectedAt()),
-                choose(updates.lastError(), current.lastError()),
-                "whatsapp".equals(type) ? choose(updates.selfPhone(), current.selfPhone()) : "",
-                "wechat".equals(type) ? choose(updates.wechatId(), current.wechatId()) : "",
-                "wechat".equals(type) ? choose(updates.displayName(), current.displayName()) : ""
-        );
+        return new ChannelConnectionConfig(normalizeLoginStatus(choose(updates.loginStatus(), current.loginStatus())),
+            choose(updates.authStateDir(), current.authStateDir()),
+            choose(updates.lastConnectedAt(), current.lastConnectedAt()),
+            choose(updates.lastDisconnectedAt(), current.lastDisconnectedAt()),
+            choose(updates.lastError(), current.lastError()),
+            "whatsapp".equals(type) ? choose(updates.selfPhone(), current.selfPhone()) : "",
+            "wechat".equals(type) ? choose(updates.wechatId(), current.wechatId()) : "",
+            "wechat".equals(type) ? choose(updates.displayName(), current.displayName()) : "");
     }
 
     private String choose(String candidate, String fallback) {
@@ -661,16 +614,7 @@ public class ChannelConfigService {
     }
 
     private ChannelConnectionConfig defaultConfig(String type) {
-        return new ChannelConnectionConfig(
-                "disconnected",
-                "auth",
-                "",
-                "",
-                "",
-                "",
-                "",
-                ""
-        );
+        return new ChannelConnectionConfig("disconnected", "auth", "", "", "", "", "", "");
     }
 
     private String emptyIfNull(String value) {
@@ -707,14 +651,8 @@ public class ChannelConfigService {
         channel = withRuntimeUser(channel, ownerUserId);
 
         List<ChannelEvent> events = new ArrayList<>(readEvents(channel));
-        events.add(new ChannelEvent(
-                UUID.randomUUID().toString(),
-                channelId,
-                level,
-                type,
-                summary,
-                Instant.now().toString()
-        ));
+        events.add(
+            new ChannelEvent(UUID.randomUUID().toString(), channelId, level, type, summary, Instant.now().toString()));
         if (events.size() > MAX_EVENTS) {
             events = events.subList(events.size() - MAX_EVENTS, events.size());
         }
@@ -723,17 +661,9 @@ public class ChannelConfigService {
     }
 
     private ChannelInstance withRuntimeUser(ChannelInstance channel, String ownerUserId) {
-        return new ChannelInstance(
-                channel.id(),
-                channel.name(),
-                channel.type(),
-                channel.enabled(),
-                channel.defaultAgentId(),
-                normalizeOwnerUserId(ownerUserId),
-                channel.createdAt(),
-                channel.updatedAt(),
-                channel.config()
-        );
+        return new ChannelInstance(channel.id(), channel.name(), channel.type(), channel.enabled(),
+            channel.defaultAgentId(), normalizeOwnerUserId(ownerUserId), channel.createdAt(), channel.updatedAt(),
+            channel.config());
     }
 
     private List<ChannelInstance> readInstances() {
@@ -767,28 +697,28 @@ public class ChannelConfigService {
 
     private List<ChannelBinding> readBindings(String ownerUserId) {
         return readInstances().stream()
-                .map(channel -> withRuntimeUser(channel, ownerUserId))
-                .flatMap(channel -> readBindings(channel).stream())
-                .toList();
+            .map(channel -> withRuntimeUser(channel, ownerUserId))
+            .flatMap(channel -> readBindings(channel).stream())
+            .toList();
     }
 
     private List<ChannelBinding> readBindings(ChannelInstance channel) {
         Map<String, Object> wrapper = readJson(runtimeStorageService.bindingsFile(channel));
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
-                new TypeReference<List<ChannelBinding>>() {});
+            new TypeReference<List<ChannelBinding>>() {});
     }
 
     private List<ChannelEvent> readEvents(String ownerUserId) {
         return readInstances().stream()
-                .map(channel -> withRuntimeUser(channel, ownerUserId))
-                .flatMap(channel -> readEvents(channel).stream())
-                .toList();
+            .map(channel -> withRuntimeUser(channel, ownerUserId))
+            .flatMap(channel -> readEvents(channel).stream())
+            .toList();
     }
 
     private List<ChannelEvent> readEvents(ChannelInstance channel) {
         Map<String, Object> wrapper = readJson(runtimeStorageService.eventsFile(channel));
         return MAPPER.convertValue(wrapper.getOrDefault("events", List.of()),
-                new TypeReference<List<ChannelEvent>>() {});
+            new TypeReference<List<ChannelEvent>>() {});
     }
 
     private void writeEvents(ChannelInstance channel, List<ChannelEvent> events) {
@@ -813,11 +743,8 @@ public class ChannelConfigService {
 
     private boolean isValidConfigChannel(Path instanceDir, ChannelInstance channel) {
         if (channel == null || !CHANNEL_ID_PATTERN.matcher(channel.id()).matches()) {
-            log.warn(
-                    "Skipping invalid channel config {}: invalid id '{}'",
-                    instanceDir,
-                    channel == null ? "" : channel.id()
-            );
+            log.warn("Skipping invalid channel config {}: invalid id '{}'", instanceDir,
+                channel == null ? "" : channel.id());
             return false;
         }
         Path directoryName = instanceDir.getFileName();
@@ -832,11 +759,8 @@ public class ChannelConfigService {
         Path typeDirectory = instanceDir.getParent();
         Path typeName = typeDirectory == null ? null : typeDirectory.getFileName();
         if (typeName != null && !channel.type().equals(typeName.toString())) {
-            log.warn(
-                    "Skipping invalid channel config {}: type '{}' does not match directory",
-                    instanceDir,
-                    channel.type()
-            );
+            log.warn("Skipping invalid channel config {}: type '{}' does not match directory", instanceDir,
+                channel.type());
             return false;
         }
         return true;
@@ -844,44 +768,26 @@ public class ChannelConfigService {
 
     @SuppressWarnings("unchecked")
     private ChannelInstance deserializeChannelInstance(Map<String, Object> raw) {
-        Map<String, Object> rawConfig = raw.get("config") instanceof Map<?, ?> map
-                ? (Map<String, Object>) map
-                : Map.of();
+        Map<String, Object> rawConfig =
+            raw.get("config") instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
 
-        return new ChannelInstance(
-                emptyIfNull((String) raw.get("id")),
-                emptyIfNull((String) raw.get("name")),
-                normalizeType((String) raw.get("type")),
-                raw.get("enabled") instanceof Boolean enabled && enabled,
-                emptyIfNull((String) raw.get("defaultAgentId")),
-                "admin",
-                emptyIfNull((String) raw.get("createdAt")),
-                emptyIfNull((String) raw.get("updatedAt")),
-                deserializeChannelConfig((String) raw.get("type"), rawConfig)
-        );
+        return new ChannelInstance(emptyIfNull((String) raw.get("id")), emptyIfNull((String) raw.get("name")),
+            normalizeType((String) raw.get("type")), raw.get("enabled") instanceof Boolean enabled && enabled,
+            emptyIfNull((String) raw.get("defaultAgentId")), "admin", emptyIfNull((String) raw.get("createdAt")),
+            emptyIfNull((String) raw.get("updatedAt")), deserializeChannelConfig((String) raw.get("type"), rawConfig));
     }
 
     private ChannelConnectionConfig deserializeChannelConfig(String type, Map<String, Object> rawConfig) {
         String normalizedType = normalizeType(type);
-        if (rawConfig.containsKey("loginStatus")
-                || rawConfig.containsKey("authStateDir")
-                || rawConfig.containsKey("selfPhone")
-                || rawConfig.containsKey("wechatId")
-                || rawConfig.containsKey("displayName")) {
+        if (rawConfig.containsKey("loginStatus") || rawConfig.containsKey("authStateDir")
+            || rawConfig.containsKey("selfPhone") || rawConfig.containsKey("wechatId")
+            || rawConfig.containsKey("displayName")) {
             return normalizeConfig(normalizedType, MAPPER.convertValue(rawConfig, ChannelConnectionConfig.class));
         }
 
         if ("whatsapp".equals(normalizedType) && !rawConfig.isEmpty()) {
-            return new ChannelConnectionConfig(
-                    "disconnected",
-                    "auth",
-                    "",
-                    "",
-                    "Legacy WhatsApp Cloud API config detected. Switch this channel to WhatsApp Web login.",
-                    "",
-                    "",
-                    ""
-            );
+            return new ChannelConnectionConfig("disconnected", "auth", "", "",
+                "Legacy WhatsApp Cloud API config detected. Switch this channel to WhatsApp Web login.", "", "", "");
         }
         return defaultConfig(normalizedType);
     }
@@ -945,10 +851,8 @@ public class ChannelConfigService {
         }
 
         try {
-            Map<String, Object> raw = MAPPER.readValue(
-                    Files.readString(runtimeFile, StandardCharsets.UTF_8),
-                    Map.class
-            );
+            Map<String, Object> raw =
+                MAPPER.readValue(Files.readString(runtimeFile, StandardCharsets.UTF_8), Map.class);
             ChannelConnectionConfig current = channel.config();
             String runtimeStatus = asString(raw.get("status"));
             String runtimeSelfPhone = asString(raw.get("selfPhone"));
@@ -959,33 +863,20 @@ public class ChannelConfigService {
             String runtimeDisplayName = asString(raw.get("displayName"));
 
             ChannelConnectionConfig merged = new ChannelConnectionConfig(
-                    runtimeStatus != null ? normalizeLoginStatus(runtimeStatus) : current.loginStatus(),
-                    current.authStateDir(),
-                    runtimeConnectedAt != null ? runtimeConnectedAt : current.lastConnectedAt(),
-                    runtimeDisconnectedAt != null ? runtimeDisconnectedAt : current.lastDisconnectedAt(),
-                    runtimeError != null ? runtimeError : current.lastError(),
-                    "whatsapp".equals(channel.type())
-                            ? (runtimeSelfPhone != null ? runtimeSelfPhone : current.selfPhone())
-                            : current.selfPhone(),
-                    "wechat".equals(channel.type())
-                            ? (runtimeWechatId != null ? runtimeWechatId : current.wechatId())
-                            : current.wechatId(),
-                    "wechat".equals(channel.type())
-                            ? (runtimeDisplayName != null ? runtimeDisplayName : current.displayName())
-                            : current.displayName()
-            );
+                runtimeStatus != null ? normalizeLoginStatus(runtimeStatus) : current.loginStatus(),
+                current.authStateDir(), runtimeConnectedAt != null ? runtimeConnectedAt : current.lastConnectedAt(),
+                runtimeDisconnectedAt != null ? runtimeDisconnectedAt : current.lastDisconnectedAt(),
+                runtimeError != null ? runtimeError : current.lastError(),
+                "whatsapp".equals(channel.type()) ? (runtimeSelfPhone != null ? runtimeSelfPhone : current.selfPhone())
+                    : current.selfPhone(),
+                "wechat".equals(channel.type()) ? (runtimeWechatId != null ? runtimeWechatId : current.wechatId())
+                    : current.wechatId(),
+                "wechat".equals(channel.type())
+                    ? (runtimeDisplayName != null ? runtimeDisplayName : current.displayName())
+                    : current.displayName());
 
-            return new ChannelInstance(
-                    channel.id(),
-                    channel.name(),
-                    channel.type(),
-                    channel.enabled(),
-                    channel.defaultAgentId(),
-                    channel.ownerUserId(),
-                    channel.createdAt(),
-                    channel.updatedAt(),
-                    merged
-            );
+            return new ChannelInstance(channel.id(), channel.name(), channel.type(), channel.enabled(),
+                channel.defaultAgentId(), channel.ownerUserId(), channel.createdAt(), channel.updatedAt(), merged);
         } catch (IOException e) {
             log.warn("Failed to read runtime state for channel {}: {}", channel.id(), e.getMessage());
             return channel;
@@ -1006,14 +897,13 @@ public class ChannelConfigService {
                 return;
             }
             try (var walk = Files.walk(dir)) {
-                walk.sorted(Comparator.reverseOrder())
-                        .forEach(path -> {
-                            try {
-                                Files.deleteIfExists(path);
-                            } catch (IOException e) {
-                                throw new IllegalStateException("Failed to delete " + path, e);
-                            }
-                        });
+                walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Failed to delete " + path, e);
+                    }
+                });
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to delete channel directory: " + dir, e);
@@ -1040,9 +930,8 @@ public class ChannelConfigService {
     private void writeJson(Path file, Map<String, Object> payload) {
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file,
-                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                    StandardCharsets.UTF_8);
+            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write channels file: " + file, e);
         }
@@ -1051,9 +940,8 @@ public class ChannelConfigService {
     private void writeJson(Path file, Object payload) {
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file,
-                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                    StandardCharsets.UTF_8);
+            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write channels file: " + file, e);
         }

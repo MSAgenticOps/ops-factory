@@ -23,28 +23,47 @@ import java.util.List;
 @ConfigurationProperties(prefix = "gateway")
 public class GatewayProperties {
     private static final Logger log = LoggerFactory.getLogger(GatewayProperties.class);
+
     private static final String CONFIG_PATH_KEY = "GATEWAY_CONFIG_PATH";
 
     private String secretKey = "test";
+
     private String corsOrigin = "http://127.0.0.1:5173";
+
     private String goosedBin = "goosed";
+
     private boolean gooseTls = true;
 
     private Paths paths = new Paths();
+
     private Idle idle = new Idle();
+
     private Upload upload = new Upload();
+
     private Limits limits = new Limits();
+
     private Prewarm prewarm = new Prewarm();
+
     private Sse sse = new Sse();
+
     private Langfuse langfuse = new Langfuse();
+
     private OfficePreview officePreview = new OfficePreview();
+
     private Logging logging = new Logging();
+
     private String credentialEncryptionKey = "changeit-changeit-changeit-32";
+
     private RemoteExecution remoteExecution = new RemoteExecution();
+
     private FileCapsules fileCapsules = new FileCapsules();
+
     private FileBrowser files = new FileBrowser();
+
     private SkillMarket skillMarket = new SkillMarket();
+
     private Knowledge knowledge = new Knowledge();
+
     private List<String> adminUsers = List.of("admin");
 
     // ---- Getters / Setters ----
@@ -495,7 +514,9 @@ public class GatewayProperties {
 
     public static class Paths {
         private String projectRoot = "..";
+
         private String agentsDir = "agents";
+
         private String usersDir = "users";
 
         /**
@@ -555,8 +576,11 @@ public class GatewayProperties {
 
     public static class Idle {
         private int timeoutMinutes = 15;
+
         private long checkIntervalMs = 60000L;
+
         private int maxRestartAttempts = 3;
+
         private long restartBaseDelayMs = 5000L;
 
         /**
@@ -634,6 +658,7 @@ public class GatewayProperties {
 
     public static class Upload {
         private int maxFileSizeMb = 50;
+
         private int maxImageSizeMb = 20;
 
         /**
@@ -675,7 +700,9 @@ public class GatewayProperties {
 
     public static class Langfuse {
         private String host = "";
+
         private String publicKey = "";
+
         private String secretKey = "";
 
         /**
@@ -735,6 +762,7 @@ public class GatewayProperties {
 
     public static class Limits {
         private int maxInstancesPerUser = 5;
+
         private int maxInstancesGlobal = 50;
 
         /**
@@ -776,7 +804,9 @@ public class GatewayProperties {
 
     public static class Sse {
         private int firstByteTimeoutSec = 120;
+
         private int idleTimeoutSec = 600;
+
         private int maxDurationSec = 1200;
 
         /**
@@ -836,6 +866,7 @@ public class GatewayProperties {
 
     public static class Prewarm {
         private boolean enabled = true;
+
         private String defaultAgentId = "universal-agent";
 
         /**
@@ -877,7 +908,9 @@ public class GatewayProperties {
 
     public static class OfficePreview {
         private boolean enabled = false;
+
         private String onlyofficeUrl = "";
+
         private String fileBaseUrl = "";
 
         /**
@@ -937,8 +970,11 @@ public class GatewayProperties {
 
     public static class Logging {
         private boolean accessLogEnabled = true;
+
         private boolean includeUpstreamErrorBody = false;
+
         private boolean includeSseChunkPreview = false;
+
         private int sseChunkPreviewMaxChars = 160;
 
         /**
@@ -1016,6 +1052,7 @@ public class GatewayProperties {
 
     public static class RemoteExecution {
         private int defaultTimeout = 30;
+
         private int maxTimeout = 120;
 
         /**
@@ -1056,16 +1093,8 @@ public class GatewayProperties {
     }
 
     public static class FileCapsules {
-        private List<String> allowedExtensions = List.of(
-                "doc", "docx",
-                "xls", "xlsx",
-                "ppt", "pptx",
-                "pdf",
-                "csv",
-                "txt",
-                "json",
-                "md", "markdown",
-                "html", "htm");
+        private List<String> allowedExtensions = List.of("doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf", "csv",
+            "txt", "json", "md", "markdown", "html", "htm");
 
         /**
          * Gets the allowed extensions.
@@ -1087,9 +1116,8 @@ public class GatewayProperties {
     }
 
     public static class FileBrowser {
-        private List<FileScanRoot> scanRoots = List.of(
-                new FileScanRoot("workingDir", "${userAgentDir}", false),
-                new FileScanRoot("output", "${userAgentDir}/output", false));
+        private List<FileScanRoot> scanRoots = List.of(new FileScanRoot("workingDir", "${userAgentDir}", false),
+            new FileScanRoot("output", "${userAgentDir}/output", false));
 
         /**
          * Gets the scan roots.
@@ -1112,11 +1140,17 @@ public class GatewayProperties {
 
     public static class FileScanRoot {
         private String id = "";
+
         private String path = "";
+
         private boolean recursive = false;
+
         private List<String> excludeDirs = List.of();
+
         private int maxDepth = 6;
+
         private int maxFiles = 1000;
+
         private long scanTimeoutMs = 2000;
 
         public FileScanRoot() {
@@ -1257,7 +1291,9 @@ public class GatewayProperties {
 
     public static class SkillMarket {
         private String baseUrl = "http://127.0.0.1:8095";
+
         private int requestTimeoutMs = 10000;
+
         private int maxPackageSizeMb = 200;
 
         /**
@@ -1339,13 +1375,8 @@ public class GatewayProperties {
 
     @Override
     public String toString() {
-        return "GatewayProperties{"
-                + "secretKey='***'"
-                + ", corsOrigin='" + corsOrigin + '\''
-                + ", gooseTls=" + gooseTls
-                + ", gooseScheme='" + gooseScheme() + '\''
-                + ", goosedBin='" + goosedBin + '\''
-                + '}';
+        return "GatewayProperties{" + "secretKey='***'" + ", corsOrigin='" + corsOrigin + '\'' + ", gooseTls="
+            + gooseTls + ", gooseScheme='" + gooseScheme() + '\'' + ", goosedBin='" + goosedBin + '\'' + '}';
     }
 
     private void normalizeGoosedBin() {

@@ -4,16 +4,17 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -26,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
+
 /**
  * Manages cluster-level relations including topology graph data, neighbor resolution, and cascade deletes.
  *
@@ -35,14 +38,19 @@ import java.util.UUID;
 @Service
 public class ClusterRelationService {
     private static final Logger log = LoggerFactory.getLogger(ClusterRelationService.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final GatewayProperties properties;
+
     private Path relationsDir;
 
     private HostService hostService;
+
     private ClusterService clusterService;
+
     private ClusterTypeService clusterTypeService;
+
     private BusinessServiceService businessServiceService;
 
     /**
@@ -140,8 +148,8 @@ public class ClusterRelationService {
                     String sourceId = (String) rel.get("sourceId");
                     String targetId = (String) rel.get("targetId");
                     String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
-                    boolean match = clusterId.equals(targetId)
-                            || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
+                    boolean match =
+                        clusterId.equals(targetId) || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
                     if (!match) {
                         continue;
                     }
@@ -207,13 +215,8 @@ public class ClusterRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info(
-                "Created cluster relation: id={}, sourceType={}, source={}, target={}",
-                id,
-                sourceType,
-                sourceId,
-                targetId
-        );
+        log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId,
+            targetId);
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -322,8 +325,7 @@ public class ClusterRelationService {
             String sourceId = (String) rel.get("sourceId");
             String targetId = (String) rel.get("targetId");
             String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
-            boolean match = clusterId.equals(targetId)
-                    || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
+            boolean match = clusterId.equals(targetId) || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
             if (match) {
                 deleteRelation((String) rel.get("id"));
                 count++;
@@ -407,12 +409,8 @@ public class ClusterRelationService {
                 existing.put("sourceId", clusterId);
                 existing.put("updatedAt", Instant.now().toString());
                 writeEntityFile((String) existing.get("id"), existing);
-                log.info(
-                        "Updated 包含 relation: cluster={} -> host={} (was cluster={})",
-                        clusterId,
-                        hostId,
-                        currentSource
-                );
+                log.info("Updated 包含 relation: cluster={} -> host={} (was cluster={})", clusterId, hostId,
+                    currentSource);
             }
         }
     }
@@ -629,8 +627,7 @@ public class ClusterRelationService {
 
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(clusterId);
         // For primary-backup mode, filter to primary hosts only
-        List<Map<String, Object>> activeHosts = "primary-backup".equals(mode)
-                ? filterPrimaryHosts(hosts) : hosts;
+        List<Map<String, Object>> activeHosts = "primary-backup".equals(mode) ? filterPrimaryHosts(hosts) : hosts;
 
         List<Map<String, Object>> allRelations = listRelations(null);
         List<Map<String, Object>> upstream = new ArrayList<>();
@@ -653,8 +650,8 @@ public class ClusterRelationService {
                     String tn = targetCluster.get("type") != null ? targetCluster.get("type").toString() : "";
                     String tm = resolveClusterTypeMode(tn);
                     List<Map<String, Object>> targetHosts = hostService.listHostsByCluster(targetId);
-                    List<Map<String, Object>> activeTargetHosts = "primary-backup".equals(tm)
-                            ? filterPrimaryHosts(targetHosts) : targetHosts;
+                    List<Map<String, Object>> activeTargetHosts =
+                        "primary-backup".equals(tm) ? filterPrimaryHosts(targetHosts) : targetHosts;
 
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("cluster", buildClusterNode(targetCluster, tm, activeTargetHosts.size()));
@@ -673,8 +670,8 @@ public class ClusterRelationService {
                     String sn = sourceCluster.get("type") != null ? sourceCluster.get("type").toString() : "";
                     String sm = resolveClusterTypeMode(sn);
                     List<Map<String, Object>> sourceHosts = hostService.listHostsByCluster(sourceId);
-                    List<Map<String, Object>> activeSourceHosts = "primary-backup".equals(sm)
-                            ? filterPrimaryHosts(sourceHosts) : sourceHosts;
+                    List<Map<String, Object>> activeSourceHosts =
+                        "primary-backup".equals(sm) ? filterPrimaryHosts(sourceHosts) : sourceHosts;
 
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("cluster", buildClusterNode(sourceCluster, sm, activeSourceHosts.size()));

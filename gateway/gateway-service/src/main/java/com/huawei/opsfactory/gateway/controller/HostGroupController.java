@@ -4,17 +4,27 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
-import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
+
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,8 +41,11 @@ import java.util.Set;
 @RequestMapping("/gateway/host-groups")
 public class HostGroupController {
     private final HostGroupService hostGroupService;
+
     private final ClusterService clusterService;
+
     private final BusinessServiceService businessServiceService;
+
     private final HostService hostService;
 
     /**
@@ -42,7 +55,7 @@ public class HostGroupController {
      * @since 2026-05-09
      */
     public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
-                               BusinessServiceService businessServiceService, HostService hostService) {
+        BusinessServiceService businessServiceService, HostService hostService) {
         this.hostGroupService = hostGroupService;
         this.clusterService = clusterService;
         this.businessServiceService = businessServiceService;
@@ -58,8 +71,8 @@ public class HostGroupController {
      */
     @GetMapping
     public Mono<Map<String, Object>> listGroups(
-            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
-            ServerWebExchange exchange) {
+        @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
@@ -82,8 +95,8 @@ public class HostGroupController {
      */
     @GetMapping("/tree")
     public Mono<Map<String, Object>> getTree(
-            @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
-            ServerWebExchange exchange) {
+        @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, Object>> groups = hostGroupService.listGroups();
@@ -92,10 +105,10 @@ public class HostGroupController {
             if (enabledOnly) {
                 Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
                 groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
-                clusters.removeIf(c -> Boolean.FALSE.equals(c.get("enabled"))
-                        || disabledGroupIds.contains(c.get("groupId")));
-                businessServices.removeIf(bs -> Boolean.FALSE.equals(bs.get("enabled"))
-                        || disabledGroupIds.contains(bs.get("groupId")));
+                clusters.removeIf(
+                    c -> Boolean.FALSE.equals(c.get("enabled")) || disabledGroupIds.contains(c.get("groupId")));
+                businessServices.removeIf(
+                    bs -> Boolean.FALSE.equals(bs.get("enabled")) || disabledGroupIds.contains(bs.get("groupId")));
             }
             return hostGroupService.getTree(groups, clusters, businessServices);
         }).subscribeOn(Schedulers.boundedElastic());
@@ -109,9 +122,8 @@ public class HostGroupController {
      * @return the result
      */
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getGroup(
-            @PathVariable("id") String id,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getGroup(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -137,9 +149,8 @@ public class HostGroupController {
      * @return the result
      */
     @PostMapping
-    public Mono<ResponseEntity<Map<String, Object>>> createGroup(
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> createGroup(@RequestBody Map<String, Object> request,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -166,10 +177,8 @@ public class HostGroupController {
      * @return the result
      */
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateGroup(
-            @PathVariable("id") String id,
-            @RequestBody Map<String, Object> request,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> updateGroup(@PathVariable("id") String id,
+        @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
@@ -196,21 +205,16 @@ public class HostGroupController {
      * @return the result
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(
-            @PathVariable("id") String id,
-            @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
-            ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(@PathVariable("id") String id,
+        @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
+        ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             try {
                 boolean deleted;
                 if (force) {
-                    deleted = hostGroupService.forceDeleteGroup(
-                            id,
-                            clusterService,
-                            hostService,
-                            businessServiceService
-                    );
+                    deleted =
+                        hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
                 } else {
                     deleted = hostGroupService.deleteGroup(id, clusterService);
                 }
