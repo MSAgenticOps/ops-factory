@@ -34,6 +34,12 @@ public class InstanceWatchdog {
     private final PrewarmService prewarmService;
     private final AgentConfigService agentConfigService;
 
+    /**
+     * Creates the instance watchdog instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public InstanceWatchdog(InstanceManager instanceManager, GatewayProperties properties,
                             PrewarmService prewarmService,
                             AgentConfigService agentConfigService) {
@@ -82,7 +88,7 @@ public class InstanceWatchdog {
                 if (instance.getProcess() != null) {
                     exitCode = instance.getProcess().exitValue();
                 }
-            } catch (IllegalThreadStateException ignored) {
+            } catch (IllegalThreadStateException e) {
                 // Should not happen since isAlive() returned false
             }
 

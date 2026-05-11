@@ -53,6 +53,12 @@ public class CommandWhitelistService {
     private Path gatewayRoot;
     private Path whitelistFile;
 
+    /**
+     * Creates the command whitelist service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public CommandWhitelistService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -248,9 +254,13 @@ public class CommandWhitelistService {
 
         for (String sub : splitShellPipe(command)) {
             String trimmed = sub.trim();
-            if (trimmed.isEmpty()) continue;
+            if (trimmed.isEmpty()) {
+                continue;
+            }
             String normalized = normalizeSubcommand(trimmed);
-            if (normalized.isEmpty()) continue;
+            if (normalized.isEmpty()) {
+                continue;
+            }
 
             // Find the longest matching pattern
             String bestRisk = null;
@@ -264,7 +274,9 @@ public class CommandWhitelistService {
                 }
             }
             String risk = bestRisk != null ? bestRisk : "high";
-            if ("high".equals(risk)) return "high";
+            if ("high".equals(risk)) {
+                return "high";
+            }
             if ("medium".equals(risk) && "low".equals(highestRisk)) highestRisk = "medium";
         }
         return highestRisk;
@@ -281,12 +293,16 @@ public class CommandWhitelistService {
     private String normalizeSubcommand(String sub) {
         String[] parts = sub.trim().split("\\s+", 2);
         String firstWord = parts[0].trim();
-        if (firstWord.isEmpty()) return "";
+        if (firstWord.isEmpty()) {
+            return "";
+        }
         // Strip path prefix from first word
         if (firstWord.contains("/")) {
             firstWord = firstWord.substring(firstWord.lastIndexOf('/') + 1);
         }
-        if (parts.length == 1) return firstWord;
+        if (parts.length == 1) {
+            return firstWord;
+        }
         return firstWord + " " + parts[1].trim();
     }
 
@@ -324,21 +340,29 @@ public class CommandWhitelistService {
                 current.append(c).append(command.charAt(++i));
                 continue;
             }
-            if (c == '\'' && !inDouble) { inSingle = !inSingle; current.append(c); continue; }
-            if (c == '"'  && !inSingle) { inDouble = !inDouble; current.append(c); continue; }
+            if (c == '\'' && !inDouble) {
+                inSingle = !inSingle;
+                current.append(c); continue;
+            }
+            if (c == '"'  && !inSingle) {
+                inDouble = !inDouble;
+                current.append(c); continue;
+            }
             if (!inSingle && !inDouble) {
                 // Handle || (logical OR)
                 if (c == '|' && i + 1 < command.length() && command.charAt(i + 1) == '|') {
                     parts.add(current.toString());
                     current.setLength(0);
-                    i++; // skip second |
+                    // skip second |
+                    i++;
                     continue;
                 }
                 // Handle && (logical AND)
                 if (c == '&' && i + 1 < command.length() && command.charAt(i + 1) == '&') {
                     parts.add(current.toString());
                     current.setLength(0);
-                    i++; // skip second &
+                    // skip second &
+                    i++;
                     continue;
                 }
                 // Handle | (pipe) and ; (semicolon)
@@ -379,7 +403,7 @@ public class CommandWhitelistService {
 
             writeWhitelistFile(whitelist);
             log.info("Initialized default command whitelist with {} commands", commands.size());
-        } catch (Exception e) {
+        } catch (IOException | IllegalStateException e) {
             log.error("Failed to initialize default command whitelist", e);
         }
     }
@@ -410,7 +434,7 @@ public class CommandWhitelistService {
             Files.writeString(whitelistFile, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to write command whitelist file: {}", whitelistFile, e);
-            throw new RuntimeException("Failed to save command whitelist", e);
+            throw new IllegalStateException("Failed to save command whitelist", e);
         }
     }
 

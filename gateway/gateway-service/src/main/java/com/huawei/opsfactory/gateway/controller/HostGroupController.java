@@ -9,8 +9,6 @@ import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,13 +30,17 @@ import java.util.Set;
 @RestController
 @RequestMapping("/gateway/host-groups")
 public class HostGroupController {
-    private static final Logger log = LoggerFactory.getLogger(HostGroupController.class);
-
     private final HostGroupService hostGroupService;
     private final ClusterService clusterService;
     private final BusinessServiceService businessServiceService;
     private final HostService hostService;
 
+    /**
+     * Creates the host group controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
                                BusinessServiceService businessServiceService, HostService hostService) {
         this.hostGroupService = hostGroupService;
@@ -118,7 +120,7 @@ public class HostGroupController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host group not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -142,11 +144,10 @@ public class HostGroupController {
                 body.put("success", true);
                 body.put("group", group);
                 return ResponseEntity.status(HttpStatus.CREATED).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create host group", e);
+            } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Invalid host group request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -174,14 +175,8 @@ public class HostGroupController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host group not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update host group {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -202,7 +197,12 @@ public class HostGroupController {
             try {
                 boolean deleted;
                 if (force) {
-                    deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
+                    deleted = hostGroupService.forceDeleteGroup(
+                            id,
+                            clusterService,
+                            hostService,
+                            businessServiceService
+                    );
                 } else {
                     deleted = hostGroupService.deleteGroup(id, clusterService);
                 }
@@ -218,7 +218,7 @@ public class HostGroupController {
             } catch (IllegalStateException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Host group delete conflict");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());

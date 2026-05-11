@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -19,6 +23,12 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+/**
+ * Test coverage for Remote Execution Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RunWith(MockitoJUnitRunner.class)
 public class RemoteExecutionServiceTest {
     @Rule
@@ -39,6 +49,12 @@ public class RemoteExecutionServiceTest {
     private RemoteExecutionService remoteExecutionService;
     private GatewayProperties properties;
 
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         properties = new GatewayProperties();
@@ -49,6 +65,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: host not found ──────────────────────────────────
 
+    /**
+     * Tests execute host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_hostNotFound() {
         when(hostService.getHostWithCredential("nonexistent"))
@@ -63,6 +85,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: command rejected by whitelist ───────────────────
 
+    /**
+     * Tests execute command rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_commandRejected() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -86,11 +114,18 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: SSH connection fails (invalid host) ─────────────
 
+    /**
+     * Tests execute ssh connection fails.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_sshConnectionFails() {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "BadHost");
-        host.put("ip", "256.256.256.256"); // invalid IP
+        // invalid IP
+        host.put("ip", "256.256.256.256");
         host.put("port", 22);
         host.put("username", "root");
         host.put("authType", "password");
@@ -109,6 +144,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: whitelist validation passes, SSH fails gracefully ─
 
+    /**
+     * Tests execute whitelist checked before ssh.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_whitelistCheckedBeforeSsh() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -133,6 +174,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: port from Number ────────────────────────────────
 
+    /**
+     * Tests execute host with non default port.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_hostWithNonDefaultPort() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -153,6 +200,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: key auth type ───────────────────────────────────
 
+    /**
+     * Tests execute key auth type.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_keyAuthType() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -174,6 +227,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: missing port uses default 22 ────────────────────
 
+    /**
+     * Tests execute missing port defaults to22.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_missingPortDefaultsTo22() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -193,6 +252,12 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: empty command ───────────────────────────────────
 
+    /**
+     * Tests execute empty command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_emptyCommand() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -212,6 +277,12 @@ public class RemoteExecutionServiceTest {
 
     // ── env variable replacement + command prefix ─────────────────
 
+    /**
+     * Tests execute host without cluster no prefix no vars.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_hostWithoutCluster_noPrefixNoVars() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -232,6 +303,12 @@ public class RemoteExecutionServiceTest {
         // SSH will fail but command was processed without prefix/vars
     }
 
+    /**
+     * Tests execute env vars replaced before whitelist check.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_envVarsReplacedBeforeWhitelistCheck() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -271,6 +348,12 @@ public class RemoteExecutionServiceTest {
         assertTrue(((List<?>) result.get("rejectedCommands")).contains("cd"));
     }
 
+    /**
+     * Tests execute with cluster type prefix applied to ssh command.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_withClusterTypePrefix_appliedToSshCommand() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -309,6 +392,12 @@ public class RemoteExecutionServiceTest {
         verify(commandWhitelistService).validateCommand("cd /opt/nslb && ls");
     }
 
+    /**
+     * Tests execute no matching cluster type no prefix no vars.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_noMatchingClusterType_noPrefixNoVars() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -337,6 +426,12 @@ public class RemoteExecutionServiceTest {
         assertNotNull(result);
     }
 
+    /**
+     * Tests execute cluster service throws handled gracefully.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testExecute_clusterServiceThrows_handledGracefully() {
         Map<String, Object> host = new LinkedHashMap<>();

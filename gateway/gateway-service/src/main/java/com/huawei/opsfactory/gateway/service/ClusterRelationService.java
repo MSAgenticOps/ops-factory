@@ -45,6 +45,12 @@ public class ClusterRelationService {
     private ClusterTypeService clusterTypeService;
     private BusinessServiceService businessServiceService;
 
+    /**
+     * Creates the cluster relation service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ClusterRelationService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -130,22 +136,24 @@ public class ClusterRelationService {
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
             for (Path file : stream) {
-                if (!Files.isRegularFile(file)) continue;
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel == null) continue;
-                    if (clusterId != null && !clusterId.isEmpty()) {
-                        String sourceId = (String) rel.get("sourceId");
-                        String targetId = (String) rel.get("targetId");
-                        String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
-                        boolean match = clusterId.equals(targetId)
-                                || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
-                        if (!match) continue;
-                    }
-                    relations.add(rel);
-                } catch (Exception e) {
-                    log.warn("Failed to read cluster-relation file: {}", file, e);
+                if (!Files.isRegularFile(file)) {
+                    continue;
                 }
+                Map<String, Object> rel = readFile(file);
+                if (rel == null) {
+                    continue;
+                }
+                if (clusterId != null && !clusterId.isEmpty()) {
+                    String sourceId = (String) rel.get("sourceId");
+                    String targetId = (String) rel.get("targetId");
+                    String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
+                    boolean match = clusterId.equals(targetId)
+                            || (clusterId.equals(sourceId) && "cluster".equals(sourceType));
+                    if (!match) {
+                        continue;
+                    }
+                }
+                relations.add(rel);
             }
         } catch (IOException e) {
             log.error("Failed to list cluster-relations from {}", relationsDir, e);
@@ -206,7 +214,13 @@ public class ClusterRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId, targetId);
+        log.info(
+                "Created cluster relation: id={}, sourceType={}, source={}, target={}",
+                id,
+                sourceType,
+                sourceId,
+                targetId
+        );
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -304,6 +318,9 @@ public class ClusterRelationService {
 
     /**
      * Delete all relations involving a specific cluster (cascade delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteRelationsByCluster(String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -326,6 +343,9 @@ public class ClusterRelationService {
 
     /**
      * Delete all relations where source is a specific business service (cascade delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -392,13 +412,21 @@ public class ClusterRelationService {
                 existing.put("sourceId", clusterId);
                 existing.put("updatedAt", Instant.now().toString());
                 writeEntityFile((String) existing.get("id"), existing);
-                log.info("Updated 包含 relation: cluster={} -> host={} (was cluster={})", clusterId, hostId, currentSource);
+                log.info(
+                        "Updated 包含 relation: cluster={} -> host={} (was cluster={})",
+                        clusterId,
+                        hostId,
+                        currentSource
+                );
             }
         }
     }
 
     /**
      * Delete the 包含 relation for a host (used on host delete).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteConstituteRelationByHost(String hostId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -418,6 +446,9 @@ public class ClusterRelationService {
 
     /**
      * Build cluster-level graph data for a given group.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getGraphData(String groupId) {
@@ -460,13 +491,17 @@ public class ClusterRelationService {
                     try {
                         Map<String, Object> tc = clusterService.getCluster(targetId);
                         clusterMap.put(targetId, tc);
-                    } catch (Exception ignored) {}
+                    } catch (IllegalArgumentException e) {
+                        log.debug("Skipping missing target cluster {} while building topology", targetId);
+                    }
                 }
                 if (targetInGroup && "cluster".equals(sourceType) && !clusterMap.containsKey(sourceId)) {
                     try {
                         Map<String, Object> sc = clusterService.getCluster(sourceId);
                         clusterMap.put(sourceId, sc);
-                    } catch (Exception ignored) {}
+                    } catch (IllegalArgumentException e) {
+                        log.debug("Skipping missing source cluster {} while building topology", sourceId);
+                    }
                 }
 
                 // Track business service nodes
@@ -474,7 +509,9 @@ public class ClusterRelationService {
                     try {
                         Map<String, Object> bs = businessServiceService.getBusinessService(sourceId);
                         bsNodes.put(sourceId, bs);
-                    } catch (Exception ignored) {}
+                    } catch (IllegalArgumentException e) {
+                        log.debug("Skipping missing business service {} while building topology", sourceId);
+                    }
                 }
 
                 matchedEdges.add(rel);
@@ -489,7 +526,9 @@ public class ClusterRelationService {
                         try {
                             Map<String, Object> h = hostService.getHost(targetId);
                             hostNodes.put(targetId, h);
-                        } catch (Exception ignored) {}
+                        } catch (IllegalArgumentException e) {
+                            log.debug("Skipping missing host {} while building topology", targetId);
+                        }
                     }
                 }
             }
@@ -583,6 +622,9 @@ public class ClusterRelationService {
 
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given cluster.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getClusterNeighbors(String clusterId) {
@@ -606,7 +648,9 @@ public class ClusterRelationService {
             String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
 
             // Skip business-service relations for cluster topology
-            if ("business-service".equals(sourceType)) continue;
+            if ("business-service".equals(sourceType)) {
+                continue;
+            }
 
             if (clusterId.equals(sourceId)) {
                 // Current cluster is source -> downstream
@@ -624,7 +668,9 @@ public class ClusterRelationService {
                     entry.put("direction", "outgoing");
                     entry.put("description", rel.get("description"));
                     downstream.add(entry);
-                } catch (Exception ignored) {}
+                } catch (IllegalArgumentException e) {
+                    log.debug("Skipping missing downstream cluster {}", targetId);
+                }
             }
             if (clusterId.equals(targetId)) {
                 // Current cluster is target -> upstream
@@ -642,7 +688,9 @@ public class ClusterRelationService {
                     entry.put("direction", "incoming");
                     entry.put("description", rel.get("description"));
                     upstream.add(entry);
-                } catch (Exception ignored) {}
+                } catch (IllegalArgumentException e) {
+                    log.debug("Skipping missing upstream cluster {}", sourceId);
+                }
             }
         }
 
@@ -655,6 +703,9 @@ public class ClusterRelationService {
 
     /**
      * Get host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten to host list.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getHostNeighborsByCluster(String hostId) {
@@ -697,7 +748,9 @@ public class ClusterRelationService {
     // ── Helpers ──────────────────────────────────────────────────────
 
     private String resolveClusterTypeMode(String typeName) {
-        if (typeName == null || typeName.isEmpty() || clusterTypeService == null) return "peer";
+        if (typeName == null || typeName.isEmpty() || clusterTypeService == null) {
+            return "peer";
+        }
         for (Map<String, Object> ct : clusterTypeService.listClusterTypes()) {
             String ctName = ct.get("name") != null ? ct.get("name").toString() : "";
             if (typeName.equals(ctName)) {
@@ -724,7 +777,9 @@ public class ClusterRelationService {
         try {
             List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
             // Already collected direct clusters; nothing more needed since listClusters(groupId) already handles that
-        } catch (Exception ignored) {}
+        } catch (IllegalArgumentException e) {
+            log.debug("Skipping subgroup cluster collection for group {}", groupId);
+        }
     }
 
     private Map<String, Object> buildClusterNode(Map<String, Object> cluster, String mode, int hostCount) {
@@ -761,7 +816,7 @@ public class ClusterRelationService {
                 Map<String, Object> cluster = clusterService.getCluster(clusterId);
                 node.put("clusterType", cluster.get("type"));
                 node.put("clusterName", cluster.get("name"));
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 node.put("clusterType", null);
                 node.put("clusterName", null);
             }
@@ -781,7 +836,7 @@ public class ClusterRelationService {
             Map<String, Object> cluster = clusterService.getCluster(clusterId);
             Object gid = cluster.get("groupId");
             return gid != null ? gid.toString() : null;
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             return null;
         }
     }

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.e2e;
 
 import org.junit.Before;
@@ -14,10 +18,18 @@ import static org.mockito.Mockito.when;
  * Extended E2E tests for FileController covering:
  * - Path traversal via controller (returns 403)
  * - Upload without multipart content type (returns 400)
+ *
  * @author x00000000
  * @since 2026-05-09
  */
 public class FileEndpointExtendedE2ETest extends BaseE2ETest {
+
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
@@ -26,8 +38,12 @@ public class FileEndpointExtendedE2ETest extends BaseE2ETest {
                         .resolve("agents").resolve(inv.getArgument(1, String.class)));
     }
 
-    // ====================== Path traversal ======================
-
+    /**
+     * Returns the file path traversal returns403.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getFile_pathTraversal_returns403() {
         // The PathSanitizer.isSafe check in the controller should block this
@@ -40,8 +56,12 @@ public class FileEndpointExtendedE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
-    // ====================== Upload without multipart ======================
-
+    /**
+     * Executes the upload file not multipart returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void uploadFile_notMultipart_returns400() {
         webClient.post().uri("/gateway/agents/test-agent/files/upload")

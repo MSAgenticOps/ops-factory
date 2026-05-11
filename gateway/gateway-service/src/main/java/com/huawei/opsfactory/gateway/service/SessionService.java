@@ -30,6 +30,12 @@ public class SessionService {
     private final com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy;
     private final WebClient webClient;
 
+    /**
+     * Creates the session service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SessionService(InstanceManager instanceManager,
                           com.huawei.opsfactory.gateway.proxy.GoosedProxy goosedProxy) {
         this.instanceManager = instanceManager;
@@ -39,6 +45,9 @@ public class SessionService {
 
     /**
      * Query sessions from a specific goosed instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<String> getSessionsFromInstance(ManagedInstance instance) {
         String url = goosedProxy.goosedBaseUrl(instance.getPort()) + "/sessions";

@@ -1,11 +1,22 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.springframework.core.io.Resource;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,12 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 /**
  * Extended tests for FileService covering:
  * - isAllowedExtension
@@ -27,6 +32,7 @@ import static org.junit.Assert.assertTrue;
  * - SKIP_FILES filtering in listFiles
  * - resolveFile fallback search
  * - Hidden directory filtering
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -36,13 +42,23 @@ public class FileServiceExtendedTest {
 
     private FileService fileService;
 
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         fileService = new FileService(new GatewayProperties());
     }
 
-    // ====================== isAllowedExtension ======================
-
+    /**
+     * Tests is allowed extension allowed types.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsAllowedExtension_allowedTypes() {
         assertTrue(fileService.isAllowedExtension("report.txt"));
@@ -55,6 +71,12 @@ public class FileServiceExtendedTest {
         assertTrue(fileService.isAllowedExtension("log.log"));
     }
 
+    /**
+     * Tests is allowed extension blocked types.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsAllowedExtension_blockedTypes() {
         assertFalse(fileService.isAllowedExtension("virus.exe"));
@@ -67,12 +89,24 @@ public class FileServiceExtendedTest {
         assertFalse(fileService.isAllowedExtension("screensaver.scr"));
     }
 
+    /**
+     * Tests is allowed extension no extension allowed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsAllowedExtension_noExtension_allowed() {
         assertTrue(fileService.isAllowedExtension("Makefile"));
         assertTrue(fileService.isAllowedExtension("Dockerfile"));
     }
 
+    /**
+     * Tests is allowed extension unknown extension rejected.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsAllowedExtension_unknownExtension_rejected() {
         // Unknown extension is not in ALLOWED set → rejected (unless blocked explicitly)
@@ -80,6 +114,12 @@ public class FileServiceExtendedTest {
         assertFalse(fileService.isAllowedExtension("file.abc"));
     }
 
+    /**
+     * Tests is allowed extension case insensitive.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsAllowedExtension_caseInsensitive() {
         assertTrue(fileService.isAllowedExtension("image.PNG"));
@@ -87,8 +127,12 @@ public class FileServiceExtendedTest {
         assertFalse(fileService.isAllowedExtension("virus.EXE"));
     }
 
-    // ====================== SKIP_DIRS filtering ======================
-
+    /**
+     * Tests list files skips dirs data.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsDirs_data() throws IOException {
         File dataDir = tempFolder.newFolder("data");
@@ -100,6 +144,12 @@ public class FileServiceExtendedTest {
         assertEquals("visible.txt", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips dirs state.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsDirs_state() throws IOException {
         File stateDir = tempFolder.newFolder("state");
@@ -110,6 +160,12 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
+    /**
+     * Tests list files skips dirs config.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsDirs_config() throws IOException {
         File configDir = tempFolder.newFolder("config");
@@ -121,6 +177,12 @@ public class FileServiceExtendedTest {
         assertEquals("readme.md", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips dirs node modules.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsDirs_nodeModules() throws IOException {
         File nodeModules = tempFolder.newFolder("node_modules");
@@ -131,6 +193,12 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
+    /**
+     * Tests list files skips dirs dot goose.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsDirs_dotGoose() throws IOException {
         File gooseDir = tempFolder.newFolder(".goose");
@@ -141,8 +209,12 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
-    // ====================== Hidden dirs (starting with .) ======================
-
+    /**
+     * Tests list files skips hidden dirs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsHiddenDirs() throws IOException {
         File hiddenDir = tempFolder.newFolder(".hidden");
@@ -154,8 +226,12 @@ public class FileServiceExtendedTest {
         assertEquals("visible.txt", files.get(0).get("name"));
     }
 
-    // ====================== SKIP_FILES filtering ======================
-
+    /**
+     * Tests list files skips dsstore.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsDSStore() throws IOException {
         createFile(new File(tempFolder.getRoot(), ".DS_Store"), "");
@@ -166,6 +242,12 @@ public class FileServiceExtendedTest {
         assertEquals("file.txt", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips agentsmd.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsAGENTSmd() throws IOException {
         createFile(new File(tempFolder.getRoot(), "AGENTS.md"), "# Agents");
@@ -176,6 +258,12 @@ public class FileServiceExtendedTest {
         assertEquals("notes.md", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips gitkeep.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_skipsGitkeep() throws IOException {
         createFile(new File(tempFolder.getRoot(), ".gitkeep"), "");
@@ -185,8 +273,12 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
-    // ====================== resolveFile fallback search ======================
-
+    /**
+     * Tests resolve file fallback search finds in subdir.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResolveFile_fallbackSearch_findsInSubdir() throws IOException {
         File subDir = tempFolder.newFolder("uploads");
@@ -197,6 +289,12 @@ public class FileServiceExtendedTest {
         assertNull(resource);
     }
 
+    /**
+     * Tests resolve file fallback search skips skip dirs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResolveFile_fallbackSearch_skipsSkipDirs() throws IOException {
         File dataDir = tempFolder.newFolder("data");
@@ -207,6 +305,12 @@ public class FileServiceExtendedTest {
         assertNull(resource);
     }
 
+    /**
+     * Tests resolve file direct path exists in subdir.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResolveFile_directPath_existsInSubdir() throws IOException {
         File subDir = tempFolder.newFolder("docs");
@@ -217,25 +321,38 @@ public class FileServiceExtendedTest {
         assertTrue(resource.exists());
     }
 
-    // ====================== output file diff filtering ======================
-
+    /**
+     * Tests diff files ignores internal mcp logs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testDiffFiles_ignoresInternalMcpLogs() {
         List<Map<String, Object>> before = List.of(
-                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 100L, "2026-04-08T06:58:57Z"));
+                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 100L,
+                        "2026-04-08T06:58:57Z"));
         List<Map<String, Object>> after = List.of(
-                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 120L, "2026-04-08T07:00:27Z"));
+                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 120L,
+                        "2026-04-08T07:00:27Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
         assertTrue(changed.isEmpty());
     }
 
+    /**
+     * Tests diff files keeps user generated files.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testDiffFiles_keepsUserGeneratedFiles() {
         List<Map<String, Object>> before = new ArrayList<>();
         List<Map<String, Object>> after = List.of(
-                snapshot("reports/platform-status.md", "platform-status.md", "md", 256L, "2026-04-08T07:00:27Z"));
+                snapshot("reports/platform-status.md", "platform-status.md", "md", 256L,
+                        "2026-04-08T07:00:27Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -245,12 +362,20 @@ public class FileServiceExtendedTest {
         assertEquals("md", changed.get(0).get("ext"));
     }
 
+    /**
+     * Tests diff files keeps same relative path from different roots.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testDiffFiles_keepsSameRelativePathFromDifferentRoots() {
         List<Map<String, Object>> before = new ArrayList<>();
         List<Map<String, Object>> after = List.of(
-                snapshotWithRoot("workingDir", "example-file.md", "example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"),
-                snapshotWithRoot("output", "example-file.md", "output/example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"));
+                snapshotWithRoot("workingDir", "example-file.md", "example-file.md",
+                        "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"),
+                snapshotWithRoot("output", "example-file.md", "output/example-file.md",
+                        "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -261,6 +386,12 @@ public class FileServiceExtendedTest {
         assertEquals("output/example-file.md", changed.get(1).get("displayPath"));
     }
 
+    /**
+     * Tests list top level files skips files in subdirectories.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListTopLevelFiles_skipsFilesInSubdirectories() throws IOException {
         createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
@@ -272,6 +403,12 @@ public class FileServiceExtendedTest {
         assertEquals("summary.md", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files default scan roots include output non recursive.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_defaultScanRootsIncludeOutputNonRecursive() throws IOException {
         createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
@@ -294,6 +431,12 @@ public class FileServiceExtendedTest {
         assertFalse(byName.containsKey("chart.png"));
     }
 
+    /**
+     * Tests list capsule relevant files uses files scan roots.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListCapsuleRelevantFiles_usesFilesScanRoots() throws IOException {
         createFile(new File(tempFolder.getRoot(), "example-file.md"), "# Root");
@@ -310,6 +453,12 @@ public class FileServiceExtendedTest {
         assertEquals("output/example-file.md", files.get(1).get("displayPath"));
     }
 
+    /**
+     * Tests list files recursive scan root includes nested files.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_recursiveScanRootIncludesNestedFiles() throws IOException {
         GatewayProperties properties = new GatewayProperties();
@@ -335,11 +484,18 @@ public class FileServiceExtendedTest {
         assertFalse(byPath.containsKey(".hidden/secret.md"));
     }
 
+    /**
+     * Tests list files recursive scan root honors configured exclude dirs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_recursiveScanRootHonorsConfiguredExcludeDirs() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir",
+                "${userAgentDir}", true);
         root.setExcludeDirs(List.of("tmp-output"));
         filesConfig.setScanRoots(List.of(root));
         properties.setFiles(filesConfig);
@@ -359,11 +515,18 @@ public class FileServiceExtendedTest {
         assertFalse(byPath.containsKey("tmp-output/hidden.md"));
     }
 
+    /**
+     * Tests list files recursive scan root honors max depth.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_recursiveScanRootHonorsMaxDepth() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir",
+                "${userAgentDir}", true);
         root.setMaxDepth(1);
         filesConfig.setScanRoots(List.of(root));
         properties.setFiles(filesConfig);
@@ -385,11 +548,18 @@ public class FileServiceExtendedTest {
         assertFalse(byPath.containsKey("level-one/level-two/hidden.md"));
     }
 
+    /**
+     * Tests list files recursive scan root honors max files.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_recursiveScanRootHonorsMaxFiles() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir", "${userAgentDir}", true);
+        GatewayProperties.FileScanRoot root = new GatewayProperties.FileScanRoot("workingDir",
+                "${userAgentDir}", true);
         root.setMaxFiles(2);
         filesConfig.setScanRoots(List.of(root));
         properties.setFiles(filesConfig);
@@ -413,7 +583,15 @@ public class FileServiceExtendedTest {
                 "modifiedAt", modifiedAt);
     }
 
-    private Map<String, Object> snapshotWithRoot(String rootId, String path, String displayPath, String name, String type, long size, String modifiedAt) {
+    private Map<String, Object> snapshotWithRoot(
+            String rootId,
+            String path,
+            String displayPath,
+            String name,
+            String type,
+            long size,
+            String modifiedAt
+    ) {
         return Map.of(
                 "rootId", rootId,
                 "path", path,

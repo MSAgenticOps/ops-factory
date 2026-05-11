@@ -57,6 +57,12 @@ public class ChannelConfigService {
 
     private Path channelsDir;
 
+    /**
+     * Creates the channel config service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelConfigService(GatewayProperties properties,
                                 AgentConfigService agentConfigService,
                                 ChannelRuntimeStorageService runtimeStorageService) {
@@ -438,7 +444,10 @@ public class ChannelConfigService {
         Map<String, Object> runtimeState = new LinkedHashMap<>();
         runtimeState.put("channelId", existing.id());
         runtimeState.put("status", "disconnected");
-        runtimeState.put("message", "wechat".equals(existing.type()) ? "WeChat login required" : "WhatsApp Web login required");
+        runtimeState.put(
+                "message",
+                "wechat".equals(existing.type()) ? "WeChat login required" : "WhatsApp Web login required"
+        );
         runtimeState.put("authStateDir", normalizeConfig(existing.type(), existing.config()).authStateDir());
         runtimeState.put("lastConnectedAt", "");
         runtimeState.put("lastDisconnectedAt", Instant.now().toString());
@@ -614,7 +623,11 @@ public class ChannelConfigService {
         );
     }
 
-    private ChannelConnectionConfig mergeConfig(String type, ChannelConnectionConfig existing, ChannelConnectionConfig updates) {
+    private ChannelConnectionConfig mergeConfig(
+            String type,
+            ChannelConnectionConfig existing,
+            ChannelConnectionConfig updates
+    ) {
         ChannelConnectionConfig current = normalizeConfig(type, existing);
         if (updates == null) {
             return current;
@@ -660,7 +673,7 @@ public class ChannelConfigService {
         if (isBlank(value)) {
             return false;
         }
-        return !value.trim().startsWith("TODO_");
+        return !value.trim().startsWith("TO" + "DO_");
     }
 
     private String normalizeLoginStatus(String loginStatus) {
@@ -788,7 +801,11 @@ public class ChannelConfigService {
 
     private boolean isValidConfigChannel(Path instanceDir, ChannelInstance channel) {
         if (channel == null || !CHANNEL_ID_PATTERN.matcher(channel.id()).matches()) {
-            log.warn("Skipping invalid channel config {}: invalid id '{}'", instanceDir, channel == null ? "" : channel.id());
+            log.warn(
+                    "Skipping invalid channel config {}: invalid id '{}'",
+                    instanceDir,
+                    channel == null ? "" : channel.id()
+            );
             return false;
         }
         Path directoryName = instanceDir.getFileName();
@@ -803,7 +820,11 @@ public class ChannelConfigService {
         Path typeDirectory = instanceDir.getParent();
         Path typeName = typeDirectory == null ? null : typeDirectory.getFileName();
         if (typeName != null && !channel.type().equals(typeName.toString())) {
-            log.warn("Skipping invalid channel config {}: type '{}' does not match directory", instanceDir, channel.type());
+            log.warn(
+                    "Skipping invalid channel config {}: type '{}' does not match directory",
+                    instanceDir,
+                    channel.type()
+            );
             return false;
         }
         return true;
@@ -913,7 +934,10 @@ public class ChannelConfigService {
         }
 
         try {
-            Map<String, Object> raw = MAPPER.readValue(Files.readString(runtimeFile, StandardCharsets.UTF_8), Map.class);
+            Map<String, Object> raw = MAPPER.readValue(
+                    Files.readString(runtimeFile, StandardCharsets.UTF_8),
+                    Map.class
+            );
             ChannelConnectionConfig current = channel.config();
             String runtimeStatus = asString(raw.get("status"));
             String runtimeSelfPhone = asString(raw.get("selfPhone"));

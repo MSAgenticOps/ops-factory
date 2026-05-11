@@ -28,6 +28,12 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 public class WeChatAdapter implements ChannelAdapter {
     private final ChannelConfigService channelConfigService;
 
+    /**
+     * Creates the we chat adapter instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public WeChatAdapter(ChannelConfigService channelConfigService) {
         this.channelConfigService = channelConfigService;
     }
@@ -80,17 +86,20 @@ public class WeChatAdapter implements ChannelAdapter {
                 : config.loginStatus().trim().toLowerCase(Locale.ROOT);
 
         return switch (status) {
-            case "connected" -> {
+            case "connected": {
                 channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.status",
                         "WeChat session is connected");
                 yield Mono.just(new ChannelConnectivityResult(true, "WeChat session connected"));
             }
-            case "pending" -> Mono.just(new ChannelConnectivityResult(false, "WeChat QR login is pending"));
-            case "error" -> Mono.just(new ChannelConnectivityResult(false,
-                    config.lastError() == null || config.lastError().isBlank()
-                            ? "WeChat connection error"
-                            : config.lastError()));
-            default -> Mono.just(new ChannelConnectivityResult(false, "WeChat login required"));
+            case "pending":
+                yield Mono.just(new ChannelConnectivityResult(false, "WeChat QR login is pending"));
+            case "error":
+                yield Mono.just(new ChannelConnectivityResult(false,
+                        config.lastError() == null || config.lastError().isBlank()
+                                ? "WeChat connection error"
+                                : config.lastError()));
+            default:
+                yield Mono.just(new ChannelConnectivityResult(false, "WeChat login required"));
         };
     }
 

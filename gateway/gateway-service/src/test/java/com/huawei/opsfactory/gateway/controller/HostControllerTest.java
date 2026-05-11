@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -15,7 +19,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,6 +27,12 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test coverage for Host Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RunWith(SpringRunner.class)
 @WebFluxTest(HostController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
@@ -48,6 +57,12 @@ public class HostControllerTest {
 
     // ── listHosts ────────────────────────────────────────────────
 
+    /**
+     * Tests list hosts empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListHosts_empty() {
         when(hostService.listHosts(any())).thenReturn(List.of());
@@ -62,6 +77,12 @@ public class HostControllerTest {
                 .jsonPath("$.hosts").isEmpty();
     }
 
+    /**
+     * Tests list hosts with hosts.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListHosts_withHosts() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -80,6 +101,12 @@ public class HostControllerTest {
                 .jsonPath("$.hosts[0].name").isEqualTo("Server1");
     }
 
+    /**
+     * Tests list hosts with tags filter.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListHosts_withTagsFilter() {
         when(hostService.listHosts(any())).thenReturn(List.of());
@@ -93,6 +120,12 @@ public class HostControllerTest {
 
     // ── getHost ──────────────────────────────────────────────────
 
+    /**
+     * Tests get host existing.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetHost_existing() {
         Map<String, Object> host = new LinkedHashMap<>();
@@ -111,6 +144,12 @@ public class HostControllerTest {
                 .jsonPath("$.host.id").isEqualTo("host-1");
     }
 
+    /**
+     * Tests get host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetHost_notFound() {
         when(hostService.getHost("nonexistent"))
@@ -125,6 +164,12 @@ public class HostControllerTest {
 
     // ── createHost ───────────────────────────────────────────────
 
+    /**
+     * Tests create host success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testCreateHost_success() {
         Map<String, Object> created = new LinkedHashMap<>();
@@ -149,6 +194,12 @@ public class HostControllerTest {
                 .jsonPath("$.host.id").isEqualTo("new-id");
     }
 
+    /**
+     * Tests create host error.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testCreateHost_error() {
         when(hostService.createHost(any()))
@@ -163,13 +214,20 @@ public class HostControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isBadRequest()
+                .expectStatus().is5xxServerError()
                 .expectBody()
-                .jsonPath("$.success").isEqualTo(false);
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.error").isEqualTo("Internal server error");
     }
 
     // ── updateHost ───────────────────────────────────────────────
 
+    /**
+     * Tests update host success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateHost_success() {
         Map<String, Object> updated = new LinkedHashMap<>();
@@ -192,6 +250,12 @@ public class HostControllerTest {
                 .jsonPath("$.host.name").isEqualTo("Updated");
     }
 
+    /**
+     * Tests update host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateHost_notFound() {
         when(hostService.updateHost(eq("nonexistent"), any()))
@@ -206,11 +270,17 @@ public class HostControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isBadRequest();
+                .expectStatus().isNotFound();
     }
 
     // ── deleteHost ───────────────────────────────────────────────
 
+    /**
+     * Tests delete host success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testDeleteHost_success() {
         when(hostService.deleteHost("host-1")).thenReturn(true);
@@ -224,6 +294,12 @@ public class HostControllerTest {
                 .jsonPath("$.success").isEqualTo(true);
     }
 
+    /**
+     * Tests delete host not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testDeleteHost_notFound() {
         when(hostService.deleteHost("nonexistent")).thenReturn(false);
@@ -239,6 +315,12 @@ public class HostControllerTest {
 
     // ── getTags ──────────────────────────────────────────────────
 
+    /**
+     * Tests get tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetTags() {
         when(hostService.getAllTags()).thenReturn(List.of("RCPA", "GMDB", "ALL"));
@@ -256,6 +338,12 @@ public class HostControllerTest {
 
     // ── testConnectivity ─────────────────────────────────────────
 
+    /**
+     * Tests connectivity success.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testConnectivity_success() {
         Map<String, Object> testResult = new LinkedHashMap<>();
@@ -274,6 +362,12 @@ public class HostControllerTest {
                 .jsonPath("$.reachable").isEqualTo(true);
     }
 
+    /**
+     * Tests connectivity failure.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testConnectivity_failure() {
         Map<String, Object> testResult = new LinkedHashMap<>();
@@ -292,6 +386,12 @@ public class HostControllerTest {
 
     // ── Auth tests ───────────────────────────────────────────────
 
+    /**
+     * Tests list hosts unauthorized no key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListHosts_unauthorized_noKey() {
         webTestClient.get().uri("/gateway/hosts/")
@@ -300,6 +400,12 @@ public class HostControllerTest {
                 .expectStatus().isUnauthorized();
     }
 
+    /**
+     * Tests list hosts forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListHosts_forbidden_nonAdmin() {
         webTestClient.get().uri("/gateway/hosts/")
@@ -309,6 +415,12 @@ public class HostControllerTest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Tests create host forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testCreateHost_forbidden_nonAdmin() {
         Map<String, Object> body = new LinkedHashMap<>();

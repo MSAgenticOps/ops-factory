@@ -34,6 +34,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.net.ssl.SSLSocketFactory;
 import java.security.cert.X509Certificate;
+import java.security.GeneralSecurityException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,9 +73,16 @@ public class InstanceManager {
 
     /** key = "agentId:userId" -> ManagedInstance */
     private final ConcurrentHashMap<String, ManagedInstance> instances = new ConcurrentHashMap<>();
+
     /** Per-key spawn locks to prevent concurrent spawns */
     private final ConcurrentHashMap<String, ReentrantLock> spawnLocks = new ConcurrentHashMap<>();
 
+    /**
+     * Creates the instance manager instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public InstanceManager(GatewayProperties properties,
                            PortAllocator portAllocator,
                            RuntimePreparer runtimePreparer,
@@ -95,15 +103,40 @@ public class InstanceManager {
     private static SSLSocketFactory createTrustAllSslFactory() {
         try {
             TrustManager[] trustAll = { new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+
+                /**
+                 * Returns the accepted issuers.
+                 *
+                 * @author x00000000
+                 * @since 2026-05-09
+                 */
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
+
+                /**
+                 * Executes the check client trusted operation.
+                 *
+                 * @author x00000000
+                 * @since 2026-05-09
+                 */
+                public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                }
+
+                /**
+                 * Executes the check server trusted operation.
+                 *
+                 * @author x00000000
+                 * @since 2026-05-09
+                 */
+                public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                }
             }};
             SSLContext sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAll, new java.security.SecureRandom());
             return sc.getSocketFactory();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create trust-all SSL factory", e);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Failed to create trust-all SSL factory", e);
         }
     }
 
@@ -122,20 +155,29 @@ public class InstanceManager {
                 log.info("Auto-starting resident instance for {}:{}", target.agentId(), target.userId());
                 ManagedInstance instance = doSpawn(target.agentId(), target.userId());
                 registerDefaultSchedules(target.agentId(), instance.getPort(), instance.getSecretKey());
-            } catch (Exception e) {
+            } catch (IOException e) {
                 log.error("Failed to auto-start resident instance for {}:{}: {}",
                         target.agentId(), target.userId(), e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Interrupted while auto-starting resident instance for {}:{}",
+                        target.agentId(), target.userId());
             }
         });
     }
 
     /**
      * Scan agent's config/recipes/ directory and register each recipe as a paused schedule.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private void registerDefaultSchedules(String agentId, int port, String secretKey) {
         Path recipesDir = agentConfigService.getAgentsDir()
                 .resolve(agentId).resolve("config").resolve("recipes");
-        if (!Files.isDirectory(recipesDir)) return;
+        if (!Files.isDirectory(recipesDir)) {
+            return;
+        }
 
         try {
             // Fetch existing schedules
@@ -156,7 +198,7 @@ public class InstanceManager {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (IOException | IllegalArgumentException e) {
                 log.warn("Failed to list existing schedules for {}: {}", agentId, e.getMessage());
             }
 
@@ -197,12 +239,12 @@ public class InstanceManager {
                         // Pause immediately
                         httpPost(port, "/schedule/" + scheduleId + "/pause", "{}", secretKey);
                         log.info("Registered schedule \"{}\" for {} (paused)", scheduleId, agentId);
-                    } catch (Exception e) {
+                    } catch (IOException | IllegalArgumentException e) {
                         log.warn("Error registering schedule {} for {}: {}", scheduleId, agentId, e.getMessage());
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Error scanning recipes for {}: {}", agentId, e.getMessage());
         }
     }
@@ -233,7 +275,7 @@ public class InstanceManager {
             } finally {
                 conn.disconnect();
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.debug("Health check failed for port {}: {}", port, e.getMessage());
             return false;
         }
@@ -324,7 +366,7 @@ public class InstanceManager {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
-    private ManagedInstance doSpawn(String agentId, String userId) throws Exception {
+    private ManagedInstance doSpawn(String agentId, String userId) throws IOException, InterruptedException {
         String key = ManagedInstance.buildKey(agentId, userId);
         long spawnStart = System.currentTimeMillis();
         ReentrantLock lock = spawnLocks.computeIfAbsent(key, k -> new ReentrantLock());
@@ -382,7 +424,7 @@ public class InstanceManager {
             // Drain stdout/stderr to prevent pipe buffer full → goosed write() blocks → tokio deadlock.
             // goosed's tracing subscriber writes every log to both file and stderr; if the pipe buffer
             // (~64KB) fills up, the write() syscall blocks a tokio worker thread, freezing the runtime.
-            Thread drainThread = new Thread(() -> {
+            Thread.ofPlatform().daemon(true).name("goosed-drain-" + agentId + "-" + userId).start(() -> {
                 try (var in = process.getInputStream()) {
                     byte[] buf = new byte[8192];
                     long totalBytes = 0;
@@ -396,9 +438,7 @@ public class InstanceManager {
                     log.debug("Drain thread for {}:{} ended with IOException: {}",
                             agentId, userId, e.getMessage());
                 }
-            }, "goosed-drain-" + agentId + "-" + userId);
-            drainThread.setDaemon(true);
-            drainThread.start();
+            });
 
             ManagedInstance instance = new ManagedInstance(agentId, userId, port, pid, process, instanceSecret);
             instances.put(key, instance);
@@ -410,14 +450,19 @@ public class InstanceManager {
             long readyMs = System.currentTimeMillis() - readyStart;
             instance.setStatus(ManagedInstance.Status.RUNNING);
             log.info("Instance {}:{} ready on port {} (pid={})", agentId, userId, port, pid);
-            log.info("[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} totalMs={}",
-                    agentId, userId, port, pid, prepareMs, processStartMs, readyMs,
-                    System.currentTimeMillis() - spawnStart);
-
+            log.info(
+                    "[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} "
+                            + "totalMs={}",
+                    agentId,
+                    userId,
+                    port,
+                    pid,
+                    prepareMs,
+                    processStartMs,
+                    readyMs,
+                    System.currentTimeMillis() - spawnStart
+            );
             return instance;
-        } catch (Exception e) {
-            log.error("Failed to spawn {}:{}", agentId, userId, e);
-            throw e;
         } finally {
             lock.unlock();
         }
@@ -430,7 +475,9 @@ public class InstanceManager {
      */
     private void resetStuckRunningSchedules(Path runtimeRoot) {
         Path scheduleFile = runtimeRoot.resolve("data").resolve("schedule.json");
-        if (!Files.exists(scheduleFile)) return;
+        if (!Files.exists(scheduleFile)) {
+            return;
+        }
         try {
             String content = Files.readString(scheduleFile, StandardCharsets.UTF_8);
             if (!content.contains("\"currently_running\":true") && !content.contains("\"currently_running\": true")) {
@@ -452,7 +499,7 @@ public class InstanceManager {
                         StandardCharsets.UTF_8);
                 log.info("Reset stuck currently_running flags in {}", scheduleFile);
             }
-        } catch (Exception e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to reset schedule state in {}: {}", scheduleFile, e.getMessage());
         }
     }
@@ -521,7 +568,7 @@ public class InstanceManager {
         return env;
     }
 
-    private void waitForReady(int port, Process process) throws Exception {
+    private void waitForReady(int port, Process process) throws IOException, InterruptedException {
         String baseUrl = goosedBaseUrl(port);
         URL url = new URL(baseUrl + "/status");
         String healthCheckUrl = url.toString();
@@ -561,19 +608,24 @@ public class InstanceManager {
         if (!ProcessUtil.isAlive(process)) {
             throw processExitedException(process, port);
         }
-        log.error("goosed failed to start on port {} after {} attempts - process is alive but not responding. Health check URL: {}",
-                port, GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS, healthCheckUrl);
-        throw new RuntimeException("goosed failed to start on port " + port
+        log.error(
+                "goosed failed to start on port {} after {} attempts - process is alive but not responding. "
+                        + "Health check URL: {}",
+                port,
+                GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS,
+                healthCheckUrl
+        );
+        throw new IllegalStateException("goosed failed to start on port " + port
                 + " (process alive but not responding after "
                 + GatewayConstants.HEALTH_CHECK_MAX_ATTEMPTS + " attempts)");
     }
 
-    private RuntimeException processExitedException(Process process, int port) {
+    private IllegalStateException processExitedException(Process process, int port) {
         int exitCode = process.exitValue();
         String output = ProcessUtil.readOutput(process, 4096);
         log.error("goosed process exited unexpectedly on port {}, exitCode={}, output (first 4KB): {}",
                 port, exitCode, output);
-        return new RuntimeException("goosed process exited with code " + exitCode
+        return new IllegalStateException("goosed process exited with code " + exitCode
                 + " on port " + port + ". Output: " + output);
     }
 
@@ -625,6 +677,9 @@ public class InstanceManager {
 
     /**
      * Stop all instances for a given agent across all users.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void stopAllForAgent(String agentId) {
         instances.values().stream()
@@ -635,6 +690,9 @@ public class InstanceManager {
 
     /**
      * Touch all instances for a user (keep them alive together).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void touchAllForUser(String userId) {
         for (ManagedInstance inst : instances.values()) {
@@ -663,15 +721,21 @@ public class InstanceManager {
           );
     }
 
+    /**
+     * Executes the stop all operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PreDestroy
     public void stopAll() {
         log.info("Stopping all instances...");
-        for (ManagedInstance inst : instances.values()) {
-            try {
-                stopInstance(inst);
-            } catch (Exception e) {
-                log.error("Error stopping {}:{}", inst.getAgentId(), inst.getUserId(), e);
-            }
+        for (ManagedInstance inst : List.copyOf(instances.values())) {
+            Mono.fromRunnable(() -> stopInstance(inst))
+                    .doOnError(error -> log.error("Error stopping {}:{}",
+                            inst.getAgentId(), inst.getUserId(), error))
+                    .onErrorResume(error -> Mono.empty())
+                    .block();
         }
     }
 }

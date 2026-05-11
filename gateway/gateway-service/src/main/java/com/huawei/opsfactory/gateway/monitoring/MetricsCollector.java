@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.monitoring;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -38,6 +39,12 @@ public class MetricsCollector {
     private final MetricsBuffer metricsBuffer;
     private long previousTotalTokens = -1;
 
+    /**
+     * Creates the metrics collector instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public MetricsCollector(InstanceManager instanceManager,
                             GoosedProxy goosedProxy,
                             MetricsBuffer metricsBuffer) {
@@ -56,7 +63,7 @@ public class MetricsCollector {
     public void collect() {
         try {
             doCollect();
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
             log.warn("Metrics collection failed: {}", e.getMessage());
         }
     }
@@ -77,7 +84,7 @@ public class MetricsCollector {
                                         node.path("total_tokens").asLong(0),
                                         node.path("total_sessions").asLong(0)
                                 };
-                            } catch (Exception e) {
+                            } catch (JsonProcessingException e) {
                                 return new long[]{0, 0};
                             }
                         })

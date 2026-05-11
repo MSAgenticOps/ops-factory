@@ -25,9 +25,11 @@ public final class YamlLoader {
     }
 
     /**
-     * Load a YAML file as a flat Map. Returns empty map if file does not exist.
+     * Loads a YAML file as a map and returns an empty map when the file is absent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> load(Path path) {
         if (!Files.exists(path)) {
             return Collections.emptyMap();
@@ -37,14 +39,17 @@ public final class YamlLoader {
             Map<String, Object> result = yaml.load(is);
             return result != null ? result : Collections.emptyMap();
         } catch (YAMLException e) {
-            throw new RuntimeException("Invalid YAML: " + path + ": " + e.getMessage(), e);
+            throw new IllegalStateException("Invalid YAML: " + path + ": " + e.getMessage(), e);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load YAML: " + path, e);
+            throw new IllegalStateException("Failed to load YAML: " + path, e);
         }
     }
 
     /**
-     * Get a string value from a nested map, returning defaultValue if absent.
+     * Returns a string value from a map, or the default when absent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static String getString(Map<String, Object> map, String key, String defaultValue) {
         Object val = map.get(key);
@@ -52,7 +57,10 @@ public final class YamlLoader {
     }
 
     /**
-     * Get an int value from a nested map, returning defaultValue if absent.
+     * Returns an integer value from a map, or the default when absent or invalid.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static int getInt(Map<String, Object> map, String key, int defaultValue) {
         Object val = map.get(key);

@@ -37,6 +37,12 @@ public class CatchAllProxyController {
     private final InstanceManager instanceManager;
     private final GoosedProxy goosedProxy;
 
+    /**
+     * Creates the catch all proxy controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public CatchAllProxyController(InstanceManager instanceManager, GoosedProxy goosedProxy) {
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;

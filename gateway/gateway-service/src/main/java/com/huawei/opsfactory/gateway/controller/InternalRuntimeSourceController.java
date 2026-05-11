@@ -47,6 +47,12 @@ public class InternalRuntimeSourceController {
     @Value("${server.address:0.0.0.0}")
     private String serverHost;
 
+    /**
+     * Creates the internal runtime source controller.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public InternalRuntimeSourceController(InstanceManager instanceManager,
                                            AgentConfigService agentConfigService,
                                            LangfuseService langfuseService,
@@ -226,8 +232,12 @@ public class InternalRuntimeSourceController {
         long hours = (seconds % 86400) / 3600;
         long minutes = (seconds % 3600) / 60;
         long secs = seconds % 60;
-        if (days > 0) return days + "d " + hours + "h " + minutes + "m";
-        if (hours > 0) return hours + "h " + minutes + "m";
+        if (days > 0) {
+            return days + "d " + hours + "h " + minutes + "m";
+        }
+        if (hours > 0) {
+            return hours + "h " + minutes + "m";
+        }
         return minutes + "m " + secs + "s";
     }
 

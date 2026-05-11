@@ -26,6 +26,12 @@ import reactor.core.publisher.Mono;
 public class WebFluxConfig {
     private final GatewayProperties properties;
 
+    /**
+     * Creates the web flux config instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public WebFluxConfig(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -51,7 +57,10 @@ public class WebFluxConfig {
                 headers.set("Vary", "Origin");
             }
             headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            headers.set("Access-Control-Allow-Headers", "x-secret-key, x-user-id, x-request-id, content-type, authorization");
+            headers.set(
+                    "Access-Control-Allow-Headers",
+                    "x-secret-key, x-user-id, x-request-id, content-type, authorization"
+            );
             headers.set("Access-Control-Expose-Headers", "*");
             headers.set("Access-Control-Max-Age", "3600");
 
@@ -69,7 +78,9 @@ public class WebFluxConfig {
     }
 
     private String resolveAllowOrigin(String configured, String requestOrigin) {
-        if (requestOrigin == null || requestOrigin.isBlank()) return null;
+        if (requestOrigin == null || requestOrigin.isBlank()) {
+            return null;
+        }
         if (configured == null || configured.isBlank() || "*".equals(configured.trim())) {
             return requestOrigin;
         }

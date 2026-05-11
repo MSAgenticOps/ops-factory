@@ -48,6 +48,12 @@ public class BusinessServiceService {
     private HostRelationService hostRelationService;
     private ClusterRelationService clusterRelationService;
 
+    /**
+     * Creates the business service service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public BusinessServiceService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -136,30 +142,26 @@ public class BusinessServiceService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> bs = readFile(file);
-                    if (bs == null) {
+                Map<String, Object> bs = readFile(file);
+                if (bs == null) {
+                    continue;
+                }
+                // Filter by groupId
+                if (groupId != null && !groupId.isEmpty()) {
+                    Object bsGroupId = bs.get("groupId");
+                    if (!groupId.equals(bsGroupId)) {
                         continue;
                     }
-                    // Filter by groupId
-                    if (groupId != null && !groupId.isEmpty()) {
-                        Object bsGroupId = bs.get("groupId");
-                        if (!groupId.equals(bsGroupId)) {
-                            continue;
-                        }
-                    }
-                    // Filter by hostId — check if hostIds list contains it
-                    if (hostId != null && !hostId.isEmpty()) {
-                        @SuppressWarnings("unchecked")
-                        List<String> hostIds = (List<String>) bs.get("hostIds");
-                        if (hostIds == null || !hostIds.contains(hostId)) {
-                            continue;
-                        }
-                    }
-                    services.add(bs);
-                } catch (Exception e) {
-                    log.warn("Failed to read business-service file: {}", file, e);
                 }
+                // Filter by hostId — check if hostIds list contains it
+                if (hostId != null && !hostId.isEmpty()) {
+                    @SuppressWarnings("unchecked")
+                    List<String> hostIds = (List<String>) bs.get("hostIds");
+                    if (hostIds == null || !hostIds.contains(hostId)) {
+                        continue;
+                    }
+                }
+                services.add(bs);
             }
         } catch (IOException e) {
             log.error("Failed to list business-services from {}", businessServicesDir, e);
@@ -298,6 +300,9 @@ public class BusinessServiceService {
 
     /**
      * Get business service with resolved host info.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getWithResolvedHosts(String id) {
@@ -310,7 +315,7 @@ public class BusinessServiceService {
             try {
                 Map<String, Object> host = hostService.getHost(hid);
                 resolvedHosts.add(host);
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.warn("Host {} not found for business service {}", hid, id);
             }
         }
@@ -323,6 +328,9 @@ public class BusinessServiceService {
 
     /**
      * Get hosts for the entry resources of a business service.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getHostsForBusinessService(String id) {
@@ -333,7 +341,7 @@ public class BusinessServiceService {
         for (String hid : hostIds) {
             try {
                 hosts.add(hostService.getHost(hid));
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.warn("Host {} not found for business service {}", hid, id);
             }
         }
@@ -358,7 +366,7 @@ public class BusinessServiceService {
                 Map<String, Object> h = hostService.getHost(hid);
                 hostMap.put(hid, h);
                 entryHostIds.put(hid, true);
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.warn("Entry host {} not found for business service {}", hid, id);
             }
         }
@@ -378,7 +386,9 @@ public class BusinessServiceService {
                         Map<String, Object> th = hostService.getHost(targetId);
                         hostMap.put(targetId, th);
                         nextFrontier.add(targetId);
-                    } catch (Exception ignored) {}
+                    } catch (IllegalArgumentException e) {
+                        log.debug("Skipping missing downstream host {} for business service {}", targetId, id);
+                    }
                 }
             }
             frontier = nextFrontier;
@@ -424,7 +434,13 @@ public class BusinessServiceService {
         bsNode.put("nodeType", "business-service");
         nodes.add(0, bsNode);
 
-        List<Map<String, Object>> bsRelations = hostRelationService.listRelations(null, null, null, "business-service", id);
+        List<Map<String, Object>> bsRelations = hostRelationService.listRelations(
+                null,
+                null,
+                null,
+                "business-service",
+                id
+        );
         for (Map<String, Object> rel : bsRelations) {
             String targetId = (String) rel.get("targetHostId");
             if (targetId != null && hostMap.containsKey(targetId)) {
@@ -445,6 +461,9 @@ public class BusinessServiceService {
 
     /**
      * Migrate from Host.business field: group by (businessName, groupId) -> create BusinessService.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> migrateFromBusinessField() {
@@ -502,7 +521,9 @@ public class BusinessServiceService {
                     break;
                 }
             }
-            if (exists) continue;
+            if (exists) {
+                continue;
+            }
 
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("name", business);
@@ -528,6 +549,9 @@ public class BusinessServiceService {
 
     /**
      * Sync hostIds on a business service from its HostRelation records.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public void syncHostIdsFromRelations(String bsId) {
@@ -554,9 +578,13 @@ public class BusinessServiceService {
         for (Map<String, Object> rel : allClusterRels) {
             String sourceType = (String) rel.getOrDefault("sourceType", "cluster");
             String sourceId = (String) rel.get("sourceId");
-            if (!"business-service".equals(sourceType) || !bsId.equals(sourceId)) continue;
+            if (!"business-service".equals(sourceType) || !bsId.equals(sourceId)) {
+                continue;
+            }
             String targetClusterId = (String) rel.get("targetId");
-            if (targetClusterId == null) continue;
+            if (targetClusterId == null) {
+                continue;
+            }
             List<Map<String, Object>> clusterHosts = hostService.listHostsByCluster(targetClusterId);
             for (Map<String, Object> h : clusterHosts) {
                 String hid = (String) h.get("id");
@@ -572,6 +600,9 @@ public class BusinessServiceService {
 
     /**
      * Remove a host from all business services' hostIds (called when a host is deleted).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public void removeHostFromAllBusinessServices(String hostId) {
@@ -590,6 +621,9 @@ public class BusinessServiceService {
 
     /**
      * Search business services by keyword matching against name, code, and tags.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> searchByKeyword(String keyword) {
@@ -630,14 +664,12 @@ public class BusinessServiceService {
         }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(relDir, "*.json")) {
             for (Path file : stream) {
-                if (!Files.isRegularFile(file)) continue;
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel != null) {
-                        relations.add(rel);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read relation file: {}", file, e);
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
+                Map<String, Object> rel = readFile(file);
+                if (rel != null) {
+                    relations.add(rel);
                 }
             }
         } catch (IOException e) {

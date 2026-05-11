@@ -32,6 +32,12 @@ public class SopController {
 
     private final SopService sopService;
 
+    /**
+     * Creates the sop controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SopController(SopService sopService) {
         this.sopService = sopService;
     }
@@ -101,14 +107,8 @@ public class SopController {
                 log.warn("Duplicate SOP name: {}", e.getMessage());
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "SOP name already exists");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create SOP", e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -142,14 +142,8 @@ public class SopController {
                 log.warn("SOP update conflict: {}", e.getMessage());
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "SOP update conflict");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update SOP {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

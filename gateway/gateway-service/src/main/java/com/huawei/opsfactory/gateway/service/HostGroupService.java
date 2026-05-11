@@ -4,14 +4,15 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -25,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.annotation.PostConstruct;
 
 /**
  * Manages host group hierarchy and tree construction with cascade delete support.
@@ -40,6 +43,12 @@ public class HostGroupService {
     private final GatewayProperties properties;
     private Path groupsDir;
 
+    /**
+     * Creates the host group service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public HostGroupService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -80,13 +89,9 @@ public class HostGroupService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> group = readFile(file);
-                    if (group != null) {
-                        groups.add(group);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read group file: {}", file, e);
+                Map<String, Object> group = readFile(file);
+                if (group != null) {
+                    groups.add(group);
                 }
             }
         } catch (IOException e) {
@@ -126,7 +131,7 @@ public class HostGroupService {
      * @since 2026-05-09
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
-                                        List<Map<String, Object>> businessServices) {
+                                       List<Map<String, Object>> businessServices) {
         Map<String, String> groupNameMap = new LinkedHashMap<>();
         for (Map<String, Object> g : groups) {
             groupNameMap.put((String) g.get("id"), (String) g.get("name"));
@@ -147,7 +152,8 @@ public class HostGroupService {
             String groupId = (String) cluster.get("groupId");
             if (groupId != null && groupNodeMap.containsKey(groupId)) {
                 @SuppressWarnings("unchecked")
-                List<Map<String, Object>> clusterList = (List<Map<String, Object>>) groupNodeMap.get(groupId).get("clusters");
+                List<Map<String, Object>> clusterList = (List<Map<String, Object>>) groupNodeMap.get(
+                        groupId).get("clusters");
                 clusterList.add(cluster);
             }
         }
@@ -157,7 +163,8 @@ public class HostGroupService {
             String groupId = (String) bs.get("groupId");
             if (groupId != null && groupNodeMap.containsKey(groupId)) {
                 @SuppressWarnings("unchecked")
-                List<Map<String, Object>> bsList = (List<Map<String, Object>>) groupNodeMap.get(groupId).get("businessServices");
+                List<Map<String, Object>> bsList = (List<Map<String, Object>>) groupNodeMap.get(
+                        groupId).get("businessServices");
                 bsList.add(bs);
             }
         }
@@ -248,6 +255,7 @@ public class HostGroupService {
 
     /**
      * Delete a group. Rejects if the group has sub-groups or clusters.
+     *
      * @param clusterService used to check for clusters in this group
      * @return true if deleted
      */
@@ -286,7 +294,7 @@ public class HostGroupService {
      * sub-groups, force-deletes clusters (which cascade-delete hosts), then deletes the group.
      */
     public boolean forceDeleteGroup(String id, ClusterService clusterService,
-                                     HostService hostService, BusinessServiceService businessServiceService) {
+                                    HostService hostService, BusinessServiceService businessServiceService) {
         // 1. Delete business services under this group
         for (Map<String, Object> bs : businessServiceService.listBusinessServices(id, null)) {
             businessServiceService.deleteBusinessService((String) bs.get("id"));
@@ -334,7 +342,9 @@ public class HostGroupService {
             changed = false;
             for (Map<String, Object> g : groups) {
                 String id = (String) g.get("id");
-                if (disabled.contains(id)) continue;
+                if (disabled.contains(id)) {
+                    continue;
+                }
                 boolean selfOff = Boolean.FALSE.equals(g.get("enabled"));
                 String pid = (String) g.get("parentId");
                 boolean parentOff = pid != null && disabled.contains(pid);
@@ -353,7 +363,8 @@ public class HostGroupService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
+            });
         } catch (IOException e) {
             log.error("Failed to read group file: {}", file, e);
             return null;

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -12,10 +16,22 @@ import reactor.test.StepVerifier;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Test coverage for Auth Web Filter.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class AuthWebFilterTest {
     private AuthWebFilter filter;
     private GatewayProperties properties;
 
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         properties = new GatewayProperties();
@@ -23,6 +39,12 @@ public class AuthWebFilterTest {
         filter = new AuthWebFilter(properties);
     }
 
+    /**
+     * Tests status endpoint is public.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testStatusEndpointIsPublic() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/status").build();
@@ -33,6 +55,12 @@ public class AuthWebFilterTest {
                 .verifyComplete();
     }
 
+    /**
+     * Tests options passes through.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testOptionsPassesThrough() {
         MockServerHttpRequest request = MockServerHttpRequest.options("/agents").build();
@@ -43,6 +71,12 @@ public class AuthWebFilterTest {
                 .verifyComplete();
     }
 
+    /**
+     * Tests valid secret key in header.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testValidSecretKeyInHeader() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents")
@@ -55,6 +89,12 @@ public class AuthWebFilterTest {
                 .verifyComplete();
     }
 
+    /**
+     * Tests valid secret key in query param.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testValidSecretKeyInQueryParam() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents?key=test-secret").build();
@@ -65,6 +105,12 @@ public class AuthWebFilterTest {
                 .verifyComplete();
     }
 
+    /**
+     * Tests invalid secret key returns401.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testInvalidSecretKeyReturns401() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents")
@@ -79,6 +125,12 @@ public class AuthWebFilterTest {
         assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
     }
 
+    /**
+     * Tests missing secret key returns401.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testMissingSecretKeyReturns401() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/agents").build();

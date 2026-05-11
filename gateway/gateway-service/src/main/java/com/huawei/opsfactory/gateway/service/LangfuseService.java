@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -13,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -38,6 +41,12 @@ public class LangfuseService {
     private final GatewayProperties.Langfuse config;
     private final WebClient webClient;
 
+    /**
+     * Creates the langfuse service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public LangfuseService(GatewayProperties properties) {
         this.config = properties.getLangfuse();
         this.webClient = WebClient.builder()
@@ -69,7 +78,7 @@ public class LangfuseService {
         }
         String url = config.getHost() + "/api/public/health";
         String auth = Base64.getEncoder().encodeToString(
-                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes());
+                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes(StandardCharsets.UTF_8));
         return webClient.get()
                 .uri(url)
                 .header("Authorization", "Basic " + auth)
@@ -128,14 +137,14 @@ public class LangfuseService {
         return Mono.zip(tracesMono, obsMono).map(tuple -> {
             try {
                 return buildOverview(tuple.getT1(), tuple.getT2());
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Failed to build overview: {}", e.getMessage());
                 return emptyOverview();
             }
         });
     }
 
-    private Map<String, Object> buildOverview(String tracesJson, String obsJson) throws Exception {
+    private Map<String, Object> buildOverview(String tracesJson, String obsJson) throws JsonProcessingException {
         JsonNode tracesRoot = MAPPER.readTree(tracesJson);
         JsonNode obsRoot = MAPPER.readTree(obsJson);
 
@@ -152,7 +161,8 @@ public class LangfuseService {
         double sumLatency = 0;
         int errorCount = 0;
         List<Double> latencies = new ArrayList<>();
-        TreeMap<String, int[]> dailyMap = new TreeMap<>(); // date -> [traces, observations]
+        // date -> [traces, observations]
+        TreeMap<String, int[]> dailyMap = new TreeMap<>();
 
         for (JsonNode t : traces) {
             double latency = t.path("latency").asDouble(0);
@@ -172,7 +182,7 @@ public class LangfuseService {
                 try {
                     String date = OffsetDateTime.parse(ts).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
                     dailyMap.computeIfAbsent(date, k -> new int[]{0, 0})[0]++;
-                } catch (Exception ignored) {
+                } catch (DateTimeParseException e) {
                     // skip unparseable timestamps
                 }
             }
@@ -185,7 +195,8 @@ public class LangfuseService {
                 try {
                     String date = OffsetDateTime.parse(ts).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
                     dailyMap.computeIfAbsent(date, k -> new int[]{0, 0})[1]++;
-                } catch (Exception ignored) {
+                } catch (DateTimeParseException e) {
+                    // skip unparseable timestamps
                 }
             }
         }
@@ -201,7 +212,8 @@ public class LangfuseService {
             day.put("date", entry.getKey());
             day.put("traces", entry.getValue()[0]);
             day.put("observations", entry.getValue()[1]);
-            day.put("cost", 0); // per-day cost not easily available from trace-level data
+            // per-day cost not easily available from trace-level data
+            day.put("cost", 0);
             daily.add(day);
         }
 
@@ -218,6 +230,9 @@ public class LangfuseService {
 
     /**
      * Fetch traces and transform into frontend TraceRow[] format.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<List<Map<String, Object>>> getTracesFormatted(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
@@ -226,17 +241,19 @@ public class LangfuseService {
         return getTraces(from, to, limit, errorsOnly).map(raw -> {
             try {
                 return parseTraces(raw);
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Failed to parse traces: {}", e.getMessage());
                 return List.<Map<String, Object>>of();
             }
         });
     }
 
-    private List<Map<String, Object>> parseTraces(String json) throws Exception {
+    private List<Map<String, Object>> parseTraces(String json) throws JsonProcessingException {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
-        if (!data.isArray()) return List.of();
+        if (!data.isArray()) {
+            return List.of();
+        }
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (JsonNode t : data) {
@@ -278,6 +295,9 @@ public class LangfuseService {
 
     /**
      * Fetch observations and transform into frontend { observations: ObservationGroup[] } format.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<Map<String, Object>> getObservationsFormatted(String from, String to) {
         if (!isConfigured()) {
@@ -286,17 +306,19 @@ public class LangfuseService {
         return getObservations(from, to).map(raw -> {
             try {
                 return parseObservations(raw);
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Failed to parse observations: {}", e.getMessage());
                 return Map.<String, Object>of("observations", List.of());
             }
         });
     }
 
-    private Map<String, Object> parseObservations(String json) throws Exception {
+    private Map<String, Object> parseObservations(String json) throws JsonProcessingException {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
-        if (!data.isArray()) return Map.of("observations", List.of());
+        if (!data.isArray()) {
+            return Map.of("observations", List.of());
+        }
 
         // Group by observation name
         Map<String, List<JsonNode>> groups = new LinkedHashMap<>();
@@ -340,7 +362,9 @@ public class LangfuseService {
     }
 
     private static double computeP95(List<Double> latencies) {
-        if (latencies.isEmpty()) return 0;
+        if (latencies.isEmpty()) {
+            return 0;
+        }
         Collections.sort(latencies);
         int idx = (int) Math.ceil(latencies.size() * 0.95) - 1;
         return latencies.get(Math.max(0, idx));
@@ -360,7 +384,7 @@ public class LangfuseService {
 
     private Mono<String> doGet(String url) {
         String auth = Base64.getEncoder().encodeToString(
-                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes());
+                (config.getPublicKey() + ":" + config.getSecretKey()).getBytes(StandardCharsets.UTF_8));
         return webClient.get()
                 .uri(url)
                 .header("Authorization", "Basic " + auth)

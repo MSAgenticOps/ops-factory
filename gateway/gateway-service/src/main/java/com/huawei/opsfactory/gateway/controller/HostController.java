@@ -41,6 +41,12 @@ public class HostController {
     private final BusinessServiceService businessServiceService;
     private final HostGroupService hostGroupService;
 
+    /**
+     * Creates the host controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public HostController(HostService hostService, ClusterService clusterService,
                           BusinessServiceService businessServiceService,
                           HostGroupService hostGroupService) {
@@ -209,11 +215,10 @@ public class HostController {
                 body.put("success", true);
                 body.put("host", host);
                 return ResponseEntity.status(HttpStatus.CREATED).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create host", e);
+            } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Invalid host request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -244,12 +249,14 @@ public class HostController {
                 body.put("success", true);
                 body.put("host", host);
                 return ResponseEntity.ok(body);
-            } catch (Exception e) {
-                log.error("Failed to update host {}", id, e);
+            } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+                HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Host not found:")
+                        ? HttpStatus.NOT_FOUND
+                        : HttpStatus.BAD_REQUEST;
+                body.put("error", status == HttpStatus.NOT_FOUND ? "Host not found" : "Invalid host request");
+                return ResponseEntity.status(status).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -311,49 +318,47 @@ public class HostController {
             long startedAt = System.currentTimeMillis();
             String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
             log.info("Host connectivity test started hostId={} userId={}", id, userId);
-            try {
-                Map<String, Object> testResult = hostService.testConnection(id);
-                Map<String, Object> result = new LinkedHashMap<>();
-                result.put("success", testResult.get("success"));
-                result.put("hostId", id);
-                result.put("reachable", testResult.get("reachable"));
-                result.put("latencyMs", testResult.get("latencyMs"));
-                if (testResult.containsKey("error")) {
-                    result.put("error", testResult.get("error"));
-                }
-                Object success = result.get("success");
-                Object reachable = result.get("reachable");
-                Object latencyMs = result.get("latencyMs");
-                log.info(
-                        "Host connectivity test completed hostId={} userId={} success={} reachable={} latencyMs={} durationMs={} testResultKeys={}",
+            Map<String, Object> testResult = hostService.testConnection(id);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", testResult.get("success"));
+            result.put("hostId", id);
+            result.put("reachable", testResult.get("reachable"));
+            result.put("latencyMs", testResult.get("latencyMs"));
+            if (testResult.containsKey("error")) {
+                result.put("error", testResult.get("error"));
+            }
+            Object success = result.get("success");
+            Object reachable = result.get("reachable");
+            Object latencyMs = result.get("latencyMs");
+            log.info(
+                    "Host connectivity test completed hostId={} userId={} success={} reachable={} latencyMs={} "
+                            + "durationMs={} testResultKeys={}",
+                    id,
+                    userId,
+                    success,
+                    reachable,
+                    latencyMs,
+                    System.currentTimeMillis() - startedAt,
+                    testResult.keySet()
+            );
+            if (Boolean.FALSE.equals(success) && (reachable == null || latencyMs == null)) {
+                log.warn(
+                        "Host connectivity test returned missing fields hostId={} userId={} reachable={} latencyMs={} "
+                                + "testResultKeys={}",
                         id,
                         userId,
-                        success,
                         reachable,
                         latencyMs,
-                        System.currentTimeMillis() - startedAt,
                         testResult.keySet()
                 );
-                if (Boolean.FALSE.equals(success) && (reachable == null || latencyMs == null)) {
+                if (testResult.containsKey("message")) {
                     log.warn(
-                            "Host connectivity test returned missing fields hostId={} userId={} reachable={} latencyMs={} testResultKeys={}",
-                            id, userId, reachable, latencyMs, testResult.keySet()
+                            "Host connectivity test failure message hostId={} userId={} message={}",
+                            id, userId, String.valueOf(testResult.get("message"))
                     );
-                    if (testResult.containsKey("message")) {
-                        log.warn(
-                                "Host connectivity test failure message hostId={} userId={} message={}",
-                                id, userId, String.valueOf(testResult.get("message"))
-                        );
-                    }
                 }
-                return result;
-            } catch (Exception e) {
-                log.error("Failed to test connectivity for host {} userId={}", id, userId, e);
-                Map<String, Object> result = new LinkedHashMap<>();
-                result.put("success", false);
-                result.put("error", e.getMessage());
-                return result;
             }
+            return result;
         }).subscribeOn(Schedulers.boundedElastic());
     }
 }

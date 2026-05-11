@@ -27,6 +27,12 @@ import java.util.Locale;
 public class StatusController {
     private final GatewayProperties properties;
 
+    /**
+     * Creates the status controller.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public StatusController(GatewayProperties properties) {
         this.properties = properties;
     }

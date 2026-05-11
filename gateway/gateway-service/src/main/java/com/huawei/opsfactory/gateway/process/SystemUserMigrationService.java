@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -29,6 +30,12 @@ public class SystemUserMigrationService {
 
     private final GatewayProperties properties;
 
+    /**
+     * Creates the system user migration service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SystemUserMigrationService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -83,7 +90,7 @@ public class SystemUserMigrationService {
                             Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
                         }
                     } catch (IOException e) {
-                        throw new RuntimeException("Failed to merge " + source + " into " + target, e);
+                        throw new UncheckedIOException("Failed to merge " + source + " into " + target, e);
                     }
                 });
 
@@ -94,14 +101,11 @@ public class SystemUserMigrationService {
                         try {
                             Files.deleteIfExists(path);
                         } catch (IOException e) {
-                            throw new RuntimeException("Failed to delete legacy path " + path, e);
+                            throw new UncheckedIOException("Failed to delete legacy path " + path, e);
                         }
                     });
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof IOException io) {
-                throw io;
-            }
-            throw e;
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
         }
     }
 }

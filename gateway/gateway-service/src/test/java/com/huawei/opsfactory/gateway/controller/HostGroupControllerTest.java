@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -23,6 +27,12 @@ import java.util.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test coverage for Host Group Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RunWith(SpringRunner.class)
 @WebFluxTest(HostGroupController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
@@ -47,6 +57,12 @@ public class HostGroupControllerTest {
 
     // ── listGroups ──────────────────────────────────────────────
 
+    /**
+     * Tests list groups returns all.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListGroups_returnsAll() {
         when(hostGroupService.listGroups()).thenReturn(List.of(
@@ -64,6 +80,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.groups.length()").isEqualTo(2);
     }
 
+    /**
+     * Tests list groups enabled only filters disabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListGroups_enabledOnly_filtersDisabled() {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
@@ -83,6 +105,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.groups[0].id").isEqualTo("g2");
     }
 
+    /**
+     * Tests list groups enabled only filters inherited disabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListGroups_enabledOnly_filtersInheritedDisabled() {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
@@ -104,6 +132,12 @@ public class HostGroupControllerTest {
 
     // ── getTree ─────────────────────────────────────────────────
 
+    /**
+     * Tests get tree returns all.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetTree_returnsAll() {
         when(hostGroupService.listGroups()).thenReturn(new ArrayList<>(List.of(
@@ -126,6 +160,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.tree").isArray();
     }
 
+    /**
+     * Tests get tree enabled only filters disabled groups.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetTree_enabledOnly_filtersDisabledGroups() {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
@@ -150,6 +190,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.tree.length()").isEqualTo(1);
     }
 
+    /**
+     * Tests get tree enabled only filters clusters in disabled group.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetTree_enabledOnly_filtersClustersInDisabledGroup() {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
@@ -176,6 +222,12 @@ public class HostGroupControllerTest {
 
     // ── updateGroup (enabled toggle) ────────────────────────────
 
+    /**
+     * Tests update group set enabled false.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateGroup_setEnabledFalse() {
         Map<String, Object> updated = makeGroup("g1", "PROD", null, false);
@@ -196,6 +248,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.group.enabled").isEqualTo(false);
     }
 
+    /**
+     * Tests update group set enabled true.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateGroup_setEnabledTrue() {
         Map<String, Object> updated = makeGroup("g1", "PROD", null, true);
@@ -216,6 +274,12 @@ public class HostGroupControllerTest {
                 .jsonPath("$.group.enabled").isEqualTo(true);
     }
 
+    /**
+     * Tests update group not found.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateGroup_notFound() {
         when(hostGroupService.updateGroup(eq("nonexistent"), any()))
@@ -235,6 +299,12 @@ public class HostGroupControllerTest {
 
     // ── Auth ────────────────────────────────────────────────────
 
+    /**
+     * Tests list groups unauthorized no key.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListGroups_unauthorized_noKey() {
         webTestClient.get().uri("/gateway/host-groups/")
@@ -243,6 +313,12 @@ public class HostGroupControllerTest {
                 .expectStatus().isUnauthorized();
     }
 
+    /**
+     * Tests list groups forbidden non admin.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListGroups_forbidden_nonAdmin() {
         webTestClient.get().uri("/gateway/host-groups/")

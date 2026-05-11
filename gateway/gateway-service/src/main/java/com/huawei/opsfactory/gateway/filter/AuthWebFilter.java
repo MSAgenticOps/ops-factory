@@ -31,6 +31,12 @@ public class AuthWebFilter implements WebFilter {
 
     private final GatewayProperties properties;
 
+    /**
+     * Creates the auth web filter instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public AuthWebFilter(GatewayProperties properties) {
         this.properties = properties;
     }

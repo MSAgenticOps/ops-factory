@@ -4,15 +4,21 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
-import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
+import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -20,23 +26,21 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriUtils;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Bridges external channel conversations to internal agent sessions, handling session creation, SSE streaming, and reply extraction.
+ * Bridges external channel conversations to internal agent sessions, handling session creation, SSE streaming, and
+ * reply extraction.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -53,6 +57,12 @@ public class SessionBridgeService {
     private final AgentConfigService agentConfigService;
     private final WebClient webClient;
 
+    /**
+     * Creates the session bridge service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SessionBridgeService(ChannelConfigService channelConfigService,
                                 ChannelBindingService channelBindingService,
                                 InstanceManager instanceManager,
@@ -73,7 +83,8 @@ public class SessionBridgeService {
      * @since 2026-05-09
      */
     public Mono<ChannelBinding> ensureSession(String channelId, String externalUserId) {
-        return ensureConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
+        return ensureConversationSession(channelId, "admin", "default", externalUserId,
+                externalUserId, null, "direct");
     }
 
     /**
@@ -88,7 +99,15 @@ public class SessionBridgeService {
                                                           String conversationId,
                                                           String threadId,
                                                           String conversationType) {
-        return ensureConversationSession(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
+        return ensureConversationSession(
+                channelId,
+                "admin",
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType
+        );
     }
 
     /**
@@ -135,7 +154,16 @@ public class SessionBridgeService {
      * @since 2026-05-09
      */
     public Mono<ChannelReplyResult> sendText(String channelId, String externalUserId, String text) {
-        return sendConversationText(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", text);
+        return sendConversationText(
+                channelId,
+                "admin",
+                "default",
+                externalUserId,
+                externalUserId,
+                null,
+                "direct",
+                text
+        );
     }
 
     /**
@@ -151,7 +179,16 @@ public class SessionBridgeService {
                                                          String threadId,
                                                          String conversationType,
                                                          String text) {
-        return sendConversationText(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType, text);
+        return sendConversationText(
+                channelId,
+                "admin",
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType,
+                text
+        );
     }
 
     /**
@@ -173,9 +210,23 @@ public class SessionBridgeService {
             return Mono.error(new IllegalArgumentException("Text is required"));
         }
 
-        return ensureConversationSession(channelId, ownerUserId, accountId, peerId, conversationId, threadId, conversationType)
+        return ensureConversationSession(
+                channelId,
+                ownerUserId,
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType
+        )
                 .flatMap(binding -> {
-                    channelBindingService.markConversationInbound(channelId, ownerUserId, accountId, conversationId, threadId);
+                    channelBindingService.markConversationInbound(
+                            channelId,
+                            ownerUserId,
+                            accountId,
+                            conversationId,
+                            threadId
+                    );
                     String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
                             ? channel.ownerUserId()
                             : binding.ownerUserId();
@@ -228,8 +279,15 @@ public class SessionBridgeService {
                                         ));
                             })
                             .map(replyText -> {
-                                channelBindingService.markConversationOutbound(channelId, effectiveOwnerUserId, accountId, conversationId, threadId);
-                                channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info", "session.reply",
+                                channelBindingService.markConversationOutbound(
+                                        channelId,
+                                        effectiveOwnerUserId,
+                                        accountId,
+                                        conversationId,
+                                        threadId
+                                );
+                                channelConfigService.recordEvent(channelId, effectiveOwnerUserId, "info",
+                                        "session.reply",
                                         "Delivered text reply for session " + binding.sessionId());
                                 return new ChannelReplyResult(
                                         channelId,
@@ -253,7 +311,7 @@ public class SessionBridgeService {
         String requestBody;
         try {
             requestBody = MAPPER.writeValueAsString(Map.of("working_dir", workingDir.toString()));
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return Mono.error(new IllegalStateException("Failed to build session start payload", e));
         }
 
@@ -274,8 +332,9 @@ public class SessionBridgeService {
                                         "session_id", sessionId,
                                         "load_model_and_extensions", true
                                 ));
-                            } catch (Exception e) {
-                                return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
+                            } catch (JsonProcessingException e) {
+                                return Mono.error(new IllegalStateException(
+                                        "Failed to build session resume payload", e));
                             }
                             return goosedProxy.fetchJson(
                                             instance.getPort(),
@@ -315,7 +374,7 @@ public class SessionBridgeService {
                             instance.getSecretKey()
                     )
                     .thenReturn(sessionId);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return Mono.error(new IllegalStateException("Failed to build session resume payload", e));
         }
     }
@@ -334,7 +393,7 @@ public class SessionBridgeService {
                     "request_id", requestId,
                     "user_message", userMessage
             ));
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return Flux.error(new IllegalStateException("Failed to build reply payload", e));
         }
 
@@ -420,8 +479,9 @@ public class SessionBridgeService {
 
     private Map<String, Object> parseEventJson(String json) {
         try {
-            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
-        } catch (Exception e) {
+            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse SSE event: " + json, e);
         }
     }
@@ -488,16 +548,18 @@ public class SessionBridgeService {
     }
 
     private String extractSessionId(String startResponse) {
+        Map<String, Object> map;
         try {
-            Map<String, Object> map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {});
-            Object id = map.get("id");
-            if (id == null) {
-                throw new IllegalStateException("Session ID missing from start response");
-            }
-            return id.toString();
-        } catch (Exception e) {
+            map = MAPPER.readValue(startResponse, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse session start response", e);
         }
+        Object id = map.get("id");
+        if (id == null) {
+            throw new IllegalStateException("Session ID missing from start response");
+        }
+        return id.toString();
     }
 
     private ChannelDetail requireChannel(String channelId) {

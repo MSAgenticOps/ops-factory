@@ -52,6 +52,12 @@ public class AgentConfigService {
     private final Set<String> residentInstanceKeys = ConcurrentHashMap.newKeySet();
     private Path gatewayRoot;
 
+    /**
+     * Creates the agent config service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public AgentConfigService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -207,6 +213,9 @@ public class AgentConfigService {
 
     /**
      * Load the agent's config.yaml as a Map (cached).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> loadAgentConfigYaml(String agentId) {
         return configCache.computeIfAbsent(agentId, id -> {
@@ -217,6 +226,9 @@ public class AgentConfigService {
 
     /**
      * Load the agent's secrets.yaml as a Map (cached).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> loadAgentSecretsYaml(String agentId) {
         return secretsCache.computeIfAbsent(agentId, id -> {
@@ -227,6 +239,9 @@ public class AgentConfigService {
 
     /**
      * Invalidate cached config/secrets for an agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void invalidateCache(String agentId) {
         configCache.remove(agentId);
@@ -235,6 +250,9 @@ public class AgentConfigService {
 
     /**
      * List skills for an agent, parsing SKILL.md frontmatter for metadata.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, String>> listSkills(String agentId) {
         Path skillsDir = getAgentConfigDir(agentId).resolve("skills");
@@ -264,8 +282,15 @@ public class AgentConfigService {
                                 skill.put("description", frontmatter.get("description"));
                             }
                             putFrontmatterAlias(skill, frontmatter, "pinned", "pinned");
-                            putFrontmatterAlias(skill, frontmatter, "displayOrder", "displayOrder", "display-order", "x-display-order");
-                        } catch (Exception e) {
+                            putFrontmatterAlias(
+                                    skill,
+                                    frontmatter,
+                                    "displayOrder",
+                                    "displayOrder",
+                                    "display-order",
+                                    "x-display-order"
+                            );
+                        } catch (IOException e) {
                             log.warn("Failed to parse SKILL.md for skill {}/{}", agentId, dirName, e);
                         }
                     }
@@ -293,6 +318,9 @@ public class AgentConfigService {
 
     /**
      * Parse YAML frontmatter (between --- delimiters) from a Markdown file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private Map<String, String> parseMarkdownFrontmatter(Path mdPath) throws IOException {
         Map<String, String> result = new HashMap<>();
@@ -325,6 +353,9 @@ public class AgentConfigService {
 
     /**
      * Read AGENTS.md content for an agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public String readAgentsMd(String agentId) {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
@@ -341,6 +372,9 @@ public class AgentConfigService {
 
     /**
      * Write AGENTS.md content for an agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void writeAgentsMd(String agentId, String content) throws IOException {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
@@ -349,7 +383,8 @@ public class AgentConfigService {
 
     // ── Memory file management ──────────────────────────────────────────
 
-    private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024; // 100KB
+    // 100KB
+    private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024;
 
     private Path getGooseMemoryDir(String agentId) {
         return getAgentConfigDir(agentId).resolve("goose").resolve("memory");
@@ -357,6 +392,9 @@ public class AgentConfigService {
 
     /**
      * List all memory files (*.txt) for an agent, returning category name + content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public List<Map<String, String>> listMemoryFiles(String agentId) {
         Path memoryDir = getGooseMemoryDir(agentId);
@@ -368,7 +406,8 @@ public class AgentConfigService {
             for (Path entry : stream) {
                 if (Files.isRegularFile(entry)) {
                     String fileName = entry.getFileName().toString();
-                    String category = fileName.substring(0, fileName.length() - 4); // strip .txt
+                    // strip .txt
+                    String category = fileName.substring(0, fileName.length() - 4);
                     Map<String, String> file = new HashMap<>();
                     file.put("category", category);
                     try {
@@ -388,6 +427,9 @@ public class AgentConfigService {
 
     /**
      * Read a single memory file content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public String readMemoryFile(String agentId, String category) {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
@@ -403,9 +445,13 @@ public class AgentConfigService {
 
     /**
      * Write (create/update) a memory file. Creates the memory directory if needed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void writeMemoryFile(String agentId, String category, String content) throws IOException {
-        if (content != null && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+        if (content != null
+                && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = getGooseMemoryDir(agentId);
@@ -415,6 +461,9 @@ public class AgentConfigService {
 
     /**
      * Delete a memory file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteMemoryFile(String agentId, String category) throws IOException {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
@@ -455,7 +504,7 @@ public class AgentConfigService {
                 return cast;
             }
             return null;
-        } catch (Exception e) {
+        } catch (IOException | YAMLException | IllegalArgumentException e) {
             log.warn("Failed to parse MCP settings for {}/{}: {}", agentId, mcpName, e.getMessage());
             return null;
         }
@@ -658,7 +707,9 @@ public class AgentConfigService {
 
     private String relativizeForAgentConfig(String agentId, Path targetPath) {
         Path configDir = getAgentConfigDir(agentId).normalize();
-        Path projectRoot = gatewayRoot.getParent() != null ? gatewayRoot.getParent().normalize() : properties.getProjectRootPath();
+        Path projectRoot = gatewayRoot.getParent() != null
+                ? gatewayRoot.getParent().normalize()
+                : properties.getProjectRootPath();
         Path normalizedTarget = targetPath.normalize();
 
         if (normalizedTarget.startsWith(projectRoot)) {
@@ -676,12 +727,17 @@ public class AgentConfigService {
 
     /**
      * Create a new agent: directory structure, config files, registry update.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Object> createAgent(String id, String name) throws IOException {
         // Validate ID format
         if (!id.matches("^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$") || id.length() < 2) {
             throw new IllegalArgumentException(
-                    "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only (no leading/trailing hyphens)");
+                    "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only "
+                            + "(no leading/trailing hyphens)"
+            );
         }
 
         // Check duplicate ID
@@ -734,6 +790,9 @@ public class AgentConfigService {
 
     /**
      * Delete an agent: stop instances, remove files, update registry.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void deleteAgent(String id) throws IOException {
         AgentRegistryEntry entry = findAgent(id);
@@ -829,7 +888,9 @@ public class AgentConfigService {
         }
 
         Object rootDirObj = scope.get("rootDir");
-        String configuredRoot = rootDirObj instanceof String s && !s.isBlank() ? s.trim() : DEFAULT_KNOWLEDGE_CLI_ROOT_DIR;
+        String configuredRoot = rootDirObj instanceof String s && !s.isBlank()
+                ? s.trim()
+                : DEFAULT_KNOWLEDGE_CLI_ROOT_DIR;
         Path configDir = getAgentConfigDir(agentId);
         return Path.of(configuredRoot).isAbsolute()
                 ? Path.of(configuredRoot).normalize()

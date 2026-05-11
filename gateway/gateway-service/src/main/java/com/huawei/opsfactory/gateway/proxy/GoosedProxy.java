@@ -4,13 +4,20 @@
 
 package com.huawei.opsfactory.gateway.proxy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.netty.channel.ChannelOption;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -25,15 +32,11 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
 
-import javax.net.ssl.SSLException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -43,6 +46,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+
+import javax.net.ssl.SSLException;
 
 /**
  * Proxies HTTP and SSE requests from the gateway to downstream goosed agent instances.
@@ -59,6 +64,12 @@ public class GoosedProxy {
     private final WebClient webClient;
     private final GatewayProperties properties;
 
+    /**
+     * Creates the goosed proxy instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public GoosedProxy(GatewayProperties properties) {
         this.properties = properties;
 
@@ -100,8 +111,17 @@ public class GoosedProxy {
 
     /**
      * Proxy an arbitrary request to a goosed instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
-    public Mono<Void> proxy(ServerHttpRequest request, ServerHttpResponse response, int port, String path, String secretKey) {
+    public Mono<Void> proxy(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            int port,
+            String path,
+            String secretKey
+    ) {
         String target = goosedBaseUrl(port) + path;
         HttpMethod method = request.getMethod();
 
@@ -117,18 +137,21 @@ public class GoosedProxy {
         }
 
         return ready.exchangeToMono(upstream -> {
-            response.setStatusCode(upstream.statusCode());
-            copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
-            return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
-        }).timeout(Duration.ofSeconds(60))
+                    response.setStatusCode(upstream.statusCode());
+                    copyUpstreamHeaders(upstream.headers().asHttpHeaders(), response.getHeaders());
+                    return response.writeWith(upstream.bodyToFlux(DataBuffer.class));
+                }).timeout(Duration.ofSeconds(60))
                 .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
     /**
      * Proxy with a pre-read JSON body string (for routes that need body inspection).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path,
-                                     HttpMethod method, String body, String secretKey) {
+                                    HttpMethod method, String body, String secretKey) {
         String target = goosedBaseUrl(port) + path;
 
         return webClient.method(method)
@@ -164,7 +187,8 @@ public class GoosedProxy {
                         return upstream.bodyToMono(String.class)
                                 .defaultIfEmpty("")
                                 .flatMap(errorBody -> {
-                                    log.warn("[GOOSED-PROXY] upstream-error method={} path={} port={} status={} error={} durationMs={}",
+                                    log.warn("[GOOSED-PROXY] upstream-error method={} path={} port={} status={} " +
+                                                    "error={} durationMs={}",
                                             method, path, port, upstream.rawStatusCode(),
                                             truncate(errorBody, 200), System.currentTimeMillis() - start);
                                     return Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
@@ -281,7 +305,8 @@ public class GoosedProxy {
                 ? Mono.empty()
                 : beforeTerminalEventFactory.apply(data);
 
-        Mono<DataBuffer> originalFrame = Mono.just(bufferFactory.wrap((frame + "\n\n").getBytes(StandardCharsets.UTF_8)));
+        Mono<DataBuffer> originalFrame = Mono.just(bufferFactory.wrap((frame + "\n\n").getBytes(
+                StandardCharsets.UTF_8)));
         Mono<DataBuffer> extraFrame = injected
                 .timeout(EVENT_AUGMENT_TIMEOUT)
                 .onErrorResume(err -> {
@@ -326,13 +351,17 @@ public class GoosedProxy {
             body.put("user_id", userId);
             body.put("trace_id", UUID.randomUUID().toString());
             return "data: " + MAPPER.writeValueAsString(body) + "\n\n";
-        } catch (Exception writeErr) {
-            return "data: {\"type\":\"Error\",\"layer\":\"gateway\",\"code\":\"gateway_goosed_unavailable\",\"message\":\"Gateway lost the agent event stream.\",\"retryable\":true}\n\n";
+        } catch (JsonProcessingException writeErr) {
+            return "data: {\"type\":\"Error\",\"layer\":\"gateway\",\"code\":\"gateway_goosed_unavailable\"," +
+                    "\"message\":\"Gateway lost the agent event stream.\",\"retryable\":true}\n\n";
         }
     }
 
     /**
      * Fetch JSON from a goosed instance and return the raw body string.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Mono<String> fetchJson(int port, String path, String secretKey) {
         String target = goosedBaseUrl(port) + path;
@@ -344,9 +373,11 @@ public class GoosedProxy {
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30))
-                .doOnNext(body -> log.info("[GOOSED-PROXY] response method=GET path={} port={} status=200 bodyLen={} durationMs={}",
+                .doOnNext(body -> log.info("[GOOSED-PROXY] response method=GET path={} port={} status=200" +
+                                " bodyLen={} durationMs={}",
                         path, port, body != null ? body.length() : 0, System.currentTimeMillis() - start))
-                .doOnError(err -> log.warn("[GOOSED-PROXY] error method=GET path={} port={} error={} durationMs={}",
+                .doOnError(err -> log.warn("[GOOSED-PROXY] error method=GET path={} port={} error={} " +
+                                "durationMs={}",
                         path, port, err.getMessage(), System.currentTimeMillis() - start));
     }
 
@@ -366,7 +397,14 @@ public class GoosedProxy {
      * @author x00000000
      * @since 2026-05-09
      */
-    public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec, String secretKey) {
+    public Mono<String> fetchJson(
+            int port,
+            HttpMethod method,
+            String path,
+            String body,
+            int timeoutSec,
+            String secretKey
+    ) {
         String target = goosedBaseUrl(port) + path;
         long start = System.currentTimeMillis();
         log.info("[GOOSED-PROXY] request method={} path={} port={}", method, path, port);
@@ -380,9 +418,11 @@ public class GoosedProxy {
         return ready.retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(timeoutSec))
-                .doOnNext(resp -> log.info("[GOOSED-PROXY] response method={} path={} port={} status=200 bodyLen={} durationMs={}",
+                .doOnNext(resp -> log.info("[GOOSED-PROXY] response method={} path={} port={} status=200 " +
+                                "bodyLen={} durationMs={}",
                         method, path, port, resp != null ? resp.length() : 0, System.currentTimeMillis() - start))
-                .doOnError(err -> log.warn("[GOOSED-PROXY] error method={} path={} port={} error={} durationMs={}",
+                .doOnError(err -> log.warn("[GOOSED-PROXY] error method={} path={} port={} error={} " +
+                                "durationMs={}",
                         method, path, port, err.getMessage(), System.currentTimeMillis() - start))
                 .onErrorMap(this::isProxyError, this::mapProxyError);
     }
@@ -416,7 +456,11 @@ public class GoosedProxy {
                 "Agent temporarily unavailable: " + e.getMessage());
     }
 
-    private WebClientResponseException toUpstreamResponseException(int rawStatusCode, HttpHeaders headers, String body) {
+    private WebClientResponseException toUpstreamResponseException(
+            int rawStatusCode,
+            HttpHeaders headers,
+            String body
+    ) {
         HttpStatus status = HttpStatus.resolve(rawStatusCode);
         String statusText = status != null ? status.getReasonPhrase() : "HTTP " + rawStatusCode;
         return WebClientResponseException.create(
@@ -448,7 +492,9 @@ public class GoosedProxy {
     }
 
     private static String truncate(String s, int maxLen) {
-        if (s == null) return "";
+        if (s == null) {
+            return "";
+        }
         return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...";
     }
 }

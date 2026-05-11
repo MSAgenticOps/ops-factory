@@ -4,10 +4,12 @@
 
 package com.huawei.opsfactory.gateway.service.channel;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,7 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Manages channel conversation bindings, including creation, session attachment, and inbound/outbound timestamp tracking.
+ * Manages channel conversation bindings, including creation, session attachment, and inbound/outbound timestamp
+ * tracking.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -39,6 +42,12 @@ public class ChannelBindingService {
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
 
+    /**
+     * Creates the channel binding service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelBindingService(ChannelConfigService channelConfigService,
                                  ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
@@ -52,7 +61,8 @@ public class ChannelBindingService {
      * @since 2026-05-09
      */
     public ChannelBinding ensureBinding(String channelId, String externalUserId) {
-        return ensureConversationBinding(channelId, "admin", "default", externalUserId, externalUserId, null, "direct");
+        return ensureConversationBinding(channelId, "admin", "default", externalUserId,
+                externalUserId, null, "direct");
     }
 
     /**
@@ -67,11 +77,20 @@ public class ChannelBindingService {
                                                     String conversationId,
                                                     String threadId,
                                                     String conversationType) {
-        return ensureConversationBinding(channelId, "admin", accountId, peerId, conversationId, threadId, conversationType);
+        return ensureConversationBinding(
+                channelId,
+                "admin",
+                accountId,
+                peerId,
+                conversationId,
+                threadId,
+                conversationType
+        );
     }
 
     /**
-     * Ensures a conversation binding exists for the given channel and conversation identifiers, creating one if necessary.
+     * Ensures a conversation binding exists for the given channel and conversation identifiers, creating one if
+     * necessary.
      *
      * @author x00000000
      * @since 2026-05-09
@@ -119,7 +138,17 @@ public class ChannelBindingService {
      * @since 2026-05-09
      */
     public ChannelBinding attachSession(String channelId, String externalUserId, String sessionId, String agentId) {
-        return attachConversationSession(channelId, "admin", "default", externalUserId, externalUserId, null, "direct", sessionId, agentId);
+        return attachConversationSession(
+                channelId,
+                "admin",
+                "default",
+                externalUserId,
+                externalUserId,
+                null,
+                "direct",
+                sessionId,
+                agentId
+        );
     }
 
     /**
@@ -171,7 +200,8 @@ public class ChannelBindingService {
                     binding.conversationId(),
                     binding.threadId(),
                     binding.conversationType(),
-                    binding.ownerUserId() == null || binding.ownerUserId().isBlank() ? channel.ownerUserId() : binding.ownerUserId(),
+                    binding.ownerUserId() == null || binding.ownerUserId().isBlank() ?
+                            channel.ownerUserId() : binding.ownerUserId(),
                     binding.syntheticUserId(),
                     agentId,
                     sessionId,
@@ -250,7 +280,15 @@ public class ChannelBindingService {
                                                   String accountId,
                                                   String conversationId,
                                                   String threadId) {
-        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, Instant.now().toString(), null);
+        return updateTimestamps(
+                channelId,
+                ownerUserId,
+                accountId,
+                conversationId,
+                threadId,
+                Instant.now().toString(),
+                null
+        );
     }
 
     /**
@@ -277,7 +315,15 @@ public class ChannelBindingService {
                                                    String accountId,
                                                    String conversationId,
                                                    String threadId) {
-        return updateTimestamps(channelId, ownerUserId, accountId, conversationId, threadId, null, Instant.now().toString());
+        return updateTimestamps(
+                channelId,
+                ownerUserId,
+                accountId,
+                conversationId,
+                threadId,
+                null,
+                Instant.now().toString()
+        );
     }
 
     private ChannelBinding updateTimestamps(String channelId,
@@ -331,7 +377,8 @@ public class ChannelBindingService {
         Path file = runtimeStorageService.bindingsFile(channel);
         Map<String, Object> wrapper = readJson(file);
         return MAPPER.convertValue(wrapper.getOrDefault("bindings", List.of()),
-                new TypeReference<List<ChannelBinding>>() {});
+                new TypeReference<List<ChannelBinding>>() {
+                });
     }
 
     private void writeBindings(ChannelDetail channel, List<ChannelBinding> bindings) {

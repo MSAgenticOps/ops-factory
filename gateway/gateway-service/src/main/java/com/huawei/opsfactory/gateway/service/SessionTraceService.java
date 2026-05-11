@@ -20,8 +20,8 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +52,12 @@ public class SessionTraceService implements DisposableBean {
     private final Path scriptPath;
     private final Path traceRoot;
 
+    /**
+     * Creates the session trace service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public SessionTraceService() {
         this.repoRoot = resolveRepoRoot();
         this.gatewayRoot = repoRoot.resolve("gateway").normalize();
@@ -171,7 +177,10 @@ public class SessionTraceService implements DisposableBean {
             log.info("[SESSION-TRACE] start jobId={} userId={} agentId={} sessionId={}",
                     job.jobId, job.userId, job.agentId, job.sessionId);
             Process process = pb.start();
-            boolean finished = process.waitFor(COLLECTION_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+            boolean finished = process.waitFor(
+                    COLLECTION_TIMEOUT.toMillis(),
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+            );
             if (!finished) {
                 process.destroyForcibly();
                 throw new IllegalStateException("trace collection timed out");
@@ -194,7 +203,12 @@ public class SessionTraceService implements DisposableBean {
             job.status = TraceStatus.SUCCEEDED;
             job.message = "trace collection complete";
             log.info("[SESSION-TRACE] succeeded jobId={} archive={}", job.jobId, archive);
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            job.status = TraceStatus.FAILED;
+            job.message = "trace collection interrupted";
+            log.warn("[SESSION-TRACE] interrupted jobId={}", job.jobId);
+        } catch (IOException | IllegalStateException e) {
             job.status = TraceStatus.FAILED;
             job.message = e.getMessage() == null ? "trace collection failed" : e.getMessage();
             log.warn("[SESSION-TRACE] failed jobId={} error={}", job.jobId, job.message);
@@ -219,7 +233,8 @@ public class SessionTraceService implements DisposableBean {
     private synchronized void cleanupExpiredJobs() {
         Instant cutoff = Instant.now().minus(JOB_TTL);
         jobs.values().stream()
-                .filter(job -> job.status != TraceStatus.RUNNING && job.completedAt != null && job.completedAt.isBefore(cutoff))
+                .filter(job -> job.status != TraceStatus.RUNNING && job.completedAt != null &&
+                        job.completedAt.isBefore(cutoff))
                 .map(job -> job.jobId)
                 .toList()
                 .forEach(this::deleteJob);
@@ -255,14 +270,16 @@ public class SessionTraceService implements DisposableBean {
             return cwd.getParent() != null ? cwd.getParent() : cwd;
         }
         Path parent = cwd.getParent();
-        if (parent != null && Files.isDirectory(parent.resolve("gateway")) && Files.isDirectory(parent.resolve("web-app"))) {
+        if (parent != null && Files.isDirectory(parent.resolve("gateway")) && Files.isDirectory(parent.resolve(
+                "web-app"))) {
             return parent;
         }
         return cwd;
     }
 
     private static Path resolveScriptPath(Path repoRoot) {
-        Path rootScript = repoRoot.resolve("gateway").resolve("scripts").resolve("collect-session-debug.sh").normalize();
+        Path rootScript = repoRoot.resolve("gateway").resolve("scripts").resolve(
+                "collect-session-debug.sh").normalize();
         if (Files.isRegularFile(rootScript)) {
             return rootScript;
         }
@@ -296,11 +313,11 @@ public class SessionTraceService implements DisposableBean {
             stream.sorted(Comparator.reverseOrder()).forEach(current -> {
                 try {
                     Files.deleteIfExists(current);
-                } catch (IOException ignored) {
+                } catch (IOException e) {
                     // best-effort cleanup
                 }
             });
-        } catch (IOException ignored) {
+        } catch (IOException e) {
             // best-effort cleanup
         }
     }
@@ -316,12 +333,24 @@ public class SessionTraceService implements DisposableBean {
         executor.shutdownNow();
     }
 
+    /**
+     * Type definition for Trace Status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public enum TraceStatus {
         RUNNING,
         SUCCEEDED,
         FAILED
     }
 
+    /**
+     * Type definition for Trace Job Snapshot.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public record TraceJobSnapshot(
             String jobId,
             String status,
@@ -359,7 +388,15 @@ public class SessionTraceService implements DisposableBean {
         }
 
         private TraceJobSnapshot snapshot() {
-            return new TraceJobSnapshot(jobId, status.name().toLowerCase(Locale.ROOT), userId, agentId, sessionId, fileName, message);
+            return new TraceJobSnapshot(
+                    jobId,
+                    status.name().toLowerCase(Locale.ROOT),
+                    userId,
+                    agentId,
+                    sessionId,
+                    fileName,
+                    message
+            );
         }
     }
 }

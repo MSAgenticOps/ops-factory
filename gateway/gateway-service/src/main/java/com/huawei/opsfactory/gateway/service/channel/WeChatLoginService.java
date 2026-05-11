@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConfig;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelLoginState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -30,11 +33,18 @@ import java.util.Map;
  */
 @Service
 public class WeChatLoginService {
+    private static final Logger log = LoggerFactory.getLogger(WeChatLoginService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
     private final ChannelRuntimeStorageService runtimeStorageService;
 
+    /**
+     * Creates the we chat login service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public WeChatLoginService(ChannelConfigService channelConfigService,
                               ChannelRuntimeStorageService runtimeStorageService) {
         this.channelConfigService = channelConfigService;
@@ -66,12 +76,16 @@ public class WeChatLoginService {
             status = normalizeStatus(runtimeStatus);
         }
         String message = switch (status) {
-            case "connected" -> "WeChat session connected";
-            case "pending" -> "WeChat QR login is pending";
-            case "error" -> config.lastError() == null || config.lastError().isBlank()
-                    ? "WeChat connection error"
-                    : config.lastError();
-            default -> "WeChat login required";
+            case "connected":
+                yield "WeChat session connected";
+            case "pending":
+                yield "WeChat QR login is pending";
+            case "error":
+                yield config.lastError() == null || config.lastError().isBlank()
+                        ? "WeChat connection error"
+                        : config.lastError();
+            default:
+                yield "WeChat login required";
         };
 
         String stateMessage = asString(runtimeState.get("message"));
@@ -136,7 +150,17 @@ public class WeChatLoginService {
         }
 
         writeInitialStateFile(channel, stateFile);
-        startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inboxDir, outboxPendingDir, outboxSentDir, outboxErrorDir);
+        startHelperProcess(
+                channel,
+                authDir,
+                stateFile,
+                pidFile,
+                logFile,
+                inboxDir,
+                outboxPendingDir,
+                outboxSentDir,
+                outboxErrorDir
+        );
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.login_requested",
                 "WeChat login requested; auth directory prepared at " + authDir);
 
@@ -166,19 +190,15 @@ public class WeChatLoginService {
         Path pidFile = pidFile(channel);
         try {
             killIfRunning(pidFile);
-        } catch (Throwable ignored) {
-            // best-effort
+        } catch (IllegalStateException e) {
+            log.debug("Failed to stop existing WeChat helper for {}", channelId, e);
         }
         try {
             clearDirectory(authDir);
-        } catch (Throwable ignored) {
-            // best-effort
+        } catch (IllegalStateException e) {
+            log.debug("Failed to clear WeChat auth dir for {}", channelId, e);
         }
-        try {
-            deleteQuietly(stateFile);
-        } catch (Throwable ignored) {
-            // best-effort
-        }
+        deleteQuietly(stateFile);
 
         writeDisconnectedStateFile(channel, stateFile);
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.logged_out",
@@ -263,7 +283,11 @@ public class WeChatLoginService {
         payload.put("lastError", "");
         payload.put("qrCodeDataUrl", null);
         try {
-            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+            Files.writeString(
+                    stateFile,
+                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                    StandardCharsets.UTF_8
+            );
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
         }
@@ -283,7 +307,11 @@ public class WeChatLoginService {
         payload.put("qrCodeDataUrl", null);
         try {
             Files.createDirectories(stateFile.getParent());
-            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+            Files.writeString(
+                    stateFile,
+                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                    StandardCharsets.UTF_8
+            );
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
         }
@@ -360,15 +388,18 @@ public class WeChatLoginService {
                 handle.destroy();
                 try {
                     handle.onExit().get();
-                } catch (Exception ignored) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    handle.destroyForcibly();
+                } catch (ExecutionException e) {
                     handle.destroyForcibly();
                 }
             });
             Files.deleteIfExists(pidFile);
-        } catch (Exception ignored) {
+        } catch (IOException | NumberFormatException e) {
             try {
                 Files.deleteIfExists(pidFile);
-            } catch (IOException ignoredAgain) {
+            } catch (IOException deleteError) {
                 // ignore
             }
         }
@@ -405,7 +436,7 @@ public class WeChatLoginService {
     private void deleteQuietly(Path path) {
         try {
             Files.deleteIfExists(path);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
             // best-effort cleanup
         }
     }

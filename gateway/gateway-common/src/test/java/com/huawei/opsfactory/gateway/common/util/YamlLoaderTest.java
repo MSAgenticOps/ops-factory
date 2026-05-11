@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.common.util;
 
 import org.junit.Rule;
@@ -12,10 +16,22 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Test coverage for Yaml Loader.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class YamlLoaderTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
+    /**
+     * Tests load existing file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testLoad_existingFile() throws Exception {
         File yamlFile = tempFolder.newFile("test.yaml");
@@ -29,6 +45,12 @@ public class YamlLoaderTest {
         assertEquals(true, data.get("enabled"));
     }
 
+    /**
+     * Tests load non existent file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testLoad_nonExistentFile() {
         Path nonExistent = tempFolder.getRoot().toPath().resolve("missing.yaml");
@@ -36,6 +58,12 @@ public class YamlLoaderTest {
         assertTrue(data.isEmpty());
     }
 
+    /**
+     * Tests load empty file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testLoad_emptyFile() throws Exception {
         File yamlFile = tempFolder.newFile("empty.yaml");
@@ -43,31 +71,67 @@ public class YamlLoaderTest {
         assertTrue(data.isEmpty());
     }
 
+    /**
+     * Tests get string present.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetString_present() {
         assertEquals("value", YamlLoader.getString(Map.of("key", "value"), "key", "default"));
     }
 
+    /**
+     * Tests get string absent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetString_absent() {
         assertEquals("default", YamlLoader.getString(Map.of(), "key", "default"));
     }
 
+    /**
+     * Tests get int present.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetInt_present() {
         assertEquals(3000, YamlLoader.getInt(Map.of("port", 3000), "port", 8080));
     }
 
+    /**
+     * Tests get int string value.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetInt_stringValue() {
         assertEquals(3000, YamlLoader.getInt(Map.of("port", "3000"), "port", 8080));
     }
 
+    /**
+     * Tests get int absent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetInt_absent() {
         assertEquals(8080, YamlLoader.getInt(Map.of(), "port", 8080));
     }
 
+    /**
+     * Tests get int invalid string.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetInt_invalidString() {
         assertEquals(8080, YamlLoader.getInt(Map.of("port", "abc"), "port", 8080));

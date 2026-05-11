@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.e2e;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
@@ -12,12 +16,18 @@ import static org.mockito.Mockito.when;
 /**
  * E2E tests for CatchAllProxyController:
  * Verifies auth, admin/user access control, and proxy routing for /agents/{agentId}/** paths.
+ *
  * @author x00000000
  * @since 2026-05-09
  */
 public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
-    // ====================== Admin access ======================
 
+    /**
+     * Executes the admin access to schedules proxies to goosed operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void adminAccessToSchedules_proxiesToGoosed() {
         ManagedInstance instance = new ManagedInstance("test-agent", "admin", 9000, 123L, null, "test-secret");
@@ -34,8 +44,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
         verify(goosedProxy).proxy(any(), any(), eq(9000), eq("/schedules/list"), any());
     }
 
-    // ====================== User-accessible routes ======================
-
+    /**
+     * Executes the user access to system info allowed operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void userAccessToSystemInfo_allowed() {
         ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
@@ -50,6 +64,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isOk();
     }
 
+    /**
+     * Executes the user access to status allowed operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void userAccessToStatus_allowed() {
         ManagedInstance instance = new ManagedInstance("test-agent", "alice", 9000, 123L, null, "test-secret");
@@ -64,8 +84,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isOk();
     }
 
-    // ====================== Access denied ======================
-
+    /**
+     * Executes the user access to admin route returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void userAccessToAdminRoute_returns403() {
         webClient.get().uri("/gateway/agents/test-agent/schedules/list")
@@ -75,6 +99,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Executes the user access to config prompts returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void userAccessToConfigPrompts_returns403() {
         webClient.get().uri("/gateway/agents/test-agent/config/prompts")
@@ -84,6 +114,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Executes the admin access to legacy reply returns404 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void adminAccessToLegacyReply_returns404() {
         webClient.post().uri("/gateway/agents/test-agent/reply")
@@ -93,6 +129,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isNotFound();
     }
 
+    /**
+     * Executes the admin access to legacy agent stop returns404 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void adminAccessToLegacyAgentStop_returns404() {
         webClient.post().uri("/gateway/agents/test-agent/agent/stop")
@@ -102,8 +144,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isNotFound();
     }
 
-    // ====================== Authentication ======================
-
+    /**
+     * Executes the unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void unauthenticated_returns401() {
         webClient.get().uri("/gateway/agents/test-agent/schedules/list")
@@ -111,8 +157,12 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isUnauthorized();
     }
 
-    // ====================== Query string forwarding ======================
-
+    /**
+     * Executes the query string forwarded to goosed operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void queryStringForwarded_toGoosed() {
         ManagedInstance instance = new ManagedInstance("test-agent", "admin", 9000, 123L, null, "test-secret");

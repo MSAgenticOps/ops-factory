@@ -35,6 +35,12 @@ public class FileCitationController {
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
 
+    /**
+     * Creates the file citation controller.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public FileCitationController(AgentConfigService agentConfigService,
                                   FileService fileService) {
         this.agentConfigService = agentConfigService;
@@ -54,12 +60,16 @@ public class FileCitationController {
                     Path realRoot = agentConfigService.getKnowledgeCliRootDir(agentId).toRealPath();
                     Path candidate = Path.of(requestedPath).normalize();
                     if (!candidate.isAbsolute()) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "absolute path is required");
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "absolute path is required");
                     }
 
                     Path realFile = candidate.toRealPath();
                     if (!realFile.startsWith(realRoot) || Files.isDirectory(realFile)) {
-                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "path is outside configured root");
+                        throw new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "path is outside configured root");
                     }
 
                     String filename = realFile.getFileName().toString();
@@ -73,6 +83,8 @@ public class FileCitationController {
                 })
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorMap(IOException.class, e ->
-                        new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read citation file"));
+                        new ResponseStatusException(
+                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                "Failed to read citation file"));
     }
 }

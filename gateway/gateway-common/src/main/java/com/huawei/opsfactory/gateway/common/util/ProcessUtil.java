@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Process management utility using JDK 21 APIs.
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -17,8 +18,10 @@ public final class ProcessUtil {
     }
 
     /**
-     * Read up to maxBytes from the process stdout/stderr (requires redirectErrorStream=true).
-     * Must only be called after the process has exited (isAlive() == false).
+     * Reads up to the given number of bytes from the process output stream.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static String readOutput(Process process, int maxBytes) {
         try {
@@ -30,21 +33,30 @@ public final class ProcessUtil {
     }
 
     /**
-     * Get PID from a Process instance using Process.pid() (JDK 9+).
+     * Returns the process identifier for the given process.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static long getPid(Process process) {
         return process.pid();
     }
 
     /**
-     * Check if a process is still alive.
+     * Checks whether the given process is still alive.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static boolean isAlive(Process process) {
         return process.isAlive();
     }
 
     /**
-     * Gracefully stop a process: SIGTERM, wait, then force kill.
+     * Stops a process gracefully before forcing termination if needed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public static void stopGracefully(Process process, long graceMs) {
         if (!process.isAlive()) {

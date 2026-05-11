@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.hook;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
@@ -36,6 +37,12 @@ public class FileAttachmentHook implements RequestHook {
 
     private final AgentConfigService agentConfigService;
 
+    /**
+     * Creates the file attachment hook instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public FileAttachmentHook(AgentConfigService agentConfigService) {
         this.agentConfigService = agentConfigService;
     }
@@ -95,7 +102,7 @@ public class FileAttachmentHook implements RequestHook {
             return Mono.just(ctx);
         } catch (ResponseStatusException e) {
             return Mono.error(e);
-        } catch (Exception e) {
+        } catch (JsonProcessingException | IllegalArgumentException e) {
             log.error("Error in FileAttachmentHook", e);
             return Mono.just(ctx);
         }

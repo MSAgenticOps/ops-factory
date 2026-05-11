@@ -1,8 +1,23 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -10,21 +25,10 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Extended tests for InstanceManager covering:
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.when;
  * - Instance limits (per-user and global)
  * - Dead process detection (getOrSpawn with stale entry)
  * - resetStuckRunningSchedules
+ *
  * @author x00000000
  * @since 2026-05-09
  */
@@ -45,6 +50,12 @@ public class InstanceManagerExtendedTest {
     private RuntimePreparer runtimePreparer;
     private AgentConfigService agentConfigService;
 
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         properties = new GatewayProperties();
@@ -55,14 +66,19 @@ public class InstanceManagerExtendedTest {
         when(agentConfigService.loadAgentConfigYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.loadAgentSecretsYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.getAgentConfigDir(anyString()))
-                .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(0, String.class)));
+                .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(
+                        0, String.class)));
 
         instanceManager = new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService,
                 3000, false, "");
     }
 
-    // ====================== buildEnvironment ======================
-
+    /**
+     * Tests build environment core env vars.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_coreEnvVars() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -90,6 +106,12 @@ public class InstanceManagerExtendedTest {
         assertEquals(configRoot.toAbsolutePath().normalize().toString(), env.get("XDG_CONFIG_HOME"));
     }
 
+    /**
+     * Tests build environment merges agent config.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_mergesAgentConfig() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -117,6 +139,12 @@ public class InstanceManagerExtendedTest {
         assertEquals("9000", env.get("GOOSE_PORT"));
     }
 
+    /**
+     * Tests build environment secrets override config.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_secretsOverrideConfig() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -140,6 +168,12 @@ public class InstanceManagerExtendedTest {
         assertEquals("from-secrets", env.get("API_KEY"));
     }
 
+    /**
+     * Tests build environment non scalar values skipped.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_nonScalarValuesSkipped() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
@@ -159,8 +193,12 @@ public class InstanceManagerExtendedTest {
         assertNull(env.get("NESTED"));
     }
 
-    // ====================== GATEWAY_URL injection ======================
-
+    /**
+     * Tests build environment gateway url http when ssl disabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayUrl_httpWhenSslDisabled() throws Exception {
         // Default setUp uses serverSslEnabled=false, serverPort=3000
@@ -178,6 +216,12 @@ public class InstanceManagerExtendedTest {
                 env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
     }
 
+    /**
+     * Tests build environment gateway url https when ssl enabled.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayUrl_httpsWhenSslEnabled() throws Exception {
         // Create a new InstanceManager with SSL enabled and custom port
@@ -197,6 +241,12 @@ public class InstanceManagerExtendedTest {
         assertEquals("0", env.get("NODE_TLS_REJECT_UNAUTHORIZED"));
     }
 
+    /**
+     * Tests build environment gateway url default port.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayUrl_defaultPort() throws Exception {
         InstanceManager defaultManager = new InstanceManager(properties, portAllocator, runtimePreparer,
@@ -214,8 +264,12 @@ public class InstanceManagerExtendedTest {
         assertEquals("http://127.0.0.1:8080", env.get("GATEWAY_URL"));
     }
 
-    // ====================== GATEWAY_API_PASSWORD injection ======================
-
+    /**
+     * Tests build environment gateway api password set when provided.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_setWhenProvided() throws Exception {
         // Create InstanceManager with API password set
@@ -234,6 +288,12 @@ public class InstanceManagerExtendedTest {
         assertEquals("my-secret-password", env.get("GATEWAY_API_PASSWORD"));
     }
 
+    /**
+     * Tests build environment gateway api password set to different value.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_setToDifferentValue() throws Exception {
         // Create InstanceManager with a different API password
@@ -252,6 +312,12 @@ public class InstanceManagerExtendedTest {
         assertEquals("another-password-123", env.get("GATEWAY_API_PASSWORD"));
     }
 
+    /**
+     * Tests build environment gateway api password not set when empty.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_notSetWhenEmpty() throws Exception {
         // Create InstanceManager with empty API password (default behavior)
@@ -271,6 +337,12 @@ public class InstanceManagerExtendedTest {
                 env.get("GATEWAY_API_PASSWORD"));
     }
 
+    /**
+     * Tests build environment gateway api password not set when null.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_notSetWhenNull() throws Exception {
         // Create InstanceManager with null API password
@@ -290,6 +362,12 @@ public class InstanceManagerExtendedTest {
                 env.get("GATEWAY_API_PASSWORD"));
     }
 
+    /**
+     * Tests build environment gateway api password with special characters.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testBuildEnvironment_gatewayApiPassword_withSpecialCharacters() throws Exception {
         // Test password with special characters to ensure it's properly escaped
@@ -309,33 +387,37 @@ public class InstanceManagerExtendedTest {
         assertEquals(specialPassword, env.get("GATEWAY_API_PASSWORD"));
     }
 
-    // ====================== getOrSpawn with dead process ======================
-
+    /**
+     * Tests get or spawn dead process removes stale entry.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetOrSpawn_deadProcess_removesStaleEntry() {
         Process deadProcess = mock(Process.class);
         when(deadProcess.isAlive()).thenReturn(false);
 
-        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L, deadProcess, "test-secret");
+        ManagedInstance staleInstance = new ManagedInstance("agent1", "user1", 8080, 1234L,
+                deadProcess, "test-secret");
         staleInstance.setStatus(ManagedInstance.Status.RUNNING);
         addInstanceDirectly(staleInstance);
 
         // getOrSpawn should detect dead process, remove it, then try to spawn
         // Since doSpawn requires a real goosed binary, it will fail
-        try {
-            instanceManager.getOrSpawn("agent1", "user1").block();
-            fail("Expected exception from doSpawn");
-        } catch (Exception e) {
-            // Expected — doSpawn fails without real binary
-        }
+        assertThrows(RuntimeException.class, () -> instanceManager.getOrSpawn("agent1", "user1").block());
 
         // Stale instance should have been removed
         assertNull(instanceManager.getInstance("agent1", "user1"));
         assertEquals(ManagedInstance.Status.STOPPED, staleInstance.getStatus());
     }
 
-    // ====================== resetStuckRunningSchedules ======================
-
+    /**
+     * Tests reset stuck running schedules fixes stuck jobs.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResetStuckRunningSchedules_fixesStuckJobs() throws Exception {
         File dataDir = tempFolder.newFolder("data");
@@ -357,6 +439,12 @@ public class InstanceManagerExtendedTest {
         assertTrue(updated.contains("\"id\" : \"job2\""));
     }
 
+    /**
+     * Tests reset stuck running schedules no stuck jobs no change.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResetStuckRunningSchedules_noStuckJobs_noChange() throws Exception {
         File dataDir = tempFolder.newFolder("data");
@@ -377,6 +465,12 @@ public class InstanceManagerExtendedTest {
         assertEquals(modifiedBefore, scheduleFile.lastModified());
     }
 
+    /**
+     * Tests reset stuck running schedules no schedule file noop.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResetStuckRunningSchedules_noScheduleFile_noop() throws Exception {
         // No data/schedule.json exists — should not throw
@@ -385,8 +479,12 @@ public class InstanceManagerExtendedTest {
         reset.invoke(instanceManager, tempFolder.getRoot().toPath());
     }
 
-    // ====================== Instance limit enforcement ======================
-
+    /**
+     * Tests per user limit enforced.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testPerUserLimitEnforced() {
         properties.getLimits().setMaxInstancesPerUser(2);
@@ -404,14 +502,19 @@ public class InstanceManagerExtendedTest {
         addInstanceDirectly(inst2);
 
         // Third spawn for user1 should fail with limit error
-        try {
-            instanceManager.getOrSpawn("agent3", "user1").block();
-            fail("Expected per-user limit error");
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Per-user instance limit"));
-        }
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> instanceManager.getOrSpawn("agent3", "user1").block()
+        );
+        assertTrue(error.getMessage().contains("Per-user instance limit"));
     }
 
+    /**
+     * Tests global limit enforced.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGlobalLimitEnforced() {
         properties.getLimits().setMaxInstancesPerUser(50);
@@ -428,14 +531,19 @@ public class InstanceManagerExtendedTest {
         addInstanceDirectly(inst2);
 
         // Third spawn should fail with global limit error
-        try {
-            instanceManager.getOrSpawn("agent1", "user3").block();
-            fail("Expected global limit error");
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Global instance limit"));
-        }
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> instanceManager.getOrSpawn("agent1", "user3").block()
+        );
+        assertTrue(error.getMessage().contains("Global instance limit"));
     }
 
+    /**
+     * Tests stopped instances not counted for per user limit.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testStoppedInstancesNotCountedForPerUserLimit() {
         properties.getLimits().setMaxInstancesPerUser(1);
@@ -451,17 +559,18 @@ public class InstanceManagerExtendedTest {
 
         // Spawning a new agent should still fail (doSpawn will fail without binary),
         // but NOT because of per-user limit — the stopped instance doesn't count.
-        try {
-            instanceManager.getOrSpawn("agent2", "user1").block();
-            fail("Expected exception from doSpawn, not limit error");
-        } catch (Exception e) {
-            // Should fail because goosed binary doesn't exist, not because of per-user limit
-            assertFalse(e.getMessage().contains("Per-user instance limit"));
-        }
+        RuntimeException error = assertThrows(
+                RuntimeException.class,
+                () -> instanceManager.getOrSpawn("agent2", "user1").block()
+        );
+        assertFalse(error.getMessage().contains("Per-user instance limit"));
     }
 
     /**
      * Helper to add instances directly to the internal map via reflection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     private void addInstanceDirectly(ManagedInstance instance) {
         try {
@@ -471,7 +580,7 @@ public class InstanceManagerExtendedTest {
             java.util.concurrent.ConcurrentHashMap<String, ManagedInstance> instances =
                     (java.util.concurrent.ConcurrentHashMap<String, ManagedInstance>) field.get(instanceManager);
             instances.put(instance.getKey(), instance);
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }

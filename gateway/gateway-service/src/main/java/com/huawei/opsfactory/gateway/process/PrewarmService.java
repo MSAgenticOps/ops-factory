@@ -27,6 +27,12 @@ public class PrewarmService {
     private final GatewayProperties properties;
     private final Set<String> warmedUsers = ConcurrentHashMap.newKeySet();
 
+    /**
+     * Creates the prewarm service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public PrewarmService(InstanceManager instanceManager, GatewayProperties properties) {
         this.instanceManager = instanceManager;
         this.properties = properties;
@@ -44,7 +50,8 @@ public class PrewarmService {
             return;
         }
         if (!warmedUsers.add(userId)) {
-            return; // already warmed
+            // already warmed
+            return;
         }
 
         String agentId = properties.getPrewarm().getDefaultAgentId();
@@ -60,6 +67,9 @@ public class PrewarmService {
 
     /**
      * Reset pre-warm state for a user (called when all their instances are reaped).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public void clearUser(String userId) {
         warmedUsers.remove(userId);

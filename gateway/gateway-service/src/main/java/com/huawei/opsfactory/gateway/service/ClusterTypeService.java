@@ -38,6 +38,12 @@ public class ClusterTypeService {
     private final GatewayProperties properties;
     private Path clusterTypesDir;
 
+    /**
+     * Creates the cluster type service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ClusterTypeService(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -78,13 +84,9 @@ public class ClusterTypeService {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> ct = readFile(file);
-                    if (ct != null) {
-                        types.add(ct);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read cluster-type file: {}", file, e);
+                Map<String, Object> ct = readFile(file);
+                if (ct != null) {
+                    types.add(ct);
                 }
             }
         } catch (IOException e) {

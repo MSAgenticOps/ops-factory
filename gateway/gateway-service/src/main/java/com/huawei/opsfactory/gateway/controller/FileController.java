@@ -50,6 +50,12 @@ public class FileController {
     private final AgentConfigService agentConfigService;
     private final FileService fileService;
 
+    /**
+     * Creates the file controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public FileController(InstanceManager instanceManager,
                           AgentConfigService agentConfigService,
                           FileService fileService) {
@@ -252,6 +258,9 @@ public class FileController {
 
     /**
      * Fallback for upload requests that are not multipart/form-data.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     @PostMapping(value = "/upload")
     public Mono<Map<String, Object>> uploadFileNotMultipart() {

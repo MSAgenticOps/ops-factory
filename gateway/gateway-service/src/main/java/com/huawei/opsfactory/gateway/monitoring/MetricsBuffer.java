@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,10 +55,45 @@ public class MetricsBuffer {
      * @since 2026-05-09
      */
     public static class AgentStats {
-        public int requestCount;
-        public int errorCount;
-        public long latencySum;
-        public long ttftSum;
+        private int requestCount;
+        private int errorCount;
+        private long latencySum;
+        private long ttftSum;
+
+        /**
+         * Records a new request sample.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public void record(long totalMs, long ttftMs, boolean error) {
+            requestCount++;
+            latencySum += totalMs;
+            ttftSum += ttftMs;
+            if (error) {
+                errorCount++;
+            }
+        }
+
+        /**
+         * Gets the request count.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getRequestCount() {
+            return requestCount;
+        }
+
+        /**
+         * Gets the error count.
+         *
+         * @author x00000000
+         * @since 2026-05-09
+         */
+        public int getErrorCount() {
+            return errorCount;
+        }
 
         /**
          * Gets the average request latency in milliseconds.
@@ -80,6 +116,12 @@ public class MetricsBuffer {
         }
     }
 
+    /**
+     * Creates the metrics buffer instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public MetricsBuffer(GatewayProperties properties) {
         Path gatewayRoot = properties.getGatewayRootPath();
         this.persistPath = gatewayRoot.resolve("data").resolve("monitoring").resolve("metrics.json");
@@ -88,6 +130,9 @@ public class MetricsBuffer {
 
     /**
      * Record a collected metrics snapshot.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public synchronized void record(MetricsSnapshot snapshot) {
         snapshots[snapshotWriteIndex] = snapshot;
@@ -112,11 +157,10 @@ public class MetricsBuffer {
         String agentId = timing.getAgentId();
         if (agentId != null) {
             agentStatsMap.compute(agentId, (k, stats) -> {
-                if (stats == null) stats = new AgentStats();
-                stats.requestCount++;
-                stats.latencySum += timing.getTotalMs();
-                stats.ttftSum += timing.getTtftMs();
-                if (timing.isError()) stats.errorCount++;
+                if (stats == null) {
+                    stats = new AgentStats();
+                }
+                stats.record(timing.getTotalMs(), timing.getTtftMs(), timing.isError());
                 return stats;
             });
         }
@@ -124,14 +168,17 @@ public class MetricsBuffer {
 
     /**
      * Get per-agent statistics accumulated over the buffer lifetime.
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public Map<String, Map<String, Object>> getAgentStats() {
         Map<String, Map<String, Object>> result = new LinkedHashMap<>();
         for (var entry : agentStatsMap.entrySet()) {
             AgentStats s = entry.getValue();
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("requestCount", s.requestCount);
-            m.put("errorCount", s.errorCount);
+            m.put("requestCount", s.getRequestCount());
+            m.put("errorCount", s.getErrorCount());
             m.put("avgLatencyMs", Math.round(s.getAvgLatencyMs() * 100.0) / 100.0);
             m.put("avgTtftMs", Math.round(s.getAvgTtftMs() * 100.0) / 100.0);
             result.put(entry.getKey(), m);
@@ -145,7 +192,9 @@ public class MetricsBuffer {
      */
     public synchronized List<RequestTiming> drainTimings() {
         List<RequestTiming> result = new ArrayList<>();
-        if (pendingTimingCount == 0) return result;
+        if (pendingTimingCount == 0) {
+            return result;
+        }
 
         int count = pendingTimingCount;
         int start = (timingWriteIndex - count + TIMING_CAPACITY) % TIMING_CAPACITY;
@@ -162,6 +211,9 @@ public class MetricsBuffer {
 
     /**
      * Get the most recent snapshots, ordered oldest-first (for charting).
+     *
+     * @author x00000000
+     * @since 2026-05-09
      */
     public synchronized List<MetricsSnapshot> getSnapshots(int maxSlots) {
         int count = Math.min(this.snapshotCount, maxSlots);
@@ -185,7 +237,9 @@ public class MetricsBuffer {
     public void persistToDisk() {
         List<MetricsSnapshot> toWrite;
         synchronized (this) {
-            if (!dirty) return;
+            if (!dirty) {
+                return;
+            }
             toWrite = getSnapshots(SNAPSHOT_CAPACITY);
             dirty = false;
         }
@@ -198,7 +252,7 @@ public class MetricsBuffer {
                     "snapshots", toWrite
             );
             MAPPER.writeValue(persistPath.toFile(), wrapper);
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.warn("Failed to persist metrics to {}: {}", persistPath, e.getMessage());
         }
     }
@@ -216,7 +270,9 @@ public class MetricsBuffer {
             Map<String, Object> wrapper = MAPPER.readValue(persistPath.toFile(),
                     new TypeReference<Map<String, Object>>() {});
             Object snapshotObj = wrapper.get("snapshots");
-            if (snapshotObj == null) return;
+            if (snapshotObj == null) {
+                return;
+            }
 
             List<MetricsSnapshot> loaded = MAPPER.convertValue(snapshotObj,
                     new TypeReference<List<MetricsSnapshot>>() {});
@@ -233,7 +289,7 @@ public class MetricsBuffer {
             dirty = false;
             log.info("Restored {} metrics snapshots from {} (discarded {} stale)",
                     restored, persistPath, loaded.size() - restored);
-        } catch (Exception e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to load persisted metrics from {}: {}", persistPath, e.getMessage());
         }
     }

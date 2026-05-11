@@ -1,15 +1,24 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.e2e;
 
 import org.junit.Test;
 
 /**
  * E2E tests for StatusController endpoints: /status, /me, /config.
+ *
  * @author x00000000
  * @since 2026-05-09
  */
 public class StatusEndpointE2ETest extends BaseE2ETest {
-    // ====================== GET /status ======================
-
+    /**
+     * Returns the status returns ok.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getStatus_returnsOk() {
         webClient.get().uri("/gateway/status")
@@ -19,8 +28,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .expectBody(String.class).isEqualTo("ok");
     }
 
-    // ====================== GET /me ======================
-
+    /**
+     * Returns the me sys user returns sys.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getMe_sysUser_returnsSys() {
         webClient.get().uri("/gateway/me")
@@ -33,6 +46,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.role").isEqualTo("admin");
     }
 
+    /**
+     * Returns the me regular user returns user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getMe_regularUser_returnsUser() {
         webClient.get().uri("/gateway/me")
@@ -45,8 +64,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.role").isEqualTo("user");
     }
 
-    // ====================== GET /config ======================
-
+    /**
+     * Returns the config returns office preview defaults.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getConfig_returnsOfficePreviewDefaults() {
         webClient.get().uri("/gateway/config")
@@ -59,6 +82,12 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.officePreview.fileBaseUrl").isEqualTo("");
     }
 
+    /**
+     * Returns the config unauthenticated returns401.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getConfig_unauthenticated_returns401() {
         webClient.get().uri("/gateway/config")

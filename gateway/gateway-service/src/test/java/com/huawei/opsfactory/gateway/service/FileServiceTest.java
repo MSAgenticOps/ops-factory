@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import org.junit.Before;
@@ -21,23 +25,47 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Test coverage for File Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class FileServiceTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private FileService fileService;
 
+    /**
+     * Sets the up.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Before
     public void setUp() {
         fileService = new FileService(new GatewayProperties());
     }
 
+    /**
+     * Tests list files empty dir.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_emptyDir() throws IOException {
         List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
         assertTrue(files.isEmpty());
     }
 
+    /**
+     * Tests list files with files.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_withFiles() throws IOException {
         createFile("file1.txt", "hello");
@@ -47,6 +75,12 @@ public class FileServiceTest {
         assertEquals(2, files.size());
     }
 
+    /**
+     * Tests list files recursive.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_recursive() throws IOException {
         File subDir = tempFolder.newFolder("subdir");
@@ -59,6 +93,12 @@ public class FileServiceTest {
         assertEquals(1, files.size());
     }
 
+    /**
+     * Tests list top level files non recursive.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListTopLevelFiles_nonRecursive() throws IOException {
         File subDir = tempFolder.newFolder("subdir");
@@ -72,6 +112,12 @@ public class FileServiceTest {
         assertEquals("top.txt", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files non existent dir.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testListFiles_nonExistentDir() throws IOException {
         List<Map<String, Object>> files = fileService.listFiles(
@@ -79,6 +125,12 @@ public class FileServiceTest {
         assertTrue(files.isEmpty());
     }
 
+    /**
+     * Tests resolve file valid.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResolveFile_valid() throws IOException {
         createFile("test.txt", "content");
@@ -87,6 +139,12 @@ public class FileServiceTest {
         assertTrue(resource.exists());
     }
 
+    /**
+     * Tests resolve file traversal attack.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResolveFile_traversalAttack() {
         Resource resource = fileService.resolveFile(
@@ -94,6 +152,12 @@ public class FileServiceTest {
         assertNull(resource);
     }
 
+    /**
+     * Tests resolve file non existent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testResolveFile_nonExistent() {
         Resource resource = fileService.resolveFile(
@@ -101,6 +165,12 @@ public class FileServiceTest {
         assertNull(resource);
     }
 
+    /**
+     * Tests get mime type.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testGetMimeType() {
         assertEquals("application/json", fileService.getMimeType("data.json"));
@@ -112,6 +182,12 @@ public class FileServiceTest {
         assertEquals("application/octet-stream", fileService.getMimeType("unknown.xyz"));
     }
 
+    /**
+     * Tests is inline.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsInline() {
         assertTrue(fileService.isInline("text/plain"));
@@ -123,6 +199,12 @@ public class FileServiceTest {
         assertFalse(fileService.isInline("application/octet-stream"));
     }
 
+    /**
+     * Tests is editable text file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testIsEditableTextFile() {
         assertTrue(fileService.isEditableTextFile("notes.md"));
@@ -132,6 +214,12 @@ public class FileServiceTest {
         assertFalse(fileService.isEditableTextFile("image.png"));
     }
 
+    /**
+     * Tests update text file overwrites content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateTextFile_overwritesContent() throws IOException {
         createFile("notes.md", "old");
@@ -139,9 +227,18 @@ public class FileServiceTest {
         boolean updated = fileService.updateTextFile(tempFolder.getRoot().toPath(), "notes.md", "new");
 
         assertTrue(updated);
-        assertEquals("new", Files.readString(tempFolder.getRoot().toPath().resolve("notes.md"), StandardCharsets.UTF_8));
+        assertEquals(
+                "new",
+                Files.readString(tempFolder.getRoot().toPath().resolve("notes.md"), StandardCharsets.UTF_8)
+        );
     }
 
+    /**
+     * Tests update text file missing file.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateTextFile_missingFile() throws IOException {
         boolean updated = fileService.updateTextFile(tempFolder.getRoot().toPath(), "missing.md", "new");
@@ -149,6 +246,12 @@ public class FileServiceTest {
         assertFalse(updated);
     }
 
+    /**
+     * Tests update text file rejects unsupported type.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void testUpdateTextFile_rejectsUnsupportedType() throws IOException {
         createFile("slides.pptx", "old");

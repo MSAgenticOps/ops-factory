@@ -6,8 +6,6 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.ClusterRelationService;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,10 +24,14 @@ import java.util.*;
 @RestController
 @RequestMapping("/gateway/cluster-relations")
 public class ClusterRelationController {
-    private static final Logger log = LoggerFactory.getLogger(ClusterRelationController.class);
-
     private final ClusterRelationService clusterRelationService;
 
+    /**
+     * Creates the cluster relation controller instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ClusterRelationController(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
     }
@@ -119,13 +121,7 @@ public class ClusterRelationController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-            } catch (Exception e) {
-                log.error("Failed to create cluster relation", e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Invalid cluster relation request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -153,14 +149,8 @@ public class ClusterRelationController {
             } catch (IllegalArgumentException e) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("success", false);
-                body.put("error", e.getMessage());
+                body.put("error", "Cluster relation not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            } catch (Exception e) {
-                log.error("Failed to update cluster relation {}", id, e);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

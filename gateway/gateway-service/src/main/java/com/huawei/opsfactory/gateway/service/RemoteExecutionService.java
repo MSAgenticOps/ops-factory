@@ -5,14 +5,18 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -21,7 +25,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist validation.
+ * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist
+ * validation.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -36,6 +41,12 @@ public class RemoteExecutionService {
     private final ClusterService clusterService;
     private final ClusterTypeService clusterTypeService;
 
+    /**
+     * Creates the remote execution service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public RemoteExecutionService(HostService hostService,
                                   CommandWhitelistService commandWhitelistService,
                                   GatewayProperties properties,
@@ -111,7 +122,7 @@ public class RemoteExecutionService {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
                 log.debug("Could not resolve cluster type for host {}: {}", hostId, e.getMessage());
             }
         }
@@ -124,7 +135,8 @@ public class RemoteExecutionService {
             String value = envVars.get(key);
             effectiveCommand = effectiveCommand.replace("${" + key + "}", value);
             // Also replace $VAR when not followed by a valid identifier char
-            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key) + "(?![A-Za-z0-9_])",
+            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key)
+                            + "(?![A-Za-z0-9_])",
                     java.util.regex.Matcher.quoteReplacement(value));
         }
 
@@ -138,7 +150,10 @@ public class RemoteExecutionService {
             result.put("hostName", hostName);
             result.put("exitCode", -1);
             result.put("output", "");
-            result.put("error", "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected));
+            result.put(
+                    "error",
+                    "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected)
+            );
             result.put("rejectedCommands", rejected);
             result.put("duration", 0L);
             return result;
@@ -217,7 +232,7 @@ public class RemoteExecutionService {
 
                 if (System.currentTimeMillis() > deadline) {
                     log.warn("Command execution timed out after {} seconds for host {}", timeoutSeconds, hostId);
-                    channel.sendSignal("KILL");
+                    channel.disconnect();
                     break;
                 }
 
@@ -242,7 +257,7 @@ public class RemoteExecutionService {
             result.put("error", errorOutput);
             result.put("duration", duration);
             return result;
-        } catch (Exception e) {
+        } catch (JSchException | IOException e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());
 
@@ -256,18 +271,27 @@ public class RemoteExecutionService {
             result.put("error", "SSH execution failed: " + e.getMessage());
             result.put("duration", duration);
             return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long duration = System.currentTimeMillis() - startTime;
+            log.warn("SSH execution interrupted for host {}", hostId);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("hostId", hostId);
+            result.put("hostIp", hostname);
+            result.put("username", username);
+            result.put("hostName", hostName);
+            result.put("exitCode", -1);
+            result.put("output", "");
+            result.put("error", "SSH execution interrupted");
+            result.put("duration", duration);
+            return result;
         } finally {
             if (channel != null) {
-                try {
-                    channel.disconnect();
-                } catch (Exception ignored) {
-                }
+                channel.disconnect();
             }
             if (session != null) {
-                try {
-                    session.disconnect();
-                } catch (Exception ignored) {
-                }
+                session.disconnect();
             }
         }
     }

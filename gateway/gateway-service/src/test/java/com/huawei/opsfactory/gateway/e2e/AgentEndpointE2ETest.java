@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.e2e;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
@@ -19,10 +23,18 @@ import static org.mockito.Mockito.when;
 /**
  * E2E tests for AgentController endpoints.
  * Tests the full HTTP pipeline: AuthWebFilter → UserContextFilter → AgentController.
+ *
  * @author x00000000
  * @since 2026-05-09
  */
 public class AgentEndpointE2ETest extends BaseE2ETest {
+
+    /**
+     * Executes the list agents authenticated returns agent list operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listAgents_authenticated_returnsAgentList() {
         when(agentConfigService.getRegistry()).thenReturn(List.of(
@@ -54,6 +66,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agents[1].id").isEqualTo("kb-agent");
     }
 
+    /**
+     * Executes the list agents empty registry returns empty array operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listAgents_emptyRegistry_returnsEmptyArray() {
         when(agentConfigService.getRegistry()).thenReturn(Collections.emptyList());
@@ -68,6 +86,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agents.length()").isEqualTo(0);
     }
 
+    /**
+     * Executes the list agents unauthenticated returns401 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listAgents_unauthenticated_returns401() {
         webClient.get().uri("/gateway/agents")
@@ -75,6 +99,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isUnauthorized();
     }
 
+    /**
+     * Executes the list agents regular user can access operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listAgents_regularUser_canAccess() {
         when(agentConfigService.getRegistry()).thenReturn(Collections.emptyList());
@@ -88,6 +118,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agents").isArray();
     }
 
+    /**
+     * Executes the create agent admin success operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void createAgent_admin_success() throws Exception {
         when(agentConfigService.createAgent("test-agent", "Test Agent")).thenReturn(
@@ -107,6 +143,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.agent.name").isEqualTo("Test Agent");
     }
 
+    /**
+     * Executes the create agent non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void createAgent_nonAdmin_returns403() {
         webClient.post().uri("/gateway/agents")
@@ -118,6 +160,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Executes the create agent missing id returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void createAgent_missingId_returns400() {
         webClient.post().uri("/gateway/agents")
@@ -129,6 +177,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
+    /**
+     * Executes the create agent blank id returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void createAgent_blankId_returns400() {
         webClient.post().uri("/gateway/agents")
@@ -140,6 +194,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
+    /**
+     * Executes the create agent missing name returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void createAgent_missingName_returns400() {
         webClient.post().uri("/gateway/agents")
@@ -151,6 +211,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
+    /**
+     * Executes the create agent duplicate id returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void createAgent_duplicateId_returns400() throws Exception {
         when(agentConfigService.createAgent(anyString(), anyString()))
@@ -165,6 +231,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
+    /**
+     * Executes the delete agent admin success operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void deleteAgent_admin_success() throws Exception {
         doNothing().when(instanceManager).stopAllForAgent("test-agent");
@@ -182,6 +254,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         verify(agentConfigService).deleteAgent("test-agent");
     }
 
+    /**
+     * Executes the delete agent non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void deleteAgent_nonAdmin_returns403() {
         webClient.delete().uri("/gateway/agents/test-agent")
@@ -191,6 +269,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Executes the delete agent not found returns400 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void deleteAgent_notFound_returns400() throws Exception {
         doThrow(new IllegalArgumentException("Agent 'nonexistent' not found"))
@@ -203,6 +287,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isBadRequest();
     }
 
+    /**
+     * Executes the list skills admin returns skills list operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listSkills_admin_returnsSkillsList() {
         when(agentConfigService.listSkills("universal-agent")).thenReturn(List.of(
@@ -222,6 +312,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.skills[1].description").isEqualTo("Code assistance");
     }
 
+    /**
+     * Executes the list skills non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void listSkills_nonAdmin_returns403() {
         webClient.get().uri("/gateway/agents/universal-agent/skills")
@@ -231,6 +327,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Returns the config admin returns agent config.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getConfig_admin_returnsAgentConfig() {
         when(agentConfigService.findAgent("universal-agent"))
@@ -252,6 +354,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.model").isEqualTo("gpt-4o");
     }
 
+    /**
+     * Returns the config non admin returns403.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getConfig_nonAdmin_returns403() {
         webClient.get().uri("/gateway/agents/universal-agent/config")
@@ -261,6 +369,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Returns the config missing provider model returns empty strings.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void getConfig_missingProviderModel_returnsEmptyStrings() {
         when(agentConfigService.findAgent("minimal-agent"))
@@ -281,6 +395,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .jsonPath("$.model").isEqualTo("");
     }
 
+    /**
+     * Executes the update config admin success operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void updateConfig_admin_success() throws Exception {
         when(agentConfigService.findAgent("universal-agent"))
@@ -300,6 +420,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         verify(agentConfigService).writeAgentsMd("universal-agent", "# Updated content");
     }
 
+    /**
+     * Executes the update config non admin returns403 operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void updateConfig_nonAdmin_returns403() {
         webClient.put().uri("/gateway/agents/universal-agent/config")
@@ -311,6 +437,12 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 .expectStatus().isForbidden();
     }
 
+    /**
+     * Executes the update config null agents md still returns updated operation.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Test
     public void updateConfig_nullAgentsMd_stillReturnsUpdated() {
         when(agentConfigService.findAgent("universal-agent"))

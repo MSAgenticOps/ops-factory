@@ -23,7 +23,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Scheduled service that polls the WeChat inbox directory, deduplicates inbound messages, and dispatches them to agent sessions.
+ * Scheduled service that polls the WeChat inbox directory, deduplicates inbound messages, and dispatches them to agent
+ * sessions.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -38,6 +39,12 @@ public class WeChatMessagePumpService {
     private final ChannelDedupService channelDedupService;
     private final SessionBridgeService sessionBridgeService;
 
+    /**
+     * Creates the we chat message pump service instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public WeChatMessagePumpService(ChannelConfigService channelConfigService,
                                     ChannelRuntimeStorageService runtimeStorageService,
                                     ChannelDedupService channelDedupService,
@@ -84,7 +91,7 @@ public class WeChatMessagePumpService {
         Map<String, Object> payload;
         try {
             payload = MAPPER.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
-        } catch (Exception e) {
+        } catch (IOException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
                     "Failed to parse inbound WeChat file " + file.getFileName());
             moveToProcessed(channel, file, "invalid");
@@ -125,7 +132,7 @@ public class WeChatMessagePumpService {
                 writeOutboxCommand(channel, peerId, reply.replyText(), contextToken);
             }
             moveToProcessed(channel, file, "processed");
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_failed",
                     "Failed to process inbound WeChat message: " + e.getMessage());
             moveToProcessed(channel, file, "error");
@@ -143,7 +150,11 @@ public class WeChatMessagePumpService {
         Path file = pendingDir.resolve(payload.get("id") + ".json");
         try {
             Files.createDirectories(pendingDir);
-            Files.writeString(file, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload), StandardCharsets.UTF_8);
+            Files.writeString(
+                    file,
+                    MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+                    StandardCharsets.UTF_8
+            );
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "wechat.outbox_enqueued",
                     "Queued WeChat reply for " + peerId);
         } catch (IOException e) {
@@ -155,11 +166,14 @@ public class WeChatMessagePumpService {
         Path processedDir = processedInboxDir(channel);
         try {
             Files.createDirectories(processedDir);
-            Files.move(file, processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json")));
+            Files.move(
+                    file,
+                    processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json"))
+            );
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(file);
-            } catch (IOException ignored) {
+            } catch (IOException deleteError) {
                 // ignore
             }
         }

@@ -14,6 +14,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 2026-05-09
  */
 public class ManagedInstance {
+
+    /**
+     * Runtime status of a managed instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public enum Status {
         STARTING, RUNNING, STOPPED, ERROR
     }
@@ -28,9 +35,16 @@ public class ManagedInstance {
     private volatile int restartCount = 0;
     private volatile long lastRestartTime = 0;
     private transient Process process;
+
     /** Sessions that have been resumed (provider+extensions loaded) on this instance. */
     private final Set<String> resumedSessions = ConcurrentHashMap.newKeySet();
 
+    /**
+     * Creates a managed instance descriptor.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ManagedInstance(String agentId, String userId, int port, long pid, Process process, String secretKey) {
         this.agentId = agentId;
         this.userId = userId;
@@ -142,7 +156,12 @@ public class ManagedInstance {
         return process;
     }
 
-    /** Mark a session as resumed (provider+extensions loaded) on this instance. */
+    /**
+     * Marks a session as resumed on this instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void markSessionResumed(String sessionId) {
         resumedSessions.add(sessionId);
     }
@@ -159,7 +178,12 @@ public class ManagedInstance {
         }
     }
 
-    /** Check whether a session has been resumed on this instance. */
+    /**
+     * Checks whether the given session has already been resumed on this instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean isSessionResumed(String sessionId) {
         return sessionId != null && resumedSessions.contains(sessionId);
     }

@@ -17,6 +17,7 @@ import java.net.ServerSocket;
  */
 @Component
 public class PortAllocator {
+
     /**
      * Allocate an available ephemeral port by binding to port 0
      * and immediately releasing it.

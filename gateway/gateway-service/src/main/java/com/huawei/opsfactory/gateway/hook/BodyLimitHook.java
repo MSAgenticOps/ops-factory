@@ -22,6 +22,12 @@ import reactor.core.publisher.Mono;
 public class BodyLimitHook implements RequestHook {
     private final long maxBytes;
 
+    /**
+     * Creates the body limit hook instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public BodyLimitHook(GatewayProperties properties) {
         // Base64 overhead: ~33% larger than raw bytes
         this.maxBytes = (long) properties.getUpload().getMaxFileSizeMb() * 1024 * 1024 * 4 / 3;
