@@ -50,8 +50,9 @@ public class FileCitationController {
     /**
      * Returns the content of a knowledge-base citation file for inline preview.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param requestedPath the requestedPath parameter
+     * @return the result
      */
     @GetMapping("/content")
     public Mono<ResponseEntity<?>> getCitationFile(@PathVariable String agentId,

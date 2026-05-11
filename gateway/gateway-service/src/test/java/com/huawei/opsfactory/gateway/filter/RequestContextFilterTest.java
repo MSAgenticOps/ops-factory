@@ -27,9 +27,6 @@ public class RequestContextFilterTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -39,9 +36,6 @@ public class RequestContextFilterTest {
 
     /**
      * Tests generates request id when missing.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGeneratesRequestIdWhenMissing() {
@@ -59,9 +53,6 @@ public class RequestContextFilterTest {
 
     /**
      * Tests reuses incoming request id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testReusesIncomingRequestId() {

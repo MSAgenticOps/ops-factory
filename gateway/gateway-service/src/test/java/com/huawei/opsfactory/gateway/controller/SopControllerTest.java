@@ -49,9 +49,6 @@ public class SopControllerTest {
 
     /**
      * Tests list sops empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSops_empty() {
@@ -69,9 +66,6 @@ public class SopControllerTest {
 
     /**
      * Tests list sops with data.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSops_withData() {
@@ -94,9 +88,6 @@ public class SopControllerTest {
 
     /**
      * Tests get sop existing.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetSop_existing() {
@@ -118,9 +109,6 @@ public class SopControllerTest {
 
     /**
      * Tests get sop not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetSop_notFound() {
@@ -138,9 +126,6 @@ public class SopControllerTest {
 
     /**
      * Tests create sop success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_success() {
@@ -167,9 +152,6 @@ public class SopControllerTest {
 
     /**
      * Tests create sop error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_error() {
@@ -195,9 +177,6 @@ public class SopControllerTest {
 
     /**
      * Tests update sop success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateSop_success() {
@@ -223,9 +202,6 @@ public class SopControllerTest {
 
     /**
      * Tests update sop not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateSop_notFound() {
@@ -248,9 +224,6 @@ public class SopControllerTest {
 
     /**
      * Tests delete sop success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteSop_success() {
@@ -267,9 +240,6 @@ public class SopControllerTest {
 
     /**
      * Tests delete sop not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteSop_notFound() {
@@ -286,9 +256,6 @@ public class SopControllerTest {
 
     /**
      * Tests create sop duplicate name returns conflict.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_duplicateName_returnsConflict() {
@@ -314,9 +281,6 @@ public class SopControllerTest {
 
     /**
      * Tests list sops unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSops_unauthorized_noKey() {
@@ -328,9 +292,6 @@ public class SopControllerTest {
 
     /**
      * Tests list sops forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSops_forbidden_nonAdmin() {
@@ -343,9 +304,6 @@ public class SopControllerTest {
 
     /**
      * Tests create sop forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_forbidden_nonAdmin() {

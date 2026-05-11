@@ -67,8 +67,9 @@ public class FileController {
     /**
      * Lists files in the agent workspace directory.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> listFiles(@PathVariable String agentId,
@@ -84,8 +85,9 @@ public class FileController {
     /**
      * Downloads or retrieves a file from the agent workspace.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/**")
     public Mono<ResponseEntity<?>> getFile(@PathVariable String agentId,
@@ -133,8 +135,9 @@ public class FileController {
     /**
      * Deletes a file from the agent workspace.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/**")
     public Mono<ResponseEntity<Map<String, Object>>> deleteFile(@PathVariable("agentId") String agentId,
@@ -170,8 +173,10 @@ public class FileController {
     /**
      * Updates the content of an editable text file in the agent workspace.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping(value = "/**", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> updateFile(@PathVariable("agentId") String agentId,
@@ -213,8 +218,11 @@ public class FileController {
     /**
      * Uploads a file to the agent workspace for a specific session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param filePart the filePart parameter
+     * @param sessionId the sessionId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<Map<String, Object>> uploadFile(@PathVariable String agentId,
@@ -259,8 +267,7 @@ public class FileController {
     /**
      * Fallback for upload requests that are not multipart/form-data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @PostMapping(value = "/upload")
     public Mono<Map<String, Object>> uploadFileNotMultipart() {

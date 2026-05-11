@@ -43,8 +43,7 @@ public class SystemUserMigrationService {
     /**
      * Performs the legacy system user directory migration if needed on startup.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @PostConstruct
     public void migrateIfNeeded() throws IOException {

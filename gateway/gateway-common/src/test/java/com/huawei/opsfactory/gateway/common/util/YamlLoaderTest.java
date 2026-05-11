@@ -29,8 +29,7 @@ public class YamlLoaderTest {
     /**
      * Tests load existing file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testLoad_existingFile() throws Exception {
@@ -47,9 +46,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests load non existent file.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoad_nonExistentFile() {
@@ -61,8 +57,7 @@ public class YamlLoaderTest {
     /**
      * Tests load empty file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testLoad_emptyFile() throws Exception {
@@ -73,9 +68,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests get string present.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetString_present() {
@@ -84,9 +76,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests get string absent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetString_absent() {
@@ -95,9 +84,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests get int present.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetInt_present() {
@@ -106,9 +92,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests get int string value.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetInt_stringValue() {
@@ -117,9 +100,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests get int absent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetInt_absent() {
@@ -128,9 +108,6 @@ public class YamlLoaderTest {
 
     /**
      * Tests get int invalid string.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetInt_invalidString() {

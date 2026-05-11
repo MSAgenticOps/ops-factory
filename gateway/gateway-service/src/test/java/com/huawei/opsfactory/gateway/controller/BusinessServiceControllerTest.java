@@ -48,9 +48,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests list business services.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices() {
@@ -69,9 +66,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests list business services with keyword.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_withKeyword() {
@@ -93,9 +87,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests get business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetBusinessService() {
@@ -116,9 +107,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests get business service not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetBusinessService_notFound() {
@@ -138,9 +126,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests get business service resolved.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetBusinessServiceResolved() {
@@ -165,9 +150,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests get business service hosts.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetBusinessServiceHosts() {
@@ -190,9 +172,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests get business service topology.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetBusinessServiceTopology() {
@@ -215,9 +194,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests create business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateBusinessService() {
@@ -243,9 +219,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests create business service error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateBusinessService_error() {
@@ -271,9 +244,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests update business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateBusinessService() {
@@ -299,9 +269,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests update business service not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateBusinessService_notFound() {
@@ -326,9 +293,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests delete business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteBusinessService() {
@@ -345,9 +309,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests delete business service not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteBusinessService_notFound() {
@@ -366,9 +327,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests migrate.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMigrate() {
@@ -390,9 +348,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests list business services unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_unauthorized_noKey() {
@@ -404,9 +359,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests list business services forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_forbidden_nonAdmin() {
@@ -419,9 +371,6 @@ public class BusinessServiceControllerTest {
 
     /**
      * Tests create business service forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateBusinessService_forbidden_nonAdmin() {

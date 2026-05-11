@@ -36,8 +36,8 @@ public class BodyLimitHook implements RequestHook {
     /**
      * Rejects request bodies exceeding the configured upload size limit.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ctx the ctx parameter
+     * @return the result
      */
     @Override
     public Mono<HookContext> process(HookContext ctx) {

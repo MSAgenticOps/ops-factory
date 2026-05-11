@@ -23,9 +23,6 @@ public class GoosedProxyTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -42,9 +39,6 @@ public class GoosedProxyTest {
 
     /**
      * Tests web client not null.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWebClientNotNull() {
@@ -53,9 +47,6 @@ public class GoosedProxyTest {
 
     /**
      * Tests goosed base url tls disabled uses http.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGoosedBaseUrl_tlsDisabled_usesHttp() {
@@ -64,9 +55,6 @@ public class GoosedProxyTest {
 
     /**
      * Tests goosed base url tls enabled uses https.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGoosedBaseUrl_tlsEnabled_usesHttps() {
@@ -75,9 +63,6 @@ public class GoosedProxyTest {
 
     /**
      * Tests web client not null tls enabled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testWebClientNotNull_tlsEnabled() {

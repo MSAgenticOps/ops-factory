@@ -62,8 +62,8 @@ public class RemoteExecutionService {
     /**
      * Execute a remote command on the specified host via SSH.
      *
-     * @param hostId         the host ID to connect to
-     * @param command        the shell command to execute
+     * @param hostId the host ID to connect to
+     * @param command the shell command to execute
      * @param timeoutSeconds maximum execution time in seconds
      * @return result map with hostIp, username, hostName, exitCode, output, error, duration
      */

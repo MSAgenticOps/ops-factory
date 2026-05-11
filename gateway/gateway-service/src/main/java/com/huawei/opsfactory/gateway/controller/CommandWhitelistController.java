@@ -40,8 +40,8 @@ public class CommandWhitelistController {
     /**
      * Returns the current command whitelist configuration.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> getWhitelist(ServerWebExchange exchange) {
@@ -55,8 +55,9 @@ public class CommandWhitelistController {
     /**
      * Adds a command pattern to the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> addCommand(
@@ -82,8 +83,10 @@ public class CommandWhitelistController {
     /**
      * Updates a command pattern in the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pattern the pattern parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{pattern}")
     public Mono<ResponseEntity<Map<String, Object>>> updateCommand(
@@ -110,8 +113,9 @@ public class CommandWhitelistController {
     /**
      * Deletes a command pattern from the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pattern the pattern parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{pattern}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteCommand(

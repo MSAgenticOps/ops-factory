@@ -35,8 +35,7 @@ public class HostServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -57,9 +56,6 @@ public class HostServiceTest {
 
     /**
      * Tests list hosts empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_empty() {
@@ -69,9 +65,6 @@ public class HostServiceTest {
 
     /**
      * Tests list hosts returns all hosts.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_returnsAllHosts() {
@@ -84,9 +77,6 @@ public class HostServiceTest {
 
     /**
      * Tests list hosts credentials masked.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_credentialsMasked() {
@@ -99,9 +89,6 @@ public class HostServiceTest {
 
     /**
      * Tests list hosts filter by tag.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_filterByTag() {
@@ -115,9 +102,6 @@ public class HostServiceTest {
 
     /**
      * Tests list hosts filter by tag no match.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_filterByTagNoMatch() {
@@ -129,9 +113,6 @@ public class HostServiceTest {
 
     /**
      * Tests list hosts empty tags array.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListHosts_emptyTagsArray() {
@@ -145,9 +126,6 @@ public class HostServiceTest {
 
     /**
      * Tests get host existing.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetHost_existing() {
@@ -161,9 +139,6 @@ public class HostServiceTest {
 
     /**
      * Tests get host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testGetHost_notFound() {
@@ -174,9 +149,6 @@ public class HostServiceTest {
 
     /**
      * Tests get host with credential decrypts credential.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetHostWithCredential_decryptsCredential() {
@@ -198,9 +170,6 @@ public class HostServiceTest {
 
     /**
      * Tests get host with credential not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testGetHostWithCredential_notFound() {
@@ -211,9 +180,6 @@ public class HostServiceTest {
 
     /**
      * Tests create host success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateHost_success() {
@@ -244,9 +210,6 @@ public class HostServiceTest {
 
     /**
      * Tests create host default values.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateHost_defaultValues() {
@@ -265,8 +228,7 @@ public class HostServiceTest {
     /**
      * Tests create host encrypted credential stored.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testCreateHost_encryptedCredentialStored() throws IOException {
@@ -287,9 +249,6 @@ public class HostServiceTest {
 
     /**
      * Tests update host success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_success() {
@@ -311,9 +270,6 @@ public class HostServiceTest {
 
     /**
      * Tests update host update credential.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_updateCredential() {
@@ -336,9 +292,6 @@ public class HostServiceTest {
 
     /**
      * Tests update host update tags.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_updateTags() {
@@ -357,9 +310,6 @@ public class HostServiceTest {
 
     /**
      * Tests update host partial update.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_partialUpdate() {
@@ -381,9 +331,6 @@ public class HostServiceTest {
 
     /**
      * Tests update host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateHost_notFound() {
@@ -394,9 +341,6 @@ public class HostServiceTest {
 
     /**
      * Tests update host masked credential preserves original.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateHost_maskedCredentialPreservesOriginal() {
@@ -423,8 +367,7 @@ public class HostServiceTest {
     /**
      * Tests update host updated at changes.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws InterruptedException if the operation fails
      */
     @Test
     public void testUpdateHost_updatedAtChanges() throws InterruptedException {
@@ -449,9 +392,6 @@ public class HostServiceTest {
 
     /**
      * Tests delete host success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteHost_success() {
@@ -464,9 +404,6 @@ public class HostServiceTest {
 
     /**
      * Tests delete host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteHost_notFound() {
@@ -478,9 +415,6 @@ public class HostServiceTest {
 
     /**
      * Tests get all tags empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetAllTags_empty() {
@@ -490,9 +424,6 @@ public class HostServiceTest {
 
     /**
      * Tests get all tags collects unique.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetAllTags_collectsUnique() {
@@ -509,9 +440,6 @@ public class HostServiceTest {
 
     /**
      * Tests get all tags host with no tags.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetAllTags_hostWithNoTags() {
@@ -525,9 +453,6 @@ public class HostServiceTest {
 
     /**
      * Tests connection host not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConnection_hostNotFound() {
@@ -540,8 +465,7 @@ public class HostServiceTest {
     /**
      * Tests list hosts skips corrupt file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListHosts_skipsCorruptFile() throws IOException {
@@ -555,9 +479,6 @@ public class HostServiceTest {
 
     /**
      * Tests create host with key auth.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateHost_withKeyAuth() {

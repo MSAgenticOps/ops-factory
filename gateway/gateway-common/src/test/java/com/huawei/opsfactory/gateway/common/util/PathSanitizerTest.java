@@ -22,9 +22,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests is safe normal path.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsSafe_normalPath() {
@@ -35,9 +32,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests is safe traversal attack.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsSafe_traversalAttack() {
@@ -49,9 +43,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests is safe null path.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsSafe_nullPath() {
@@ -61,9 +52,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests sanitize filename normal.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSanitizeFilename_normal() {
@@ -73,9 +61,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests sanitize filename removes path separators.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSanitizeFilename_removesPathSeparators() {
@@ -86,9 +71,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests sanitize filename removes traversal dots.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSanitizeFilename_removesTraversalDots() {
@@ -99,9 +81,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests sanitize filename removes special chars.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSanitizeFilename_removesSpecialChars() {
@@ -110,9 +89,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests sanitize filename null.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSanitizeFilename_null() {
@@ -121,9 +97,6 @@ public class PathSanitizerTest {
 
     /**
      * Tests sanitize filename chinese characters.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSanitizeFilename_chineseCharacters() {

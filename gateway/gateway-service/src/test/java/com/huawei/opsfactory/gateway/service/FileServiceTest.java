@@ -39,9 +39,6 @@ public class FileServiceTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -51,8 +48,7 @@ public class FileServiceTest {
     /**
      * Tests list files empty dir.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_emptyDir() throws IOException {
@@ -63,8 +59,7 @@ public class FileServiceTest {
     /**
      * Tests list files with files.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_withFiles() throws IOException {
@@ -78,8 +73,7 @@ public class FileServiceTest {
     /**
      * Tests list files recursive.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_recursive() throws IOException {
@@ -96,8 +90,7 @@ public class FileServiceTest {
     /**
      * Tests list top level files non recursive.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListTopLevelFiles_nonRecursive() throws IOException {
@@ -115,8 +108,7 @@ public class FileServiceTest {
     /**
      * Tests list files non existent dir.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_nonExistentDir() throws IOException {
@@ -128,8 +120,7 @@ public class FileServiceTest {
     /**
      * Tests resolve file valid.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testResolveFile_valid() throws IOException {
@@ -141,9 +132,6 @@ public class FileServiceTest {
 
     /**
      * Tests resolve file traversal attack.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testResolveFile_traversalAttack() {
@@ -154,9 +142,6 @@ public class FileServiceTest {
 
     /**
      * Tests resolve file non existent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testResolveFile_nonExistent() {
@@ -167,9 +152,6 @@ public class FileServiceTest {
 
     /**
      * Tests get mime type.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetMimeType() {
@@ -184,9 +166,6 @@ public class FileServiceTest {
 
     /**
      * Tests is inline.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsInline() {
@@ -201,9 +180,6 @@ public class FileServiceTest {
 
     /**
      * Tests is editable text file.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsEditableTextFile() {
@@ -217,8 +193,7 @@ public class FileServiceTest {
     /**
      * Tests update text file overwrites content.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testUpdateTextFile_overwritesContent() throws IOException {
@@ -236,8 +211,7 @@ public class FileServiceTest {
     /**
      * Tests update text file missing file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testUpdateTextFile_missingFile() throws IOException {
@@ -249,8 +223,7 @@ public class FileServiceTest {
     /**
      * Tests update text file rejects unsupported type.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testUpdateTextFile_rejectsUnsupportedType() throws IOException {

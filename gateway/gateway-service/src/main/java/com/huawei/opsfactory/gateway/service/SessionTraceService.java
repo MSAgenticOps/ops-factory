@@ -69,8 +69,10 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Starts a background trace collection job for the given session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param userId the userId parameter
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @return the result
      */
     public synchronized TraceJobSnapshot startTrace(String userId, String agentId, String sessionId) {
         validateId("userId", userId);
@@ -102,8 +104,8 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Gets the current status snapshot of a trace collection job.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param jobId the jobId parameter
+     * @return the result
      */
     public TraceJobSnapshot getJob(String jobId) {
         cleanupExpiredJobs();
@@ -117,8 +119,8 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Returns the path to the collected trace archive for a completed job.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param jobId the jobId parameter
+     * @return the result
      */
     public Path getArchive(String jobId) {
         TraceJob job = jobs.get(jobId);
@@ -137,8 +139,7 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Deletes a trace job and its associated files.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param jobId the jobId parameter
      */
     public void deleteJob(String jobId) {
         TraceJob job = jobs.remove(jobId);
@@ -220,9 +221,6 @@ public class SessionTraceService implements DisposableBean {
 
     /**
      * Periodically cleans up expired trace jobs and trace directories.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Scheduled(fixedDelay = CLEANUP_FIXED_DELAY_MS)
     public void cleanupExpiredTraces() {
@@ -324,9 +322,6 @@ public class SessionTraceService implements DisposableBean {
 
     /**
      * Shuts down the background executor on bean disposal.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Override
     public void destroy() {

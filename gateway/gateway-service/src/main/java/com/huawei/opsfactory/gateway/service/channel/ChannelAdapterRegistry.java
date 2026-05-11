@@ -35,8 +35,8 @@ public class ChannelAdapterRegistry {
     /**
      * Resolves the adapter for the given channel type, throwing if not found.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param type the type parameter
+     * @return the result
      */
     public ChannelAdapter require(String type) {
         ChannelAdapter adapter = adaptersByType.get(type);

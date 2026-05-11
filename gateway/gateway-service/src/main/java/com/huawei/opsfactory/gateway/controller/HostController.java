@@ -59,8 +59,13 @@ public class HostController {
     /**
      * Lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param tags the tags parameter
+     * @param clusterId the clusterId parameter
+     * @param groupId the groupId parameter
+     * @param businessServiceId the businessServiceId parameter
+     * @param enabledOnly the enabledOnly parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listHosts(
@@ -140,8 +145,9 @@ public class HostController {
     /**
      * Gets a host by its IP address.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ip the ip parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/by-ip")
     public Mono<ResponseEntity<Map<String, Object>>> getHostByIp(
@@ -166,8 +172,9 @@ public class HostController {
     /**
      * Gets a host by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getHost(
@@ -200,8 +207,9 @@ public class HostController {
     /**
      * Creates a new host.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createHost(
@@ -227,8 +235,10 @@ public class HostController {
     /**
      * Updates a host by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateHost(
@@ -264,8 +274,9 @@ public class HostController {
     /**
      * Deletes a host by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteHost(
@@ -289,8 +300,8 @@ public class HostController {
     /**
      * Returns all unique host tags.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/tags")
     public Mono<Map<String, Object>> getTags(ServerWebExchange exchange) {
@@ -306,8 +317,9 @@ public class HostController {
     /**
      * Tests SSH connectivity to a host.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{id}/test")
     public Mono<Map<String, Object>> testConnectivity(

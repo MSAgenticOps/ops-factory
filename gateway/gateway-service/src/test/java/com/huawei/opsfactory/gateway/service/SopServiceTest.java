@@ -34,8 +34,7 @@ public class SopServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -59,9 +58,6 @@ public class SopServiceTest {
 
     /**
      * Tests list sops empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSops_empty() {
@@ -71,9 +67,6 @@ public class SopServiceTest {
 
     /**
      * Tests list sops returns all.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListSops_returnsAll() {
@@ -87,8 +80,7 @@ public class SopServiceTest {
     /**
      * Tests list sops skips corrupt file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListSops_skipsCorruptFile() throws IOException {
@@ -103,9 +95,6 @@ public class SopServiceTest {
 
     /**
      * Tests get sop existing.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetSop_existing() {
@@ -119,9 +108,6 @@ public class SopServiceTest {
 
     /**
      * Tests get sop not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testGetSop_notFound() {
@@ -132,9 +118,6 @@ public class SopServiceTest {
 
     /**
      * Tests create sop success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_success() {
@@ -159,9 +142,6 @@ public class SopServiceTest {
 
     /**
      * Tests create sop default values.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_defaultValues() {
@@ -182,9 +162,6 @@ public class SopServiceTest {
 
     /**
      * Tests update sop success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateSop_success() {
@@ -205,9 +182,6 @@ public class SopServiceTest {
 
     /**
      * Tests update sop partial update.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateSop_partialUpdate() {
@@ -229,9 +203,6 @@ public class SopServiceTest {
 
     /**
      * Tests update sop update nodes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateSop_updateNodes() {
@@ -253,9 +224,6 @@ public class SopServiceTest {
 
     /**
      * Tests update sop not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateSop_notFound() {
@@ -268,9 +236,6 @@ public class SopServiceTest {
 
     /**
      * Tests delete sop success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteSop_success() {
@@ -283,9 +248,6 @@ public class SopServiceTest {
 
     /**
      * Tests delete sop not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteSop_notFound() {
@@ -296,8 +258,7 @@ public class SopServiceTest {
     /**
      * Tests delete sop file removed.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testDeleteSop_fileRemoved() throws IOException {
@@ -312,9 +273,6 @@ public class SopServiceTest {
 
     /**
      * Tests create sop duplicate name rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateSop_duplicateName_rejected() {
@@ -327,9 +285,6 @@ public class SopServiceTest {
 
     /**
      * Tests create sop duplicate name case insensitive rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateSop_duplicateNameCaseInsensitive_rejected() {
@@ -342,9 +297,6 @@ public class SopServiceTest {
 
     /**
      * Tests create sop different name allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateSop_differentName_allowed() {
@@ -360,9 +312,6 @@ public class SopServiceTest {
 
     /**
      * Tests update sop duplicate name rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateSop_duplicateName_rejected() {
@@ -376,9 +325,6 @@ public class SopServiceTest {
 
     /**
      * Tests update sop same name same id allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateSop_sameNameSameId_allowed() {

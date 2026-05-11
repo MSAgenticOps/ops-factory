@@ -37,6 +37,9 @@ public class HookPipeline {
     /**
      * Run all request hooks in order. Returns the (possibly modified) body.
      * If any hook returns an error Mono, the pipeline short-circuits.
+     *
+     * @param ctx the ctx parameter
+     * @return the result
      */
     public Mono<String> executeRequest(HookContext ctx) {
         Mono<HookContext> chain = Mono.just(ctx);

@@ -57,8 +57,7 @@ public class LangfuseService {
     /**
      * Checks whether the Langfuse integration is properly configured with host, public key, and secret key.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public boolean isConfigured() {
         return config.getHost() != null && !config.getHost().isBlank()
@@ -69,8 +68,7 @@ public class LangfuseService {
     /**
      * Checks whether the Langfuse server is reachable via a health check endpoint.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public Mono<Boolean> checkReachable() {
         if (!isConfigured()) {
@@ -95,8 +93,11 @@ public class LangfuseService {
     /**
      * Fetches raw traces from the Langfuse API within the given time range.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param from the from parameter
+     * @param to the to parameter
+     * @param limit the limit parameter
+     * @param errorsOnly the errorsOnly parameter
+     * @return the result
      */
     public Mono<String> getTraces(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
@@ -110,8 +111,9 @@ public class LangfuseService {
     /**
      * Fetches raw observations from the Langfuse API within the given time range.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param from the from parameter
+     * @param to the to parameter
+     * @return the result
      */
     public Mono<String> getObservations(String from, String to) {
         if (!isConfigured()) {
@@ -125,6 +127,10 @@ public class LangfuseService {
     /**
      * Compute an overview by fetching traces and observations, then aggregating
      * into totals, averages, percentiles, and daily breakdowns.
+     *
+     * @param from the from parameter
+     * @param to the to parameter
+     * @return the result
      */
     public Mono<Map<String, Object>> getOverview(String from, String to) {
         if (!isConfigured()) {
@@ -231,8 +237,11 @@ public class LangfuseService {
     /**
      * Fetch traces and transform into frontend TraceRow[] format.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param from the from parameter
+     * @param to the to parameter
+     * @param limit the limit parameter
+     * @param errorsOnly the errorsOnly parameter
+     * @return the result
      */
     public Mono<List<Map<String, Object>>> getTracesFormatted(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
@@ -296,8 +305,9 @@ public class LangfuseService {
     /**
      * Fetch observations and transform into frontend { observations: ObservationGroup[] } format.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param from the from parameter
+     * @param to the to parameter
+     * @return the result
      */
     public Mono<Map<String, Object>> getObservationsFormatted(String from, String to) {
         if (!isConfigured()) {

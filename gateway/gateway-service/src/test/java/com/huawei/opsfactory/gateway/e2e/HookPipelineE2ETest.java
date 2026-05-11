@@ -34,9 +34,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -46,9 +43,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply hook pass through relays to goosed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_hookPassThrough_relaysToGoosed() {
@@ -76,9 +70,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply hook rejects with payload too large returns413 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_hookRejectsWithPayloadTooLarge_returns413() {
@@ -102,9 +93,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply hook rejects with forbidden returns403 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_hookRejectsWithForbidden_returns403() {
@@ -128,9 +116,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply hook throws unexpected exception returns500 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_hookThrowsUnexpectedException_returns500() {
@@ -153,9 +138,6 @@ public class HookPipelineE2ETest extends BaseE2ETest {
 
     /**
      * Executes the session reply hook modifies body modified body reaches goosed operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_hookModifiesBody_modifiedBodyReachesGoosed() {

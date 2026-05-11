@@ -44,8 +44,9 @@ public class RemoteExecController {
     /**
      * Executes a remote command on a managed host after whitelist validation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/execute")
     public Mono<ResponseEntity<Map<String, Object>>> execute(
@@ -104,8 +105,9 @@ public class RemoteExecController {
     /**
      * Checks the risk level of a command against the whitelist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/check-risk")
     public Mono<ResponseEntity<Map<String, Object>>> checkRisk(

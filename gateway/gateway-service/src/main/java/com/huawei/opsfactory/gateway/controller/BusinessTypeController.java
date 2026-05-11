@@ -41,8 +41,8 @@ public class BusinessTypeController {
     /**
      * Lists all business type definitions.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listBusinessTypes(ServerWebExchange exchange) {
@@ -58,8 +58,9 @@ public class BusinessTypeController {
     /**
      * Gets a business type by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getBusinessType(
@@ -85,8 +86,9 @@ public class BusinessTypeController {
     /**
      * Creates a new business type.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createBusinessType(
@@ -112,8 +114,10 @@ public class BusinessTypeController {
     /**
      * Updates a business type by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateBusinessType(
@@ -140,8 +144,9 @@ public class BusinessTypeController {
     /**
      * Deletes a business type by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteBusinessType(

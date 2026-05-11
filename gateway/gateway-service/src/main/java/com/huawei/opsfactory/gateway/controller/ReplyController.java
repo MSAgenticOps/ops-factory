@@ -98,8 +98,11 @@ public class ReplyController {
     /**
      * Submits a chat reply to an active session and proxies the response from goosed.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping(value = "/sessions/{sessionId}/reply", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Void> sessionReply(@PathVariable String agentId,
@@ -158,8 +161,11 @@ public class ReplyController {
     /**
      * Subscribes to the SSE event stream for an active session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param lastEventId the lastEventId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(value = "/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Mono<Void> sessionEvents(@PathVariable String agentId,
@@ -205,8 +211,11 @@ public class ReplyController {
     /**
      * Cancels an in-progress request within a session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping(value = "/sessions/{sessionId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Void> sessionCancel(@PathVariable String agentId,
@@ -672,8 +681,10 @@ public class ReplyController {
     /**
      * Resumes an existing session, loading model and extensions.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping(value = {"/resume", "/agent/resume"}, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> resume(@PathVariable String agentId,
@@ -765,8 +776,10 @@ public class ReplyController {
     /**
      * Restarts the agent instance with a fresh configuration.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping({"/restart", "/agent/restart"})
     public Mono<Void> restart(@PathVariable String agentId,

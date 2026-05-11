@@ -44,9 +44,6 @@ public class GoosedProxyExtendedTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -59,8 +56,7 @@ public class GoosedProxyExtendedTest {
     /**
      * Tests copy headers injects secret key.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCopyHeaders_injectsSecretKey() throws Exception {
@@ -87,8 +83,7 @@ public class GoosedProxyExtendedTest {
     /**
      * Tests copy headers overrides existing secret key.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCopyHeaders_overridesExistingSecretKey() throws Exception {
@@ -113,8 +108,7 @@ public class GoosedProxyExtendedTest {
     /**
      * Tests copy upstream headers filters cors headers.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCopyUpstreamHeaders_filtersCorsHeaders() throws Exception {
@@ -154,8 +148,7 @@ public class GoosedProxyExtendedTest {
     /**
      * Tests copy upstream headers empty source.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testCopyUpstreamHeaders_emptySource() throws Exception {
@@ -175,9 +168,6 @@ public class GoosedProxyExtendedTest {
 
     /**
      * Tests fetch json returns non null mono.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFetchJson_returnsNonNullMono() {
@@ -187,9 +177,6 @@ public class GoosedProxyExtendedTest {
 
     /**
      * Tests proxy with body returns non null mono.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testProxyWithBody_returnsNonNullMono() {
@@ -200,9 +187,6 @@ public class GoosedProxyExtendedTest {
 
     /**
      * Tests proxy session command with body non2xx throws upstream error without committing response.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testProxySessionCommandWithBody_non2xxThrowsUpstreamErrorWithoutCommittingResponse() {
@@ -233,8 +217,7 @@ public class GoosedProxyExtendedTest {
     /**
      * Tests emit transformed frame emits original before supplemental event completes.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void testEmitTransformedFrame_emitsOriginalBeforeSupplementalEventCompletes() throws Exception {

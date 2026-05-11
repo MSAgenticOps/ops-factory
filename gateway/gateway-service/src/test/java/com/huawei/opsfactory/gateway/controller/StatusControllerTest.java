@@ -35,9 +35,6 @@ public class StatusControllerTest {
 
     /**
      * Tests status.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStatus() {
@@ -50,9 +47,6 @@ public class StatusControllerTest {
 
     /**
      * Tests me no user id header returns unknown.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMe_noUserIdHeader_returnsUnknown() {
@@ -68,9 +62,6 @@ public class StatusControllerTest {
 
     /**
      * Tests me with user id header returns user.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMe_withUserIdHeader_returnsUser() {
@@ -86,9 +77,6 @@ public class StatusControllerTest {
 
     /**
      * Tests config.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testConfig() {
@@ -102,9 +90,6 @@ public class StatusControllerTest {
 
     /**
      * Tests unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUnauthorized_noKey() {

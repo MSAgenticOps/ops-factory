@@ -48,9 +48,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests get whitelist.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetWhitelist() {
@@ -75,9 +72,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests add command success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAddCommand_success() {
@@ -99,9 +93,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests add command error.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAddCommand_error() {
@@ -127,9 +118,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests update command success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateCommand_success() {
@@ -150,9 +138,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests update command not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateCommand_notFound() {
@@ -177,9 +162,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests delete command success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteCommand_success() {
@@ -194,9 +176,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests delete command not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteCommand_notFound() {
@@ -216,9 +195,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests get whitelist unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetWhitelist_unauthorized_noKey() {
@@ -230,9 +206,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests get whitelist forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetWhitelist_forbidden_nonAdmin() {
@@ -245,9 +218,6 @@ public class CommandWhitelistControllerTest {
 
     /**
      * Tests add command forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAddCommand_forbidden_nonAdmin() {

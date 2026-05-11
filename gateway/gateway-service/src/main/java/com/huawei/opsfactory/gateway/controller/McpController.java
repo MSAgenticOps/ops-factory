@@ -61,8 +61,9 @@ public class McpController {
     /**
      * Lists MCP extensions configured on the agent's system instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Void> getMcpExtensions(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
@@ -77,8 +78,10 @@ public class McpController {
     /**
      * Creates a new MCP extension on the agent's system instance and recycles running instances.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<String> createMcpExtension(@PathVariable("agentId") String agentId,
@@ -110,8 +113,10 @@ public class McpController {
     /**
      * Deletes an MCP extension by name and recycles running instances.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param name the name parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{name}")
     public Mono<String> deleteMcpExtension(@PathVariable("agentId") String agentId,
@@ -140,8 +145,10 @@ public class McpController {
     /**
      * Gets the settings for a specific MCP extension.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param name the name parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{name}/settings")
     public Mono<ResponseEntity<Map<String, Object>>> getMcpSettings(@PathVariable("agentId") String agentId,
@@ -179,8 +186,11 @@ public class McpController {
     /**
      * Updates the settings for a specific MCP extension.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param name the name parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{name}/settings")
     public Mono<ResponseEntity<Map<String, Object>>> putMcpSettings(@PathVariable("agentId") String agentId,

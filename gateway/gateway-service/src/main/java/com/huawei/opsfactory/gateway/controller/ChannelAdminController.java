@@ -73,8 +73,8 @@ public class ChannelAdminController {
     /**
      * Lists all channels for the current admin user.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listChannels(ServerWebExchange exchange) {
@@ -87,8 +87,9 @@ public class ChannelAdminController {
     /**
      * Gets a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}")
     public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable String channelId, ServerWebExchange exchange) {
@@ -106,8 +107,9 @@ public class ChannelAdminController {
     /**
      * Creates a new channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createChannel(@RequestBody ChannelUpsertRequest request,
@@ -131,8 +133,10 @@ public class ChannelAdminController {
     /**
      * Updates a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> updateChannel(@PathVariable String channelId,
@@ -153,8 +157,9 @@ public class ChannelAdminController {
     /**
      * Enables a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/enable")
     public Mono<ResponseEntity<Map<String, Object>>> enableChannel(@PathVariable String channelId,
@@ -165,8 +170,9 @@ public class ChannelAdminController {
     /**
      * Disables a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/disable")
     public Mono<ResponseEntity<Map<String, Object>>> disableChannel(@PathVariable String channelId,
@@ -177,8 +183,9 @@ public class ChannelAdminController {
     /**
      * Deletes a channel by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteChannel(@PathVariable String channelId,
@@ -197,8 +204,9 @@ public class ChannelAdminController {
     /**
      * Lists all bindings for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}/bindings")
     public Mono<ResponseEntity<Map<String, Object>>> listBindings(@PathVariable String channelId,
@@ -218,8 +226,9 @@ public class ChannelAdminController {
     /**
      * Lists all events for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}/events")
     public Mono<ResponseEntity<Map<String, Object>>> listEvents(@PathVariable String channelId,
@@ -239,8 +248,9 @@ public class ChannelAdminController {
     /**
      * Verifies a channel configuration.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/verify")
     public Mono<ResponseEntity<Map<String, Object>>> verifyChannel(@PathVariable String channelId,
@@ -262,8 +272,9 @@ public class ChannelAdminController {
     /**
      * Probes a channel for connectivity status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/probe")
     public Mono<ResponseEntity<Map<String, Object>>> probeChannel(@PathVariable String channelId,
@@ -290,8 +301,9 @@ public class ChannelAdminController {
     /**
      * Gets the current login state for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{channelId}/login-state")
     public Mono<ResponseEntity<Map<String, Object>>> getLoginState(@PathVariable String channelId,
@@ -322,8 +334,9 @@ public class ChannelAdminController {
     /**
      * Starts the login process for a channel.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/login")
     public Mono<ResponseEntity<Map<String, Object>>> startLogin(@PathVariable String channelId,
@@ -354,8 +367,9 @@ public class ChannelAdminController {
     /**
      * Logs out from a channel and resets its runtime state.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/logout")
     public Mono<ResponseEntity<Map<String, Object>>> logout(@PathVariable String channelId,
@@ -431,8 +445,10 @@ public class ChannelAdminController {
     /**
      * Runs a self-test on a channel to verify end-to-end messaging.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{channelId}/self-test")
     public Mono<ResponseEntity<Map<String, Object>>> runSelfTest(@PathVariable String channelId,

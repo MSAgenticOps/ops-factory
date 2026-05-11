@@ -57,9 +57,6 @@ public class WeChatMessagePumpService {
 
     /**
      * Periodically polls the WeChat inbox directory for new messages and processes them.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Scheduled(fixedDelay = 2000)
     public void pumpInbox() {

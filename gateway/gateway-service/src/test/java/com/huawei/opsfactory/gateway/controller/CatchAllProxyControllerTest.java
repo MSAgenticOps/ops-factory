@@ -41,9 +41,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -54,9 +51,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests admin access to admin route proxies.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAdminAccessToAdminRoute_proxies() {
@@ -78,9 +72,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests user access to user accessible route allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUserAccessToUserAccessibleRoute_allowed() {
@@ -100,9 +91,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests user access to ops gateway prefixed system info allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUserAccessToOpsGatewayPrefixedSystemInfo_allowed() {
@@ -125,9 +113,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests user access to status route allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUserAccessToStatusRoute_allowed() {
@@ -148,9 +133,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests user access to admin route returns403.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUserAccessToAdminRoute_returns403() {
@@ -169,9 +151,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests short path returns404.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testShortPath_returns404() {
@@ -190,9 +169,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests query string forwarding.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testQueryStringForwarding() {
@@ -213,9 +189,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests ops gateway prefixed query string forwarding.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOpsGatewayPrefixedQueryStringForwarding() {
@@ -238,9 +211,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests admin uses own user id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAdminUsesOwnUserId() {
@@ -261,9 +231,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests user access to system info subpath allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUserAccessToSystemInfoSubpath_allowed() {
@@ -285,9 +252,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests null role treated as non admin returns403 for admin route.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNullRole_treatedAsNonAdmin_returns403ForAdminRoute() {
@@ -306,9 +270,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests removed legacy reply path returns404 without proxying.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRemovedLegacyReplyPath_returns404WithoutProxying() {
@@ -329,9 +290,6 @@ public class CatchAllProxyControllerTest {
 
     /**
      * Tests removed legacy agent stop path returns404 without proxying.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testRemovedLegacyAgentStopPath_returns404WithoutProxying() {

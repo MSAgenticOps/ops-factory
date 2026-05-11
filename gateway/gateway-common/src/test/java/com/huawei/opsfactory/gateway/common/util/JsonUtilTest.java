@@ -20,9 +20,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field simple field.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_simpleField() {
@@ -32,9 +29,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field field not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_fieldNotFound() {
@@ -44,9 +38,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field multiple field names first match.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_multipleFieldNames_firstMatch() {
@@ -56,9 +47,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field multiple field names second match.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_multipleFieldNames_secondMatch() {
@@ -68,9 +56,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field empty value.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_emptyValue() {
@@ -80,9 +65,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field no field names.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_noFieldNames() {
@@ -92,9 +74,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field multiple fields.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_multipleFields() {
@@ -104,9 +83,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field no colon after key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_noColonAfterKey() {
@@ -117,9 +93,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field no quote after colon.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_noQuoteAfterColon() {
@@ -132,9 +105,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract session id snake case.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractSessionId_snakeCase() {
@@ -144,9 +114,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract session id camel case.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractSessionId_camelCase() {
@@ -156,9 +123,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract session id not present.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractSessionId_notPresent() {
@@ -168,9 +132,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract session id prefers snake case.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractSessionId_prefersSnakeCase() {
@@ -181,9 +142,6 @@ public class JsonUtilTest {
 
     /**
      * Tests extract string field with whitespace.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testExtractStringField_withWhitespace() {

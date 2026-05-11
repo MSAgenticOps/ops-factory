@@ -35,8 +35,7 @@ public class SystemUserMigrationServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -55,8 +54,7 @@ public class SystemUserMigrationServiceTest {
     /**
      * Executes the migrate legacy system user renames sys directory operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void migrateLegacySystemUser_renamesSysDirectory() throws IOException {
@@ -73,8 +71,7 @@ public class SystemUserMigrationServiceTest {
     /**
      * Executes the migrate legacy system user skips when no legacy directory operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void migrateLegacySystemUser_skipsWhenNoLegacyDirectory() throws IOException {
@@ -86,8 +83,7 @@ public class SystemUserMigrationServiceTest {
     /**
      * Executes the migrate legacy system user merges on conflict operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void migrateLegacySystemUser_mergesOnConflict() throws IOException {

@@ -35,9 +35,6 @@ public class SampleDataSeeder {
 
     /**
      * No-op initialization kept for Spring injection compatibility.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {

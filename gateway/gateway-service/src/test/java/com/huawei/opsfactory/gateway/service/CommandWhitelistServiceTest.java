@@ -29,9 +29,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -48,9 +45,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests init creates default whitelist.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testInit_createsDefaultWhitelist() {
@@ -82,9 +76,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests get whitelist returns structure.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetWhitelist_returnsStructure() {
@@ -96,9 +87,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests add command success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAddCommand_success() {
@@ -118,9 +106,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests add command multiple.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAddCommand_multiple() {
@@ -138,9 +123,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests update command success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateCommand_success() {
@@ -162,9 +144,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests update command preserves pattern.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateCommand_preservesPattern() {
@@ -182,9 +161,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests update command not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateCommand_notFound() {
@@ -197,9 +173,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests delete command success.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteCommand_success() {
@@ -214,9 +187,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests delete command reduces count.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteCommand_reducesCount() {
@@ -234,9 +204,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests delete command not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testDeleteCommand_notFound() {
@@ -247,9 +214,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command all allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_allAllowed() {
@@ -259,9 +223,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command pipe allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_pipeAllowed() {
@@ -271,9 +232,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command semicolon allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_semicolonAllowed() {
@@ -283,9 +241,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command rejected command.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_rejectedCommand() {
@@ -296,9 +251,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command mixed allowed and rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_mixedAllowedAndRejected() {
@@ -309,9 +261,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command disabled command.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_disabledCommand() {
@@ -325,9 +274,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command empty string.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_emptyString() {
@@ -337,9 +283,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command complex pipe.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_complexPipe() {
@@ -350,9 +293,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command multiple rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_multipleRejected() {
@@ -367,9 +307,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command pipe inside single quotes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_pipeInsideSingleQuotes() {
@@ -380,9 +317,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command pipe inside double quotes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_pipeInsideDoubleQuotes() {
@@ -393,9 +327,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command escaped pipe.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_escapedPipe() {
@@ -406,9 +337,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command mixed quotes and pipes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_mixedQuotesAndPipes() {
@@ -422,9 +350,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests get risk level pipe inside quotes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetRiskLevel_pipeInsideQuotes() {
@@ -437,9 +362,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command logical or.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_logicalOr() {
@@ -450,9 +372,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command logical and.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_logicalAnd() {
@@ -463,9 +382,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command logical or with rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_logicalOrWithRejected() {
@@ -477,9 +393,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command logical and with rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_logicalAndWithRejected() {
@@ -491,9 +404,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command or or not split as two pipes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_orOrNotSplitAsTwoPipes() {
@@ -509,9 +419,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests validate command echo in default.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidateCommand_echoInDefault() {
@@ -523,9 +430,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode simple with absolute path.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_simpleWithAbsolutePath() {
@@ -536,9 +440,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode simple with absolute path and args.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_simpleWithAbsolutePathAndArgs() {
@@ -549,9 +450,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode simple with relative path.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_simpleWithRelativePath() {
@@ -562,9 +460,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode exact match.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_exactMatch() {
@@ -575,9 +470,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode with extra args.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_withExtraArgs() {
@@ -588,9 +480,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode different args rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_differentArgs_rejected() {
@@ -602,9 +491,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode word boundary rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_wordBoundary_rejected() {
@@ -616,9 +502,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode with path.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_withPath() {
@@ -629,9 +512,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode with path different args rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_withPathDifferentArgs_rejected() {
@@ -643,9 +523,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode simple and prefix coexist.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_simpleAndPrefixCoexist() {
@@ -658,9 +535,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests prefix mode only prefix no simple.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPrefixMode_onlyPrefix_noSimple() {
@@ -674,9 +548,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests get risk level prefix mode low.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetRiskLevel_prefixModeLow() {
@@ -686,9 +557,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests get risk level prefix mode no match.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetRiskLevel_prefixModeNoMatch() {
@@ -698,9 +566,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests get risk level longer pattern wins.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetRiskLevel_longerPatternWins() {
@@ -712,9 +577,6 @@ public class CommandWhitelistServiceTest {
 
     /**
      * Tests get risk level prefix mode with path.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetRiskLevel_prefixModeWithPath() {

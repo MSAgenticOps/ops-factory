@@ -85,8 +85,9 @@ public class UserContextFilter implements WebFilter {
     /**
      * Resolves the authenticated user identity and role from request headers.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @param chain the chain parameter
+     * @return the result
      */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -128,8 +129,7 @@ public class UserContextFilter implements WebFilter {
     /**
      * Shared admin check — throws 403 if the current user is not an admin.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
      */
     public static void requireAdmin(ServerWebExchange exchange) {
         UserRole role = exchange.getAttribute(USER_ROLE_ATTR);

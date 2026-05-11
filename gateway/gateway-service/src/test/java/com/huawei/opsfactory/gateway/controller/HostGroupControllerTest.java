@@ -59,9 +59,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests list groups returns all.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListGroups_returnsAll() {
@@ -82,9 +79,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests list groups enabled only filters disabled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListGroups_enabledOnly_filtersDisabled() {
@@ -107,9 +101,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests list groups enabled only filters inherited disabled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListGroups_enabledOnly_filtersInheritedDisabled() {
@@ -134,9 +125,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests get tree returns all.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetTree_returnsAll() {
@@ -162,9 +150,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests get tree enabled only filters disabled groups.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetTree_enabledOnly_filtersDisabledGroups() {
@@ -192,9 +177,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests get tree enabled only filters clusters in disabled group.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetTree_enabledOnly_filtersClustersInDisabledGroup() {
@@ -224,9 +206,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests update group set enabled false.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_setEnabledFalse() {
@@ -250,9 +229,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests update group set enabled true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_setEnabledTrue() {
@@ -276,9 +252,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests update group not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_notFound() {
@@ -301,9 +274,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests list groups unauthorized no key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListGroups_unauthorized_noKey() {
@@ -315,9 +285,6 @@ public class HostGroupControllerTest {
 
     /**
      * Tests list groups forbidden non admin.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListGroups_forbidden_nonAdmin() {

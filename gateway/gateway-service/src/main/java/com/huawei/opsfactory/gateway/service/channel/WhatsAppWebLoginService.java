@@ -55,8 +55,8 @@ public class WhatsAppWebLoginService {
     /**
      * Gets the current login state for a WhatsApp channel using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @return the result
      */
     public ChannelLoginState getLoginState(String channelId) {
         return getLoginState(channelId, "admin");
@@ -65,8 +65,9 @@ public class WhatsAppWebLoginService {
     /**
      * Gets the current login state for a WhatsApp channel, merging configuration and runtime state.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @return the result
      */
     public ChannelLoginState getLoginState(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
@@ -115,8 +116,8 @@ public class WhatsAppWebLoginService {
     /**
      * Starts the WhatsApp Web QR login flow using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @return the result
      */
     public ChannelLoginState startLogin(String channelId) {
         return startLogin(channelId, "admin");
@@ -125,8 +126,9 @@ public class WhatsAppWebLoginService {
     /**
      * Starts the WhatsApp Web QR login flow, preparing the auth directory and launching the helper process.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @return the result
      */
     public ChannelLoginState startLogin(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
@@ -171,8 +173,8 @@ public class WhatsAppWebLoginService {
     /**
      * Logs out of a WhatsApp channel using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @return the result
      */
     public ChannelLoginState logout(String channelId) {
         return logout(channelId, "admin");
@@ -181,8 +183,9 @@ public class WhatsAppWebLoginService {
     /**
      * Logs out of a WhatsApp channel, stopping the helper process and clearing auth state.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @return the result
      */
     public ChannelLoginState logout(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);

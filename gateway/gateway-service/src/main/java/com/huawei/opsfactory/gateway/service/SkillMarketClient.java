@@ -47,8 +47,8 @@ public class SkillMarketClient {
     /**
      * Fetches skill metadata from the skill market by skill ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param skillId the skillId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getSkill(String skillId) {
@@ -70,8 +70,8 @@ public class SkillMarketClient {
     /**
      * Downloads a skill package as a byte array from the skill market.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param skillId the skillId parameter
+     * @return the result
      */
     public byte[] downloadPackage(String skillId) {
         try {

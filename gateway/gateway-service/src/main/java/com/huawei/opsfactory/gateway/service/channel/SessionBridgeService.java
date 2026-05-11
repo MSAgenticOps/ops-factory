@@ -79,8 +79,9 @@ public class SessionBridgeService {
     /**
      * Ensures a session exists for the given channel and external user ID, creating one if necessary.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalUserId the externalUserId parameter
+     * @return the result
      */
     public Mono<ChannelBinding> ensureSession(String channelId, String externalUserId) {
         return ensureConversationSession(channelId, "admin", "default", externalUserId,
@@ -90,8 +91,13 @@ public class SessionBridgeService {
     /**
      * Ensures a conversation session exists using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @return the result
      */
     public Mono<ChannelBinding> ensureConversationSession(String channelId,
                                                           String accountId,
@@ -113,8 +119,14 @@ public class SessionBridgeService {
     /**
      * Ensures a conversation session exists for the given channel, creating a binding and starting a session if needed.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @return the result
      */
     public Mono<ChannelBinding> ensureConversationSession(String channelId,
                                                           String ownerUserId,
@@ -150,8 +162,10 @@ public class SessionBridgeService {
     /**
      * Sends text to a channel conversation using the default owner user ID and direct conversation parameters.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalUserId the externalUserId parameter
+     * @param text the text parameter
+     * @return the result
      */
     public Mono<ChannelReplyResult> sendText(String channelId, String externalUserId, String text) {
         return sendConversationText(
@@ -169,8 +183,14 @@ public class SessionBridgeService {
     /**
      * Sends text to a conversation session using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @param text the text parameter
+     * @return the result
      */
     public Mono<ChannelReplyResult> sendConversationText(String channelId,
                                                          String accountId,
@@ -194,8 +214,15 @@ public class SessionBridgeService {
     /**
      * Sends text to a conversation session, ensuring the session exists and extracting the agent reply.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @param text the text parameter
+     * @return the result
      */
     public Mono<ChannelReplyResult> sendConversationText(String channelId,
                                                          String ownerUserId,

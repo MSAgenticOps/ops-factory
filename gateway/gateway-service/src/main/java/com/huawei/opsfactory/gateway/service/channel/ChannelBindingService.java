@@ -57,8 +57,9 @@ public class ChannelBindingService {
     /**
      * Ensures a binding exists for the given channel and external user ID, creating one if necessary.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalUserId the externalUserId parameter
+     * @return the result
      */
     public ChannelBinding ensureBinding(String channelId, String externalUserId) {
         return ensureConversationBinding(channelId, "admin", "default", externalUserId,
@@ -68,8 +69,13 @@ public class ChannelBindingService {
     /**
      * Ensures a conversation binding exists using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @return the result
      */
     public ChannelBinding ensureConversationBinding(String channelId,
                                                     String accountId,
@@ -92,8 +98,14 @@ public class ChannelBindingService {
      * Ensures a conversation binding exists for the given channel and conversation identifiers, creating one if
      * necessary.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @return the result
      */
     public ChannelBinding ensureConversationBinding(String channelId,
                                                     String ownerUserId,
@@ -134,8 +146,11 @@ public class ChannelBindingService {
     /**
      * Attaches a session to the binding for the given channel and external user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalUserId the externalUserId parameter
+     * @param sessionId the sessionId parameter
+     * @param agentId the agentId parameter
+     * @return the result
      */
     public ChannelBinding attachSession(String channelId, String externalUserId, String sessionId, String agentId) {
         return attachConversationSession(
@@ -154,8 +169,15 @@ public class ChannelBindingService {
     /**
      * Attaches a session to the conversation binding using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @param sessionId the sessionId parameter
+     * @param agentId the agentId parameter
+     * @return the result
      */
     public ChannelBinding attachConversationSession(String channelId,
                                                     String accountId,
@@ -172,8 +194,16 @@ public class ChannelBindingService {
     /**
      * Attaches a session to the conversation binding, creating the binding if it does not yet exist.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param accountId the accountId parameter
+     * @param peerId the peerId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @param conversationType the conversationType parameter
+     * @param sessionId the sessionId parameter
+     * @param agentId the agentId parameter
+     * @return the result
      */
     public ChannelBinding attachConversationSession(String channelId,
                                                     String ownerUserId,
@@ -239,8 +269,9 @@ public class ChannelBindingService {
     /**
      * Marks the latest inbound timestamp for the binding associated with the given channel and external user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalUserId the externalUserId parameter
+     * @return the result
      */
     public ChannelBinding markInbound(String channelId, String externalUserId) {
         return markConversationInbound(channelId, "admin", "default", externalUserId, null);
@@ -249,8 +280,9 @@ public class ChannelBindingService {
     /**
      * Marks the latest outbound timestamp for the binding associated with the given channel and external user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalUserId the externalUserId parameter
+     * @return the result
      */
     public ChannelBinding markOutbound(String channelId, String externalUserId) {
         return markConversationOutbound(channelId, "admin", "default", externalUserId, null);
@@ -259,8 +291,11 @@ public class ChannelBindingService {
     /**
      * Marks the latest inbound timestamp for a conversation binding using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param accountId the accountId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @return the result
      */
     public ChannelBinding markConversationInbound(String channelId,
                                                   String accountId,
@@ -272,8 +307,12 @@ public class ChannelBindingService {
     /**
      * Marks the latest inbound timestamp for a conversation binding.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param accountId the accountId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @return the result
      */
     public ChannelBinding markConversationInbound(String channelId,
                                                   String ownerUserId,
@@ -294,8 +333,11 @@ public class ChannelBindingService {
     /**
      * Marks the latest outbound timestamp for a conversation binding using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param accountId the accountId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @return the result
      */
     public ChannelBinding markConversationOutbound(String channelId,
                                                    String accountId,
@@ -307,8 +349,12 @@ public class ChannelBindingService {
     /**
      * Marks the latest outbound timestamp for a conversation binding.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param accountId the accountId parameter
+     * @param conversationId the conversationId parameter
+     * @param threadId the threadId parameter
+     * @return the result
      */
     public ChannelBinding markConversationOutbound(String channelId,
                                                    String ownerUserId,

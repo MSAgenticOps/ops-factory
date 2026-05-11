@@ -93,8 +93,10 @@ public class SessionController {
     /**
      * Starts a new agent session and loads model and extensions.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping(value = "/agents/{agentId}/agent/start", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> startSession(@PathVariable String agentId,
@@ -177,8 +179,13 @@ public class SessionController {
     /**
      * Lists all sessions for the current user across all agents with pagination and filtering.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param pageIndex the pageIndex parameter
+     * @param pageSize the pageSize parameter
+     * @param search the search parameter
+     * @param agentId the agentId parameter
+     * @param type the type parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> listAllSessions(
@@ -338,8 +345,9 @@ public class SessionController {
     /**
      * Lists all sessions for a specific agent, proxied from goosed.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/agents/{agentId}/sessions")
     public Mono<Void> listAgentSessions(@PathVariable String agentId,
@@ -354,8 +362,10 @@ public class SessionController {
     /**
      * Gets a session by agent ID and session ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(value = "/agents/{agentId}/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> getSession(@PathVariable String agentId,
@@ -386,8 +396,10 @@ public class SessionController {
     /**
      * Global session detail: GET /sessions/{sessionId}?agentId=X
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param sessionId the sessionId parameter
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(value = "/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> getSessionGlobal(@PathVariable String sessionId,
@@ -419,8 +431,10 @@ public class SessionController {
     /**
      * Deletes a session by agent ID and session ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/agents/{agentId}/sessions/{sessionId}")
     public Mono<Void> deleteSession(@PathVariable String agentId,
@@ -450,8 +464,10 @@ public class SessionController {
     /**
      * Deletes a session globally by session ID with an agent ID query parameter.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param sessionId the sessionId parameter
+     * @param agentId the agentId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/sessions/{sessionId}")
     public Mono<Void> deleteSessionGlobal(@PathVariable String sessionId,
@@ -633,8 +649,11 @@ public class SessionController {
     /**
      * Rename session: PUT /agents/{agentId}/sessions/{sessionId}/name
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/agents/{agentId}/sessions/{sessionId}/name")
     public Mono<Void> renameSession(@PathVariable String agentId,

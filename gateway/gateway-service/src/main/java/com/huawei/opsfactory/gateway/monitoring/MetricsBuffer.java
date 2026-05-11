@@ -78,8 +78,7 @@ public class MetricsBuffer {
         /**
          * Gets the request count.
          *
-         * @author x00000000
-         * @since 2026-05-09
+         * @return the result
          */
         public int getRequestCount() {
             return requestCount;
@@ -88,8 +87,7 @@ public class MetricsBuffer {
         /**
          * Gets the error count.
          *
-         * @author x00000000
-         * @since 2026-05-09
+         * @return the result
          */
         public int getErrorCount() {
             return errorCount;
@@ -98,8 +96,7 @@ public class MetricsBuffer {
         /**
          * Gets the average request latency in milliseconds.
          *
-         * @author x00000000
-         * @since 2026-05-09
+         * @return the result
          */
         public double getAvgLatencyMs() {
             return requestCount > 0 ? (double) latencySum / requestCount : 0;
@@ -108,8 +105,7 @@ public class MetricsBuffer {
         /**
          * Gets the average time-to-first-token in milliseconds.
          *
-         * @author x00000000
-         * @since 2026-05-09
+         * @return the result
          */
         public double getAvgTtftMs() {
             return requestCount > 0 ? (double) ttftSum / requestCount : 0;
@@ -146,6 +142,8 @@ public class MetricsBuffer {
     /**
      * Record a single request timing (called from SSE relay threads).
      * Uses a separate lock object to avoid contention with snapshot operations.
+     *
+     * @param timing the timing parameter
      */
     public synchronized void recordTiming(RequestTiming timing) {
         timings[timingWriteIndex] = timing;
@@ -169,8 +167,7 @@ public class MetricsBuffer {
     /**
      * Get per-agent statistics accumulated over the buffer lifetime.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public Map<String, Map<String, Object>> getAgentStats() {
         Map<String, Map<String, Object>> result = new LinkedHashMap<>();
@@ -189,6 +186,8 @@ public class MetricsBuffer {
     /**
      * Drain all request timings recorded since the last drain.
      * Uses pendingTimingCount to correctly handle buffer wrap-around.
+     *
+     * @return the result
      */
     public synchronized List<RequestTiming> drainTimings() {
         List<RequestTiming> result = new ArrayList<>();
@@ -212,8 +211,8 @@ public class MetricsBuffer {
     /**
      * Get the most recent snapshots, ordered oldest-first (for charting).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param maxSlots the maxSlots parameter
+     * @return the result
      */
     public synchronized List<MetricsSnapshot> getSnapshots(int maxSlots) {
         int count = Math.min(this.snapshotCount, maxSlots);

@@ -32,9 +32,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -45,9 +42,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file capsules authenticated returns entries.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFileCapsules_authenticated_returnsEntries() {
@@ -69,9 +63,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file capsules empty entries returns empty map.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFileCapsules_emptyEntries_returnsEmptyMap() {
@@ -90,9 +81,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file capsules unauthenticated returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFileCapsules_unauthenticated_returns401() {
@@ -103,9 +91,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the file capsules multiple messages returns all.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getFileCapsules_multipleMessages_returnsAll() {
@@ -129,9 +114,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the save file capsule valid body returns ok operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void saveFileCapsule_validBody_returnsOk() {
@@ -152,9 +134,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the save file capsule missing session id returns error operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void saveFileCapsule_missingSessionId_returnsError() {
@@ -171,9 +150,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the save file capsule missing message id returns error operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void saveFileCapsule_missingMessageId_returnsError() {
@@ -190,9 +166,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the save file capsule missing files returns error operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void saveFileCapsule_missingFiles_returnsError() {
@@ -209,9 +182,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the save file capsule unauthenticated returns401 operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void saveFileCapsule_unauthenticated_returns401() {
@@ -224,9 +194,6 @@ public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Executes the file capsules different users resolve different paths operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void fileCapsules_differentUsers_resolveDifferentPaths() {

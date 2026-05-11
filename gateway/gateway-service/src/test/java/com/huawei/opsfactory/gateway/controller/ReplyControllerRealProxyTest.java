@@ -45,8 +45,7 @@ public class ReplyControllerRealProxyTest {
     /**
      * Executes the session reply real goosed400 returns gateway error envelope operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void sessionReply_realGoosed400ReturnsGatewayErrorEnvelope() throws Exception {
@@ -126,9 +125,6 @@ public class ReplyControllerRealProxyTest {
 
     /**
      * Executes the session events real goosed404 returns gateway error envelope operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionEvents_realGoosed404ReturnsGatewayErrorEnvelope() {
@@ -195,8 +191,7 @@ public class ReplyControllerRealProxyTest {
     /**
      * Executes the session events active requests drained emits output files after original event operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void sessionEvents_activeRequestsDrainedEmitsOutputFilesAfterOriginalEvent() throws Exception {
@@ -297,9 +292,6 @@ public class ReplyControllerRealProxyTest {
 
     /**
      * Executes the session reply invalid json body still returns gateway error envelope operation.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void sessionReply_invalidJsonBodyStillReturnsGatewayErrorEnvelope() {
@@ -345,8 +337,7 @@ public class ReplyControllerRealProxyTest {
     /**
      * Executes the session reply snapshot io failure still proxies request operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Test
     public void sessionReply_snapshotIoFailureStillProxiesRequest() throws Exception {

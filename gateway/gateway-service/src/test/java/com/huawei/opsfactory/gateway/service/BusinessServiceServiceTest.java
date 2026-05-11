@@ -35,8 +35,7 @@ public class BusinessServiceServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -56,9 +55,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests create business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateBusinessService() {
@@ -89,9 +85,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests create business service defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateBusinessService_defaults() {
@@ -115,9 +108,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests get business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetBusinessService() {
@@ -135,9 +125,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests get business service not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testGetBusinessService_notFound() {
@@ -148,9 +135,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests list business services empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_empty() {
@@ -160,9 +144,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests list business services returns all.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_returnsAll() {
@@ -176,9 +157,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests list business services filter by group id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_filterByGroupId() {
@@ -192,9 +170,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests list business services filter by host id.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testListBusinessServices_filterByHostId() {
@@ -210,9 +185,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests update business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateBusinessService() {
@@ -237,9 +209,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests update business service partial update.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateBusinessService_partialUpdate() {
@@ -262,9 +231,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests update business service not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateBusinessService_notFound() {
@@ -277,9 +243,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests delete business service.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteBusinessService() {
@@ -294,9 +257,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests delete business service not found.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDeleteBusinessService_notFound() {
@@ -307,9 +267,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests search by keyword.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSearchByKeyword() {
@@ -331,9 +288,6 @@ public class BusinessServiceServiceTest {
 
     /**
      * Tests search by keyword empty keyword.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSearchByKeyword_emptyKeyword() {

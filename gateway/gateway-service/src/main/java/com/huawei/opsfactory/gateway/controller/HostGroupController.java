@@ -52,8 +52,9 @@ public class HostGroupController {
     /**
      * Lists host groups, optionally filtered by enabled status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param enabledOnly the enabledOnly parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listGroups(
@@ -75,8 +76,9 @@ public class HostGroupController {
     /**
      * Returns the hierarchical tree of groups, clusters, and business services.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param enabledOnly the enabledOnly parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/tree")
     public Mono<Map<String, Object>> getTree(
@@ -102,8 +104,9 @@ public class HostGroupController {
     /**
      * Gets a host group by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getGroup(
@@ -129,8 +132,9 @@ public class HostGroupController {
     /**
      * Creates a new host group.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createGroup(
@@ -156,8 +160,10 @@ public class HostGroupController {
     /**
      * Updates a host group by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateGroup(
@@ -184,8 +190,10 @@ public class HostGroupController {
     /**
      * Deletes a host group by ID, optionally forcing deletion of associated resources.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param force the force parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(

@@ -51,8 +51,8 @@ public class CatchAllProxyController {
     /**
      * Forwards unmatched agent requests to the appropriate goosed instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @RequestMapping("/agents/{agentId}/**")
     public Mono<Void> catchAll(ServerWebExchange exchange) {

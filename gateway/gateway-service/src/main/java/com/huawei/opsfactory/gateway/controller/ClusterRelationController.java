@@ -39,8 +39,9 @@ public class ClusterRelationController {
     /**
      * Lists cluster relations, optionally filtered by cluster ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listRelations(
@@ -58,8 +59,9 @@ public class ClusterRelationController {
     /**
      * Returns the cluster relation graph data for visualization.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groupId the groupId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/graph")
     public Mono<Map<String, Object>> getGraph(
@@ -73,8 +75,9 @@ public class ClusterRelationController {
     /**
      * Returns the neighbor clusters for a given cluster.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/clusters/{clusterId}/neighbors")
     public Mono<Map<String, Object>> getClusterNeighbors(
@@ -88,8 +91,9 @@ public class ClusterRelationController {
     /**
      * Returns the neighbor hosts for a given host via cluster relations.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/hosts/{hostId}/neighbors")
     public Mono<Map<String, Object>> getHostNeighbors(
@@ -103,8 +107,9 @@ public class ClusterRelationController {
     /**
      * Creates a new cluster relation edge.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createRelation(
@@ -130,8 +135,10 @@ public class ClusterRelationController {
     /**
      * Updates a cluster relation by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateRelation(
@@ -158,8 +165,9 @@ public class ClusterRelationController {
     /**
      * Deletes a cluster relation by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteRelation(

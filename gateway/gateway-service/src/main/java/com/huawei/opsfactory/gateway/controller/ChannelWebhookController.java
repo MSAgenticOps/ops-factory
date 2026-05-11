@@ -47,8 +47,9 @@ public class ChannelWebhookController {
     /**
      * Verifies a WhatsApp webhook challenge request.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(value = "/whatsapp/{channelId}", produces = MediaType.TEXT_PLAIN_VALUE)
     public Mono<ResponseEntity<String>> verifyWhatsAppWebhook(@PathVariable String channelId,

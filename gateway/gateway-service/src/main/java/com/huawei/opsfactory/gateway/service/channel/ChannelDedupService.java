@@ -50,8 +50,9 @@ public class ChannelDedupService {
     /**
      * Checks if a message is new and marks it as seen, using the default owner user ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param externalMessageId the externalMessageId parameter
+     * @return the result
      */
     public boolean markIfNew(String channelId, String externalMessageId) {
         return markIfNew(channelId, "admin", externalMessageId);
@@ -60,8 +61,10 @@ public class ChannelDedupService {
     /**
      * Checks if a message is new and marks it as seen to prevent duplicate processing.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param externalMessageId the externalMessageId parameter
+     * @return the result
      */
     public boolean markIfNew(String channelId, String ownerUserId, String externalMessageId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);

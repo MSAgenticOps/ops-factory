@@ -41,8 +41,7 @@ public class WeChatAdapter implements ChannelAdapter {
     /**
      * Returns the WeChat channel type identifier.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @Override
     public String type() {
@@ -52,8 +51,9 @@ public class WeChatAdapter implements ChannelAdapter {
     /**
      * Rejects webhook verification requests since WeChat channels do not use webhooks.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @Override
     public Mono<String> verifyWebhook(String channelId, ServerWebExchange exchange) {
@@ -63,8 +63,10 @@ public class WeChatAdapter implements ChannelAdapter {
     /**
      * Rejects webhook handling requests since WeChat channels do not use webhooks.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param rawBody the rawBody parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @Override
     public Mono<Void> handleWebhook(String channelId, String rawBody, ServerWebExchange exchange) {
@@ -74,8 +76,9 @@ public class WeChatAdapter implements ChannelAdapter {
     /**
      * Tests the connectivity of a WeChat channel based on its current login status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @return the result
      */
     @Override
     public Mono<ChannelConnectivityResult> testConnectivity(String channelId, String ownerUserId) {

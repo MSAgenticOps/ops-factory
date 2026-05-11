@@ -44,8 +44,9 @@ public class AuthWebFilter implements WebFilter {
     /**
      * Filters incoming HTTP requests by validating the secret key.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @param chain the chain parameter
+     * @return the result
      */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {

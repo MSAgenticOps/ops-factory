@@ -33,8 +33,7 @@ public class RuntimePreparerTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -57,8 +56,7 @@ public class RuntimePreparerTest {
     /**
      * Tests prepare creates directories.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testPrepare_createsDirectories() throws IOException {
@@ -73,8 +71,7 @@ public class RuntimePreparerTest {
     /**
      * Tests prepare creates config symlink.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testPrepare_createsConfigSymlink() throws IOException {
@@ -88,8 +85,7 @@ public class RuntimePreparerTest {
     /**
      * Tests prepare creates agents md symlink.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testPrepare_createsAgentsMdSymlink() throws IOException {
@@ -103,8 +99,7 @@ public class RuntimePreparerTest {
     /**
      * Tests prepare idempotent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testPrepare_idempotent() throws IOException {
@@ -118,8 +113,7 @@ public class RuntimePreparerTest {
     /**
      * Tests prepare removes disallowed skill directories.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testPrepare_removesDisallowedSkillDirectories() throws IOException {

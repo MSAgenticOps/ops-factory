@@ -20,8 +20,9 @@ public final class ProcessUtil {
     /**
      * Reads up to the given number of bytes from the process output stream.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param process the process parameter
+     * @param maxBytes the maxBytes parameter
+     * @return the result
      */
     public static String readOutput(Process process, int maxBytes) {
         try {
@@ -35,8 +36,8 @@ public final class ProcessUtil {
     /**
      * Returns the process identifier for the given process.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param process the process parameter
+     * @return the result
      */
     public static long getPid(Process process) {
         return process.pid();
@@ -45,8 +46,8 @@ public final class ProcessUtil {
     /**
      * Checks whether the given process is still alive.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param process the process parameter
+     * @return the result
      */
     public static boolean isAlive(Process process) {
         return process.isAlive();
@@ -55,8 +56,8 @@ public final class ProcessUtil {
     /**
      * Stops a process gracefully before forcing termination if needed.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param process the process parameter
+     * @param graceMs the graceMs parameter
      */
     public static void stopGracefully(Process process, long graceMs) {
         if (!process.isAlive()) {

@@ -27,8 +27,8 @@ public final class YamlLoader {
     /**
      * Loads a YAML file as a map and returns an empty map when the file is absent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param path the path parameter
+     * @return the result
      */
     public static Map<String, Object> load(Path path) {
         if (!Files.exists(path)) {
@@ -48,8 +48,10 @@ public final class YamlLoader {
     /**
      * Returns a string value from a map, or the default when absent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param map the map parameter
+     * @param key the key parameter
+     * @param defaultValue the defaultValue parameter
+     * @return the result
      */
     public static String getString(Map<String, Object> map, String key, String defaultValue) {
         Object val = map.get(key);
@@ -59,8 +61,10 @@ public final class YamlLoader {
     /**
      * Returns an integer value from a map, or the default when absent or invalid.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param map the map parameter
+     * @param key the key parameter
+     * @param defaultValue the defaultValue parameter
+     * @return the result
      */
     public static int getInt(Map<String, Object> map, String key, int defaultValue) {
         Object val = map.get(key);

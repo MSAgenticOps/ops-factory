@@ -102,8 +102,8 @@ public class GoosedProxy {
     /**
      * Builds the base URL for a goosed instance on the given port.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param port the port parameter
+     * @return the result
      */
     public String goosedBaseUrl(int port) {
         return properties.gooseScheme() + "://127.0.0.1:" + port;
@@ -112,8 +112,12 @@ public class GoosedProxy {
     /**
      * Proxy an arbitrary request to a goosed instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param response the response parameter
+     * @param port the port parameter
+     * @param path the path parameter
+     * @param secretKey the secretKey parameter
+     * @return the result
      */
     public Mono<Void> proxy(
             ServerHttpRequest request,
@@ -147,8 +151,13 @@ public class GoosedProxy {
     /**
      * Proxy with a pre-read JSON body string (for routes that need body inspection).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param response the response parameter
+     * @param port the port parameter
+     * @param path the path parameter
+     * @param method the method parameter
+     * @param body the body parameter
+     * @param secretKey the secretKey parameter
+     * @return the result
      */
     public Mono<Void> proxyWithBody(ServerHttpResponse response, int port, String path,
                                     HttpMethod method, String body, String secretKey) {
@@ -170,6 +179,14 @@ public class GoosedProxy {
     /**
      * Proxy a session command and leave non-2xx responses uncommitted so callers
      * can turn upstream errors into the Gateway session Error envelope.
+     *
+     * @param response the response parameter
+     * @param port the port parameter
+     * @param path the path parameter
+     * @param method the method parameter
+     * @param body the body parameter
+     * @param secretKey the secretKey parameter
+     * @return the result
      */
     public Mono<Void> proxySessionCommandWithBody(ServerHttpResponse response, int port, String path,
                                                   HttpMethod method, String body, String secretKey) {
@@ -208,6 +225,17 @@ public class GoosedProxy {
      * Proxy a goosed session event stream. This method intentionally does not
      * apply a whole-stream timeout: the session events channel is long-lived,
      * and client disconnect must not imply agent cancellation.
+     *
+     * @param response the response parameter
+     * @param port the port parameter
+     * @param path the path parameter
+     * @param secretKey the secretKey parameter
+     * @param lastEventId the lastEventId parameter
+     * @param agentId the agentId parameter
+     * @param userId the userId parameter
+     * @param sessionId the sessionId parameter
+     * @param beforeTerminalEventFactory the beforeTerminalEventFactory parameter
+     * @return the result
      */
     public Mono<Void> proxySessionEvents(ServerHttpResponse response, int port, String path,
                                          String secretKey, String lastEventId,
@@ -360,8 +388,10 @@ public class GoosedProxy {
     /**
      * Fetch JSON from a goosed instance and return the raw body string.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param port the port parameter
+     * @param path the path parameter
+     * @param secretKey the secretKey parameter
+     * @return the result
      */
     public Mono<String> fetchJson(int port, String path, String secretKey) {
         String target = goosedBaseUrl(port) + path;
@@ -384,8 +414,12 @@ public class GoosedProxy {
     /**
      * Fetches JSON from a goosed instance using the given HTTP method and request body.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param port the port parameter
+     * @param method the method parameter
+     * @param path the path parameter
+     * @param body the body parameter
+     * @param secretKey the secretKey parameter
+     * @return the result
      */
     public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, String secretKey) {
         return fetchJson(port, method, path, body, 30, secretKey);
@@ -394,8 +428,13 @@ public class GoosedProxy {
     /**
      * Fetches JSON from a goosed instance with a configurable timeout.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param port the port parameter
+     * @param method the method parameter
+     * @param path the path parameter
+     * @param body the body parameter
+     * @param timeoutSec the timeoutSec parameter
+     * @param secretKey the secretKey parameter
+     * @return the result
      */
     public Mono<String> fetchJson(
             int port,
@@ -430,8 +469,7 @@ public class GoosedProxy {
     /**
      * Gets the underlying WebClient instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public WebClient getWebClient() {
         return webClient;

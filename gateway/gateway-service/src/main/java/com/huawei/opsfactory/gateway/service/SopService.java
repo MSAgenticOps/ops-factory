@@ -52,9 +52,6 @@ public class SopService {
 
     /**
      * Initializes the SOPs data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -75,8 +72,7 @@ public class SopService {
     /**
      * Lists all SOP documents.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public List<Map<String, Object>> listSops() {
         List<Map<String, Object>> sops = new ArrayList<>();
@@ -102,8 +98,8 @@ public class SopService {
     /**
      * Gets an SOP document by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getSop(String id) {
         Path file = resolveSopFile(id);
@@ -117,8 +113,8 @@ public class SopService {
     /**
      * Creates a new SOP document from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createSop(Map<String, Object> body) {
         String mode = String.valueOf(body.getOrDefault("mode", "structured"));
@@ -150,8 +146,9 @@ public class SopService {
     /**
      * Updates an existing SOP document with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateSop(String id, Map<String, Object> body) {
         Path file = resolveSopFile(id);
@@ -209,8 +206,8 @@ public class SopService {
     /**
      * Deletes an SOP document by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteSop(String id) {
         Path file = resolveSopFile(id);

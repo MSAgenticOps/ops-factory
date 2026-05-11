@@ -61,9 +61,6 @@ public class WhatsAppMessagePumpService {
 
     /**
      * Periodically polls the WhatsApp inbox directory for new messages and processes them.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Scheduled(fixedDelay = 2000)
     public void pumpInbox() {
@@ -93,8 +90,9 @@ public class WhatsAppMessagePumpService {
     /**
      * Runs a self-test on a WhatsApp channel by sending a text to the channel's own phone number.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param text the text parameter
+     * @return the result
      */
     public ChannelSelfTestResult runSelfTest(String channelId, String text) {
         return runSelfTest(channelId, "admin", text);
@@ -103,8 +101,10 @@ public class WhatsAppMessagePumpService {
     /**
      * Runs a self-test on a WhatsApp channel by sending a text to the channel's own phone and queuing the reply.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param channelId the channelId parameter
+     * @param ownerUserId the ownerUserId parameter
+     * @param text the text parameter
+     * @return the result
      */
     public ChannelSelfTestResult runSelfTest(String channelId, String ownerUserId, String text) {
         ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);

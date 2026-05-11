@@ -61,8 +61,10 @@ public class SessionTraceController {
     /**
      * Executes the start trace operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     public Mono<TraceJobSnapshot> startTrace(@PathVariable("agentId") String agentId,
                                              @PathVariable("sessionId") String sessionId,
@@ -85,8 +87,9 @@ public class SessionTraceController {
     /**
      * Returns the trace.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param jobId the jobId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     public Mono<TraceJobSnapshot> getTrace(@PathVariable("jobId") String jobId,
                                            ServerWebExchange exchange) {
@@ -97,8 +100,9 @@ public class SessionTraceController {
     /**
      * Downloads the trace archive for a completed trace job.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param jobId the jobId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/session-traces/{jobId}/download")
     public Mono<Void> downloadTrace(@PathVariable("jobId") String jobId,

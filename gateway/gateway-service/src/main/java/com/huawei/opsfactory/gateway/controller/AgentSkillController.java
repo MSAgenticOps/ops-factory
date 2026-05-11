@@ -46,8 +46,10 @@ public class AgentSkillController {
     /**
      * Installs a skill on the specified agent instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/{agentId}/skills/install")
     public Mono<ResponseEntity<Map<String, Object>>> installSkill(
@@ -69,8 +71,10 @@ public class AgentSkillController {
     /**
      * Uninstalls a skill from the specified agent instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param skillId the skillId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{agentId}/skills/{skillId}")
     public Mono<ResponseEntity<Map<String, Object>>> uninstallSkill(

@@ -41,8 +41,11 @@ public class BusinessServiceController {
     /**
      * Lists business services, optionally filtered by group, host, or keyword.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groupId the groupId parameter
+     * @param hostId the hostId parameter
+     * @param keyword the keyword parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listBusinessServices(
@@ -67,8 +70,9 @@ public class BusinessServiceController {
     /**
      * Gets a business service by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getBusinessService(
@@ -94,8 +98,9 @@ public class BusinessServiceController {
     /**
      * Gets a business service with its associated hosts resolved.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/resolved")
     public Mono<ResponseEntity<Map<String, Object>>> getResolved(
@@ -121,8 +126,9 @@ public class BusinessServiceController {
     /**
      * Lists hosts associated with a business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/hosts")
     public Mono<Map<String, Object>> getHosts(
@@ -140,8 +146,9 @@ public class BusinessServiceController {
     /**
      * Gets the topology data for a business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/topology")
     public Mono<Map<String, Object>> getTopology(
@@ -155,8 +162,9 @@ public class BusinessServiceController {
     /**
      * Creates a new business service.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createBusinessService(
@@ -182,8 +190,10 @@ public class BusinessServiceController {
     /**
      * Updates a business service by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateBusinessService(
@@ -210,8 +220,9 @@ public class BusinessServiceController {
     /**
      * Deletes a business service by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteBusinessService(
@@ -235,8 +246,8 @@ public class BusinessServiceController {
     /**
      * Migrates business data from the legacy business field to the business service table.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping("/migrate")
     public Mono<Map<String, Object>> migrate(ServerWebExchange exchange) {

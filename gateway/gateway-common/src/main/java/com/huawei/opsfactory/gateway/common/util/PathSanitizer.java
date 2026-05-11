@@ -19,8 +19,9 @@ public final class PathSanitizer {
     /**
      * Checks that the resolved path stays within the allowed base directory.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param base the base parameter
+     * @param relativePath the relativePath parameter
+     * @return the result
      */
     public static boolean isSafe(Path base, String relativePath) {
         if (relativePath == null || relativePath.contains("..")) {
@@ -33,8 +34,8 @@ public final class PathSanitizer {
     /**
      * Sanitizes a filename by removing path separators and unsupported characters.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param filename the filename parameter
+     * @return the result
      */
     public static String sanitizeFilename(String filename) {
         if (filename == null) {

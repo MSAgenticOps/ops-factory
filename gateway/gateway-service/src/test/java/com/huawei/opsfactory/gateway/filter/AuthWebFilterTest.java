@@ -28,9 +28,6 @@ public class AuthWebFilterTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -41,9 +38,6 @@ public class AuthWebFilterTest {
 
     /**
      * Tests status endpoint is public.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStatusEndpointIsPublic() {
@@ -57,9 +51,6 @@ public class AuthWebFilterTest {
 
     /**
      * Tests options passes through.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOptionsPassesThrough() {
@@ -73,9 +64,6 @@ public class AuthWebFilterTest {
 
     /**
      * Tests valid secret key in header.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidSecretKeyInHeader() {
@@ -91,9 +79,6 @@ public class AuthWebFilterTest {
 
     /**
      * Tests valid secret key in query param.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testValidSecretKeyInQueryParam() {
@@ -107,9 +92,6 @@ public class AuthWebFilterTest {
 
     /**
      * Tests invalid secret key returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testInvalidSecretKeyReturns401() {
@@ -127,9 +109,6 @@ public class AuthWebFilterTest {
 
     /**
      * Tests missing secret key returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testMissingSecretKeyReturns401() {

@@ -21,6 +21,8 @@ public class PortAllocator {
     /**
      * Allocate an available ephemeral port by binding to port 0
      * and immediately releasing it.
+     *
+     * @return the result
      */
     public int allocate() {
         try (ServerSocket socket = new ServerSocket(0)) {

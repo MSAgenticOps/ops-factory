@@ -34,9 +34,6 @@ public class MetricsCollectorTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -53,9 +50,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect no running instances.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_noRunningInstances() {
@@ -73,9 +67,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect with running instances.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_withRunningInstances() {
@@ -100,9 +91,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect instance fetch error gracefully handled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_instanceFetchError_gracefullyHandled() {
@@ -122,9 +110,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect tokens per sec computed on second call.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_tokensPerSec_computedOnSecondCall() {
@@ -154,9 +139,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect with request timings latency stats.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_withRequestTimings_latencyStats() {
@@ -191,9 +173,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect with single timing.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_withSingleTiming() {
@@ -218,9 +197,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect filters non running instances.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_filtersNonRunningInstances() {
@@ -243,9 +219,6 @@ public class MetricsCollectorTest {
 
     /**
      * Tests collect malformed json response.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCollect_malformedJsonResponse() {

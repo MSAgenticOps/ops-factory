@@ -45,8 +45,8 @@ public class SopController {
     /**
      * Lists all SOP definitions.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listSops(ServerWebExchange exchange) {
@@ -62,8 +62,9 @@ public class SopController {
     /**
      * Gets an SOP by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getSop(
@@ -88,8 +89,9 @@ public class SopController {
     /**
      * Creates a new SOP definition.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createSop(
@@ -116,8 +118,10 @@ public class SopController {
     /**
      * Updates an SOP by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateSop(
@@ -151,8 +155,9 @@ public class SopController {
     /**
      * Deletes an SOP by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteSop(

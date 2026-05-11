@@ -46,8 +46,9 @@ public class RequestContextFilter implements WebFilter {
     /**
      * Assigns a unique request ID and logs access details for each HTTP request.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @param chain the chain parameter
+     * @return the result
      */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {

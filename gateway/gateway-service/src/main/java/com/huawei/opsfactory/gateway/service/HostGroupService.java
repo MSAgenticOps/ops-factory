@@ -55,9 +55,6 @@ public class HostGroupService {
 
     /**
      * Initializes the host groups data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -76,8 +73,7 @@ public class HostGroupService {
     /**
      * Lists all host groups.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public List<Map<String, Object>> listGroups() {
         List<Map<String, Object>> groups = new ArrayList<>();
@@ -103,8 +99,8 @@ public class HostGroupService {
     /**
      * Gets a host group by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getGroup(String id) {
         Path file = groupsDir.resolve(id + ".json");
@@ -119,6 +115,10 @@ public class HostGroupService {
      * Build tree structure: top-level groups → sub-groups → clusters (leaf nodes).
      * Clusters are attached based on their groupId matching a group's id.
      * Business services are attached to their groupId node.
+     *
+     * @param groups the groups parameter
+     * @param clusters the clusters parameter
+     * @return the result
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters) {
         return getTree(groups, clusters, List.of());
@@ -127,8 +127,10 @@ public class HostGroupService {
     /**
      * Builds tree structure including top-level groups, sub-groups, clusters, and business services.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groups the groups parameter
+     * @param clusters the clusters parameter
+     * @param businessServices the businessServices parameter
+     * @return the result
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
                                        List<Map<String, Object>> businessServices) {
@@ -196,8 +198,8 @@ public class HostGroupService {
     /**
      * Creates a new host group from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createGroup(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -221,8 +223,9 @@ public class HostGroupService {
     /**
      * Updates an existing host group with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateGroup(String id, Map<String, Object> body) {
         Path file = groupsDir.resolve(id + ".json");
@@ -256,6 +259,7 @@ public class HostGroupService {
     /**
      * Delete a group. Rejects if the group has sub-groups or clusters.
      *
+     * @param id the id parameter
      * @param clusterService used to check for clusters in this group
      * @return true if deleted
      */
@@ -292,6 +296,12 @@ public class HostGroupService {
     /**
      * Force-delete a group with cascade: deletes business services, recursively force-deletes
      * sub-groups, force-deletes clusters (which cascade-delete hosts), then deletes the group.
+     *
+     * @param id the id parameter
+     * @param clusterService the clusterService parameter
+     * @param hostService the hostService parameter
+     * @param businessServiceService the businessServiceService parameter
+     * @return the result
      */
     public boolean forceDeleteGroup(String id, ClusterService clusterService,
                                     HostService hostService, BusinessServiceService businessServiceService) {
@@ -334,6 +344,9 @@ public class HostGroupService {
      * Compute the set of group IDs that are effectively disabled, either directly
      * or by inheritance from a disabled ancestor. Uses fixed-point iteration to
      * handle arbitrary nesting depth.
+     *
+     * @param groups the groups parameter
+     * @return the result
      */
     public Set<String> getDisabledGroupIds(List<Map<String, Object>> groups) {
         Set<String> disabled = new HashSet<>();

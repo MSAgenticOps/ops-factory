@@ -120,8 +120,9 @@ public class FileService {
     /**
      * List files for the Files module from configured scan roots.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param userAgentDir the userAgentDir parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public List<Map<String, Object>> listFiles(Path userAgentDir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
@@ -140,8 +141,9 @@ public class FileService {
     /**
      * List only top-level files under a directory, excluding subdirectories.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param dir the dir parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
         List<Map<String, Object>> files = new ArrayList<>();
@@ -169,6 +171,10 @@ public class FileService {
     /**
      * List "user-facing" output files for chat file capsules:
      * - Same scan roots as the Files module
+     *
+     * @param dir the dir parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public List<Map<String, Object>> listCapsuleRelevantFiles(Path dir) throws IOException {
         return listFiles(dir);
@@ -267,8 +273,9 @@ public class FileService {
     /**
      * Resolves a file scan root path by its identifier for the given user agent directory.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param userAgentDir the userAgentDir parameter
+     * @param rootId the rootId parameter
+     * @return the result
      */
     public Optional<Path> resolveFileScanRoot(Path userAgentDir, String rootId) {
         String normalizedRootId = normalizeRootId(rootId, 0);
@@ -369,8 +376,9 @@ public class FileService {
     /**
      * Resolve and validate a file path within a base directory.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param baseDir the baseDir parameter
+     * @param relativePath the relativePath parameter
+     * @return the result
      */
     public Resource resolveFile(Path baseDir, String relativePath) {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
@@ -386,8 +394,10 @@ public class FileService {
     /**
      * Deletes a file within the base directory at the given relative path.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param baseDir the baseDir parameter
+     * @param relativePath the relativePath parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public boolean deleteFile(Path baseDir, String relativePath) throws IOException {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
@@ -404,8 +414,11 @@ public class FileService {
     /**
      * Updates a text file within the base directory at the given relative path with new content.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param baseDir the baseDir parameter
+     * @param relativePath the relativePath parameter
+     * @param content the content parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public boolean updateTextFile(Path baseDir, String relativePath, String content) throws IOException {
         if (!PathSanitizer.isSafe(baseDir, relativePath) || !isEditableTextFile(relativePath)) {
@@ -422,8 +435,8 @@ public class FileService {
     /**
      * Checks whether the given filename has an editable text extension.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param filename the filename parameter
+     * @return the result
      */
     public boolean isEditableTextFile(String filename) {
         return EDITABLE_TEXT_EXTENSIONS.contains(getPolicyType(filename));
@@ -432,8 +445,8 @@ public class FileService {
     /**
      * Check if a file extension is allowed for upload.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param filename the filename parameter
+     * @return the result
      */
     public boolean isAllowedExtension(String filename) {
         String ext = getExtension(filename);
@@ -468,8 +481,8 @@ public class FileService {
     /**
      * Resolves the MIME type for the given filename based on its extension.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param filename the filename parameter
+     * @return the result
      */
     public String getMimeType(String filename) {
         int dot = filename.lastIndexOf('.');
@@ -483,8 +496,8 @@ public class FileService {
     /**
      * Whether this MIME type should be displayed inline (vs download).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param mimeType the mimeType parameter
+     * @return the result
      */
     public boolean isInline(String mimeType) {
         return mimeType.startsWith("text/")
@@ -502,6 +515,10 @@ public class FileService {
     /**
      * Compute the diff between two file snapshots.
      * Returns files that are new or have been modified (size or modifiedAt changed).
+     *
+     * @param before the before parameter
+     * @param after the after parameter
+     * @return the result
      */
     public List<Map<String, String>> diffFiles(List<Map<String, Object>> before,
                                                List<Map<String, Object>> after) {
@@ -571,6 +588,11 @@ public class FileService {
      * Persist file capsule entries for a session.
      * Merges new entries into existing data (read-modify-write).
      * Path: {workingDir}/data/{sessionId}/file-capsules.json
+     *
+     * @param workingDir the workingDir parameter
+     * @param sessionId the sessionId parameter
+     * @param messageId the messageId parameter
+     * @param files the files parameter
      */
     public void persistOutputFiles(Path workingDir, String sessionId, String messageId,
                                    List<Map<String, String>> files) {
@@ -622,6 +644,10 @@ public class FileService {
     /**
      * Load persisted file capsule entries for a session.
      * Returns messageId → files mapping, or empty map on any error.
+     *
+     * @param workingDir the workingDir parameter
+     * @param sessionId the sessionId parameter
+     * @return the result
      */
     public Map<String, List<Map<String, String>>> loadOutputFiles(Path workingDir, String sessionId) {
         Path file = workingDir.resolve("data").resolve(sessionId).resolve(CAPSULE_FILE);

@@ -50,8 +50,10 @@ public class FileCapsuleController {
     /**
      * Returns the persisted messageId-to-files mapping for a session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param sessionId the sessionId parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> getFileCapsules(@PathVariable String agentId,
@@ -78,8 +80,10 @@ public class FileCapsuleController {
     /**
      * Executes the save file capsule operation.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     public Mono<Map<String, Object>> saveFileCapsule(@PathVariable String agentId,
                                                      @RequestBody Map<String, Object> body,

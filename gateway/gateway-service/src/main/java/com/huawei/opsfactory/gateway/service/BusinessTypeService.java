@@ -50,9 +50,6 @@ public class BusinessTypeService {
 
     /**
      * Initializes the business types data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -71,8 +68,7 @@ public class BusinessTypeService {
     /**
      * Lists all business types.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public List<Map<String, Object>> listBusinessTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -98,8 +94,8 @@ public class BusinessTypeService {
     /**
      * Gets a business type by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -113,8 +109,8 @@ public class BusinessTypeService {
     /**
      * Creates a new business type from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createBusinessType(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -138,8 +134,9 @@ public class BusinessTypeService {
     /**
      * Updates an existing business type with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -173,8 +170,8 @@ public class BusinessTypeService {
     /**
      * Deletes a business type by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");

@@ -44,9 +44,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -55,9 +52,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests is allowed extension allowed types.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsAllowedExtension_allowedTypes() {
@@ -73,9 +67,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests is allowed extension blocked types.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsAllowedExtension_blockedTypes() {
@@ -91,9 +82,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests is allowed extension no extension allowed.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsAllowedExtension_noExtension_allowed() {
@@ -103,9 +91,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests is allowed extension unknown extension rejected.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsAllowedExtension_unknownExtension_rejected() {
@@ -116,9 +101,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests is allowed extension case insensitive.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsAllowedExtension_caseInsensitive() {
@@ -130,8 +112,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips dirs data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsDirs_data() throws IOException {
@@ -147,8 +128,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips dirs state.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsDirs_state() throws IOException {
@@ -163,8 +143,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips dirs config.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsDirs_config() throws IOException {
@@ -180,8 +159,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips dirs node modules.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsDirs_nodeModules() throws IOException {
@@ -196,8 +174,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips dirs dot goose.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsDirs_dotGoose() throws IOException {
@@ -212,8 +189,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips hidden dirs.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsHiddenDirs() throws IOException {
@@ -229,8 +205,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips dsstore.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsDSStore() throws IOException {
@@ -245,8 +220,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips agentsmd.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsAGENTSmd() throws IOException {
@@ -261,8 +235,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files skips gitkeep.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_skipsGitkeep() throws IOException {
@@ -276,8 +249,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests resolve file fallback search finds in subdir.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testResolveFile_fallbackSearch_findsInSubdir() throws IOException {
@@ -292,8 +264,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests resolve file fallback search skips skip dirs.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testResolveFile_fallbackSearch_skipsSkipDirs() throws IOException {
@@ -308,8 +279,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests resolve file direct path exists in subdir.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testResolveFile_directPath_existsInSubdir() throws IOException {
@@ -323,9 +293,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests diff files ignores internal mcp logs.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDiffFiles_ignoresInternalMcpLogs() {
@@ -343,9 +310,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests diff files keeps user generated files.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDiffFiles_keepsUserGeneratedFiles() {
@@ -364,9 +328,6 @@ public class FileServiceExtendedTest {
 
     /**
      * Tests diff files keeps same relative path from different roots.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDiffFiles_keepsSameRelativePathFromDifferentRoots() {
@@ -389,8 +350,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list top level files skips files in subdirectories.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListTopLevelFiles_skipsFilesInSubdirectories() throws IOException {
@@ -406,8 +366,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files default scan roots include output non recursive.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_defaultScanRootsIncludeOutputNonRecursive() throws IOException {
@@ -434,8 +393,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list capsule relevant files uses files scan roots.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListCapsuleRelevantFiles_usesFilesScanRoots() throws IOException {
@@ -456,8 +414,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files recursive scan root includes nested files.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_recursiveScanRootIncludesNestedFiles() throws IOException {
@@ -487,8 +444,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files recursive scan root honors configured exclude dirs.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_recursiveScanRootHonorsConfiguredExcludeDirs() throws IOException {
@@ -518,8 +474,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files recursive scan root honors max depth.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_recursiveScanRootHonorsMaxDepth() throws IOException {
@@ -551,8 +506,7 @@ public class FileServiceExtendedTest {
     /**
      * Tests list files recursive scan root honors max files.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testListFiles_recursiveScanRootHonorsMaxFiles() throws IOException {

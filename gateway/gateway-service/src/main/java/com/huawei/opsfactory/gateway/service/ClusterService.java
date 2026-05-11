@@ -55,8 +55,7 @@ public class ClusterService {
     /**
      * Sets the cluster relation service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterRelationService the clusterRelationService parameter
      */
     @Lazy
     @Autowired
@@ -66,9 +65,6 @@ public class ClusterService {
 
     /**
      * Initializes the clusters data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -86,8 +82,10 @@ public class ClusterService {
 
     /**
      * List clusters with optional filters.
+     *
      * @param groupId filter by group ID (null = no filter)
      * @param type filter by cluster type (null = no filter)
+     * @return the result
      */
     public List<Map<String, Object>> listClusters(String groupId, String type) {
         List<Map<String, Object>> clusters = new ArrayList<>();
@@ -128,8 +126,8 @@ public class ClusterService {
     /**
      * Gets a cluster by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public Map<String, Object> getCluster(String id) {
         Path file = clustersDir.resolve(id + ".json");
@@ -143,8 +141,7 @@ public class ClusterService {
     /**
      * Returns the distinct cluster types across all clusters.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     public List<String> getClusterTypes() {
         LinkedHashSet<String> types = new LinkedHashSet<>();
@@ -161,8 +158,8 @@ public class ClusterService {
     /**
      * Creates a new cluster from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createCluster(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -187,8 +184,9 @@ public class ClusterService {
     /**
      * Updates an existing cluster with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateCluster(String id, Map<String, Object> body) {
         Path file = clustersDir.resolve(id + ".json");
@@ -224,6 +222,8 @@ public class ClusterService {
 
     /**
      * Delete a cluster. Rejects if the cluster has hosts.
+     *
+     * @param id the id parameter
      * @param hostService used to check for hosts in this cluster
      * @return true if deleted
      */
@@ -256,6 +256,8 @@ public class ClusterService {
     /**
      * Force-delete a cluster: deletes all hosts in the cluster first, then the cluster itself.
      * Host deletion cascades to their relations automatically.
+     *
+     * @param id the id parameter
      * @param hostService used to delete hosts in this cluster
      * @return true if deleted
      */

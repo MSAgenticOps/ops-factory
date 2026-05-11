@@ -58,8 +58,7 @@ public class ClusterRelationService {
     /**
      * Sets the host service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostService the hostService parameter
      */
     @Lazy
     @Autowired
@@ -70,8 +69,7 @@ public class ClusterRelationService {
     /**
      * Sets the cluster service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterService the clusterService parameter
      */
     @Lazy
     @Autowired
@@ -82,8 +80,7 @@ public class ClusterRelationService {
     /**
      * Sets the cluster type service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterTypeService the clusterTypeService parameter
      */
     @Lazy
     @Autowired
@@ -94,8 +91,7 @@ public class ClusterRelationService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param businessServiceService the businessServiceService parameter
      */
     @Lazy
     @Autowired
@@ -105,9 +101,6 @@ public class ClusterRelationService {
 
     /**
      * Initializes the cluster relations data directory at startup.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @PostConstruct
     public void init() {
@@ -126,8 +119,8 @@ public class ClusterRelationService {
     /**
      * Lists cluster relations optionally filtered by cluster ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @return the result
      */
     public List<Map<String, Object>> listRelations(String clusterId) {
         List<Map<String, Object>> relations = new ArrayList<>();
@@ -164,8 +157,8 @@ public class ClusterRelationService {
     /**
      * Creates a new cluster relation from the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
@@ -233,8 +226,9 @@ public class ClusterRelationService {
     /**
      * Updates an existing cluster relation with the provided field map.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @return the result
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
@@ -290,8 +284,8 @@ public class ClusterRelationService {
     /**
      * Deletes a cluster relation by its ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @return the result
      */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
@@ -319,8 +313,7 @@ public class ClusterRelationService {
     /**
      * Delete all relations involving a specific cluster (cascade delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
      */
     public void deleteRelationsByCluster(String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -344,8 +337,7 @@ public class ClusterRelationService {
     /**
      * Delete all relations where source is a specific business service (cascade delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param bsId the bsId parameter
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -371,6 +363,9 @@ public class ClusterRelationService {
      * - If relation exists and clusterId changed → update sourceId (the cluster).
      * - If relation exists and clusterId cleared → delete relation.
      * - If relation exists and same clusterId → no-op.
+     *
+     * @param hostId the hostId parameter
+     * @param clusterId the clusterId parameter
      */
     public void syncHostClusterRelation(String hostId, String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -425,8 +420,7 @@ public class ClusterRelationService {
     /**
      * Delete the 包含 relation for a host (used on host delete).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
      */
     public void deleteConstituteRelationByHost(String hostId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -447,8 +441,8 @@ public class ClusterRelationService {
     /**
      * Build cluster-level graph data for a given group.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param groupId the groupId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getGraphData(String groupId) {
@@ -623,8 +617,8 @@ public class ClusterRelationService {
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given cluster.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId the clusterId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getClusterNeighbors(String clusterId) {
@@ -704,8 +698,8 @@ public class ClusterRelationService {
     /**
      * Get host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten to host list.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param hostId the hostId parameter
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getHostNeighborsByCluster(String hostId) {

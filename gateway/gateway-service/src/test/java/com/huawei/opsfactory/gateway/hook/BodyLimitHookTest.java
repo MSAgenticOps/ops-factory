@@ -21,9 +21,6 @@ public class BodyLimitHookTest {
 
     /**
      * Sets the up.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Before
     public void setUp() {
@@ -35,9 +32,6 @@ public class BodyLimitHookTest {
 
     /**
      * Tests small body passes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSmallBody_passes() {
@@ -49,9 +43,6 @@ public class BodyLimitHookTest {
 
     /**
      * Tests oversized body fails.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOversizedBody_fails() {
@@ -69,9 +60,6 @@ public class BodyLimitHookTest {
 
     /**
      * Tests null body passes.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testNullBody_passes() {

@@ -24,9 +24,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testDefaults() {
@@ -39,9 +36,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests path defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testPathDefaults() {
@@ -53,9 +47,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests idle defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIdleDefaults() {
@@ -66,9 +57,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests upload defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUploadDefaults() {
@@ -79,9 +67,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests files scan root defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testFilesScanRootDefaults() {
@@ -101,9 +86,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests skill market defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSkillMarketDefaults() {
@@ -115,9 +97,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests office preview defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testOfficePreviewDefaults() {
@@ -128,9 +107,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests logging defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoggingDefaults() {
@@ -143,9 +119,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests setters.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSetters() {
@@ -161,9 +134,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests logging setters.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLoggingSetters() {
@@ -181,9 +151,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests langfuse defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLangfuseDefaults() {
@@ -195,9 +162,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests goose tls default true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGooseTlsDefaultTrue() {
@@ -207,9 +171,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests goose tls set true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGooseTlsSetTrue() {
@@ -220,9 +181,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests goose scheme https when tls true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGooseSchemeHttpsWhenTlsTrue() {
@@ -233,9 +191,6 @@ public class GatewayPropertiesTest {
 
     /**
      * Tests goose scheme http when tls false.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGooseSchemeHttpWhenTlsFalse() {
@@ -247,8 +202,7 @@ public class GatewayPropertiesTest {
     /**
      * Tests resolves paths relative to gateway config path.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Test
     public void testResolvesPathsRelativeToGatewayConfigPath() throws IOException {

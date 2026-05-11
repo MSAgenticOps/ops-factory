@@ -50,8 +50,8 @@ public class FileAttachmentHook implements RequestHook {
     /**
      * Validates file paths referenced in user messages against the user's agent directory.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param ctx the ctx parameter
+     * @return the result
      */
     @Override
     public Mono<HookContext> process(HookContext ctx) {

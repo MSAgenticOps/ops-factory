@@ -68,8 +68,8 @@ public class InternalRuntimeSourceController {
     /**
      * Returns system-level information including uptime, agent count, and configuration.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/system")
     public Map<String, Object> system(ServerWebExchange exchange) {
@@ -99,8 +99,8 @@ public class InternalRuntimeSourceController {
     /**
      * Returns the current status of all managed goosed instances.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/instances")
     public Map<String, Object> instances(ServerWebExchange exchange) {
@@ -146,8 +146,8 @@ public class InternalRuntimeSourceController {
     /**
      * Returns aggregated metrics including request counts, latency, throughput, and time series data.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/metrics")
     public Map<String, Object> metrics(ServerWebExchange exchange) {

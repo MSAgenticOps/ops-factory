@@ -54,8 +54,7 @@ public class AgentController {
     /**
      * Lists all registered agents with their status, provider, model, and skills.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listAgents() {
@@ -102,8 +101,9 @@ public class AgentController {
     /**
      * Creates a new agent with the given ID and name.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createAgent(@RequestBody Map<String, String> body,
@@ -134,8 +134,9 @@ public class AgentController {
     /**
      * Deletes an agent by ID and stops all its running instances.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id,
@@ -158,8 +159,9 @@ public class AgentController {
     /**
      * Lists all skills configured for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/skills")
     public Mono<Map<String, Object>> listSkills(@PathVariable String id, ServerWebExchange exchange) {
@@ -170,8 +172,9 @@ public class AgentController {
     /**
      * Gets the full configuration for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable String id,
@@ -195,8 +198,10 @@ public class AgentController {
     /**
      * Updates the agents.md configuration for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable String id,
@@ -229,8 +234,9 @@ public class AgentController {
     /**
      * Lists all memory files for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/memory")
     public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id,
@@ -245,8 +251,10 @@ public class AgentController {
     /**
      * Gets the content of a specific memory category for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param category the category parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable String id,
@@ -268,8 +276,11 @@ public class AgentController {
     /**
      * Writes content to a specific memory category for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param category the category parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable String id,
@@ -294,8 +305,10 @@ public class AgentController {
     /**
      * Deletes a specific memory category for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param category the category parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable String id,

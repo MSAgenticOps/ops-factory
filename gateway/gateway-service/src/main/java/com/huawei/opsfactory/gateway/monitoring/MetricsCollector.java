@@ -55,9 +55,6 @@ public class MetricsCollector {
 
     /**
      * Collects metrics from all running goosed instances on a 30-second interval.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Scheduled(fixedDelay = 30000)
     public void collect() {

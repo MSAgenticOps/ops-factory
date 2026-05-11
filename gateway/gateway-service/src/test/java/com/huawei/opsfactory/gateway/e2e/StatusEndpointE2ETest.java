@@ -15,9 +15,6 @@ import org.junit.Test;
 public class StatusEndpointE2ETest extends BaseE2ETest {
     /**
      * Returns the status returns ok.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getStatus_returnsOk() {
@@ -30,9 +27,6 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the me sys user returns sys.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getMe_sysUser_returnsSys() {
@@ -48,9 +42,6 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the me regular user returns user.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getMe_regularUser_returnsUser() {
@@ -66,9 +57,6 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the config returns office preview defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getConfig_returnsOfficePreviewDefaults() {
@@ -84,9 +72,6 @@ public class StatusEndpointE2ETest extends BaseE2ETest {
 
     /**
      * Returns the config unauthenticated returns401.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void getConfig_unauthenticated_returns401() {

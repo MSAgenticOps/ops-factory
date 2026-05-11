@@ -39,8 +39,7 @@ public class InstanceManagerTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws Exception if the operation fails
      */
     @Before
     public void setUp() throws Exception {
@@ -60,9 +59,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests get instance no instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetInstance_noInstance() {
@@ -71,9 +67,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests get all instances empty.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetAllInstances_empty() {
@@ -84,9 +77,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests stop instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStopInstance() {
@@ -109,9 +99,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests stop all for agent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStopAllForAgent() {
@@ -142,8 +129,7 @@ public class InstanceManagerTest {
     /**
      * Tests touch all for user.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws InterruptedException if the operation fails
      */
     @Test
     public void testTouchAllForUser() throws InterruptedException {
@@ -170,9 +156,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests stop all.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStopAll() {
@@ -194,9 +177,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests stop all handles errors.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStopAll_handlesErrors() {
@@ -214,9 +194,6 @@ public class InstanceManagerTest {
 
     /**
      * Tests get or spawn removes instance when process died.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetOrSpawn_removesInstanceWhenProcessDied() {

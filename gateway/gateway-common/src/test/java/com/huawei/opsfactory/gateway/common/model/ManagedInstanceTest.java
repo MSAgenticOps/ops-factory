@@ -20,9 +20,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests build key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testBuildKey() {
@@ -32,9 +29,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests get key.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetKey() {
@@ -44,9 +38,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests initial status.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testInitialStatus() {
@@ -56,9 +47,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests set status.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSetStatus() {
@@ -70,8 +58,7 @@ public class ManagedInstanceTest {
     /**
      * Tests touch.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws InterruptedException if the operation fails
      */
     @Test
     public void testTouch() throws InterruptedException {
@@ -84,9 +71,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests getters.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetters() {
@@ -99,9 +83,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests status transitions.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStatusTransitions() {
@@ -120,9 +101,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests status enum values.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testStatusEnumValues() {
@@ -136,9 +114,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests process is nullable.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testProcessIsNullable() {
@@ -148,9 +123,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests last activity initialized on construction.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testLastActivityInitializedOnConstruction() {
@@ -164,9 +136,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests build key special characters.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testBuildKey_specialCharacters() {
@@ -177,8 +146,7 @@ public class ManagedInstanceTest {
     /**
      * Tests touch updates timestamp.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws InterruptedException if the operation fails
      */
     @Test
     public void testTouch_updatesTimestamp() throws InterruptedException {
@@ -192,9 +160,6 @@ public class ManagedInstanceTest {
 
     /**
      * Tests session resumed tracking.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testSessionResumedTracking() {

@@ -21,9 +21,6 @@ public class PortAllocatorTest {
 
     /**
      * Tests allocate returns valid port.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAllocate_returnsValidPort() {
@@ -34,9 +31,6 @@ public class PortAllocatorTest {
 
     /**
      * Tests allocate returns different ports.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testAllocate_returnsDifferentPorts() {

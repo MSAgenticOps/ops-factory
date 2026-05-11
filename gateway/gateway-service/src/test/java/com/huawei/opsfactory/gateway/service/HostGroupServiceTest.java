@@ -35,8 +35,7 @@ public class HostGroupServiceTest {
     /**
      * Sets the up.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @throws IOException if the operation fails
      */
     @Before
     public void setUp() throws IOException {
@@ -56,9 +55,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests create group enabled by default.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateGroup_enabledByDefault() {
@@ -76,9 +72,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests create group enabled false.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateGroup_enabledFalse() {
@@ -93,9 +86,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests create group enabled true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testCreateGroup_enabledTrue() {
@@ -111,9 +101,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests update group set enabled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_setEnabled() {
@@ -132,9 +119,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests update group re enable.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_reEnable() {
@@ -153,9 +137,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests update group partial update preserves enabled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_partialUpdatePreservesEnabled() {
@@ -176,9 +157,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests update group default enabled remains true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateGroup_defaultEnabledRemainsTrue() {
@@ -200,9 +178,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests get disabled group ids no disabled groups.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetDisabledGroupIds_noDisabledGroups() {
@@ -215,9 +190,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests get disabled group ids directly disabled.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetDisabledGroupIds_directlyDisabled() {
@@ -231,9 +203,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests get disabled group ids inherited from parent.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetDisabledGroupIds_inheritedFromParent() {
@@ -254,9 +223,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests get disabled group ids deep inheritance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetDisabledGroupIds_deepInheritance() {
@@ -279,9 +245,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests get disabled group ids enabled missing defaults to true.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetDisabledGroupIds_enabledMissingDefaultsToTrue() {
@@ -294,9 +257,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests get disabled group ids multiple roots.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testGetDisabledGroupIds_multipleRoots() {
@@ -317,9 +277,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests enabled state persisted and read back.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testEnabledStatePersistedAndReadBack() {
@@ -336,9 +293,6 @@ public class HostGroupServiceTest {
 
     /**
      * Tests update enabled persisted and read back.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testUpdateEnabledPersistedAndReadBack() {

@@ -67,8 +67,10 @@ public class AgentSkillInstallService {
     /**
      * Downloads, validates, and installs a skill from the skill market for the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param requestedSkillId the requestedSkillId parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public Map<String, Object> install(String agentId, String requestedSkillId) throws IOException {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
@@ -132,8 +134,10 @@ public class AgentSkillInstallService {
     /**
      * Uninstalls a previously installed skill from the specified agent.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId the agentId parameter
+     * @param requestedSkillId the requestedSkillId parameter
+     * @return the result
+     * @throws IOException if the operation fails
      */
     public Map<String, Object> uninstall(String agentId, String requestedSkillId) throws IOException {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
@@ -258,8 +262,10 @@ public class AgentSkillInstallService {
             /**
              * Executes the visit file operation.
              *
-             * @author x00000000
-             * @since 2026-05-09
+             * @param file the file parameter
+             * @param attrs the attrs parameter
+             * @return the result
+             * @throws IOException if the operation fails
              */
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -270,8 +276,10 @@ public class AgentSkillInstallService {
             /**
              * Executes the post visit directory operation.
              *
-             * @author x00000000
-             * @since 2026-05-09
+             * @param dir the dir parameter
+             * @param exc the exc parameter
+             * @return the result
+             * @throws IOException if the operation fails
              */
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {

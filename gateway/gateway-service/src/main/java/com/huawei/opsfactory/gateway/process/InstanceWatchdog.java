@@ -51,9 +51,6 @@ public class InstanceWatchdog {
 
     /**
      * Periodically checks instance health and reaps idle instances.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Scheduled(fixedDelayString = "${gateway.idle.check-interval-ms:60000}")
     public void watchInstances() {

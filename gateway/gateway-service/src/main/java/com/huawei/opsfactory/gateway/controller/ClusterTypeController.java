@@ -41,8 +41,8 @@ public class ClusterTypeController {
     /**
      * Lists all cluster type definitions.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listClusterTypes(ServerWebExchange exchange) {
@@ -58,8 +58,9 @@ public class ClusterTypeController {
     /**
      * Gets a cluster type by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getClusterType(
@@ -85,8 +86,9 @@ public class ClusterTypeController {
     /**
      * Creates a new cluster type.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createClusterType(
@@ -112,8 +114,10 @@ public class ClusterTypeController {
     /**
      * Updates a cluster type by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param request the request parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateClusterType(
@@ -140,8 +144,9 @@ public class ClusterTypeController {
     /**
      * Deletes a cluster type by ID.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param id the id parameter
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteClusterType(

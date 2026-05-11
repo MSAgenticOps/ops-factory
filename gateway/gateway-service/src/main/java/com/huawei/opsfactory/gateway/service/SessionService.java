@@ -46,8 +46,8 @@ public class SessionService {
     /**
      * Query sessions from a specific goosed instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param instance the instance parameter
+     * @return the result
      */
     public Mono<String> getSessionsFromInstance(ManagedInstance instance) {
         String url = goosedProxy.goosedBaseUrl(instance.getPort()) + "/sessions";

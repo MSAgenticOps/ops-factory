@@ -40,8 +40,7 @@ public class StatusController {
     /**
      * Returns health check status.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @GetMapping("/status")
     public Mono<String> status() {
@@ -51,8 +50,8 @@ public class StatusController {
     /**
      * Returns the current user's identity and role.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param exchange the exchange parameter
+     * @return the result
      */
     @GetMapping("/me")
     public Mono<Map<String, Object>> me(ServerWebExchange exchange) {
@@ -66,8 +65,7 @@ public class StatusController {
     /**
      * Returns public configuration such as Office preview settings.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @return the result
      */
     @GetMapping("/config")
     public Mono<Map<String, Object>> config() {

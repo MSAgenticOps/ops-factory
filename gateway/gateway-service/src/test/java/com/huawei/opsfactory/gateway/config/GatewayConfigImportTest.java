@@ -41,9 +41,6 @@ public class GatewayConfigImportTest {
 
     /**
      * Verifies that import gateway config yaml into spring environment.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void shouldImportGatewayConfigYamlIntoSpringEnvironment() {
@@ -65,9 +62,6 @@ public class GatewayConfigImportTest {
 
     /**
      * Verifies that apply logging levels to log4j runtime.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void shouldApplyLoggingLevelsToLog4jRuntime() {

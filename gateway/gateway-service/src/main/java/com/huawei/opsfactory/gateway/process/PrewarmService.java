@@ -41,6 +41,8 @@ public class PrewarmService {
     /**
      * Called on every authenticated request. Triggers a fire-and-forget spawn
      * of the default agent for first-time users in this gateway lifecycle.
+     *
+     * @param userId the userId parameter
      */
     public void onUserActivity(String userId) {
         if (!properties.getPrewarm().isEnabled()) {
@@ -68,8 +70,7 @@ public class PrewarmService {
     /**
      * Reset pre-warm state for a user (called when all their instances are reaped).
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param userId the userId parameter
      */
     public void clearUser(String userId) {
         warmedUsers.remove(userId);

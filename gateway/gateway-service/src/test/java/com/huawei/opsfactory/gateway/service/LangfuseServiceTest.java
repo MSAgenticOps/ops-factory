@@ -20,9 +20,6 @@ public class LangfuseServiceTest {
 
     /**
      * Tests is configured all set.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsConfigured_allSet() {
@@ -39,9 +36,6 @@ public class LangfuseServiceTest {
 
     /**
      * Tests is configured missing host.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsConfigured_missingHost() {
@@ -58,9 +52,6 @@ public class LangfuseServiceTest {
 
     /**
      * Tests is configured defaults.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     @Test
     public void testIsConfigured_defaults() {
