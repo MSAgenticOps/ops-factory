@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
+import com.huawei.opsfactory.gateway.common.model.ResidentInstanceTarget;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 
@@ -28,6 +29,7 @@ import java.io.FileWriter;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -65,6 +67,7 @@ public class InstanceManagerExtendedTest {
         agentConfigService = mock(AgentConfigService.class);
         when(agentConfigService.loadAgentConfigYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.loadAgentSecretsYaml(anyString())).thenReturn(Map.of());
+        when(agentConfigService.getResidentInstances()).thenReturn(List.of());
         when(agentConfigService.getAgentConfigDir(anyString()))
                 .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(
                         0, String.class)));
@@ -564,6 +567,35 @@ public class InstanceManagerExtendedTest {
                 () -> instanceManager.getOrSpawn("agent2", "user1").block()
         );
         assertFalse(error.getMessage().contains("Per-user instance limit"));
+    }
+
+    /**
+     * Tests auto start resident instances ignores instance limit errors.
+     *
+     * @author x00000000
+     * @since 2026-05-10
+     */
+    @Test
+    public void testAutoStartResidentInstances_ignoresInstanceLimitErrors() {
+        properties.getLimits().setMaxInstancesPerUser(1);
+        properties.getLimits().setMaxInstancesGlobal(50);
+
+        Process aliveProcess = mock(Process.class);
+        when(aliveProcess.isAlive()).thenReturn(true);
+
+        ManagedInstance existing = new ManagedInstance("agent1", "user1", 8080, 1L, aliveProcess, "test-secret");
+        existing.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(existing);
+
+        when(agentConfigService.getResidentInstances()).thenReturn(List.of(
+                new ResidentInstanceTarget("user1", "agent2")
+        ));
+
+        instanceManager.autoStartResidentInstances();
+
+        assertEquals(1, instanceManager.getAllInstances().size());
+        assertNotNull(instanceManager.getInstance("agent1", "user1"));
+        assertNull(instanceManager.getInstance("agent2", "user1"));
     }
 
     /**

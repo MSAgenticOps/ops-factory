@@ -4,22 +4,22 @@
 
 package com.huawei.opsfactory.gateway.process;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.ProcessUtil;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -28,26 +28,29 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import javax.net.ssl.SSLSocketFactory;
-import java.security.cert.X509Certificate;
-import java.security.GeneralSecurityException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.Collection;
-import java.util.Locale;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Manages the lifecycle of goosed agent processes including spawning, health checks, and termination.
@@ -71,10 +74,14 @@ public class InstanceManager {
     private final boolean serverSslEnabled;
     private final String gatewayApiPassword;
 
-    /** key = "agentId:userId" -> ManagedInstance */
+    /**
+     * key = "agentId:userId" -> ManagedInstance
+     */
     private final ConcurrentHashMap<String, ManagedInstance> instances = new ConcurrentHashMap<>();
 
-    /** Per-key spawn locks to prevent concurrent spawns */
+    /**
+     * Per-key spawn locks to prevent concurrent spawns
+     */
     private final ConcurrentHashMap<String, ReentrantLock> spawnLocks = new ConcurrentHashMap<>();
 
     /**
@@ -102,7 +109,7 @@ public class InstanceManager {
 
     private static SSLSocketFactory createTrustAllSslFactory() {
         try {
-            TrustManager[] trustAll = { new X509TrustManager() {
+            TrustManager[] trustAll = {new X509TrustManager() {
 
                 /**
                  * Returns the accepted issuers.
@@ -155,7 +162,7 @@ public class InstanceManager {
                 log.info("Auto-starting resident instance for {}:{}", target.agentId(), target.userId());
                 ManagedInstance instance = doSpawn(target.agentId(), target.userId());
                 registerDefaultSchedules(target.agentId(), instance.getPort(), instance.getSecretKey());
-            } catch (IOException e) {
+            } catch (IOException | IllegalStateException e) {
                 log.error("Failed to auto-start resident instance for {}:{}: {}",
                         target.agentId(), target.userId(), e.getMessage());
             } catch (InterruptedException e) {
@@ -187,7 +194,8 @@ public class InstanceManager {
                 // Simple parsing: extract "id" values from jobs array
                 if (listJson != null && listJson.contains("\"jobs\"")) {
                     Map<String, Object> parsed = MAPPER.readValue(listJson,
-                            new TypeReference<Map<String, Object>>() {});
+                            new TypeReference<Map<String, Object>>() {
+                            });
                     Object jobs = parsed.get("jobs");
                     if (jobs instanceof List<?> jobList) {
                         for (Object job : jobList) {
@@ -484,7 +492,8 @@ public class InstanceManager {
                 return;
             }
             List<Map<String, Object>> jobs = MAPPER.readValue(content,
-                    new TypeReference<List<Map<String, Object>>>() {});
+                    new TypeReference<List<Map<String, Object>>>() {
+                    });
             boolean modified = false;
             for (Map<String, Object> job : jobs) {
                 if (Boolean.TRUE.equals(job.get("currently_running"))) {
@@ -708,17 +717,17 @@ public class InstanceManager {
      */
     public void respawnAsync(String agentId, String userId, int restartCount) {
         Mono.fromCallable(() -> {
-            ManagedInstance instance = doSpawn(agentId, userId);
-            instance.setRestartCount(restartCount);
-            instance.setLastRestartTime(System.currentTimeMillis());
-            return instance;
-        }).subscribeOn(Schedulers.boundedElastic())
-          .subscribe(
-              inst -> log.info("Watchdog respawned {}:{} on port {} (restart #{})",
-                      agentId, userId, inst.getPort(), restartCount),
-              err -> log.error("Watchdog failed to respawn {}:{}: {}",
-                      agentId, userId, err.getMessage())
-          );
+                    ManagedInstance instance = doSpawn(agentId, userId);
+                    instance.setRestartCount(restartCount);
+                    instance.setLastRestartTime(System.currentTimeMillis());
+                    return instance;
+                }).subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        inst -> log.info("Watchdog respawned {}:{} on port {} (restart #{})",
+                                agentId, userId, inst.getPort(), restartCount),
+                        err -> log.error("Watchdog failed to respawn {}:{}: {}",
+                                agentId, userId, err.getMessage())
+                );
     }
 
     /**
