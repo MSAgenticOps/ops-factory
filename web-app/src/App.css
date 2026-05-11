@@ -375,7 +375,6 @@ textarea {
 .main-wrapper {
     display: flex;
     flex: 1;
-    margin-left: var(--sidebar-width);
     min-height: 100vh;
     width: calc(100% - var(--sidebar-width));
     transition: all var(--transition-base);

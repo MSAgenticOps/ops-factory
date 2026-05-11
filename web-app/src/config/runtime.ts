@@ -183,14 +183,6 @@ async function loadRuntimeConfig(): Promise<RuntimeConfig> {
 
 export async function initializeRuntimeConfig(): Promise<void> {
     const config = await loadRuntimeConfig()
-
-    // if (!config.gatewayUrl) {
-    //     throw new Error('Missing required configuration: gatewayUrl')
-    // }
-    // if (!config.gatewaySecretKey) {
-    //     throw new Error('Missing required configuration: gatewaySecretKey')
-    // }
-
     setRuntimeConfig(config)
 }
 

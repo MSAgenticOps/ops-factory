@@ -5,6 +5,7 @@ import type { ScheduledJob, ScheduleSessionInfo } from '@goosed/sdk'
 import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useUser } from '../../../platform/providers/UserContext'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
@@ -95,6 +96,7 @@ export default function ScheduledActions() {
     const { userId } = useUser()
     const { agents, getClient, isConnected, error } = useGoosed()
     const { showToast } = useToast()
+    const { requestConfirm } = useConfirmDialog()
     const { markSessionRead } = useInbox()
 
     const draftsKey = getScheduleDraftsKey(userId || 'anonymous')
@@ -269,7 +271,10 @@ export default function ScheduledActions() {
         try {
             const existingIds = new Set(jobs.filter(job => job.agentId === targetAgentId).map(job => job.id))
             const scheduleId = editingJob
-                ? (cleanedName === editingJob.id ? cleanedName : ensureUniqueId(cleanedName, existingIds))
+                ? (() => {
+                    if (cleanedName === editingJob.id) return cleanedName
+                    return ensureUniqueId(cleanedName, existingIds)
+                })()
                 : ensureUniqueId(cleanedName, existingIds)
 
             const recipe = {
@@ -375,7 +380,12 @@ export default function ScheduledActions() {
     }
 
     const handleDelete = async (job: ScheduledJobRecord) => {
-        const confirmed = window.confirm(`Delete scheduled action "${job.id}"?`)
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: `Delete scheduled action "${job.id}"?`,
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
         if (!confirmed) return
         try {
             await getClientForJob(job).deleteSchedule(job.id)
@@ -508,8 +518,15 @@ export default function ScheduledActions() {
                     footer={(
                         <div className="scheduled-modal-footer">
                             <div className="scheduled-modal-footer-group scheduled-modal-footer-group-right">
-                                {editingJob && (
-                                    !editingJob.currently_running ? (
+                                {editingJob && (() => {
+                                    if (editingJob.currently_running) {
+                                        return (
+                                            <button type="button" className="btn btn-secondary" onClick={() => void handleKill(editingJob)}>
+                                                {t('scheduler.kill')}
+                                            </button>
+                                        )
+                                    }
+                                    return (
                                         <>
                                             {editingJob.paused ? (
                                                 <button type="button" className="btn btn-secondary" onClick={() => void handleUnpause(editingJob)}>
@@ -524,12 +541,8 @@ export default function ScheduledActions() {
                                                 {t('scheduler.runNow')}
                                             </button>
                                         </>
-                                    ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => void handleKill(editingJob)}>
-                                            {t('scheduler.kill')}
-                                        </button>
                                     )
-                                )}
+                                })()}
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={submitting}>
                                     {t('common.cancel')}
                                 </button>

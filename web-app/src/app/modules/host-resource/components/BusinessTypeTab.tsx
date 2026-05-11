@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import TypeCard from './TypeCard'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import type { BusinessType } from '../../../../types/host'
 
 type Props = {
@@ -25,6 +27,8 @@ const emptyForm: FormData = { name: '', code: '', description: '', color: '#6366
 
 export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
+    const { showToast } = useToast()
+    const { requestConfirm } = useConfirmDialog()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<BusinessType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
@@ -66,21 +70,27 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
             }
             setShowModal(false)
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed')
+            showToast('error', err instanceof Error ? err.message : 'Failed')
         } finally {
             setSaving(false)
         }
-    }, [editing, form, onCreate, onUpdate])
+    }, [editing, form, onCreate, onUpdate, showToast])
 
     const handleDelete = useCallback(async (item: BusinessType) => {
-        if (confirm(t('hostResource.confirmDeleteBusinessType'))) {
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: t('hostResource.confirmDeleteBusinessType'),
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
+        if (confirmed) {
             try {
                 await onDelete(item.id)
             } catch (err) {
-                alert(err instanceof Error ? err.message : 'Failed')
+                showToast('error', err instanceof Error ? err.message : 'Failed')
             }
         }
-    }, [onDelete, t])
+    }, [onDelete, t, requestConfirm, showToast])
 
     return (
         <div className="hr-type-tab-content">

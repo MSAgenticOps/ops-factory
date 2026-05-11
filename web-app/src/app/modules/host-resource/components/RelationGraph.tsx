@@ -309,10 +309,10 @@ export default function RelationGraph({ data, focusedHostId, hopFocusId, onNodeC
                         })(),
                         opacity: isDownstream ? 1 : 0.4,
                         type: isDownstream ? 'dashed' as const : 'solid' as const,
-                    } : isBsEdge ? {
-                        type: 'dashed' as const,
-                        color: BS_EDGE_COLOR,
-                    } : {}),
+                    } : (() => {
+                        if (isBsEdge) return { type: 'dashed' as const, color: BS_EDGE_COLOR }
+                        return {}
+                    })()),
                 },
                 label: { show: !focusedHostId || isDownstream, formatter: e.description || '', fontSize: 10 },
                 symbol: ['none', 'arrow'] as [string, string],
