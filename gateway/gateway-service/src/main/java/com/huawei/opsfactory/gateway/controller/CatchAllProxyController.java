@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.UserRole;
@@ -38,6 +42,12 @@ public class CatchAllProxyController {
         this.goosedProxy = goosedProxy;
     }
 
+    /**
+     * Forwards unmatched agent requests to the appropriate goosed instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @RequestMapping("/agents/{agentId}/**")
     public Mono<Void> catchAll(ServerWebExchange exchange) {
         String path = exchange.getRequest().getURI().getPath();

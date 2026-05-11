@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +51,12 @@ import java.util.LinkedHashMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Core session controller handling chat replies, SSE event streams, session resume, and restart.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/agents/{agentId}")
 public class ReplyController {
@@ -74,6 +84,12 @@ public class ReplyController {
         this.fileService = fileService;
     }
 
+    /**
+     * Submits a chat reply to an active session and proxies the response from goosed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/sessions/{sessionId}/reply", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Void> sessionReply(@PathVariable String agentId,
                                    @PathVariable String sessionId,
@@ -120,6 +136,12 @@ public class ReplyController {
                         "gateway_submit_failed", requestStart));
     }
 
+    /**
+     * Subscribes to the SSE event stream for an active session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping(value = "/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Mono<Void> sessionEvents(@PathVariable String agentId,
                                     @PathVariable String sessionId,
@@ -153,6 +175,12 @@ public class ReplyController {
                         "gateway_events_failed", requestStart));
     }
 
+    /**
+     * Cancels an in-progress request within a session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/sessions/{sessionId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Void> sessionCancel(@PathVariable String agentId,
                                     @PathVariable String sessionId,
@@ -563,6 +591,12 @@ public class ReplyController {
         });
     }
 
+    /**
+     * Resumes an existing session, loading model and extensions.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = {"/resume", "/agent/resume"}, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> resume(@PathVariable String agentId,
                                @RequestBody String body,
@@ -649,6 +683,12 @@ public class ReplyController {
         }
     }
 
+    /**
+     * Restarts the agent instance with a fresh configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping({"/restart", "/agent/restart"})
     public Mono<Void> restart(@PathVariable String agentId,
                                @RequestBody String body,

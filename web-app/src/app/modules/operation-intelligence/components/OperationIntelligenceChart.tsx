@@ -13,13 +13,29 @@ export default function OperationIntelligenceChart({ points, loading = false }: 
     const { t } = useTranslation()
 
     const option: EChartsOption = {
-        xAxis: { type: 'time' },
+        grid: {
+            top: 12,
+            right: 18,
+            bottom: 28,
+            left: 36,
+            containLabel: false,
+        },
+        xAxis: {
+            type: 'time',
+            axisLine: { lineStyle: { color: 'var(--color-border)' } },
+            axisTick: { show: false },
+            axisLabel: { color: 'var(--color-text-secondary)', fontSize: 11 },
+            splitLine: { show: false },
+        },
         yAxis: {
             type: 'value',
             min: 0,
             max: 1,
             interval: 0.1,
-            axisLabel: { formatter: '{value}' },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { formatter: '{value}', color: 'var(--color-text-secondary)', fontSize: 11 },
+            splitLine: { lineStyle: { color: 'var(--color-border)', type: 'dashed' } },
         },
         tooltip: {
             trigger: 'axis',
@@ -35,6 +51,8 @@ export default function OperationIntelligenceChart({ points, loading = false }: 
         series: [{
             type: 'line',
             smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 2.5, color: '#4f7df3' },
             data: points.map(p => [p.timestamp, parseFloat(p.value)]),
             markArea: {
                 silent: true,
@@ -56,5 +74,5 @@ export default function OperationIntelligenceChart({ points, loading = false }: 
         return <div className="operation-intelligence-chart-empty">{t('operationIntelligence.noData')}</div>
     }
 
-    return <ReactECharts option={option} style={{ height: 300 }} opts={{ renderer: 'svg' }} />
+    return <ReactECharts option={option} className="operation-intelligence-chart" style={{ height: 300 }} opts={{ renderer: 'svg' }} />
 }

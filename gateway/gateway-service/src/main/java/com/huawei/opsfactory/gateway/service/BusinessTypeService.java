@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,6 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Manages business type definitions persisted as JSON files under the gateway data directory.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class BusinessTypeService {
     private static final Logger log = LoggerFactory.getLogger(BusinessTypeService.class);
@@ -32,6 +42,12 @@ public class BusinessTypeService {
         this.properties = properties;
     }
 
+    /**
+     * Initializes the business types data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -46,6 +62,12 @@ public class BusinessTypeService {
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists all business types.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listBusinessTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
         if (!Files.isDirectory(businessTypesDir)) {
@@ -71,6 +93,12 @@ public class BusinessTypeService {
         return types;
     }
 
+    /**
+     * Gets a business type by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");
         Map<String, Object> bt = readFile(file);
@@ -80,6 +108,12 @@ public class BusinessTypeService {
         return bt;
     }
 
+    /**
+     * Creates a new business type from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createBusinessType(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -99,6 +133,12 @@ public class BusinessTypeService {
         return bt;
     }
 
+    /**
+     * Updates an existing business type with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) {
         Path file = businessTypesDir.resolve(id + ".json");
         Map<String, Object> bt = readFile(file);
@@ -128,6 +168,12 @@ public class BusinessTypeService {
         return bt;
     }
 
+    /**
+     * Deletes a business type by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");
         try {

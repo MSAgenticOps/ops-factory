@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.util.PathSanitizer;
@@ -33,6 +37,12 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * REST controller for browsing, uploading, downloading, and editing agent workspace files.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/agents/{agentId}/files")
 public class FileController {
@@ -48,6 +58,12 @@ public class FileController {
         this.fileService = fileService;
     }
 
+    /**
+     * Lists files in the agent workspace directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> listFiles(@PathVariable String agentId,
                                                 ServerWebExchange exchange) {
@@ -59,6 +75,12 @@ public class FileController {
                         new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to list files"));
     }
 
+    /**
+     * Downloads or retrieves a file from the agent workspace.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/**")
     public Mono<ResponseEntity<?>> getFile(@PathVariable String agentId,
                                             ServerWebExchange exchange) {
@@ -102,6 +124,12 @@ public class FileController {
                         new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file"));
     }
 
+    /**
+     * Deletes a file from the agent workspace.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/**")
     public Mono<ResponseEntity<Map<String, Object>>> deleteFile(@PathVariable("agentId") String agentId,
                                                                 ServerWebExchange exchange) {
@@ -133,6 +161,12 @@ public class FileController {
                         new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete file"));
     }
 
+    /**
+     * Updates the content of an editable text file in the agent workspace.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping(value = "/**", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> updateFile(@PathVariable("agentId") String agentId,
                                                                 @RequestBody FileUpdateRequest request,
@@ -170,6 +204,12 @@ public class FileController {
                         new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update file"));
     }
 
+    /**
+     * Uploads a file to the agent workspace for a specific session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<Map<String, Object>> uploadFile(@PathVariable String agentId,
                                                  @RequestPart("file") FilePart filePart,

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -13,6 +17,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
+/**
+ * Prepares per-user runtime directories with symlinks to shared agent config and working directories.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 public class RuntimePreparer {
     private static final Logger log = LoggerFactory.getLogger(RuntimePreparer.class);

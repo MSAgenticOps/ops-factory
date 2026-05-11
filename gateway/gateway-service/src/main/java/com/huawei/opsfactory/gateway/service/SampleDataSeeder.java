@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -23,6 +27,12 @@ public class SampleDataSeeder {
         // Dependencies kept for injection compatibility but not used
     }
 
+    /**
+     * No-op initialization kept for Spring injection compatibility.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         log.info("SampleDataSeeder is a no-op — data is injected via E2E tests");

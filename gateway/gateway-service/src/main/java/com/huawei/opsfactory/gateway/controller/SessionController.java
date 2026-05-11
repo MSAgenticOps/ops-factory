@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -30,12 +34,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.MediaType;
 
+/**
+ * REST controller for session lifecycle: start, list, get, rename, delete, and cleanup.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping(value = "/gateway")
 public class SessionController {
@@ -59,6 +70,12 @@ public class SessionController {
         this.sessionCacheService = sessionCacheService;
     }
 
+    /**
+     * Starts a new agent session and loads model and extensions.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/agents/{agentId}/agent/start", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> startSession(@PathVariable String agentId,
                                      @RequestBody String body,
@@ -127,6 +144,12 @@ public class SessionController {
         }
     }
 
+    /**
+     * Lists all sessions for the current user across all agents with pagination and filtering.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> listAllSessions(
             @RequestParam(defaultValue = "1") int pageIndex,
@@ -202,8 +225,8 @@ public class SessionController {
                 if ("scheduled".equals(type) && (scheduleId == null && !"scheduled".equals(sessionType))) continue;
             }
             if (search != null && !search.isBlank()) {
-                String name = m.getOrDefault("name", "") instanceof String s ? s.toLowerCase() : "";
-                if (!name.contains(search.toLowerCase())) continue;
+                String name = m.getOrDefault("name", "") instanceof String s ? s.toLowerCase(Locale.ROOT) : "";
+                if (!name.contains(search.toLowerCase(Locale.ROOT))) continue;
             }
             filtered.add(m);
         }
@@ -260,6 +283,12 @@ public class SessionController {
         return result;
     }
 
+    /**
+     * Lists all sessions for a specific agent, proxied from goosed.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/agents/{agentId}/sessions")
     public Mono<Void> listAgentSessions(@PathVariable String agentId,
                                          ServerWebExchange exchange) {
@@ -270,6 +299,12 @@ public class SessionController {
                         instance.getPort(), "/sessions", instance.getSecretKey()));
     }
 
+    /**
+     * Gets a session by agent ID and session ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping(value = "/agents/{agentId}/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> getSession(@PathVariable String agentId,
                                     @PathVariable String sessionId,
@@ -313,6 +348,12 @@ public class SessionController {
                 });
     }
 
+    /**
+     * Deletes a session by agent ID and session ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/agents/{agentId}/sessions/{sessionId}")
     public Mono<Void> deleteSession(@PathVariable String agentId,
                                      @PathVariable String sessionId,
@@ -333,6 +374,12 @@ public class SessionController {
                 });
     }
 
+    /**
+     * Deletes a session globally by session ID with an agent ID query parameter.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/sessions/{sessionId}")
     public Mono<Void> deleteSessionGlobal(@PathVariable String sessionId,
                                            @RequestParam String agentId,
@@ -353,6 +400,12 @@ public class SessionController {
                 });
     }
 
+    /**
+     * Cleans up an empty session if it has no conversation or messages.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable String agentId,
                                                           @PathVariable String sessionId,

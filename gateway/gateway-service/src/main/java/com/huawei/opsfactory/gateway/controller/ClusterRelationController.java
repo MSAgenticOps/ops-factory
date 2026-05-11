@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.ClusterRelationService;
@@ -13,6 +17,12 @@ import reactor.core.scheduler.Schedulers;
 
 import java.util.*;
 
+/**
+ * REST controller for managing cluster-to-cluster relation edges and graph queries.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/cluster-relations")
 public class ClusterRelationController {
@@ -24,6 +34,12 @@ public class ClusterRelationController {
         this.clusterRelationService = clusterRelationService;
     }
 
+    /**
+     * Lists cluster relations, optionally filtered by cluster ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listRelations(
             @RequestParam(value = "clusterId", required = false) String clusterId,
@@ -37,6 +53,12 @@ public class ClusterRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns the cluster relation graph data for visualization.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/graph")
     public Mono<Map<String, Object>> getGraph(
             @RequestParam(value = "groupId", required = false) String groupId,
@@ -46,6 +68,12 @@ public class ClusterRelationController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns the neighbor clusters for a given cluster.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/clusters/{clusterId}/neighbors")
     public Mono<Map<String, Object>> getClusterNeighbors(
             @PathVariable("clusterId") String clusterId,
@@ -55,6 +83,12 @@ public class ClusterRelationController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Returns the neighbor hosts for a given host via cluster relations.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/hosts/{hostId}/neighbors")
     public Mono<Map<String, Object>> getHostNeighbors(
             @PathVariable("hostId") String hostId,
@@ -64,6 +98,12 @@ public class ClusterRelationController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new cluster relation edge.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createRelation(
             @RequestBody Map<String, Object> request,
@@ -91,6 +131,12 @@ public class ClusterRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a cluster relation by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateRelation(
             @PathVariable("id") String id,
@@ -119,6 +165,12 @@ public class ClusterRelationController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a cluster relation by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteRelation(
             @PathVariable("id") String id,

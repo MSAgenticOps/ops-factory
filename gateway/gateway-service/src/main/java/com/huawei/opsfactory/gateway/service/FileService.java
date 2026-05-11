@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,6 +20,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -27,6 +32,12 @@ import java.util.Set;
 
 import static java.util.Map.entry;
 
+/**
+ * Provides file browsing, upload validation, MIME-type resolution, and file-capsule persistence for the gateway.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class FileService {
     private final GatewayProperties gatewayProperties;
@@ -192,7 +203,7 @@ public class FileService {
     private void addFileEntry(FileScanRoot root, Path entry, List<Map<String, Object>> files, Set<String> allowedExtensions) throws IOException {
         String name = entry.getFileName().toString();
         int dot = name.lastIndexOf('.');
-        String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
+        String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
         if (!allowedExtensions.isEmpty() && !allowedExtensions.contains(ext)) {
             return;
         }
@@ -218,7 +229,7 @@ public class FileService {
         }
         for (String ext : configured) {
             if (ext == null) continue;
-            String normalized = ext.trim().toLowerCase();
+            String normalized = ext.trim().toLowerCase(Locale.ROOT);
             if (!normalized.isEmpty()) {
                 allowed.add(normalized);
             }
@@ -226,6 +237,12 @@ public class FileService {
         return allowed;
     }
 
+    /**
+     * Resolves a file scan root path by its identifier for the given user agent directory.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Optional<Path> resolveFileScanRoot(Path userAgentDir, String rootId) {
         String normalizedRootId = normalizeRootId(rootId, 0);
         return fileScanRoots(userAgentDir).stream()
@@ -331,6 +348,12 @@ public class FileService {
         return null;
     }
 
+    /**
+     * Deletes a file within the base directory at the given relative path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteFile(Path baseDir, String relativePath) throws IOException {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
             return false;
@@ -343,6 +366,12 @@ public class FileService {
         return true;
     }
 
+    /**
+     * Updates a text file within the base directory at the given relative path with new content.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean updateTextFile(Path baseDir, String relativePath, String content) throws IOException {
         if (!PathSanitizer.isSafe(baseDir, relativePath) || !isEditableTextFile(relativePath)) {
             return false;
@@ -355,6 +384,12 @@ public class FileService {
         return true;
     }
 
+    /**
+     * Checks whether the given filename has an editable text extension.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean isEditableTextFile(String filename) {
         return EDITABLE_TEXT_EXTENSIONS.contains(getPolicyType(filename));
     }
@@ -375,25 +410,31 @@ public class FileService {
         if (dot < 0) {
             return "";
         }
-        return filename.substring(dot + 1).toLowerCase();
+        return filename.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
     private String getPolicyType(String filename) {
         String normalized = filename == null ? "" : filename.replace('\\', '/');
         int slash = normalized.lastIndexOf('/');
         String baseName = slash >= 0 ? normalized.substring(slash + 1) : normalized;
-        String lowerBaseName = baseName.toLowerCase();
+        String lowerBaseName = baseName.toLowerCase(Locale.ROOT);
         if ("dockerfile".equals(lowerBaseName)) return "dockerfile";
         if ("makefile".equals(lowerBaseName)) return "makefile";
         return getExtension(baseName);
     }
 
+    /**
+     * Resolves the MIME type for the given filename based on its extension.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String getMimeType(String filename) {
         int dot = filename.lastIndexOf('.');
         if (dot < 0) {
             return "application/octet-stream";
         }
-        String ext = filename.substring(dot + 1).toLowerCase();
+        String ext = filename.substring(dot + 1).toLowerCase(Locale.ROOT);
         return MIME_TYPES.getOrDefault(ext, "application/octet-stream");
     }
 
@@ -426,7 +467,7 @@ public class FileService {
         if (configuredAllowed != null) {
             for (String ext : configuredAllowed) {
                 if (ext == null) continue;
-                String normalized = ext.trim().toLowerCase();
+                String normalized = ext.trim().toLowerCase(Locale.ROOT);
                 if (!normalized.isEmpty()) {
                     allowedExtensions.add(normalized);
                 }
@@ -448,7 +489,7 @@ public class FileService {
                 continue;
             }
             String ext = (String) f.get("type");
-            String normalizedExt = ext != null ? ext.toLowerCase() : "";
+            String normalizedExt = ext != null ? ext.toLowerCase(Locale.ROOT) : "";
             if (!allowedExtensions.contains(normalizedExt)) {
                 continue;
             }

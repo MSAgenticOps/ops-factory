@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,6 +26,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Manages host group hierarchy and tree construction with cascade delete support.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class HostGroupService {
     private static final Logger log = LoggerFactory.getLogger(HostGroupService.class);
@@ -34,6 +44,12 @@ public class HostGroupService {
         this.properties = properties;
     }
 
+    /**
+     * Initializes the host groups data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -48,6 +64,12 @@ public class HostGroupService {
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists all host groups.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listGroups() {
         List<Map<String, Object>> groups = new ArrayList<>();
         if (!Files.isDirectory(groupsDir)) {
@@ -73,6 +95,12 @@ public class HostGroupService {
         return groups;
     }
 
+    /**
+     * Gets a host group by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getGroup(String id) {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);
@@ -91,6 +119,12 @@ public class HostGroupService {
         return getTree(groups, clusters, List.of());
     }
 
+    /**
+     * Builds tree structure including top-level groups, sub-groups, clusters, and business services.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
                                         List<Map<String, Object>> businessServices) {
         Map<String, String> groupNameMap = new LinkedHashMap<>();
@@ -152,6 +186,12 @@ public class HostGroupService {
         return result;
     }
 
+    /**
+     * Creates a new host group from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createGroup(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -171,6 +211,12 @@ public class HostGroupService {
         return group;
     }
 
+    /**
+     * Updates an existing host group with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateGroup(String id, Map<String, Object> body) {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);

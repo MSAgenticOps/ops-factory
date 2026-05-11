@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.BusinessTypeService;
@@ -15,6 +19,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST controller for CRUD operations on business type definitions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/business-types")
 public class BusinessTypeController {
@@ -26,6 +36,12 @@ public class BusinessTypeController {
         this.businessTypeService = businessTypeService;
     }
 
+    /**
+     * Lists all business type definitions.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listBusinessTypes(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -37,6 +53,12 @@ public class BusinessTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a business type by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getBusinessType(
             @PathVariable("id") String id,
@@ -58,6 +80,12 @@ public class BusinessTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new business type.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createBusinessType(
             @RequestBody Map<String, Object> request,
@@ -80,6 +108,12 @@ public class BusinessTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a business type by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateBusinessType(
             @PathVariable("id") String id,
@@ -108,6 +142,12 @@ public class BusinessTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a business type by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteBusinessType(
             @PathVariable("id") String id,

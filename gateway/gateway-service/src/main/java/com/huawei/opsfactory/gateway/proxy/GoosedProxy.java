@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.proxy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +44,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
+/**
+ * Proxies HTTP and SSE requests from the gateway to downstream goosed agent instances.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 public class GoosedProxy {
     private static final Logger log = LoggerFactory.getLogger(GoosedProxy.class);
@@ -78,6 +88,12 @@ public class GoosedProxy {
                 .build();
     }
 
+    /**
+     * Builds the base URL for a goosed instance on the given port.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public String goosedBaseUrl(int port) {
         return properties.gooseScheme() + "://127.0.0.1:" + port;
     }
@@ -334,10 +350,22 @@ public class GoosedProxy {
                         path, port, err.getMessage(), System.currentTimeMillis() - start));
     }
 
+    /**
+     * Fetches JSON from a goosed instance using the given HTTP method and request body.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, String secretKey) {
         return fetchJson(port, method, path, body, 30, secretKey);
     }
 
+    /**
+     * Fetches JSON from a goosed instance with a configurable timeout.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Mono<String> fetchJson(int port, HttpMethod method, String path, String body, int timeoutSec, String secretKey) {
         String target = goosedBaseUrl(port) + path;
         long start = System.currentTimeMillis();
@@ -359,6 +387,12 @@ public class GoosedProxy {
                 .onErrorMap(this::isProxyError, this::mapProxyError);
     }
 
+    /**
+     * Gets the underlying WebClient instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public WebClient getWebClient() {
         return webClient;
     }

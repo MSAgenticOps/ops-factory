@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -20,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Persists and retrieves file capsule metadata (messageId → output files).
+ * Persists and retrieves file capsule metadata (messageId to output files).
  * Data is stored at: data/{sessionId}/file-capsules.json
  */
 @RestController

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service.channel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +23,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Scheduled service that polls the WhatsApp inbox directory, deduplicates inbound messages, and dispatches them to agent sessions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class WhatsAppMessagePumpService {
     private static final Logger log = LoggerFactory.getLogger(WhatsAppMessagePumpService.class);
@@ -42,6 +52,12 @@ public class WhatsAppMessagePumpService {
         this.whatsAppWebLoginService = whatsAppWebLoginService;
     }
 
+    /**
+     * Periodically polls the WhatsApp inbox directory for new messages and processes them.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Scheduled(fixedDelay = 2000)
     public void pumpInbox() {
         for (ChannelDetail detail : channelConfigService.listRuntimeChannels("whatsapp")) {
@@ -67,10 +83,22 @@ public class WhatsAppMessagePumpService {
         }
     }
 
+    /**
+     * Runs a self-test on a WhatsApp channel by sending a text to the channel's own phone number.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelSelfTestResult runSelfTest(String channelId, String text) {
         return runSelfTest(channelId, "admin", text);
     }
 
+    /**
+     * Runs a self-test on a WhatsApp channel by sending a text to the channel's own phone and queuing the reply.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public ChannelSelfTestResult runSelfTest(String channelId, String ownerUserId, String text) {
         ChannelDetail channel = channelConfigService.getChannel(channelId, ownerUserId);
         if (channel == null) {

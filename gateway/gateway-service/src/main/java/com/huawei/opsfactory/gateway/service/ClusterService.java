@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,6 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Provides CRUD operations for cluster entities persisted as JSON files, with cascade delete support.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ClusterService {
     private static final Logger log = LoggerFactory.getLogger(ClusterService.class);
@@ -36,12 +46,24 @@ public class ClusterService {
         this.properties = properties;
     }
 
+    /**
+     * Sets the cluster relation service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setClusterRelationService(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
     }
 
+    /**
+     * Initializes the clusters data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -101,6 +123,12 @@ public class ClusterService {
         return clusters;
     }
 
+    /**
+     * Gets a cluster by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> getCluster(String id) {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
@@ -110,6 +138,12 @@ public class ClusterService {
         return cluster;
     }
 
+    /**
+     * Returns the distinct cluster types across all clusters.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<String> getClusterTypes() {
         LinkedHashSet<String> types = new LinkedHashSet<>();
         List<Map<String, Object>> clusters = listClusters(null, null);
@@ -122,6 +156,12 @@ public class ClusterService {
         return new ArrayList<>(types);
     }
 
+    /**
+     * Creates a new cluster from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createCluster(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -142,6 +182,12 @@ public class ClusterService {
         return cluster;
     }
 
+    /**
+     * Updates an existing cluster with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateCluster(String id, Map<String, Object> body) {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -32,6 +36,12 @@ import reactor.core.scheduler.Schedulers;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Admin REST controller for managing external channel configurations and login lifecycle.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/channels")
 public class ChannelAdminController {
@@ -55,6 +65,12 @@ public class ChannelAdminController {
         this.weChatLoginService = weChatLoginService;
     }
 
+    /**
+     * Lists all channels for the current admin user.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listChannels(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -63,6 +79,12 @@ public class ChannelAdminController {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a channel by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{channelId}")
     public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable String channelId, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -76,6 +98,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createChannel(@RequestBody ChannelUpsertRequest request,
                                                                    ServerWebExchange exchange) {
@@ -96,6 +124,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a channel by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> updateChannel(@PathVariable String channelId,
                                                                    @RequestBody ChannelUpsertRequest request,
@@ -116,18 +150,36 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Enables a channel by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/enable")
     public Mono<ResponseEntity<Map<String, Object>>> enableChannel(@PathVariable String channelId,
                                                                    ServerWebExchange exchange) {
         return setEnabled(channelId, true, exchange);
     }
 
+    /**
+     * Disables a channel by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/disable")
     public Mono<ResponseEntity<Map<String, Object>>> disableChannel(@PathVariable String channelId,
                                                                     ServerWebExchange exchange) {
         return setEnabled(channelId, false, exchange);
     }
 
+    /**
+     * Deletes a channel by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteChannel(@PathVariable String channelId,
                                                                    ServerWebExchange exchange) {
@@ -146,6 +198,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Lists all bindings for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{channelId}/bindings")
     public Mono<ResponseEntity<Map<String, Object>>> listBindings(@PathVariable String channelId,
                                                                   ServerWebExchange exchange) {
@@ -161,6 +219,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Lists all events for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{channelId}/events")
     public Mono<ResponseEntity<Map<String, Object>>> listEvents(@PathVariable String channelId,
                                                                 ServerWebExchange exchange) {
@@ -176,6 +240,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Verifies a channel configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/verify")
     public Mono<ResponseEntity<Map<String, Object>>> verifyChannel(@PathVariable String channelId,
                                                                    ServerWebExchange exchange) {
@@ -193,6 +263,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Probes a channel for connectivity status.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/probe")
     public Mono<ResponseEntity<Map<String, Object>>> probeChannel(@PathVariable String channelId,
                                                                   ServerWebExchange exchange) {
@@ -212,6 +288,12 @@ public class ChannelAdminController {
                 });
     }
 
+    /**
+     * Gets the current login state for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{channelId}/login-state")
     public Mono<ResponseEntity<Map<String, Object>>> getLoginState(@PathVariable String channelId,
                                                                    ServerWebExchange exchange) {
@@ -235,6 +317,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Starts the login process for a channel.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/login")
     public Mono<ResponseEntity<Map<String, Object>>> startLogin(@PathVariable String channelId,
                                                                 ServerWebExchange exchange) {
@@ -262,6 +350,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Logs out from a channel and resets its runtime state.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/logout")
     public Mono<ResponseEntity<Map<String, Object>>> logout(@PathVariable String channelId,
                                                             ServerWebExchange exchange) {
@@ -327,6 +421,12 @@ public class ChannelAdminController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Runs a self-test on a channel to verify end-to-end messaging.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping("/{channelId}/self-test")
     public Mono<ResponseEntity<Map<String, Object>>> runSelfTest(@PathVariable String channelId,
                                                                  @RequestBody ChannelSelfTestRequest request,

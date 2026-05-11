@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
@@ -21,6 +25,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Web filter that resolves the authenticated user identity and role from request headers.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @Order(3)
 public class UserContextFilter implements WebFilter {
@@ -66,6 +76,12 @@ public class UserContextFilter implements WebFilter {
         return path.substring("/gateway/agents/".length()).contains("/sessions/");
     }
 
+    /**
+     * Resolves the authenticated user identity and role from request headers.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();

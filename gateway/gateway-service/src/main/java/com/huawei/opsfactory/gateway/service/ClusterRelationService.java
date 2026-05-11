@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,6 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Manages cluster-level relations including topology graph data, neighbor resolution, and cascade deletes.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class ClusterRelationService {
     private static final Logger log = LoggerFactory.getLogger(ClusterRelationService.class);
@@ -39,30 +49,60 @@ public class ClusterRelationService {
         this.properties = properties;
     }
 
+    /**
+     * Sets the host service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setHostService(HostService hostService) {
         this.hostService = hostService;
     }
 
+    /**
+     * Sets the cluster service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setClusterService(ClusterService clusterService) {
         this.clusterService = clusterService;
     }
 
+    /**
+     * Sets the cluster type service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setClusterTypeService(ClusterTypeService clusterTypeService) {
         this.clusterTypeService = clusterTypeService;
     }
 
+    /**
+     * Sets the business service service via lazy injection.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Lazy
     @Autowired
     public void setBusinessServiceService(BusinessServiceService businessServiceService) {
         this.businessServiceService = businessServiceService;
     }
 
+    /**
+     * Initializes the cluster relations data directory at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void init() {
         Path gatewayRoot = properties.getGatewayRootPath();
@@ -77,6 +117,12 @@ public class ClusterRelationService {
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists cluster relations optionally filtered by cluster ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<Map<String, Object>> listRelations(String clusterId) {
         List<Map<String, Object>> relations = new ArrayList<>();
         if (!Files.isDirectory(relationsDir)) {
@@ -107,6 +153,12 @@ public class ClusterRelationService {
         return relations;
     }
 
+    /**
+     * Creates a new cluster relation from the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
         String sourceId = (String) body.get("sourceId");
@@ -164,6 +216,12 @@ public class ClusterRelationService {
         return relation;
     }
 
+    /**
+     * Updates an existing cluster relation with the provided field map.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
         Map<String, Object> relation = readFile(file);
@@ -215,6 +273,12 @@ public class ClusterRelationService {
         return relation;
     }
 
+    /**
+     * Deletes a cluster relation by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
         try {

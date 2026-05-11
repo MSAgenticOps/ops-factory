@@ -9,8 +9,9 @@ import CardGrid from '../../../platform/ui/cards/CardGrid'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import ResourceCard, {
+    ResourceCardActionGroup,
     ResourceCardDeleteAction,
-    ResourceCardEditAction,
+    ResourceCardConfigureAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import { CreateAgentModal } from '../components/CreateAgentModal'
@@ -165,8 +166,8 @@ export default function Agents() {
                                             { label: t('agents.mcp'), value: <McpCount agentId={agent.id} /> },
                                         ]}
                                         footer={isAdmin ? (
-                                            <div className="card-icon-actions">
-                                                <ResourceCardEditAction
+                                            <ResourceCardActionGroup>
+                                                <ResourceCardConfigureAction
                                                     onClick={() => navigate(`/agents/${agent.id}/configure`)}
                                                     label={t('agents.configure')}
                                                 />
@@ -174,7 +175,7 @@ export default function Agents() {
                                                     onClick={() => setDeleteTarget({ id: agent.id, name: agent.name })}
                                                     label={t('agents.deleteAgent')}
                                                 />
-                                            </div>
+                                            </ResourceCardActionGroup>
                                         ) : undefined}
                                     />
                                 )

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
@@ -15,6 +19,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST controller for managing the remote execution command whitelist.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/command-whitelist")
 public class CommandWhitelistController {
@@ -26,6 +36,12 @@ public class CommandWhitelistController {
         this.commandWhitelistService = commandWhitelistService;
     }
 
+    /**
+     * Returns the current command whitelist configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> getWhitelist(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -35,6 +51,12 @@ public class CommandWhitelistController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Adds a command pattern to the whitelist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> addCommand(
             @RequestBody Map<String, Object> request,
@@ -62,6 +84,12 @@ public class CommandWhitelistController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a command pattern in the whitelist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{pattern}")
     public Mono<ResponseEntity<Map<String, Object>>> updateCommand(
             @PathVariable String pattern,
@@ -90,6 +118,12 @@ public class CommandWhitelistController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a command pattern from the whitelist.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{pattern}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteCommand(
             @PathVariable String pattern,

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -23,6 +27,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Admin controller for triggering session trace collection and downloading trace archives.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway")
 public class SessionTraceController {
@@ -32,6 +42,12 @@ public class SessionTraceController {
         this.traceService = traceService;
     }
 
+    /**
+     * Starts a trace collection job for a session.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/trace", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<TraceJobSnapshot> startTrace(@PathVariable("agentId") String agentId,
                                              @PathVariable("sessionId") String sessionId,
@@ -41,6 +57,12 @@ public class SessionTraceController {
         return Mono.fromSupplier(() -> traceService.startTrace(userId, agentId, sessionId));
     }
 
+    /**
+     * Gets the status of a trace collection job.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping(value = "/session-traces/{jobId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<TraceJobSnapshot> getTrace(@PathVariable("jobId") String jobId,
                                            ServerWebExchange exchange) {
@@ -48,6 +70,12 @@ public class SessionTraceController {
         return Mono.fromSupplier(() -> traceService.getJob(jobId));
     }
 
+    /**
+     * Downloads the trace archive for a completed trace job.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/session-traces/{jobId}/download")
     public Mono<Void> downloadTrace(@PathVariable("jobId") String jobId,
                                     ServerWebExchange exchange) {

@@ -80,6 +80,15 @@ class AuthWebFilterTest {
     }
 
     @Test
+    void healthCheck_passesWithoutAuth() {
+        ServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/actuator/health").build());
+
+        filter.filter(exchange, chain).block();
+        verify(chain).filter(exchange);
+    }
+
+    @Test
     void blankSecretKeyHeader_treatedAsMissing() {
         ServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/test")

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.hook;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
@@ -7,6 +11,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
+/**
+ * Request hook that rejects request bodies exceeding the configured upload size limit.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @Order(1)
 public class BodyLimitHook implements RequestHook {
@@ -17,6 +27,12 @@ public class BodyLimitHook implements RequestHook {
         this.maxBytes = (long) properties.getUpload().getMaxFileSizeMb() * 1024 * 1024 * 4 / 3;
     }
 
+    /**
+     * Rejects request bodies exceeding the configured upload size limit.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @Override
     public Mono<HookContext> process(HookContext ctx) {
         if (ctx.getBody() != null && ctx.getBody().length() > maxBytes) {

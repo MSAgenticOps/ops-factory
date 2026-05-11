@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.ClusterTypeService;
@@ -15,6 +19,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST controller for CRUD operations on cluster type definitions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RestController
 @RequestMapping("/gateway/cluster-types")
 public class ClusterTypeController {
@@ -26,6 +36,12 @@ public class ClusterTypeController {
         this.clusterTypeService = clusterTypeService;
     }
 
+    /**
+     * Lists all cluster type definitions.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping
     public Mono<Map<String, Object>> listClusterTypes(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -37,6 +53,12 @@ public class ClusterTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Gets a cluster type by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getClusterType(
             @PathVariable("id") String id,
@@ -58,6 +80,12 @@ public class ClusterTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Creates a new cluster type.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createClusterType(
             @RequestBody Map<String, Object> request,
@@ -80,6 +108,12 @@ public class ClusterTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Updates a cluster type by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateClusterType(
             @PathVariable("id") String id,
@@ -108,6 +142,12 @@ public class ClusterTypeController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * Deletes a cluster type by ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteClusterType(
             @PathVariable("id") String id,

@@ -19,11 +19,8 @@
 }
 
 .inbox-item-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
     justify-content: flex-end;
-    flex: 0 0 240px;
+    flex: 0 0 auto;
 }
 
 .inbox-item-main {
@@ -84,8 +81,7 @@
     .inbox-item-actions {
         width: 100%;
         flex: none;
-        flex-direction: column;
-        align-items: stretch;
+        justify-content: flex-start;
     }
 
     .inbox-item-meta {

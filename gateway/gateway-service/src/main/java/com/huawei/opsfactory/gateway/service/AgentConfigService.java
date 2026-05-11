@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
@@ -27,6 +31,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Manages agent configuration, registry, skills, memory files, and MCP settings.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class AgentConfigService {
     private static final Logger log = LoggerFactory.getLogger(AgentConfigService.class);
@@ -46,6 +56,12 @@ public class AgentConfigService {
         this.properties = properties;
     }
 
+    /**
+     * Loads the agent registry from the gateway config.yaml at startup.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @PostConstruct
     public void loadRegistry() {
         registry.clear();
@@ -78,18 +94,42 @@ public class AgentConfigService {
         log.info("Loaded {} resident instance targets", residentInstances.size());
     }
 
+    /**
+     * Returns an unmodifiable view of the current agent registry.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<AgentRegistryEntry> getRegistry() {
         return Collections.unmodifiableList(registry);
     }
 
+    /**
+     * Returns an unmodifiable view of the configured resident instance targets.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public List<ResidentInstanceTarget> getResidentInstances() {
         return Collections.unmodifiableList(residentInstances);
     }
 
+    /**
+     * Checks whether the given agent-user pair is a resident instance.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public boolean isResidentInstance(String agentId, String userId) {
         return residentInstanceKeys.contains(ManagedInstance.buildKey(agentId, userId));
     }
 
+    /**
+     * Finds an agent registry entry by its ID.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public AgentRegistryEntry findAgent(String agentId) {
         for (AgentRegistryEntry entry : registry) {
             if (entry.id().equals(agentId)) {
@@ -385,6 +425,12 @@ public class AgentConfigService {
         }
     }
 
+    /**
+     * Reads MCP settings for a given agent and MCP name.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Map<String, Object> readMcpSettings(String agentId, String mcpName) throws IOException {
         if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
             return readKnowledgeServiceScopeFromConfig(agentId);
@@ -415,6 +461,12 @@ public class AgentConfigService {
         }
     }
 
+    /**
+     * Writes MCP settings for a given agent and MCP name.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public void writeMcpSettings(String agentId, String mcpName, Map<String, Object> settings) throws IOException {
         if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
             writeKnowledgeServiceScopeToConfig(agentId, settings);
@@ -727,14 +779,32 @@ public class AgentConfigService {
         Files.writeString(configYaml, yaml.dump(data));
     }
 
+    /**
+     * Returns the base directory containing all agent configurations.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getAgentsDir() {
         return gatewayRoot.resolve(properties.getPaths().getAgentsDir());
     }
 
+    /**
+     * Returns the base directory containing user-specific data.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getUsersDir() {
         return gatewayRoot.resolve(properties.getPaths().getUsersDir());
     }
 
+    /**
+     * Resolves the knowledge CLI root directory for a given agent from its configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     @SuppressWarnings("unchecked")
     public Path getKnowledgeCliRootDir(String agentId) {
         Map<String, Object> config = loadAgentConfigYaml(agentId);
@@ -766,14 +836,32 @@ public class AgentConfigService {
                 : configDir.resolve(configuredRoot).normalize();
     }
 
+    /**
+     * Returns the per-user agent directory path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getUserAgentDir(String userId, String agentId) {
         return getUsersDir().resolve(userId).resolve("agents").resolve(agentId);
     }
 
+    /**
+     * Returns the config directory for the given agent.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getAgentConfigDir(String agentId) {
         return getAgentsDir().resolve(agentId).resolve("config");
     }
 
+    /**
+     * Returns the resolved gateway root path.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
     public Path getGatewayRoot() {
         return gatewayRoot;
     }

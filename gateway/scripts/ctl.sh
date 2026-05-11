@@ -172,7 +172,7 @@ build_gateway() {
         local jar_time
         jar_time="$(stat -f "%m" "${jar}" 2>/dev/null || stat -c "%Y" "${jar}" 2>/dev/null)"
         local newest_src
-        newest_src="$(find "${SERVICE_DIR}" -name "*.java" -newer "${jar}" 2>/dev/null | head -1)"
+        newest_src="$(find "${SERVICE_DIR}" -name "*.java" -newer "${jar}" -print -quit 2>/dev/null)"
         if [ -z "${newest_src}" ]; then
             log_info "JAR is up-to-date, skipping build"
             return 0
@@ -217,7 +217,7 @@ build_node_mcp() {
 
     if [ "${has_build_script}" = "true" ] && [ -f "${entry}" ] && [ -d "${mcp_dir}/node_modules" ] && [ "${needs_install}" != "true" ]; then
         local newest_src
-        newest_src="$(find "${mcp_dir}/src" "${mcp_dir}/package.json" "${mcp_dir}/package-lock.json" "${mcp_dir}/tsconfig.json" -newer "${entry}" 2>/dev/null | head -1)"
+        newest_src="$(find "${mcp_dir}/src" "${mcp_dir}/package.json" "${mcp_dir}/package-lock.json" "${mcp_dir}/tsconfig.json" -newer "${entry}" -print -quit 2>/dev/null)"
         if [ -z "${newest_src}" ]; then
             log_info "${label} MCP is up-to-date, skipping build"
             return 0
