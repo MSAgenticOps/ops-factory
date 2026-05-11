@@ -285,7 +285,13 @@ function buildLatencyOption(
       axisLabel: {
         color: MON_COLORS.text,
         fontSize: 11,
-        formatter: (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}s` : `${value}`,
+        formatter: (value: number) => {
+            if (value >= 1000) {
+                const decimals = value >= 10_000 ? 0 : 1
+                return `${(value / 1000).toFixed(decimals)}s`
+            }
+            return `${value}`
+        },
       },
     },
     series: [
@@ -358,7 +364,11 @@ function buildLatencyOption(
 // --- Shared sub-components ------------------------------------------------
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: 'error' | 'success' }) {
-  const tone = accent === 'error' ? 'danger' : accent === 'success' ? 'success' : 'neutral'
+  const tone = (() => {
+    if (accent === 'error') return 'danger'
+    if (accent === 'success') return 'success'
+    return 'neutral'
+  })()
   return (
     <StatCard
       label={label}
@@ -656,10 +666,16 @@ function EventsTab() {
         <div className="mon-no-data">{t('controlCenter.eventsEmpty')}</div>
       ) : (
         <div className="control-center-events-list">
-          {events.map((event, index) => (
+          {events.map((event, index) => {
+            const levelClass = (() => {
+              if (event.level === 'error') return 'error'
+              if (event.level === 'warning') return 'starting'
+              return 'healthy'
+            })()
+            return (
             <div key={`${event.timestamp}:${event.serviceId}:${index}`} className="control-center-event-row">
               <div className="control-center-event-main">
-                <span className={`status-pill status-${event.level === 'error' ? 'error' : event.level === 'warning' ? 'starting' : 'healthy'}`}>
+                <span className={`status-pill status-${levelClass}`}>
                   {event.type}
                 </span>
                 <strong>{event.serviceName}</strong>
@@ -667,7 +683,8 @@ function EventsTab() {
               </div>
               <span className="control-center-event-time">{fmtTime(event.timestamp)}</span>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

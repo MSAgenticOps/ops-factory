@@ -432,21 +432,24 @@ export default function ScheduledActions() {
             {error && <div className="conn-banner conn-banner-error">{t('common.connectionError', { error })}</div>}
             {!isConnected && !error && <div className="conn-banner conn-banner-warning">{t('common.connectingGateway')}</div>}
 
-            {loading ? (
+            {loading && (
                 <div className="empty-state">
                     <h3 className="empty-state-title">{t('scheduler.loadingSchedules')}</h3>
                 </div>
-            ) : jobs.length === 0 ? (
+            )}
+            {!loading && jobs.length === 0 && (
                 <div className="empty-state">
                     <h3 className="empty-state-title">{t('scheduler.noSchedules')}</h3>
                     <p className="empty-state-description">{t('scheduler.noSchedulesHint')}</p>
                 </div>
-            ) : searchTerm && filteredJobs.length === 0 ? (
+            )}
+            {!loading && jobs.length > 0 && searchTerm && filteredJobs.length === 0 && (
                 <div className="empty-state">
                     <h3 className="empty-state-title">{t('common.noResults')}</h3>
                     <p className="empty-state-description">{t('scheduler.noMatchSchedules', { term: searchTerm })}</p>
                 </div>
-            ) : (
+            )}
+            {!loading && filteredJobs.length > 0 && (
                 <CardWorkbench>
                     <CardGrid className="scheduled-grid">
                         {filteredJobs.map(job => (
@@ -531,7 +534,10 @@ export default function ScheduledActions() {
                                     {t('common.cancel')}
                                 </button>
                                 <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!editingJob && !createAgentId)}>
-                                    {submitting ? t('scheduler.saving') : (editingJob ? t('common.save') : t('scheduler.create'))}
+                                    {(() => {
+                                        if (submitting) return t('scheduler.saving')
+                                        return editingJob ? t('common.save') : t('scheduler.create')
+                                    })()}
                                 </button>
                             </div>
                         </div>
@@ -624,16 +630,18 @@ export default function ScheduledActions() {
                                     <p className="scheduled-modal-section-description">{t('scheduler.runsSubtitle')}</p>
                                 </div>
                             </div>
-                            {runsLoading ? (
+                            {runsLoading && (
                                 <div className="empty-state">
                                     <h3 className="empty-state-title">{t('scheduler.loadingRuns')}</h3>
                                 </div>
-                            ) : runs.length === 0 ? (
+                            )}
+                            {!runsLoading && runs.length === 0 && (
                                 <div className="empty-state">
                                     <h3 className="empty-state-title">{t('scheduler.noRuns')}</h3>
                                     <p className="empty-state-description">{t('scheduler.noRunsHint')}</p>
                                 </div>
-                            ) : (
+                            )}
+                            {!runsLoading && runs.length > 0 && (
                                 <div className="scheduled-runs-list">
                                     {runs.map(run => (
                                         <div key={run.id} className="scheduled-run-item">

@@ -132,13 +132,15 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                 </button>
             </div>
 
-            {loading ? (
+            {loading && (
                 <div className="hr-empty">{t('common.loading')}</div>
-            ) : clusterTypes.length === 0 ? (
+            )}
+            {!loading && clusterTypes.length === 0 && (
                 <div className="hr-type-tab-empty">
                     <div className="hr-type-tab-empty-text">{t('hostResource.noClusterTypes')}</div>
                 </div>
-            ) : (
+            )}
+            {!loading && clusterTypes.length > 0 && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput

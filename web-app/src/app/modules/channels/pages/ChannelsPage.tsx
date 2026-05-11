@@ -137,16 +137,18 @@ export default function ChannelsPage() {
                     />
                 )}
             >
-                {isLoading ? (
+                {isLoading && (
                     <div className="empty-state">
                         <div className="empty-state-title">{t('common.loading')}</div>
                     </div>
-                ) : filteredChannels.length === 0 ? (
+                )}
+                {!isLoading && filteredChannels.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-state-title">{t('channels.emptyTitle')}</div>
                         <div className="empty-state-description">{t('channels.emptyDescription')}</div>
                     </div>
-                ) : (
+                )}
+                {!isLoading && filteredChannels.length > 0 && (
                     <CardGrid>
                         {filteredChannels.map(channel => (
                             <ResourceCard

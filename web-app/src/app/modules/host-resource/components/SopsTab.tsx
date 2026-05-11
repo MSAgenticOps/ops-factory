@@ -5,7 +5,7 @@ import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
 import { useClusterTypes } from '../hooks/useClusterTypes'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useUser } from '../../../platform/providers/UserContext'
-import { GATEWAY_URL, gatewayHeaders } from '../../../../config/runtime'
+import { runtime, gatewayHeaders } from '../../../../config/runtime'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
@@ -1020,7 +1020,7 @@ export function SopsTab() {
     const handleToggleEnabled = useCallback(
         async (sop: Sop, enabled: boolean) => {
             try {
-                const res = await fetch(`${GATEWAY_URL}/sops/${sop.id}`, {
+                const res = await fetch(`${runtime.GATEWAY_URL}/sops/${sop.id}`, {
                     method: 'PUT',
                     headers: gatewayHeaders(userId),
                     body: JSON.stringify({ enabled }),

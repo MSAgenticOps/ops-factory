@@ -93,13 +93,15 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
                 </button>
             </div>
 
-            {loading ? (
+            {loading && (
                 <div className="hr-empty">{t('common.loading')}</div>
-            ) : businessTypes.length === 0 ? (
+            )}
+            {!loading && businessTypes.length === 0 && (
                 <div className="hr-type-tab-empty">
                     <div className="hr-type-tab-empty-text">{t('hostResource.noBusinessTypes')}</div>
                 </div>
-            ) : (
+            )}
+            {!loading && businessTypes.length > 0 && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput

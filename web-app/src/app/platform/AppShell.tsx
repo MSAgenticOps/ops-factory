@@ -5,7 +5,7 @@ export function AppShell({
     isCollapsed,
     isRightPanelOpen,
     rightPanelMode,
-    sidebar,
+    // sidebar,
     children,
     rightPanel,
 }: {
@@ -27,7 +27,7 @@ export function AppShell({
 
     return (
         <div className="app-container">
-            {!isEmbed && sidebar}
+            {/* {!isEmbed && sidebar} */}
             <div className={mainWrapperClass}>
                 <main className="main-content">{children}</main>
                 {!isEmbed && rightPanel}

@@ -632,7 +632,16 @@ export default function HostResourcePage() {
             {/* Create/Edit Modal */}
             {showModal && (
                 <ResourceFormModal
-                    key={editingItem?.type === 'business-service' ? `bs-${editingItem.data.id}` : editingItem?.type === 'cluster' ? `cl-${editingItem.data.id}` : editingItem?.type === 'group' ? `gr-${editingItem.data.id}` : editingItem?.type === 'host' ? `h-${editingItem.data.id}` : 'create'}
+                    key={(() => {
+                        if (!editingItem) return 'create'
+                        switch (editingItem.type) {
+                            case 'business-service': return `bs-${editingItem.data.id}`
+                            case 'cluster': return `cl-${editingItem.data.id}`
+                            case 'group': return `gr-${editingItem.data.id}`
+                            case 'host': return `h-${editingItem.data.id}`
+                            default: return 'create'
+                        }
+                    })()}
                     editingItem={editingItem}
                     groups={groups}
                     clusters={clusters}
