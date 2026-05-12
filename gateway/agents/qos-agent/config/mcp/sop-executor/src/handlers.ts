@@ -23,7 +23,12 @@ function escapeRegex(str: string): string {
 // Gateway HTTP helper
 // ---------------------------------------------------------------------------
 
-export async function gw<T>(path: string, params?: Record<string, string>, method?: string, body?: unknown): Promise<T> {
+export async function gw<T>(
+  path: string,
+  params?: Record<string, string>,
+  method?: string,
+  body?: unknown,
+): Promise<T> {
   const url = new URL(`${GATEWAY_URL}${path}`)
   if (params && method !== 'POST') {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
@@ -53,7 +58,10 @@ export const tools = [
   // --- Query tools (7) ---
   {
     name: 'list_system_resources',
-    description: '查询系统资源候选（系统名称 + 环境编码 Code）。当用户未明确系统或系统不唯一时，用于列出候选供用户选择。仅返回顶层系统资源（parentId 为空），支持 keyword 按系统名称或 Code 模糊匹配。',
+    description:
+      '查询系统资源候选（系统名称 + 环境编码 Code）。' +
+      '当用户未明确系统或系统不唯一时，用于列出候选供用户选择。' +
+      '仅返回顶层系统资源（parentId 为空），支持 keyword 按系统名称或 Code 模糊匹配。',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -75,7 +83,10 @@ export const tools = [
   },
   {
     name: 'query_hosts_by_scope',
-    description: '按明确资源范围查询主机列表，仅用于主机级诊断阶段。支持 groupName（分组名称模糊匹配）、clusterName（集群名称模糊匹配）、clusterType（集群类型精确匹配）。必须提供调用原因 reason，且禁止无范围参数时枚举全部主机。',
+    description:
+      '按明确资源范围查询主机列表，仅用于主机级诊断阶段。' +
+      '支持 groupName（分组名称模糊匹配）、clusterName（集群名称模糊匹配）、clusterType（集群类型精确匹配）。' +
+      '必须提供调用原因 reason，且禁止无范围参数时枚举全部主机。',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -101,7 +112,10 @@ export const tools = [
   },
   {
     name: 'get_cluster_type_knowledge',
-    description: '根据主机ID解析其所属集群类型的运维知识。依次查询主机→集群→集群类型，返回集群类型中存储的knowledge字段（常用诊断命令、配置文件路径、日志路径等领域知识）。用于将SOP中的抽象检查描述转化为具体操作命令。',
+    description:
+      '根据主机ID解析其所属集群类型的运维知识。' +
+      '依次查询主机→集群→集群类型，返回集群类型中存储的knowledge字段（常用诊断命令、配置文件路径、日志路径等领域知识）。' +
+      '用于将SOP中的抽象检查描述转化为具体操作命令。',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -431,7 +445,9 @@ export async function handleQueryBusinessServiceNodes(keyword: string): Promise<
   // Unique match — return business context summary instead of host topology.
   const bs = services[0]
   const bsId = String(bs.id)
-  const resolved = await gw<Record<string, unknown>>(`${API_PREFIX}/business-services/${encodeURIComponent(bsId)}/resolved`)
+  const resolved = await gw<Record<string, unknown>>(
+    `${API_PREFIX}/business-services/${encodeURIComponent(bsId)}/resolved`,
+  )
 
   const businessService = pick(bs, ['id', 'name', 'code', 'groupId', 'tags'])
   const resolvedSummary = pick(
@@ -737,7 +753,10 @@ export async function handleGetSopDetail(sopId: string): Promise<ContentItem[]> 
     type: 'text',
     text: parts.join('\n'),
   }
-  const mermaidResource = buildMermaidResource(mermaidCode, String(sop.name ?? sopId))
+  const mermaidResource = buildMermaidResource(
+    mermaidCode,
+    String(sop.name ?? sopId),
+  )
   return [textContent, mermaidResource]
 }
 
@@ -750,8 +769,12 @@ export async function handleGetHostNeighbors(hostId: string): Promise<string> {
     (arr ?? []).map((n: Record<string, unknown>) => {
       const node = (n.host ?? n.node) as Record<string, unknown> | undefined
       const relation = n.relationDescription ?? n.relationType
+      const trimmedNode = node ? (pick(node, HOST_NODE_KEYS) as Record<string, unknown>) : null
+      const normalizedNode = trimmedNode
+        ? (({ businessIp, ...rest }: Record<string, unknown>) => ({ ...rest, ip: businessIp }))(trimmedNode)
+        : null
       return {
-        ...(node ? { node: (({ businessIp, ...rest }: Record<string, unknown>) => ({ ...rest, ip: businessIp }))(pick(node, HOST_NODE_KEYS) as Record<string, unknown>) } : {}),
+        ...(normalizedNode ? { node: normalizedNode } : {}),
         ...(relation !== null && relation !== undefined ? { relationDescription: relation } : {}),
       }
     })

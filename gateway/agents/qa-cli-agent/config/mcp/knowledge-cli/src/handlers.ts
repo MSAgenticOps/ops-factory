@@ -70,7 +70,9 @@ export const tools = [
         },
         glob: {
           type: 'string',
-          description: 'Optional file name glob. Prefer the configured knowledge artifact type before probing unrelated file types.',
+          description:
+            'Optional file name glob. ' +
+            'Prefer the configured knowledge artifact type before probing unrelated file types.',
         },
         limit: {
           type: 'number',
@@ -119,7 +121,9 @@ export const tools = [
   },
   {
     name: 'read_file',
-    description: 'Read a file or a specific line range under the configured root directory. Results are capped to keep context small; truncated responses include the returned end line and next startLine.',
+    description:
+      'Read a file or a specific line range under the configured root directory. ' +
+      'Results are capped to keep context small; truncated responses include the returned end line and next startLine.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -363,7 +367,12 @@ async function runCommandLines(command: string, args: string[], limit: number): 
       }
 
       if (timedOut) {
-        fail(new Error(`${command} timed out after ${COMMAND_TIMEOUT_MS / 1000}s. Try a narrower pathPrefix, glob, or query.`))
+        fail(
+          new Error(
+            `${command} timed out after ${COMMAND_TIMEOUT_MS / 1000}s. ` +
+              'Try a narrower pathPrefix, glob, or query.',
+          ),
+        )
         return
       }
 
@@ -542,7 +551,16 @@ export async function handleSearchContent(args: ToolArgs = {}): Promise<string> 
   let result: LineCommandResult
 
   if (engine === 'rg') {
-    const commandArgs = ['-n', '--no-heading', '--with-filename', '--column', '--max-columns', '500', '--hidden', '--no-ignore']
+    const commandArgs = [
+      '-n',
+      '--no-heading',
+      '--with-filename',
+      '--column',
+      '--max-columns',
+      '500',
+      '--hidden',
+      '--no-ignore',
+    ]
     if (glob) {
       commandArgs.push('--glob', glob)
     }

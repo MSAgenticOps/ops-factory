@@ -83,7 +83,8 @@ export const tools = [
   {
     name: 'get_platform_status',
     description:
-      'Get platform health status: gateway uptime, host/port, running instances, Langfuse monitoring status, and idle timeout configuration.',
+      'Get platform health status: gateway uptime, host/port, running instances, ' +
+      'Langfuse monitoring status, and idle timeout configuration.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -101,7 +102,8 @@ export const tools = [
   {
     name: 'get_observability_data',
     description:
-      'Get observability metrics: KPIs (total traces, cost, avg/P95 latency, error count), daily trends, recent traces, and observation breakdown. Requires Langfuse to be configured.',
+      'Get observability metrics: KPIs (total traces, cost, avg/P95 latency, error count), ' +
+      'daily trends, recent traces, and observation breakdown. Requires Langfuse to be configured.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -117,7 +119,10 @@ export const tools = [
   {
     name: 'get_realtime_metrics',
     description:
-      'Get real-time gateway performance metrics: current active instances/tokens/sessions, aggregate stats (request count, error count, avg/P95 latency, avg/P95 TTFT, tokens/sec), time series data (30s intervals, up to 120 slots = 1 hour), and per-agent breakdown. Does NOT require Langfuse.',
+      'Get real-time gateway performance metrics: current active instances/tokens/sessions, ' +
+      'aggregate stats (request count, error count, avg/P95 latency, avg/P95 TTFT, tokens/sec), ' +
+      'time series data (30s intervals, up to 120 slots = 1 hour), and per-agent breakdown. ' +
+      'Does NOT require Langfuse.',
     inputSchema: {
       type: 'object',
       properties: {},

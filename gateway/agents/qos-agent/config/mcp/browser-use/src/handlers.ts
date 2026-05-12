@@ -50,7 +50,9 @@ async function getPage(): Promise<Page> {
 export const tools = [
   {
     name: 'browser_navigate',
-    description: 'Open a URL in Chromium and return page title and interactive elements. The browser session persists across calls.',
+    description:
+      'Open a URL in Chromium and return page title and interactive elements. ' +
+      'The browser session persists across calls.',
     inputSchema: {
       type: 'object' as const,
       properties: {

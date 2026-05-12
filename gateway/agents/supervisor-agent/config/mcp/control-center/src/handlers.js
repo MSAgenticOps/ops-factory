@@ -89,7 +89,8 @@ export const tools = [
   {
     name: 'get_platform_status',
     description:
-      'Get platform runtime status: gateway uptime, host/port, running instances, Langfuse status, and idle timeout configuration.',
+      'Get platform runtime status: gateway uptime, host/port, running instances, ' +
+      'Langfuse status, and idle timeout configuration.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -101,7 +102,8 @@ export const tools = [
   {
     name: 'get_observability_data',
     description:
-      'Get observability metrics from Control Center: KPIs, traces, latency, errors, and observation breakdown. Accepts optional hours.',
+      'Get observability metrics from Control Center: KPIs, traces, latency, errors, ' +
+      'and observation breakdown. Accepts optional hours.',
     inputSchema: {
       type: 'object',
       properties: {
