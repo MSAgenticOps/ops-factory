@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2020. All rights reserved.
+ */
+
 import { appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 

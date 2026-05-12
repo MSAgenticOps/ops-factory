@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2020. All rights reserved.
+ */
+
 import puppeteer, { type Browser, type Page } from 'puppeteer'
 import { mkdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'

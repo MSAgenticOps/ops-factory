@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2020. All rights reserved.
+ */
+
 import { LOG_FILE_PATH, logError, logInfo } from './logger.js';
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'https://127.0.0.1:3000';

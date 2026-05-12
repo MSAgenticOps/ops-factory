@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2020. All rights reserved.
+ */
+
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import os from 'node:os'
