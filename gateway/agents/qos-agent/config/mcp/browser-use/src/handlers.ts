@@ -308,15 +308,51 @@ async function handleClose(): Promise<string> {
 // ---------------------------------------------------------------------------
 // Dispatch
 // ---------------------------------------------------------------------------
+function requireString(args: Record<string, unknown>, key: string): string {
+  const value = args[key]
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${key} must be a non-empty string`)
+  }
+  return value
+}
+
+function requireNumber(args: Record<string, unknown>, key: string): number {
+  const value = args[key]
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`${key} must be a finite number`)
+  }
+  return value
+}
+
+function optionalString(args: Record<string, unknown>, key: string): string | undefined {
+  const value = args[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {
+  const value = args[key]
+  return typeof value === 'boolean' ? value : undefined
+}
+
 export async function dispatch(name: string, args: Record<string, unknown>): Promise<string> {
   switch (name) {
-    case 'browser_navigate': return handleNavigate(args as any)
-    case 'browser_click': return handleClick(args as any)
-    case 'browser_type': return handleType(args as any)
+    case 'browser_navigate':
+      return handleNavigate({ url: requireString(args, 'url') })
+    case 'browser_click':
+      return handleClick({ index: requireNumber(args, 'index') })
+    case 'browser_type':
+      return handleType({
+        index: requireNumber(args, 'index'),
+        text: requireString(args, 'text'),
+        press_enter: optionalBoolean(args, 'press_enter'),
+      })
     case 'browser_get_state': return handleGetState()
-    case 'browser_extract': return handleExtract(args as any)
-    case 'browser_screenshot': return handleScreenshot(args as any)
-    case 'browser_scroll': return handleScroll(args as any)
+    case 'browser_extract':
+      return handleExtract({ query: optionalString(args, 'query') })
+    case 'browser_screenshot':
+      return handleScreenshot({ full_page: optionalBoolean(args, 'full_page') })
+    case 'browser_scroll':
+      return handleScroll({ direction: optionalString(args, 'direction') })
     case 'browser_close': return handleClose()
     default: throw new Error(`Unknown tool: ${name}`)
   }
