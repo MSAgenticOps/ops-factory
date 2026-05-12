@@ -38,7 +38,9 @@ export async function gw<T>(
 ): Promise<T> {
   const url = new URL(`${GATEWAY_URL}${path}`)
   if (params && method !== 'POST') {
-    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, v)
+    }
   }
   const res = await fetch(url, {
     method: method || 'GET',
@@ -322,7 +324,9 @@ export function buildMermaidResource(mermaidCode: string, title: string): Conten
 function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const k of keys) {
-    if (k in obj) result[k] = obj[k]
+    if (k in obj) {
+      result[k] = obj[k]
+    }
   }
   return result
 }
@@ -369,9 +373,13 @@ function sanitizeFileName(fileName: string): string {
 function fuzzyMatch(text: string, keyword: string): boolean {
   const t = text.toLowerCase()
   const k = keyword.toLowerCase()
-  if (t.includes(k)) return true
+  if (t.includes(k)) {
+    return true
+  }
   for (const ch of k) {
-    if (!t.includes(ch)) return false
+    if (!t.includes(ch)) {
+      return false
+    }
   }
   return true
 }
@@ -535,8 +543,12 @@ export async function handleQueryHostsByScope(params?: {
   let clusterIds: string[] = []
   if (clusterName || clusterType) {
     const queryParams: Record<string, string> = {}
-    if (clusterType) queryParams.type = clusterType
-    if (groupId) queryParams.groupId = groupId
+    if (clusterType) {
+      queryParams.type = clusterType
+    }
+    if (groupId) {
+      queryParams.groupId = groupId
+    }
     queryParams.enabledOnly = 'true'
     const clusterData = await gw<{ clusters: Record<string, unknown>[] }>(
       `${API_PREFIX}/clusters`,
@@ -570,13 +582,17 @@ export async function handleQueryHostsByScope(params?: {
             .catch(() => [] as Record<string, unknown>[]),
         ),
       )
-      for (const batch of results) allHosts.push(...batch)
+      for (const batch of results) {
+        allHosts.push(...batch)
+      }
     }
     // Deduplicate by host id
     const seen = new Set<string>()
     const uniqueHosts = allHosts.filter(h => {
       const id = String(h.id ?? '')
-      if (seen.has(id)) return false
+      if (seen.has(id)) {
+        return false
+      }
       seen.add(id)
       return true
     })
@@ -683,7 +699,9 @@ export async function handleGetSopDetail(sopId: string): Promise<ContentItem[]> 
   if (!sop.requiredTools || sop.requiredTools.length === 0) {
     const tools = new Set<string>(['sop-executor'])
     for (const node of sop.nodes ?? []) {
-      if (node.type === 'browser') tools.add('browser-use')
+      if (node.type === 'browser') {
+        tools.add('browser-use')
+      }
     }
     sop.requiredTools = Array.from(tools)
   }
