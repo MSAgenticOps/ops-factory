@@ -47,7 +47,7 @@ export function log(level, event, details = {}) {
   }
 
   const line = JSON.stringify(payload);
-  console.error(line);
+  process.stderr.write(`${line}\n`);
   appendFileSync(LOG_FILE_PATH, `${line}\n`, 'utf8');
 }
 

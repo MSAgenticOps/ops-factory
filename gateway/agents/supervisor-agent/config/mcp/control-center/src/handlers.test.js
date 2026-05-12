@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 let routes = {};
 let originalFetch;
-let originalConsoleError;
+let originalStderrWrite;
 let capturedLogs = [];
 
 function mockFetch(input, init = {}) {
@@ -46,18 +46,19 @@ function mockFetch(input, init = {}) {
 
 beforeEach(() => {
   originalFetch = globalThis.fetch;
-  originalConsoleError = console.error;
+  originalStderrWrite = process.stderr.write;
   globalThis.fetch = mockFetch;
   routes = {};
   capturedLogs = [];
-  console.error = (message) => {
-    capturedLogs.push(String(message));
+  process.stderr.write = (chunk) => {
+    capturedLogs.push(String(chunk).trim());
+    return true;
   };
 });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  console.error = originalConsoleError;
+  process.stderr.write = originalStderrWrite;
 });
 
 const {

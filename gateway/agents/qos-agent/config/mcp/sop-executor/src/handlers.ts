@@ -797,7 +797,8 @@ export async function handleExecuteRemote(hostId: string, command: string, timeo
 
     writeFileSync(join(OUTPUT_DIR, fileName), content, 'utf-8')
   } catch (writeErr) {
-    console.error('[sop-executor] Failed to write output file:', writeErr)
+    const message = writeErr instanceof Error ? writeErr.message : String(writeErr)
+    process.stderr.write(`[sop-executor] Failed to write output file: ${message}\n`)
   }
 
   return JSON.stringify(data, null, 2)
@@ -857,7 +858,8 @@ export async function handleExecuteRemoteBatch(hostIds: string[], command: strin
 
             writeFileSync(join(OUTPUT_DIR, fileName), content, 'utf-8')
           } catch (writeErr) {
-            console.error('[sop-executor] Failed to write output file:', writeErr)
+            const message = writeErr instanceof Error ? writeErr.message : String(writeErr)
+            process.stderr.write(`[sop-executor] Failed to write output file: ${message}\n`)
           }
 
           return { hostId, status: 'fulfilled', data }

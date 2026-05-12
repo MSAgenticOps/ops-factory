@@ -63,4 +63,4 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport()
 await server.connect(transport)
-console.error('[sop-executor] MCP server running on stdio')
+process.stderr.write('[sop-executor] MCP server running on stdio\n')

@@ -49,7 +49,7 @@ export function log(level: 'INFO' | 'ERROR', event: string, details: LogDetails 
   }
 
   const line = JSON.stringify(payload)
-  console.error(line)
+  process.stderr.write(`${line}\n`)
   appendFileSync(LOG_FILE_PATH, `${line}\n`, 'utf8')
 }
 

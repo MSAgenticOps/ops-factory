@@ -45,4 +45,4 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport()
 await server.connect(transport)
-console.error('[browser-use] MCP server running on stdio')
+process.stderr.write('[browser-use] MCP server running on stdio\n')
