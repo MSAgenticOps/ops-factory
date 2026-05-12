@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 let routes = {};
 let originalFetch;
 let originalStderrWrite;
+let previousSecretKey;
 let capturedLogs = [];
 
 function mockFetch(input, init = {}) {
@@ -47,6 +48,8 @@ function mockFetch(input, init = {}) {
 beforeEach(() => {
   originalFetch = globalThis.fetch;
   originalStderrWrite = process.stderr.write;
+  previousSecretKey = process.env.CONTROL_CENTER_SECRET_KEY;
+  process.env.CONTROL_CENTER_SECRET_KEY = 'unit-test-secret';
   globalThis.fetch = mockFetch;
   routes = {};
   capturedLogs = [];
@@ -59,6 +62,11 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.fetch = originalFetch;
   process.stderr.write = originalStderrWrite;
+  if (previousSecretKey === undefined) {
+    delete process.env.CONTROL_CENTER_SECRET_KEY;
+  } else {
+    process.env.CONTROL_CENTER_SECRET_KEY = previousSecretKey;
+  }
 });
 
 const {

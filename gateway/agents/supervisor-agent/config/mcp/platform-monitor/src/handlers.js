@@ -5,11 +5,18 @@
 import { LOG_FILE_PATH, logError, logInfo } from './logger.js';
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'https://127.0.0.1:3000';
-const GATEWAY_SECRET_KEY = process.env.GATEWAY_SECRET_KEY || 'test';
 const API_PREFIX = '/gateway';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 export { LOG_FILE_PATH };
+
+function requireGatewaySecretKey() {
+  const secret = process.env.GATEWAY_SECRET_KEY;
+  if (!secret || !secret.trim()) {
+    throw new Error('GATEWAY_SECRET_KEY is required');
+  }
+  return secret.trim();
+}
 
 export async function gw(path, params) {
   const startedAt = Date.now();
@@ -31,7 +38,7 @@ export async function gw(path, params) {
   try {
     const res = await fetch(url, {
       headers: {
-        'x-secret-key': GATEWAY_SECRET_KEY,
+        'x-secret-key': requireGatewaySecretKey(),
         'x-user-id': 'admin',
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),

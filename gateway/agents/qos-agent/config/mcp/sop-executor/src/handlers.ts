@@ -10,10 +10,17 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'https://127.0.0.1:3000'
-const GATEWAY_SECRET_KEY = process.env.GATEWAY_SECRET_KEY || 'test'
 const API_PREFIX = '/gateway'
 const OUTPUT_DIR = process.env.OUTPUT_DIR || './output'
 const MAX_OUTPUT_SIZE = 1_000_000 // 1MB
+
+function requireGatewaySecretKey(): string {
+  const secret = process.env.GATEWAY_SECRET_KEY
+  if (!secret || !secret.trim()) {
+    throw new Error('GATEWAY_SECRET_KEY is required')
+  }
+  return secret.trim()
+}
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -37,7 +44,7 @@ export async function gw<T>(
     method: method || 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'x-secret-key': GATEWAY_SECRET_KEY,
+      'x-secret-key': requireGatewaySecretKey(),
       'x-user-id': 'admin',
     },
     body: body ? JSON.stringify(body) : undefined,

@@ -6,11 +6,17 @@ import { LOG_FILE_PATH, logError, logInfo } from './logger.js';
 
 const CONTROL_CENTER_URL =
   process.env.CONTROL_CENTER_URL || 'http://127.0.0.1:8094';
-const CONTROL_CENTER_SECRET_KEY =
-  process.env.CONTROL_CENTER_SECRET_KEY || 'change-me';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 export { LOG_FILE_PATH };
+
+function requireControlCenterSecretKey() {
+  const secret = process.env.CONTROL_CENTER_SECRET_KEY;
+  if (!secret || !secret.trim()) {
+    throw new Error('CONTROL_CENTER_SECRET_KEY is required');
+  }
+  return secret.trim();
+}
 
 export async function cc(path, params, init = {}) {
   const startedAt = Date.now();
@@ -36,7 +42,7 @@ export async function cc(path, params, init = {}) {
     const res = await fetch(url, {
       method,
       headers: {
-        'x-secret-key': CONTROL_CENTER_SECRET_KEY,
+        'x-secret-key': requireControlCenterSecretKey(),
         ...(init.body ? { 'content-type': 'application/json' } : {}),
       },
       body: init.body,
