@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { HostGroup, Cluster, Host, CustomAttribute, HostCreateRequest, BusinessService, ClusterType, BusinessType, ClusterRelation } from '../../../../types/host'
 import { isValidIp } from '../../../../utils/ip-validation'
@@ -35,6 +35,62 @@ type Props = {
     onSaveClusterRelation: (data: Partial<ClusterRelation>) => Promise<void>
     onUpdateClusterRelation: (id: string, data: Partial<ClusterRelation>) => Promise<void>
     onDeleteClusterRelation: (id: string) => Promise<unknown>
+}
+
+function MultiSelectDropdown({ options, selectedIds, onChange, placeholder }: {
+    options: { value: string; label: string }[]
+    selectedIds: string[]
+    onChange: (ids: string[]) => void
+    placeholder: string
+}) {
+    const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!open) return
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [open])
+
+    const selectedLabels = options.filter(o => selectedIds.includes(o.value))
+
+    return (
+        <div className="hr-multiselect" ref={ref}>
+            <div className="hr-multiselect-trigger" onClick={() => setOpen(v => !v)}>
+                {selectedLabels.length === 0
+                    ? <span className="hr-multiselect-placeholder">{placeholder}</span>
+                    : <div className="hr-multiselect-tags">
+                        {selectedLabels.map(o => (
+                            <span key={o.value} className="hr-multiselect-tag">
+                                {o.label}
+                                <span className="hr-multiselect-tag-remove" onClick={e => { e.stopPropagation(); onChange(selectedIds.filter(id => id !== o.value)) }}>×</span>
+                            </span>
+                        ))}
+                    </div>
+                }
+                <span className={`hr-multiselect-arrow ${open ? 'is-open' : ''}`}>▾</span>
+            </div>
+            {open && (
+                <div className="hr-multiselect-dropdown">
+                    {options.map(o => {
+                        const checked = selectedIds.includes(o.value)
+                        return (
+                            <div key={o.value} className={`hr-multiselect-option ${checked ? 'is-selected' : ''}`} onClick={() => {
+                                onChange(checked ? selectedIds.filter(id => id !== o.value) : [...selectedIds, o.value])
+                            }}>
+                                <span className={`hr-multiselect-check ${checked ? 'is-checked' : ''}`} />
+                                {o.label}
+                            </div>
+                        )
+                    })}
+                    {options.length === 0 && <div className="hr-multiselect-empty">{placeholder}</div>}
+                </div>
+            )}
+        </div>
+    )
 }
 
 export default function ResourceFormModal({
@@ -92,7 +148,13 @@ export default function ResourceFormModal({
     const [hostUsername, setHostUsername] = useState(editingItem?.type === 'host' ? editingItem.data.username : '')
     const [hostAuthType, setHostAuthType] = useState<'password' | 'key'>(editingItem?.type === 'host' ? editingItem.data.authType : 'password')
     const [hostCredential, setHostCredential] = useState(editingItem?.type === 'host' ? '***' : '')
-    const [hostClusterId, setHostClusterId] = useState(editingItem?.type === 'host' ? (editingItem.data.clusterId ?? '') : (defaultClusterId ?? ''))
+    const [hostClusterIds, setHostClusterIds] = useState<string[]>(() => {
+        if (editingItem?.type === 'host') {
+            const ids = (editingItem.data as any).clusterIds
+            return ids && ids.length > 0 ? ids : editingItem.data.clusterId ? [editingItem.data.clusterId] : []
+        }
+        return defaultClusterId ? [defaultClusterId] : []
+    })
     const [hostPurpose, setHostPurpose] = useState(editingItem?.type === 'host' ? (editingItem.data.purpose ?? '') : '')
     const [hostBusiness, setHostBusiness] = useState(editingItem?.type === 'host' ? (editingItem.data.business ?? '') : '')
     const [hostDescription, setHostDescription] = useState(editingItem?.type === 'host' ? editingItem.data.description : '')
@@ -107,7 +169,7 @@ export default function ResourceFormModal({
     const [editingRelId, setEditingRelId] = useState<string | null>(null)
     const [editRelTargetId, setEditRelTargetId] = useState('')
     const [editRelDesc, setEditRelDesc] = useState('')
-    const [newRelTargetId, setNewRelTargetId] = useState('')
+    const [newRelTargetIds, setNewRelTargetIds] = useState<string[]>([])
     const [newRelDesc, setNewRelDesc] = useState('')
 
     // Sync groupEnabled when editingItem changes (e.g. reopening same group after save)
@@ -122,7 +184,7 @@ export default function ResourceFormModal({
         if (editingItem?.type === 'cluster' || editingItem?.type === 'business-service') {
             fetchClusterRelations()
             setEditingRelId(null)
-            setNewRelTargetId('')
+            setNewRelTargetIds([])
             setNewRelDesc('')
         }
     }, [editingItem, fetchClusterRelations])
@@ -205,22 +267,24 @@ export default function ResourceFormModal({
     }, [clusterRelations, editingItem])
 
     const handleAddClusterRelation = useCallback(async (sourceType: 'cluster' | 'business-service', sourceId: string) => {
-        if (!newRelTargetId) return
+        if (newRelTargetIds.length === 0) return
         setError(null)
         try {
-            await onSaveClusterRelation({
-                sourceType,
-                sourceId,
-                targetId: newRelTargetId,
-                description: newRelDesc.trim(),
-            })
-            setNewRelTargetId('')
+            for (const targetId of newRelTargetIds) {
+                await onSaveClusterRelation({
+                    sourceType,
+                    sourceId,
+                    targetId,
+                    description: newRelDesc.trim(),
+                })
+            }
+            setNewRelTargetIds([])
             setNewRelDesc('')
             await fetchClusterRelations()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed')
         }
-    }, [newRelTargetId, newRelDesc, onSaveClusterRelation, fetchClusterRelations])
+    }, [newRelTargetIds, newRelDesc, onSaveClusterRelation, fetchClusterRelations])
 
     const handleSaveRelationEdit = useCallback(async () => {
         if (!editingRelId) return
@@ -308,7 +372,7 @@ export default function ResourceFormModal({
                 const payload: Record<string, unknown> = {
                     name: hostName.trim(), hostname: hostname.trim() || null, ip: hostIp.trim(), port: hostPort,
                     os: hostOs.trim() || null, location: hostLocation.trim() || null, username: hostUsername.trim(),
-                    authType: hostAuthType, clusterId: hostClusterId || null, purpose: hostPurpose.trim() || null,
+                    authType: hostAuthType, clusterId: hostClusterIds[0] || null, clusterIds: hostClusterIds.length > 0 ? hostClusterIds : undefined, purpose: hostPurpose.trim() || null,
                     business: hostBusiness.trim() || null, description: hostDescription.trim(), customAttributes: hostCustomAttributes,
                     businessIp: hostBusinessIp.trim() || null,
                     role: hostRole || null,
@@ -324,7 +388,7 @@ export default function ResourceFormModal({
         }
     }, [selectedType, groupName, groupParentId, groupDescription, groupCode, groupEnabled, clusterName, clusterType, clusterPurpose,
         clusterGroupId, clusterDescription, hostName, hostname, hostIp, hostBusinessIp, hostPort, hostOs, hostLocation,
-        hostUsername, hostAuthType, hostCredential, hostClusterId, hostPurpose, hostBusiness,
+        hostUsername, hostAuthType, hostCredential, hostClusterIds, hostPurpose, hostBusiness,
         hostDescription, hostCustomAttributes, hostRole,
         bsName, bsCode, bsGroupId, bsSelectedBusinessTypeId, bsTags, bsPriority, bsDescription,
         onSaveGroup, onSaveCluster, onSaveBusinessService, onSaveHost, onClose, t, editingItem, hosts])
@@ -573,26 +637,23 @@ export default function ResourceFormModal({
                                                 })}
                                                 {/* Add new relation */}
                                                 <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: 6,
-                                                    padding: '4px 8px', background: 'var(--surface-background, #f8fafc)',
+                                                    padding: '6px 8px', background: 'var(--surface-background, #f8fafc)',
                                                     borderRadius: 4, border: '1px dashed var(--border-color, #e2e8f0)',
                                                 }}>
-                                                    <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '0.8125rem' }}>→</span>
-                                                    <SearchableSelect
-                                                        value={newRelTargetId}
-                                                        onChange={setNewRelTargetId}
-                                                        placeholder={t('hostResource.selectCluster')}
-                                                        options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({
-                                                            value: c.id, label: c.name
-                                                        }))}
-                                                        style={{ flex: 1, fontSize: '0.75rem' }}
+                                                    <MultiSelectDropdown
+                                                        options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({ value: c.id, label: c.name }))}
+                                                        selectedIds={newRelTargetIds}
+                                                        onChange={setNewRelTargetIds}
+                                                        placeholder={clusters.filter(c => c.id !== editingItem.data.id).length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
                                                     />
-                                                    <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                        placeholder={t('hostResource.relationDesc')}
-                                                        value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
-                                                    <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
-                                                        disabled={!newRelTargetId}
-                                                        onClick={() => handleAddClusterRelation('cluster', editingItem.data.id)}>+</button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
+                                                            placeholder={t('hostResource.relationDesc')}
+                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
+                                                        <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
+                                                            disabled={newRelTargetIds.length === 0}
+                                                            onClick={() => handleAddClusterRelation('cluster', editingItem.data.id)}>+</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </>
@@ -720,26 +781,23 @@ export default function ResourceFormModal({
                                                 ))}
                                                 {/* Add new relation */}
                                                 <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: 6,
-                                                    padding: '4px 8px', background: 'var(--surface-background, #f8fafc)',
+                                                    padding: '6px 8px', background: 'var(--surface-background, #f8fafc)',
                                                     borderRadius: 4, border: '1px dashed var(--border-color, #e2e8f0)',
                                                 }}>
-                                                    <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '0.8125rem' }}>→</span>
-                                                    <SearchableSelect
-                                                        value={newRelTargetId}
-                                                        onChange={setNewRelTargetId}
-                                                        placeholder={t('hostResource.selectCluster')}
-                                                        options={clusters.map(c => ({
-                                                            value: c.id, label: c.name
-                                                        }))}
-                                                        style={{ flex: 1, fontSize: '0.75rem' }}
+                                                    <MultiSelectDropdown
+                                                        options={clusters.map(c => ({ value: c.id, label: c.name }))}
+                                                        selectedIds={newRelTargetIds}
+                                                        onChange={setNewRelTargetIds}
+                                                        placeholder={clusters.length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
                                                     />
-                                                    <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                        placeholder={t('hostResource.relationDesc')}
-                                                        value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
-                                                    <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
-                                                        disabled={!newRelTargetId}
-                                                        onClick={() => handleAddClusterRelation('business-service', editingItem.data.id)}>+</button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
+                                                            placeholder={t('hostResource.relationDesc')}
+                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
+                                                        <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
+                                                            disabled={newRelTargetIds.length === 0}
+                                                            onClick={() => handleAddClusterRelation('business-service', editingItem.data.id)}>+</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </>
@@ -812,15 +870,19 @@ export default function ResourceFormModal({
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.cluster')}</label>
-                                            <select className="form-input" value={hostClusterId} onChange={e => { setHostClusterId(e.target.value); setHostRole('') }}>
-                                                <option value="">{t('hostResource.noCluster')}</option>
-                                                {clusters.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
-                                            </select>
+                                            <MultiSelectDropdown
+                                                options={clusters.map(c => ({ value: c.id, label: c.name }))}
+                                                selectedIds={hostClusterIds}
+                                                onChange={(ids) => {
+                                                    const removed = hostClusterIds.filter(id => !ids.includes(id))
+                                                    setHostClusterIds(ids)
+                                                    if (removed.length > 0) setHostRole('')
+                                                }}
+                                                placeholder={clusters.length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
+                                            />
                                         </div>
                                         {(() => {
-                                            const selectedCluster = clusters.find(c => c.id === hostClusterId)
+                                            const selectedCluster = clusters.find(c => c.id === hostClusterIds[0])
                                             const clusterTypeName = selectedCluster?.type ?? ''
                                             const clusterTypeObj = clusterTypes.find(ct => ct.name === clusterTypeName)
                                             const clusterMode = clusterTypeObj?.mode ?? 'peer'

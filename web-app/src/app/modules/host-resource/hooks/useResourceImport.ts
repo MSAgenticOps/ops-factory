@@ -87,6 +87,12 @@ export function useResourceImport(deps: ImportDeps) {
         const hostNameToId = new Map(deps.allHosts.map(h => [h.name, h.id]))
         const bsNameToId = new Map(deps.businessServices.map(bs => [bs.name, bs.id]))
 
+        // Track names created during this import to deduplicate within CSV
+        const createdClusterTypeNames = new Set(deps.clusterTypes.map(ct => ct.name))
+        const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
+        const createdSopNames = new Set<string>()
+        const createdPatterns = new Set<string>()
+
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             setProgress({ current: i + 1, total: rows.length, phase: type })
@@ -94,6 +100,10 @@ export function useResourceImport(deps: ImportDeps) {
             try {
                 switch (type) {
                     case 'ClusterTypes': {
+                        if (createdClusterTypeNames.has(row.name)) {
+                            errors.push({ row: i + 1, message: `Cluster type "${row.name}" already exists` })
+                            continue
+                        }
                         await deps.createClusterType({
                             name: row.name,
                             code: row.code,
@@ -107,22 +117,32 @@ export function useResourceImport(deps: ImportDeps) {
                                 })
                                 : undefined,
                         })
+                        createdClusterTypeNames.add(row.name)
                         success++
                         break
                     }
 
                     case 'BusinessTypes': {
+                        if (createdBusinessTypeNames.has(row.name)) {
+                            errors.push({ row: i + 1, message: `Business type "${row.name}" already exists` })
+                            continue
+                        }
                         await deps.createBusinessType({
                             name: row.name,
                             code: row.code,
                             description: row.description || '',
                             knowledge: row.knowledge || '',
                         })
+                        createdBusinessTypeNames.add(row.name)
                         success++
                         break
                     }
 
                     case 'HostGroups': {
+                        if (groupNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, message: `Group "${row.name}" already exists` })
+                            continue
+                        }
                         const created = await deps.createGroup({
                             name: row.name,
                             code: row.code || undefined,
@@ -135,6 +155,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Clusters': {
+                        if (clusterNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, message: `Cluster "${row.name}" already exists` })
+                            continue
+                        }
                         const groupId = row.group
                             ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                             : undefined
@@ -156,6 +180,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Hosts': {
+                        if (hostNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, message: `Host "${row.name}" already exists` })
+                            continue
+                        }
                         const clusterId = row.cluster
                             ? clusterNameToId.get(row.cluster)
                             : undefined
@@ -163,6 +191,7 @@ export function useResourceImport(deps: ImportDeps) {
                             errors.push({ row: i + 1, message: `Cluster "${row.cluster}" not found` })
                             continue
                         }
+                        const roleValue = row.role as string | undefined
                         const created = await deps.createHost({
                             name: row.name,
                             ip: row.ip,
@@ -177,6 +206,7 @@ export function useResourceImport(deps: ImportDeps) {
                             business: row.business || undefined,
                             clusterId,
                             purpose: row.purpose || undefined,
+                            role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
                             tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                             description: row.description || undefined,
                         })
@@ -186,6 +216,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'BusinessServices': {
+                        if (bsNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, message: `Business service "${row.name}" already exists` })
+                            continue
+                        }
                         const groupId = row.group
                             ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                             : undefined
@@ -234,6 +268,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'SOPs': {
+                        if (createdSopNames.has(row.name)) {
+                            errors.push({ row: i + 1, message: `SOP "${row.name}" already exists` })
+                            continue
+                        }
                         const tags = row.tags
                             ? row.tags.split(';').map(t => t.trim()).filter(Boolean)
                             : []
@@ -247,16 +285,22 @@ export function useResourceImport(deps: ImportDeps) {
                             stepsDescription: row.stepsdescription || '',
                             tags,
                         })
+                        createdSopNames.add(row.name)
                         success++
                         break
                     }
 
                     case 'Whitelist': {
+                        if (createdPatterns.has(row.pattern)) {
+                            errors.push({ row: i + 1, message: `Whitelist pattern "${row.pattern}" already exists` })
+                            continue
+                        }
                         await deps.addWhitelistCommand({
                             pattern: row.pattern,
                             description: row.description || '',
                             enabled: row.enabled !== 'false',
                         })
+                        createdPatterns.add(row.pattern)
                         success++
                         break
                     }
