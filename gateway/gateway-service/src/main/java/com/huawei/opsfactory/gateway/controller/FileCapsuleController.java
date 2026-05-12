@@ -59,7 +59,7 @@ public class FileCapsuleController {
      * @return the result
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> getFileCapsules(@PathVariable String agentId, @RequestParam String sessionId,
+    public Mono<Map<String, Object>> getFileCapsules(@PathVariable("agentId") String agentId, @RequestParam("sessionId") String sessionId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
@@ -85,7 +85,7 @@ public class FileCapsuleController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    public Mono<Map<String, Object>> saveFileCapsule(@PathVariable String agentId,
+    public Mono<Map<String, Object>> saveFileCapsule(@PathVariable("agentId") String agentId,
         @RequestBody Map<String, Object> body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);

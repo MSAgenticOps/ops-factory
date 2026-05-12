@@ -96,7 +96,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @GetMapping("/{channelId}")
-    public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable String channelId, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable("channelId") String channelId, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
@@ -141,7 +141,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PutMapping("/{channelId}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateChannel(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> updateChannel(@PathVariable("channelId") String channelId,
         @RequestBody ChannelUpsertRequest request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -163,7 +163,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/enable")
-    public Mono<ResponseEntity<Map<String, Object>>> enableChannel(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> enableChannel(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         return setEnabled(channelId, true, exchange);
     }
@@ -176,7 +176,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/disable")
-    public Mono<ResponseEntity<Map<String, Object>>> disableChannel(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> disableChannel(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         return setEnabled(channelId, false, exchange);
     }
@@ -189,7 +189,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @DeleteMapping("/{channelId}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteChannel(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> deleteChannel(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -210,7 +210,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @GetMapping("/{channelId}/bindings")
-    public Mono<ResponseEntity<Map<String, Object>>> listBindings(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> listBindings(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -232,7 +232,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @GetMapping("/{channelId}/events")
-    public Mono<ResponseEntity<Map<String, Object>>> listEvents(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> listEvents(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -254,7 +254,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/verify")
-    public Mono<ResponseEntity<Map<String, Object>>> verifyChannel(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> verifyChannel(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -276,7 +276,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/probe")
-    public Mono<ResponseEntity<Map<String, Object>>> probeChannel(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> probeChannel(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -302,7 +302,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @GetMapping("/{channelId}/login-state")
-    public Mono<ResponseEntity<Map<String, Object>>> getLoginState(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> getLoginState(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -335,7 +335,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/login")
-    public Mono<ResponseEntity<Map<String, Object>>> startLogin(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> startLogin(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -368,7 +368,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/logout")
-    public Mono<ResponseEntity<Map<String, Object>>> logout(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> logout(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);
@@ -432,7 +432,7 @@ public class ChannelAdminController {
      * @return the result
      */
     @PostMapping("/{channelId}/self-test")
-    public Mono<ResponseEntity<Map<String, Object>>> runSelfTest(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> runSelfTest(@PathVariable("channelId") String channelId,
         @RequestBody ChannelSelfTestRequest request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String userId = currentUserId(exchange);

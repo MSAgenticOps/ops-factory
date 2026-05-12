@@ -69,7 +69,7 @@ public class HostGroupController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public Mono<Map<String, Object>> listGroups(
         @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
         ServerWebExchange exchange) {
@@ -148,7 +148,7 @@ public class HostGroupController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> createGroup(@RequestBody Map<String, Object> request,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);

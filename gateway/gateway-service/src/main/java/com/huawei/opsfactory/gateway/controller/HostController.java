@@ -79,7 +79,7 @@ public class HostController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public Mono<Map<String, Object>> listHosts(@RequestParam(value = "tags", required = false) String tags,
         @RequestParam(value = "clusterId", required = false) String clusterId,
         @RequestParam(value = "groupId", required = false) String groupId,
@@ -218,7 +218,7 @@ public class HostController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> createHost(@RequestBody Map<String, Object> request,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);

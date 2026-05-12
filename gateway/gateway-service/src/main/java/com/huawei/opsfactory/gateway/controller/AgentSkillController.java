@@ -55,7 +55,7 @@ public class AgentSkillController {
      * @return the result
      */
     @PostMapping("/{agentId}/skills/install")
-    public Mono<ResponseEntity<Map<String, Object>>> installSkill(@PathVariable String agentId,
+    public Mono<ResponseEntity<Map<String, Object>>> installSkill(@PathVariable("agentId") String agentId,
         @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         String skillId = body.get("skillId");
@@ -77,8 +77,8 @@ public class AgentSkillController {
      * @return the result
      */
     @DeleteMapping("/{agentId}/skills/{skillId}")
-    public Mono<ResponseEntity<Map<String, Object>>> uninstallSkill(@PathVariable String agentId,
-        @PathVariable String skillId, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> uninstallSkill(@PathVariable("agentId") String agentId,
+        @PathVariable("skillId") String skillId, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> ResponseEntity.ok(installService.uninstall(agentId, skillId)))
             .onErrorResume(IllegalArgumentException.class, e -> Mono.just(badRequest(e.getMessage())))

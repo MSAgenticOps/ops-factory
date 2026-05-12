@@ -145,7 +145,7 @@ public class CatchAllProxyControllerTest {
             controller.catchAll(exchange).block();
             fail("Expected ResponseStatusException");
         } catch (ResponseStatusException ex) {
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
     }
 
@@ -163,7 +163,7 @@ public class CatchAllProxyControllerTest {
             controller.catchAll(exchange).block();
             fail("Expected ResponseStatusException");
         } catch (ResponseStatusException ex) {
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
     }
 
@@ -264,7 +264,7 @@ public class CatchAllProxyControllerTest {
             controller.catchAll(exchange).block();
             fail("Expected ResponseStatusException");
         } catch (ResponseStatusException ex) {
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
     }
 
@@ -282,7 +282,7 @@ public class CatchAllProxyControllerTest {
             controller.catchAll(exchange).block();
             fail("Expected ResponseStatusException");
         } catch (ResponseStatusException ex) {
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
 
         verifyNoInteractions(instanceManager, goosedProxy);
@@ -302,7 +302,7 @@ public class CatchAllProxyControllerTest {
             controller.catchAll(exchange).block();
             fail("Expected ResponseStatusException");
         } catch (ResponseStatusException ex) {
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
 
         verifyNoInteractions(instanceManager, goosedProxy);

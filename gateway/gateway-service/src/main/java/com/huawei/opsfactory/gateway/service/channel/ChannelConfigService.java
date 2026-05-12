@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Central service for channel CRUD, configuration persistence, runtime state merging, and event recording.

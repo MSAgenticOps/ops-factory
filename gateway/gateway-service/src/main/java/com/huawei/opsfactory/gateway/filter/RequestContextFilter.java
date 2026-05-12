@@ -77,7 +77,7 @@ public class RequestContextFilter implements WebFilter {
                 if (userId != null && !userId.isBlank()) {
                     ThreadContext.put("userId", userId);
                 }
-                log.info("HTTP {} {} completed status={} durationMs={}", request.getMethodValue(),
+                log.info("HTTP {} {} completed status={} durationMs={}", request.getMethod(),
                     request.getURI().getPath(), status != null ? status : 200, System.currentTimeMillis() - startedAt);
             } finally {
                 ThreadContext.remove("requestId");

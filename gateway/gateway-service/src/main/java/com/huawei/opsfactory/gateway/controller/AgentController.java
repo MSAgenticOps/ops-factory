@@ -140,7 +140,7 @@ public class AgentController {
      * @return the result
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         try {
             instanceManager.stopAllForAgent(id);
@@ -164,7 +164,7 @@ public class AgentController {
      * @return the result
      */
     @GetMapping("/{id}/skills")
-    public Mono<Map<String, Object>> listSkills(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listSkills(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         return Mono.just(Map.of("skills", agentConfigService.listSkills(id)));
     }
@@ -177,7 +177,7 @@ public class AgentController {
      * @return the result
      */
     @GetMapping("/{id}/config")
-    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
         if (entry == null) {
@@ -203,7 +203,7 @@ public class AgentController {
      * @return the result
      */
     @PutMapping("/{id}/config")
-    public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable String id,
+    public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable("id") String id,
         @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         requireAdmin(exchange);
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
@@ -236,7 +236,7 @@ public class AgentController {
      * @return the result
      */
     @GetMapping("/{id}/memory")
-    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, String>> files = agentConfigService.listMemoryFiles(id);
@@ -253,8 +253,8 @@ public class AgentController {
      * @return the result
      */
     @GetMapping("/{id}/memory/{category}")
-    public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable String id,
-        @PathVariable String category, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable("id") String id,
+        @PathVariable("category") String category, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
@@ -278,8 +278,8 @@ public class AgentController {
      * @return the result
      */
     @PutMapping("/{id}/memory/{category}")
-    public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable String id,
-        @PathVariable String category, @RequestBody Map<String, String> body, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable("id") String id,
+        @PathVariable("category") String category, @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
@@ -304,8 +304,8 @@ public class AgentController {
      * @return the result
      */
     @DeleteMapping("/{id}/memory/{category}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable String id,
-        @PathVariable String category, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable("id") String id,
+        @PathVariable("category") String category, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();

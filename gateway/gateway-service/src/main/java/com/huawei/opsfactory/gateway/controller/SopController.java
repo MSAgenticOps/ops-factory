@@ -57,7 +57,7 @@ public class SopController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public Mono<Map<String, Object>> listSops(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -76,7 +76,7 @@ public class SopController {
      * @return the result
      */
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getSop(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getSop(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             Map<String, Object> sop = sopService.getSop(id);
@@ -100,7 +100,7 @@ public class SopController {
      * @param exchange the exchange parameter
      * @return the result
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> createSop(@RequestBody Map<String, Object> request,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -130,7 +130,7 @@ public class SopController {
      * @return the result
      */
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateSop(@PathVariable String id,
+    public Mono<ResponseEntity<Map<String, Object>>> updateSop(@PathVariable("id") String id,
         @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -164,7 +164,7 @@ public class SopController {
      * @return the result
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteSop(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteSop(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             boolean deleted = sopService.deleteSop(id);

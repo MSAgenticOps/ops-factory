@@ -101,7 +101,7 @@ public class SessionController {
      * @return the result
      */
     @PostMapping(value = "/agents/{agentId}/agent/start", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> startSession(@PathVariable String agentId, @RequestBody String body,
+    public Mono<String> startSession(@PathVariable("agentId") String agentId, @RequestBody String body,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -184,9 +184,11 @@ public class SessionController {
      * @return the result
      */
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> listAllSessions(@RequestParam(defaultValue = "1") int pageIndex,
-        @RequestParam(defaultValue = "20") int pageSize, @RequestParam(required = false) String search,
-        @RequestParam(required = false) String agentId, @RequestParam(required = false) String type,
+    public Mono<String> listAllSessions(@RequestParam(value = "pageIndex", defaultValue = "1") int pageIndex,
+        @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
+        @RequestParam(value = "search", required = false) String search,
+        @RequestParam(value = "agentId", required = false) String agentId,
+        @RequestParam(value = "type", required = false) String type,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -331,7 +333,7 @@ public class SessionController {
      * @return the result
      */
     @GetMapping("/agents/{agentId}/sessions")
-    public Mono<Void> listAgentSessions(@PathVariable String agentId, ServerWebExchange exchange) {
+    public Mono<Void> listAgentSessions(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(instance -> goosedProxy.proxy(exchange.getRequest(), exchange.getResponse(), instance.getPort(),
@@ -347,7 +349,7 @@ public class SessionController {
      * @return the result
      */
     @GetMapping(value = "/agents/{agentId}/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> getSession(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<String> getSession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -377,7 +379,7 @@ public class SessionController {
      * @return the result
      */
     @GetMapping(value = "/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> getSessionGlobal(@PathVariable String sessionId, @RequestParam String agentId,
+    public Mono<String> getSessionGlobal(@PathVariable("sessionId") String sessionId, @RequestParam("agentId") String agentId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -407,7 +409,7 @@ public class SessionController {
      * @return the result
      */
     @DeleteMapping("/agents/{agentId}/sessions/{sessionId}")
-    public Mono<Void> deleteSession(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<Void> deleteSession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -436,7 +438,7 @@ public class SessionController {
      * @return the result
      */
     @DeleteMapping("/sessions/{sessionId}")
-    public Mono<Void> deleteSessionGlobal(@PathVariable String sessionId, @RequestParam String agentId,
+    public Mono<Void> deleteSessionGlobal(@PathVariable("sessionId") String sessionId, @RequestParam("agentId") String agentId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -464,7 +466,7 @@ public class SessionController {
      */
     @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty",
         produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
@@ -607,7 +609,7 @@ public class SessionController {
      * @return the result
      */
     @PutMapping("/agents/{agentId}/sessions/{sessionId}/name")
-    public Mono<Void> renameSession(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<Void> renameSession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         @RequestBody String body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
