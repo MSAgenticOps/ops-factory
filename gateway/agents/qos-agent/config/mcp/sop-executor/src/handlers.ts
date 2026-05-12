@@ -364,7 +364,7 @@ export async function handleListSystemResources(params?: { keyword?: string; lim
 
   const data = await gw<{ groups: Record<string, unknown>[] }>(`${API_PREFIX}/host-groups`, { enabledOnly: 'true' })
   const allGroups = data.groups ?? []
-  const systems = allGroups.filter(g => g.parentId == null)
+  const systems = allGroups.filter(g => g.parentId === null || g.parentId === undefined)
 
   const filtered = keyword
     ? systems.filter(s => {
@@ -741,11 +741,10 @@ export async function handleGetHostNeighbors(hostId: string): Promise<string> {
   const trimNeighbors = (arr: Record<string, unknown>[]) =>
     (arr ?? []).map((n: Record<string, unknown>) => {
       const node = (n.host ?? n.node) as Record<string, unknown> | undefined
+      const relation = n.relationDescription ?? n.relationType
       return {
         ...(node ? { node: (({ businessIp, ...rest }: Record<string, unknown>) => ({ ...rest, ip: businessIp }))(pick(node, HOST_NODE_KEYS) as Record<string, unknown>) } : {}),
-        ...((n.relationDescription ?? n.relationType) != null
-          ? { relationDescription: n.relationDescription ?? n.relationType }
-          : {}),
+        ...(relation !== null && relation !== undefined ? { relationDescription: relation } : {}),
       }
     })
   const upstream = trimNeighbors(data.upstream as Record<string, unknown>[] ?? [])
@@ -925,8 +924,8 @@ export async function handleGetClusterTypeKnowledge(hostId: string): Promise<str
   const matched = clusterTypes.find(ct => {
     const name = ct.name as string | undefined
     const code = ct.code as string | undefined
-    return (name != null && name === clusterTypeStr) ||
-           (code != null && code.toLowerCase() === clusterTypeStr.toLowerCase())
+    return (typeof name === 'string' && name === clusterTypeStr) ||
+           (typeof code === 'string' && code.toLowerCase() === clusterTypeStr.toLowerCase())
   })
 
   if (!matched) {
