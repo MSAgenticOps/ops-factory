@@ -219,7 +219,9 @@ interface SopData {
 
 export function sopToMermaid(sop: SopData): string {
   const nodes = sop.nodes ?? []
-  if (nodes.length === 0) return 'graph TD\n    empty["空SOP"]'
+  if (nodes.length === 0) {
+    return 'graph TD\n    empty["空SOP"]'
+  }
 
   // Build name → index mapping (nextNodeId stores the target node's name)
   const nameToIndex = new Map<string, number>()
@@ -329,7 +331,9 @@ function formatTimestampForFile(date: Date): string {
 
 function sanitizeFileName(fileName: string): string {
   const trimmed = fileName.trim()
-  if (!trimmed) return ''
+  if (!trimmed) {
+    return ''
+  }
   const normalized = trimmed.replace(/[\\/]/g, '_')
   return normalized.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, '_')
 }
@@ -452,11 +456,15 @@ function findGroupByName(
   name: string,
 ): Record<string, unknown> | undefined {
   for (const node of tree) {
-    if (fuzzyMatch(String(node.name ?? ''), name)) return node
+    if (fuzzyMatch(String(node.name ?? ''), name)) {
+      return node
+    }
     const children = node.children as Record<string, unknown>[] | undefined
     if (Array.isArray(children)) {
       const found = findGroupByName(children, name)
-      if (found) return found
+      if (found) {
+        return found
+      }
     }
   }
   return undefined

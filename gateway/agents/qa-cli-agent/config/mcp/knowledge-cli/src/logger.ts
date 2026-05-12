@@ -22,7 +22,9 @@ function sanitizeValue(value: unknown): unknown {
     }
   }
 
-  if (value === undefined) return undefined
+  if (value === undefined) {
+    return undefined
+  }
 
   try {
     return JSON.parse(JSON.stringify(value))
@@ -41,7 +43,9 @@ export function log(level: 'INFO' | 'ERROR', event: string, details: LogDetails 
 
   for (const [key, value] of Object.entries(details)) {
     const sanitized = sanitizeValue(value)
-    if (sanitized !== undefined) payload[key] = sanitized
+    if (sanitized !== undefined) {
+      payload[key] = sanitized
+    }
   }
 
   const line = JSON.stringify(payload)

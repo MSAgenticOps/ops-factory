@@ -144,7 +144,9 @@ interface ElementInfo {
 }
 
 async function getElements(): Promise<ElementInfo[]> {
-  if (!page) return []
+  if (!page) {
+    return []
+  }
   return page.evaluate(() => {
     const selectors = 'a, button, input, select, textarea, [role="button"], [onclick]'
     const nodes = Array.from(document.querySelectorAll(selectors))
@@ -174,9 +176,15 @@ async function handleNavigate(args: { url: string }): Promise<string> {
   const elements = await getElements()
   const elList = elements.map(e => {
     const extras: string[] = []
-    if (e.type) extras.push(`type=${e.type}`)
-    if (e.placeholder) extras.push(`placeholder="${e.placeholder}"`)
-    if (e.href && e.tag === 'a') extras.push(`href=${e.href.slice(0, 60)}`)
+    if (e.type) {
+      extras.push(`type=${e.type}`)
+    }
+    if (e.placeholder) {
+      extras.push(`placeholder="${e.placeholder}"`)
+    }
+    if (e.href && e.tag === 'a') {
+      extras.push(`href=${e.href.slice(0, 60)}`)
+    }
     const extra = extras.length ? ` ${extras.join(' ')}` : ''
     return `  [${e.index}] <${e.tag}> "${e.text}"${extra}`
   }).join('\n')
@@ -189,11 +197,15 @@ async function handleClick(args: { index: number }): Promise<string> {
   const result = await p.evaluate((idx: number) => {
     const nodes = document.querySelectorAll('a, button, input, select, textarea, [role="button"], [onclick]')
     const el = nodes[idx] as HTMLElement | undefined
-    if (!el) return null
+    if (!el) {
+      return null
+    }
     el.click()
     return { tag: el.tagName, text: (el.textContent?.trim() || '').slice(0, 60) }
   }, args.index)
-  if (!result) return `Error: No element at index ${args.index}`
+  if (!result) {
+    return `Error: No element at index ${args.index}`
+  }
   await new Promise(r => setTimeout(r, 800))
   return `Clicked [${args.index}] <${result.tag}> "${result.text}"\nURL: ${p.url()}`
 }
@@ -204,12 +216,18 @@ async function handleType(args: { index: number; text: string; press_enter?: boo
   const found = await p.evaluate((idx: number) => {
     const nodes = document.querySelectorAll('a, button, input, select, textarea, [role="button"], [onclick]')
     const el = nodes[idx] as HTMLElement | undefined
-    if (!el) return false
+    if (!el) {
+      return false
+    }
     el.focus()
-    if ((el as HTMLInputElement).value !== undefined) (el as HTMLInputElement).value = ''
+    if ((el as HTMLInputElement).value !== undefined) {
+      (el as HTMLInputElement).value = ''
+    }
     return true
   }, args.index)
-  if (!found) return `Error: No element at index ${args.index}`
+  if (!found) {
+    return `Error: No element at index ${args.index}`
+  }
   await p.keyboard.type(args.text, { delay: 30 })
   if (args.press_enter) {
     await p.keyboard.press('Enter')
@@ -219,13 +237,19 @@ async function handleType(args: { index: number; text: string; press_enter?: boo
 }
 
 async function handleGetState(): Promise<string> {
-  if (!page) return 'Error: No browser session. Call browser_navigate first.'
+  if (!page) {
+    return 'Error: No browser session. Call browser_navigate first.'
+  }
   const title = await page.title()
   const elements = await getElements()
   const elList = elements.map(e => {
     const extras: string[] = []
-    if (e.type) extras.push(`type=${e.type}`)
-    if (e.placeholder) extras.push(`placeholder="${e.placeholder}"`)
+    if (e.type) {
+      extras.push(`type=${e.type}`)
+    }
+    if (e.placeholder) {
+      extras.push(`placeholder="${e.placeholder}"`)
+    }
     const extra = extras.length ? ` ${extras.join(' ')}` : ''
     return `  [${e.index}] <${e.tag}> "${e.text}"${extra}`
   }).join('\n')
@@ -233,7 +257,9 @@ async function handleGetState(): Promise<string> {
 }
 
 async function handleExtract(args: { query?: string }): Promise<string> {
-  if (!page) return 'Error: No browser session.'
+  if (!page) {
+    return 'Error: No browser session.'
+  }
   const query = args.query || 'all'
   if (query === 'all' || query === 'body' || query === 'text') {
     return await page.evaluate(() => document.body.innerText.slice(0, 15000))
@@ -247,8 +273,12 @@ async function handleExtract(args: { query?: string }): Promise<string> {
 }
 
 async function handleScreenshot(args: { full_page?: boolean }): Promise<string> {
-  if (!page) return 'Error: No browser session.'
-  if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true })
+  if (!page) {
+    return 'Error: No browser session.'
+  }
+  if (!existsSync(OUTPUT_DIR)) {
+    mkdirSync(OUTPUT_DIR, { recursive: true })
+  }
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   const path = join(OUTPUT_DIR, `screenshot-${ts}.png`)
   await page.screenshot({ path, fullPage: args.full_page ?? false })
@@ -256,7 +286,9 @@ async function handleScreenshot(args: { full_page?: boolean }): Promise<string> 
 }
 
 async function handleScroll(args: { direction?: string }): Promise<string> {
-  if (!page) return 'Error: No browser session.'
+  if (!page) {
+    return 'Error: No browser session.'
+  }
   const dir = args.direction || 'down'
   const px = 600
   await page.evaluate((d: string, p: number) => window.scrollBy(0, d === 'up' ? -p : p), dir, px)

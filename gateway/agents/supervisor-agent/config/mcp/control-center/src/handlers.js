@@ -232,12 +232,16 @@ export const tools = [
 ];
 
 function normalizeHours(rawHours) {
-  if (typeof rawHours !== 'number' || !Number.isFinite(rawHours)) return 24;
+  if (typeof rawHours !== 'number' || !Number.isFinite(rawHours)) {
+    return 24;
+  }
   return Math.min(720, Math.max(1, rawHours));
 }
 
 function normalizeLines(rawLines) {
-  if (typeof rawLines !== 'number' || !Number.isFinite(rawLines)) return 200;
+  if (typeof rawLines !== 'number' || !Number.isFinite(rawLines)) {
+    return 200;
+  }
   return Math.min(1000, Math.max(1, Math.round(rawLines)));
 }
 

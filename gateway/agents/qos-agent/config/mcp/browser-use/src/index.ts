@@ -15,7 +15,9 @@ function escapeNonAscii(s: string): string {
 }
 // @ts-ignore
 process.stdout.write = function (chunk: any, ...rest: any[]): any {
-  if (typeof chunk === 'string') return _origWrite(escapeNonAscii(chunk), ...rest)
+  if (typeof chunk === 'string') {
+    return _origWrite(escapeNonAscii(chunk), ...rest)
+  }
   return _origWrite(chunk, ...rest)
 }
 

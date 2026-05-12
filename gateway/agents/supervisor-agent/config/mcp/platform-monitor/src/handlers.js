@@ -199,7 +199,9 @@ export async function handleGetRealtimeMetrics() {
 }
 
 function normalizeHours(rawHours) {
-  if (typeof rawHours !== 'number' || !Number.isFinite(rawHours)) return 24;
+  if (typeof rawHours !== 'number' || !Number.isFinite(rawHours)) {
+    return 24;
+  }
   return Math.min(720, Math.max(1, rawHours));
 }
 
