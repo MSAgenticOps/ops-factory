@@ -556,6 +556,8 @@
     "reasoningInProgress": "Reasoning...",
     "compactingContext": "Compacting context...",
     "copyMessage": "Copy message",
+    "copyOutput": "Copy output",
+    "copiedOutput": "Output copied",
     "voiceInput": "Voice input",
     "stopRecording": "Stop recording",
     "skillPickerLabel": "Skill picker",

@@ -556,6 +556,8 @@
     "reasoningInProgress": "正在思考...",
     "compactingContext": "正在压缩上下文...",
     "copyMessage": "复制消息",
+    "copyOutput": "复制输出",
+    "copiedOutput": "已复制输出",
     "voiceInput": "语音输入",
     "stopRecording": "停止录音",
     "skillPickerLabel": "技能选择器",
