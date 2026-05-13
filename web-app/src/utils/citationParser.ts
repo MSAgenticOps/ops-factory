@@ -86,11 +86,10 @@ function getDisplayCitation(
 
 export function parseCitations(text: string): Citation[] {
     const displayCitations = new Map<string, Citation>()
-    let match: RegExpExecArray | null
     const re = new RegExp(CITE_REGEX.source, CITE_REGEX.flags)
     let fallbackIndex = 1
 
-    while ((match = re.exec(text)) !== null) {
+    for (const match of text.matchAll(re)) {
         const token = parseCitationBody(match[1], fallbackIndex)
         if (token) {
             getDisplayCitation(token, displayCitations)
@@ -111,13 +110,13 @@ export function splitByCitations(text: string): TextSegment[] {
     const segments: TextSegment[] = []
     const re = new RegExp(CITE_REGEX.source, CITE_REGEX.flags)
     let lastIndex = 0
-    let match: RegExpExecArray | null
     let fallbackIndex = 1
     const displayCitations = new Map<string, Citation>()
 
-    while ((match = re.exec(text)) !== null) {
-        if (match.index > lastIndex) {
-            segments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
+    for (const match of text.matchAll(re)) {
+        const matchStart = match.index ?? 0
+        if (matchStart > lastIndex) {
+            segments.push({ type: 'text', value: text.slice(lastIndex, matchStart) })
         }
 
         const token = parseCitationBody(match[1], fallbackIndex)
@@ -127,7 +126,7 @@ export function splitByCitations(text: string): TextSegment[] {
             fallbackIndex = Math.max(fallbackIndex, token.citation.index + 1)
         }
 
-        lastIndex = re.lastIndex
+        lastIndex = matchStart + match[0].length
     }
 
     if (lastIndex < text.length) {

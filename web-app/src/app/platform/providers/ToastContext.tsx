@@ -55,7 +55,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
     const presentation = resolveToastPresentation()
 
     const showToast = useCallback((type: Toast['type'], message: string) => {
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+        const id = `toast-${crypto.randomUUID()}`
         const newToast: Toast = {
             id,
             type,

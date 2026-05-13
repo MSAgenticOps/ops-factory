@@ -38,7 +38,12 @@ export default function CreateChannelModal({
     const [name, setName] = useState('')
     const [type, setType] = useState<ChannelType>('whatsapp')
     const [agentId, setAgentId] = useState(defaultAgentId)
-    const [fallbackSuffix] = useState(() => Math.random().toString(36).slice(2, 8))
+    const [fallbackSuffix] = useState(() => {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID().split('-')[0]
+        }
+        return Date.now().toString(36).slice(-6)
+    })
 
     const handleTypeChange = (nextType: ChannelType) => {
         setType(nextType)
