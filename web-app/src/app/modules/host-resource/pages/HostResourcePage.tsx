@@ -79,6 +79,8 @@ export default function HostResourcePage() {
         return SIDEBAR_DEFAULT
     })
     const dragging = useRef(false)
+    const sidebarWidthRef = useRef(sidebarWidth)
+    sidebarWidthRef.current = sidebarWidth
 
     // Data hooks
     const { groups, fetchGroups, createGroup, updateGroup, deleteGroup } = useHostGroups()
@@ -492,7 +494,7 @@ export default function HostResourcePage() {
         e.preventDefault()
         dragging.current = true
         const startX = e.clientX
-        const startWidth = sidebarWidth
+        const startWidth = sidebarWidthRef.current
         const target = e.currentTarget
         target.classList.add('hr-resize-active')
 
@@ -509,16 +511,13 @@ export default function HostResourcePage() {
             document.removeEventListener('mouseup', onMouseUp)
             document.body.style.cursor = ''
             document.body.style.userSelect = ''
-            setSidebarWidth(w => {
-                localStorage.setItem(SIDEBAR_STORAGE_KEY, String(w))
-                return w
-            })
+            localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidthRef.current))
         }
         document.body.style.cursor = 'col-resize'
         document.body.style.userSelect = 'none'
         document.addEventListener('mousemove', onMouseMove)
         document.addEventListener('mouseup', onMouseUp)
-    }, [sidebarWidth])
+    }, [])
 
     const handleResizeReset = useCallback(() => {
         setSidebarWidth(SIDEBAR_DEFAULT)
