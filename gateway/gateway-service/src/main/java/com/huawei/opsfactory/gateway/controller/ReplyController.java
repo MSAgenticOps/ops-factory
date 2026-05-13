@@ -110,7 +110,7 @@ public class ReplyController {
      * @return the result
      */
     @PostMapping(value = "/sessions/{sessionId}/reply", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Void> sessionReply(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<Void> sessionReply(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         @RequestBody String body, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
@@ -171,7 +171,7 @@ public class ReplyController {
      * @return the result
      */
     @GetMapping(value = "/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<Void> sessionEvents(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<Void> sessionEvents(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
@@ -213,7 +213,7 @@ public class ReplyController {
      * @return the result
      */
     @PostMapping(value = "/sessions/{sessionId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Void> sessionCancel(@PathVariable String agentId, @PathVariable String sessionId,
+    public Mono<Void> sessionCancel(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         @RequestBody String body, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
@@ -384,7 +384,8 @@ public class ReplyController {
 
     private HttpStatus sessionErrorStatus(Throwable err) {
         if (err instanceof ResponseStatusException responseStatusException) {
-            return responseStatusException.getStatus();
+            HttpStatus status = HttpStatus.resolve(responseStatusException.getStatusCode().value());
+            return status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR;
         }
         if (err instanceof WebClientResponseException webClientResponseException) {
             HttpStatus status = HttpStatus.resolve(webClientResponseException.getRawStatusCode());
@@ -646,7 +647,7 @@ public class ReplyController {
      * @return the result
      */
     @PostMapping(value = {"/resume", "/agent/resume"}, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> resume(@PathVariable String agentId, @RequestBody String body, ServerWebExchange exchange) {
+    public Mono<String> resume(@PathVariable("agentId") String agentId, @RequestBody String body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String sessionId = JsonUtil.extractSessionId(body);
         return instanceManager.getOrSpawn(agentId, userId)
@@ -739,7 +740,7 @@ public class ReplyController {
      * @return the result
      */
     @PostMapping({"/restart", "/agent/restart"})
-    public Mono<Void> restart(@PathVariable String agentId, @RequestBody String body, ServerWebExchange exchange) {
+    public Mono<Void> restart(@PathVariable("agentId") String agentId, @RequestBody String body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(instance -> goosedProxy.proxyWithBody(exchange.getResponse(), instance.getPort(), "/agent/restart",

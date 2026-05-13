@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Provides CRUD operations, topology queries, and host-id synchronization for business services.

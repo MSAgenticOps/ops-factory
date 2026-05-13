@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 /**
  * @deprecated Use {@link ClusterRelationService} instead. Host-level relations are replaced by cluster-level relations.

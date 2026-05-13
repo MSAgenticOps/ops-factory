@@ -61,7 +61,8 @@ public class WebFluxConfig {
             headers.set("Access-Control-Expose-Headers", "*");
             headers.set("Access-Control-Max-Age", "3600");
 
-            if ("OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethodValue())) {
+            if (exchange.getRequest().getMethod() != null
+                && "OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().name())) {
                 if (requestOrigin != null && allowOrigin == null) {
                     response.setStatusCode(HttpStatus.FORBIDDEN);
                     return response.setComplete();

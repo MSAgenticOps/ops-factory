@@ -57,7 +57,7 @@ public class FileCitationController {
      * @return the result
      */
     @GetMapping("/content")
-    public Mono<ResponseEntity<?>> getCitationFile(@PathVariable String agentId,
+    public Mono<ResponseEntity<?>> getCitationFile(@PathVariable("agentId") String agentId,
         @RequestParam("path") String requestedPath) {
         return Mono.<ResponseEntity<?>> fromCallable(() -> {
             Path realRoot = agentConfigService.getKnowledgeCliRootDir(agentId).toRealPath();

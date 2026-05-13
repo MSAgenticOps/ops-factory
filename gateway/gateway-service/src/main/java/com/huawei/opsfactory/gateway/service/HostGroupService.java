@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Manages host group hierarchy and tree construction with cascade delete support.
