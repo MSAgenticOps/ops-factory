@@ -415,7 +415,7 @@ export function buildChatMessageOrderDigest(messages: ChatMessage[], limit = 30)
 function convertBackendMessage(msg: Record<string, unknown>, useLocalTime = false): ChatMessage {
     let metadata = msg.metadata as MessageMetadata | undefined
     const createdCandidate = msg.created ?? msg.created_at ?? msg.createdAt
-    const id = (msg.id as string) || `msg-${Date.now()}-${Math.random()}`
+    const id = (msg.id as string) || `msg-${crypto.randomUUID()}`
     const created = coerceEpochSeconds(createdCandidate)
     const resolvedCreated = (() => {
         if (!useLocalTime && created !== undefined) return created

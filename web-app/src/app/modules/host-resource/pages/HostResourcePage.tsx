@@ -222,11 +222,17 @@ export default function HostResourcePage() {
                     .map(hid => allHosts.find(h => h.id === hid)?.name)
                     .filter(Boolean)
                     .join(', ')
+                const subtitle = hostNames || bs.code || ''
                 childNodes.push({
                     id: bs.id,
                     type: 'business-service' as TreeNodeType,
                     name: bs.name,
-                    subtitle: hostNames || bs.code,
+                    subtitle: subtitle
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;'),
                     raw: bs,
                 })
             }

@@ -85,10 +85,9 @@ function getDisplayCitation(
 export function parseFileCitations(text: string): FileCitation[] {
     const displayCitations = new Map<string, FileCitation>()
     const re = new RegExp(FILE_CITE_REGEX.source, FILE_CITE_REGEX.flags)
-    let match: RegExpExecArray | null
     let fallbackIndex = 1
 
-    while ((match = re.exec(text)) !== null) {
+    for (const match of text.matchAll(re)) {
         const token = parseFileCitationBody(match[1], fallbackIndex)
         if (token) {
             getDisplayCitation(token, displayCitations)

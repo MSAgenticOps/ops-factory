@@ -31,7 +31,7 @@ export default function AddMcpModal({
   const [args, setArgs] = useState('')
   const [uri, setUri] = useState('')
   const [envVars, setEnvVars] = useState<EnvVarRow[]>([])
-  const [timeout, setTimeout] = useState('300')
+  const [timeout, setTimeoutValue] = useState('300')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isEditMode = mode === 'edit'
@@ -48,7 +48,7 @@ export default function AddMcpModal({
       setUri(initialEntry.uri || '')
       const existingEnvKeys = initialEntry.env_keys || Object.keys(initialEntry.envs || {})
       setEnvVars(existingEnvKeys.map((key) => ({ key, value: '', fromExisting: true })))
-      setTimeout(String(initialEntry.timeout || 300))
+      setTimeoutValue(String(initialEntry.timeout || 300))
       setError(null)
       return
     }
@@ -63,7 +63,7 @@ export default function AddMcpModal({
     setArgs('')
     setUri('')
     setEnvVars([])
-    setTimeout('300')
+    setTimeoutValue('300')
     setError(null)
   }
 
@@ -358,7 +358,7 @@ export default function AddMcpModal({
                 type="number"
                 className="form-input mcp-form-timeout"
                 value={timeout}
-                onChange={e => setTimeout(e.target.value)}
+                onChange={e => setTimeoutValue(e.target.value)}
                 min="1"
                 max="3600"
               />

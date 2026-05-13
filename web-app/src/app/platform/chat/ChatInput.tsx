@@ -376,7 +376,7 @@ export default function ChatInput({
             const maxSize = isImage ? MAX_IMAGE_SIZE_MB : MAX_FILE_SIZE_MB
 
             const entry: UploadedFile = {
-                id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                id: `file-${crypto.randomUUID()}`,
                 file,
                 name: file.name,
                 type: file.type,
