@@ -78,21 +78,21 @@ public class QosCollectionScheduler {
 
     private final AlarmWeightStore alarmWeightStore;
 
-/**
- * Qos Collection Scheduler.
- *
- * @param properties the properties
- * @param dvClient the dvClient
- * @param calculationService the calculationService
- * @param scopeStore the scopeStore
- * @param configStore the configStore
- * @param rawDataStore the rawDataStore
- * @param detailDataStore the detailDataStore
- * @param normalizeDataStore the normalizeDataStore
- * @param alarmDetailDataStore the alarmDetailDataStore
- * @param dnRegistryStore the dnRegistryStore
- * @param alarmWeightStore the alarmWeightStore
- */
+    /**
+     * Qos Collection Scheduler.
+     *
+     * @param properties the properties
+     * @param dvClient the dvClient
+     * @param calculationService the calculationService
+     * @param scopeStore the scopeStore
+     * @param configStore the configStore
+     * @param rawDataStore the rawDataStore
+     * @param detailDataStore the detailDataStore
+     * @param normalizeDataStore the normalizeDataStore
+     * @param alarmDetailDataStore the alarmDetailDataStore
+     * @param dnRegistryStore the dnRegistryStore
+     * @param alarmWeightStore the alarmWeightStore
+     */
     public QosCollectionScheduler(OperationIntelligenceProperties properties, DvClient dvClient,
         QosCalculationService calculationService, PerformanceIndicatorScopeStore scopeStore,
         ProductConfigRuleStore configStore, IndicatorRawDataStore rawDataStore,
@@ -141,9 +141,9 @@ public class QosCollectionScheduler {
             .divide(BigDecimal.valueOf(list.size()), 4, RoundingMode.HALF_UP);
     }
 
-/**
- * collect Availability And Performance.
- */
+    /**
+     * collect Availability And Performance.
+     */
     @Scheduled(fixedDelayString = "${operation-intelligence.qos.collection-interval-ms:300000}")
     public void collectAvailabilityAndPerformance() {
         if (!properties.getQos().isEnabled())
@@ -230,9 +230,9 @@ public class QosCollectionScheduler {
 
     // ---- helpers ----
 
-/**
- * collect Resource Data.
- */
+    /**
+     * collect Resource Data.
+     */
     @Scheduled(fixedDelayString = "${operation-intelligence.qos.collection-interval-ms:300000}")
     public void collectResourceData() {
         if (!properties.getQos().isEnabled())
@@ -312,9 +312,9 @@ public class QosCollectionScheduler {
         log.info("QoS collection: resource collection completed");
     }
 
-/**
- * cleanup Old Data.
- */
+    /**
+     * cleanup Old Data.
+     */
     @Scheduled(cron = "0 0 3 * * *")
     public void cleanupOldData() {
         if (!properties.getQos().isEnabled())
