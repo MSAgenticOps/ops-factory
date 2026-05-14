@@ -11,6 +11,10 @@ import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.common.util.YamlLoader;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,19 +23,22 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Pattern;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Manages agent configuration, registry, skills, memory files, and MCP settings.
@@ -43,11 +50,19 @@ import javax.annotation.PostConstruct;
 public class AgentConfigService {
     private static final Logger log = LoggerFactory.getLogger(AgentConfigService.class);
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
 
     private static final String KNOWLEDGE_CLI_MCP = "knowledge-cli";
 
     private static final String DEFAULT_KNOWLEDGE_CLI_ROOT_DIR = "../data";
+
+    private static final Pattern PROVIDER_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
+
+    private static final List<String> MODEL_CONFIG_KEYS = List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_MODE",
+        "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS", "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY",
+        "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
 
     private final GatewayProperties properties;
 
@@ -249,6 +264,287 @@ public class AgentConfigService {
     public void invalidateCache(String agentId) {
         configCache.remove(agentId);
         secretsCache.remove(agentId);
+    }
+
+    /**
+     * Returns model-related config values from an agent config.
+     *
+     * @param config the config parameter
+     * @return the result
+     */
+    public Map<String, Object> extractModelConfig(Map<String, Object> config) {
+        Map<String, Object> result = new HashMap<>();
+        for (String key : MODEL_CONFIG_KEYS) {
+            result.put(key, config.getOrDefault(key, ""));
+        }
+        return result;
+    }
+
+    /**
+     * Returns a compact summary of the agent config.yaml for overview rendering.
+     *
+     * @param config the parsed config.yaml content
+     * @return the result
+     */
+    public Map<String, Object> extractAgentConfigSummary(Map<String, Object> config) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("mode", config.getOrDefault("GOOSE_MODE", ""));
+        result.put("disableKeyring", config.getOrDefault("GOOSE_DISABLE_KEYRING", ""));
+        result.put("telemetryEnabled", config.getOrDefault("GOOSE_TELEMETRY_ENABLED", ""));
+
+        int enabledExtensions = 0;
+        int disabledExtensions = 0;
+        Object extensionsObj = config.get("extensions");
+        if (extensionsObj instanceof Map<?, ?> extensions) {
+            for (Object extensionObj : extensions.values()) {
+                if (extensionObj instanceof Map<?, ?> extension) {
+                    if (isEnabled(extension.get("enabled"))) {
+                        enabledExtensions++;
+                    } else {
+                        disabledExtensions++;
+                    }
+                }
+            }
+        }
+        result.put("enabledExtensions", enabledExtensions);
+        result.put("disabledExtensions", disabledExtensions);
+        return result;
+    }
+
+    /**
+     * Lists custom provider JSON definitions for an agent.
+     *
+     * @param agentId the agentId parameter
+     * @return the result
+     */
+    public List<Map<String, Object>> listCustomProviders(String agentId) {
+        Path providersDir = getCustomProvidersDir(agentId);
+        if (!Files.isDirectory(providersDir)) {
+            return List.of();
+        }
+        List<Map<String, Object>> providers = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(providersDir, "*.json")) {
+            for (Path entry : stream) {
+                if (!Files.isRegularFile(entry)) {
+                    continue;
+                }
+                try {
+                    Map<String, Object> provider =
+                        OBJECT_MAPPER.readValue(entry.toFile(), new TypeReference<Map<String, Object>>() {});
+                    provider.put("fileName", entry.getFileName().toString());
+                    providers.add(provider);
+                } catch (IOException | IllegalArgumentException e) {
+                    log.warn("Failed to parse custom provider {} for {}: {}", entry.getFileName(), agentId,
+                        e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to list custom providers for {}: {}", agentId, e.getMessage());
+        }
+        providers.sort((left, right) -> String.valueOf(left.getOrDefault("display_name", left.get("name")))
+            .compareToIgnoreCase(String.valueOf(right.getOrDefault("display_name", right.get("name")))));
+        return providers;
+    }
+
+    /**
+     * Updates model-related keys in config.yaml.
+     *
+     * @param agentId the agentId parameter
+     * @param modelConfig the modelConfig parameter
+     * @throws IOException if the operation fails
+     */
+    public void updateModelConfig(String agentId, Map<String, String> modelConfig) throws IOException {
+        Path configPath = getAgentConfigDir(agentId).resolve("config.yaml");
+        Map<String, Object> config = new LinkedHashMap<>(YamlLoader.load(configPath));
+        String provider = trimToNull(modelConfig.get("GOOSE_PROVIDER"));
+        String model = trimToNull(modelConfig.get("GOOSE_MODEL"));
+        if (provider == null) {
+            throw new IllegalArgumentException("GOOSE_PROVIDER is required");
+        }
+        if (model == null) {
+            throw new IllegalArgumentException("GOOSE_MODEL is required");
+        }
+        if (!customProviderExists(agentId, provider) && !provider.equals(config.get("GOOSE_PROVIDER"))) {
+            throw new IllegalArgumentException("Provider '" + provider + "' not found for agent '" + agentId + "'");
+        }
+
+        for (String key : MODEL_CONFIG_KEYS) {
+            if (modelConfig.containsKey(key)) {
+                String value = trimToNull(modelConfig.get(key));
+                if (value == null) {
+                    config.remove(key);
+                } else {
+                    config.put(key, value);
+                }
+            }
+        }
+
+        Yaml yaml = createBlockYaml();
+        Files.writeString(configPath, yaml.dump(config), StandardCharsets.UTF_8);
+        invalidateCache(agentId);
+    }
+
+    /**
+     * Creates a custom provider JSON definition for an agent.
+     *
+     * @param agentId the agentId parameter
+     * @param provider the provider parameter
+     * @return the result
+     * @throws IOException if the operation fails
+     */
+    public Map<String, Object> createCustomProvider(String agentId, Map<String, Object> provider) throws IOException {
+        String name = trimToNull(asString(provider.get("name")));
+        if (name == null) {
+            throw new IllegalArgumentException("Provider name is required");
+        }
+        if (!PROVIDER_NAME_PATTERN.matcher(name).matches()) {
+            throw new IllegalArgumentException("Provider name contains unsupported characters");
+        }
+        Path providersDir = getCustomProvidersDir(agentId);
+        Files.createDirectories(providersDir);
+        Path providerPath = providersDir.resolve(name + ".json");
+        if (Files.exists(providerPath)) {
+            throw new IllegalArgumentException("Provider '" + name + "' already exists");
+        }
+
+        Map<String, Object> normalized = normalizeProvider(provider, name);
+        Files.writeString(providerPath, OBJECT_MAPPER.writeValueAsString(normalized) + System.lineSeparator(),
+            StandardCharsets.UTF_8);
+        writeProviderSecret(agentId, String.valueOf(normalized.get("api_key_env")), trimToNull(asString(provider.get("api_key"))));
+        normalized.put("fileName", providerPath.getFileName().toString());
+        return normalized;
+    }
+
+    /**
+     * Updates editable fields in an existing custom provider JSON definition.
+     *
+     * @param agentId the agentId parameter
+     * @param providerName the providerName parameter
+     * @param provider the provider parameter
+     * @return the result
+     * @throws IOException if the operation fails
+     */
+    public Map<String, Object> updateCustomProvider(String agentId, String providerName, Map<String, Object> provider)
+        throws IOException {
+        String name = trimToNull(providerName);
+        if (name == null) {
+            throw new IllegalArgumentException("Provider name is required");
+        }
+        if (!PROVIDER_NAME_PATTERN.matcher(name).matches()) {
+            throw new IllegalArgumentException("Provider name contains unsupported characters");
+        }
+        Path providerPath = getCustomProvidersDir(agentId).resolve(name + ".json");
+        if (!Files.exists(providerPath)) {
+            throw new IllegalArgumentException("Provider '" + name + "' not found");
+        }
+
+        Map<String, Object> existing =
+            OBJECT_MAPPER.readValue(providerPath.toFile(), new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> updated = new LinkedHashMap<>(existing);
+        updated.put("name", defaultString(existing.get("name"), name));
+        updated.put("engine", "openai");
+        updated.put("display_name", defaultString(existing.get("display_name"), name));
+        updated.put("description", defaultString(provider.get("description"), ""));
+        updated.put("api_key_env", defaultString(existing.get("api_key_env"), buildApiKeyEnv(name)));
+        updated.put("base_url", defaultString(provider.get("base_url"), ""));
+        updated.put("models", normalizeProviderModels(provider.get("models")));
+        updated.put("supports_streaming", true);
+        updated.put("requires_auth", true);
+
+        Files.writeString(providerPath, OBJECT_MAPPER.writeValueAsString(updated) + System.lineSeparator(),
+            StandardCharsets.UTF_8);
+        writeProviderSecret(agentId, String.valueOf(updated.get("api_key_env")), trimToNull(asString(provider.get("api_key"))));
+        updated.put("fileName", providerPath.getFileName().toString());
+        return updated;
+    }
+
+    private Map<String, Object> normalizeProvider(Map<String, Object> provider, String name) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("name", name);
+        result.put("engine", "openai");
+        result.put("display_name", defaultString(provider.get("display_name"), name));
+        result.put("description", defaultString(provider.get("description"), ""));
+        result.put("api_key_env", buildApiKeyEnv(name));
+        result.put("base_url", defaultString(provider.get("base_url"), ""));
+        result.put("models", normalizeProviderModels(provider.get("models")));
+        result.put("supports_streaming", true);
+        result.put("requires_auth", true);
+        return result;
+    }
+
+    private void writeProviderSecret(String agentId, String apiKeyEnv, String apiKey) throws IOException {
+        if (apiKey == null || apiKeyEnv == null || apiKeyEnv.isBlank()) {
+            return;
+        }
+        Path secretsPath = getAgentConfigDir(agentId).resolve("secrets.yaml");
+        Map<String, Object> secrets = new LinkedHashMap<>(YamlLoader.load(secretsPath));
+        secrets.put(apiKeyEnv, apiKey);
+        Yaml yaml = createBlockYaml();
+        Files.writeString(secretsPath, yaml.dump(secrets), StandardCharsets.UTF_8);
+        invalidateCache(agentId);
+    }
+
+    private String buildApiKeyEnv(String providerName) {
+        return "CUSTOM_" + providerName.replaceFirst("^custom[_-]?", "")
+            .replaceAll("[^A-Za-z0-9]+", "_")
+            .replaceAll("^_+|_+$", "")
+            .toUpperCase(java.util.Locale.ROOT) + "_API_KEY";
+    }
+
+    private List<Map<String, Object>> normalizeProviderModels(Object modelsObj) {
+        if (!(modelsObj instanceof List<?> rawModels)) {
+            throw new IllegalArgumentException("At least one model is required");
+        }
+        List<Map<String, Object>> models = new ArrayList<>();
+        for (Object rawModel : rawModels) {
+            if (!(rawModel instanceof Map<?, ?> rawMap)) {
+                continue;
+            }
+            String name = defaultString(rawMap.get("name"), "");
+            Map<String, Object> model = new HashMap<>();
+            model.put("name", name);
+            Object contextLimit = rawMap.get("context_limit");
+            if (contextLimit instanceof Number || contextLimit instanceof String) {
+                model.put("context_limit", contextLimit);
+            }
+            models.add(model);
+        }
+        if (models.isEmpty()) {
+            throw new IllegalArgumentException("At least one model is required");
+        }
+        return models;
+    }
+
+    private boolean customProviderExists(String agentId, String providerName) {
+        return listCustomProviders(agentId).stream().anyMatch(provider -> providerName.equals(provider.get("name")));
+    }
+
+    private Path getCustomProvidersDir(String agentId) {
+        return getAgentConfigDir(agentId).resolve("custom_providers");
+    }
+
+    private String defaultString(Object value, String fallback) {
+        String result = trimToNull(asString(value));
+        return result != null ? result : fallback;
+    }
+
+    private String asString(Object value) {
+        return value != null ? value.toString() : null;
+    }
+
+    private boolean isEnabled(Object value) {
+        if (value instanceof Boolean enabled) {
+            return enabled;
+        }
+        return Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**

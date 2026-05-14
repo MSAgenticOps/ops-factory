@@ -53,7 +53,7 @@ public class ChannelWebhookController {
      * @return Mono emitting ResponseEntity with the challenge response string
      */
     @GetMapping(value = "/whatsapp/{channelId}", produces = MediaType.TEXT_PLAIN_VALUE)
-    public Mono<ResponseEntity<String>> verifyWhatsAppWebhook(@PathVariable String channelId,
+    public Mono<ResponseEntity<String>> verifyWhatsAppWebhook(@PathVariable("channelId") String channelId,
         ServerWebExchange exchange) {
         ChannelAdapter adapter = channelAdapterRegistry.require("whatsapp");
         return adapter.verifyWebhook(channelId, exchange).map(ResponseEntity::ok);
@@ -69,7 +69,7 @@ public class ChannelWebhookController {
      */
     @PostMapping(value = "/whatsapp/{channelId}", consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<Map<String, Object>>> receiveWhatsAppWebhook(@PathVariable String channelId,
+    public Mono<ResponseEntity<Map<String, Object>>> receiveWhatsAppWebhook(@PathVariable("channelId") String channelId,
         @RequestBody String body, ServerWebExchange exchange) {
         ChannelAdapter adapter = channelAdapterRegistry.require("whatsapp");
         return adapter.handleWebhook(channelId, body, exchange)

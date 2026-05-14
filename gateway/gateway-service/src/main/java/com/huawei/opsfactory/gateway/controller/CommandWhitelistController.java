@@ -51,7 +51,7 @@ public class CommandWhitelistController {
      * @param exchange current HTTP exchange carrying user context
      * @return Mono emitting the current whitelist configuration map
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public Mono<Map<String, Object>> getWhitelist(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -67,7 +67,7 @@ public class CommandWhitelistController {
      * @param exchange current HTTP exchange carrying user context
      * @return Mono emitting ResponseEntity with added command or 409
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> addCommand(@RequestBody Map<String, Object> request,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -96,7 +96,7 @@ public class CommandWhitelistController {
      * @return Mono emitting ResponseEntity with updated command or 404
      */
     @PutMapping("/{pattern}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateCommand(@PathVariable String pattern,
+    public Mono<ResponseEntity<Map<String, Object>>> updateCommand(@PathVariable("pattern") String pattern,
         @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -123,7 +123,7 @@ public class CommandWhitelistController {
      * @return Mono emitting ResponseEntity with success status or 404
      */
     @DeleteMapping("/{pattern}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteCommand(@PathVariable String pattern,
+    public Mono<ResponseEntity<Map<String, Object>>> deleteCommand(@PathVariable("pattern") String pattern,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {

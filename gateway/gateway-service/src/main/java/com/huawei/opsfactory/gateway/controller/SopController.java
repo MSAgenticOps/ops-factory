@@ -56,7 +56,7 @@ public class SopController {
      * @param exchange the current server web exchange, used for admin role verification
      * @return a mono wrapping a map containing the list of all SOP definitions under the {@code sops} key
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public Mono<Map<String, Object>> listSops(ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -75,7 +75,7 @@ public class SopController {
      * @return a mono wrapping a response entity with the SOP details, or 404 if not found
      */
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getSop(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getSop(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             Map<String, Object> sop = sopService.getSop(id);
@@ -100,7 +100,7 @@ public class SopController {
      * @return a mono wrapping a response entity with the created SOP and 201 status,
      *         or 409 if a duplicate name already exists
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> createSop(@RequestBody Map<String, Object> request,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
@@ -131,7 +131,7 @@ public class SopController {
      *         or 409 if the update causes a name conflict
      */
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> updateSop(@PathVariable String id,
+    public Mono<ResponseEntity<Map<String, Object>>> updateSop(@PathVariable("id") String id,
         @RequestBody Map<String, Object> request, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
@@ -165,7 +165,7 @@ public class SopController {
      * @return a mono wrapping a response entity with a success flag, or 404 if the SOP does not exist
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteSop(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteSop(@PathVariable("id") String id, ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             boolean deleted = sopService.deleteSop(id);

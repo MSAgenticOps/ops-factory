@@ -55,7 +55,7 @@ public class AuthWebFilter implements WebFilter {
         ServerHttpRequest request = exchange.getRequest();
 
         // OPTIONS preflight passes through
-        if ("OPTIONS".equalsIgnoreCase(request.getMethodValue())) {
+        if (request.getMethod() != null && "OPTIONS".equalsIgnoreCase(request.getMethod().name())) {
             return chain.filter(exchange);
         }
 

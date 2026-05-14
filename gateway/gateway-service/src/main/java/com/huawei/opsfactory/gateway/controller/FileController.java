@@ -72,7 +72,7 @@ public class FileController {
      * @return the lists files in the agent workspace directory
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> listFiles(@PathVariable String agentId, ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listFiles(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
         return Mono.fromCallable(() -> Map.<String, Object> of("files", fileService.listFiles(workingDir)))
@@ -89,7 +89,7 @@ public class FileController {
      * @return the downloads or retrieves a file from the agent workspace
      */
     @GetMapping("/**")
-    public Mono<ResponseEntity<?>> getFile(@PathVariable String agentId, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<?>> getFile(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
         Path rootDir = resolveRootOrThrow(workingDir, exchange);
@@ -218,7 +218,7 @@ public class FileController {
      * @return the uploads a file to the agent workspace for a specific session
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<Map<String, Object>> uploadFile(@PathVariable String agentId, @RequestPart("file") FilePart filePart,
+    public Mono<Map<String, Object>> uploadFile(@PathVariable("agentId") String agentId, @RequestPart("file") FilePart filePart,
         @RequestPart("sessionId") String sessionId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path uploadsDir = agentConfigService.getUserAgentDir(userId, agentId).resolve("uploads").resolve(sessionId);

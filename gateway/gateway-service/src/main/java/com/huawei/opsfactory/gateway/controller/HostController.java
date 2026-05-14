@@ -77,7 +77,7 @@ public class HostController {
      * @param exchange lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
      * @return the lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     public Mono<Map<String, Object>> listHosts(@RequestParam(value = "tags", required = false) String tags,
         @RequestParam(value = "clusterId", required = false) String clusterId,
         @RequestParam(value = "groupId", required = false) String groupId,
@@ -216,7 +216,7 @@ public class HostController {
      * @param exchange creates a new host
      * @return the creates a new host
      */
-    @PostMapping
+    @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> createHost(@RequestBody Map<String, Object> request,
         ServerWebExchange exchange) {
         UserContextFilter.requireAdmin(exchange);

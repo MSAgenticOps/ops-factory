@@ -152,7 +152,7 @@ public class AgentController {
      * @throws ResponseStatusException if the agent configuration files cannot be removed from disk
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         try {
             instanceManager.stopAllForAgent(id);
@@ -168,8 +168,6 @@ public class AgentController {
         }
     }
 
-    // ── Memory endpoints ──────────────────────────────────────────
-
     /**
      * Lists all skills configured for the specified agent.
      *
@@ -178,7 +176,7 @@ public class AgentController {
      * @return reactive map containing a list of skill descriptors keyed by {@code "skills"}
      */
     @GetMapping("/{id}/skills")
-    public Mono<Map<String, Object>> listSkills(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> listSkills(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         return Mono.just(Map.of("skills", agentConfigService.listSkills(id)));
     }
@@ -192,7 +190,7 @@ public class AgentController {
      *         and agents.md content; or 404 if the agent is not found
      */
     @GetMapping("/{id}/config")
-    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable("id") String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
         if (entry == null) {
@@ -205,6 +203,9 @@ public class AgentController {
         result.put("agentsMd", agentConfigService.readAgentsMd(id));
         result.put("provider", config.getOrDefault("GOOSE_PROVIDER", ""));
         result.put("model", config.getOrDefault("GOOSE_MODEL", ""));
+        result.put("modelConfig", agentConfigService.extractModelConfig(config));
+        result.put("configSummary", agentConfigService.extractAgentConfigSummary(config));
+        result.put("providers", agentConfigService.listCustomProviders(id));
         result.put("workingDir", agentConfigService.getAgentsDir().resolve(id).toString());
         return Mono.just(ResponseEntity.ok(result));
     }
@@ -220,7 +221,7 @@ public class AgentController {
      * @throws ResponseStatusException if the agents.md file cannot be written to disk
      */
     @PutMapping("/{id}/config")
-    public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable String id,
+    public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable("id") String id,
         @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         requireAdmin(exchange);
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
@@ -239,6 +240,103 @@ public class AgentController {
             }
         }
         return Mono.just(ResponseEntity.ok(Map.of("success", (Object) true)));
+    }
+
+    /**
+     * Updates the model configuration for the specified agent.
+     *
+     * @param id the id parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
+     */
+    @PutMapping("/{id}/model-config")
+    public Mono<ResponseEntity<Map<String, Object>>> updateModelConfig(@PathVariable("id") String id,
+        @RequestBody Map<String, String> body, ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        AgentRegistryEntry entry = agentConfigService.findAgent(id);
+        if (entry == null) {
+            return Mono.just(badAgent(id));
+        }
+        try {
+            agentConfigService.updateModelConfig(id, body);
+            return Mono.just(ResponseEntity.ok(Map.of("success", (Object) true)));
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorBody = new LinkedHashMap<>();
+            errorBody.put("success", false);
+            errorBody.put("error", e.getMessage());
+            return Mono.just(ResponseEntity.badRequest().body(errorBody));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update model config", e);
+        }
+    }
+
+    /**
+     * Creates a custom provider for the specified agent.
+     *
+     * @param id the id parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
+     */
+    @PostMapping("/{id}/providers")
+    public Mono<ResponseEntity<Map<String, Object>>> createProvider(@PathVariable("id") String id,
+        @RequestBody Map<String, Object> body, ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        AgentRegistryEntry entry = agentConfigService.findAgent(id);
+        if (entry == null) {
+            return Mono.just(badAgent(id));
+        }
+        try {
+            Map<String, Object> provider = agentConfigService.createCustomProvider(id, body);
+            return Mono.just(ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("success", (Object) true, "provider", provider)));
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorBody = new LinkedHashMap<>();
+            errorBody.put("success", false);
+            errorBody.put("error", e.getMessage());
+            return Mono.just(ResponseEntity.badRequest().body(errorBody));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create provider", e);
+        }
+    }
+
+    /**
+     * Updates a custom provider for the specified agent.
+     *
+     * @param id the id parameter
+     * @param providerName the providerName parameter
+     * @param body the body parameter
+     * @param exchange the exchange parameter
+     * @return the result
+     */
+    @PutMapping("/{id}/providers/{providerName}")
+    public Mono<ResponseEntity<Map<String, Object>>> updateProvider(@PathVariable("id") String id,
+        @PathVariable("providerName") String providerName, @RequestBody Map<String, Object> body,
+        ServerWebExchange exchange) {
+        requireAdmin(exchange);
+        AgentRegistryEntry entry = agentConfigService.findAgent(id);
+        if (entry == null) {
+            return Mono.just(badAgent(id));
+        }
+        try {
+            Map<String, Object> provider = agentConfigService.updateCustomProvider(id, providerName, body);
+            return Mono.just(ResponseEntity.ok(Map.of("success", (Object) true, "provider", provider)));
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorBody = new LinkedHashMap<>();
+            errorBody.put("success", false);
+            errorBody.put("error", e.getMessage());
+            return Mono.just(ResponseEntity.badRequest().body(errorBody));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update provider", e);
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> badAgent(String id) {
+        Map<String, Object> errorBody = new LinkedHashMap<>();
+        errorBody.put("success", false);
+        errorBody.put("error", "Agent '" + id + "' not found");
+        return ResponseEntity.badRequest().body(errorBody);
     }
 
     /**
@@ -267,8 +365,8 @@ public class AgentController {
      *         category names, or 404 if the memory file does not exist
      */
     @GetMapping("/{id}/memory/{category}")
-    public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable String id,
-        @PathVariable String category, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable("id") String id,
+        @PathVariable("category") String category, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
@@ -293,8 +391,8 @@ public class AgentController {
      *         or a bad-request body if the write fails due to invalid arguments
      */
     @PutMapping("/{id}/memory/{category}")
-    public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable String id,
-        @PathVariable String category, @RequestBody Map<String, String> body, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable("id") String id,
+        @PathVariable("category") String category, @RequestBody Map<String, String> body, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();
@@ -320,8 +418,8 @@ public class AgentController {
      *         or a bad-request body if the deletion fails due to invalid arguments
      */
     @DeleteMapping("/{id}/memory/{category}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable String id,
-        @PathVariable String category, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable("id") String id,
+        @PathVariable("category") String category, ServerWebExchange exchange) {
         requireAdmin(exchange);
         if (!isValidCategory(category)) {
             return badCategory();

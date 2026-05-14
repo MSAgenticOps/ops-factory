@@ -210,6 +210,161 @@ public class AgentConfigServiceTest {
     }
 
     /**
+     * Tests list custom providers parses provider json files.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testListCustomProviders_parsesProviderJson() throws IOException {
+        Path providersDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config")
+                .resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_local.json"),
+                "{\n"
+                        + "  \"name\": \"custom_local\",\n"
+                        + "  \"display_name\": \"Local\",\n"
+                        + "  \"engine\": \"openai\",\n"
+                        + "  \"models\": [{ \"name\": \"qwen-local\", \"context_limit\": 32768 }]\n"
+                        + "}\n");
+        Files.writeString(providersDir.resolve("custom_remote.json"),
+                "{\n"
+                        + "  \"name\": \"custom_remote\",\n"
+                        + "  \"display_name\": \"Remote\",\n"
+                        + "  \"engine\": \"openai\",\n"
+                        + "  \"models\": [{ \"name\": \"kimi-remote\", \"context_limit\": 128000 }]\n"
+                        + "}\n");
+
+        List<Map<String, Object>> providers = service.listCustomProviders("test-agent");
+
+        assertEquals(2, providers.size());
+        List<String> names = providers.stream().map(provider -> String.valueOf(provider.get("name"))).toList();
+        assertTrue(names.contains("custom_local"));
+        assertTrue(names.contains("custom_remote"));
+        Map<String, Object> local = providers.stream()
+                .filter(provider -> "custom_local".equals(provider.get("name"))).findFirst().orElseThrow();
+        assertEquals("custom_local.json", local.get("fileName"));
+    }
+
+    /**
+     * Tests extract agent config summary counts extension states.
+     */
+    @Test
+    public void testExtractAgentConfigSummary_countsExtensions() {
+        Map<String, Object> summary = service.extractAgentConfigSummary(Map.of(
+                "GOOSE_MODE", "auto",
+                "GOOSE_DISABLE_KEYRING", "1",
+                "GOOSE_TELEMETRY_ENABLED", false,
+                "extensions", Map.of(
+                        "developer", Map.of("enabled", true),
+                        "memory", Map.of("enabled", false),
+                        "summarize", Map.of("enabled", "true"))));
+
+        assertEquals("auto", summary.get("mode"));
+        assertEquals("1", summary.get("disableKeyring"));
+        assertEquals(false, summary.get("telemetryEnabled"));
+        assertEquals(2, summary.get("enabledExtensions"));
+        assertEquals(1, summary.get("disabledExtensions"));
+    }
+
+    /**
+     * Tests update model config writes model keys to config yaml.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testUpdateModelConfig_writesModelKeys() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
+        Files.createDirectories(configDir.resolve("custom_providers"));
+        Files.writeString(configDir.resolve("custom_providers").resolve("custom_local.json"),
+                "{\"name\":\"custom_local\",\"models\":[{\"name\":\"model-a\"}]}\n");
+        Files.writeString(configDir.resolve("config.yaml"),
+                "GOOSE_PROVIDER: old_provider\n"
+                        + "GOOSE_MODEL: old_model\n"
+                        + "GOOSE_TEMPERATURE: '0.2'\n");
+
+        service.updateModelConfig("test-agent", Map.of(
+                "GOOSE_PROVIDER", "custom_local",
+                "GOOSE_MODEL", "model-a",
+                "GOOSE_TEMPERATURE", "0.4",
+                "GOOSE_MAX_TOKENS", "4096"));
+
+        Map<String, Object> config = service.loadAgentConfigYaml("test-agent");
+        assertEquals("custom_local", config.get("GOOSE_PROVIDER"));
+        assertEquals("model-a", config.get("GOOSE_MODEL"));
+        assertEquals("0.4", config.get("GOOSE_TEMPERATURE"));
+        assertEquals("4096", config.get("GOOSE_MAX_TOKENS"));
+    }
+
+    /**
+     * Tests create custom provider writes normalized json.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_writesProviderJson() throws IOException {
+        Map<String, Object> provider = service.createCustomProvider("test-agent", Map.of(
+                "name", "custom_new",
+                "display_name", "Custom New",
+                "engine", "openai",
+                "base_url", "http://127.0.0.1:11434/v1/chat/completions",
+                "api_key", "test-key",
+                "models", List.of(Map.of("name", "model-new", "context_limit", "32768")),
+                "requires_auth", false,
+                "supports_streaming", true));
+
+        assertEquals("custom_new", provider.get("name"));
+        assertEquals("CUSTOM_NEW_API_KEY", provider.get("api_key_env"));
+        assertEquals("openai", provider.get("engine"));
+        assertEquals(true, provider.get("requires_auth"));
+        assertEquals(true, provider.get("supports_streaming"));
+        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("test-agent").resolve("config")
+                .resolve("custom_providers").resolve("custom_new.json")));
+        assertEquals("test-key", service.loadAgentSecretsYaml("test-agent").get("CUSTOM_NEW_API_KEY"));
+        assertEquals(1, service.listCustomProviders("test-agent").size());
+    }
+
+    /**
+     * Tests update custom provider preserves identity fields and updates editable values.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testUpdateCustomProvider_preservesIdentityFields() throws IOException {
+        Path providersDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config")
+                .resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_existing.json"),
+                "{\n"
+                        + "  \"name\": \"custom_existing\",\n"
+                        + "  \"display_name\": \"Existing Display\",\n"
+                        + "  \"engine\": \"anthropic\",\n"
+                        + "  \"description\": \"old description\",\n"
+                        + "  \"api_key_env\": \"CUSTOM_EXISTING_API_KEY\",\n"
+                        + "  \"base_url\": \"https://old.example.com/v1\",\n"
+                        + "  \"models\": [{ \"name\": \"old-model\", \"context_limit\": 1000 }]\n"
+                        + "}\n");
+
+        Map<String, Object> provider = service.updateCustomProvider("test-agent", "custom_existing", Map.of(
+                "name", "custom_ignored",
+                "display_name", "Ignored Display",
+                "description", "new description",
+                "base_url", "https://new.example.com/v1",
+                "api_key", "new-key",
+                "models", List.of(Map.of("name", "new-model", "context_limit", "64000"))));
+
+        assertEquals("custom_existing", provider.get("name"));
+        assertEquals("Existing Display", provider.get("display_name"));
+        assertEquals("openai", provider.get("engine"));
+        assertEquals("new description", provider.get("description"));
+        assertEquals("https://new.example.com/v1", provider.get("base_url"));
+        assertEquals("new-key", service.loadAgentSecretsYaml("test-agent").get("CUSTOM_EXISTING_API_KEY"));
+
+        List<Map<String, Object>> providers = service.listCustomProviders("test-agent");
+        assertEquals(1, providers.size());
+        assertEquals("custom_existing.json", providers.get(0).get("fileName"));
+    }
+
+    /**
      * Tests read write agents md.
      *
      * @throws IOException if the operation fails

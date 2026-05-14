@@ -71,11 +71,11 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
-        log.warn("Request rejected with status={} reason={}", ex.getStatus(), ex.getReason());
+        log.warn("Request rejected with status={} reason={}", ex.getStatusCode(), ex.getReason());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", false);
         body.put("error", ex.getReason() != null ? ex.getReason() : ex.getMessage());
-        return ResponseEntity.status(ex.getStatus()).body(body);
+        return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 
     /**
