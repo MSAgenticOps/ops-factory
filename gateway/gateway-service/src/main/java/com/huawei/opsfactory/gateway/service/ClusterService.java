@@ -262,7 +262,7 @@ public class ClusterService {
      * Force-delete a cluster: deletes all hosts in the cluster first, then the cluster itself.
      * Host deletion cascades to their relations automatically.
      *
-     * @param id force-delete a cluster: deletes all hosts in the cluster first, then the cluster itself
+     * @param id cluster identifier
      * @param hostService used to delete hosts in this cluster
      * @return true if deleted
      */

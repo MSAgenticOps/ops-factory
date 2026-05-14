@@ -117,7 +117,7 @@ public class HostGroupService {
      *
      * @param groups groups
      * @param clusters clusters
-     * @return the build tree structure: top-level groups → sub-groups → clusters (leaf nodes)
+     * @return tree structure with groups and clusters
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters) {
         return getTree(groups, clusters, List.of());
@@ -297,12 +297,11 @@ public class HostGroupService {
      * Force-delete a group with cascade: deletes business services, recursively force-deletes
      * sub-groups, force-deletes clusters (which cascade-delete hosts), then deletes the group.
      *
-     * @param id force-delete a group with cascade: deletes business services, recursively force-deletes
-     * @param clusterService force-delete a group with cascade: deletes business services, recursively force-deletes
-     * @param hostService force-delete a group with cascade: deletes business services, recursively force-deletes
-     * @param businessServiceService force-delete a group with cascade: deletes business services, recursively
-     *        force-deletes
-     * @return the force-delete a group with cascade: deletes business services, recursively force-deletes
+     * @param id group identifier
+     * @param clusterService cluster service for cascade deletion
+     * @param hostService host service for cascade deletion
+     * @param businessServiceService business service service for cascade deletion
+     * @return true if the group was deleted
      */
     public boolean forceDeleteGroup(String id, ClusterService clusterService, HostService hostService,
         BusinessServiceService businessServiceService) {

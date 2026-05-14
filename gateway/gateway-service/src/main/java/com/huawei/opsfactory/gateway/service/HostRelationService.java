@@ -349,7 +349,7 @@ public class HostRelationService {
      *
      * @param groupId group identifier
      * @param clusterId cluster identifier
-     * @return the build ECharts graph data (nodes + edges) for a given group
+     * @return graph data containing nodes and edges
      */
     public Map<String, Object> getGraphData(String groupId, String clusterId) {
         // Collect hosts in this group or cluster

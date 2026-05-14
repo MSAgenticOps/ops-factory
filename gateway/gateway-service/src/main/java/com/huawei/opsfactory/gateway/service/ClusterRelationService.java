@@ -439,7 +439,7 @@ public class ClusterRelationService {
      * Build cluster-level graph data for a given group.
      *
      * @param groupId group identifier
-     * @return the build cluster-level graph data for a given group
+     * @return cluster-level graph data for the group
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getGraphData(String groupId) {
