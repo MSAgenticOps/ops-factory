@@ -98,7 +98,7 @@ export default function HostResourcePage() {
     const { exporting, exportAllAsZip } = useResourceExport()
     const { importing: csvImporting, progress: importProgress, importCsv } = useResourceImport({
         fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands,
-        groups, clusters, allHosts, businessServices,
+        groups, clusters, allHosts, businessServices, relations: hostRelations,
         clusterTypes: clusterTypesHook.clusterTypes,
         businessTypes: businessTypesHook.businessTypes,
         createGroup, updateGroup, createCluster, createHost,

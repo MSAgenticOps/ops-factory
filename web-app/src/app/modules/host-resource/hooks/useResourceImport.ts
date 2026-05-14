@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { csvToObjects } from '../../../../utils/csvExport'
-import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType } from '../../../../types/host'
+import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
@@ -46,6 +46,7 @@ interface ImportDeps {
     clusters: Cluster[]
     allHosts: Host[]
     businessServices: BusinessService[]
+    relations: HostRelation[]
     clusterTypes: ClusterType[]
     businessTypes: BusinessType[]
 
@@ -86,6 +87,7 @@ export function useResourceImport(deps: ImportDeps) {
         const businessTypeNameToId = new Map(deps.businessTypes.map(bt => [bt.name, bt.id]))
         const hostNameToId = new Map(deps.allHosts.map(h => [h.name, h.id]))
         const bsNameToId = new Map(deps.businessServices.map(bs => [bs.name, bs.id]))
+        const existingRelationKeys = new Set(deps.relations.map(r => `${r.sourceHostId}->${r.targetHostId}`))
 
         // Track names created during this import to deduplicate within CSV
         const createdClusterTypeNames = new Set(deps.clusterTypes.map(ct => ct.name))
@@ -257,6 +259,12 @@ export function useResourceImport(deps: ImportDeps) {
                             errors.push({ row: i + 1, message: `Source node "${row.sourcenode}" not found as host or business service` })
                             continue
                         }
+                        const relationKey = `${sourceBsId || sourceHostId}->${destHostId}`
+                        if (existingRelationKeys.has(relationKey)) {
+                            errors.push({ row: i + 1, message: `Relation "${row.sourcenode}" -> "${row.destnode}" already exists` })
+                            continue
+                        }
+                        existingRelationKeys.add(relationKey)
                         await deps.createRelation({
                             sourceHostId: sourceBsId || sourceHostId!,
                             targetHostId: destHostId,
