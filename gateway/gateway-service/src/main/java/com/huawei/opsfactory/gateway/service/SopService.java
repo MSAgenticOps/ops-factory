@@ -262,7 +262,7 @@ public class SopService {
             }
             List<String> rejected = commandWhitelistService.validateCommand(cmdObj.toString());
             if (!rejected.isEmpty()) {
-                throw new IllegalArgumentException("节点 " + (i + 1) + " 命令包含未白名单授权的命令: " + String.join(", ", rejected));
+                throw new IllegalArgumentException("Node " + (i + 1) + " contains non-whitelisted commands: " + String.join(", ", rejected));
             }
         }
     }

@@ -33,6 +33,6 @@ public class SampleDataSeeder {
      */
     @PostConstruct
     public void init() {
-        log.info("SampleDataSeeder is a no-op — data is injected via E2E tests");
+        log.info("SampleDataSeeder is a no-op,  data is injected via E2E tests");
     }
 }

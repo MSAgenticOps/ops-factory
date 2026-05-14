@@ -394,11 +394,11 @@ public class ClusterRelationService {
             relation.put("createdAt", now);
             relation.put("updatedAt", now);
             writeEntityFile(id, relation);
-            log.info("Created 包含 relation: cluster={} -> host={}", clusterId, hostId);
+            log.info("Created membership relation: cluster={} -> host={}", clusterId, hostId);
         } else if (existing != null && clusterIdEmpty) {
             // Delete relation
             deleteRelation((String) existing.get("id"));
-            log.info("Deleted 包含 relation for host={} (clusterId cleared)", hostId);
+            log.info("Deleted membership relation for host={} (clusterId cleared)", hostId);
         } else if (existing != null && !clusterIdEmpty) {
             String currentSource = (String) existing.get("sourceId");
             if (!clusterId.equals(currentSource)) {
@@ -406,7 +406,7 @@ public class ClusterRelationService {
                 existing.put("sourceId", clusterId);
                 existing.put("updatedAt", Instant.now().toString());
                 writeEntityFile((String) existing.get("id"), existing);
-                log.info("Updated 包含 relation: cluster={} -> host={} (was cluster={})", clusterId, hostId,
+                log.info("Updated membership relation: cluster={} -> host={} (was cluster={})", clusterId, hostId,
                     currentSource);
             }
         }
@@ -425,7 +425,7 @@ public class ClusterRelationService {
             String desc = (String) rel.getOrDefault("description", "");
             if ("cluster".equals(st) && hostId.equals(tid) && "包含".equals(desc)) {
                 deleteRelation((String) rel.get("id"));
-                log.info("Deleted 包含 relation for host={} on host delete", hostId);
+                log.info("Deleted membership relation for host={} on host delete", hostId);
                 return;
             }
         }
