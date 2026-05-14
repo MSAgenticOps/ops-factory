@@ -36,8 +36,11 @@ public class AgentConfigServiceTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private AgentConfigService service;
+
     private GatewayProperties properties;
+
     private Path gatewayRoot;
+
     private String previousGatewayConfigPath;
 
     /**
@@ -52,19 +55,10 @@ public class AgentConfigServiceTest {
         Files.createDirectories(gatewayRoot.resolve("agents"));
         Files.createDirectories(gatewayRoot.resolve("users"));
 
-        String configYaml = "port: 3000\n"
-                + "residentInstances:\n"
-                + "  enabled: true\n"
-                + "  entries:\n"
-                + "    - userId: admin\n"
-                + "      agentIds: ['*']\n"
-                + "    - userId: robby\n"
-                + "      agentIds: ['test-agent']\n"
-                + "agents:\n"
-                + "  - id: test-agent\n"
-                + "    name: Test Agent\n"
-                + "  - id: kb-agent\n"
-                + "    name: KB Agent\n";
+        String configYaml =
+            "port: 3000\n" + "residentInstances:\n" + "  enabled: true\n" + "  entries:\n" + "    - userId: admin\n"
+                + "      agentIds: ['*']\n" + "    - userId: robby\n" + "      agentIds: ['test-agent']\n" + "agents:\n"
+                + "  - id: test-agent\n" + "    name: Test Agent\n" + "  - id: kb-agent\n" + "    name: KB Agent\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         properties = new GatewayProperties();
@@ -115,9 +109,7 @@ public class AgentConfigServiceTest {
         Files.createDirectories(externalGatewayRoot.resolve("agents"));
         Files.createDirectories(externalGatewayRoot.resolve("users"));
         Files.writeString(externalGatewayRoot.resolve("config.yaml"),
-                "agents:\n" +
-                        "  - id: external-agent\n" +
-                        "    name: External Agent\n");
+            "agents:\n" + "  - id: external-agent\n" + "    name: External Agent\n");
 
         GatewayProperties externalProperties = new GatewayProperties();
         GatewayProperties.Paths paths = new GatewayProperties.Paths();
@@ -161,14 +153,9 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testLoadResidentInstances_ignoresUnknownAndDuplicateAgents() throws IOException {
-        String configYaml = "agents:\n"
-                + "  - id: agent-a\n    name: Agent A\n"
-                + "  - id: agent-b\n    name: Agent B\n"
-                + "residentInstances:\n"
-                + "  enabled: true\n"
-                + "  entries:\n"
-                + "    - userId: admin\n"
-                + "      agentIds: ['agent-a', 'missing-agent', 'agent-a']\n";
+        String configYaml = "agents:\n" + "  - id: agent-a\n    name: Agent A\n"
+            + "  - id: agent-b\n    name: Agent B\n" + "residentInstances:\n" + "  enabled: true\n" + "  entries:\n"
+            + "    - userId: admin\n" + "      agentIds: ['agent-a', 'missing-agent', 'agent-a']\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         AgentConfigService freshService = new AgentConfigService(properties);
@@ -206,8 +193,7 @@ public class AgentConfigServiceTest {
     public void testLoadAgentConfigYaml() throws IOException {
         Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
         Files.createDirectories(configDir);
-        Files.writeString(configDir.resolve("config.yaml"),
-                "GOOSE_PROVIDER: openai\nGOOSE_MODEL: gpt-4o\n");
+        Files.writeString(configDir.resolve("config.yaml"), "GOOSE_PROVIDER: openai\nGOOSE_MODEL: gpt-4o\n");
 
         Map<String, Object> config = service.loadAgentConfigYaml("test-agent");
         assertEquals("openai", config.get("GOOSE_PROVIDER"));
@@ -413,16 +399,15 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testListSkills() throws IOException {
-        Path skillsDir = gatewayRoot.resolve("agents").resolve("test-agent")
-                .resolve("config").resolve("skills");
+        Path skillsDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("skills");
         Files.createDirectories(skillsDir.resolve("skill-a"));
         Files.createDirectories(skillsDir.resolve("skill-b"));
         Files.writeString(skillsDir.resolve("readme.txt"), "not a skill");
 
         // Add SKILL.md with frontmatter to skill-a
         Files.writeString(skillsDir.resolve("skill-a").resolve("SKILL.md"),
-                "---\nname: Skill A\ndescription: Description of skill A\npinned: true\ndisplay-order: " +
-                        "-100\n---\n# Skill A\n");
+            "---\nname: Skill A\ndescription: Description of skill A\npinned: true\ndisplay-order: "
+                + "-100\n---\n# Skill A\n");
 
         List<Map<String, String>> skills = service.listSkills("test-agent");
         assertEquals(2, skills.size());
@@ -434,16 +419,16 @@ public class AgentConfigServiceTest {
         assertTrue(names.contains("skill-b"));
 
         // Verify skill-a has parsed description
-        Map<String, String> skillA = skills.stream()
-                .filter(s -> "Skill A".equals(s.get("name"))).findFirst().orElseThrow();
+        Map<String, String> skillA =
+            skills.stream().filter(s -> "Skill A".equals(s.get("name"))).findFirst().orElseThrow();
         assertEquals("Description of skill A", skillA.get("description"));
         assertEquals("skills/skill-a", skillA.get("path"));
         assertEquals("true", skillA.get("pinned"));
         assertEquals("-100", skillA.get("displayOrder"));
 
         // Verify skill-b has empty description (no SKILL.md)
-        Map<String, String> skillB = skills.stream()
-                .filter(s -> "skill-b".equals(s.get("name"))).findFirst().orElseThrow();
+        Map<String, String> skillB =
+            skills.stream().filter(s -> "skill-b".equals(s.get("name"))).findFirst().orElseThrow();
         assertEquals("", skillB.get("description"));
     }
 
@@ -465,8 +450,7 @@ public class AgentConfigServiceTest {
     public void testCreateAgent() throws IOException {
         Path templateDir = gatewayRoot.resolve("agents").resolve("universal-agent").resolve("config");
         Files.createDirectories(templateDir);
-        Files.writeString(templateDir.resolve("config.yaml"),
-                "GOOSE_PROVIDER: anthropic\nGOOSE_MODEL: claude-3\n");
+        Files.writeString(templateDir.resolve("config.yaml"), "GOOSE_PROVIDER: anthropic\nGOOSE_MODEL: claude-3\n");
 
         Map<String, Object> result = service.createAgent("new-agent", "New Agent");
         assertEquals("new-agent", result.get("id"));
@@ -476,10 +460,10 @@ public class AgentConfigServiceTest {
         assertNotNull(service.findAgent("new-agent"));
 
         assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve("AGENTS.md")));
-        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve(
-                "config").resolve("config.yaml")));
-        assertTrue(Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve(
-                "config").resolve("secrets.yaml")));
+        assertTrue(
+            Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve("config").resolve("config.yaml")));
+        assertTrue(
+            Files.exists(gatewayRoot.resolve("agents").resolve("new-agent").resolve("config").resolve("secrets.yaml")));
     }
 
     /**
@@ -538,8 +522,7 @@ public class AgentConfigServiceTest {
     public void testLoadAgentSecretsYaml() throws IOException {
         Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
         Files.createDirectories(configDir);
-        Files.writeString(configDir.resolve("secrets.yaml"),
-                "OPENAI_API_KEY: sk-test123\nANTHROPIC_KEY: ak-test456\n");
+        Files.writeString(configDir.resolve("secrets.yaml"), "OPENAI_API_KEY: sk-test123\nANTHROPIC_KEY: ak-test456\n");
 
         Map<String, Object> secrets = service.loadAgentSecretsYaml("test-agent");
         assertEquals("sk-test123", secrets.get("OPENAI_API_KEY"));
@@ -641,8 +624,7 @@ public class AgentConfigServiceTest {
     public void testCreateAgent_updatesAgentsYaml() throws IOException {
         Path templateDir = gatewayRoot.resolve("agents").resolve("universal-agent").resolve("config");
         Files.createDirectories(templateDir);
-        Files.writeString(templateDir.resolve("config.yaml"),
-                "GOOSE_PROVIDER: anthropic\nGOOSE_MODEL: claude-3\n");
+        Files.writeString(templateDir.resolve("config.yaml"), "GOOSE_PROVIDER: anthropic\nGOOSE_MODEL: claude-3\n");
 
         service.createAgent("created-agent", "Created Agent");
 
@@ -669,8 +651,7 @@ public class AgentConfigServiceTest {
     @Test
     public void testCreateAgent_skillsDirectoryCreated() throws IOException {
         service.createAgent("new-agent", "New Agent");
-        Path skillsDir = gatewayRoot.resolve("agents").resolve("new-agent")
-                .resolve("config").resolve("skills");
+        Path skillsDir = gatewayRoot.resolve("agents").resolve("new-agent").resolve("config").resolve("skills");
         assertTrue(Files.isDirectory(skillsDir));
     }
 
@@ -707,10 +688,8 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testLoadRegistry_enabledFalseExcludesAgent() throws IOException {
-        String configYaml = "agents:\n"
-                + "  - id: agent-a\n    name: Agent A\n"
-                + "  - id: agent-b\n    name: Agent B\n    enabled: false\n"
-                + "  - id: agent-c\n    name: Agent C\n";
+        String configYaml = "agents:\n" + "  - id: agent-a\n    name: Agent A\n"
+            + "  - id: agent-b\n    name: Agent B\n    enabled: false\n" + "  - id: agent-c\n    name: Agent C\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         AgentConfigService freshService = new AgentConfigService(properties);
@@ -730,8 +709,7 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testLoadRegistry_enabledTrueIncludesAgent() throws IOException {
-        String configYaml = "agents:\n"
-                + "  - id: agent-a\n    name: Agent A\n    enabled: true\n";
+        String configYaml = "agents:\n" + "  - id: agent-a\n    name: Agent A\n    enabled: true\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         AgentConfigService freshService = new AgentConfigService(properties);
@@ -748,8 +726,7 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testLoadRegistry_enabledOmittedDefaultsToTrue() throws IOException {
-        String configYaml = "agents:\n"
-                + "  - id: agent-no-enabled\n    name: No Enabled Field\n";
+        String configYaml = "agents:\n" + "  - id: agent-no-enabled\n    name: No Enabled Field\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         AgentConfigService freshService = new AgentConfigService(properties);
@@ -766,9 +743,8 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testLoadRegistry_allDisabledResultsInEmptyRegistry() throws IOException {
-        String configYaml = "agents:\n"
-                + "  - id: agent-x\n    name: Agent X\n    enabled: false\n"
-                + "  - id: agent-y\n    name: Agent Y\n    enabled: false\n";
+        String configYaml = "agents:\n" + "  - id: agent-x\n    name: Agent X\n    enabled: false\n"
+            + "  - id: agent-y\n    name: Agent Y\n    enabled: false\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         AgentConfigService freshService = new AgentConfigService(properties);
@@ -795,8 +771,8 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testListMemoryFiles_withFiles() throws IOException {
-        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
-                .resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("development.txt"), "# tools\nuse black for formatting");
         Files.writeString(memoryDir.resolve("personal.txt"), "prefer Chinese replies");
@@ -808,8 +784,8 @@ public class AgentConfigServiceTest {
         assertTrue(categories.contains("development"));
         assertTrue(categories.contains("personal"));
 
-        Map<String, String> dev = files.stream()
-                .filter(f -> "development".equals(f.get("category"))).findFirst().orElseThrow();
+        Map<String, String> dev =
+            files.stream().filter(f -> "development".equals(f.get("category"))).findFirst().orElseThrow();
         assertEquals("# tools\nuse black for formatting", dev.get("content"));
     }
 
@@ -820,8 +796,8 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testListMemoryFiles_ignoresNonTxt() throws IOException {
-        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
-                .resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("valid.txt"), "content");
         Files.writeString(memoryDir.resolve("ignored.md"), "markdown");
@@ -838,8 +814,8 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testReadMemoryFile_exists() throws IOException {
-        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
-                .resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("dev.txt"), "hello world");
 
@@ -865,8 +841,12 @@ public class AgentConfigServiceTest {
     public void testWriteMemoryFile_createsDirectoryAndFile() throws IOException {
         service.writeMemoryFile("test-agent", "new-category", "some content");
 
-        Path file = gatewayRoot.resolve("agents").resolve("test-agent")
-                .resolve("config").resolve("goose").resolve("memory").resolve("new-category.txt");
+        Path file = gatewayRoot.resolve("agents")
+            .resolve("test-agent")
+            .resolve("config")
+            .resolve("goose")
+            .resolve("memory")
+            .resolve("new-category.txt");
         assertTrue(Files.exists(file));
         assertEquals("some content", Files.readString(file));
     }
@@ -902,8 +882,8 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testDeleteMemoryFile_success() throws IOException {
-        Path memoryDir = gatewayRoot.resolve("agents").resolve("test-agent")
-                .resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("toDelete.txt"), "bye");
 
@@ -956,15 +936,11 @@ public class AgentConfigServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testWriteKnowledgeCliSettings_storesSourceIdAndRelativeArtifactsRoot() throws IOException {
+    public void testWriteKnowledgeCliSettings_storesSourceIdAndRelArtifactsRoot() throws IOException {
         Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
         Files.createDirectories(configDir);
-        Files.writeString(configDir.resolve("config.yaml"),
-                "extensions:\n"
-                        + "  knowledge-cli:\n"
-                        + "    x-opsfactory:\n"
-                        + "      scope:\n"
-                        + "        rootDir: ../data\n");
+        Files.writeString(configDir.resolve("config.yaml"), "extensions:\n" + "  knowledge-cli:\n"
+            + "    x-opsfactory:\n" + "      scope:\n" + "        rootDir: ../data\n");
 
         service.writeMcpSettings("qa-cli-agent", "knowledge-cli", Map.of("sourceId", "src_123"));
 
@@ -972,7 +948,7 @@ public class AgentConfigServiceTest {
         assertEquals("src_123", settings.get("sourceId"));
         assertEquals("../../../../knowledge-service/data/artifacts/src_123", settings.get("rootDir"));
         assertEquals(configDir.resolve("../../../../knowledge-service/data/artifacts/src_123").normalize(),
-                service.getKnowledgeCliRootDir("qa-cli-agent"));
+            service.getKnowledgeCliRootDir("qa-cli-agent"));
     }
 
     /**
@@ -984,12 +960,8 @@ public class AgentConfigServiceTest {
     public void testWriteKnowledgeCliSettings_usesConfiguredArtifactsRoot() throws IOException {
         Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
         Files.createDirectories(configDir);
-        Files.writeString(configDir.resolve("config.yaml"),
-                "extensions:\n"
-                        + "  knowledge-cli:\n"
-                        + "    x-opsfactory:\n"
-                        + "      scope:\n"
-                        + "        rootDir: ../data\n");
+        Files.writeString(configDir.resolve("config.yaml"), "extensions:\n" + "  knowledge-cli:\n"
+            + "    x-opsfactory:\n" + "      scope:\n" + "        rootDir: ../data\n");
         Path externalArtifactsRoot = tempFolder.getRoot().toPath().getParent().resolve("external-artifacts");
         properties.getKnowledge().setArtifactsRoot(externalArtifactsRoot.toString());
 
@@ -1010,12 +982,9 @@ public class AgentConfigServiceTest {
         Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
         Files.createDirectories(configDir);
         Files.writeString(configDir.resolve("config.yaml"),
-                "extensions:\n"
-                        + "  knowledge-cli:\n"
-                        + "    x-opsfactory:\n"
-                        + "      scope:\n"
-                        + "        sourceId: src_old\n"
-                        + "        rootDir: ../../../../knowledge-service/data/artifacts/src_old\n");
+            "extensions:\n" + "  knowledge-cli:\n" + "    x-opsfactory:\n" + "      scope:\n"
+                + "        sourceId: src_old\n"
+                + "        rootDir: ../../../../knowledge-service/data/artifacts/src_old\n");
 
         service.writeMcpSettings("qa-cli-agent", "knowledge-cli", Map.of("sourceId", ""));
 
@@ -1031,14 +1000,9 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testLoadRegistry_disabledAgentIsExcludedFromResidentExpansion() throws IOException {
-        String configYaml = "agents:\n"
-                + "  - id: visible-agent\n    name: Visible Agent\n"
-                + "  - id: hidden-agent\n    name: Hidden Agent\n    enabled: false\n"
-                + "residentInstances:\n"
-                + "  enabled: true\n"
-                + "  entries:\n"
-                + "    - userId: admin\n"
-                + "      agentIds: ['*']\n";
+        String configYaml = "agents:\n" + "  - id: visible-agent\n    name: Visible Agent\n"
+            + "  - id: hidden-agent\n    name: Hidden Agent\n    enabled: false\n" + "residentInstances:\n"
+            + "  enabled: true\n" + "  entries:\n" + "    - userId: admin\n" + "      agentIds: ['*']\n";
         Files.writeString(gatewayRoot.resolve("config.yaml"), configYaml);
 
         AgentConfigService freshService = new AgentConfigService(properties);

@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +38,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/gateway/agents")
 public class AgentController {
+    private static final java.util.regex.Pattern CATEGORY_PATTERN = java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
+
     private final AgentConfigService agentConfigService;
 
     private final InstanceManager instanceManager;
@@ -46,18 +47,27 @@ public class AgentController {
     /**
      * Creates the agent controller instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentConfigService service for loading and persisting agent configurations
+     * @param instanceManager manager for controlling running agent instances
      */
     public AgentController(AgentConfigService agentConfigService, InstanceManager instanceManager) {
         this.agentConfigService = agentConfigService;
         this.instanceManager = instanceManager;
     }
 
+    private static boolean isValidCategory(String category) {
+        return CATEGORY_PATTERN.matcher(category).matches();
+    }
+
+    private static Mono<ResponseEntity<Map<String, Object>>> badCategory() {
+        return Mono.just(
+            ResponseEntity.badRequest().body(Map.of("success", (Object) false, "error", "Invalid category name")));
+    }
+
     /**
      * Lists all registered agents with their status, provider, model, and skills.
      *
-     * @return the result
+     * @return reactive map containing a list of agent summaries keyed by {@code "agents"}
      */
     @GetMapping
     public Mono<Map<String, Object>> listAgents() {
@@ -102,9 +112,10 @@ public class AgentController {
     /**
      * Creates a new agent with the given ID and name.
      *
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param body request body containing {@code "id"} and {@code "name"} fields
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response with the created agent details on success, or an error body on failure
+     * @throws ResponseStatusException if the agent configuration files cannot be written to disk
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createAgent(@RequestBody Map<String, String> body,
@@ -127,7 +138,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create agent", e);
         }
     }
@@ -135,9 +146,10 @@ public class AgentController {
     /**
      * Deletes an agent by ID and stops all its running instances.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response indicating success or a bad-request error body
+     * @throws ResponseStatusException if the agent configuration files cannot be removed from disk
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable("id") String id, ServerWebExchange exchange) {
@@ -151,7 +163,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete agent", e);
         }
     }
@@ -159,9 +171,9 @@ public class AgentController {
     /**
      * Lists all skills configured for the specified agent.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive map containing a list of skill descriptors keyed by {@code "skills"}
      */
     @GetMapping("/{id}/skills")
     public Mono<Map<String, Object>> listSkills(@PathVariable("id") String id, ServerWebExchange exchange) {
@@ -172,9 +184,10 @@ public class AgentController {
     /**
      * Gets the full configuration for the specified agent.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response containing the agent id, name, provider, model, working directory,
+     *         and agents.md content; or 404 if the agent is not found
      */
     @GetMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable("id") String id, ServerWebExchange exchange) {
@@ -200,10 +213,12 @@ public class AgentController {
     /**
      * Updates the agents.md configuration for the specified agent.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param body request body containing the {@code "agentsMd"} field to write
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response indicating success, a bad-request body if the agent is not found,
+     *         or an internal-error status if the file write fails
+     * @throws ResponseStatusException if the agents.md file cannot be written to disk
      */
     @PutMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable("id") String id,
@@ -220,7 +235,7 @@ public class AgentController {
         if (agentsMd != null) {
             try {
                 agentConfigService.writeAgentsMd(id, agentsMd);
-            } catch (IOException e) {
+            } catch (IllegalStateException e) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update config", e);
             }
         }
@@ -230,10 +245,10 @@ public class AgentController {
     /**
      * Updates the model configuration for the specified agent.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param body request body containing model configuration keys
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response indicating success or an error body
      */
     @PutMapping("/{id}/model-config")
     public Mono<ResponseEntity<Map<String, Object>>> updateModelConfig(@PathVariable("id") String id,
@@ -251,7 +266,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update model config", e);
         }
     }
@@ -259,10 +274,10 @@ public class AgentController {
     /**
      * Creates a custom provider for the specified agent.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param body request body containing the provider definition
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response with the created provider on success, or an error body on failure
      */
     @PostMapping("/{id}/providers")
     public Mono<ResponseEntity<Map<String, Object>>> createProvider(@PathVariable("id") String id,
@@ -281,7 +296,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create provider", e);
         }
     }
@@ -289,11 +304,11 @@ public class AgentController {
     /**
      * Updates a custom provider for the specified agent.
      *
-     * @param id the id parameter
-     * @param providerName the providerName parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param providerName provider name from the URL path
+     * @param body request body containing the updated provider fields
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response with the updated provider on success, or an error body on failure
      */
     @PutMapping("/{id}/providers/{providerName}")
     public Mono<ResponseEntity<Map<String, Object>>> updateProvider(@PathVariable("id") String id,
@@ -312,7 +327,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update provider", e);
         }
     }
@@ -324,19 +339,15 @@ public class AgentController {
         return ResponseEntity.badRequest().body(errorBody);
     }
 
-    // ── Memory endpoints ──────────────────────────────────────────
-
-    private static final java.util.regex.Pattern CATEGORY_PATTERN = java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
-
     /**
      * Lists all memory files for the specified agent.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response containing a list of memory file descriptors keyed by {@code "files"}
      */
     @GetMapping("/{id}/memory")
-    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable("id") String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> listMemory(@PathVariable String id, ServerWebExchange exchange) {
         requireAdmin(exchange);
         return Mono.fromCallable(() -> {
             List<Map<String, String>> files = agentConfigService.listMemoryFiles(id);
@@ -347,10 +358,11 @@ public class AgentController {
     /**
      * Gets the content of a specific memory category for the specified agent.
      *
-     * @param id the id parameter
-     * @param category the category parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param category memory category name extracted from the URL path
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response with the category name and file content, a 400 for invalid
+     *         category names, or 404 if the memory file does not exist
      */
     @GetMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> getMemoryFile(@PathVariable("id") String id,
@@ -371,11 +383,12 @@ public class AgentController {
     /**
      * Writes content to a specific memory category for the specified agent.
      *
-     * @param id the id parameter
-     * @param category the category parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param category memory category name extracted from the URL path
+     * @param body request body containing the {@code "content"} field to write
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response indicating success, a 400 for invalid category names,
+     *         or a bad-request body if the write fails due to invalid arguments
      */
     @PutMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> putMemoryFile(@PathVariable("id") String id,
@@ -398,10 +411,11 @@ public class AgentController {
     /**
      * Deletes a specific memory category for the specified agent.
      *
-     * @param id the id parameter
-     * @param category the category parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param category memory category name extracted from the URL path
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response indicating success, a 400 for invalid category names,
+     *         or a bad-request body if the deletion fails due to invalid arguments
      */
     @DeleteMapping("/{id}/memory/{category}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteMemoryFile(@PathVariable("id") String id,
@@ -419,15 +433,6 @@ public class AgentController {
                     .body(Map.<String, Object> of("success", (Object) false, "error", e.getMessage()));
             }
         }).subscribeOn(Schedulers.boundedElastic());
-    }
-
-    private static boolean isValidCategory(String category) {
-        return CATEGORY_PATTERN.matcher(category).matches();
-    }
-
-    private static Mono<ResponseEntity<Map<String, Object>>> badCategory() {
-        return Mono.just(
-            ResponseEntity.badRequest().body(Map.of("success", (Object) false, "error", "Invalid category name")));
     }
 
     private void requireAdmin(ServerWebExchange exchange) {
