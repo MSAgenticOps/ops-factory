@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -61,9 +60,9 @@ public class McpController {
     /**
      * Lists MCP extensions configured on the agent's system instance.
      *
-     * @param agentId lists MCP extensions configured on the agent's system instance
-     * @param exchange lists MCP extensions configured on the agent's system instance
-     * @return the lists MCP extensions configured on the agent's system instance
+     * @param agentId agentId
+     * @param exchange exchange
+     * @return the result
      */
     @GetMapping
     public Mono<Void> getMcpExtensions(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
@@ -77,10 +76,10 @@ public class McpController {
     /**
      * Creates a new MCP extension on the agent's system instance and recycles running instances.
      *
-     * @param agentId creates a new MCP extension on the agent's system instance and recycles running instances
-     * @param body creates a new MCP extension on the agent's system instance and recycles running instances
-     * @param exchange creates a new MCP extension on the agent's system instance and recycles running instances
-     * @return the creates a new MCP extension on the agent's system instance and recycles running instances
+     * @param agentId agentId
+     * @param body body
+     * @param exchange exchange
+     * @return a new MCP extension
      */
     @PostMapping
     public Mono<String> createMcpExtension(@PathVariable("agentId") String agentId, @RequestBody String body,
@@ -110,10 +109,10 @@ public class McpController {
     /**
      * Deletes an MCP extension by name and recycles running instances.
      *
-     * @param agentId deletes an MCP extension by name and recycles running instances
-     * @param name deletes an MCP extension by name and recycles running instances
-     * @param exchange deletes an MCP extension by name and recycles running instances
-     * @return the deletes an MCP extension by name and recycles running instances
+     * @param agentId agent identifier
+     * @param name name value
+     * @param exchange server web exchange
+     * @return the result
      */
     @DeleteMapping("/{name}")
     public Mono<String> deleteMcpExtension(@PathVariable("agentId") String agentId, @PathVariable("name") String name,
@@ -140,9 +139,9 @@ public class McpController {
     /**
      * Gets the settings for a specific MCP extension.
      *
-     * @param agentId gets the settings for a specific MCP extension
-     * @param name gets the settings for a specific MCP extension
-     * @param exchange gets the settings for a specific MCP extension
+     * @param agentId agent identifier
+     * @param name name value
+     * @param exchange server web exchange
      * @return the settings for a specific MCP extension
      */
     @GetMapping("/{name}/settings")
@@ -183,7 +182,7 @@ public class McpController {
      * @param name the settings for a specific MCP extension
      * @param body the settings for a specific MCP extension
      * @param exchange the settings for a specific MCP extension
-     * @return the updates the settings for a specific MCP extension
+     * @return the result
      */
     @PutMapping("/{name}/settings")
     public Mono<ResponseEntity<Map<String, Object>>> putMcpSettings(@PathVariable("agentId") String agentId,

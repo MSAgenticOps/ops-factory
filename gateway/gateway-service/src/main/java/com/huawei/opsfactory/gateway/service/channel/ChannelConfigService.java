@@ -94,7 +94,7 @@ public class ChannelConfigService {
     /**
      * Lists all channels with summary information for the default owner user.
      *
-     * @return the lists all channels with summary information for the default owner user
+     * @return the result
      */
     public List<ChannelSummary> listChannels() {
         return listChannels("admin");
@@ -103,8 +103,8 @@ public class ChannelConfigService {
     /**
      * Lists all channels with summary information for the given owner user.
      *
-     * @param ownerUserId lists all channels with summary information for the given owner user
-     * @return the lists all channels with summary information for the given owner user
+     * @param ownerUserId owner user id
+     * @return the result
      */
     public List<ChannelSummary> listChannels(String ownerUserId) {
         List<ChannelInstance> channels = readInstances();
@@ -119,7 +119,7 @@ public class ChannelConfigService {
     /**
      * Gets the full detail of a channel by its ID for the default owner user.
      *
-     * @param channelId gets the full detail of a channel by its ID for the default owner user
+     * @param channelId channel identifier
      * @return the full detail of a channel by its ID for the default owner user
      */
     public ChannelDetail getChannel(String channelId) {
@@ -129,8 +129,8 @@ public class ChannelConfigService {
     /**
      * Gets the full detail of a channel by its ID and owner user.
      *
-     * @param channelId gets the full detail of a channel by its ID and owner user
-     * @param ownerUserId gets the full detail of a channel by its ID and owner user
+     * @param channelId channel identifier
+     * @param ownerUserId owner user id
      * @return the full detail of a channel by its ID and owner user
      */
     public ChannelDetail getChannel(String channelId, String ownerUserId) {
@@ -162,8 +162,8 @@ public class ChannelConfigService {
     /**
      * Lists all runtime channels of the given type across all owner users.
      *
-     * @param type lists all runtime channels of the given type across all owner users
-     * @return the lists all runtime channels of the given type across all owner users
+     * @param type type filter
+     * @return the result
      */
     public List<ChannelDetail> listRuntimeChannels(String type) {
         String normalizedType = normalizeType(type);
@@ -179,9 +179,9 @@ public class ChannelConfigService {
     /**
      * Creates a new channel from the given upsert request.
      *
-     * @param request creates a new channel from the given upsert request
-     * @param ownerUserId creates a new channel from the given upsert request
-     * @return the creates a new channel from the given upsert request
+     * @param request HTTP request
+     * @param ownerUserId owner user id
+     * @return the result
      */
     public ChannelDetail createChannel(ChannelUpsertRequest request, String ownerUserId) {
         validateCreateRequest(request);
@@ -208,7 +208,7 @@ public class ChannelConfigService {
      *
      * @param channelId an existing channel using the default owner user ID
      * @param request an existing channel using the default owner user ID
-     * @return the updates an existing channel using the default owner user ID
+     * @return the result
      */
     public ChannelDetail updateChannel(String channelId, ChannelUpsertRequest request) {
         return updateChannel(channelId, request, "admin");
@@ -220,7 +220,7 @@ public class ChannelConfigService {
      * @param channelId an existing channel with the given upsert request
      * @param request an existing channel with the given upsert request
      * @param ownerUserId an existing channel with the given upsert request
-     * @return the updates an existing channel with the given upsert request
+     * @return the result
      */
     public ChannelDetail updateChannel(String channelId, ChannelUpsertRequest request, String ownerUserId) {
         ChannelInstance existing = findChannel(channelId);
@@ -283,7 +283,7 @@ public class ChannelConfigService {
     /**
      * Deletes a channel and all its associated runtime data.
      *
-     * @param channelId deletes a channel and all its associated runtime data
+     * @param channelId channel identifier
      */
     public void deleteChannel(String channelId) {
         ChannelInstance existing = findChannel(channelId);
@@ -298,8 +298,8 @@ public class ChannelConfigService {
     /**
      * Lists bindings for a channel using the default owner user ID.
      *
-     * @param channelId lists bindings for a channel using the default owner user ID
-     * @return the lists bindings for a channel using the default owner user ID
+     * @param channelId channel identifier
+     * @return the result
      */
     public List<ChannelBinding> listBindings(String channelId) {
         return listBindings(channelId, "admin");
@@ -308,9 +308,9 @@ public class ChannelConfigService {
     /**
      * Lists bindings for a channel and owner user, sorted by last inbound timestamp descending.
      *
-     * @param channelId lists bindings for a channel and owner user, sorted by last inbound timestamp descending
-     * @param ownerUserId lists bindings for a channel and owner user, sorted by last inbound timestamp descending
-     * @return the lists bindings for a channel and owner user, sorted by last inbound timestamp descending
+     * @param channelId channel identifier
+     * @param ownerUserId owner user id
+     * @return the result
      */
     public List<ChannelBinding> listBindings(String channelId, String ownerUserId) {
         if (findChannel(channelId) == null) {
@@ -326,8 +326,8 @@ public class ChannelConfigService {
     /**
      * Lists events for a channel using the default owner user ID.
      *
-     * @param channelId lists events for a channel using the default owner user ID
-     * @return the lists events for a channel using the default owner user ID
+     * @param channelId channel identifier
+     * @return the result
      */
     public List<ChannelEvent> listEvents(String channelId) {
         return listEvents(channelId, "admin");
@@ -336,9 +336,9 @@ public class ChannelConfigService {
     /**
      * Lists events for a channel and owner user, sorted by creation time descending.
      *
-     * @param channelId lists events for a channel and owner user, sorted by creation time descending
-     * @param ownerUserId lists events for a channel and owner user, sorted by creation time descending
-     * @return the lists events for a channel and owner user, sorted by creation time descending
+     * @param channelId channel identifier
+     * @param ownerUserId owner user id
+     * @return the result
      */
     public List<ChannelEvent> listEvents(String channelId, String ownerUserId) {
         if (findChannel(channelId) == null) {

@@ -70,7 +70,7 @@ public class ClusterTypeService {
     /**
      * Lists all cluster types.
      *
-     * @return the lists all cluster types
+     * @return the result
      */
     public List<Map<String, Object>> listClusterTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -96,7 +96,7 @@ public class ClusterTypeService {
     /**
      * Gets a cluster type by its ID.
      *
-     * @param id gets a cluster type by its ID
+     * @param id entity identifier
      * @return a cluster type by its ID
      */
     public Map<String, Object> getClusterType(String id) {
@@ -111,8 +111,8 @@ public class ClusterTypeService {
     /**
      * Creates a new cluster type from the provided field map.
      *
-     * @param body creates a new cluster type from the provided field map
-     * @return the creates a new cluster type from the provided field map
+     * @param body request body
+     * @return the result
      */
     public Map<String, Object> createClusterType(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -141,7 +141,7 @@ public class ClusterTypeService {
      *
      * @param id an existing cluster type with the provided field map
      * @param body an existing cluster type with the provided field map
-     * @return the updates an existing cluster type with the provided field map
+     * @return the result
      */
     public Map<String, Object> updateClusterType(String id, Map<String, Object> body) {
         Path file = clusterTypesDir.resolve(id + ".json");
@@ -188,8 +188,8 @@ public class ClusterTypeService {
     /**
      * Deletes a cluster type by its ID.
      *
-     * @param id deletes a cluster type by its ID
-     * @return the deletes a cluster type by its ID
+     * @param id entity identifier
+     * @return the result
      */
     public boolean deleteClusterType(String id) {
         Path file = clusterTypesDir.resolve(id + ".json");

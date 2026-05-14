@@ -90,9 +90,9 @@ public class ReplyController {
      *
      * @param instanceManager manages goosed instance lifecycle and lookup
      * @param goosedProxy proxies HTTP requests to the goosed backend
-     * @param hookPipeline executes request/response hook transformations
+     * @param hookPipeline hook pipeline for request/response transformations
      * @param agentConfigService provides agent configuration and user directories
-     * @param fileService lists and diffs files for output-file detection
+     * @param fileService file service for workspace file operations
      */
     public ReplyController(InstanceManager instanceManager, GoosedProxy goosedProxy, HookPipeline hookPipeline,
         AgentConfigService agentConfigService, FileService fileService) {

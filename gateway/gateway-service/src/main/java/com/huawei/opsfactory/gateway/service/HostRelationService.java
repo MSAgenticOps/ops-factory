@@ -91,11 +91,11 @@ public class HostRelationService {
     /**
      * List relations with optional filters.
      *
-     * @param hostId list relations with optional filters
-     * @param groupId list relations with optional filters
-     * @param clusterId list relations with optional filters
-     * @param sourceType list relations with optional filters
-     * @param sourceId list relations with optional filters
+     * @param hostId host identifier
+     * @param groupId group identifier
+     * @param clusterId cluster identifier
+     * @param sourceType source type filter
+     * @param sourceId source identifier filter
      * @return the list relations with optional filters
      */
     public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType,
@@ -170,8 +170,8 @@ public class HostRelationService {
     /**
      * Creates a new host relation from the provided field map.
      *
-     * @param body creates a new host relation from the provided field map
-     * @return the creates a new host relation from the provided field map
+     * @param body request body
+     * @return the result
      */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceHostId = (String) body.get("sourceHostId");
@@ -228,7 +228,7 @@ public class HostRelationService {
      *
      * @param id an existing host relation with the provided field map
      * @param body an existing host relation with the provided field map
-     * @return the updates an existing host relation with the provided field map
+     * @return the result
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
@@ -284,8 +284,8 @@ public class HostRelationService {
     /**
      * Deletes a host relation by its ID.
      *
-     * @param id deletes a host relation by its ID
-     * @return the deletes a host relation by its ID
+     * @param id entity identifier
+     * @return the result
      */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
@@ -315,7 +315,7 @@ public class HostRelationService {
     /**
      * Delete all relations involving a specific host (for cascade delete).
      *
-     * @param hostId delete all relations involving a specific host (for cascade delete)
+     * @param hostId host identifier
      */
     public void deleteRelationsByHost(String hostId) {
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
@@ -331,7 +331,7 @@ public class HostRelationService {
     /**
      * Delete all relations where source is a specific business service (for cascade delete).
      *
-     * @param bsId delete all relations where source is a specific business service (for cascade delete)
+     * @param bsId bs id
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null, null, null, "business-service", bsId);
@@ -347,8 +347,8 @@ public class HostRelationService {
      * Build ECharts graph data (nodes + edges) for a given group.
      * Includes all hosts in the group plus any related hosts from other groups.
      *
-     * @param groupId build ECharts graph data (nodes + edges) for a given group
-     * @param clusterId build ECharts graph data (nodes + edges) for a given group
+     * @param groupId group identifier
+     * @param clusterId cluster identifier
      * @return the build ECharts graph data (nodes + edges) for a given group
      */
     public Map<String, Object> getGraphData(String groupId, String clusterId) {
@@ -447,7 +447,7 @@ public class HostRelationService {
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given host.
      *
-     * @param hostId get 1-hop neighbors (upstream + downstream) for a given host
+     * @param hostId host identifier
      * @return 1-hop neighbors (upstream + downstream) for a given host
      */
     public Map<String, Object> getNeighbors(String hostId) {

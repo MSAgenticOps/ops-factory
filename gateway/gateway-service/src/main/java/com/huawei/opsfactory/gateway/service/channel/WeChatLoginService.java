@@ -55,7 +55,7 @@ public class WeChatLoginService {
     /**
      * Gets the current login state for a WeChat channel using the default owner user ID.
      *
-     * @param channelId gets the current login state for a WeChat channel using the default owner user ID
+     * @param channelId channel identifier
      * @return the current login state for a WeChat channel using the default owner user ID
      */
     public ChannelLoginState getLoginState(String channelId) {
@@ -65,8 +65,8 @@ public class WeChatLoginService {
     /**
      * Gets the current login state for a WeChat channel, merging configuration and runtime state.
      *
-     * @param channelId gets the current login state for a WeChat channel, merging configuration and runtime state
-     * @param ownerUserId gets the current login state for a WeChat channel, merging configuration and runtime state
+     * @param channelId channel identifier
+     * @param ownerUserId owner user id
      * @return the current login state for a WeChat channel, merging configuration and runtime state
      */
     public ChannelLoginState getLoginState(String channelId, String ownerUserId) {
@@ -109,7 +109,7 @@ public class WeChatLoginService {
     /**
      * Starts the WeChat QR login flow using the default owner user ID.
      *
-     * @param channelId starts the WeChat QR login flow using the default owner user ID
+     * @param channelId channel identifier
      * @return the starts the WeChat QR login flow using the default owner user ID
      */
     public ChannelLoginState startLogin(String channelId) {
@@ -119,8 +119,8 @@ public class WeChatLoginService {
     /**
      * Starts the WeChat QR login flow, preparing the auth directory and launching the helper process.
      *
-     * @param channelId starts the WeChat QR login flow, preparing the auth directory and launching the helper process
-     * @param ownerUserId starts the WeChat QR login flow, preparing the auth directory and launching the helper process
+     * @param channelId channel identifier
+     * @param ownerUserId owner user id
      * @return the starts the WeChat QR login flow, preparing the auth directory and launching the helper process
      */
     public ChannelLoginState startLogin(String channelId, String ownerUserId) {

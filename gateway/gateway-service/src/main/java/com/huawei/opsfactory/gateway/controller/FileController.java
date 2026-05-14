@@ -67,9 +67,9 @@ public class FileController {
     /**
      * Lists files in the agent workspace directory.
      *
-     * @param agentId lists files in the agent workspace directory
-     * @param exchange lists files in the agent workspace directory
-     * @return the lists files in the agent workspace directory
+     * @param agentId agent identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> listFiles(@PathVariable("agentId") String agentId, ServerWebExchange exchange) {
@@ -133,9 +133,9 @@ public class FileController {
     /**
      * Deletes a file from the agent workspace.
      *
-     * @param agentId deletes a file from the agent workspace
-     * @param exchange deletes a file from the agent workspace
-     * @return the deletes a file from the agent workspace
+     * @param agentId agent identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @DeleteMapping("/**")
     public Mono<ResponseEntity<Map<String, Object>>> deleteFile(@PathVariable("agentId") String agentId,
@@ -172,7 +172,7 @@ public class FileController {
      * @param agentId the content of an editable text file in the agent workspace
      * @param request the content of an editable text file in the agent workspace
      * @param exchange the content of an editable text file in the agent workspace
-     * @return the updates the content of an editable text file in the agent workspace
+     * @return the result
      */
     @PutMapping(value = "/**", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> updateFile(@PathVariable("agentId") String agentId,

@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
     /**
      * Handles request input errors such as invalid JSON body.
      *
-     * @param ex handles request input errors such as invalid JSON body
+     * @param ex ex
      * @return the handles request input errors such as invalid JSON body
      */
     @ExceptionHandler(ServerWebInputException.class)
@@ -66,7 +66,7 @@ public class GlobalExceptionHandler {
     /**
      * Handles response status exceptions and returns a normalized error body.
      *
-     * @param ex handles response status exceptions and returns a normalized error body
+     * @param ex ex
      * @return the handles response status exceptions and returns a normalized error body
      */
     @ExceptionHandler(ResponseStatusException.class)

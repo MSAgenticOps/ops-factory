@@ -72,7 +72,7 @@ public class BusinessTypeService {
     /**
      * Lists all business types.
      *
-     * @return the lists all business types
+     * @return the result
      */
     public List<Map<String, Object>> listBusinessTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -98,7 +98,7 @@ public class BusinessTypeService {
     /**
      * Gets a business type by its ID.
      *
-     * @param id gets a business type by its ID
+     * @param id entity identifier
      * @return a business type by its ID
      */
     public Map<String, Object> getBusinessType(String id) {
@@ -113,8 +113,8 @@ public class BusinessTypeService {
     /**
      * Creates a new business type from the provided field map.
      *
-     * @param body creates a new business type from the provided field map
-     * @return the creates a new business type from the provided field map
+     * @param body request body
+     * @return the result
      */
     public Map<String, Object> createBusinessType(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -140,7 +140,7 @@ public class BusinessTypeService {
      *
      * @param id an existing business type with the provided field map
      * @param body an existing business type with the provided field map
-     * @return the updates an existing business type with the provided field map
+     * @return the result
      */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -174,8 +174,8 @@ public class BusinessTypeService {
     /**
      * Deletes a business type by its ID.
      *
-     * @param id deletes a business type by its ID
-     * @return the deletes a business type by its ID
+     * @param id entity identifier
+     * @return the result
      */
     public boolean deleteBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");

@@ -440,7 +440,7 @@ public class GatewayProperties {
     /**
      * Resolves the absolute path to the gateway configuration file.
      *
-     * @return the resolves the absolute path to the gateway configuration file
+     * @return the result
      */
     public Path getConfigPath() {
         String configuredPath = configuredConfigPath();
@@ -472,7 +472,7 @@ public class GatewayProperties {
     /**
      * Resolves the absolute path to the project root directory.
      *
-     * @return the resolves the absolute path to the project root directory
+     * @return the result
      */
     public Path getProjectRootPath() {
         Path configuredRoot = Path.of(paths.getProjectRoot());
@@ -488,7 +488,7 @@ public class GatewayProperties {
     /**
      * Resolves the absolute path to the gateway root directory.
      *
-     * @return the resolves the absolute path to the gateway root directory
+     * @return the result
      */
     public Path getGatewayRootPath() {
         if (configuredConfigPath() == null) {

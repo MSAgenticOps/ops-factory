@@ -127,9 +127,9 @@ public class BusinessServiceService {
     /**
      * Lists business services optionally filtered by group ID and host ID.
      *
-     * @param groupId lists business services optionally filtered by group ID and host ID
-     * @param hostId lists business services optionally filtered by group ID and host ID
-     * @return the lists business services optionally filtered by group ID and host ID
+     * @param groupId group identifier
+     * @param hostId host identifier
+     * @return the result
      */
     public List<Map<String, Object>> listBusinessServices(String groupId, String hostId) {
         List<Map<String, Object>> services = new ArrayList<>();
@@ -171,7 +171,7 @@ public class BusinessServiceService {
     /**
      * Gets a business service by its ID.
      *
-     * @param id gets a business service by its ID
+     * @param id entity identifier
      * @return a business service by its ID
      */
     public Map<String, Object> getBusinessService(String id) {
@@ -186,8 +186,8 @@ public class BusinessServiceService {
     /**
      * Creates a new business service from the provided field map.
      *
-     * @param body creates a new business service from the provided field map
-     * @return the creates a new business service from the provided field map
+     * @param body request body
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> createBusinessService(Map<String, Object> body) {
@@ -219,7 +219,7 @@ public class BusinessServiceService {
      *
      * @param id an existing business service with the provided field map
      * @param body an existing business service with the provided field map
-     * @return the updates an existing business service with the provided field map
+     * @return the result
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) {
@@ -269,8 +269,8 @@ public class BusinessServiceService {
     /**
      * Deletes a business service by ID, cascading to related host and cluster relations.
      *
-     * @param id deletes a business service by ID, cascading to related host and cluster relations
-     * @return the deletes a business service by ID, cascading to related host and cluster relations
+     * @param id entity identifier
+     * @return the result
      */
     public boolean deleteBusinessService(String id) {
         // Cascade delete related HostRelation records
@@ -301,7 +301,7 @@ public class BusinessServiceService {
     /**
      * Get business service with resolved host info.
      *
-     * @param id get business service with resolved host info
+     * @param id entity identifier
      * @return business service with resolved host info
      */
     @SuppressWarnings("unchecked")
@@ -329,7 +329,7 @@ public class BusinessServiceService {
     /**
      * Get hosts for the entry resources of a business service.
      *
-     * @param id get hosts for the entry resources of a business service
+     * @param id entity identifier
      * @return hosts for the entry resources of a business service
      */
     @SuppressWarnings("unchecked")
@@ -352,7 +352,7 @@ public class BusinessServiceService {
      * Get topology for a business service: entry hosts + N-hop downstream expansion.
      * Returns { nodes, edges }
      *
-     * @param id get topology for a business service: entry hosts + N-hop downstream expansion
+     * @param id entity identifier
      * @return topology for a business service: entry hosts + N-hop downstream expansion
      */
     @SuppressWarnings("unchecked")
@@ -547,7 +547,7 @@ public class BusinessServiceService {
     /**
      * Sync hostIds on a business service from its HostRelation records.
      *
-     * @param bsId sync hostIds on a business service from its HostRelation records
+     * @param bsId bs id
      */
     @SuppressWarnings("unchecked")
     public void syncHostIdsFromRelations(String bsId) {
@@ -564,7 +564,7 @@ public class BusinessServiceService {
      * Derives entry hosts from ClusterRelation where sourceType="business-service" and sourceId=bsId.
      * Resolves targetId (cluster) -> get cluster's hosts -> populate BS.hostIds.
      *
-     * @param bsId sync hostIds on a business service from its ClusterRelation records
+     * @param bsId bs id
      */
     @SuppressWarnings("unchecked")
     public void syncHostIdsFromClusterRelations(String bsId) {

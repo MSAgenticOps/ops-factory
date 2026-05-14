@@ -68,14 +68,14 @@ public class HostController {
     /**
      * Lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status.
      *
-     * @param tags lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
-     * @param clusterId lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
-     * @param groupId lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
-     * @param businessServiceId lists hosts, optionally filtered by tags, cluster, group, business service, or enabled
+     * @param tags tags
+     * @param clusterId cluster identifier
+     * @param groupId group identifier
+     * @param businessServiceId business service id
      *        status
-     * @param enabledOnly lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
-     * @param exchange lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
-     * @return the lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status
+     * @param enabledOnly enabled-only filter flag
+     * @param exchange server web exchange
+     * @return the result
      */
     @GetMapping({"", "/"})
     public Mono<Map<String, Object>> listHosts(@RequestParam(value = "tags", required = false) String tags,
@@ -152,8 +152,8 @@ public class HostController {
     /**
      * Gets a host by its IP address.
      *
-     * @param ip gets a host by its IP address
-     * @param exchange gets a host by its IP address
+     * @param ip ip
+     * @param exchange server web exchange
      * @return a host by its IP address
      */
     @GetMapping("/by-ip")
@@ -178,8 +178,8 @@ public class HostController {
     /**
      * Gets a host by ID.
      *
-     * @param id gets a host by ID
-     * @param exchange gets a host by ID
+     * @param id entity identifier
+     * @param exchange server web exchange
      * @return a host by ID
      */
     @GetMapping("/{id}")
@@ -212,9 +212,9 @@ public class HostController {
     /**
      * Creates a new host.
      *
-     * @param request creates a new host
-     * @param exchange creates a new host
-     * @return the creates a new host
+     * @param request HTTP request
+     * @param exchange server web exchange
+     * @return the result
      */
     @PostMapping({"", "/"})
     public Mono<ResponseEntity<Map<String, Object>>> createHost(@RequestBody Map<String, Object> request,
@@ -242,7 +242,7 @@ public class HostController {
      * @param id a host by ID
      * @param request a host by ID
      * @param exchange a host by ID
-     * @return the updates a host by ID
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateHost(@PathVariable("id") String id,
@@ -275,9 +275,9 @@ public class HostController {
     /**
      * Deletes a host by ID.
      *
-     * @param id deletes a host by ID
-     * @param exchange deletes a host by ID
-     * @return the deletes a host by ID
+     * @param id entity identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteHost(@PathVariable("id") String id,

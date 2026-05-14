@@ -59,13 +59,13 @@ public class HostRelationController {
     /**
      * Lists host relations, optionally filtered by host, group, cluster, or source.
      *
-     * @param hostId lists host relations, optionally filtered by host, group, cluster, or source
-     * @param groupId lists host relations, optionally filtered by host, group, cluster, or source
-     * @param clusterId lists host relations, optionally filtered by host, group, cluster, or source
-     * @param sourceType lists host relations, optionally filtered by host, group, cluster, or source
-     * @param sourceId lists host relations, optionally filtered by host, group, cluster, or source
-     * @param exchange lists host relations, optionally filtered by host, group, cluster, or source
-     * @return the lists host relations, optionally filtered by host, group, cluster, or source
+     * @param hostId host identifier
+     * @param groupId group identifier
+     * @param clusterId cluster identifier
+     * @param sourceType source type filter
+     * @param sourceId source identifier filter
+     * @param exchange server web exchange
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listRelations(@RequestParam(value = "hostId", required = false) String hostId,
@@ -120,9 +120,9 @@ public class HostRelationController {
     /**
      * Creates a new host relation edge.
      *
-     * @param request creates a new host relation edge
-     * @param exchange creates a new host relation edge
-     * @return the creates a new host relation edge
+     * @param request HTTP request
+     * @param exchange server web exchange
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createRelation(@RequestBody Map<String, Object> request,
@@ -150,7 +150,7 @@ public class HostRelationController {
      * @param id a host relation by ID
      * @param request a host relation by ID
      * @param exchange a host relation by ID
-     * @return the updates a host relation by ID
+     * @return the result
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateRelation(@PathVariable("id") String id,
@@ -175,9 +175,9 @@ public class HostRelationController {
     /**
      * Deletes a host relation by ID.
      *
-     * @param id deletes a host relation by ID
-     * @param exchange deletes a host relation by ID
-     * @return the deletes a host relation by ID
+     * @param id entity identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteRelation(@PathVariable("id") String id,

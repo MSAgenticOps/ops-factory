@@ -36,7 +36,7 @@ public class WebFluxConfig {
     /**
      * Creates and configures the CORS filter bean.
      *
-     * @return the creates and configures the CORS filter bean
+     * @return the result
      */
     @Bean
     @Order(0)

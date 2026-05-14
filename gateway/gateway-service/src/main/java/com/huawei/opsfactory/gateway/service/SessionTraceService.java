@@ -76,9 +76,9 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Starts a background trace collection job for the given session.
      *
-     * @param userId starts a background trace collection job for the given session
-     * @param agentId starts a background trace collection job for the given session
-     * @param sessionId starts a background trace collection job for the given session
+     * @param userId user identifier
+     * @param agentId agent identifier
+     * @param sessionId session identifier
      * @return the starts a background trace collection job for the given session
      */
     public synchronized TraceJobSnapshot startTrace(String userId, String agentId, String sessionId) {
@@ -111,7 +111,7 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Gets the current status snapshot of a trace collection job.
      *
-     * @param jobId gets the current status snapshot of a trace collection job
+     * @param jobId job id
      * @return the current status snapshot of a trace collection job
      */
     public TraceJobSnapshot getJob(String jobId) {
@@ -146,7 +146,7 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Deletes a trace job and its associated files.
      *
-     * @param jobId deletes a trace job and its associated files
+     * @param jobId job id
      */
     public void deleteJob(String jobId) {
         TraceJob job = jobs.remove(jobId);

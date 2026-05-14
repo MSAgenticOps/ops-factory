@@ -228,7 +228,7 @@ public class ClusterService {
     /**
      * Delete a cluster. Rejects if the cluster has hosts.
      *
-     * @param id delete a cluster. Rejects if the cluster has hosts
+     * @param id entity identifier
      * @param hostService used to check for hosts in this cluster
      * @return true if deleted
      */

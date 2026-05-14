@@ -39,15 +39,6 @@ public class ChannelRuntimeStorageService {
     private final GatewayProperties properties;
 
     /**
-     * Type definition for Channel Runtime Ref.
-     *
-     * @author x00000000
-     * @since 2026-05-09
-     */
-    public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {
-    }
-
-    /**
      * Creates the channel runtime storage service instance.
      */
     public ChannelRuntimeStorageService(GatewayProperties properties) {
@@ -57,8 +48,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the runtime directory for a channel detail.
      *
-     * @param channel resolves the runtime directory for a channel detail
-     * @return the resolves the runtime directory for a channel detail
+     * @param channel channel configuration
+     * @return the result
      */
     public Path runtimeDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel.ownerUserId(), channel.type(), channel.id());
@@ -67,8 +58,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the runtime directory for a channel instance.
      *
-     * @param channel resolves the runtime directory for a channel instance
-     * @return the resolves the runtime directory for a channel instance
+     * @param channel channel configuration
+     * @return the result
      */
     public Path runtimeDirectory(ChannelInstance channel) {
         return runtimeDirectory(channel.ownerUserId(), channel.type(), channel.id());
@@ -77,10 +68,10 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the runtime directory for a channel by owner user, type, and channel ID.
      *
-     * @param ownerUserId resolves the runtime directory for a channel by owner user, type, and channel ID
-     * @param type resolves the runtime directory for a channel by owner user, type, and channel ID
-     * @param channelId resolves the runtime directory for a channel by owner user, type, and channel ID
-     * @return the resolves the runtime directory for a channel by owner user, type, and channel ID
+     * @param ownerUserId owner user id
+     * @param type type filter
+     * @param channelId channel identifier
+     * @return the result
      */
     public Path runtimeDirectory(String ownerUserId, String type, String channelId) {
         Path typeRoot = properties.getGatewayRootPath()
@@ -99,8 +90,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the auth directory for a channel, validating that it stays within the runtime directory.
      *
-     * @param channel resolves the auth directory for a channel, validating that it stays within the runtime directory
-     * @return the resolves the auth directory for a channel, validating that it stays within the runtime directory
+     * @param channel channel configuration
+     * @return the result
      */
     public Path authDirectory(ChannelDetail channel) {
         String configured = channel.config() == null ? "" : channel.config().authStateDir();
@@ -119,8 +110,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the login state file path for a channel.
      *
-     * @param channel resolves the login state file path for a channel
-     * @return the resolves the login state file path for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path loginStateFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("login-state.json");
@@ -129,8 +120,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the PID file path for a channel login process.
      *
-     * @param channel resolves the PID file path for a channel login process
-     * @return the resolves the PID file path for a channel login process
+     * @param channel channel configuration
+     * @return the result
      */
     public Path pidFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("login.pid");
@@ -139,8 +130,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the log file path for a channel login process.
      *
-     * @param channel resolves the log file path for a channel login process
-     * @return the resolves the log file path for a channel login process
+     * @param channel channel configuration
+     * @return the result
      */
     public Path logFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("login.log");
@@ -149,8 +140,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the inbox directory for a channel.
      *
-     * @param channel resolves the inbox directory for a channel
-     * @return the resolves the inbox directory for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path inboxDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("inbox");
@@ -159,8 +150,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the processed inbox directory for a channel.
      *
-     * @param channel resolves the processed inbox directory for a channel
-     * @return the resolves the processed inbox directory for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path processedInboxDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("processed");
@@ -169,8 +160,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the pending outbox directory for a channel.
      *
-     * @param channel resolves the pending outbox directory for a channel
-     * @return the resolves the pending outbox directory for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path outboxPendingDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("outbox").resolve("pending");
@@ -179,8 +170,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the sent outbox directory for a channel.
      *
-     * @param channel resolves the sent outbox directory for a channel
-     * @return the resolves the sent outbox directory for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path outboxSentDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("outbox").resolve("sent");
@@ -189,8 +180,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the error outbox directory for a channel.
      *
-     * @param channel resolves the error outbox directory for a channel
-     * @return the resolves the error outbox directory for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path outboxErrorDirectory(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("outbox").resolve("error");
@@ -199,8 +190,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the bindings file path for a channel detail.
      *
-     * @param channel resolves the bindings file path for a channel detail
-     * @return the resolves the bindings file path for a channel detail
+     * @param channel channel configuration
+     * @return the result
      */
     public Path bindingsFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("bindings.json");
@@ -209,8 +200,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the bindings file path for a channel instance.
      *
-     * @param channel resolves the bindings file path for a channel instance
-     * @return the resolves the bindings file path for a channel instance
+     * @param channel channel configuration
+     * @return the result
      */
     public Path bindingsFile(ChannelInstance channel) {
         return runtimeDirectory(channel).resolve("bindings.json");
@@ -219,8 +210,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the inbound dedup file path for a channel.
      *
-     * @param channel resolves the inbound dedup file path for a channel
-     * @return the resolves the inbound dedup file path for a channel
+     * @param channel channel configuration
+     * @return the result
      */
     public Path dedupFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("inbound-dedup.json");
@@ -229,8 +220,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the events file path for a channel detail.
      *
-     * @param channel resolves the events file path for a channel detail
-     * @return the resolves the events file path for a channel detail
+     * @param channel channel configuration
+     * @return the result
      */
     public Path eventsFile(ChannelDetail channel) {
         return runtimeDirectory(channel).resolve("events.json");
@@ -239,8 +230,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Resolves the events file path for a channel instance.
      *
-     * @param channel resolves the events file path for a channel instance
-     * @return the resolves the events file path for a channel instance
+     * @param channel channel configuration
+     * @return the result
      */
     public Path eventsFile(ChannelInstance channel) {
         return runtimeDirectory(channel).resolve("events.json");
@@ -283,7 +274,7 @@ public class ChannelRuntimeStorageService {
     /**
      * Deletes the entire runtime directory for a channel instance.
      *
-     * @param channel deletes the entire runtime directory for a channel instance
+     * @param channel channel configuration
      */
     public void deleteRuntime(ChannelInstance channel) {
         deleteDirectory(runtimeDirectory(channel));
@@ -292,7 +283,7 @@ public class ChannelRuntimeStorageService {
     /**
      * Deletes the entire runtime directory for a channel detail.
      *
-     * @param channel deletes the entire runtime directory for a channel detail
+     * @param channel channel configuration
      */
     public void deleteRuntime(ChannelDetail channel) {
         deleteDirectory(runtimeDirectory(channel));
@@ -301,8 +292,8 @@ public class ChannelRuntimeStorageService {
     /**
      * Deletes all runtime directories for a channel across all owner users.
      *
-     * @param type deletes all runtime directories for a channel across all owner users
-     * @param channelId deletes all runtime directories for a channel across all owner users
+     * @param type type filter
+     * @param channelId channel identifier
      */
     public void deleteAllRuntimes(String type, String channelId) {
         for (ChannelRuntimeRef runtime : listRuntimeRefs(type, channelId)) {
@@ -313,9 +304,9 @@ public class ChannelRuntimeStorageService {
     /**
      * Lists all runtime references for a channel across all owner users.
      *
-     * @param type lists all runtime references for a channel across all owner users
-     * @param channelId lists all runtime references for a channel across all owner users
-     * @return the lists all runtime references for a channel across all owner users
+     * @param type type filter
+     * @param channelId channel identifier
+     * @return the result
      */
     public List<ChannelRuntimeRef> listRuntimeRefs(String type, String channelId) {
         String normalizedType = normalizeType(type);
@@ -399,5 +390,14 @@ public class ChannelRuntimeStorageService {
             throw new IllegalArgumentException(fieldName + " contains unsafe path characters");
         }
         return value;
+    }
+
+    /**
+     * Type definition for Channel Runtime Ref.
+     *
+     * @author x00000000
+     * @since 2026-05-09
+     */
+    public record ChannelRuntimeRef(String ownerUserId, String type, String channelId, Path runtimeDirectory) {
     }
 }

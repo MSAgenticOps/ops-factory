@@ -12,6 +12,8 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
+import jakarta.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -34,7 +36,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import jakarta.annotation.PostConstruct;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -212,12 +213,6 @@ public class HostService {
         }
     }
 
-    /**
-     * Resolve the mode of a cluster by looking up its type -> ClusterType.
-     *
-     * @param clusterId cluster identifier to resolve mode for
-     * @return the cluster mode string, defaults to "peer" if not resolvable
-     */
     private String resolveClusterMode(String clusterId) {
         try {
             Map<String, Object> cluster = clusterService.getCluster(clusterId);
@@ -238,10 +233,6 @@ public class HostService {
         return "peer";
     }
 
-    /**
-     * Sync cluster type into the host's tags.
-     * Removes any previous cluster-type tag (prefixed with "cluster:") and adds the current one.
-     */
     @SuppressWarnings("unchecked")
     private void syncClusterTypeToTags(Map<String, Object> host) {
         if (clusterService == null) {
@@ -430,7 +421,7 @@ public class HostService {
         writeHostFile(id, host);
         log.info("Created host: id={}, name={}", id, host.get("name"));
 
-        // Sync cluster→host 包含 relation
+        // Sync cluster→host membership relation
         if (clusterRelationService != null) {
             String cid = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
             clusterRelationService.syncHostClusterRelation(id, cid);
@@ -535,7 +526,7 @@ public class HostService {
         writeHostFile(id, host);
         log.info("Updated host: id={}", id);
 
-        // Sync cluster→host 包含 relation if clusterId changed
+        // Sync cluster→host membership relation if clusterId changed
         if (body.containsKey("clusterId") && clusterRelationService != null) {
             String cid = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
             clusterRelationService.syncHostClusterRelation(id, cid);
@@ -559,7 +550,7 @@ public class HostService {
             hostRelationService.deleteRelationsByHost(id);
         }
 
-        // Delete cluster→host 包含 relation
+        // Delete cluster→host membership relation
         if (clusterRelationService != null) {
             clusterRelationService.deleteConstituteRelationByHost(id);
         }

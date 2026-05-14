@@ -74,8 +74,8 @@ public class ChannelAdminController {
     /**
      * Lists all channels for the current admin user.
      *
-     * @param exchange lists all channels for the current admin user
-     * @return the lists all channels for the current admin user
+     * @param exchange server web exchange
+     * @return the result
      */
     @GetMapping
     public Mono<Map<String, Object>> listChannels(ServerWebExchange exchange) {
@@ -88,8 +88,8 @@ public class ChannelAdminController {
     /**
      * Gets a channel by ID.
      *
-     * @param channelId gets a channel by ID
-     * @param exchange gets a channel by ID
+     * @param channelId channel identifier
+     * @param exchange server web exchange
      * @return a channel by ID
      */
     @GetMapping("/{channelId}")
@@ -108,9 +108,9 @@ public class ChannelAdminController {
     /**
      * Creates a new channel.
      *
-     * @param request creates a new channel
-     * @param exchange creates a new channel
-     * @return the creates a new channel
+     * @param request HTTP request
+     * @param exchange server web exchange
+     * @return the result
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createChannel(@RequestBody ChannelUpsertRequest request,
@@ -135,7 +135,7 @@ public class ChannelAdminController {
      * @param channelId a channel by ID
      * @param request a channel by ID
      * @param exchange a channel by ID
-     * @return the updates a channel by ID
+     * @return the result
      */
     @PutMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> updateChannel(@PathVariable("channelId") String channelId,
@@ -181,9 +181,9 @@ public class ChannelAdminController {
     /**
      * Deletes a channel by ID.
      *
-     * @param channelId deletes a channel by ID
-     * @param exchange deletes a channel by ID
-     * @return the deletes a channel by ID
+     * @param channelId channel identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @DeleteMapping("/{channelId}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteChannel(@PathVariable("channelId") String channelId,
@@ -202,9 +202,9 @@ public class ChannelAdminController {
     /**
      * Lists all bindings for a channel.
      *
-     * @param channelId lists all bindings for a channel
-     * @param exchange lists all bindings for a channel
-     * @return the lists all bindings for a channel
+     * @param channelId channel identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @GetMapping("/{channelId}/bindings")
     public Mono<ResponseEntity<Map<String, Object>>> listBindings(@PathVariable("channelId") String channelId,
@@ -224,9 +224,9 @@ public class ChannelAdminController {
     /**
      * Lists all events for a channel.
      *
-     * @param channelId lists all events for a channel
-     * @param exchange lists all events for a channel
-     * @return the lists all events for a channel
+     * @param channelId channel identifier
+     * @param exchange server web exchange
+     * @return the result
      */
     @GetMapping("/{channelId}/events")
     public Mono<ResponseEntity<Map<String, Object>>> listEvents(@PathVariable("channelId") String channelId,
@@ -294,8 +294,8 @@ public class ChannelAdminController {
     /**
      * Gets the current login state for a channel.
      *
-     * @param channelId gets the current login state for a channel
-     * @param exchange gets the current login state for a channel
+     * @param channelId channel identifier
+     * @param exchange server web exchange
      * @return the current login state for a channel
      */
     @GetMapping("/{channelId}/login-state")
@@ -327,8 +327,8 @@ public class ChannelAdminController {
     /**
      * Starts the login process for a channel.
      *
-     * @param channelId starts the login process for a channel
-     * @param exchange starts the login process for a channel
+     * @param channelId channel identifier
+     * @param exchange server web exchange
      * @return the starts the login process for a channel
      */
     @PostMapping("/{channelId}/login")

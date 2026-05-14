@@ -271,9 +271,9 @@ public class AgentSkillInstallService {
             /**
              * Executes the visit file operation.
              *
-             * @param file executes the visit file operation
-             * @param attrs executes the visit file operation
-             * @return the executes the visit file operation
+             * @param file file being visited
+             * @param attrs file attributes
+             * @return the result
              * @throws IOException if the operation fails
              */
             @Override
@@ -285,9 +285,9 @@ public class AgentSkillInstallService {
             /**
              * Executes the post visit directory operation.
              *
-             * @param dir executes the post visit directory operation
-             * @param exc executes the post visit directory operation
-             * @return the executes the post visit directory operation
+             * @param dir directory being visited
+             * @param exc exc
+             * @return the result
              * @throws IOException if the operation fails
              */
             @Override

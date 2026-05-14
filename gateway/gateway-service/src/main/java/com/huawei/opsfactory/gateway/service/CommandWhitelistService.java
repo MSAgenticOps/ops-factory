@@ -113,8 +113,8 @@ public class CommandWhitelistService {
     /**
      * Updates an existing command in the whitelist matching the given pattern.
      *
-     * @param pattern an existing command in the whitelist matching the given pattern
-     * @param updates an existing command in the whitelist matching the given pattern
+     * @param pattern command pattern to match
+     * @param updates fields to update
      */
     public void updateCommand(String pattern, Map<String, Object> updates) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -146,7 +146,7 @@ public class CommandWhitelistService {
     /**
      * Deletes a command from the whitelist matching the given pattern.
      *
-     * @param pattern deletes a command from the whitelist matching the given pattern
+     * @param pattern pattern
      */
     public void deleteCommand(String pattern) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -172,7 +172,7 @@ public class CommandWhitelistService {
      * <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
      * </ul>
      *
-     * @param command validate a command string by splitting on pipe and semicolon delimiters,
+     * @param command command to execute
      * @return a list of rejected command names (empty if all pass)
      */
     public List<String> validateCommand(String command) {

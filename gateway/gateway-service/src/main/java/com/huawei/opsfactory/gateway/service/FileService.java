@@ -551,7 +551,7 @@ public class FileService {
      * @param workingDir agent working directory
      * @param sessionId session identifier
      * @param messageId message identifier for the capsule entry
-     * @param files list of file metadata entries to persist
+     * @param files files
      */
     public void persistOutputFiles(Path workingDir, String sessionId, String messageId,
         List<Map<String, String>> files) {

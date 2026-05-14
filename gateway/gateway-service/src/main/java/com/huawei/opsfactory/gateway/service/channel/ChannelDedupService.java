@@ -52,8 +52,8 @@ public class ChannelDedupService {
     /**
      * Checks if a message is new and marks it as seen, using the default owner user ID.
      *
-     * @param channelId checks if a message is new and marks it as seen, using the default owner user ID
-     * @param externalMessageId checks if a message is new and marks it as seen, using the default owner user ID
+     * @param channelId channel identifier
+     * @param externalMessageId external message id
      * @return true if if a message is new and marks it as seen, using the default owner user ID
      */
     public boolean markIfNew(String channelId, String externalMessageId) {
@@ -63,9 +63,9 @@ public class ChannelDedupService {
     /**
      * Checks if a message is new and marks it as seen to prevent duplicate processing.
      *
-     * @param channelId checks if a message is new and marks it as seen to prevent duplicate processing
-     * @param ownerUserId checks if a message is new and marks it as seen to prevent duplicate processing
-     * @param externalMessageId checks if a message is new and marks it as seen to prevent duplicate processing
+     * @param channelId channel identifier
+     * @param ownerUserId owner user id
+     * @param externalMessageId external message id
      * @return true if if a message is new and marks it as seen to prevent duplicate processing
      */
     public boolean markIfNew(String channelId, String ownerUserId, String externalMessageId) {

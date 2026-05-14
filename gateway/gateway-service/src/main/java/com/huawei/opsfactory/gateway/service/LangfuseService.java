@@ -94,7 +94,7 @@ public class LangfuseService {
     /**
      * Fetches raw traces from the Langfuse API within the given time range.
      *
-     * @param from start timestamp (ISO 8601)
+     * @param from start timestamp
      * @param to end timestamp (ISO 8601)
      * @param limit maximum number of traces to fetch
      * @param errorsOnly whether to filter for error traces only
@@ -112,7 +112,7 @@ public class LangfuseService {
     /**
      * Fetches raw observations from the Langfuse API within the given time range.
      *
-     * @param from start timestamp (ISO 8601)
+     * @param from start timestamp
      * @param to end timestamp (ISO 8601)
      * @return Mono emitting raw JSON string of observations
      */
@@ -128,7 +128,7 @@ public class LangfuseService {
      * Compute an overview by fetching traces and observations, then aggregating
      * into totals, averages, percentiles, and daily breakdowns.
      *
-     * @param from start timestamp (ISO 8601)
+     * @param from start timestamp
      * @param to end timestamp (ISO 8601)
      * @return Mono emitting aggregated overview with totals, averages, and daily breakdowns
      */
@@ -247,7 +247,7 @@ public class LangfuseService {
     /**
      * Fetch traces and transform into frontend TraceRow[] format.
      *
-     * @param from start timestamp (ISO 8601)
+     * @param from start timestamp
      * @param to end timestamp (ISO 8601)
      * @param limit maximum number of traces to fetch
      * @param errorsOnly whether to filter for error traces only
@@ -321,7 +321,7 @@ public class LangfuseService {
     /**
      * Fetch observations and transform into frontend { observations: ObservationGroup[] } format.
      *
-     * @param from start timestamp (ISO 8601)
+     * @param from start timestamp
      * @param to end timestamp (ISO 8601)
      * @return Mono emitting a map with "observations" key containing grouped observation data
      */
