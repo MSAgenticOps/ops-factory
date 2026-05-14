@@ -781,7 +781,7 @@ public class AgentConfigServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testWriteKnowledgeCliSettings_storesSourceIdAndRelativeArtifactsRoot() throws IOException {
+    public void testWriteKnowledgeCliSettings_storesSourceIdAndRelArtifactsRoot() throws IOException {
         Path configDir = gatewayRoot.resolve("agents").resolve("qa-cli-agent").resolve("config");
         Files.createDirectories(configDir);
         Files.writeString(configDir.resolve("config.yaml"), "extensions:\n" + "  knowledge-cli:\n"

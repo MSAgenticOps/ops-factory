@@ -300,7 +300,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
      * Executes the list all sessions invalid payload skipped and invalid dates use string fallback operation.
      */
     @Test
-    public void listAllSessions_invalidPayloadSkippedAndInvalidDatesUseStringFallback() {
+    public void listAllSessions_invalidPayloadSkippedAndBadDatesUseFallback() {
         ManagedInstance invalidPayloadInstance =
             new ManagedInstance("agent-a", "alice", 8001, 111L, null, "test-secret");
         invalidPayloadInstance.setStatus(ManagedInstance.Status.RUNNING);

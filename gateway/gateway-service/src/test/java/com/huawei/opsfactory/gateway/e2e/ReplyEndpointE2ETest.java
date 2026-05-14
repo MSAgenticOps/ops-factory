@@ -96,7 +96,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
      * Executes the session events authenticated user proxies last event id without legacy relay operation.
      */
     @Test
-    public void sessionEvents_authenticatedUser_proxiesLastEventIdWithoutLegacyRelay() {
+    public void sessionEvents_authUser_proxiesLastEventIdWithoutLegacyRelay() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(),
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));

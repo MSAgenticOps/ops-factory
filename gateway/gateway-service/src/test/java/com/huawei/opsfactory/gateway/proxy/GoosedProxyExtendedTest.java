@@ -178,7 +178,7 @@ public class GoosedProxyExtendedTest {
      * Tests proxy session command with body non2xx throws upstream error without committing response.
      */
     @Test
-    public void testProxySessionCommandWithBody_non2xxThrowsUpstreamErrorWithoutCommittingResponse() {
+    public void testProxySessionCmdWithBody_non2xxThrowsErrorWithoutCommit() {
         DisposableServer server = HttpServer.create()
             .host("127.0.0.1")
             .port(0)
@@ -210,7 +210,7 @@ public class GoosedProxyExtendedTest {
      * @throws Exception if the operation fails
      */
     @Test
-    public void testEmitTransformedFrame_emitsOriginalBeforeSupplementalEventCompletes() throws Exception {
+    public void testEmitTransformedFrame_emitsOriginalBeforeSupplemental() throws Exception {
         Method emitTransformedFrame = GoosedProxy.class.getDeclaredMethod("emitTransformedFrame", String.class,
             org.springframework.core.io.buffer.DataBufferFactory.class, Function.class);
         emitTransformedFrame.setAccessible(true);

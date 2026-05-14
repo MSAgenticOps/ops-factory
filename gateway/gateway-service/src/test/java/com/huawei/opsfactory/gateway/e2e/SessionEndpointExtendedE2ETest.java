@@ -173,7 +173,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
      * Executes the cleanup empty session non empty conversation with zero message count skips delete operation.
      */
     @Test
-    public void cleanupEmptySession_nonEmptyConversationWithZeroMessageCount_skipsDelete() {
+    public void cleanupEmptySession_nonEmptyConvZeroMsgCount_skipsDelete() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(runningInstance));
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions/session-conversation"), anyString()))
             .thenReturn(Mono.just("{\"id\":\"session-conversation\",\"session_type\":\"user\","

@@ -205,7 +205,7 @@ public class ReplyControllerRealProxyTest {
      * @throws Exception if the operation fails
      */
     @Test
-    public void sessionEvents_activeRequestsDrainedEmitsOutputFilesAfterOriginalEvent() throws Exception {
+    public void sessionEvents_drainedActiveReqEmitsOutputFilesAfterEvent() throws Exception {
         DisposableServer server = HttpServer.create()
             .host("127.0.0.1")
             .port(0)
