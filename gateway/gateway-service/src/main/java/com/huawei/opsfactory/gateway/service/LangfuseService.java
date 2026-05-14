@@ -49,8 +49,7 @@ public class LangfuseService {
     /**
      * Creates the langfuse service instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param properties gateway configuration properties providing Langfuse settings
      */
     public LangfuseService(GatewayProperties properties) {
         this.config = properties.getLangfuse();
@@ -60,7 +59,7 @@ public class LangfuseService {
     /**
      * Checks whether the Langfuse integration is properly configured with host, public key, and secret key.
      *
-     * @return the result
+     * @return true if host, public key, and secret key are all configured
      */
     public boolean isConfigured() {
         return config.getHost() != null && !config.getHost().isBlank() && config.getPublicKey() != null
@@ -70,7 +69,7 @@ public class LangfuseService {
     /**
      * Checks whether the Langfuse server is reachable via a health check endpoint.
      *
-     * @return the result
+     * @return Mono emitting true if the Langfuse health check succeeds
      */
     public Mono<Boolean> checkReachable() {
         if (!isConfigured()) {
@@ -95,11 +94,11 @@ public class LangfuseService {
     /**
      * Fetches raw traces from the Langfuse API within the given time range.
      *
-     * @param from the from parameter
-     * @param to the to parameter
-     * @param limit the limit parameter
-     * @param errorsOnly the errorsOnly parameter
-     * @return the result
+     * @param from start timestamp (ISO 8601)
+     * @param to end timestamp (ISO 8601)
+     * @param limit maximum number of traces to fetch
+     * @param errorsOnly whether to filter for error traces only
+     * @return Mono emitting raw JSON string of traces
      */
     public Mono<String> getTraces(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
@@ -113,9 +112,9 @@ public class LangfuseService {
     /**
      * Fetches raw observations from the Langfuse API within the given time range.
      *
-     * @param from the from parameter
-     * @param to the to parameter
-     * @return the result
+     * @param from start timestamp (ISO 8601)
+     * @param to end timestamp (ISO 8601)
+     * @return Mono emitting raw JSON string of observations
      */
     public Mono<String> getObservations(String from, String to) {
         if (!isConfigured()) {
@@ -129,9 +128,9 @@ public class LangfuseService {
      * Compute an overview by fetching traces and observations, then aggregating
      * into totals, averages, percentiles, and daily breakdowns.
      *
-     * @param from the from parameter
-     * @param to the to parameter
-     * @return the result
+     * @param from start timestamp (ISO 8601)
+     * @param to end timestamp (ISO 8601)
+     * @return Mono emitting aggregated overview with totals, averages, and daily breakdowns
      */
     public Mono<Map<String, Object>> getOverview(String from, String to) {
         if (!isConfigured()) {
@@ -240,11 +239,11 @@ public class LangfuseService {
     /**
      * Fetch traces and transform into frontend TraceRow[] format.
      *
-     * @param from the from parameter
-     * @param to the to parameter
-     * @param limit the limit parameter
-     * @param errorsOnly the errorsOnly parameter
-     * @return the result
+     * @param from start timestamp (ISO 8601)
+     * @param to end timestamp (ISO 8601)
+     * @param limit maximum number of traces to fetch
+     * @param errorsOnly whether to filter for error traces only
+     * @return Mono emitting a list of trace row maps for frontend display
      */
     public Mono<List<Map<String, Object>>> getTracesFormatted(String from, String to, int limit, boolean errorsOnly) {
         if (!isConfigured()) {
@@ -306,9 +305,9 @@ public class LangfuseService {
     /**
      * Fetch observations and transform into frontend { observations: ObservationGroup[] } format.
      *
-     * @param from the from parameter
-     * @param to the to parameter
-     * @return the result
+     * @param from start timestamp (ISO 8601)
+     * @param to end timestamp (ISO 8601)
+     * @return Mono emitting a map with "observations" key containing grouped observation data
      */
     public Mono<Map<String, Object>> getObservationsFormatted(String from, String to) {
         if (!isConfigured()) {

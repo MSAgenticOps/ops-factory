@@ -47,9 +47,6 @@ public class ClusterController {
 
     /**
      * Creates the cluster controller instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public ClusterController(ClusterService clusterService, HostService hostService,
         HostGroupService hostGroupService) {
@@ -61,11 +58,11 @@ public class ClusterController {
     /**
      * Lists clusters, optionally filtered by group, type, or enabled status.
      *
-     * @param groupId the groupId parameter
-     * @param type the type parameter
-     * @param enabledOnly the enabledOnly parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param groupId lists clusters, optionally filtered by group, type, or enabled status
+     * @param type lists clusters, optionally filtered by group, type, or enabled status
+     * @param enabledOnly lists clusters, optionally filtered by group, type, or enabled status
+     * @param exchange lists clusters, optionally filtered by group, type, or enabled status
+     * @return the lists clusters, optionally filtered by group, type, or enabled status
      */
     @GetMapping
     public Mono<Map<String, Object>> listClusters(@RequestParam(value = "groupId", required = false) String groupId,
@@ -90,9 +87,9 @@ public class ClusterController {
     /**
      * Gets a cluster by ID with its associated hosts.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id gets a cluster by ID with its associated hosts
+     * @param exchange gets a cluster by ID with its associated hosts
+     * @return a cluster by ID with its associated hosts
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getCluster(@PathVariable("id") String id,
@@ -120,8 +117,8 @@ public class ClusterController {
     /**
      * Returns all distinct cluster types.
      *
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param exchange returns all distinct cluster types
+     * @return all distinct cluster types
      */
     @GetMapping("/types")
     public Mono<Map<String, Object>> getClusterTypes(ServerWebExchange exchange) {
@@ -137,9 +134,9 @@ public class ClusterController {
     /**
      * Lists all hosts belonging to a cluster.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id lists all hosts belonging to a cluster
+     * @param exchange lists all hosts belonging to a cluster
+     * @return the lists all hosts belonging to a cluster
      */
     @GetMapping("/{id}/hosts")
     public Mono<Map<String, Object>> getClusterHosts(@PathVariable("id") String id, ServerWebExchange exchange) {
@@ -155,9 +152,9 @@ public class ClusterController {
     /**
      * Creates a new cluster.
      *
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param request creates a new cluster
+     * @param exchange creates a new cluster
+     * @return the creates a new cluster
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createCluster(@RequestBody Map<String, Object> request,
@@ -182,10 +179,10 @@ public class ClusterController {
     /**
      * Updates a cluster by ID.
      *
-     * @param id the id parameter
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id a cluster by ID
+     * @param request a cluster by ID
+     * @param exchange a cluster by ID
+     * @return the updates a cluster by ID
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateCluster(@PathVariable("id") String id,
@@ -210,10 +207,10 @@ public class ClusterController {
     /**
      * Deletes a cluster by ID, optionally forcing deletion of associated hosts.
      *
-     * @param id the id parameter
-     * @param force the force parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id deletes a cluster by ID, optionally forcing deletion of associated hosts
+     * @param force deletes a cluster by ID, optionally forcing deletion of associated hosts
+     * @param exchange deletes a cluster by ID, optionally forcing deletion of associated hosts
+     * @return the deletes a cluster by ID, optionally forcing deletion of associated hosts
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteCluster(@PathVariable("id") String id,

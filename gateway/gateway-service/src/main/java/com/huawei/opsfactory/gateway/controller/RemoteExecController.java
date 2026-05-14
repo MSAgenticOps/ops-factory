@@ -37,9 +37,6 @@ public class RemoteExecController {
 
     /**
      * Creates the remote exec controller instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public RemoteExecController(RemoteExecutionService remoteExecutionService,
         CommandWhitelistService commandWhitelistService) {
@@ -50,9 +47,9 @@ public class RemoteExecController {
     /**
      * Executes a remote command on a managed host after whitelist validation.
      *
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param request executes a remote command on a managed host after whitelist validation
+     * @param exchange executes a remote command on a managed host after whitelist validation
+     * @return the executes a remote command on a managed host after whitelist validation
      */
     @PostMapping("/execute")
     public Mono<ResponseEntity<Map<String, Object>>> execute(@RequestBody Map<String, Object> request,
@@ -109,9 +106,9 @@ public class RemoteExecController {
     /**
      * Checks the risk level of a command against the whitelist.
      *
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param request checks the risk level of a command against the whitelist
+     * @param exchange checks the risk level of a command against the whitelist
+     * @return true if the risk level of a command against the whitelist
      */
     @PostMapping("/check-risk")
     public Mono<ResponseEntity<Map<String, Object>>> checkRisk(@RequestBody Map<String, Object> request,

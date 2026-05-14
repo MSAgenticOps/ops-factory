@@ -22,9 +22,6 @@ public class SampleDataSeeder {
 
     /**
      * Creates the sample data seeder instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public SampleDataSeeder(GatewayProperties properties, HostService hostService, HostGroupService hostGroupService,
         ClusterService clusterService, HostRelationService hostRelationService) {

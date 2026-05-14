@@ -80,8 +80,7 @@ public class HostService {
     /**
      * Creates the host service instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param properties gateway configuration properties
      */
     public HostService(GatewayProperties properties) {
         this.properties = properties;
@@ -90,7 +89,7 @@ public class HostService {
     /**
      * Sets the host relation service via lazy injection.
      *
-     * @param hostRelationService the hostRelationService parameter
+     * @param hostRelationService host relation service for managing host relationships
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -101,7 +100,7 @@ public class HostService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @param businessServiceService the businessServiceService parameter
+     * @param businessServiceService business service for managing service-to-host associations
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -112,7 +111,7 @@ public class HostService {
     /**
      * Sets the host group service via lazy injection.
      *
-     * @param hostGroupService the hostGroupService parameter
+     * @param hostGroupService host group service for managing group-based host queries
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -123,7 +122,7 @@ public class HostService {
     /**
      * Sets the cluster service via lazy injection.
      *
-     * @param clusterService the clusterService parameter
+     * @param clusterService cluster service for resolving cluster information
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -134,7 +133,7 @@ public class HostService {
     /**
      * Sets the cluster type service via lazy injection.
      *
-     * @param clusterTypeService the clusterTypeService parameter
+     * @param clusterTypeService cluster type service for resolving cluster modes
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -145,7 +144,7 @@ public class HostService {
     /**
      * Sets the cluster relation service via lazy injection.
      *
-     * @param clusterRelationService the clusterRelationService parameter
+     * @param clusterRelationService cluster relation service for syncing cluster-host relationships
      */
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -183,6 +182,8 @@ public class HostService {
      * Validate host role against the cluster type mode.
      * - If cluster type mode is "peer", role must be null.
      * - If cluster type mode is "primary-backup", role must be "primary", "backup", or null.
+     *
+     * @param host host data map to validate
      */
     private void validateHostRole(Map<String, Object> host) {
         Object roleObj = host.get("role");
@@ -214,8 +215,8 @@ public class HostService {
     /**
      * Resolve the mode of a cluster by looking up its type -> ClusterType.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param clusterId cluster identifier to resolve mode for
+     * @return the cluster mode string, defaults to "peer" if not resolvable
      */
     private String resolveClusterMode(String clusterId) {
         try {
@@ -290,8 +291,8 @@ public class HostService {
     /**
      * Lists hosts optionally filtered by tags.
      *
-     * @param tags the tags parameter
-     * @return the result
+     * @param tags optional tag filter; only hosts containing at least one matching tag are returned
+     * @return list of host maps with credentials masked
      */
     public List<Map<String, Object>> listHosts(String[] tags) {
         List<Map<String, Object>> hosts = new ArrayList<>();
@@ -337,8 +338,8 @@ public class HostService {
     /**
      * Gets a host by its ID with the credential masked.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id host identifier
+     * @return host data map with credential masked
      */
     public Map<String, Object> getHost(String id) {
         Path file = hostsDir.resolve(id + ".json");
@@ -353,8 +354,8 @@ public class HostService {
     /**
      * Gets a host by its ID with the decrypted credential for internal use.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id host identifier
+     * @return host data map with decrypted credential for internal use
      */
     public Map<String, Object> getHostWithCredential(String id) {
         Path file = hostsDir.resolve(id + ".json");
@@ -379,8 +380,8 @@ public class HostService {
     /**
      * Creates a new host from the provided field map with encrypted credential.
      *
-     * @param body the body parameter
-     * @return the result
+     * @param body request body containing host fields
+     * @return the newly created host map with credential masked
      */
     public Map<String, Object> createHost(Map<String, Object> body) {
         String name = body.getOrDefault("name", "").toString();
@@ -444,9 +445,9 @@ public class HostService {
     /**
      * Updates an existing host with the provided field map, re-encrypting the credential if changed.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @return the result
+     * @param id host identifier
+     * @param body request body containing updated host fields
+     * @return the updated host map with credential masked
      */
     public Map<String, Object> updateHost(String id, Map<String, Object> body) {
         Path file = hostsDir.resolve(id + ".json");
@@ -549,8 +550,8 @@ public class HostService {
     /**
      * Deletes a host by ID with cascade deletion of related relations.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id host identifier
+     * @return true if the host was deleted, false if not found
      */
     public boolean deleteHost(String id) {
         // Cascade delete relations first
@@ -585,8 +586,8 @@ public class HostService {
     /**
      * List hosts filtered by clusterId.
      *
-     * @param clusterId the clusterId parameter
-     * @return the result
+     * @param clusterId cluster identifier to filter hosts by
+     * @return list of host maps belonging to the specified cluster, with credentials masked
      */
     public List<Map<String, Object>> listHostsByCluster(String clusterId) {
         List<Map<String, Object>> hosts = new ArrayList<>();
@@ -617,9 +618,9 @@ public class HostService {
      * List hosts filtered by groupId (via cluster lookup).
      * Recursively resolves sub-groups so a top-level group finds all descendant hosts.
      *
-     * @param groupId the groupId parameter
-     * @param clusterService the clusterService parameter
-     * @return the result
+     * @param groupId group identifier to look up hosts for
+     * @param clusterService cluster service for resolving clusters within groups
+     * @return list of host maps belonging to all clusters under the group and its sub-groups
      */
     public List<Map<String, Object>> listHostsByGroup(String groupId, ClusterService clusterService) {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -653,7 +654,7 @@ public class HostService {
     /**
      * Returns all unique tags across all hosts.
      *
-     * @return the result
+     * @return list of all unique tag strings across all hosts
      */
     public List<String> getAllTags() {
         LinkedHashSet<String> allTags = new LinkedHashSet<>();
@@ -675,8 +676,8 @@ public class HostService {
      * Find a host by IP address, checking both the ip (SSH) and businessIp fields.
      * Returns the first matching host map (with masked credential) or null.
      *
-     * @param ip the ip parameter
-     * @return the result
+     * @param ip IP address to search for
+     * @return the first matching host map with credential masked, or null if none found
      */
     public Map<String, Object> findByIp(String ip) {
         List<Map<String, Object>> hosts = listHosts(new String[0]);
@@ -691,8 +692,8 @@ public class HostService {
     /**
      * Tests the SSH connection to a host by its ID and returns connection status and latency.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id host identifier to test connectivity for
+     * @return connection result map containing success status, message, and latency
      */
     public Map<String, Object> testConnection(String id) {
         Map<String, Object> host;
@@ -777,6 +778,13 @@ public class HostService {
 
     // ── AES-GCM Encryption ───────────────────────────────────────────
 
+    /**
+     * Encrypts plaintext using AES-GCM and returns a Base64-encoded ciphertext with prepended IV.
+     *
+     * @param plaintext the plain text to encrypt
+     * @return Base64-encoded string containing IV followed by ciphertext
+     * @throws GeneralSecurityException if encryption fails
+     */
     private String encrypt(String plaintext) throws GeneralSecurityException {
         byte[] iv = new byte[GCM_IV_LENGTH];
         new SecureRandom().nextBytes(iv);
@@ -795,6 +803,13 @@ public class HostService {
         return Base64.getEncoder().encodeToString(combined);
     }
 
+    /**
+     * Decrypts a Base64-encoded AES-GCM ciphertext (IV prepended) back to plaintext.
+     *
+     * @param encryptedBase64 Base64-encoded string containing IV followed by ciphertext
+     * @return the decrypted plain text
+     * @throws GeneralSecurityException if decryption fails
+     */
     private String decrypt(String encryptedBase64) throws GeneralSecurityException {
         byte[] combined = Base64.getDecoder().decode(encryptedBase64);
 

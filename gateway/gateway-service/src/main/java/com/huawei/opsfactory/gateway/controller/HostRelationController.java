@@ -49,9 +49,6 @@ public class HostRelationController {
 
     /**
      * Creates the host relation controller instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public HostRelationController(HostRelationService hostRelationService,
         BusinessServiceService businessServiceService) {
@@ -62,13 +59,13 @@ public class HostRelationController {
     /**
      * Lists host relations, optionally filtered by host, group, cluster, or source.
      *
-     * @param hostId the hostId parameter
-     * @param groupId the groupId parameter
-     * @param clusterId the clusterId parameter
-     * @param sourceType the sourceType parameter
-     * @param sourceId the sourceId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param hostId lists host relations, optionally filtered by host, group, cluster, or source
+     * @param groupId lists host relations, optionally filtered by host, group, cluster, or source
+     * @param clusterId lists host relations, optionally filtered by host, group, cluster, or source
+     * @param sourceType lists host relations, optionally filtered by host, group, cluster, or source
+     * @param sourceId lists host relations, optionally filtered by host, group, cluster, or source
+     * @param exchange lists host relations, optionally filtered by host, group, cluster, or source
+     * @return the lists host relations, optionally filtered by host, group, cluster, or source
      */
     @GetMapping
     public Mono<Map<String, Object>> listRelations(@RequestParam(value = "hostId", required = false) String hostId,
@@ -89,10 +86,10 @@ public class HostRelationController {
     /**
      * Returns the host relation graph data enriched with business services.
      *
-     * @param groupId the groupId parameter
-     * @param clusterId the clusterId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param groupId returns the host relation graph data enriched with business services
+     * @param clusterId returns the host relation graph data enriched with business services
+     * @param exchange returns the host relation graph data enriched with business services
+     * @return the host relation graph data enriched with business services
      */
     @GetMapping("/graph")
     public Mono<Map<String, Object>> getGraph(@RequestParam(value = "groupId", required = false) String groupId,
@@ -108,9 +105,9 @@ public class HostRelationController {
     /**
      * Returns the neighbor hosts for a given host.
      *
-     * @param hostId the hostId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param hostId returns the neighbor hosts for a given host
+     * @param exchange returns the neighbor hosts for a given host
+     * @return the neighbor hosts for a given host
      */
     @GetMapping("/hosts/{hostId}/neighbors")
     public Mono<Map<String, Object>> getHostNeighbors(@PathVariable("hostId") String hostId,
@@ -123,9 +120,9 @@ public class HostRelationController {
     /**
      * Creates a new host relation edge.
      *
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param request creates a new host relation edge
+     * @param exchange creates a new host relation edge
+     * @return the creates a new host relation edge
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createRelation(@RequestBody Map<String, Object> request,
@@ -150,10 +147,10 @@ public class HostRelationController {
     /**
      * Updates a host relation by ID.
      *
-     * @param id the id parameter
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id a host relation by ID
+     * @param request a host relation by ID
+     * @param exchange a host relation by ID
+     * @return the updates a host relation by ID
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateRelation(@PathVariable("id") String id,
@@ -178,9 +175,9 @@ public class HostRelationController {
     /**
      * Deletes a host relation by ID.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id deletes a host relation by ID
+     * @param exchange deletes a host relation by ID
+     * @return the deletes a host relation by ID
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteRelation(@PathVariable("id") String id,

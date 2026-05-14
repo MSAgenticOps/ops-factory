@@ -48,9 +48,6 @@ public class SopService {
 
     /**
      * Creates the sop service instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public SopService(GatewayProperties properties, CommandWhitelistService commandWhitelistService) {
         this.properties = properties;
@@ -79,7 +76,7 @@ public class SopService {
     /**
      * Lists all SOP documents.
      *
-     * @return the result
+     * @return the lists all SOP documents
      */
     public List<Map<String, Object>> listSops() {
         List<Map<String, Object>> sops = new ArrayList<>();
@@ -105,8 +102,8 @@ public class SopService {
     /**
      * Gets an SOP document by its ID.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id gets an SOP document by its ID
+     * @return an SOP document by its ID
      */
     public Map<String, Object> getSop(String id) {
         Path file = resolveSopFile(id);
@@ -120,8 +117,8 @@ public class SopService {
     /**
      * Creates a new SOP document from the provided field map.
      *
-     * @param body the body parameter
-     * @return the result
+     * @param body creates a new SOP document from the provided field map
+     * @return the creates a new SOP document from the provided field map
      */
     public Map<String, Object> createSop(Map<String, Object> body) {
         String mode = String.valueOf(body.getOrDefault("mode", "structured"));
@@ -153,9 +150,9 @@ public class SopService {
     /**
      * Updates an existing SOP document with the provided field map.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @return the result
+     * @param id an existing SOP document with the provided field map
+     * @param body an existing SOP document with the provided field map
+     * @return the updates an existing SOP document with the provided field map
      */
     public Map<String, Object> updateSop(String id, Map<String, Object> body) {
         Path file = resolveSopFile(id);
@@ -212,8 +209,8 @@ public class SopService {
     /**
      * Deletes an SOP document by its ID.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id deletes an SOP document by its ID
+     * @return the deletes an SOP document by its ID
      */
     public boolean deleteSop(String id) {
         Path file = resolveSopFile(id);

@@ -33,8 +33,7 @@ public class RuntimePreparer {
     /**
      * Creates the runtime preparer instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param properties gateway configuration properties
      */
     public RuntimePreparer(GatewayProperties properties) {
         this.properties = properties;
@@ -44,10 +43,10 @@ public class RuntimePreparer {
      * Prepare the per-user runtime directory for an agent instance.
      * Creates directories and symlinks to shared agent config.
      *
-     * @param agentId the agentId parameter
-     * @param userId the userId parameter
+     * @param agentId agent instance identifier
+     * @param userId user identifier
      * @return the runtime root path for this (agentId, userId)
-     * @throws IOException if the operation fails
+     * @throws IOException if directory or symlink creation fails
      */
     public Path prepare(String agentId, String userId) throws IOException {
         Path gatewayRoot = properties.getGatewayRootPath();

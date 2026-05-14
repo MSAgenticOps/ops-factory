@@ -47,9 +47,6 @@ public class HostGroupService {
 
     /**
      * Creates the host group service instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public HostGroupService(GatewayProperties properties) {
         this.properties = properties;
@@ -75,7 +72,7 @@ public class HostGroupService {
     /**
      * Lists all host groups.
      *
-     * @return the result
+     * @return the lists all host groups
      */
     public List<Map<String, Object>> listGroups() {
         List<Map<String, Object>> groups = new ArrayList<>();
@@ -101,8 +98,8 @@ public class HostGroupService {
     /**
      * Gets a host group by its ID.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id gets a host group by its ID
+     * @return a host group by its ID
      */
     public Map<String, Object> getGroup(String id) {
         Path file = groupsDir.resolve(id + ".json");
@@ -118,9 +115,9 @@ public class HostGroupService {
      * Clusters are attached based on their groupId matching a group's id.
      * Business services are attached to their groupId node.
      *
-     * @param groups the groups parameter
-     * @param clusters the clusters parameter
-     * @return the result
+     * @param groups build tree structure: top-level groups → sub-groups → clusters (leaf nodes)
+     * @param clusters build tree structure: top-level groups → sub-groups → clusters (leaf nodes)
+     * @return the build tree structure: top-level groups → sub-groups → clusters (leaf nodes)
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters) {
         return getTree(groups, clusters, List.of());
@@ -129,10 +126,11 @@ public class HostGroupService {
     /**
      * Builds tree structure including top-level groups, sub-groups, clusters, and business services.
      *
-     * @param groups the groups parameter
-     * @param clusters the clusters parameter
-     * @param businessServices the businessServices parameter
-     * @return the result
+     * @param groups builds tree structure including top-level groups, sub-groups, clusters, and business services
+     * @param clusters builds tree structure including top-level groups, sub-groups, clusters, and business services
+     * @param businessServices builds tree structure including top-level groups, sub-groups, clusters, and business
+     *        services
+     * @return the builds tree structure including top-level groups, sub-groups, clusters, and business services
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
         List<Map<String, Object>> businessServices) {
@@ -200,8 +198,8 @@ public class HostGroupService {
     /**
      * Creates a new host group from the provided field map.
      *
-     * @param body the body parameter
-     * @return the result
+     * @param body creates a new host group from the provided field map
+     * @return the creates a new host group from the provided field map
      */
     public Map<String, Object> createGroup(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
@@ -225,9 +223,9 @@ public class HostGroupService {
     /**
      * Updates an existing host group with the provided field map.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @return the result
+     * @param id an existing host group with the provided field map
+     * @param body an existing host group with the provided field map
+     * @return the updates an existing host group with the provided field map
      */
     public Map<String, Object> updateGroup(String id, Map<String, Object> body) {
         Path file = groupsDir.resolve(id + ".json");
@@ -261,7 +259,7 @@ public class HostGroupService {
     /**
      * Delete a group. Rejects if the group has sub-groups or clusters.
      *
-     * @param id the id parameter
+     * @param id delete a group. Rejects if the group has sub-groups or clusters
      * @param clusterService used to check for clusters in this group
      * @return true if deleted
      */
@@ -299,11 +297,12 @@ public class HostGroupService {
      * Force-delete a group with cascade: deletes business services, recursively force-deletes
      * sub-groups, force-deletes clusters (which cascade-delete hosts), then deletes the group.
      *
-     * @param id the id parameter
-     * @param clusterService the clusterService parameter
-     * @param hostService the hostService parameter
-     * @param businessServiceService the businessServiceService parameter
-     * @return the result
+     * @param id force-delete a group with cascade: deletes business services, recursively force-deletes
+     * @param clusterService force-delete a group with cascade: deletes business services, recursively force-deletes
+     * @param hostService force-delete a group with cascade: deletes business services, recursively force-deletes
+     * @param businessServiceService force-delete a group with cascade: deletes business services, recursively
+     *        force-deletes
+     * @return the force-delete a group with cascade: deletes business services, recursively force-deletes
      */
     public boolean forceDeleteGroup(String id, ClusterService clusterService, HostService hostService,
         BusinessServiceService businessServiceService) {
@@ -347,8 +346,8 @@ public class HostGroupService {
      * or by inheritance from a disabled ancestor. Uses fixed-point iteration to
      * handle arbitrary nesting depth.
      *
-     * @param groups the groups parameter
-     * @return the result
+     * @param groups compute the set of group IDs that are effectively disabled, either directly
+     * @return the compute the set of group IDs that are effectively disabled, either directly
      */
     public Set<String> getDisabledGroupIds(List<Map<String, Object>> groups) {
         Set<String> disabled = new HashSet<>();

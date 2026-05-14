@@ -56,9 +56,6 @@ public class FileController {
 
     /**
      * Creates the file controller instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public FileController(InstanceManager instanceManager, AgentConfigService agentConfigService,
         FileService fileService) {
@@ -70,9 +67,9 @@ public class FileController {
     /**
      * Lists files in the agent workspace directory.
      *
-     * @param agentId the agentId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param agentId lists files in the agent workspace directory
+     * @param exchange lists files in the agent workspace directory
+     * @return the lists files in the agent workspace directory
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> listFiles(@PathVariable String agentId, ServerWebExchange exchange) {
@@ -87,9 +84,9 @@ public class FileController {
     /**
      * Downloads or retrieves a file from the agent workspace.
      *
-     * @param agentId the agentId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param agentId downloads or retrieves a file from the agent workspace
+     * @param exchange downloads or retrieves a file from the agent workspace
+     * @return the downloads or retrieves a file from the agent workspace
      */
     @GetMapping("/**")
     public Mono<ResponseEntity<?>> getFile(@PathVariable String agentId, ServerWebExchange exchange) {
@@ -136,9 +133,9 @@ public class FileController {
     /**
      * Deletes a file from the agent workspace.
      *
-     * @param agentId the agentId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param agentId deletes a file from the agent workspace
+     * @param exchange deletes a file from the agent workspace
+     * @return the deletes a file from the agent workspace
      */
     @DeleteMapping("/**")
     public Mono<ResponseEntity<Map<String, Object>>> deleteFile(@PathVariable("agentId") String agentId,
@@ -172,10 +169,10 @@ public class FileController {
     /**
      * Updates the content of an editable text file in the agent workspace.
      *
-     * @param agentId the agentId parameter
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param agentId the content of an editable text file in the agent workspace
+     * @param request the content of an editable text file in the agent workspace
+     * @param exchange the content of an editable text file in the agent workspace
+     * @return the updates the content of an editable text file in the agent workspace
      */
     @PutMapping(value = "/**", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> updateFile(@PathVariable("agentId") String agentId,
@@ -214,11 +211,11 @@ public class FileController {
     /**
      * Uploads a file to the agent workspace for a specific session.
      *
-     * @param agentId the agentId parameter
-     * @param filePart the filePart parameter
-     * @param sessionId the sessionId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param agentId uploads a file to the agent workspace for a specific session
+     * @param filePart uploads a file to the agent workspace for a specific session
+     * @param sessionId uploads a file to the agent workspace for a specific session
+     * @param exchange uploads a file to the agent workspace for a specific session
+     * @return the uploads a file to the agent workspace for a specific session
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<Map<String, Object>> uploadFile(@PathVariable String agentId, @RequestPart("file") FilePart filePart,
@@ -258,7 +255,7 @@ public class FileController {
     /**
      * Fallback for upload requests that are not multipart/form-data.
      *
-     * @return the result
+     * @return the fallback for upload requests that are not multipart/form-data
      */
     @PostMapping(value = "/upload")
     public Mono<Map<String, Object>> uploadFileNotMultipart() {

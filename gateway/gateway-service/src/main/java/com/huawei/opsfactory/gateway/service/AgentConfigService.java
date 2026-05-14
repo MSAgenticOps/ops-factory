@@ -66,8 +66,7 @@ public class AgentConfigService {
     /**
      * Creates the agent config service instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param properties gateway configuration properties
      */
     public AgentConfigService(GatewayProperties properties) {
         this.properties = properties;
@@ -111,7 +110,7 @@ public class AgentConfigService {
     /**
      * Returns an unmodifiable view of the current agent registry.
      *
-     * @return the result
+     * @return unmodifiable list of registered agent entries
      */
     public List<AgentRegistryEntry> getRegistry() {
         return Collections.unmodifiableList(registry);
@@ -120,7 +119,7 @@ public class AgentConfigService {
     /**
      * Returns an unmodifiable view of the configured resident instance targets.
      *
-     * @return the result
+     * @return unmodifiable list of resident instance targets
      */
     public List<ResidentInstanceTarget> getResidentInstances() {
         return Collections.unmodifiableList(residentInstances);
@@ -129,9 +128,9 @@ public class AgentConfigService {
     /**
      * Checks whether the given agent-user pair is a resident instance.
      *
-     * @param agentId the agentId parameter
-     * @param userId the userId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @param userId user identifier
+     * @return {@code true} if the agent-user pair is configured as a resident instance
      */
     public boolean isResidentInstance(String agentId, String userId) {
         return residentInstanceKeys.contains(ManagedInstance.buildKey(agentId, userId));
@@ -140,8 +139,8 @@ public class AgentConfigService {
     /**
      * Finds an agent registry entry by its ID.
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return the matching registry entry, or {@code null} if not found
      */
     public AgentRegistryEntry findAgent(String agentId) {
         for (AgentRegistryEntry entry : registry) {
@@ -219,8 +218,8 @@ public class AgentConfigService {
     /**
      * Load the agent's config.yaml as a Map (cached).
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return cached YAML config map for the agent
      */
     public Map<String, Object> loadAgentConfigYaml(String agentId) {
         return configCache.computeIfAbsent(agentId, id -> {
@@ -232,8 +231,8 @@ public class AgentConfigService {
     /**
      * Load the agent's secrets.yaml as a Map (cached).
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return cached YAML secrets map for the agent
      */
     public Map<String, Object> loadAgentSecretsYaml(String agentId) {
         return secretsCache.computeIfAbsent(agentId, id -> {
@@ -245,7 +244,7 @@ public class AgentConfigService {
     /**
      * Invalidate cached config/secrets for an agent.
      *
-     * @param agentId the agentId parameter
+     * @param agentId agent instance identifier
      */
     public void invalidateCache(String agentId) {
         configCache.remove(agentId);
@@ -255,8 +254,8 @@ public class AgentConfigService {
     /**
      * List skills for an agent, parsing SKILL.md frontmatter for metadata.
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return list of skill metadata maps, each containing id, name, description, and path
      */
     public List<Map<String, String>> listSkills(String agentId) {
         Path skillsDir = getAgentConfigDir(agentId).resolve("skills");
@@ -315,8 +314,9 @@ public class AgentConfigService {
     /**
      * Parse YAML frontmatter (between --- delimiters) from a Markdown file.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param mdPath path to the markdown file to parse
+     * @return map of frontmatter key-value pairs, empty if no valid frontmatter found
+     * @throws IOException if an I/O error occurs reading the markdown file
      */
     private Map<String, String> parseMarkdownFrontmatter(Path mdPath) throws IOException {
         Map<String, String> result = new HashMap<>();
@@ -350,8 +350,8 @@ public class AgentConfigService {
     /**
      * Read AGENTS.md content for an agent.
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return AGENTS.md file content, or empty string if not found
      */
     public String readAgentsMd(String agentId) {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
@@ -369,9 +369,9 @@ public class AgentConfigService {
     /**
      * Write AGENTS.md content for an agent.
      *
-     * @param agentId the agentId parameter
-     * @param content the content parameter
-     * @throws IOException if the operation fails
+     * @param agentId agent instance identifier
+     * @param content markdown content to write
+     * @throws IOException if an I/O error occurs writing the file
      */
     public void writeAgentsMd(String agentId, String content) throws IOException {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
@@ -390,8 +390,8 @@ public class AgentConfigService {
     /**
      * List all memory files (*.txt) for an agent, returning category name + content.
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return list of memory file maps, each containing category and content keys
      */
     public List<Map<String, String>> listMemoryFiles(String agentId) {
         Path memoryDir = getGooseMemoryDir(agentId);
@@ -425,9 +425,9 @@ public class AgentConfigService {
     /**
      * Read a single memory file content.
      *
-     * @param agentId the agentId parameter
-     * @param category the category parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @param category memory file category name (without .txt extension)
+     * @return file content string, or {@code null} if not found or unreadable
      */
     public String readMemoryFile(String agentId, String category) {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
@@ -444,10 +444,10 @@ public class AgentConfigService {
     /**
      * Write (create/update) a memory file. Creates the memory directory if needed.
      *
-     * @param agentId the agentId parameter
-     * @param category the category parameter
-     * @param content the content parameter
-     * @throws IOException if the operation fails
+     * @param agentId agent instance identifier
+     * @param category memory file category name (without .txt extension)
+     * @param content text content to write; must not exceed 100KB
+     * @throws IOException if an I/O error occurs writing the memory file
      */
     public void writeMemoryFile(String agentId, String category, String content) throws IOException {
         if (content != null
@@ -462,9 +462,9 @@ public class AgentConfigService {
     /**
      * Delete a memory file.
      *
-     * @param agentId the agentId parameter
-     * @param category the category parameter
-     * @throws IOException if the operation fails
+     * @param agentId agent instance identifier
+     * @param category memory file category name (without .txt extension)
+     * @throws IOException if an I/O error occurs deleting the memory file
      */
     public void deleteMemoryFile(String agentId, String category) throws IOException {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
@@ -478,10 +478,10 @@ public class AgentConfigService {
     /**
      * Reads MCP settings for a given agent and MCP name.
      *
-     * @param agentId the agentId parameter
-     * @param mcpName the mcpName parameter
-     * @return the result
-     * @throws IOException if the operation fails
+     * @param agentId agent instance identifier
+     * @param mcpName MCP extension name
+     * @return parsed settings map, or {@code null} if not found or invalid
+     * @throws IOException if an I/O error occurs reading config files
      */
     public Map<String, Object> readMcpSettings(String agentId, String mcpName) throws IOException {
         if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
@@ -516,10 +516,10 @@ public class AgentConfigService {
     /**
      * Writes MCP settings for a given agent and MCP name.
      *
-     * @param agentId the agentId parameter
-     * @param mcpName the mcpName parameter
-     * @param settings the settings parameter
-     * @throws IOException if the operation fails
+     * @param agentId agent instance identifier
+     * @param mcpName MCP extension name
+     * @param settings settings map to persist
+     * @throws IOException if an I/O error occurs writing config files
      */
     public void writeMcpSettings(String agentId, String mcpName, Map<String, Object> settings) throws IOException {
         if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
@@ -727,10 +727,10 @@ public class AgentConfigService {
     /**
      * Create a new agent: directory structure, config files, registry update.
      *
-     * @param id the id parameter
-     * @param name the name parameter
-     * @return the result
-     * @throws IOException if the operation fails
+     * @param id unique agent identifier (lowercase alphanumeric with hyphens)
+     * @param name display name for the agent
+     * @return map containing id, name, provider, and model of the created agent
+     * @throws IOException if an I/O error occurs creating agent files
      */
     public Map<String, Object> createAgent(String id, String name) throws IOException {
         // Validate ID format
@@ -788,8 +788,8 @@ public class AgentConfigService {
     /**
      * Delete an agent: stop instances, remove files, update registry.
      *
-     * @param id the id parameter
-     * @throws IOException if the operation fails
+     * @param id agent identifier to delete
+     * @throws IOException if an I/O error occurs removing agent files
      */
     public void deleteAgent(String id) throws IOException {
         AgentRegistryEntry entry = findAgent(id);
@@ -838,7 +838,7 @@ public class AgentConfigService {
     /**
      * Returns the base directory containing all agent configurations.
      *
-     * @return the result
+     * @return path to the agents directory
      */
     public Path getAgentsDir() {
         return gatewayRoot.resolve(properties.getPaths().getAgentsDir());
@@ -847,7 +847,7 @@ public class AgentConfigService {
     /**
      * Returns the base directory containing user-specific data.
      *
-     * @return the result
+     * @return path to the users directory
      */
     public Path getUsersDir() {
         return gatewayRoot.resolve(properties.getPaths().getUsersDir());
@@ -856,8 +856,8 @@ public class AgentConfigService {
     /**
      * Resolves the knowledge CLI root directory for a given agent from its configuration.
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return resolved absolute or normalized relative path to the knowledge CLI root directory
      */
     @SuppressWarnings("unchecked")
     public Path getKnowledgeCliRootDir(String agentId) {
@@ -893,9 +893,9 @@ public class AgentConfigService {
     /**
      * Returns the per-user agent directory path.
      *
-     * @param userId the userId parameter
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param userId user identifier
+     * @param agentId agent instance identifier
+     * @return path to the user-specific agent directory
      */
     public Path getUserAgentDir(String userId, String agentId) {
         return getUsersDir().resolve(userId).resolve("agents").resolve(agentId);
@@ -904,8 +904,8 @@ public class AgentConfigService {
     /**
      * Returns the config directory for the given agent.
      *
-     * @param agentId the agentId parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @return path to the agent configuration directory
      */
     public Path getAgentConfigDir(String agentId) {
         return getAgentsDir().resolve(agentId).resolve("config");
@@ -914,7 +914,7 @@ public class AgentConfigService {
     /**
      * Returns the resolved gateway root path.
      *
-     * @return the result
+     * @return the gateway root directory path
      */
     public Path getGatewayRoot() {
         return gatewayRoot;

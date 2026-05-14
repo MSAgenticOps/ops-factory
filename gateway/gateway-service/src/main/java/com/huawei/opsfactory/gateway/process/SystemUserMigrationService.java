@@ -36,8 +36,7 @@ public class SystemUserMigrationService {
     /**
      * Creates the system user migration service instance.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param properties gateway configuration properties
      */
     public SystemUserMigrationService(GatewayProperties properties) {
         this.properties = properties;

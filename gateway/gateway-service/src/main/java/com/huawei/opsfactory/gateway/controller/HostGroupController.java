@@ -50,9 +50,6 @@ public class HostGroupController {
 
     /**
      * Creates the host group controller instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
         BusinessServiceService businessServiceService, HostService hostService) {
@@ -65,9 +62,9 @@ public class HostGroupController {
     /**
      * Lists host groups, optionally filtered by enabled status.
      *
-     * @param enabledOnly the enabledOnly parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param enabledOnly lists host groups, optionally filtered by enabled status
+     * @param exchange lists host groups, optionally filtered by enabled status
+     * @return the lists host groups, optionally filtered by enabled status
      */
     @GetMapping
     public Mono<Map<String, Object>> listGroups(
@@ -89,9 +86,9 @@ public class HostGroupController {
     /**
      * Returns the hierarchical tree of groups, clusters, and business services.
      *
-     * @param enabledOnly the enabledOnly parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param enabledOnly returns the hierarchical tree of groups, clusters, and business services
+     * @param exchange returns the hierarchical tree of groups, clusters, and business services
+     * @return the hierarchical tree of groups, clusters, and business services
      */
     @GetMapping("/tree")
     public Mono<Map<String, Object>> getTree(
@@ -117,9 +114,9 @@ public class HostGroupController {
     /**
      * Gets a host group by ID.
      *
-     * @param id the id parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id gets a host group by ID
+     * @param exchange gets a host group by ID
+     * @return a host group by ID
      */
     @GetMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> getGroup(@PathVariable("id") String id,
@@ -144,9 +141,9 @@ public class HostGroupController {
     /**
      * Creates a new host group.
      *
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param request creates a new host group
+     * @param exchange creates a new host group
+     * @return the creates a new host group
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createGroup(@RequestBody Map<String, Object> request,
@@ -171,10 +168,10 @@ public class HostGroupController {
     /**
      * Updates a host group by ID.
      *
-     * @param id the id parameter
-     * @param request the request parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id a host group by ID
+     * @param request a host group by ID
+     * @param exchange a host group by ID
+     * @return the updates a host group by ID
      */
     @PutMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> updateGroup(@PathVariable("id") String id,
@@ -199,10 +196,10 @@ public class HostGroupController {
     /**
      * Deletes a host group by ID, optionally forcing deletion of associated resources.
      *
-     * @param id the id parameter
-     * @param force the force parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id deletes a host group by ID, optionally forcing deletion of associated resources
+     * @param force deletes a host group by ID, optionally forcing deletion of associated resources
+     * @param exchange deletes a host group by ID, optionally forcing deletion of associated resources
+     * @return the deletes a host group by ID, optionally forcing deletion of associated resources
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteGroup(@PathVariable("id") String id,

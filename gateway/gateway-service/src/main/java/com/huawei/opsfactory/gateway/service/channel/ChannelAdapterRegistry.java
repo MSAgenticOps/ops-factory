@@ -23,9 +23,6 @@ public class ChannelAdapterRegistry {
 
     /**
      * Creates the channel adapter registry instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public ChannelAdapterRegistry(List<ChannelAdapter> adapters) {
         this.adaptersByType = adapters.stream().collect(Collectors.toMap(ChannelAdapter::type, Function.identity()));
@@ -34,8 +31,8 @@ public class ChannelAdapterRegistry {
     /**
      * Resolves the adapter for the given channel type, throwing if not found.
      *
-     * @param type the type parameter
-     * @return the result
+     * @param type resolves the adapter for the given channel type, throwing if not found
+     * @return the resolves the adapter for the given channel type, throwing if not found
      */
     public ChannelAdapter require(String type) {
         ChannelAdapter adapter = adaptersByType.get(type);

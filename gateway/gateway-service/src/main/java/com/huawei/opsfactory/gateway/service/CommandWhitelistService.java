@@ -55,9 +55,6 @@ public class CommandWhitelistService {
 
     /**
      * Creates the command whitelist service instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public CommandWhitelistService(GatewayProperties properties) {
         this.properties = properties;
@@ -80,7 +77,7 @@ public class CommandWhitelistService {
     /**
      * Returns the full command whitelist.
      *
-     * @return the result
+     * @return the full command whitelist
      */
     public Map<String, Object> getWhitelist() {
         return readWhitelistFile();
@@ -89,7 +86,7 @@ public class CommandWhitelistService {
     /**
      * Adds a new command to the whitelist, rejecting duplicate patterns.
      *
-     * @param command the command parameter
+     * @param command adds a new command to the whitelist, rejecting duplicate patterns
      */
     public void addCommand(Map<String, Object> command) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -116,8 +113,8 @@ public class CommandWhitelistService {
     /**
      * Updates an existing command in the whitelist matching the given pattern.
      *
-     * @param pattern the pattern parameter
-     * @param updates the updates parameter
+     * @param pattern an existing command in the whitelist matching the given pattern
+     * @param updates an existing command in the whitelist matching the given pattern
      */
     public void updateCommand(String pattern, Map<String, Object> updates) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -149,7 +146,7 @@ public class CommandWhitelistService {
     /**
      * Deletes a command from the whitelist matching the given pattern.
      *
-     * @param pattern the pattern parameter
+     * @param pattern deletes a command from the whitelist matching the given pattern
      */
     public void deleteCommand(String pattern) {
         Map<String, Object> whitelist = readWhitelistFile();
@@ -175,7 +172,7 @@ public class CommandWhitelistService {
      * <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
      * </ul>
      *
-     * @param command the command parameter
+     * @param command validate a command string by splitting on pipe and semicolon delimiters,
      * @return a list of rejected command names (empty if all pass)
      */
     public List<String> validateCommand(String command) {
@@ -234,8 +231,8 @@ public class CommandWhitelistService {
      * "medium" if any sub-command is medium, otherwise "low".
      * When multiple patterns match, the longest (most specific) pattern's risk level wins.
      *
-     * @param command the command parameter
-     * @return the result
+     * @param command determine the risk level of a command string
+     * @return the determine the risk level of a command string
      */
     public String getRiskLevel(String command) {
         String highestRisk = "low";

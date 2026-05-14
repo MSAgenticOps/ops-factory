@@ -42,8 +42,8 @@ public class FileCapsuleController {
     /**
      * Creates the file capsule controller.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentConfigService service for resolving agent directory paths
+     * @param fileService service handling file persistence operations
      */
     public FileCapsuleController(AgentConfigService agentConfigService, FileService fileService) {
         this.agentConfigService = agentConfigService;
@@ -53,10 +53,10 @@ public class FileCapsuleController {
     /**
      * Returns the persisted messageId-to-files mapping for a session.
      *
-     * @param agentId the agentId parameter
-     * @param sessionId the sessionId parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param agentId agent instance identifier
+     * @param sessionId session identifier whose file capsules to retrieve
+     * @param exchange current HTTP exchange carrying user context
+     * @return Mono emitting a map with "entries" keyed by messageId
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> getFileCapsules(@PathVariable String agentId, @RequestParam String sessionId,
@@ -72,19 +72,12 @@ public class FileCapsuleController {
     /**
      * Saves the messageId-to-files mapping reported by the frontend for a session.
      *
-     * @author x00000000
-     * @since 2026-05-09
+     * @param agentId agent instance identifier
+     * @param body request body containing sessionId, messageId, and files list
+     * @param exchange current HTTP exchange carrying user context
+     * @return Mono emitting a map with "status" key
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-
-    /**
-     * Executes the save file capsule operation.
-     *
-     * @param agentId the agentId parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
-     */
     public Mono<Map<String, Object>> saveFileCapsule(@PathVariable String agentId,
         @RequestBody Map<String, Object> body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);

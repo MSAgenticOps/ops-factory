@@ -53,9 +53,6 @@ public class HostRelationService {
 
     /**
      * Creates the host relation service instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public HostRelationService(GatewayProperties properties, HostService hostService, ClusterService clusterService) {
         this.properties = properties;
@@ -66,7 +63,7 @@ public class HostRelationService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @param businessServiceService the businessServiceService parameter
+     * @param businessServiceService the business service service via lazy injection
      */
     @Lazy
     @Autowired
@@ -94,12 +91,12 @@ public class HostRelationService {
     /**
      * List relations with optional filters.
      *
-     * @param hostId the hostId parameter
-     * @param groupId the groupId parameter
-     * @param clusterId the clusterId parameter
-     * @param sourceType the sourceType parameter
-     * @param sourceId the sourceId parameter
-     * @return the result
+     * @param hostId list relations with optional filters
+     * @param groupId list relations with optional filters
+     * @param clusterId list relations with optional filters
+     * @param sourceType list relations with optional filters
+     * @param sourceId list relations with optional filters
+     * @return the list relations with optional filters
      */
     public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType,
         String sourceId) {
@@ -173,8 +170,8 @@ public class HostRelationService {
     /**
      * Creates a new host relation from the provided field map.
      *
-     * @param body the body parameter
-     * @return the result
+     * @param body creates a new host relation from the provided field map
+     * @return the creates a new host relation from the provided field map
      */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceHostId = (String) body.get("sourceHostId");
@@ -229,9 +226,9 @@ public class HostRelationService {
     /**
      * Updates an existing host relation with the provided field map.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @return the result
+     * @param id an existing host relation with the provided field map
+     * @param body an existing host relation with the provided field map
+     * @return the updates an existing host relation with the provided field map
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
@@ -287,8 +284,8 @@ public class HostRelationService {
     /**
      * Deletes a host relation by its ID.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id deletes a host relation by its ID
+     * @return the deletes a host relation by its ID
      */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
@@ -318,7 +315,7 @@ public class HostRelationService {
     /**
      * Delete all relations involving a specific host (for cascade delete).
      *
-     * @param hostId the hostId parameter
+     * @param hostId delete all relations involving a specific host (for cascade delete)
      */
     public void deleteRelationsByHost(String hostId) {
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
@@ -334,7 +331,7 @@ public class HostRelationService {
     /**
      * Delete all relations where source is a specific business service (for cascade delete).
      *
-     * @param bsId the bsId parameter
+     * @param bsId delete all relations where source is a specific business service (for cascade delete)
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null, null, null, "business-service", bsId);
@@ -350,9 +347,9 @@ public class HostRelationService {
      * Build ECharts graph data (nodes + edges) for a given group.
      * Includes all hosts in the group plus any related hosts from other groups.
      *
-     * @param groupId the groupId parameter
-     * @param clusterId the clusterId parameter
-     * @return the result
+     * @param groupId build ECharts graph data (nodes + edges) for a given group
+     * @param clusterId build ECharts graph data (nodes + edges) for a given group
+     * @return the build ECharts graph data (nodes + edges) for a given group
      */
     public Map<String, Object> getGraphData(String groupId, String clusterId) {
         // Collect hosts in this group or cluster
@@ -450,8 +447,8 @@ public class HostRelationService {
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given host.
      *
-     * @param hostId the hostId parameter
-     * @return the result
+     * @param hostId get 1-hop neighbors (upstream + downstream) for a given host
+     * @return 1-hop neighbors (upstream + downstream) for a given host
      */
     public Map<String, Object> getNeighbors(String hostId) {
         // 1. Validate host exists

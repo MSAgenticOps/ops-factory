@@ -55,9 +55,6 @@ public class ClusterRelationService {
 
     /**
      * Creates the cluster relation service instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public ClusterRelationService(GatewayProperties properties) {
         this.properties = properties;
@@ -66,7 +63,7 @@ public class ClusterRelationService {
     /**
      * Sets the host service via lazy injection.
      *
-     * @param hostService the hostService parameter
+     * @param hostService the host service via lazy injection
      */
     @Lazy
     @Autowired
@@ -77,7 +74,7 @@ public class ClusterRelationService {
     /**
      * Sets the cluster service via lazy injection.
      *
-     * @param clusterService the clusterService parameter
+     * @param clusterService the cluster service via lazy injection
      */
     @Lazy
     @Autowired
@@ -88,7 +85,7 @@ public class ClusterRelationService {
     /**
      * Sets the cluster type service via lazy injection.
      *
-     * @param clusterTypeService the clusterTypeService parameter
+     * @param clusterTypeService the cluster type service via lazy injection
      */
     @Lazy
     @Autowired
@@ -99,7 +96,7 @@ public class ClusterRelationService {
     /**
      * Sets the business service service via lazy injection.
      *
-     * @param businessServiceService the businessServiceService parameter
+     * @param businessServiceService the business service service via lazy injection
      */
     @Lazy
     @Autowired
@@ -127,8 +124,8 @@ public class ClusterRelationService {
     /**
      * Lists cluster relations optionally filtered by cluster ID.
      *
-     * @param clusterId the clusterId parameter
-     * @return the result
+     * @param clusterId lists cluster relations optionally filtered by cluster ID
+     * @return the lists cluster relations optionally filtered by cluster ID
      */
     public List<Map<String, Object>> listRelations(String clusterId) {
         List<Map<String, Object>> relations = new ArrayList<>();
@@ -165,8 +162,8 @@ public class ClusterRelationService {
     /**
      * Creates a new cluster relation from the provided field map.
      *
-     * @param body the body parameter
-     * @return the result
+     * @param body creates a new cluster relation from the provided field map
+     * @return the creates a new cluster relation from the provided field map
      */
     public Map<String, Object> createRelation(Map<String, Object> body) {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
@@ -229,9 +226,9 @@ public class ClusterRelationService {
     /**
      * Updates an existing cluster relation with the provided field map.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @return the result
+     * @param id an existing cluster relation with the provided field map
+     * @param body an existing cluster relation with the provided field map
+     * @return the updates an existing cluster relation with the provided field map
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
         Path file = relationsDir.resolve(id + ".json");
@@ -287,8 +284,8 @@ public class ClusterRelationService {
     /**
      * Deletes a cluster relation by its ID.
      *
-     * @param id the id parameter
-     * @return the result
+     * @param id deletes a cluster relation by its ID
+     * @return the deletes a cluster relation by its ID
      */
     public boolean deleteRelation(String id) {
         Path file = relationsDir.resolve(id + ".json");
@@ -316,7 +313,7 @@ public class ClusterRelationService {
     /**
      * Delete all relations involving a specific cluster (cascade delete).
      *
-     * @param clusterId the clusterId parameter
+     * @param clusterId delete all relations involving a specific cluster (cascade delete)
      */
     public void deleteRelationsByCluster(String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -339,7 +336,7 @@ public class ClusterRelationService {
     /**
      * Delete all relations where source is a specific business service (cascade delete).
      *
-     * @param bsId the bsId parameter
+     * @param bsId delete all relations where source is a specific business service (cascade delete)
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -366,8 +363,8 @@ public class ClusterRelationService {
      * - If relation exists and clusterId cleared → delete relation.
      * - If relation exists and same clusterId → no-op.
      *
-     * @param hostId the hostId parameter
-     * @param clusterId the clusterId parameter
+     * @param hostId sync the 包含 relation for a host (cluster contains host)
+     * @param clusterId sync the 包含 relation for a host (cluster contains host)
      */
     public void syncHostClusterRelation(String hostId, String clusterId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -418,7 +415,7 @@ public class ClusterRelationService {
     /**
      * Delete the 包含 relation for a host (used on host delete).
      *
-     * @param hostId the hostId parameter
+     * @param hostId delete the 包含 relation for a host (used on host delete)
      */
     public void deleteConstituteRelationByHost(String hostId) {
         List<Map<String, Object>> all = listRelations(null);
@@ -439,8 +436,8 @@ public class ClusterRelationService {
     /**
      * Build cluster-level graph data for a given group.
      *
-     * @param groupId the groupId parameter
-     * @return the result
+     * @param groupId build cluster-level graph data for a given group
+     * @return the build cluster-level graph data for a given group
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getGraphData(String groupId) {
@@ -615,8 +612,8 @@ public class ClusterRelationService {
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given cluster.
      *
-     * @param clusterId the clusterId parameter
-     * @return the result
+     * @param clusterId get 1-hop neighbors (upstream + downstream) for a given cluster
+     * @return 1-hop neighbors (upstream + downstream) for a given cluster
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getClusterNeighbors(String clusterId) {
@@ -695,8 +692,10 @@ public class ClusterRelationService {
     /**
      * Get host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten to host list.
      *
-     * @param hostId the hostId parameter
-     * @return the result
+     * @param hostId get host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten
+     *        to host list
+     * @return host neighbors via cluster relations: resolve host -> cluster -> cluster neighbors -> flatten to host
+     *         list
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getHostNeighborsByCluster(String hostId) {

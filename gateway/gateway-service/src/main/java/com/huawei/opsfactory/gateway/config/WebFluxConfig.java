@@ -28,9 +28,6 @@ public class WebFluxConfig {
 
     /**
      * Creates the web flux config instance.
-     *
-     * @author x00000000
-     * @since 2026-05-09
      */
     public WebFluxConfig(GatewayProperties properties) {
         this.properties = properties;
@@ -39,7 +36,7 @@ public class WebFluxConfig {
     /**
      * Creates and configures the CORS filter bean.
      *
-     * @return the result
+     * @return the creates and configures the CORS filter bean
      */
     @Bean
     @Order(0)
