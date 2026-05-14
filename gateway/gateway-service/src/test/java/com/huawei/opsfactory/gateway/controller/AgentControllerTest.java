@@ -368,7 +368,8 @@ public class AgentControllerTest {
      */
     @Test
     public void testCreateAgent_ioFailureReturns500() throws Exception {
-        when(agentConfigService.createAgent(eq("io-agent"), eq("IO Agent"))).thenThrow(new IOException("disk full"));
+        when(agentConfigService.createAgent(eq("io-agent"), eq("IO Agent")))
+            .thenThrow(new IllegalStateException("disk full"));
 
         webTestClient.post()
             .uri("/gateway/agents")

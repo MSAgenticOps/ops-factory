@@ -44,12 +44,14 @@ public class SystemUserMigrationService {
 
     /**
      * Performs the legacy system user directory migration if needed on startup.
-     *
-     * @throws IOException if the operation fails
      */
     @PostConstruct
-    public void migrateIfNeeded() throws IOException {
-        migrateLegacySystemUser();
+    public void migrateIfNeeded() {
+        try {
+            migrateLegacySystemUser();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to migrate legacy system user directory", e);
+        }
     }
 
     void migrateLegacySystemUser() throws IOException {

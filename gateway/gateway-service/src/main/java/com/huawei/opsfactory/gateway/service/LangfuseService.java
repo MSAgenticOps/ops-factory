@@ -143,14 +143,22 @@ public class LangfuseService {
         return Mono.zip(tracesMono, obsMono).map(tuple -> {
             try {
                 return buildOverview(tuple.getT1(), tuple.getT2());
-            } catch (JsonProcessingException e) {
+            } catch (IllegalStateException e) {
                 log.error("Failed to build overview: {}", e.getMessage());
                 return emptyOverview();
             }
         });
     }
 
-    private Map<String, Object> buildOverview(String tracesJson, String obsJson) throws JsonProcessingException {
+    private Map<String, Object> buildOverview(String tracesJson, String obsJson) {
+        try {
+            return doBuildOverview(tracesJson, obsJson);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to parse Langfuse overview data", e);
+        }
+    }
+
+    private Map<String, Object> doBuildOverview(String tracesJson, String obsJson) throws JsonProcessingException {
         JsonNode tracesRoot = MAPPER.readTree(tracesJson);
         JsonNode obsRoot = MAPPER.readTree(obsJson);
 
@@ -252,14 +260,22 @@ public class LangfuseService {
         return getTraces(from, to, limit, errorsOnly).map(raw -> {
             try {
                 return parseTraces(raw);
-            } catch (JsonProcessingException e) {
+            } catch (IllegalStateException e) {
                 log.error("Failed to parse traces: {}", e.getMessage());
                 return List.<Map<String, Object>> of();
             }
         });
     }
 
-    private List<Map<String, Object>> parseTraces(String json) throws JsonProcessingException {
+    private List<Map<String, Object>> parseTraces(String json) {
+        try {
+            return doParseTraces(json);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to parse Langfuse traces", e);
+        }
+    }
+
+    private List<Map<String, Object>> doParseTraces(String json) throws JsonProcessingException {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
         if (!data.isArray()) {
@@ -316,14 +332,22 @@ public class LangfuseService {
         return getObservations(from, to).map(raw -> {
             try {
                 return parseObservations(raw);
-            } catch (JsonProcessingException e) {
+            } catch (IllegalStateException e) {
                 log.error("Failed to parse observations: {}", e.getMessage());
                 return Map.<String, Object> of("observations", List.of());
             }
         });
     }
 
-    private Map<String, Object> parseObservations(String json) throws JsonProcessingException {
+    private Map<String, Object> parseObservations(String json) {
+        try {
+            return doParseObservations(json);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to parse Langfuse observations", e);
+        }
+    }
+
+    private Map<String, Object> doParseObservations(String json) throws JsonProcessingException {
         JsonNode root = MAPPER.readTree(json);
         JsonNode data = root.has("data") ? root.get("data") : root;
         if (!data.isArray()) {

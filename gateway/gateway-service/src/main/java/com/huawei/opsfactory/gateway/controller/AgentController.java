@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -116,7 +115,7 @@ public class AgentController {
      * @param body request body containing {@code "id"} and {@code "name"} fields
      * @param exchange current server web exchange used for admin authorization
      * @return reactive response with the created agent details on success, or an error body on failure
-     * @throws IOException if the agent configuration files cannot be written to disk
+     * @throws ResponseStatusException if the agent configuration files cannot be written to disk
      */
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> createAgent(@RequestBody Map<String, String> body,
@@ -139,7 +138,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create agent", e);
         }
     }
@@ -150,7 +149,7 @@ public class AgentController {
      * @param id agent identifier from the URL path
      * @param exchange current server web exchange used for admin authorization
      * @return reactive response indicating success or a bad-request error body
-     * @throws IOException if the agent configuration files cannot be removed from disk
+     * @throws ResponseStatusException if the agent configuration files cannot be removed from disk
      */
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable String id, ServerWebExchange exchange) {
@@ -164,7 +163,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete agent", e);
         }
     }
@@ -218,7 +217,7 @@ public class AgentController {
      * @param exchange current server web exchange used for admin authorization
      * @return reactive response indicating success, a bad-request body if the agent is not found,
      *         or an internal-error status if the file write fails
-     * @throws IOException if the agents.md file cannot be written to disk
+     * @throws ResponseStatusException if the agents.md file cannot be written to disk
      */
     @PutMapping("/{id}/config")
     public Mono<ResponseEntity<Map<String, Object>>> updateConfig(@PathVariable String id,
@@ -235,7 +234,7 @@ public class AgentController {
         if (agentsMd != null) {
             try {
                 agentConfigService.writeAgentsMd(id, agentsMd);
-            } catch (IOException e) {
+            } catch (IllegalStateException e) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update config", e);
             }
         }

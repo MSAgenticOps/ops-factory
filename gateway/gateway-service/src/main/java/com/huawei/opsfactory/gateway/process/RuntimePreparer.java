@@ -46,9 +46,16 @@ public class RuntimePreparer {
      * @param agentId agent instance identifier
      * @param userId user identifier
      * @return the runtime root path for this (agentId, userId)
-     * @throws IOException if directory or symlink creation fails
      */
-    public Path prepare(String agentId, String userId) throws IOException {
+    public Path prepare(String agentId, String userId) {
+        try {
+            return doPrepare(agentId, userId);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to prepare runtime directory for " + agentId, e);
+        }
+    }
+
+    private Path doPrepare(String agentId, String userId) throws IOException {
         Path gatewayRoot = properties.getGatewayRootPath();
         Path agentsDir = gatewayRoot.resolve(properties.getPaths().getAgentsDir());
         Path usersDir = gatewayRoot.resolve(properties.getPaths().getUsersDir());

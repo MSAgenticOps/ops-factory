@@ -111,7 +111,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listFiles_ioException_returns500() throws IOException {
-        when(fileService.listFiles(any(Path.class))).thenThrow(new IOException("disk error"));
+        when(fileService.listFiles(any(Path.class))).thenThrow(new IllegalStateException("disk error"));
 
         webClient.get()
             .uri("/gateway/agents/test-agent/files")

@@ -360,7 +360,8 @@ public class ReplyControllerRealProxyTest {
             when(hookPipeline.executeRequest(any(HookContext.class)))
                 .thenAnswer(inv -> Mono.just(((HookContext) inv.getArgument(0)).getBody()));
             when(agentConfigService.getUserAgentDir("alice", "test-agent")).thenReturn(Path.of("."));
-            when(fileService.listCapsuleRelevantFiles(any())).thenThrow(new IOException("disk busy"));
+            when(fileService.listCapsuleRelevantFiles(any()))
+                .thenThrow(new IllegalStateException("disk busy"));
 
             GatewayProperties properties = new GatewayProperties();
             properties.setGooseTls(false);

@@ -371,11 +371,14 @@ public class AgentConfigService {
      *
      * @param agentId agent instance identifier
      * @param content markdown content to write
-     * @throws IOException if an I/O error occurs writing the file
      */
-    public void writeAgentsMd(String agentId, String content) throws IOException {
+    public void writeAgentsMd(String agentId, String content) {
         Path mdPath = getAgentsDir().resolve(agentId).resolve("AGENTS.md");
-        Files.writeString(mdPath, content);
+        try {
+            Files.writeString(mdPath, content);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to write AGENTS.md for agent: " + agentId, e);
+        }
     }
 
     // ── Memory file management ──────────────────────────────────────────
@@ -447,16 +450,19 @@ public class AgentConfigService {
      * @param agentId agent instance identifier
      * @param category memory file category name (without .txt extension)
      * @param content text content to write; must not exceed 100KB
-     * @throws IOException if an I/O error occurs writing the memory file
      */
-    public void writeMemoryFile(String agentId, String category, String content) throws IOException {
+    public void writeMemoryFile(String agentId, String category, String content) {
         if (content != null
             && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = getGooseMemoryDir(agentId);
-        Files.createDirectories(memoryDir);
-        Files.writeString(memoryDir.resolve(category + ".txt"), content != null ? content : "");
+        try {
+            Files.createDirectories(memoryDir);
+            Files.writeString(memoryDir.resolve(category + ".txt"), content != null ? content : "");
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to write memory file for agent: " + agentId, e);
+        }
     }
 
     /**
@@ -464,14 +470,15 @@ public class AgentConfigService {
      *
      * @param agentId agent instance identifier
      * @param category memory file category name (without .txt extension)
-     * @throws IOException if an I/O error occurs deleting the memory file
      */
-    public void deleteMemoryFile(String agentId, String category) throws IOException {
+    public void deleteMemoryFile(String agentId, String category) {
         Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
         try {
             Files.delete(filePath);
         } catch (java.nio.file.NoSuchFileException e) {
             throw new IllegalArgumentException("Memory file '" + category + "' not found");
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to delete memory file for agent: " + agentId, e);
         }
     }
 
@@ -481,9 +488,8 @@ public class AgentConfigService {
      * @param agentId agent instance identifier
      * @param mcpName MCP extension name
      * @return parsed settings map, or {@code null} if not found or invalid
-     * @throws IOException if an I/O error occurs reading config files
      */
-    public Map<String, Object> readMcpSettings(String agentId, String mcpName) throws IOException {
+    public Map<String, Object> readMcpSettings(String agentId, String mcpName) {
         if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
             return readKnowledgeServiceScopeFromConfig(agentId);
         }
@@ -519,27 +525,34 @@ public class AgentConfigService {
      * @param agentId agent instance identifier
      * @param mcpName MCP extension name
      * @param settings settings map to persist
-     * @throws IOException if an I/O error occurs writing config files
      */
-    public void writeMcpSettings(String agentId, String mcpName, Map<String, Object> settings) throws IOException {
-        if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
-            writeKnowledgeServiceScopeToConfig(agentId, settings);
-            invalidateCache(agentId);
-            return;
-        }
-        if (KNOWLEDGE_CLI_MCP.equals(mcpName)) {
-            writeKnowledgeCliScopeToConfig(agentId, settings);
-            invalidateCache(agentId);
-            return;
+    public void writeMcpSettings(String agentId, String mcpName, Map<String, Object> settings) {
+        try {
+            if (KNOWLEDGE_SERVICE_MCP.equals(mcpName)) {
+                writeKnowledgeServiceScopeToConfig(agentId, settings);
+                invalidateCache(agentId);
+                return;
+            }
+            if (KNOWLEDGE_CLI_MCP.equals(mcpName)) {
+                writeKnowledgeCliScopeToConfig(agentId, settings);
+                invalidateCache(agentId);
+                return;
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to write MCP settings for " + agentId + "/" + mcpName, e);
         }
         Path mcpDir = getAgentConfigDir(agentId).resolve("mcp").resolve(mcpName);
         if (!Files.isDirectory(mcpDir)) {
             throw new IllegalArgumentException("MCP '" + mcpName + "' not found for agent '" + agentId + "'");
         }
         Path settingsPath = mcpDir.resolve("settings.json");
-        Files.createDirectories(mcpDir);
-        Yaml yaml = createBlockYaml();
-        Files.writeString(settingsPath, yaml.dump(settings));
+        try {
+            Files.createDirectories(mcpDir);
+            Yaml yaml = createBlockYaml();
+            Files.writeString(settingsPath, yaml.dump(settings));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to write MCP settings for " + agentId + "/" + mcpName, e);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -730,9 +743,8 @@ public class AgentConfigService {
      * @param id unique agent identifier (lowercase alphanumeric with hyphens)
      * @param name display name for the agent
      * @return map containing id, name, provider, and model of the created agent
-     * @throws IOException if an I/O error occurs creating agent files
      */
-    public Map<String, Object> createAgent(String id, String name) throws IOException {
+    public Map<String, Object> createAgent(String id, String name) {
         // Validate ID format
         if (!id.matches("^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$") || id.length() < 2) {
             throw new IllegalArgumentException(
@@ -752,63 +764,70 @@ public class AgentConfigService {
             }
         }
 
-        // Create directory structure
-        Path agentDir = getAgentsDir().resolve(id);
-        Path configDir = agentDir.resolve("config");
-        Files.createDirectories(configDir.resolve("skills"));
+        try {
+            // Create directory structure
+            Path agentDir = getAgentsDir().resolve(id);
+            Path configDir = agentDir.resolve("config");
+            Files.createDirectories(configDir.resolve("skills"));
 
-        // Copy config template from universal-agent or use defaults
-        Path templateConfig = getAgentsDir().resolve("universal-agent").resolve("config").resolve("config.yaml");
-        Path targetConfig = configDir.resolve("config.yaml");
-        if (Files.exists(templateConfig)) {
-            Files.copy(templateConfig, targetConfig);
-        } else {
-            Files.writeString(targetConfig, "GOOSE_PROVIDER: openai\nGOOSE_MODEL: gpt-4o\n");
+            // Copy config template from universal-agent or use defaults
+            Path templateConfig = getAgentsDir().resolve("universal-agent").resolve("config").resolve("config.yaml");
+            Path targetConfig = configDir.resolve("config.yaml");
+            if (Files.exists(templateConfig)) {
+                Files.copy(templateConfig, targetConfig);
+            } else {
+                Files.writeString(targetConfig, "GOOSE_PROVIDER: openai\nGOOSE_MODEL: gpt-4o\n");
+            }
+
+            // Write empty secrets.yaml
+            Files.writeString(configDir.resolve("secrets.yaml"), "");
+
+            // Write AGENTS.md
+            Files.writeString(agentDir.resolve("AGENTS.md"), "# " + name + "\n");
+
+            // Update config.yaml on disk
+            updateAgentsYaml(id, name, false);
+
+            // Update in-memory registry and invalidate cache
+            registry.add(new AgentRegistryEntry(id, name));
+            invalidateCache(id);
+
+            // Read provider/model from created config
+            Map<String, Object> config = YamlLoader.load(targetConfig);
+            return Map.of("id", id, "name", name, "provider", config.getOrDefault("GOOSE_PROVIDER", ""), "model",
+                config.getOrDefault("GOOSE_MODEL", ""));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to create agent: " + id, e);
         }
-
-        // Write empty secrets.yaml
-        Files.writeString(configDir.resolve("secrets.yaml"), "");
-
-        // Write AGENTS.md
-        Files.writeString(agentDir.resolve("AGENTS.md"), "# " + name + "\n");
-
-        // Update config.yaml on disk
-        updateAgentsYaml(id, name, false);
-
-        // Update in-memory registry and invalidate cache
-        registry.add(new AgentRegistryEntry(id, name));
-        invalidateCache(id);
-
-        // Read provider/model from created config
-        Map<String, Object> config = YamlLoader.load(targetConfig);
-        return Map.of("id", id, "name", name, "provider", config.getOrDefault("GOOSE_PROVIDER", ""), "model",
-            config.getOrDefault("GOOSE_MODEL", ""));
     }
 
     /**
      * Delete an agent: stop instances, remove files, update registry.
      *
      * @param id agent identifier to delete
-     * @throws IOException if an I/O error occurs removing agent files
      */
-    public void deleteAgent(String id) throws IOException {
+    public void deleteAgent(String id) {
         AgentRegistryEntry entry = findAgent(id);
         if (entry == null) {
             throw new IllegalArgumentException("Agent '" + id + "' not found");
         }
 
-        // Remove agent directory
-        Path agentDir = getAgentsDir().resolve(id);
-        if (Files.exists(agentDir)) {
-            FileUtil.deleteRecursively(agentDir);
+        try {
+            // Remove agent directory
+            Path agentDir = getAgentsDir().resolve(id);
+            if (Files.exists(agentDir)) {
+                FileUtil.deleteRecursively(agentDir);
+            }
+
+            // Update config.yaml
+            updateAgentsYaml(id, null, true);
+
+            // Remove from in-memory registry and invalidate cache
+            registry.removeIf(e -> e.id().equals(id));
+            invalidateCache(id);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to delete agent: " + id, e);
         }
-
-        // Update config.yaml
-        updateAgentsYaml(id, null, true);
-
-        // Remove from in-memory registry and invalidate cache
-        registry.removeIf(e -> e.id().equals(id));
-        invalidateCache(id);
     }
 
     private void updateAgentsYaml(String id, String name, boolean remove) throws IOException {

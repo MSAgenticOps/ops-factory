@@ -165,7 +165,7 @@ public class McpController {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.<String, Object> of());
                 }
                 return ResponseEntity.ok(settings);
-            } catch (IOException e) {
+            } catch (IllegalStateException e) {
                 if (hasConfigBackedSettings(name)) {
                     return ResponseEntity.ok(emptyKnowledgeSettings(name));
                 }
@@ -196,7 +196,7 @@ public class McpController {
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.<String, Object> of("code", "RESOURCE_NOT_FOUND", "message", e.getMessage()));
-            } catch (IOException e) {
+            } catch (IllegalStateException e) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.<String, Object> of("code", "SETTINGS_WRITE_FAILED", "message",
                         "Failed to write MCP settings"));

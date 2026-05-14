@@ -90,20 +90,23 @@ public class FileService {
      *
      * @param userAgentDir user agent working directory to scan from
      * @return list of file metadata maps
-     * @throws IOException if the operation fails
      */
-    public List<Map<String, Object>> listFiles(Path userAgentDir) throws IOException {
-        List<Map<String, Object>> files = new ArrayList<>();
-        Set<String> allowedExtensions = fileCapsuleAllowedExtensions();
-        for (FileScanRoot root : fileScanRoots(userAgentDir)) {
-            if (root.recursive()) {
-                long deadlineNanos = scanDeadlineNanos(root.scanTimeoutMs());
-                listFilesRecursive(root, root.path(), files, allowedExtensions, 0, deadlineNanos, files.size());
-            } else {
-                listRootFiles(root, files, allowedExtensions);
+    public List<Map<String, Object>> listFiles(Path userAgentDir) {
+        try {
+            List<Map<String, Object>> files = new ArrayList<>();
+            Set<String> allowedExtensions = fileCapsuleAllowedExtensions();
+            for (FileScanRoot root : fileScanRoots(userAgentDir)) {
+                if (root.recursive()) {
+                    long deadlineNanos = scanDeadlineNanos(root.scanTimeoutMs());
+                    listFilesRecursive(root, root.path(), files, allowedExtensions, 0, deadlineNanos, files.size());
+                } else {
+                    listRootFiles(root, files, allowedExtensions);
+                }
             }
+            return files;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to list files in " + userAgentDir, e);
         }
-        return files;
     }
 
     /**
@@ -111,13 +114,16 @@ public class FileService {
      *
      * @param dir directory to list top-level files from
      * @return list of file metadata maps for top-level files only
-     * @throws IOException if the operation fails
      */
-    public List<Map<String, Object>> listTopLevelFiles(Path dir) throws IOException {
-        List<Map<String, Object>> files = new ArrayList<>();
-        listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6, 1000, 2000), files,
-            fileCapsuleAllowedExtensions());
-        return files;
+    public List<Map<String, Object>> listTopLevelFiles(Path dir) {
+        try {
+            List<Map<String, Object>> files = new ArrayList<>();
+            listRootFiles(new FileScanRoot("workingDir", dir, false, new HashSet<>(SKIP_DIRS), 6, 1000, 2000), files,
+                fileCapsuleAllowedExtensions());
+            return files;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to list top-level files in " + dir, e);
+        }
     }
 
     private void listRootFiles(FileScanRoot root, List<Map<String, Object>> files, Set<String> allowedExtensions)
@@ -141,9 +147,8 @@ public class FileService {
      *
      * @param dir user agent working directory to scan from
      * @return list of file metadata maps relevant to file capsules
-     * @throws IOException if the operation fails
      */
-    public List<Map<String, Object>> listCapsuleRelevantFiles(Path dir) throws IOException {
+    public List<Map<String, Object>> listCapsuleRelevantFiles(Path dir) {
         return listFiles(dir);
     }
 
@@ -348,9 +353,8 @@ public class FileService {
      * @param baseDir base directory containing the file
      * @param relativePath relative path of the file to delete
      * @return true if the file was deleted, false if unsafe or not found
-     * @throws IOException if the operation fails
      */
-    public boolean deleteFile(Path baseDir, String relativePath) throws IOException {
+    public boolean deleteFile(Path baseDir, String relativePath) {
         if (!PathSanitizer.isSafe(baseDir, relativePath)) {
             return false;
         }
@@ -358,8 +362,12 @@ public class FileService {
         if (!Files.exists(resolved) || Files.isDirectory(resolved)) {
             return false;
         }
-        Files.delete(resolved);
-        return true;
+        try {
+            Files.delete(resolved);
+            return true;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to delete file: " + relativePath, e);
+        }
     }
 
     /**
@@ -369,9 +377,8 @@ public class FileService {
      * @param relativePath relative path of the text file
      * @param content new text content to write
      * @return true if updated successfully, false if unsafe or not a text file
-     * @throws IOException if the operation fails
      */
-    public boolean updateTextFile(Path baseDir, String relativePath, String content) throws IOException {
+    public boolean updateTextFile(Path baseDir, String relativePath, String content) {
         if (!PathSanitizer.isSafe(baseDir, relativePath) || !isEditableTextFile(relativePath)) {
             return false;
         }
@@ -379,8 +386,12 @@ public class FileService {
         if (!Files.exists(resolved) || Files.isDirectory(resolved)) {
             return false;
         }
-        Files.writeString(resolved, content != null ? content : "", StandardCharsets.UTF_8);
-        return true;
+        try {
+            Files.writeString(resolved, content != null ? content : "", StandardCharsets.UTF_8);
+            return true;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to update file: " + relativePath, e);
+        }
     }
 
     /**

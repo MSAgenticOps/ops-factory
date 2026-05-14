@@ -359,7 +359,7 @@ public class ReplyController {
         try {
             List<Map<String, Object>> files = fileService.listCapsuleRelevantFiles(workingDir);
             return files != null ? files : Collections.emptyList();
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             log.debug("[SESSION-REPLY] file snapshot failed (best-effort): {}", e.getMessage());
             return Collections.emptyList();
         }

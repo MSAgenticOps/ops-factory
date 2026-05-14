@@ -66,12 +66,11 @@ public class AgentSkillInstallService {
     /**
      * Downloads, validates, and installs a skill from the skill market for the specified agent.
      *
-     * @param agentId downloads, validates, and installs a skill from the skill market for the specified agent
-     * @param requestedSkillId downloads, validates, and installs a skill from the skill market for the specified agent
-     * @return the downloads, validates, and installs a skill from the skill market for the specified agent
-     * @throws IOException if the operation fails
+     * @param agentId agent to install the skill for
+     * @param requestedSkillId skill identifier to install from the market
+     * @return installation result map with success flag, skill metadata, and restartRequired indicator
      */
-    public Map<String, Object> install(String agentId, String requestedSkillId) throws IOException {
+    public Map<String, Object> install(String agentId, String requestedSkillId) {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
             throw new IllegalArgumentException("Agent '" + agentId + "' not found");
@@ -91,27 +90,34 @@ public class AgentSkillInstallService {
             throw new IllegalArgumentException("Skill package checksum does not match market metadata");
         }
 
-        Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
-        Path destination = skillsDir.resolve(skillId);
-        if (Files.exists(destination)) {
-            throw new SkillInstallConflictException(
-                "Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
-        }
-
-        Files.createDirectories(skillsDir);
-        Path tempDir = Files.createTempDirectory(skillsDir, skillId + "-install-");
         try {
-            extractPackage(packageBytes, tempDir);
-            Path skillMd = tempDir.resolve("SKILL.md");
-            if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
-                throw new IllegalArgumentException("Skill package must contain a non-empty SKILL.md");
+            Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
+            Path destination = skillsDir.resolve(skillId);
+            if (Files.exists(destination)) {
+                throw new SkillInstallConflictException(
+                    "Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
             }
-            rejectSymbolicLinks(tempDir);
-            writeInstallMetadata(tempDir, skillId, actualChecksum);
-            Files.move(tempDir, destination, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException | RuntimeException e) {
-            deleteRecursively(tempDir);
-            throw e;
+
+            Files.createDirectories(skillsDir);
+            Path tempDir = Files.createTempDirectory(skillsDir, skillId + "-install-");
+            try {
+                extractPackage(packageBytes, tempDir);
+                Path skillMd = tempDir.resolve("SKILL.md");
+                if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
+                    throw new IllegalArgumentException("Skill package must contain a non-empty SKILL.md");
+                }
+                rejectSymbolicLinks(tempDir);
+                writeInstallMetadata(tempDir, skillId, actualChecksum);
+                Files.move(tempDir, destination, StandardCopyOption.ATOMIC_MOVE);
+            } catch (RuntimeException e) {
+                safeDelete(tempDir);
+                throw e;
+            } catch (IOException e) {
+                safeDelete(tempDir);
+                throw new IllegalStateException("Failed to install skill '" + skillId + "'", e);
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to install skill '" + skillId + "' for agent: " + agentId, e);
         }
 
         agentConfigService.invalidateCache(agentId);
@@ -127,15 +133,22 @@ public class AgentSkillInstallService {
         return Map.of("success", true, "skill", skill, "restartRequired", true);
     }
 
+    private void safeDelete(Path path) {
+        try {
+            deleteRecursively(path);
+        } catch (IOException e) {
+            log.warn("Failed to clean up temp directory: {}", path, e);
+        }
+    }
+
     /**
      * Uninstalls a previously installed skill from the specified agent.
      *
-     * @param agentId uninstalls a previously installed skill from the specified agent
-     * @param requestedSkillId uninstalls a previously installed skill from the specified agent
-     * @return the uninstalls a previously installed skill from the specified agent
-     * @throws IOException if the operation fails
+     * @param agentId agent to uninstall the skill from
+     * @param requestedSkillId skill identifier to uninstall
+     * @return uninstallation result map with success flag and restartRequired indicator
      */
-    public Map<String, Object> uninstall(String agentId, String requestedSkillId) throws IOException {
+    public Map<String, Object> uninstall(String agentId, String requestedSkillId) {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
             throw new IllegalArgumentException("Agent '" + agentId + "' not found");
@@ -151,7 +164,11 @@ public class AgentSkillInstallService {
             throw new IllegalArgumentException("Skill '" + skillId + "' is not installed for agent '" + agentId + "'");
         }
 
-        deleteRecursively(skillDir);
+        try {
+            deleteRecursively(skillDir);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to uninstall skill '" + skillId + "'", e);
+        }
         agentConfigService.invalidateCache(agentId);
 
         log.info("Uninstalled skill id={} agentId={}", skillId, agentId);

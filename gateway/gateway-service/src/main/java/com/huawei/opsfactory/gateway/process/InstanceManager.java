@@ -172,13 +172,9 @@ public class InstanceManager {
                 log.info("Auto-starting resident instance for {}:{}", target.agentId(), target.userId());
                 ManagedInstance instance = doSpawn(target.agentId(), target.userId());
                 registerDefaultSchedules(target.agentId(), instance.getPort(), instance.getSecretKey());
-            } catch (IOException | IllegalStateException e) {
+            } catch (IllegalStateException e) {
                 log.error("Failed to auto-start resident instance for {}:{}: {}", target.agentId(), target.userId(),
                     e.getMessage());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.error("Interrupted while auto-starting resident instance for {}:{}", target.agentId(),
-                    target.userId());
             }
         });
     }
@@ -422,10 +418,8 @@ public class InstanceManager {
      * @param agentId unique identifier of the agent to spawn
      * @param userId unique identifier of the user that owns the instance
      * @return the newly created and ready ManagedInstance
-     * @throws IOException if the process cannot be started or the runtime directory cannot be prepared
-     * @throws InterruptedException if the calling thread is interrupted while waiting for the instance to become ready
      */
-    private ManagedInstance doSpawn(String agentId, String userId) throws IOException, InterruptedException {
+    private ManagedInstance doSpawn(String agentId, String userId) {
         String key = ManagedInstance.buildKey(agentId, userId);
         long spawnStart = System.currentTimeMillis();
         ReentrantLock lock = spawnLocks.computeIfAbsent(key, k -> new ReentrantLock());
@@ -513,6 +507,8 @@ public class InstanceManager {
                 agentId, userId, port, pid, prepareMs, processStartMs, readyMs,
                 System.currentTimeMillis() - spawnStart);
             return instance;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to spawn instance for " + agentId + ":" + userId, e);
         } finally {
             lock.unlock();
         }
@@ -636,10 +632,19 @@ public class InstanceManager {
      *
      * @param port the port the goosed instance is expected to listen on
      * @param process the goosed process to monitor for premature exit
-     * @throws IOException if the process has already exited before becoming ready
-     * @throws InterruptedException if the calling thread is interrupted during a sleep between retries
      */
-    private void waitForReady(int port, Process process) throws IOException, InterruptedException {
+    private void waitForReady(int port, Process process) {
+        try {
+            doWaitForReady(port, process);
+        } catch (IOException e) {
+            throw new IllegalStateException("goosed instance failed to become ready on port " + port, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for goosed on port " + port, e);
+        }
+    }
+
+    private void doWaitForReady(int port, Process process) throws IOException, InterruptedException {
         String baseUrl = goosedBaseUrl(port);
         URL url = new URL(baseUrl + "/status");
         String healthCheckUrl = url.toString();
