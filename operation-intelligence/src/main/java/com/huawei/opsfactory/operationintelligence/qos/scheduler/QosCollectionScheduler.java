@@ -114,7 +114,8 @@ public class QosCollectionScheduler {
     /** Parse threshold string like "0.3:0;0.6:0.3;0.9:0.6;0.95:0.95" and interpolate score for given value. */
     static BigDecimal interpolateThreshold(String thresholds, BigDecimal value) {
         String[] pairs = thresholds.split(";");
-        BigDecimal prevScore = BigDecimal.ZERO, prevValue = BigDecimal.ZERO;
+        BigDecimal prevScore = BigDecimal.ZERO;
+        BigDecimal prevValue = BigDecimal.ZERO;
         for (String pair : pairs) {
             String[] sv = pair.split(":");
             if (sv.length != 2)

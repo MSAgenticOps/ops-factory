@@ -330,7 +330,8 @@ public class CommandWhitelistService {
     private List<String> splitShellPipe(String command) {
         List<String> parts = new ArrayList<>();
         StringBuilder current = new StringBuilder();
-        boolean inSingle = false, inDouble = false;
+        boolean inSingle = false;
+        boolean inDouble = false;
         for (int i = 0; i < command.length(); i++) {
             char c = command.charAt(i);
             if (c == '\\' && !inSingle && i + 1 < command.length()) {
