@@ -245,10 +245,10 @@ public class AgentController {
     /**
      * Updates the model configuration for the specified agent.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param body request body containing model configuration keys
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response indicating success or an error body
      */
     @PutMapping("/{id}/model-config")
     public Mono<ResponseEntity<Map<String, Object>>> updateModelConfig(@PathVariable("id") String id,
@@ -266,7 +266,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update model config", e);
         }
     }
@@ -274,10 +274,10 @@ public class AgentController {
     /**
      * Creates a custom provider for the specified agent.
      *
-     * @param id the id parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param body request body containing the provider definition
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response with the created provider on success, or an error body on failure
      */
     @PostMapping("/{id}/providers")
     public Mono<ResponseEntity<Map<String, Object>>> createProvider(@PathVariable("id") String id,
@@ -296,7 +296,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create provider", e);
         }
     }
@@ -304,11 +304,11 @@ public class AgentController {
     /**
      * Updates a custom provider for the specified agent.
      *
-     * @param id the id parameter
-     * @param providerName the providerName parameter
-     * @param body the body parameter
-     * @param exchange the exchange parameter
-     * @return the result
+     * @param id agent identifier from the URL path
+     * @param providerName provider name from the URL path
+     * @param body request body containing the updated provider fields
+     * @param exchange current server web exchange used for admin authorization
+     * @return reactive response with the updated provider on success, or an error body on failure
      */
     @PutMapping("/{id}/providers/{providerName}")
     public Mono<ResponseEntity<Map<String, Object>>> updateProvider(@PathVariable("id") String id,
@@ -327,7 +327,7 @@ public class AgentController {
             errorBody.put("success", false);
             errorBody.put("error", e.getMessage());
             return Mono.just(ResponseEntity.badRequest().body(errorBody));
-        } catch (IOException e) {
+        } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update provider", e);
         }
     }

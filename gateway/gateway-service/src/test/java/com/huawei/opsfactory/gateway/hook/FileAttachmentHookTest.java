@@ -135,7 +135,7 @@ public class FileAttachmentHookTest {
 
         StepVerifier.create(hook.process(ctx)).expectErrorSatisfies(e -> {
             assertTrue(e instanceof ResponseStatusException);
-            assertEquals(HttpStatus.FORBIDDEN, ((ResponseStatusException) e).getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ((ResponseStatusException) e).getStatusCode());
         }).verify();
     }
 
@@ -157,7 +157,7 @@ public class FileAttachmentHookTest {
 
         StepVerifier.create(hook.process(ctx)).expectErrorSatisfies(e -> {
             assertTrue(e instanceof ResponseStatusException);
-            assertEquals(HttpStatus.NOT_FOUND, ((ResponseStatusException) e).getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ((ResponseStatusException) e).getStatusCode());
         }).verify();
     }
 

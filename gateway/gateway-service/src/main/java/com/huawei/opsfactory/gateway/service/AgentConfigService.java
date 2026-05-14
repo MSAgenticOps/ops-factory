@@ -351,9 +351,17 @@ public class AgentConfigService {
      *
      * @param agentId the agentId parameter
      * @param modelConfig the modelConfig parameter
-     * @throws IOException if the operation fails
+     * @throws IllegalStateException if the configuration cannot be written
      */
-    public void updateModelConfig(String agentId, Map<String, String> modelConfig) throws IOException {
+    public void updateModelConfig(String agentId, Map<String, String> modelConfig) {
+        try {
+            doUpdateModelConfig(agentId, modelConfig);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to update model config for " + agentId, e);
+        }
+    }
+
+    private void doUpdateModelConfig(String agentId, Map<String, String> modelConfig) throws IOException {
         Path configPath = getAgentConfigDir(agentId).resolve("config.yaml");
         Map<String, Object> config = new LinkedHashMap<>(YamlLoader.load(configPath));
         String provider = trimToNull(modelConfig.get("GOOSE_PROVIDER"));
@@ -389,10 +397,18 @@ public class AgentConfigService {
      *
      * @param agentId the agentId parameter
      * @param provider the provider parameter
-     * @return the result
-     * @throws IOException if the operation fails
+     * @return the created provider definition
+     * @throws IllegalStateException if the provider cannot be written
      */
-    public Map<String, Object> createCustomProvider(String agentId, Map<String, Object> provider) throws IOException {
+    public Map<String, Object> createCustomProvider(String agentId, Map<String, Object> provider) {
+        try {
+            return doCreateCustomProvider(agentId, provider);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to create custom provider for " + agentId, e);
+        }
+    }
+
+    private Map<String, Object> doCreateCustomProvider(String agentId, Map<String, Object> provider) throws IOException {
         String name = trimToNull(asString(provider.get("name")));
         if (name == null) {
             throw new IllegalArgumentException("Provider name is required");
@@ -421,11 +437,19 @@ public class AgentConfigService {
      * @param agentId the agentId parameter
      * @param providerName the providerName parameter
      * @param provider the provider parameter
-     * @return the result
-     * @throws IOException if the operation fails
+     * @return the updated provider definition
+     * @throws IllegalStateException if the provider cannot be written
      */
-    public Map<String, Object> updateCustomProvider(String agentId, String providerName, Map<String, Object> provider)
-        throws IOException {
+    public Map<String, Object> updateCustomProvider(String agentId, String providerName, Map<String, Object> provider) {
+        try {
+            return doUpdateCustomProvider(agentId, providerName, provider);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to update custom provider for " + agentId, e);
+        }
+    }
+
+    private Map<String, Object> doUpdateCustomProvider(String agentId, String providerName,
+        Map<String, Object> provider) throws IOException {
         String name = trimToNull(providerName);
         if (name == null) {
             throw new IllegalArgumentException("Provider name is required");
