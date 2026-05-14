@@ -95,6 +95,12 @@ export function useResourceImport(deps: ImportDeps) {
         const createdSopNames = new Set<string>()
         const createdPatterns = new Set<string>()
 
+        // Track names created during this import to deduplicate within CSV
+        const createdClusterTypeNames = new Set(deps.clusterTypes.map(ct => ct.name))
+        const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
+        const createdSopNames = new Set<string>()
+        const createdPatterns = new Set<string>()
+
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             setProgress({ current: i + 1, total: rows.length, phase: type })
