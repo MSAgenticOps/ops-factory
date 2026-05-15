@@ -86,81 +86,70 @@ export default function AddMcpModal({
     ))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+  const validateForm = (): string | null => {
+    if (!name.trim()) return t('mcp.nameRequired')
+    if (connectionType === 'stdio' && !command.trim()) return t('mcp.commandRequired')
+    if (connectionType === 'streamable_http' && !uri.trim()) return t('mcp.uriRequired')
+    return null
+  }
 
-    // Validation
-    if (!name.trim()) {
-      const message = t('mcp.nameRequired')
-      setError(message)
-      showToast('warning', message)
-      return
-    }
-
-    if (connectionType === 'stdio' && !command.trim()) {
-      const message = t('mcp.commandRequired')
-      setError(message)
-      showToast('warning', message)
-      return
-    }
-
-    if (connectionType === 'streamable_http' && !uri.trim()) {
-      const message = t('mcp.uriRequired')
-      setError(message)
-      showToast('warning', message)
-      return
-    }
-
-    // Build env_keys + envs payload
+  const buildEnvPayload = (): { envKeys: string[]; envs: Record<string, string> } | string => {
     const envKeysSet = new Set<string>()
     const envs: Record<string, string> = {}
     for (const { key, value, fromExisting } of envVars) {
       const trimmedKey = key.trim()
       const trimmedValue = value.trim()
 
-      if (!trimmedKey && !trimmedValue) {
-        continue
-      }
+      if (!trimmedKey && !trimmedValue) continue
+      if (!trimmedKey && trimmedValue) return t('mcp.envKeyRequired')
 
-      if (!trimmedKey && trimmedValue) {
-        setError(t('mcp.envKeyRequired'))
-        return
-      }
+      envKeysSet.add(trimmedKey)
 
-      if (trimmedKey) {
-        envKeysSet.add(trimmedKey)
-      }
-
-      // Existing keys may keep blank value to preserve current secret value
       if (!trimmedValue && !fromExisting) {
-        setError(t('mcp.envValueRequired', { key: trimmedKey }))
-        return
+        return t('mcp.envValueRequired', { key: trimmedKey })
       }
 
-      if (trimmedKey && trimmedValue) {
-        envs[trimmedKey] = value
-      }
+      if (trimmedValue) envs[trimmedKey] = value
     }
-    const envKeys = Array.from(envKeysSet)
+    return { envKeys: Array.from(envKeysSet), envs }
+  }
 
-    const request: McpAddRequest = {
-      name: name.trim(),
-      enabled: isEditMode ? (initialEntry?.enabled ?? true) : true,
-      type: connectionType as McpType,
-      description: description.trim() || undefined,
-      timeout: parseInt(timeout, 10) || 300,
-      env_keys: isEditMode || envKeys.length > 0 ? envKeys : undefined,
-      ...(connectionType === 'stdio' && {
-        cmd: command.trim(),
-        args: args.trim() ? args.trim().split(/\s+/) : [],
-        envs: Object.keys(envs).length > 0 ? envs : undefined,
-      }),
-      ...(connectionType === 'streamable_http' && {
-        uri: uri.trim(),
-        envs: Object.keys(envs).length > 0 ? envs : undefined,
-      }),
+  const buildRequest = (envKeys: string[], envs: Record<string, string>): McpAddRequest => ({
+    name: name.trim(),
+    enabled: isEditMode ? (initialEntry?.enabled ?? true) : true,
+    type: connectionType as McpType,
+    description: description.trim() || undefined,
+    timeout: parseInt(timeout, 10) || 300,
+    env_keys: isEditMode || envKeys.length > 0 ? envKeys : undefined,
+    ...(connectionType === 'stdio' && {
+      cmd: command.trim(),
+      args: args.trim() ? args.trim().split(/\s+/) : [],
+      envs: Object.keys(envs).length > 0 ? envs : undefined,
+    }),
+    ...(connectionType === 'streamable_http' && {
+      uri: uri.trim(),
+      envs: Object.keys(envs).length > 0 ? envs : undefined,
+    }),
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    const validationError = validateForm()
+    if (validationError) {
+      setError(validationError)
+      showToast('warning', validationError)
+      return
     }
+
+    const envResult = buildEnvPayload()
+    if (typeof envResult === 'string') {
+      setError(envResult)
+      return
+    }
+
+    const request = buildRequest(envResult.envKeys, envResult.envs)
 
     setIsSubmitting(true)
     try {

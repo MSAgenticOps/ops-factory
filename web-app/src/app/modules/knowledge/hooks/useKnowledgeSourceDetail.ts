@@ -80,6 +80,71 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     return data as T
 }
 
+function resetDetailState(
+    setSource: React.Dispatch<React.SetStateAction<KnowledgeSource | null>>,
+    setStats: React.Dispatch<React.SetStateAction<KnowledgeSourceStats | null>>,
+    setCapabilities: React.Dispatch<React.SetStateAction<KnowledgeCapabilities | null>>,
+    setDefaults: React.Dispatch<React.SetStateAction<KnowledgeDefaults | null>>,
+    setIndexProfile: React.Dispatch<React.SetStateAction<KnowledgeSourceProfileConfig | null>>,
+    setRetrievalProfile: React.Dispatch<React.SetStateAction<KnowledgeSourceProfileConfig | null>>,
+    setMaintenance: React.Dispatch<React.SetStateAction<KnowledgeMaintenanceOverview | null>>,
+) {
+    setSource(null); setStats(null); setCapabilities(null); setDefaults(null)
+    setIndexProfile(null); setRetrievalProfile(null); setMaintenance(null)
+}
+
+async function fetchSupportingData(sourceId: string, sourceData: KnowledgeSource) {
+    const baseUrl = runtime.KNOWLEDGE_SERVICE_URL
+    return Promise.allSettled([
+        requestJson<KnowledgeSourceStats>(`${baseUrl}/sources/${sourceId}/stats`),
+        requestJson<KnowledgeCapabilities>(`${baseUrl}/capabilities`),
+        requestJson<KnowledgeDefaults>(`${baseUrl}/system/defaults`),
+        sourceData.indexProfileId ? requestJson<KnowledgeSourceProfileConfig>(`${baseUrl}/sources/${sourceId}/config/index-profile`) : Promise.resolve(null),
+        sourceData.retrievalProfileId ? requestJson<KnowledgeSourceProfileConfig>(`${baseUrl}/sources/${sourceId}/config/retrieval-profile`) : Promise.resolve(null),
+        requestJson<KnowledgeMaintenanceOverview>(`${baseUrl}/sources/${sourceId}/maintenance`),
+    ])
+}
+
+function applySettledResults(
+    results: PromiseSettledResult<unknown>[],
+    sourceData: KnowledgeSource,
+    setStats: React.Dispatch<React.SetStateAction<KnowledgeSourceStats | null>>,
+    setCapabilities: React.Dispatch<React.SetStateAction<KnowledgeCapabilities | null>>,
+    setDefaults: React.Dispatch<React.SetStateAction<KnowledgeDefaults | null>>,
+    setIndexProfile: React.Dispatch<React.SetStateAction<KnowledgeSourceProfileConfig | null>>,
+    setRetrievalProfile: React.Dispatch<React.SetStateAction<KnowledgeSourceProfileConfig | null>>,
+    setMaintenance: React.Dispatch<React.SetStateAction<KnowledgeMaintenanceOverview | null>>,
+): boolean {
+    const [statsR, capsR, defsR, idxR, retR, maintR] = results
+    const fulfilled = <T>(r: PromiseSettledResult<T>) => r.status === 'fulfilled' ? r.value : null
+    setStats(fulfilled(statsR as PromiseSettledResult<KnowledgeSourceStats>) ?? createEmptyStats(sourceData.id))
+    setCapabilities(fulfilled(capsR as PromiseSettledResult<KnowledgeCapabilities>))
+    setDefaults(fulfilled(defsR as PromiseSettledResult<KnowledgeDefaults>))
+    setIndexProfile(fulfilled(idxR as PromiseSettledResult<KnowledgeSourceProfileConfig | null>))
+    setRetrievalProfile(fulfilled(retR as PromiseSettledResult<KnowledgeSourceProfileConfig | null>))
+    setMaintenance(fulfilled(maintR as PromiseSettledResult<KnowledgeMaintenanceOverview>))
+    return results.some(r => r.status === 'rejected')
+}
+
+async function doSaveProfile(
+    path: string, method: string, body: unknown, setter: (d: KnowledgeSourceProfileConfig) => void, reload: () => Promise<void>, setError: (e: string | null) => void,
+): Promise<SaveProfileResult> {
+    setError(null)
+    try {
+        const detail = await requestJson<KnowledgeSourceProfileConfig>(
+            `${runtime.KNOWLEDGE_SERVICE_URL}${path}`,
+            { method, headers: { 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) },
+        )
+        setter(detail)
+        await reload()
+        return { success: true, data: detail }
+    } catch (err) {
+        const message = getErrorMessage(err)
+        setError(message)
+        return { success: false, error: message }
+    }
+}
+
 export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowledgeSourceDetailResult {
     const [source, setSource] = useState<KnowledgeSource | null>(null)
     const [stats, setStats] = useState<KnowledgeSourceStats | null>(null)
@@ -92,329 +157,78 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
     const [error, setError] = useState<string | null>(null)
     const [hasSupportingDataError, setHasSupportingDataError] = useState(false)
 
+    const resetAll = useCallback(() => {
+        resetDetailState(setSource, setStats, setCapabilities, setDefaults, setIndexProfileDetail, setRetrievalProfileDetail, setMaintenance)
+        setError(null); setHasSupportingDataError(false); setIsLoading(false)
+    }, [])
+
     const reload = useCallback(async () => {
-        if (!sourceId) {
-            setSource(null)
-            setStats(null)
-            setCapabilities(null)
-            setDefaults(null)
-            setIndexProfileDetail(null)
-            setRetrievalProfileDetail(null)
-            setMaintenance(null)
-            setError(null)
-            setHasSupportingDataError(false)
-            setIsLoading(false)
-            return
-        }
-
-        setIsLoading(true)
-        setError(null)
-        setHasSupportingDataError(false)
-
+        if (!sourceId) { resetAll(); return }
+        setIsLoading(true); setError(null); setHasSupportingDataError(false)
         try {
-            const sourceData = await requestJson<KnowledgeSource>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`
-            )
-
-            const [
-                statsResult,
-                capabilitiesResult,
-                defaultsResult,
-                indexProfileDetailResult,
-                retrievalProfileDetailResult,
-                maintenanceResult,
-            ] = await Promise.allSettled([
-                requestJson<KnowledgeSourceStats>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/stats`
-                ),
-                requestJson<KnowledgeCapabilities>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/capabilities`
-                ),
-                requestJson<KnowledgeDefaults>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/system/defaults`
-                ),
-                sourceData.indexProfileId
-                    ? requestJson<KnowledgeSourceProfileConfig>(
-                        `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile`
-                    )
-                    : Promise.resolve(null),
-                sourceData.retrievalProfileId
-                    ? requestJson<KnowledgeSourceProfileConfig>(
-                        `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile`
-                    )
-                    : Promise.resolve(null),
-                requestJson<KnowledgeMaintenanceOverview>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/maintenance`
-                ),
-            ])
-
-            const supportingDataFailed = [
-                statsResult,
-                capabilitiesResult,
-                defaultsResult,
-                indexProfileDetailResult,
-                retrievalProfileDetailResult,
-                maintenanceResult,
-            ].some(result => result.status === 'rejected')
-
+            const sourceData = await requestJson<KnowledgeSource>(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`)
+            const results = await fetchSupportingData(sourceId, sourceData)
             setSource(sourceData)
-            setStats(statsResult.status === 'fulfilled' ? statsResult.value : createEmptyStats(sourceData.id))
-            setCapabilities(capabilitiesResult.status === 'fulfilled' ? capabilitiesResult.value : null)
-            setDefaults(defaultsResult.status === 'fulfilled' ? defaultsResult.value : null)
-            setIndexProfileDetail(indexProfileDetailResult.status === 'fulfilled' ? indexProfileDetailResult.value : null)
-            setRetrievalProfileDetail(retrievalProfileDetailResult.status === 'fulfilled' ? retrievalProfileDetailResult.value : null)
-            setMaintenance(maintenanceResult.status === 'fulfilled' ? maintenanceResult.value : null)
-            setHasSupportingDataError(supportingDataFailed)
+            const failed = applySettledResults(results, sourceData, setStats, setCapabilities, setDefaults, setIndexProfileDetail, setRetrievalProfileDetail, setMaintenance)
+            setHasSupportingDataError(failed)
         } catch (err) {
-            setSource(null)
-            setStats(null)
-            setCapabilities(null)
-            setDefaults(null)
-            setIndexProfileDetail(null)
-            setRetrievalProfileDetail(null)
-            setMaintenance(null)
+            resetDetailState(setSource, setStats, setCapabilities, setDefaults, setIndexProfileDetail, setRetrievalProfileDetail, setMaintenance)
             setError(getErrorMessage(err))
-        } finally {
-            setIsLoading(false)
-        }
-    }, [sourceId])
+        } finally { setIsLoading(false) }
+    }, [sourceId, resetAll])
 
-    useEffect(() => {
-        void reload()
-    }, [reload])
+    useEffect(() => { void reload() }, [reload])
 
     const saveSource = useCallback(async (updates: KnowledgeSourceUpdateRequest): Promise<SaveSourceResult> => {
-        if (!sourceId) {
-            return {
-                success: false,
-                error: 'Missing source id',
-            }
-        }
-
+        if (!sourceId) return { success: false, error: 'Missing source id' }
         setError(null)
-
         try {
             const updatedSource = await requestJson<KnowledgeSource>(
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(updates),
-                }
+                { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) },
             )
-
             setSource(updatedSource)
-
-            return {
-                success: true,
-                data: updatedSource,
-            }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return {
-                success: false,
-                error: message,
-            }
-        }
+            return { success: true, data: updatedSource }
+        } catch (err) { const message = getErrorMessage(err); setError(message); return { success: false, error: message } }
     }, [sourceId])
 
     const saveIndexProfile = useCallback(async (updates: { name?: string; config?: Record<string, unknown> }): Promise<SaveProfileResult> => {
-        if (!source?.indexProfileId || !sourceId) {
-            return {
-                success: false,
-                error: 'Missing index profile id',
-            }
-        }
-
-        setError(null)
-
-        try {
-            const detail = await requestJson<KnowledgeSourceProfileConfig>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(updates),
-                }
-            )
-            setIndexProfileDetail(detail)
-            await reload()
-            return {
-                success: true,
-                data: detail,
-            }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return {
-                success: false,
-                error: message,
-            }
-        }
+        if (!source?.indexProfileId || !sourceId) return { success: false, error: 'Missing index profile id' }
+        return doSaveProfile(`/sources/${sourceId}/config/index-profile`, 'PUT', updates, setIndexProfileDetail, reload, setError)
     }, [reload, source?.indexProfileId, sourceId])
 
     const saveRetrievalProfile = useCallback(async (updates: { name?: string; config?: Record<string, unknown> }): Promise<SaveProfileResult> => {
-        if (!source?.retrievalProfileId || !sourceId) {
-            return {
-                success: false,
-                error: 'Missing retrieval profile id',
-            }
-        }
-
-        setError(null)
-
-        try {
-            const detail = await requestJson<KnowledgeSourceProfileConfig>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(updates),
-                }
-            )
-            setRetrievalProfileDetail(detail)
-            await reload()
-            return {
-                success: true,
-                data: detail,
-            }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return {
-                success: false,
-                error: message,
-            }
-        }
+        if (!source?.retrievalProfileId || !sourceId) return { success: false, error: 'Missing retrieval profile id' }
+        return doSaveProfile(`/sources/${sourceId}/config/retrieval-profile`, 'PUT', updates, setRetrievalProfileDetail, reload, setError)
     }, [reload, source?.retrievalProfileId, sourceId])
 
     const resetIndexProfile = useCallback(async (): Promise<SaveProfileResult> => {
-        if (!source?.indexProfileId || !sourceId) {
-            return {
-                success: false,
-                error: 'Missing index profile id',
-            }
-        }
-
-        setError(null)
-
-        try {
-            const detail = await requestJson<KnowledgeSourceProfileConfig>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile:reset`,
-                {
-                    method: 'POST',
-                }
-            )
-            setIndexProfileDetail(detail)
-            await reload()
-            return {
-                success: true,
-                data: detail,
-            }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return {
-                success: false,
-                error: message,
-            }
-        }
+        if (!source?.indexProfileId || !sourceId) return { success: false, error: 'Missing index profile id' }
+        return doSaveProfile(`/sources/${sourceId}/config/index-profile:reset`, 'POST', null, setIndexProfileDetail, reload, setError)
     }, [reload, source?.indexProfileId, sourceId])
 
     const resetRetrievalProfile = useCallback(async (): Promise<SaveProfileResult> => {
-        if (!source?.retrievalProfileId || !sourceId) {
-            return {
-                success: false,
-                error: 'Missing retrieval profile id',
-            }
-        }
-
-        setError(null)
-
-        try {
-            const detail = await requestJson<KnowledgeSourceProfileConfig>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile:reset`,
-                {
-                    method: 'POST',
-                }
-            )
-            setRetrievalProfileDetail(detail)
-            await reload()
-            return {
-                success: true,
-                data: detail,
-            }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return {
-                success: false,
-                error: message,
-            }
-        }
+        if (!source?.retrievalProfileId || !sourceId) return { success: false, error: 'Missing retrieval profile id' }
+        return doSaveProfile(`/sources/${sourceId}/config/retrieval-profile:reset`, 'POST', null, setRetrievalProfileDetail, reload, setError)
     }, [reload, source?.retrievalProfileId, sourceId])
 
     const deleteSource = useCallback(async (): Promise<DeleteSourceResult> => {
-        if (!sourceId) {
-            return {
-                success: false,
-                error: 'Missing source id',
-            }
-        }
-
+        if (!sourceId) return { success: false, error: 'Missing source id' }
         setError(null)
-
         try {
-            await requestJson<{ sourceId: string; deleted: boolean }>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`,
-                {
-                    method: 'DELETE',
-                }
-            )
-
+            await requestJson<{ sourceId: string; deleted: boolean }>(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`, { method: 'DELETE' })
             return { success: true }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return {
-                success: false,
-                error: message,
-            }
-        }
+        } catch (err) { const message = getErrorMessage(err); setError(message); return { success: false, error: message } }
     }, [sourceId])
 
     const loadMaintenanceFailures = useCallback(async (jobId: string): Promise<KnowledgeMaintenanceFailure[]> => {
-        const response = await requestJson<{ jobId: string; items: KnowledgeMaintenanceFailure[] }>(
-            `${runtime.KNOWLEDGE_SERVICE_URL}/jobs/${jobId}/failures`
-        )
+        const response = await requestJson<{ jobId: string; items: KnowledgeMaintenanceFailure[] }>(`${runtime.KNOWLEDGE_SERVICE_URL}/jobs/${jobId}/failures`)
         return response.items || []
     }, [])
 
     return {
-        source,
-        stats,
-        capabilities,
-        defaults,
-        indexProfileDetail,
-        retrievalProfileDetail,
-        maintenance,
-        isLoading,
-        error,
-        hasSupportingDataError,
-        reload,
-        loadMaintenanceFailures,
-        saveSource,
-        saveIndexProfile,
-        saveRetrievalProfile,
-        resetIndexProfile,
-        resetRetrievalProfile,
-        deleteSource,
+        source, stats, capabilities, defaults, indexProfileDetail, retrievalProfileDetail,
+        maintenance, isLoading, error, hasSupportingDataError, reload, loadMaintenanceFailures,
+        saveSource, saveIndexProfile, saveRetrievalProfile, resetIndexProfile, resetRetrievalProfile, deleteSource,
     }
 }

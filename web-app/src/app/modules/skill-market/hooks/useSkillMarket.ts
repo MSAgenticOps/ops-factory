@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import type { SkillMarketDetail, SkillMarketEntry, SkillMarketListResponse, SkillMarketMutationResponse } from '../../../../types/skillMarket'
+import type { SkillMarketDetail, SkillMarketEntry, SkillMarketListResponse } from '../../../../types/skillMarket'
 import { runtime, gatewayHeaders } from '../../../../config/runtime'
 import { getErrorMessage } from '../../../../utils/errorMessages'
 import { useUser } from '../../../platform/providers/UserContext'
@@ -23,6 +23,38 @@ interface UseSkillMarketResult {
     installSkill: (agentId: string, skillId: string) => Promise<{ success: boolean; error?: string }>
 }
 
+async function skillFetch<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}${path}`, {
+        signal: AbortSignal.timeout(10000),
+        ...init,
+    })
+    if (!response.ok) throw new Error(await response.text())
+    return response.json() as Promise<T>
+}
+
+function extractApiError(text: string): string {
+    try {
+        const body = JSON.parse(text) as ApiErrorBody
+        if (body.code === 'SKILL_ALREADY_EXISTS') return 'SKILL_ALREADY_EXISTS'
+        return body.message || body.error || text
+    } catch { return text }
+}
+
+async function skillMutation(path: string, init: RequestInit, refresh: () => Promise<void>) {
+    try {
+        const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}${path}`, init)
+        if (!response.ok) {
+            const text = await response.text()
+            throw new Error(extractApiError(text))
+        }
+        await response.json()
+        await refresh()
+        return { success: true }
+    } catch (err) {
+        return { success: false, error: getErrorMessage(err) }
+    }
+}
+
 export function useSkillMarket(): UseSkillMarketResult {
     const { userId } = useUser()
     const [skills, setSkills] = useState<SkillMarketEntry[]>([])
@@ -30,139 +62,50 @@ export function useSkillMarket(): UseSkillMarketResult {
     const [error, setError] = useState<string | null>(null)
 
     const fetchSkills = useCallback(async (query = '') => {
-        setIsLoading(true)
-        setError(null)
+        setIsLoading(true); setError(null)
         try {
             const params = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''
-            const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills${params}`, {
-                signal: AbortSignal.timeout(10000),
-            })
-            if (!response.ok) throw new Error(await response.text())
-            const data = await response.json() as SkillMarketListResponse
+            const data = await skillFetch<SkillMarketListResponse>(`/skills${params}`)
             setSkills(data.items || [])
-        } catch (err) {
-            setError(getErrorMessage(err))
-        } finally {
-            setIsLoading(false)
-        }
+        } catch (err) { setError(getErrorMessage(err)) }
+        finally { setIsLoading(false) }
     }, [])
 
-    const createSkill = useCallback(async (payload: { id: string; name: string; description: string; instructions: string }) => {
-        try {
-            const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            if (!response.ok) throw new Error(await response.text())
-            await response.json() as SkillMarketMutationResponse
-            await fetchSkills()
-            return { success: true }
-        } catch (err) {
-            if (err instanceof Error && err.message === 'SKILL_ALREADY_EXISTS') {
-                return { success: false, error: 'SKILL_ALREADY_EXISTS' }
-            }
-            return { success: false, error: getErrorMessage(err) }
-        }
-    }, [fetchSkills])
+    const createSkill = useCallback(async (payload: { id: string; name: string; description: string; instructions: string }) =>
+        skillMutation('/skills', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, fetchSkills),
+    [fetchSkills])
 
     const fetchSkill = useCallback(async (skillId: string) => {
         try {
-            const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
-                signal: AbortSignal.timeout(10000),
-            })
-            if (!response.ok) throw new Error(await response.text())
-            const skill = await response.json() as SkillMarketDetail
+            const skill = await skillFetch<SkillMarketDetail>(`/skills/${encodeURIComponent(skillId)}`)
             return { success: true, skill }
-        } catch (err) {
-            return { success: false, error: getErrorMessage(err) }
-        }
+        } catch (err) { return { success: false, error: getErrorMessage(err) } }
     }, [])
 
-    const updateSkill = useCallback(async (skillId: string, payload: { name: string; description: string; instructions: string }) => {
-        try {
-            const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            if (!response.ok) throw new Error(await response.text())
-            await response.json() as SkillMarketMutationResponse
-            await fetchSkills()
-            return { success: true }
-        } catch (err) {
-            return { success: false, error: getErrorMessage(err) }
-        }
-    }, [fetchSkills])
+    const updateSkill = useCallback(async (skillId: string, payload: { name: string; description: string; instructions: string }) =>
+        skillMutation(`/skills/${encodeURIComponent(skillId)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, fetchSkills),
+    [fetchSkills])
 
     const importSkill = useCallback(async (file: File, id?: string) => {
-        try {
-            const formData = new FormData()
-            formData.append('file', file)
-            if (id?.trim()) formData.append('id', id.trim())
-            const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills:import`, {
-                method: 'POST',
-                body: formData,
-            })
-            if (!response.ok) {
-                const text = await response.text()
-                let message = text
-                try {
-                    const body = JSON.parse(text) as ApiErrorBody
-                    message = body.message || body.error || text
-                    if (body.code === 'SKILL_ALREADY_EXISTS') {
-                        message = 'SKILL_ALREADY_EXISTS'
-                    }
-                } catch {
-                    // Keep raw response text.
-                }
-                throw new Error(message)
-            }
-            await response.json() as SkillMarketMutationResponse
-            await fetchSkills()
-            return { success: true }
-        } catch (err) {
-            return { success: false, error: getErrorMessage(err) }
-        }
+        const formData = new FormData()
+        formData.append('file', file)
+        if (id?.trim()) formData.append('id', id.trim())
+        return skillMutation('/skills:import', { method: 'POST', body: formData }, fetchSkills)
     }, [fetchSkills])
 
-    const deleteSkill = useCallback(async (skillId: string) => {
-        try {
-            const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
-                method: 'DELETE',
-            })
-            if (!response.ok) throw new Error(await response.text())
-            await fetchSkills()
-            return { success: true }
-        } catch (err) {
-            return { success: false, error: getErrorMessage(err) }
-        }
-    }, [fetchSkills])
+    const deleteSkill = useCallback(async (skillId: string) =>
+        skillMutation(`/skills/${encodeURIComponent(skillId)}`, { method: 'DELETE' }, fetchSkills),
+    [fetchSkills])
 
     const installSkill = useCallback(async (agentId: string, skillId: string) => {
         try {
             const response = await fetch(`${runtime.GATEWAY_URL}/agents/${encodeURIComponent(agentId)}/skills/install`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                body: JSON.stringify({ skillId }),
+                method: 'POST', headers: gatewayHeaders(userId), body: JSON.stringify({ skillId }),
             })
             if (!response.ok) throw new Error(await response.text())
             return { success: true }
-        } catch (err) {
-            return { success: false, error: getErrorMessage(err) }
-        }
+        } catch (err) { return { success: false, error: getErrorMessage(err) } }
     }, [userId])
 
-    return {
-        skills,
-        isLoading,
-        error,
-        fetchSkills,
-        fetchSkill,
-        createSkill,
-        updateSkill,
-        importSkill,
-        deleteSkill,
-        installSkill,
-    }
+    return { skills, isLoading, error, fetchSkills, fetchSkill, createSkill, updateSkill, importSkill, deleteSkill, installSkill }
 }

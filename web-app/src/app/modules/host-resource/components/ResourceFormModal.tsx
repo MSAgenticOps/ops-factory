@@ -96,7 +96,9 @@ export default function ResourceFormModal({
     const [hostClusterIds, setHostClusterIds] = useState<string[]>(() => {
         if (editingItem?.type === 'host') {
             const ids = (editingItem.data as any).clusterIds
-            return ids && ids.length > 0 ? ids : editingItem.data.clusterId ? [editingItem.data.clusterId] : []
+            if (ids && ids.length > 0) return ids
+            if (editingItem.data.clusterId) return [editingItem.data.clusterId]
+            return []
         }
         return defaultClusterId ? [defaultClusterId] : []
     })
@@ -830,8 +832,8 @@ export default function ResourceFormModal({
                                             const selectedCluster = clusters.find(c => c.id === hostClusterIds[0])
                                             const clusterTypeName = selectedCluster?.type ?? ''
                                             const clusterTypeObj = clusterTypes.find(ct => ct.name === clusterTypeName)
-                                            const clusterMode = clusterTypeObj?.mode ?? 'peer'
-                                            return clusterMode === 'primary-backup' ? (
+                                            if (clusterTypeObj?.mode !== 'primary-backup') return null
+                                            return (
                                                 <div className="form-group">
                                                     <label className="form-label">{t('hostResource.hostRole')}</label>
                                                     <select className="form-input" value={hostRole} onChange={e => setHostRole(e.target.value as 'primary' | 'backup' | '')}>
@@ -840,7 +842,7 @@ export default function ResourceFormModal({
                                                         <option value="backup">{t('hostResource.hostRoleBackup')}</option>
                                                     </select>
                                                 </div>
-                                            ) : null
+                                            )
                                         })()}
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.purpose')}</label>

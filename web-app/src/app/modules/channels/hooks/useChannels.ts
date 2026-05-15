@@ -35,313 +35,110 @@ function defaultMutationError(message: string): ChannelMutationResponse {
     return { success: false, error: message }
 }
 
-export function useChannels(): UseChannelsResult {
-    const { userId } = useUser()
+async function channelFetch(userId: string, path: string, options?: RequestInit) {
+    const response = await fetch(`${runtime.GATEWAY_URL}/channels${path}`, {
+        ...options, headers: gatewayHeaders(userId), signal: AbortSignal.timeout(10_000),
+    })
+    return { ok: response.ok, data: await response.json() }
+}
+
+function useChannelState() {
     const [channels, setChannels] = useState<ChannelSummary[]>([])
     const [channel, setChannel] = useState<ChannelDetail | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    return { channels, setChannels, channel, setChannel, isLoading, setIsLoading, isSaving, setIsSaving, error, setError }
+}
 
-    const fetchChannels = useCallback(async () => {
-        setIsLoading(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels`, {
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`)
-            }
-            const data = await response.json() as { channels?: ChannelSummary[] }
-            setChannels(data.channels ?? [])
-        } catch (err) {
-            setError(getErrorMessage(err))
-        } finally {
-            setIsLoading(false)
-        }
-    }, [userId])
+function useChannelHelpers(userId: string | null | undefined, state: ReturnType<typeof useChannelState>) {
+    const { setIsSaving, setError, setChannel, setIsLoading } = state
 
-    const fetchChannel = useCallback(async (channelId: string) => {
-        setIsLoading(true)
-        setError(null)
+    const mutation = useCallback(async (path: string, options: RequestInit, failMsg: string): Promise<ChannelMutationResponse> => {
+        setIsSaving(true); setError(null)
         try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}`, {
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`)
-            }
-            const data = await response.json() as ChannelDetail
-            setChannel(data)
-        } catch (err) {
-            setError(getErrorMessage(err))
-        } finally {
-            setIsLoading(false)
-        }
-    }, [userId])
+            const { ok, data } = await channelFetch(userId!, path, options)
+            const result = data as ChannelMutationResponse
+            if (!ok || !result.success) { const msg = result.error || failMsg; setError(msg); return defaultMutationError(msg) }
+            if (result.channel) setChannel(result.channel)
+            return result
+        } catch (err) { const msg = getErrorMessage(err); setError(msg); return defaultMutationError(msg) }
+        finally { setIsSaving(false) }
+    }, [userId, setIsSaving, setError, setChannel])
 
-    const createChannel = useCallback(async (request: ChannelUpsertRequest): Promise<ChannelMutationResponse> => {
-        setIsSaving(true)
-        setError(null)
+    const action = useCallback(async <T>(path: string, options: RequestInit, failMsg: string, okCheck?: (data: any) => boolean): Promise<T> => {
+        setIsSaving(true); setError(null)
         try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                body: JSON.stringify(request),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as ChannelMutationResponse
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to create channel'
-                setError(message)
-                return defaultMutationError(message)
-            }
-            if (data.channel) {
-                setChannel(data.channel)
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return defaultMutationError(message)
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+            const { ok, data } = await channelFetch(userId!, path, options)
+            if (!ok || (okCheck && !okCheck(data))) { const msg = data.error || failMsg; setError(msg); return { success: false, error: msg } as any }
+            return data as T
+        } catch (err) { const msg = getErrorMessage(err); setError(msg); return { success: false, error: msg } as any }
+        finally { setIsSaving(false) }
+    }, [userId, setIsSaving, setError])
 
-    const updateChannel = useCallback(async (
-        channelId: string,
-        request: ChannelUpsertRequest
-    ): Promise<ChannelMutationResponse> => {
-        setIsSaving(true)
-        setError(null)
+    const fetchListOrDetail = useCallback(async (path: string, onOk: (data: any) => void) => {
+        setIsLoading(true); setError(null)
         try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}`, {
-                method: 'PUT',
-                headers: gatewayHeaders(userId),
-                body: JSON.stringify(request),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as ChannelMutationResponse
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to update channel'
-                setError(message)
-                return defaultMutationError(message)
-            }
-            if (data.channel) {
-                setChannel(data.channel)
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return defaultMutationError(message)
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+            const { ok, data } = await channelFetch(userId!, path)
+            if (!ok) throw new Error('Failed to fetch')
+            onOk(data)
+        } catch (err) { setError(getErrorMessage(err)) }
+        finally { setIsLoading(false) }
+    }, [userId, setIsLoading, setError])
 
-    const deleteChannel = useCallback(async (channelId: string) => {
-        setIsSaving(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}`, {
-                method: 'DELETE',
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as { success: boolean; error?: string }
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to delete channel'
-                setError(message)
-                return { success: false, error: message }
-            }
-            return { success: true }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return { success: false, error: message }
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+    return { mutation, action, fetchListOrDetail }
+}
 
-    const setChannelEnabled = useCallback(async (channelId: string, enabled: boolean): Promise<ChannelMutationResponse> => {
-        setIsSaving(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}/${enabled ? 'enable' : 'disable'}`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as ChannelMutationResponse
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to update channel status'
-                setError(message)
-                return defaultMutationError(message)
-            }
-            if (data.channel) {
-                setChannel(data.channel)
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return defaultMutationError(message)
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+export function useChannels(): UseChannelsResult {
+    const { userId } = useUser()
+    const state = useChannelState()
+    const { mutation, action, fetchListOrDetail } = useChannelHelpers(userId, state)
 
-    const verifyChannel = useCallback(async (channelId: string) => {
-        setIsSaving(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}/verify`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as {
-                success: boolean
-                verification?: ChannelVerificationResult
-                error?: string
-            }
-            if (!response.ok) {
-                const message = data.error || 'Failed to verify channel'
-                setError(message)
-                return { success: false, error: message }
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return { success: false, error: message }
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+    const fetchChannels = useCallback(() => fetchListOrDetail('', d => state.setChannels(d.channels ?? [])), [fetchListOrDetail, state])
+    const fetchChannel = useCallback((id: string) => fetchListOrDetail(`/${id}`, d => state.setChannel(d as ChannelDetail)), [fetchListOrDetail, state])
 
-    const startLogin = useCallback(async (channelId: string) => {
-        setIsSaving(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}/login`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as { success: boolean; state?: ChannelLoginState; error?: string }
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to start login'
-                setError(message)
-                return { success: false, error: message }
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return { success: false, error: message }
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+    const createChannel = useCallback((request: ChannelUpsertRequest) =>
+        mutation('', { method: 'POST', body: JSON.stringify(request) }, 'Failed to create channel'), [mutation])
+
+    const updateChannel = useCallback((channelId: string, request: ChannelUpsertRequest) =>
+        mutation(`/${channelId}`, { method: 'PUT', body: JSON.stringify(request) }, 'Failed to update channel'), [mutation])
+
+    const deleteChannel = useCallback((channelId: string) =>
+        action(`/${channelId}`, { method: 'DELETE' }, 'Failed to delete channel', d => d.success),
+    [action]) as (channelId: string) => Promise<{ success: boolean; error?: string }>
+
+    const setChannelEnabled = useCallback((channelId: string, enabled: boolean) =>
+        mutation(`/${channelId}/${enabled ? 'enable' : 'disable'}`, { method: 'POST' }, 'Failed to update channel status'), [mutation])
+
+    const verifyChannel = useCallback((channelId: string) =>
+        action<{}>(`/${channelId}/verify`, { method: 'POST' }, 'Failed to verify channel'),
+    [action]) as (channelId: string) => Promise<{ success: boolean; verification?: ChannelVerificationResult; error?: string }>
+
+    const startLogin = useCallback((channelId: string) =>
+        action<{}>(`/${channelId}/login`, { method: 'POST' }, 'Failed to start login', d => d.success),
+    [action]) as (channelId: string) => Promise<{ success: boolean; state?: ChannelLoginState; error?: string }>
 
     const fetchLoginState = useCallback(async (channelId: string) => {
-        setIsSaving(true)
-        setError(null)
+        state.setIsSaving(true); state.setError(null)
         try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}/login-state`, {
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as { state?: ChannelLoginState; error?: string }
-            if (!response.ok || !data.state) {
-                const message = data.error || 'Failed to fetch login state'
-                setError(message)
-                return { success: false, error: message }
-            }
-            return { success: true, state: data.state }
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return { success: false, error: message }
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+            const { ok, data } = await channelFetch(userId!, `/${channelId}/login-state`)
+            if (!ok || !data.state) { const msg = data.error || 'Failed to fetch login state'; state.setError(msg); return { success: false, error: msg } }
+            return { success: true, state: data.state as ChannelLoginState }
+        } catch (err) { const msg = getErrorMessage(err); state.setError(msg); return { success: false, error: msg } }
+        finally { state.setIsSaving(false) }
+    }, [userId, state])
 
-    const logoutChannel = useCallback(async (channelId: string) => {
-        setIsSaving(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}/logout`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as { success: boolean; state?: ChannelLoginState; error?: string }
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to clear login state'
-                setError(message)
-                return { success: false, error: message }
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return { success: false, error: message }
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+    const logoutChannel = useCallback((channelId: string) =>
+        action<{}>(`/${channelId}/logout`, { method: 'POST' }, 'Failed to clear login state', d => d.success),
+    [action]) as (channelId: string) => Promise<{ success: boolean; state?: ChannelLoginState; error?: string }>
 
-    const runSelfTest = useCallback(async (channelId: string, text: string) => {
-        setIsSaving(true)
-        setError(null)
-        try {
-            const response = await fetch(`${runtime.GATEWAY_URL}/channels/${channelId}/self-test`, {
-                method: 'POST',
-                headers: gatewayHeaders(userId),
-                body: JSON.stringify({ text }),
-                signal: AbortSignal.timeout(10_000),
-            })
-            const data = await response.json() as { success: boolean; result?: ChannelSelfTestResult; error?: string }
-            if (!response.ok || !data.success) {
-                const message = data.error || 'Failed to run self-test'
-                setError(message)
-                return { success: false, error: message }
-            }
-            return data
-        } catch (err) {
-            const message = getErrorMessage(err)
-            setError(message)
-            return { success: false, error: message }
-        } finally {
-            setIsSaving(false)
-        }
-    }, [userId])
+    const runSelfTest = useCallback((channelId: string, text: string) =>
+        action<{}>(`/${channelId}/self-test`, { method: 'POST', body: JSON.stringify({ text }) }, 'Failed to run self-test', d => d.success),
+    [action]) as (channelId: string, text: string) => Promise<{ success: boolean; result?: ChannelSelfTestResult; error?: string }>
 
     return {
-        channels,
-        channel,
-        isLoading,
-        isSaving,
-        error,
-        fetchChannels,
-        fetchChannel,
-        createChannel,
-        updateChannel,
-        deleteChannel,
-        setChannelEnabled,
-        verifyChannel,
-        startLogin,
-        fetchLoginState,
-        logoutChannel,
-        runSelfTest,
+        channels: state.channels, channel: state.channel, isLoading: state.isLoading, isSaving: state.isSaving, error: state.error,
+        fetchChannels, fetchChannel, createChannel, updateChannel, deleteChannel,
+        setChannelEnabled, verifyChannel, startLogin, fetchLoginState, logoutChannel, runSelfTest,
     }
 }

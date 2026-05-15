@@ -210,6 +210,10 @@
     max-width: 880px;
 }
 
+.main-wrapper.sidebar-collapsed .chat-input-area-bottom {
+    left: var(--sidebar-width-collapsed);
+}
+
 .main-wrapper.with-right-panel .page-container {
     max-width: 100%;
 }

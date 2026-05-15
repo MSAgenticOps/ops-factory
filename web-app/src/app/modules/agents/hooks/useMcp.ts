@@ -24,6 +24,21 @@ interface UseMcpResult {
   deleteMcp: (name: string) => Promise<void>
 }
 
+async function mcpRequest(
+  agentId: string,
+  userId: string,
+  path: string,
+  options?: RequestInit,
+): Promise<Response> {
+  const res = await fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/mcp${path}`, {
+    ...options,
+    headers: gatewayHeaders(userId),
+    signal: AbortSignal.timeout(10000),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+  return res
+}
+
 export function useMcp(agentId: string | null): UseMcpResult {
   const { t } = useTranslation()
   const { showToast } = useToast()
@@ -35,20 +50,10 @@ export function useMcp(agentId: string | null): UseMcpResult {
 
   const fetchMcp = useCallback(async () => {
     if (!agentId) return
-
     setIsLoading(true)
     setError(null)
-
     try {
-      const res = await fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/mcp`, {
-        headers: gatewayHeaders(userId),
-        signal: AbortSignal.timeout(10000),
-      })
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${await res.text()}`)
-      }
-
+      const res = await mcpRequest(agentId!, userId!, '')
       const data: McpResponse = await res.json()
       setEntries(data.extensions || [])
       setWarnings(data.warnings || [])
@@ -61,73 +66,32 @@ export function useMcp(agentId: string | null): UseMcpResult {
 
   const toggleMcp = useCallback(async (name: string, enabled: boolean) => {
     if (!agentId) return
-
-    // Find current entry
     const entry = entries.find(e => e.name === name)
-    if (!entry) {
-      setError(`MCP "${name}" not found`)
-      return
-    }
-
+    if (!entry) { setError(`MCP "${name}" not found`); return }
     setError(null)
-
     try {
-      // Extract config from entry (everything except enabled)
       const { enabled: _currentEnabled, ...config } = entry
-
-      const res = await fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/mcp`, {
+      await mcpRequest(agentId!, userId!, '', {
         method: 'POST',
-        headers: gatewayHeaders(userId),
-        body: JSON.stringify({
-          name: entry.name,
-          enabled,
-          config,
-        }),
-        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({ name: entry.name, enabled, config }),
       })
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${await res.text()}`)
-      }
-
-      // Optimistic update
-      setEntries(prev =>
-        prev.map(e =>
-          e.name === name ? { ...e, enabled } : e
-        )
-      )
+      setEntries(prev => prev.map(e => e.name === name ? { ...e, enabled } : e))
       showToast('success', t('mcp.configUpdatedRestarting'))
     } catch (err) {
       setError(getErrorMessage(err))
-      // Refresh to get actual state
       await fetchMcp()
     }
-  }, [agentId, userId, entries, fetchMcp])
+  }, [agentId, userId, entries, fetchMcp, t, showToast])
 
   const addMcp = useCallback(async (request: McpAddRequest) => {
     if (!agentId) return
-
     setError(null)
-
     try {
       const { enabled, ...config } = request
-
-      const res = await fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/mcp`, {
+      await mcpRequest(agentId!, userId!, '', {
         method: 'POST',
-        headers: gatewayHeaders(userId),
-        body: JSON.stringify({
-          name: request.name,
-          enabled,
-          config,
-        }),
-        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({ name: request.name, enabled, config }),
       })
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${await res.text()}`)
-      }
-
-      // Refresh to get updated list
       await fetchMcp()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -137,41 +101,18 @@ export function useMcp(agentId: string | null): UseMcpResult {
 
   const deleteMcp = useCallback(async (name: string) => {
     if (!agentId) return
-
     setError(null)
-
     try {
-      const res = await fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/mcp/${encodeURIComponent(name)}`, {
-        method: 'DELETE',
-        headers: gatewayHeaders(userId),
-        signal: AbortSignal.timeout(10000),
-      })
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${await res.text()}`)
-      }
-
-      // Remove from local state
+      await mcpRequest(agentId!, userId!, `/${encodeURIComponent(name)}`, { method: 'DELETE' })
       setEntries(prev => prev.filter(e => e.name !== name))
       showToast('success', t('mcp.configUpdatedRestarting'))
     } catch (err) {
       setError(getErrorMessage(err))
-      // Refresh to get actual state
       await fetchMcp()
     }
-  }, [agentId, userId, fetchMcp])
+  }, [agentId, userId, fetchMcp, t, showToast])
 
   const categorized = useMemo(() => categorizeMcpEntries(entries), [entries])
 
-  return {
-    entries,
-    categorized,
-    warnings,
-    isLoading,
-    error,
-    fetchMcp,
-    toggleMcp,
-    addMcp,
-    deleteMcp,
-  }
+  return { entries, categorized, warnings, isLoading, error, fetchMcp, toggleMcp, addMcp, deleteMcp }
 }
