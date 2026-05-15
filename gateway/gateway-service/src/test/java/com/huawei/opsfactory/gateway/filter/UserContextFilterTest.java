@@ -9,10 +9,8 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.gateway.common.model.UserRole;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 
 import reactor.core.publisher.Mono;
@@ -24,8 +22,6 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
 
-import java.util.List;
-
 /**
  * Test coverage for User Context Filter.
  *
@@ -35,8 +31,6 @@ import java.util.List;
 public class UserContextFilterTest {
     private UserContextFilter filter;
 
-    private GatewayProperties gatewayProperties;
-
     private PrewarmService prewarmService;
 
     /**
@@ -45,9 +39,7 @@ public class UserContextFilterTest {
     @Before
     public void setUp() {
         prewarmService = mock(PrewarmService.class);
-        gatewayProperties = mock(GatewayProperties.class);
-        when(gatewayProperties.getAdminUsers()).thenReturn(List.of("admin"));
-        filter = new UserContextFilter(prewarmService, gatewayProperties);
+        filter = new UserContextFilter(prewarmService);
     }
 
     /**
@@ -81,17 +73,17 @@ public class UserContextFilterTest {
     }
 
     /**
-     * Tests sys user gets admin role.
+     * Tests all authenticated users get user role.
      */
     @Test
-    public void testSysUserGetsAdminRole() {
+    public void testAllAuthenticatedUsersGetUserRole() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/test").header("x-user-id", "admin").build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
         WebFilterChain chain = ex -> Mono.empty();
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
-        assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
     }
 
     /**
@@ -110,38 +102,6 @@ public class UserContextFilterTest {
     }
 
     /**
-     * Tests configured admin user gets admin role.
-     */
-    @Test
-    public void testConfiguredAdminUserGetsAdminRole() {
-        when(gatewayProperties.getAdminUsers()).thenReturn(List.of("admin", "aiops"));
-
-        MockServerHttpRequest request = MockServerHttpRequest.get("/test").header("x-user-id", "aiops").build();
-        MockServerWebExchange exchange = MockServerWebExchange.from(request);
-
-        WebFilterChain chain = ex -> Mono.empty();
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-
-        assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
-    }
-
-    /**
-     * Tests non admin user gets user role.
-     */
-    @Test
-    public void testNonAdminUserGetsUserRole() {
-        when(gatewayProperties.getAdminUsers()).thenReturn(List.of("admin", "aiops"));
-
-        MockServerHttpRequest request = MockServerHttpRequest.get("/test").header("x-user-id", "otheruser").build();
-        MockServerWebExchange exchange = MockServerWebExchange.from(request);
-
-        WebFilterChain chain = ex -> Mono.empty();
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-
-        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
-    }
-
-    /**
      * Tests trace start does not prewarm user.
      */
     @Test
@@ -155,7 +115,7 @@ public class UserContextFilterTest {
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
         assertEquals("admin", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
-        assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
         verify(prewarmService, never()).onUserActivity("admin");
     }
 
@@ -172,7 +132,7 @@ public class UserContextFilterTest {
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
         assertEquals("admin", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
-        assertEquals(UserRole.ADMIN, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
         verify(prewarmService, never()).onUserActivity("admin");
     }
 

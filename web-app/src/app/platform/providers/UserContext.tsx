@@ -1,13 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
-import { runtime, isAdminUser } from '../../../config/runtime'
+import { runtime } from '../../../config/runtime'
 import { getUrlParam } from '../../../utils/urlParams'
 import { updateLoggingContext } from '../logging/context'
 import { trackedFetch } from '../logging/requestClient'
 
 const STORAGE_KEY = 'opsfactory:userId'
 
-export type UserRole = 'admin' | 'user'
+export type UserRole = 'user'
 
 interface UserContextType {
     userId: string | null
@@ -76,8 +75,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 signal: AbortSignal.timeout(5000),
             })
             if (res.ok) {
-                const data = await res.json()
-                setRole(data.role ?? 'user')
+                setRole('user')
             } else {
                 setRole('user')
             }
@@ -126,16 +124,5 @@ export function useUser(): UserContextType {
 
 /** User identity is resolved from URL, cookie, localStorage, or the default runtime user. */
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-    return <>{children}</>
-}
-
-/** Redirect to / if not admin */
-export function AdminRoute({ children }: { children: ReactNode }) {
-    const { userId, role } = useUser()
-
-    if (role !== null && !isAdminUser(userId, role)) {
-        return <Navigate to="/" replace />
-    }
-
     return <>{children}</>
 }
