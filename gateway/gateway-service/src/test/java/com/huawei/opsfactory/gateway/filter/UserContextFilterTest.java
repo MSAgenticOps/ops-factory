@@ -10,7 +10,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.huawei.opsfactory.gateway.common.model.UserRole;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 
 import reactor.core.publisher.Mono;
@@ -54,7 +53,6 @@ public class UserContextFilterTest {
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
         assertEquals("user123", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
-        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
     }
 
     /**
@@ -73,17 +71,17 @@ public class UserContextFilterTest {
     }
 
     /**
-     * Tests all authenticated users get user role.
+     * Tests system endpoints pass through without user context.
      */
     @Test
-    public void testAllAuthenticatedUsersGetUserRole() {
-        MockServerHttpRequest request = MockServerHttpRequest.get("/test").header("x-user-id", "admin").build();
+    public void testSystemEndpointPassesThroughWithoutUserContext() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/gateway/status").build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
         WebFilterChain chain = ex -> Mono.empty();
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
-        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
+        assertNull(exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
     }
 
     /**
@@ -115,7 +113,6 @@ public class UserContextFilterTest {
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
         assertEquals("admin", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
-        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
         verify(prewarmService, never()).onUserActivity("admin");
     }
 
@@ -132,7 +129,6 @@ public class UserContextFilterTest {
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
         assertEquals("admin", exchange.getAttribute(UserContextFilter.USER_ID_ATTR));
-        assertEquals(UserRole.USER, exchange.getAttribute(UserContextFilter.USER_ROLE_ATTR));
         verify(prewarmService, never()).onUserActivity("admin");
     }
 
