@@ -5,7 +5,6 @@
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
-import com.huawei.opsfactory.gateway.common.model.UserRole;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 
 import reactor.core.publisher.Mono;
@@ -35,8 +34,6 @@ public class UserContextFilter implements WebFilter {
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
 
     public static final String USER_ID_ATTR = "userId";
-
-    public static final String USER_ROLE_ATTR = "userRole";
 
     private final PrewarmService prewarmService;
 
@@ -95,7 +92,6 @@ public class UserContextFilter implements WebFilter {
         }
 
         exchange.getAttributes().put(USER_ID_ATTR, userId);
-        exchange.getAttributes().put(USER_ROLE_ATTR, UserRole.USER);
         ThreadContext.put("userId", userId);
 
         // Trigger pre-warm for authenticated users, except diagnostics that must not mutate runtime state.
