@@ -254,110 +254,61 @@ function buildThroughputOption(series: MetricsPoint[], labels: { requests: strin
   }
 }
 
+function buildLatencyYAxis() {
+  return {
+    type: 'value' as const,
+    name: 'ms',
+    nameTextStyle: { color: MON_COLORS.text, fontSize: 11, padding: [0, 0, 0, -8] },
+    splitLine: { lineStyle: { color: MON_COLORS.grid, type: 'dashed' as const } },
+    axisLine: { show: false },
+    axisTick: { show: false },
+    axisLabel: {
+      color: MON_COLORS.text, fontSize: 11,
+      formatter: (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}s` : `${value}`,
+    },
+  }
+}
+
+function buildLatencySeries(series: MetricsPoint[], labels: { avgLatency: string; p95Latency: string; ttft: string }) {
+  const thresholdLine = (color: string, yValue: number) => ({
+    symbol: 'none', label: { show: false }, lineStyle: { color, type: 'dashed' as const }, data: [{ yAxis: yValue }],
+  })
+  return [
+    {
+      name: labels.avgLatency, type: 'line' as const, smooth: 0.22, showSymbol: false,
+      lineStyle: { width: 2.5, color: MON_COLORS.avgLatency },
+      areaStyle: { color: MON_COLORS.amberArea },
+      data: series.map(point => point.avgLatency),
+    },
+    {
+      name: labels.p95Latency, type: 'line' as const, smooth: 0.18, showSymbol: false,
+      lineStyle: { width: 2, type: 'dashed' as const, color: MON_COLORS.p95Latency },
+      data: series.map(point => point.p95Latency),
+      markLine: thresholdLine(MON_COLORS.threshold, 5000),
+    },
+    {
+      name: labels.ttft, type: 'line' as const, smooth: 0.22, showSymbol: false,
+      lineStyle: { width: 2, color: MON_COLORS.ttft },
+      areaStyle: { color: MON_COLORS.roseArea },
+      data: series.map(point => point.avgTtft),
+      markLine: thresholdLine('rgba(251, 113, 133, 0.55)', 2000),
+    },
+  ]
+}
+
 function buildLatencyOption(
   series: MetricsPoint[],
   labels: { avgLatency: string; p95Latency: string; ttft: string }
 ): EChartsOption {
   const base = buildBaseChartOption(series)
-
   return {
     ...base,
     tooltip: {
       ...base.tooltip,
       formatter: params => buildChartTooltip(params as any[], (_seriesName, value) => fmtMs2(value)),
     },
-    yAxis: {
-      type: 'value',
-      name: 'ms',
-      nameTextStyle: {
-        color: MON_COLORS.text,
-        fontSize: 11,
-        padding: [0, 0, 0, -8],
-      },
-      splitLine: {
-        lineStyle: {
-          color: MON_COLORS.grid,
-          type: 'dashed',
-        },
-      },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: {
-        color: MON_COLORS.text,
-        fontSize: 11,
-        formatter: (value: number) => {
-            if (value >= 1000) {
-                const decimals = value >= 10_000 ? 0 : 1
-                return `${(value / 1000).toFixed(decimals)}s`
-            }
-            return `${value}`
-        },
-      },
-    },
-    series: [
-      {
-        name: labels.avgLatency,
-        type: 'line',
-        smooth: 0.22,
-        showSymbol: false,
-        lineStyle: {
-          width: 2.5,
-          color: MON_COLORS.avgLatency,
-        },
-        areaStyle: {
-          color: MON_COLORS.amberArea,
-        },
-        data: series.map(point => point.avgLatency),
-      },
-      {
-        name: labels.p95Latency,
-        type: 'line',
-        smooth: 0.18,
-        showSymbol: false,
-        lineStyle: {
-          width: 2,
-          type: 'dashed',
-          color: MON_COLORS.p95Latency,
-        },
-        data: series.map(point => point.p95Latency),
-        markLine: {
-          symbol: 'none',
-          label: {
-            show: false,
-          },
-          lineStyle: {
-            color: MON_COLORS.threshold,
-            type: 'dashed',
-          },
-          data: [{ yAxis: 5000 }],
-        },
-      },
-      {
-        name: labels.ttft,
-        type: 'line',
-        smooth: 0.22,
-        showSymbol: false,
-        lineStyle: {
-          width: 2,
-          color: MON_COLORS.ttft,
-        },
-        areaStyle: {
-          color: MON_COLORS.roseArea,
-        },
-        data: series.map(point => point.avgTtft),
-        markLine: {
-          symbol: 'none',
-          label: {
-            show: false,
-          },
-          lineStyle: {
-            color: 'rgba(251, 113, 133, 0.55)',
-            type: 'dashed',
-          },
-          data: [{ yAxis: 2000 }],
-        },
-      },
-    ],
+    yAxis: buildLatencyYAxis(),
+    series: buildLatencySeries(series, labels),
   }
 }
 
@@ -693,119 +644,95 @@ function EventsTab() {
 
 // --- Tab: Agents ----------------------------------------------------------
 
+function AgentCard({ agent, running, metrics, t }: { agent: AgentInfo; running: number; metrics?: AgentMetrics; t: (k: string) => string }) {
+  return (
+    <div className="mon-agent-card">
+      <div className="mon-agent-card-header">
+        <div className="mon-agent-card-title">
+          <span className="mon-agent-card-name">{agent.name}</span>
+          <span className={`status-pill status-${agent.status}`}>{agent.status}</span>
+        </div>
+        <div className="mon-agent-card-meta">
+          <span className="mon-agent-card-tag">{agent.provider}</span>
+          <span className="mon-agent-card-tag">{agent.model}</span>
+        </div>
+      </div>
+      <div className="mon-agent-card-stats">
+        <div className="mon-agent-card-stat">
+          <span className="mon-agent-card-stat-label">{t('monitoring.agentInstanceCount')}</span>
+          <span className="mon-agent-card-stat-value">{running}</span>
+        </div>
+        <div className="mon-agent-card-stat">
+          <span className="mon-agent-card-stat-label">{t('monitoring.usageRequests')}</span>
+          <span className="mon-agent-card-stat-value">{metrics ? metrics.requestCount : 0}</span>
+        </div>
+        <div className="mon-agent-card-stat">
+          <span className="mon-agent-card-stat-label">{t('monitoring.usageAvgLatency')}</span>
+          <span className="mon-agent-card-stat-value">{metrics ? fmtMs2(metrics.avgLatencyMs) : '—'}</span>
+        </div>
+        <div className="mon-agent-card-stat">
+          <span className="mon-agent-card-stat-label">{t('monitoring.usageErrors')}</span>
+          <span className={`mon-agent-card-stat-value${metrics && metrics.errorCount > 0 ? ' mon-stat-error' : ''}`}>
+            {metrics ? metrics.errorCount : 0}
+          </span>
+        </div>
+      </div>
+      {agent.skills && agent.skills.length > 0 && (
+        <div className="mon-agent-card-skills">
+          {agent.skills.map((skill: any) => (
+            <span key={typeof skill === 'string' ? skill : skill.name || skill.path} className="mon-agent-card-skill">
+              {typeof skill === 'string' ? skill : skill.name || skill.path}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AgentsTab() {
   const { t } = useTranslation()
   const { instances, agents, isLoading, error, runtimeError } = useMonitoringPlatform()
   const { data: metricsData } = useMetrics(30_000)
   const loadError = runtimeError || error
 
-  if (isLoading && agents.length === 0) {
-    return <div className="mon-loading">{t('monitoring.loading')}</div>
-  }
+  if (isLoading && agents.length === 0) return <div className="mon-loading">{t('monitoring.loading')}</div>
+  if (loadError) return <div className="conn-banner conn-banner-error">{t('monitoring.errorLoading')}: {loadError}</div>
 
-  if (loadError) {
-    return (
-      <div className="conn-banner conn-banner-error">
-        {t('monitoring.errorLoading')}: {loadError}
-      </div>
-    )
-  }
-
-  // Build map of agentId -> running instance count
   const instanceCounts: Record<string, number> = {}
-  if (instances) {
-    for (const group of instances.byAgent) {
-      instanceCounts[group.agentId] = group.instances.filter(i => i.status === 'running').length
-    }
-  }
-
+  if (instances) for (const group of instances.byAgent) instanceCounts[group.agentId] = group.instances.filter(i => i.status === 'running').length
   const agentMetrics: Record<string, AgentMetrics> = metricsData?.agentMetrics || {}
 
   return (
     <>
       <div className="mon-section">
         <h2 className="mon-section-title">{t('monitoring.agentDetails')}</h2>
-        {agents.length === 0 ? (
-          <div className="mon-no-data">{t('monitoring.noData')}</div>
-        ) : (
+        {agents.length === 0 ? <div className="mon-no-data">{t('monitoring.noData')}</div> : (
           <div className="mon-agent-cards">
-            {agents.map((agent: AgentInfo) => {
-              const running = instanceCounts[agent.id] || 0
-              const metrics = agentMetrics[agent.id]
-              return (
-                <div key={agent.id} className="mon-agent-card">
-                  <div className="mon-agent-card-header">
-                    <div className="mon-agent-card-title">
-                      <span className="mon-agent-card-name">{agent.name}</span>
-                      <span className={`status-pill status-${agent.status}`}>{agent.status}</span>
-                    </div>
-                    <div className="mon-agent-card-meta">
-                      <span className="mon-agent-card-tag">{agent.provider}</span>
-                      <span className="mon-agent-card-tag">{agent.model}</span>
-                    </div>
-                  </div>
-                  <div className="mon-agent-card-stats">
-                    <div className="mon-agent-card-stat">
-                      <span className="mon-agent-card-stat-label">{t('monitoring.agentInstanceCount')}</span>
-                      <span className="mon-agent-card-stat-value">{running}</span>
-                    </div>
-                    <div className="mon-agent-card-stat">
-                      <span className="mon-agent-card-stat-label">{t('monitoring.usageRequests')}</span>
-                      <span className="mon-agent-card-stat-value">{metrics ? metrics.requestCount : 0}</span>
-                    </div>
-                    <div className="mon-agent-card-stat">
-                      <span className="mon-agent-card-stat-label">{t('monitoring.usageAvgLatency')}</span>
-                      <span className="mon-agent-card-stat-value">{metrics ? fmtMs2(metrics.avgLatencyMs) : '\u2014'}</span>
-                    </div>
-                    <div className="mon-agent-card-stat">
-                      <span className="mon-agent-card-stat-label">{t('monitoring.usageErrors')}</span>
-                      <span className={`mon-agent-card-stat-value${metrics && metrics.errorCount > 0 ? ' mon-stat-error' : ''}`}>
-                        {metrics ? metrics.errorCount : 0}
-                      </span>
-                    </div>
-                  </div>
-                  {agent.skills && agent.skills.length > 0 && (
-                    <div className="mon-agent-card-skills">
-                      {agent.skills.map((skill: any) => (
-                        <span key={typeof skill === 'string' ? skill : skill.name || skill.path} className="mon-agent-card-skill">
-                          {typeof skill === 'string' ? skill : skill.name || skill.path}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {agents.map((agent: AgentInfo) => (
+              <AgentCard key={agent.id} agent={agent} running={instanceCounts[agent.id] || 0} metrics={agentMetrics[agent.id]} t={t} />
+            ))}
           </div>
         )}
       </div>
-
       {instances && (
         <div className="mon-section">
           <h2 className="mon-section-title">{t('monitoring.instancesTitle')}</h2>
-
-          {instances.totalInstances === 0 ? (
-            <div className="mon-no-data">{t('monitoring.instancesNone')}</div>
-          ) : (
+          {instances.totalInstances === 0 ? <div className="mon-no-data">{t('monitoring.instancesNone')}</div> : (
             <div className="mon-agent-table">
               <div className="mon-inst-table-header">
-                <span>{t('monitoring.instancesAgent')}</span>
-                <span>{t('monitoring.instancesUser')}</span>
-                <span>{t('monitoring.instancesPort')}</span>
-                <span>{t('monitoring.instancesStatus')}</span>
+                <span>{t('monitoring.instancesAgent')}</span><span>{t('monitoring.instancesUser')}</span>
+                <span>{t('monitoring.instancesPort')}</span><span>{t('monitoring.instancesStatus')}</span>
                 <span>{t('monitoring.instancesIdleSince')}</span>
               </div>
-              {instances.byAgent.flatMap(group =>
-                group.instances.map(inst => (
-                  <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
-                    <span className="mon-agent-name">{group.agentName}</span>
-                    <span>{inst.userId}</span>
-                    <span className="mon-agent-model">{inst.port}</span>
-                    <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
-                    <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
-                  </div>
-                ))
-              )}
+              {instances.byAgent.flatMap(group => group.instances.map(inst => (
+                <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
+                  <span className="mon-agent-name">{group.agentName}</span><span>{inst.userId}</span>
+                  <span className="mon-agent-model">{inst.port}</span>
+                  <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
+                  <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
+                </div>
+              )))}
             </div>
           )}
         </div>
@@ -820,146 +747,72 @@ function PerformanceTab() {
   const { t } = useTranslation()
   const { data, isLoading, error } = useMetrics(30_000)
 
-  if (isLoading && !data) {
-    return <div className="mon-loading">{t('monitoring.loading')}</div>
-  }
-  if (error) {
-    return <div className="conn-banner conn-banner-error">{t('monitoring.errorLoading')}: {error}</div>
-  }
+  if (isLoading && !data) return <div className="mon-loading">{t('monitoring.loading')}</div>
+  if (error) return <div className="conn-banner conn-banner-error">{t('monitoring.errorLoading')}: {error}</div>
   if (!data) return null
 
   const { current, aggregate, series } = data
   const hasTrend = series.length > 1
-  const hasTraffic = series.some(point =>
-    point.requests > 0 ||
-    point.tokensPerSec > 0 ||
-    point.avgLatency > 0 ||
-    point.avgTtft > 0 ||
-    point.p95Latency > 0 ||
-    point.errors > 0
-  )
+  const hasTraffic = series.some(p => p.requests > 0 || p.tokensPerSec > 0 || p.avgLatency > 0 || p.avgTtft > 0 || p.p95Latency > 0 || p.errors > 0)
   const hasSeriesData = series.length > 0
-
-  const throughputOption = hasTrend ? buildThroughputOption(series, {
-    requests: t('monitoring.usageRequests'),
-    throughput: t('monitoring.perfTokensPerSec'),
-  }) : undefined
-
-  const latencyOption = hasTrend ? buildLatencyOption(series, {
-    avgLatency: t('monitoring.usageAvgLatency'),
-    p95Latency: t('monitoring.perfP95Latency'),
-    ttft: t('monitoring.usageAvgTtft'),
-  }) : undefined
-
-  const peakRequests = series.reduce((max, point) => Math.max(max, point.requests), 0)
-  const peakLatency = series.reduce((max, point) => Math.max(max, point.p95Latency), 0)
-  const hasErrorRequests = series.some(point => point.errors > 0)
-  const instanceValues = series.map(point => point.instances)
-  const instanceStable = instanceValues.length > 0 && instanceValues.every(value => value === instanceValues[0])
+  const throughputOption = hasTrend ? buildThroughputOption(series, { requests: t('monitoring.usageRequests'), throughput: t('monitoring.perfTokensPerSec') }) : undefined
+  const latencyOption = hasTrend ? buildLatencyOption(series, { avgLatency: t('monitoring.usageAvgLatency'), p95Latency: t('monitoring.perfP95Latency'), ttft: t('monitoring.usageAvgTtft') }) : undefined
+  const peakRequests = series.reduce((max, p) => Math.max(max, p.requests), 0)
+  const peakLatency = series.reduce((max, p) => Math.max(max, p.p95Latency), 0)
+  const hasErrorRequests = series.some(p => p.errors > 0)
+  const instanceValues = series.map(p => p.instances)
+  const instanceStable = instanceValues.length > 0 && instanceValues.every(v => v === instanceValues[0])
   const errorRate = aggregate.totalRequests > 0 ? aggregate.totalErrors / aggregate.totalRequests : 0
-  const thresholdRatio = hasSeriesData ? series.filter(point => point.avgTtft > 2000 || point.p95Latency > 5000).length / series.length : 0
-  const latestSpike = [...series].reverse().find(point => point.avgTtft > 2000 || point.p95Latency > 5000)
+  const thresholdRatio = hasSeriesData ? series.filter(p => p.avgTtft > 2000 || p.p95Latency > 5000).length / series.length : 0
+  const latestSpike = [...series].reverse().find(p => p.avgTtft > 2000 || p.p95Latency > 5000)
+
+  const kpi4 = (items: { label: string; value: string; accent?: string }[]) => (
+    <div className="mon-kpi-row ui-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      {items.map((k, i) => <KpiCard key={i} label={k.label} value={k.value} accent={k.accent as any} />)}
+    </div>
+  )
 
   return (
     <>
       <div className="mon-section">
-        <div className="mon-section-head">
-          <div>
-            <h2 className="mon-section-title">{t('monitoring.perfOverviewTitle')}</h2>
-            <p className="mon-section-subtitle">{t('monitoring.perfOverviewWindow')}</p>
-          </div>
-        </div>
-        {/* KPI Row 1 */}
-        <div className="mon-kpi-row ui-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          <KpiCard label={t('monitoring.usageActiveInstances')} value={current ? String(current.activeInstances) : '0'} />
-          <KpiCard label={t('monitoring.usageRequests')} value={fmtNum(aggregate.totalRequests)} />
-          <KpiCard label={t('monitoring.perfErrorRate')} value={fmtPct(errorRate)} accent={errorRate > 0 ? 'error' : undefined} />
-          <KpiCard label={t('monitoring.usageAvgLatency')} value={fmtMs2(aggregate.avgLatencyMs)} />
-        </div>
-        {/* KPI Row 2 */}
-        <div className="mon-kpi-row ui-metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          <KpiCard label={t('monitoring.perfP95Latency')} value={fmtMs2(aggregate.p95LatencyMs)} />
-          <KpiCard label={t('monitoring.usageAvgTtft')} value={fmtMs2(aggregate.avgTtftMs)} />
-          <KpiCard label={t('monitoring.perfThresholdRatio')} value={fmtPct(thresholdRatio)} accent={thresholdRatio > 0 ? 'error' : undefined} />
-          <KpiCard label={t('monitoring.usageTotalSessions')} value={current ? String(current.totalSessions) : '0'} />
-        </div>
+        <div className="mon-section-head"><div><h2 className="mon-section-title">{t('monitoring.perfOverviewTitle')}</h2><p className="mon-section-subtitle">{t('monitoring.perfOverviewWindow')}</p></div></div>
+        {kpi4([
+          { label: t('monitoring.usageActiveInstances'), value: current ? String(current.activeInstances) : '0' },
+          { label: t('monitoring.usageRequests'), value: fmtNum(aggregate.totalRequests) },
+          { label: t('monitoring.perfErrorRate'), value: fmtPct(errorRate), accent: errorRate > 0 ? 'error' : undefined },
+          { label: t('monitoring.usageAvgLatency'), value: fmtMs2(aggregate.avgLatencyMs) },
+        ])}
+        {kpi4([
+          { label: t('monitoring.perfP95Latency'), value: fmtMs2(aggregate.p95LatencyMs) },
+          { label: t('monitoring.usageAvgTtft'), value: fmtMs2(aggregate.avgTtftMs) },
+          { label: t('monitoring.perfThresholdRatio'), value: fmtPct(thresholdRatio), accent: thresholdRatio > 0 ? 'error' : undefined },
+          { label: t('monitoring.usageTotalSessions'), value: current ? String(current.totalSessions) : '0' },
+        ])}
       </div>
-
-      {/* Charts */}
       {hasTrend && (
         <div className="mon-section">
-          <div className="mon-section-head">
-            <div>
-              <h2 className="mon-section-title">{t('monitoring.perfTrendAnalysis')}</h2>
-              <p className="mon-section-subtitle">{t('monitoring.perfTrendDescription')}</p>
-            </div>
-          </div>
+          <div className="mon-section-head"><div><h2 className="mon-section-title">{t('monitoring.perfTrendAnalysis')}</h2><p className="mon-section-subtitle">{t('monitoring.perfTrendDescription')}</p></div></div>
           <div className="mon-chart-grid">
-              <ControlCenterChartCard
-              title={t('monitoring.perfThroughputTrend')}
-              subtitle={t('monitoring.perfSamplingWindow')}
-              summary={`${t('monitoring.perfPeak')} ${fmtNum(peakRequests)}`}
-              legendItems={[
-                { label: t('monitoring.usageRequests'), color: MON_COLORS.requests },
-                { label: t('monitoring.perfTokensPerSec'), color: MON_COLORS.throughput },
-              ]}
-              option={throughputOption}
-              height={248}
-              isLoading={isLoading && !throughputOption}
-              isEmpty={!hasTraffic}
-              loadingText={t('monitoring.loading')}
-              emptyText={t('monitoring.perfNoTraffic')}
-            />
-              <ControlCenterChartCard
-              title={t('monitoring.perfLatencyOverview')}
-              subtitle={latestSpike
-                ? `${t('monitoring.perfSamplingWindow')} · ${t('monitoring.perfThresholdLatestSpike', { time: fmtTimeShort(latestSpike.t) })}`
-                : t('monitoring.perfSamplingWindow')}
+            <ControlCenterChartCard title={t('monitoring.perfThroughputTrend')} subtitle={t('monitoring.perfSamplingWindow')} summary={`${t('monitoring.perfPeak')} ${fmtNum(peakRequests)}`}
+              legendItems={[{ label: t('monitoring.usageRequests'), color: MON_COLORS.requests }, { label: t('monitoring.perfTokensPerSec'), color: MON_COLORS.throughput }]}
+              option={throughputOption} height={248} isLoading={isLoading && !throughputOption} isEmpty={!hasTraffic} loadingText={t('monitoring.loading')} emptyText={t('monitoring.perfNoTraffic')} />
+            <ControlCenterChartCard title={t('monitoring.perfLatencyOverview')}
+              subtitle={latestSpike ? `${t('monitoring.perfSamplingWindow')} · ${t('monitoring.perfThresholdLatestSpike', { time: fmtTimeShort(latestSpike.t) })}` : t('monitoring.perfSamplingWindow')}
               summary={`P95 ${fmtMs2(peakLatency)} · ${fmtPct(thresholdRatio)}`}
-              legendItems={[
-                { label: t('monitoring.usageAvgLatency'), color: MON_COLORS.avgLatency },
-                { label: t('monitoring.perfP95Latency'), color: MON_COLORS.p95Latency, dashed: true },
-                { label: t('monitoring.usageAvgTtft'), color: MON_COLORS.ttft },
-              ]}
-              option={latencyOption}
-              height={248}
-              isLoading={isLoading && !latencyOption}
-              isEmpty={!hasTraffic}
-              loadingText={t('monitoring.loading')}
-              emptyText={t('monitoring.perfNoTraffic')}
-            />
+              legendItems={[{ label: t('monitoring.usageAvgLatency'), color: MON_COLORS.avgLatency }, { label: t('monitoring.perfP95Latency'), color: MON_COLORS.p95Latency, dashed: true }, { label: t('monitoring.usageAvgTtft'), color: MON_COLORS.ttft }]}
+              option={latencyOption} height={248} isLoading={isLoading && !latencyOption} isEmpty={!hasTraffic} loadingText={t('monitoring.loading')} emptyText={t('monitoring.perfNoTraffic')} />
           </div>
           <div className="mon-chart-grid mon-chart-grid-secondary">
-            <StatusCard
-              title={t('monitoring.perfErrorState')}
-              description={(() => {
-                    if (!hasSeriesData) return t('monitoring.perfNoSeries')
-                    if (hasErrorRequests) return t('monitoring.perfErrorStateDetected')
-                    return t('monitoring.perfNoErrors')
-                })()}
-              value={fmtPct(errorRate)}
-              tone={hasErrorRequests ? 'error' : 'success'}
-              metrics={[
-                { label: t('monitoring.usageErrors'), value: String(aggregate.totalErrors) },
-                { label: t('monitoring.usageRequests'), value: fmtNum(aggregate.totalRequests) },
-              ]}
-              trend={hasErrorRequests ? { data: series.map(point => point.errors), color: MON_COLORS.errors } : undefined}
-            />
-            <StatusCard
-              title={t('monitoring.perfInstancesState')}
-              description={(() => {
-                    if (!hasSeriesData) return t('monitoring.perfNoSeries')
-                    if (instanceStable) return t('monitoring.perfInstancesStable', { count: current ? current.activeInstances : instanceValues[0] || 0 })
-                    return t('monitoring.perfInstancesChanged')
-                })()}
-              value={String(current ? current.activeInstances : 0)}
-              tone="success"
-              metrics={[
-                { label: t('monitoring.perfMinInstances'), value: String(instanceValues.length ? Math.min(...instanceValues) : 0) },
-                { label: t('monitoring.perfMaxInstances'), value: String(instanceValues.length ? Math.max(...instanceValues) : 0) },
-              ]}
-              trend={!instanceStable && hasSeriesData ? { data: instanceValues, color: MON_COLORS.instances } : undefined}
-            />
+            <StatusCard title={t('monitoring.perfErrorState')}
+              description={!hasSeriesData ? t('monitoring.perfNoSeries') : hasErrorRequests ? t('monitoring.perfErrorStateDetected') : t('monitoring.perfNoErrors')}
+              value={fmtPct(errorRate)} tone={hasErrorRequests ? 'error' : 'success'}
+              metrics={[{ label: t('monitoring.usageErrors'), value: String(aggregate.totalErrors) }, { label: t('monitoring.usageRequests'), value: fmtNum(aggregate.totalRequests) }]}
+              trend={hasErrorRequests ? { data: series.map(p => p.errors), color: MON_COLORS.errors } : undefined} />
+            <StatusCard title={t('monitoring.perfInstancesState')}
+              description={!hasSeriesData ? t('monitoring.perfNoSeries') : instanceStable ? t('monitoring.perfInstancesStable', { count: current ? current.activeInstances : instanceValues[0] || 0 }) : t('monitoring.perfInstancesChanged')}
+              value={String(current ? current.activeInstances : 0)} tone="success"
+              metrics={[{ label: t('monitoring.perfMinInstances'), value: String(instanceValues.length ? Math.min(...instanceValues) : 0) }, { label: t('monitoring.perfMaxInstances'), value: String(instanceValues.length ? Math.max(...instanceValues) : 0) }]}
+              trend={!instanceStable && hasSeriesData ? { data: instanceValues, color: MON_COLORS.instances } : undefined} />
           </div>
         </div>
       )}
@@ -977,80 +830,31 @@ function ObservabilityTab() {
   const [traceFilter, setTraceFilter] = useState<'all' | 'errors'>('all')
   const filteredTraces = traceFilter === 'errors' ? traces.filter(tr => tr.hasError) : traces
 
-  // Disabled states (Langfuse not configured or not reachable)
   if (!isLoading && status && !status.enabled) {
-    return (
-      <div className="mon-state-wrap">
-        <DependencyStatus
-          dependency={t('monitoring.platformLangfuse')}
-          tone="warning"
-          title={t('common.serviceNotConfiguredTitle', { service: t('monitoring.platformLangfuse') })}
-          description={t('monitoring.notEnabledDesc')}
-          meta={<span className="dependency-status-meta-item">Gateway / config.yaml</span>}
-        />
-      </div>
-    )
+    return (<div className="mon-state-wrap"><DependencyStatus dependency={t('monitoring.platformLangfuse')} tone="warning"
+      title={t('common.serviceNotConfiguredTitle', { service: t('monitoring.platformLangfuse') })} description={t('monitoring.notEnabledDesc')}
+      meta={<span className="dependency-status-meta-item">Gateway / config.yaml</span>} /></div>)
   }
 
   if (!isLoading && status && status.enabled && !status.reachable) {
-    return (
-      <div className="mon-state-wrap">
-        <DependencyStatus
-          dependency={t('monitoring.platformLangfuse')}
-          tone="error"
-          title={t('common.serviceUnavailableTitle', { service: t('monitoring.platformLangfuse') })}
-          description={t('monitoring.notReachableDesc', { host: status.host })}
-          meta={status.host ? <span className="dependency-status-meta-item">{status.host}</span> : undefined}
-          action={status.host ? (
-            <a href={status.host} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
-              {t('monitoring.openLangfuse')}
-              <ExternalLinkIcon />
-            </a>
-          ) : undefined}
-        />
-      </div>
-    )
+    return (<div className="mon-state-wrap"><DependencyStatus dependency={t('monitoring.platformLangfuse')} tone="error"
+      title={t('common.serviceUnavailableTitle', { service: t('monitoring.platformLangfuse') })} description={t('monitoring.notReachableDesc', { host: status.host })}
+      meta={status.host ? <span className="dependency-status-meta-item">{status.host}</span> : undefined}
+      action={status.host ? (<a href={status.host} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">{t('monitoring.openLangfuse')}<ExternalLinkIcon /></a>) : undefined} /></div>)
   }
 
   return (
     <>
-      {/* Langfuse link + Time range toggle */}
       <div className="mon-obs-toolbar">
         <div className="mon-header-left">
-          {status?.host && (
-            <a href={status.host} target="_blank" rel="noopener noreferrer" className="mon-langfuse-link">
-              {t('monitoring.openLangfuse')}
-              <ExternalLinkIcon />
-            </a>
-          )}
+          {status?.host && (<a href={status.host} target="_blank" rel="noopener noreferrer" className="mon-langfuse-link">{t('monitoring.openLangfuse')}<ExternalLinkIcon /></a>)}
         </div>
         <div className="seg-filter seg-filter-compact">
-          {RANGES.map(r => (
-            <button
-              key={r}
-              className={`seg-filter-btn ${range === r ? 'active' : ''}`}
-              onClick={() => setRange(r)}
-              disabled={isLoading}
-            >
-              {t(`monitoring.last${r}` as any)}
-            </button>
-          ))}
+          {RANGES.map(r => (<button key={r} className={`seg-filter-btn ${range === r ? 'active' : ''}`} onClick={() => setRange(r)} disabled={isLoading}>{t(`monitoring.last${r}` as any)}</button>))}
         </div>
       </div>
-
-      {/* Loading */}
-      {isLoading && !overview && (
-        <div className="mon-loading">{t('monitoring.loading')}</div>
-      )}
-
-      {/* Error (only show if no page-level connection error) */}
-      {error && (
-        <div className="conn-banner conn-banner-error">
-          {t('monitoring.errorLoading')}: {error}
-        </div>
-      )}
-
-      {/* KPI Row */}
+      {isLoading && !overview && <div className="mon-loading">{t('monitoring.loading')}</div>}
+      {error && <div className="conn-banner conn-banner-error">{t('monitoring.errorLoading')}: {error}</div>}
       {overview && (
         <>
           <div className="mon-kpi-row ui-metric-grid">
@@ -1059,86 +863,41 @@ function ObservabilityTab() {
             <KpiCard label={t('monitoring.avgLatency')} value={fmtSec(overview.avgLatency)} />
             <KpiCard label={t('monitoring.p95Latency')} value={fmtSec(overview.p95Latency)} />
             <KpiCard label={t('monitoring.totalObservations')} value={fmtNum(overview.totalObservations)} />
-            <KpiCard
-              label={t('monitoring.errors')}
-              value={String(overview.errorCount)}
-              accent={overview.errorCount > 0 ? 'error' : undefined}
-            />
+            <KpiCard label={t('monitoring.errors')} value={String(overview.errorCount)} accent={overview.errorCount > 0 ? 'error' : undefined} />
           </div>
-
-          {/* Trend charts */}
           {overview.daily.length > 1 && (
-            <div className="mon-section">
-              <div className="mon-chart-block">
-                <span className="mon-chart-title">{t('monitoring.trendTraces')}</span>
-                <Sparkline data={overview.daily} valueKey="traces" color="var(--color-accent)" formatter={v => String(v)} />
-              </div>
-            </div>
+            <div className="mon-section"><div className="mon-chart-block">
+              <span className="mon-chart-title">{t('monitoring.trendTraces')}</span>
+              <Sparkline data={overview.daily} valueKey="traces" color="var(--color-accent)" formatter={v => String(v)} />
+            </div></div>
           )}
-
-          {/* Observation breakdown table */}
           {observations && observations.observations.length > 0 && (
             <div className="mon-section">
               <h2 className="mon-section-title">{t('monitoring.observationBreakdown')}</h2>
               <div className="mon-obs-table">
-                <div className="mon-obs-header">
-                  <span>{t('monitoring.obsName')}</span>
-                  <span>{t('monitoring.obsCount')}</span>
-                  <span>{t('monitoring.obsAvgLatency')}</span>
-                  <span>{t('monitoring.obsP95Latency')}</span>
-                </div>
-                {observations.observations.map(o => (
-                  <div key={o.name} className="mon-obs-row">
-                    <span className="mon-obs-name">{o.name}</span>
-                    <span className="mon-obs-count">{o.count}</span>
-                    <span>{fmtSec(o.avgLatency)}</span>
-                    <span>{fmtSec(o.p95Latency)}</span>
-                  </div>
-                ))}
+                <div className="mon-obs-header"><span>{t('monitoring.obsName')}</span><span>{t('monitoring.obsCount')}</span><span>{t('monitoring.obsAvgLatency')}</span><span>{t('monitoring.obsP95Latency')}</span></div>
+                {observations.observations.map(o => (<div key={o.name} className="mon-obs-row"><span className="mon-obs-name">{o.name}</span><span className="mon-obs-count">{o.count}</span><span>{fmtSec(o.avgLatency)}</span><span>{fmtSec(o.p95Latency)}</span></div>))}
               </div>
             </div>
           )}
-
-          {/* Recent Traces */}
           <div className="mon-section">
             <div className="mon-traces-header-row">
               <h2 className="mon-section-title">{t('monitoring.recentTraces')}</h2>
               <div className="seg-filter seg-filter-compact">
-                <button className={`seg-filter-btn ${traceFilter === 'all' ? 'active' : ''}`} onClick={() => setTraceFilter('all')}>
-                  {t('monitoring.filterAll')}
-                </button>
-                <button className={`seg-filter-btn ${traceFilter === 'errors' ? 'active' : ''}`} onClick={() => setTraceFilter('errors')}>
-                  {t('monitoring.filterErrors')}
-                </button>
+                <button className={`seg-filter-btn ${traceFilter === 'all' ? 'active' : ''}`} onClick={() => setTraceFilter('all')}>{t('monitoring.filterAll')}</button>
+                <button className={`seg-filter-btn ${traceFilter === 'errors' ? 'active' : ''}`} onClick={() => setTraceFilter('errors')}>{t('monitoring.filterErrors')}</button>
               </div>
             </div>
-
-            {filteredTraces.length === 0 ? (
-              <div className="mon-no-data">{t('monitoring.noData')}</div>
-            ) : (
+            {filteredTraces.length === 0 ? <div className="mon-no-data">{t('monitoring.noData')}</div> : (
               <div className="mon-traces-table">
-                <div className="mon-traces-table-header">
-                  <span></span>
-                  <span>{t('monitoring.timestamp')}</span>
-                  <span>{t('monitoring.traceName')}</span>
-                  <span>{t('monitoring.input')}</span>
-                  <span>{t('monitoring.latency')}</span>
-                  <span>{t('monitoring.observations')}</span>
-                  <span>{t('monitoring.status')}</span>
-                </div>
-                {filteredTraces.map(tr => (
-                  <TraceRowComp key={tr.id} trace={tr} langfuseHost={status?.host} />
-                ))}
+                <div className="mon-traces-table-header"><span></span><span>{t('monitoring.timestamp')}</span><span>{t('monitoring.traceName')}</span><span>{t('monitoring.input')}</span><span>{t('monitoring.latency')}</span><span>{t('monitoring.observations')}</span><span>{t('monitoring.status')}</span></div>
+                {filteredTraces.map(tr => (<TraceRowComp key={tr.id} trace={tr} langfuseHost={status?.host} />))}
               </div>
             )}
           </div>
         </>
       )}
-
-      {/* Empty state if loaded but no data */}
-      {!isLoading && !error && overview && overview.totalTraces === 0 && (
-        <div className="mon-no-data">{t('monitoring.noData')}</div>
-      )}
+      {!isLoading && !error && overview && overview.totalTraces === 0 && <div className="mon-no-data">{t('monitoring.noData')}</div>}
     </>
   )
 }

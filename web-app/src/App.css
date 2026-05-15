@@ -275,7 +275,7 @@ textarea {
     }
 
     .main-wrapper.sidebar-collapsed {
-        margin-left: 0;
+        margin-left: var(--sidebar-width-collapsed);
         width: 100%;
     }
 }
@@ -411,7 +411,6 @@ textarea {
 
 /* Sidebar collapsed - main wrapper adjustment */
 .main-wrapper.sidebar-collapsed {
-    margin-left: var(--sidebar-width-collapsed);
     width: calc(100% - var(--sidebar-width-collapsed));
 }
 

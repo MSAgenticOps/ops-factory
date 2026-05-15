@@ -27,7 +27,12 @@ export function CreateAgentModal({
     const [name, setName] = useState('')
     const [id, setId] = useState('')
     const [idManuallyEdited, setIdManuallyEdited] = useState(false)
-    const [fallbackSuffix] = useState(() => Math.random().toString(36).slice(2, 8))
+    const [fallbackSuffix] = useState(() => {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID().split('-')[0]
+        }
+        return Date.now().toString(36).slice(-6)
+    })
     const [creating, setCreating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 

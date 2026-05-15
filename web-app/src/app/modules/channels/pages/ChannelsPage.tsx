@@ -67,7 +67,6 @@ function getTypeLabel(type: string, t: (key: string) => string): string {
     switch (type) {
     case 'wechat':
         return t('channels.type_wechat')
-    case 'whatsapp':
     default:
         return t('channels.type_whatsapp')
     }

@@ -924,6 +924,42 @@ function getDefaultReportingPeriod(): ReportingPeriod {
     }
 }
 
+function resolvePresetPeriod(preset: PeriodPreset): { startDate?: Date; endDate?: Date } {
+    const now = new Date()
+    switch (preset) {
+        case 'last7days': return { startDate: new Date(now.getTime() - 7 * 86400000), endDate: now }
+        case 'last30days': return { startDate: new Date(now.getTime() - 30 * 86400000), endDate: now }
+        case 'last90days': return { startDate: new Date(now.getTime() - 90 * 86400000), endDate: now }
+        case 'thisMonth': return { startDate: new Date(now.getFullYear(), now.getMonth(), 1), endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0) }
+        case 'lastMonth': return { startDate: new Date(now.getFullYear(), now.getMonth() - 1, 1), endDate: new Date(now.getFullYear(), now.getMonth(), 0) }
+        case 'thisQuarter': {
+            const qm = Math.floor(now.getMonth() / 3) * 3
+            return { startDate: new Date(now.getFullYear(), qm, 1), endDate: new Date(now.getFullYear(), qm + 3, 0) }
+        }
+        default: return {}
+    }
+}
+
+function toDateString(y: string, m: string, d: string): string {
+    return (y && m && d) ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : ''
+}
+
+function daysInMonth(y: string, m: string): number {
+    return (y && m) ? new Date(Number(y), Number(m), 0).getDate() : 31
+}
+
+function DatePartSelect({ className, value, options, placeholder, onChange, disabled }: {
+    className: string; value: string; options: string[]; placeholder: string
+    onChange: (v: string) => void; disabled?: boolean
+}) {
+    return (
+        <select className={className} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+            <option value="">{placeholder}</option>
+            {options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+    )
+}
+
 function ReportingPeriodSelector({
     value,
     onChange,
@@ -944,11 +980,9 @@ function ReportingPeriodSelector({
         'custom': t('businessIntelligence.reportingPeriods.custom'),
     }
 
-    // Year / month / day parts for start and end dates
     const [startParts, setStartParts] = useState({ y: '', m: '', d: '' })
     const [endParts, setEndParts] = useState({ y: '', m: '', d: '' })
 
-    // Reset parts when switching away from custom
     useEffect(() => {
         if (value.preset !== 'custom') {
             setStartParts({ y: '', m: '', d: '' })
@@ -956,82 +990,29 @@ function ReportingPeriodSelector({
         }
     }, [value.preset])
 
-    const today = new Date()
-    const currentYear = today.getFullYear()
+    const currentYear = new Date().getFullYear()
     const years = Array.from({ length: 5 }, (_, i) => String(currentYear - 4 + i))
     const months = Array.from({ length: 12 }, (_, i) => String(i + 1))
-
-    const daysInMonth = (y: string, m: string) => {
-        if (!y || !m) return 31
-        return new Date(Number(y), Number(m), 0).getDate()
-    }
     const days = (y: string, m: string) => Array.from({ length: daysInMonth(y, m) }, (_, i) => String(i + 1))
 
-    const toDateString = (y: string, m: string, d: string) => {
-        if (!y || !m || !d) return ''
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-    }
-
     const tryCommit = (start: string, end: string) => {
-        if (start && end) {
-            onChange({ ...value, startDate: start, endDate: end })
-        }
+        if (start && end) onChange({ ...value, startDate: start, endDate: end })
     }
 
-    const handleStartPartChange = (part: 'y' | 'm' | 'd', val: string) => {
-        const next = { ...startParts, [part]: val }
-        setStartParts(next)
+    const handlePartChange = (side: 'start' | 'end', part: 'y' | 'm' | 'd', val: string) => {
+        const isStart = side === 'start'
+        const prev = isStart ? startParts : endParts
+        const next = { ...prev, [part]: val }
+        if (isStart) setStartParts(next); else setEndParts(next)
+        const other = isStart ? endParts : startParts
         const ds = toDateString(next.y, next.m, next.d)
-        if (ds) tryCommit(ds, toDateString(endParts.y, endParts.m, endParts.d) || value.endDate || '')
-    }
-
-    const handleEndPartChange = (part: 'y' | 'm' | 'd', val: string) => {
-        const next = { ...endParts, [part]: val }
-        setEndParts(next)
-        const de = toDateString(next.y, next.m, next.d)
-        if (de) tryCommit(toDateString(startParts.y, startParts.m, startParts.d) || value.startDate || '', de)
+        if (!ds) return
+        const otherDs = toDateString(other.y, other.m, other.d) || (isStart ? value.endDate : value.startDate) || ''
+        if (isStart) tryCommit(ds, otherDs); else tryCommit(otherDs, ds)
     }
 
     const handlePresetChange = (preset: PeriodPreset) => {
-        const now = new Date()
-        let startDate: Date | undefined
-        let endDate: Date | undefined
-
-        switch (preset) {
-            case 'last7days':
-                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-                endDate = now
-                break
-            case 'last30days':
-                startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-                endDate = now
-                break
-            case 'last90days':
-                startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-                endDate = now
-                break
-            case 'thisMonth':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-                break
-            case 'lastMonth':
-                startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-                endDate = new Date(now.getFullYear(), now.getMonth(), 0)
-                break
-            case 'thisQuarter': {
-                const qm = Math.floor(now.getMonth() / 3) * 3
-                startDate = new Date(now.getFullYear(), qm, 1)
-                endDate = new Date(now.getFullYear(), qm + 3, 0)
-                break
-            }
-            case 'custom':
-                startDate = undefined
-                endDate = undefined
-                break
-            default:
-                break
-        }
-
+        const { startDate, endDate } = resolvePresetPeriod(preset)
         onChange({
             preset,
             startDate: startDate ? formatLocalDate(startDate) : undefined,
@@ -1039,50 +1020,29 @@ function ReportingPeriodSelector({
         })
     }
 
-    const selectClass = 'reporting-period-date-select'
+    const sc = 'reporting-period-date-select'
+    const yLbl = t('businessIntelligence.year')
+    const mLbl = t('businessIntelligence.month')
+    const dLbl = t('businessIntelligence.day')
 
     return (
         <div className="reporting-period-selector">
             <div className="business-intelligence-period-field">
                 <span className="reporting-period-selector-label">{t('businessIntelligence.reportingPeriod')}:</span>
-                <select
-                    className="filter-select reporting-period-select"
-                    value={value.preset}
-                    onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}
-                    disabled={disabled}
-                >
-                    {Object.entries(presetLabels).map(([key, label]) => (
-                        <option key={key} value={key}>{label}</option>
-                    ))}
+                <select className="filter-select reporting-period-select"
+                    value={value.preset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)} disabled={disabled}>
+                    {Object.entries(presetLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                 </select>
             </div>
             {value.preset === 'custom' && (
                 <div className="reporting-period-custom-dates">
-                    <select className={selectClass} value={startParts.y} onChange={(e) => handleStartPartChange('y', e.target.value)} disabled={disabled}>
-                        <option value="">{t('businessIntelligence.year')}</option>
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <select className={selectClass} value={startParts.m} onChange={(e) => handleStartPartChange('m', e.target.value)} disabled={disabled}>
-                        <option value="">{t('businessIntelligence.month')}</option>
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    <select className={selectClass} value={startParts.d} onChange={(e) => handleStartPartChange('d', e.target.value)} disabled={disabled}>
-                        <option value="">{t('businessIntelligence.day')}</option>
-                        {days(startParts.y, startParts.m).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <DatePartSelect className={sc} value={startParts.y} options={years} placeholder={yLbl} onChange={v => handlePartChange('start', 'y', v)} disabled={disabled} />
+                    <DatePartSelect className={sc} value={startParts.m} options={months} placeholder={mLbl} onChange={v => handlePartChange('start', 'm', v)} disabled={disabled} />
+                    <DatePartSelect className={sc} value={startParts.d} options={days(startParts.y, startParts.m)} placeholder={dLbl} onChange={v => handlePartChange('start', 'd', v)} disabled={disabled} />
                     <span className="reporting-period-date-separator">{t('businessIntelligence.dateRangeSeparator')}</span>
-                    <select className={selectClass} value={endParts.y} onChange={(e) => handleEndPartChange('y', e.target.value)} disabled={disabled}>
-                        <option value="">{t('businessIntelligence.year')}</option>
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <select className={selectClass} value={endParts.m} onChange={(e) => handleEndPartChange('m', e.target.value)} disabled={disabled}>
-                        <option value="">{t('businessIntelligence.month')}</option>
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    <select className={selectClass} value={endParts.d} onChange={(e) => handleEndPartChange('d', e.target.value)} disabled={disabled}>
-                        <option value="">{t('businessIntelligence.day')}</option>
-                        {days(endParts.y, endParts.m).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <DatePartSelect className={sc} value={endParts.y} options={years} placeholder={yLbl} onChange={v => handlePartChange('end', 'y', v)} disabled={disabled} />
+                    <DatePartSelect className={sc} value={endParts.m} options={months} placeholder={mLbl} onChange={v => handlePartChange('end', 'm', v)} disabled={disabled} />
+                    <DatePartSelect className={sc} value={endParts.d} options={days(endParts.y, endParts.m)} placeholder={dLbl} onChange={v => handlePartChange('end', 'd', v)} disabled={disabled} />
                 </div>
             )}
         </div>
@@ -1110,6 +1070,172 @@ function getScoreTone(score: number): 'success' | 'warning' | 'danger' {
     return 'danger'
 }
 
+function OverviewTrendChart({
+    points,
+    t,
+}: {
+    points: { label: string; score: number; signal: number }[]
+    t: (key: string) => string
+}) {
+    if (!points || points.length === 0) return null
+
+    const maxScore = Math.max(...points.map(p => p.score), 1)
+    const maxSignal = Math.max(...points.map(p => p.signal), 1)
+    const vbWidth = 1000
+    const vbHeight = 320
+    const padding = { top: 24, right: 55, bottom: 56, left: 55 }
+    const innerWidth = vbWidth - padding.left - padding.right
+    const innerHeight = vbHeight - padding.top - padding.bottom
+    const getScoreY = (v: number) => padding.top + innerHeight - (v / maxScore) * innerHeight
+    const getSignalY = (v: number) => padding.top + innerHeight - (v / maxSignal) * innerHeight
+    const getX = (i: number) => points.length <= 1 ? padding.left + innerWidth / 2 : padding.left + (i / (points.length - 1)) * innerWidth
+
+    const scoreColor = '#5b8db8'
+    const signalColor = '#f59e0b'
+    const yLabels = [0, 0.25, 0.5, 0.75, 1].map(r => ({
+        score: Math.round(maxScore * r), signal: Math.round(maxSignal * r),
+        y: padding.top + innerHeight - r * innerHeight,
+    }))
+
+    return (
+        <div style={{ width: '100%' }}>
+            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="none"
+                style={{ width: '100%', height: '320px', display: 'block' }}>
+                {yLabels.map((l, idx) => (
+                    <g key={idx}>
+                        <line x1={padding.left} y1={l.y} x2={vbWidth - padding.right} y2={l.y}
+                            stroke="var(--color-border)" strokeDasharray="4 4" />
+                        <text x={padding.left - 8} y={l.y + 4} fill={scoreColor} fontSize="11" textAnchor="end">{l.score}</text>
+                        <text x={vbWidth - padding.right + 8} y={l.y + 4} fill={signalColor} fontSize="11">{l.signal}</text>
+                    </g>
+                ))}
+                <polyline points={points.map((p, i) => `${getX(i)},${getScoreY(p.score)}`).join(' ')}
+                    fill="none" stroke={scoreColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                {points.map((p, i) => <circle key={`s${i}`} cx={getX(i)} cy={getScoreY(p.score)} r="3.5" fill={scoreColor} />)}
+                <polyline points={points.map((p, i) => `${getX(i)},${getSignalY(p.signal)}`).join(' ')}
+                    fill="none" stroke={signalColor} strokeWidth="2" strokeDasharray="6 3" strokeLinecap="round" strokeLinejoin="round" />
+                {points.map((p, i) => <circle key={`g${i}`} cx={getX(i)} cy={getSignalY(p.signal)} r="3" fill={signalColor} />)}
+                {points.map((p, i) => {
+                    if (!shouldRenderAxisLabel(i, points.length, 12)) return null
+                    const lines = splitAxisLabel(p.label, p.label.length > 7)
+                    return (
+                        <text key={i} x={getX(i)} y={vbHeight - padding.bottom + 16}
+                            fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">
+                            {lines.map((line, li) => <tspan key={li} x={getX(i)} dy={li === 0 ? 0 : 13}>{line}</tspan>)}
+                        </text>
+                    )
+                })}
+            </svg>
+            <div className="combo-chart-legend">
+                <span className="combo-chart-legend-item">
+                    <span className="combo-chart-legend-line" style={{ background: scoreColor }} />
+                    {t('businessIntelligence.executiveSummary.trendScore')}
+                </span>
+                <span className="combo-chart-legend-item">
+                    <span className="combo-chart-legend-line" style={{ background: signalColor, borderTop: '2px dashed ' + signalColor }} />
+                    {t('businessIntelligence.executiveSummary.trendSignal')}
+                </span>
+            </div>
+        </div>
+    )
+}
+
+function RiskSummarySection({
+    summary,
+    t,
+    localizePriority,
+    localizeRiskTitle,
+    localizeRiskImpact,
+    localizeProcessLabel,
+}: {
+    summary: ExecutiveSummary
+    t: (key: string, options?: Record<string, unknown>) => string
+    localizePriority: (p: string) => string
+    localizeRiskTitle: (id: string) => string
+    localizeRiskImpact: (id: string) => string
+    localizeProcessLabel: (id: string) => string
+}) {
+    const getRiskTone = (priority: string): 'critical' | 'warning' | 'attention' => {
+        const p = priority.toLowerCase()
+        if (p === 'critical') return 'critical'
+        if (p === 'warning') return 'warning'
+        return 'attention'
+    }
+
+    const riskCols = [
+        { key: 'priority', label: t('businessIntelligence.executiveSummary.priority'), className: 'executive-risk-col-priority' },
+        { key: 'title', label: null, className: '' },
+        { key: 'impact', label: t('businessIntelligence.executiveSummary.impact'), className: '' },
+        { key: 'process', label: t('businessIntelligence.executiveSummary.process'), className: 'executive-risk-col-process' },
+        { key: 'value', label: t('businessIntelligence.executiveSummary.currentValue'), className: 'executive-risk-col-value' },
+    ]
+
+    return (
+        <SectionCard title={t('businessIntelligence.executiveSummary.riskSummary')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+                <div className="executive-risk-badges">
+                    {summary.riskSummary.critical > 0 && (
+                        <span className="executive-risk-badge tone-critical">
+                            {t('businessIntelligence.executiveSummary.critical')} {summary.riskSummary.critical}
+                        </span>
+                    )}
+                    {summary.riskSummary.warning > 0 && (
+                        <span className="executive-risk-badge tone-warning">
+                            {t('businessIntelligence.executiveSummary.warning')} {summary.riskSummary.warning}
+                        </span>
+                    )}
+                    {summary.riskSummary.attention > 0 && (
+                        <span className="executive-risk-badge tone-attention">
+                            {t('businessIntelligence.executiveSummary.attention')} {summary.riskSummary.attention}
+                        </span>
+                    )}
+                </div>
+                <div className="business-intelligence-table-shell">
+                    <table className="business-intelligence-table">
+                        <thead>
+                            <tr>{riskCols.map(col => <th key={col.key} className={col.className}>{col.label}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                            {summary.riskSummary.topRisks.map(risk => (
+                                <tr key={risk.id}>
+                                    <td className="executive-risk-col-priority">
+                                        <span className={`executive-risk-badge tone-${getRiskTone(risk.priority)}`}>
+                                            {localizePriority(risk.priority)}
+                                        </span>
+                                    </td>
+                                    <td style={{ fontWeight: 600 }}>{localizeRiskTitle(risk.id)}</td>
+                                    <td>{localizeRiskImpact(risk.id)}</td>
+                                    <td className="executive-risk-col-process">{localizeProcessLabel(risk.process)}</td>
+                                    <td className="executive-risk-col-value" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                        {risk.value}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </SectionCard>
+    )
+}
+
+function createExecutiveLocalizers(t: (key: string, options?: Record<string, unknown>) => string) {
+    const ns = 'businessIntelligence.executiveSummary'
+    const tryLocalize = (key: string, fallback: string) => { const v = t(key); return v.includes(fallback.split('.').slice(-2).join('.')) ? fallback.split('.').pop()! : v }
+    return {
+        grade: (g: string) => tryLocalize(`${ns}.grades.${g}`, g),
+        processLabel: (id: string) => tryLocalize(`${ns}.processes.${id}`, id),
+        riskTitle: (id: string) => tryLocalize(`${ns}.risks.${id}`, id),
+        riskImpact: (id: string) => { const v = t(`${ns}.riskImpact.${id}`); return v.includes('.riskImpact.') ? '' : v },
+        priority: (p: string) => {
+            const pl = p.toLowerCase()
+            if (pl === 'critical') return t(`${ns}.critical`)
+            if (pl === 'warning') return t(`${ns}.warning`)
+            return t(`${ns}.attention`)
+        },
+    }
+}
+
 function ExecutiveSummaryPanel({
     summary,
     cards,
@@ -1121,37 +1247,11 @@ function ExecutiveSummaryPanel({
 }) {
     const heroScore = parseFloat(summary.hero.score) || 0
     const heroTone = getScoreTone(heroScore)
+    const loc = createExecutiveLocalizers(_t)
 
-    // ── i18n adapter: map ALL backend labels to i18n keys ──
     const ns = 'businessIntelligence.executiveSummary'
-    const localizeGrade = (grade: string) => {
-        const val = _t(`${ns}.grades.${grade}`)
-        return val.includes('.') ? grade : val
-    }
-    const localizeProcessLabel = (id: string) => {
-        const val = _t(`${ns}.processes.${id}`)
-        return val.includes('.') ? id : val
-    }
-    const localizeRiskTitle = (id: string) => {
-        const val = _t(`${ns}.risks.${id}`)
-        return val.includes('.') ? id : val
-    }
-    const localizeRiskImpact = (id: string) => {
-        const val = _t(`${ns}.riskImpact.${id}`)
-        return val.includes('.') ? '' : val
-    }
-    const localizePriority = (priority: string) => {
-        const p = priority.toLowerCase()
-        if (p === 'critical') return _t(`${ns}.critical`)
-        if (p === 'warning') return _t(`${ns}.warning`)
-        return _t(`${ns}.attention`)
-    }
-
-    // Hero summary: use grade-based i18n template
     const heroSummaryRaw = _t(`${ns}.heroSummary.${summary.hero.grade}`)
     const heroSummary = heroSummaryRaw.includes('.heroSummary.') ? _t(`${ns}.heroSummary.Risk`) : heroSummaryRaw
-
-    // Hero changeHint: parse backend Chinese text and reconstruct with i18n template
     const heroChangeHint = (() => {
         const hint = summary.hero.changeHint
         if (hint.includes('准备中')) return _t(`${ns}.changeDirection.noData`)
@@ -1161,157 +1261,29 @@ function ExecutiveSummaryPanel({
         if (upMatch) return _t(`${ns}.changeDirection.up`, { delta: upMatch[1] })
         return _t(`${ns}.changeDirection.stable`)
     })()
+    const heroPeriodLabel = summary.hero.periodLabel ? summary.hero.periodLabel.replace(/\s*至\s*/, ' – ') : ''
 
-    // Hero periodLabel: replace Chinese "至" with localized separator; hide when empty
-    const heroPeriodLabel = summary.hero.periodLabel
-        ? summary.hero.periodLabel.replace(/\s*至\s*/, ' – ')
-        : ''
-
-    // Process summary: reconstruct from card data using i18n templates
     const cardById = Object.fromEntries(cards.map(c => [c.id, c.value]))
     const localizeProcessSummary = (ph: typeof summary.processHealths[0]) => {
-        const t = (key: string, opts?: Record<string, string>) => {
+        const tl = (key: string, opts?: Record<string, string>) => {
             let v = _t(`${ns}.processSummary.${key}`, opts ? Object.fromEntries(Object.entries(opts).map(([k, val]) => [k, val])) as unknown as Record<string, unknown> : undefined)
             return v.includes('.processSummary.') ? '' : v
         }
         switch (ph.id) {
-            case 'incident':
-                return t('incident', { sla: cardById['incident-sla-rate'] || '-', mttr: cardById['incident-mttr'] || '-' })
-            case 'change':
-                return t('change', { successRate: cardById['change-success-rate'] || '-', incidentRate: cardById['change-incident-rate'] || '-' })
-            case 'request':
-                return t('request', { sla: '-', csat: cardById['request-csat'] || '-' })
-            case 'problem':
-                return t('problem', { closureRate: cardById['problem-closure-rate'] || '-', backlog: '-' })
-            default:
-                return ''
+            case 'incident': return tl('incident', { sla: cardById['incident-sla-rate'] || '-', mttr: cardById['incident-mttr'] || '-' })
+            case 'change': return tl('change', { successRate: cardById['change-success-rate'] || '-', incidentRate: cardById['change-incident-rate'] || '-' })
+            case 'request': return tl('request', { sla: '-', csat: cardById['request-csat'] || '-' })
+            case 'problem': return tl('problem', { closureRate: cardById['problem-closure-rate'] || '-', backlog: '-' })
+            default: return ''
         }
     }
-
-
-    const renderOverviewTrendChart = () => {
-        const points = summary.trend.points
-        if (!points || points.length === 0) return null
-
-        const maxScore = Math.max(...points.map(p => p.score), 1)
-        const maxSignal = Math.max(...points.map(p => p.signal), 1)
-
-        const vbWidth = 1000
-        const vbHeight = 320
-        const padding = { top: 24, right: 55, bottom: 56, left: 55 }
-        const innerWidth = vbWidth - padding.left - padding.right
-        const innerHeight = vbHeight - padding.top - padding.bottom
-
-        const getScoreY = (v: number) => padding.top + innerHeight - (v / maxScore) * innerHeight
-        const getSignalY = (v: number) => padding.top + innerHeight - (v / maxSignal) * innerHeight
-        const getX = (i: number) => {
-            if (points.length <= 1) return padding.left + innerWidth / 2
-            return padding.left + (i / (points.length - 1)) * innerWidth
-        }
-
-        const scoreColor = '#5b8db8'
-        const signalColor = '#f59e0b'
-
-        const yLabels = [0, 0.25, 0.5, 0.75, 1].map(r => ({
-            score: Math.round(maxScore * r),
-            signal: Math.round(maxSignal * r),
-            y: padding.top + innerHeight - r * innerHeight
-        }))
-
-        const scoreLine = points
-            .map((p, i) => `${getX(i)},${getScoreY(p.score)}`)
-            .join(' ')
-        const signalLine = points
-            .map((p, i) => `${getX(i)},${getSignalY(p.signal)}`)
-            .join(' ')
-
-        return (
-            <div style={{ width: '100%' }}>
-                <svg
-                    viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-                    preserveAspectRatio="none"
-                    style={{ width: '100%', height: '320px', display: 'block' }}
-                >
-                    {/* Grid lines */}
-                    {yLabels.map((l, idx) => (
-                        <g key={idx}>
-                            <line x1={padding.left} y1={l.y} x2={vbWidth - padding.right} y2={l.y}
-                                stroke="var(--color-border)" strokeDasharray="4 4" />
-                            <text x={padding.left - 8} y={l.y + 4} fill={scoreColor} fontSize="11" textAnchor="end">
-                                {l.score}
-                            </text>
-                            <text x={vbWidth - padding.right + 8} y={l.y + 4} fill={signalColor} fontSize="11">
-                                {l.signal}
-                            </text>
-                        </g>
-                    ))}
-
-                    {/* Score line */}
-                    <polyline points={scoreLine} fill="none" stroke={scoreColor}
-                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    {points.map((p, i) => (
-                        <circle key={`s${i}`} cx={getX(i)} cy={getScoreY(p.score)} r="3.5" fill={scoreColor} />
-                    ))}
-
-                    {/* Signal line */}
-                    <polyline points={signalLine} fill="none" stroke={signalColor}
-                        strokeWidth="2" strokeDasharray="6 3" strokeLinecap="round" strokeLinejoin="round" />
-                    {points.map((p, i) => (
-                        <circle key={`g${i}`} cx={getX(i)} cy={getSignalY(p.signal)} r="3" fill={signalColor} />
-                    ))}
-
-                    {/* X-axis labels */}
-                    {points.map((p, i) => {
-                        if (!shouldRenderAxisLabel(i, points.length, 12)) return null
-                        const lines = splitAxisLabel(p.label, p.label.length > 7)
-                        return (
-                            <text key={i} x={getX(i)} y={vbHeight - padding.bottom + 16}
-                                fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">
-                                {lines.map((line, li) => (
-                                    <tspan key={li} x={getX(i)} dy={li === 0 ? 0 : 13}>{line}</tspan>
-                                ))}
-                            </text>
-                        )
-                    })}
-                </svg>
-
-                {/* Legend */}
-                <div className="combo-chart-legend">
-                    <span className="combo-chart-legend-item">
-                        <span className="combo-chart-legend-line" style={{ background: scoreColor }} />
-                        {_t('businessIntelligence.executiveSummary.trendScore')}
-                    </span>
-                    <span className="combo-chart-legend-item">
-                        <span className="combo-chart-legend-line" style={{ background: signalColor, borderTop: '2px dashed ' + signalColor }} />
-                        {_t('businessIntelligence.executiveSummary.trendSignal')}
-                    </span>
-                </div>
-            </div>
-        )
-    }
-
-    // ── Risk priority tone ──
-    const getRiskTone = (priority: string): 'critical' | 'warning' | 'attention' => {
-        const p = priority.toLowerCase()
-        if (p === 'critical') return 'critical'
-        if (p === 'warning') return 'warning'
-        return 'attention'
-    }
-
-    const riskCols = [
-        { key: 'priority', label: _t('businessIntelligence.executiveSummary.priority'), className: 'executive-risk-col-priority' },
-        { key: 'title', label: null, className: '' },
-        { key: 'impact', label: _t('businessIntelligence.executiveSummary.impact'), className: '' },
-        { key: 'process', label: _t('businessIntelligence.executiveSummary.process'), className: 'executive-risk-col-process' },
-        { key: 'value', label: _t('businessIntelligence.executiveSummary.currentValue'), className: 'executive-risk-col-value' },
-    ]
 
     return (
         <div className="executive-overview">
             <div className="executive-hero-card">
                 <div className="executive-hero-score-row">
                     <span className={`executive-hero-score tone-${heroTone}`}>{summary.hero.score}</span>
-                    <span className={`executive-hero-grade tone-${heroTone}`}>{localizeGrade(summary.hero.grade)}</span>
+                    <span className={`executive-hero-grade tone-${heroTone}`}>{loc.grade(summary.hero.grade)}</span>
                 </div>
                 <p className="executive-hero-summary">{heroSummary}</p>
                 <div className="executive-hero-meta">
@@ -1319,112 +1291,41 @@ function ExecutiveSummaryPanel({
                     {heroPeriodLabel && <span>{heroPeriodLabel}</span>}
                 </div>
             </div>
-
             {cards.length > 0 && (
                 <section className="business-intelligence-section-stack">
-                    <h2 className="business-intelligence-section-title">
-                        {_t('businessIntelligence.executiveSummary.coreKpi')}
-                    </h2>
+                    <h2 className="business-intelligence-section-title">{_t('businessIntelligence.executiveSummary.coreKpi')}</h2>
                     <div className="business-intelligence-stat-grid ui-metric-grid"
                         style={{ gridTemplateColumns: `repeat(${cards.length % 3 === 0 ? 3 : 2}, minmax(0, 1fr))` }}>
                         {cards.map(card => {
                             const tone = getMetricTone(card.tone)
-                            return (
-                                <StatCard
-                                    key={card.id}
-                                    label={card.label}
-                                    value={card.value}
-                                    tone={tone}
-                                    icon={tone === 'neutral' ? null : <StatusIcon tone={tone} />}
-                                />
-                            )
+                            return <StatCard key={card.id} label={card.label} value={card.value} tone={tone} icon={tone === 'neutral' ? null : <StatusIcon tone={tone} />} />
                         })}
                     </div>
                 </section>
             )}
-
             {summary.processHealths.length > 0 && (
                 <section className="business-intelligence-section-stack">
-                    <h2 className="business-intelligence-section-title">
-                        {_t('businessIntelligence.executiveSummary.processHealth')}
-                    </h2>
+                    <h2 className="business-intelligence-section-title">{_t('businessIntelligence.executiveSummary.processHealth')}</h2>
                     <div className="business-intelligence-stat-grid ui-metric-grid"
                         style={{ gridTemplateColumns: `repeat(${summary.processHealths.length}, minmax(0, 1fr))` }}>
                         {summary.processHealths.map(ph => {
                             const tone = getMetricTone(ph.tone)
-                            return (
-                                <StatCard
-                                    key={ph.id}
-                                    label={localizeProcessLabel(ph.id)}
-                                    value={ph.score}
-                                    meta={localizeProcessSummary(ph)}
-                                    tone={tone}
-                                    icon={tone === 'neutral' ? null : <StatusIcon tone={tone} />}
-                                />
-                            )
+                            return <StatCard key={ph.id} label={loc.processLabel(ph.id)} value={ph.score} meta={localizeProcessSummary(ph)} tone={tone} icon={tone === 'neutral' ? null : <StatusIcon tone={tone} />} />
                         })}
                     </div>
                 </section>
             )}
-
             {summary.trend.points.length > 0 && (
                 <SectionCard title={_t('businessIntelligence.executiveSummary.monthlyTrend')}>
                     <div className="business-intelligence-chart-surface business-intelligence-chart-surface-line">
-                        {renderOverviewTrendChart()}
+                        <OverviewTrendChart points={summary.trend.points} t={_t} />
                     </div>
                 </SectionCard>
             )}
-
             {summary.riskSummary.topRisks.length > 0 && (
-                <SectionCard title={_t('businessIntelligence.executiveSummary.riskSummary')}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-                        <div className="executive-risk-badges">
-                            {summary.riskSummary.critical > 0 && (
-                                <span className="executive-risk-badge tone-critical">
-                                    {_t('businessIntelligence.executiveSummary.critical')} {summary.riskSummary.critical}
-                                </span>
-                            )}
-                            {summary.riskSummary.warning > 0 && (
-                                <span className="executive-risk-badge tone-warning">
-                                    {_t('businessIntelligence.executiveSummary.warning')} {summary.riskSummary.warning}
-                                </span>
-                            )}
-                            {summary.riskSummary.attention > 0 && (
-                                <span className="executive-risk-badge tone-attention">
-                                    {_t('businessIntelligence.executiveSummary.attention')} {summary.riskSummary.attention}
-                                </span>
-                            )}
-                        </div>
-                        <div className="business-intelligence-table-shell">
-                            <table className="business-intelligence-table">
-                                <thead>
-                                    <tr>
-                                        {riskCols.map(col => (
-                                            <th key={col.key} className={col.className}>{col.label}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {summary.riskSummary.topRisks.map(risk => (
-                                        <tr key={risk.id}>
-                                            <td className="executive-risk-col-priority">
-                                                <span className={`executive-risk-badge tone-${getRiskTone(risk.priority)}`}>
-                                                    {localizePriority(risk.priority)}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontWeight: 600 }}>{localizeRiskTitle(risk.id)}</td>
-                                            <td>{localizeRiskImpact(risk.id)}</td>
-                                            <td className="executive-risk-col-process">{localizeProcessLabel(risk.process)}</td>
-                                            <td className="executive-risk-col-value" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                                                {risk.value}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </SectionCard>
+                <RiskSummarySection summary={summary} t={_t}
+                    localizePriority={loc.priority} localizeRiskTitle={loc.riskTitle}
+                    localizeRiskImpact={loc.riskImpact} localizeProcessLabel={loc.processLabel} />
             )}
         </div>
     )
@@ -1581,6 +1482,24 @@ function getChartLegendItems(chart: ChartSection, t: TranslateFn): Array<{ label
     return []
 }
 
+function BubbleTooltip({ lines, cx, cy }: { lines: string[]; cx: number; cy: number }) {
+    const lineH = 12
+    const padX = 8
+    const padY = 4
+    const boxW = Math.max(...lines.map(l => l.length)) * 5.5 + padX * 2
+    const boxH = lines.length * lineH + padY * 2
+    const bx = cx - boxW / 2
+    const by = cy - boxH / 2 - 4
+    return (
+        <g>
+            <rect x={bx} y={by} width={boxW} height={boxH} rx="6" fill="rgba(15,23,42,0.85)" />
+            <text x={cx} y={by + padY + 9} fill="#fff" fontSize="9" textAnchor="middle" fontWeight="700">
+                {lines.map((line, i) => <tspan key={i} x={cx} dy={i === 0 ? 0 : lineH}>{line}</tspan>)}
+            </text>
+        </g>
+    )
+}
+
 function IncidentBubbleChart({ chart, colors, t: _t }: { chart: ChartSection; colors: string[]; t: (key: string, options?: Record<string, unknown>) => string }) {
     const [hovered, setHovered] = useState(-1)
     const xAxisLabel = chart.config?.xAxisLabel || ''
@@ -1613,8 +1532,7 @@ function IncidentBubbleChart({ chart, colors, t: _t }: { chart: ChartSection; co
     const getY = (v: number) => pad.top + ih - (v / maxY) * ih
     const getR = (v: number) => Math.max(8, Math.min(40, 8 + (v / Math.max(maxOpen, 1)) * 32))
 
-    const sorted = [...points].sort((a, b) => b.totalIncidents - a.totalIncidents)
-    const bubbles = sorted.map((p, idx) => ({
+    const bubbles = [...points].sort((a, b) => b.totalIncidents - a.totalIncidents).map((p, idx) => ({
         p, idx, color: colorMap.get(p.category) || colors[0],
         cx: getX(p.totalIncidents), cy: getY(p.avgAging), r: getR(p.openCount),
     }))
@@ -1623,80 +1541,35 @@ function IncidentBubbleChart({ chart, colors, t: _t }: { chart: ChartSection; co
         const { p, idx, color, cx, cy, r } = b
         const ciParts = p.ci.split('-')
         return (
-            <g key={idx} onMouseEnter={() => setHovered(idx)} onMouseLeave={() => setHovered(-1)}
-                style={{ cursor: 'pointer' }}>
-                <circle cx={cx} cy={cy} r={r} fill={color}
-                    opacity={isH ? 0.9 : 0.45}
-                    stroke={isH ? 'var(--color-text-primary)' : 'none'}
-                    strokeWidth={isH ? 2 : 0}
-                    style={{ transition: 'opacity 0.15s' }} />
-                {isH ? (() => {
-                    const lines = [...ciParts, `${Math.round(p.openCount)} ${_t('businessIntelligence.incidents.units.openProblems')}`]
-                    const lineH = 12
-                    const padX = 8
-                    const padY = 4
-                    const boxW = Math.max(...lines.map(l => l.length)) * 5.5 + padX * 2
-                    const boxH = lines.length * lineH + padY * 2
-                    const bx = cx - boxW / 2
-                    const by = cy - boxH / 2 - 4
-                    return (
-                        <g>
-                            <rect x={bx} y={by} width={boxW} height={boxH} rx="6"
-                                fill="rgba(15,23,42,0.85)" />
-                            <text x={cx} y={by + padY + 9} fill="#fff"
-                                fontSize="9" textAnchor="middle" fontWeight="700">
-                                {lines.map((line, i) => (
-                                    <tspan key={i} x={cx} dy={i === 0 ? 0 : lineH}>{line}</tspan>
-                                ))}
-                            </text>
-                        </g>
-                    )
-                })() : (
-                    <text x={cx} y={cy} fill="var(--color-text-primary)"
-                        fontSize="9" textAnchor="middle" fontWeight="600">
-                        {ciParts.map((part, i) => (
-                            <tspan key={i} x={cx} dy={i === 0 ? -((ciParts.length - 1) * 5) : 11}>{part}</tspan>
-                        ))}
-                    </text>
-                )}
+            <g key={idx} onMouseEnter={() => setHovered(idx)} onMouseLeave={() => setHovered(-1)} style={{ cursor: 'pointer' }}>
+                <circle cx={cx} cy={cy} r={r} fill={color} opacity={isH ? 0.9 : 0.45}
+                    stroke={isH ? 'var(--color-text-primary)' : 'none'} strokeWidth={isH ? 2 : 0} style={{ transition: 'opacity 0.15s' }} />
+                {isH
+                    ? <BubbleTooltip cx={cx} cy={cy} lines={[...ciParts, `${Math.round(p.openCount)} ${_t('businessIntelligence.incidents.units.openProblems')}`]} />
+                    : <text x={cx} y={cy} fill="var(--color-text-primary)" fontSize="9" textAnchor="middle" fontWeight="600">
+                        {ciParts.map((part, i) => <tspan key={i} x={cx} dy={i === 0 ? -((ciParts.length - 1) * 5) : 11}>{part}</tspan>)}
+                    </text>}
             </g>
         )
     }
 
     return (
         <div style={{ width: '100%' }}>
-            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet"
-                style={{ width: '100%', height: '400px', display: 'block' }}>
+            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '400px', display: 'block' }}>
                 {[0, 0.25, 0.5, 0.75, 1].map(ratio => {
                     const val = Math.round(maxY * ratio)
                     const y = getY(val)
-                    return (
-                        <g key={`y${ratio}`}>
-                            <line x1={pad.left} y1={y} x2={vbWidth - pad.right} y2={y}
-                                stroke="var(--color-border)" strokeDasharray="4 4" />
-                            <text x={pad.left - 10} y={y + 4}
-                                fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">{val}</text>
-                        </g>
-                    )
+                    return (<g key={`y${ratio}`}>
+                        <line x1={pad.left} y1={y} x2={vbWidth - pad.right} y2={y} stroke="var(--color-border)" strokeDasharray="4 4" />
+                        <text x={pad.left - 10} y={y + 4} fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">{val}</text>
+                    </g>)
                 })}
                 {[0, 0.25, 0.5, 0.75, 1].map(ratio => {
                     const val = Math.round(maxX * ratio)
-                    return (
-                        <text key={`x${ratio}`} x={getX(val)} y={vbHeight - 30}
-                            fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">
-                            {val}
-                        </text>
-                    )
+                    return <text key={`x${ratio}`} x={getX(val)} y={vbHeight - 30} fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">{val}</text>
                 })}
-                <text x={pad.left + iw / 2} y={vbHeight - 8}
-                    fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500">
-                    {xAxisLabel}
-                </text>
-                <text x={14} y={pad.top + ih / 2}
-                    fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500"
-                    transform={`rotate(-90, 14, ${pad.top + ih / 2})`}>
-                    {yAxisLabel}
-                </text>
+                <text x={pad.left + iw / 2} y={vbHeight - 8} fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500">{xAxisLabel}</text>
+                <text x={14} y={pad.top + ih / 2} fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500" transform={`rotate(-90, 14, ${pad.top + ih / 2})`}>{yAxisLabel}</text>
                 {bubbles.filter(b => b.idx !== hovered).map(b => drawBubble(b, false))}
                 {bubbles.filter(b => b.idx === hovered).map(b => drawBubble(b, true))}
             </svg>
@@ -1727,11 +1600,11 @@ function WorkforceBubbleChart({ chart, colors, t: _t }: { chart: ChartSection; c
     const ih = vbHeight - pad.top - pad.bottom
     const getX = (v: number) => pad.left + (v / 100) * iw
     const getY = (v: number) => pad.top + ih - (v / 5) * ih
-    const getR = (v: number) => Math.max(8, Math.min(40, 8 + (v / Math.max(Math.max(...points.map(p => p.total)), 1)) * 32))
+    const maxTotal = Math.max(...points.map(p => p.total), 1)
+    const getR = (v: number) => Math.max(8, Math.min(40, 8 + (v / maxTotal) * 32))
     const medSla = points.length > 0 ? points.reduce((s, p) => s + p.slaRate, 0) / points.length : 50
     const medSat = points.length > 0 ? points.reduce((s, p) => s + p.satisfaction, 0) / points.length : 2.5
-    const sorted = [...points].sort((a, b) => b.total - a.total)
-    const bubbles = sorted.map((p, idx) => ({
+    const bubbles = [...points].sort((a, b) => b.total - a.total).map((p, idx) => ({
         p, idx, color: colors[idx % colors.length],
         cx: getX(p.slaRate), cy: getY(p.satisfaction), r: getR(p.total),
     }))
@@ -1739,101 +1612,43 @@ function WorkforceBubbleChart({ chart, colors, t: _t }: { chart: ChartSection; c
     const drawBubble = (b: typeof bubbles[0], isH: boolean) => {
         const { p, idx, color, cx, cy, r } = b
         return (
-            <g key={idx} onMouseEnter={() => setHovered(idx)} onMouseLeave={() => setHovered(-1)}
-                style={{ cursor: 'pointer' }}>
-                <circle cx={cx} cy={cy} r={r} fill={color}
-                    opacity={isH ? 0.9 : 0.45}
-                    stroke={isH ? 'var(--color-text-primary)' : 'none'}
-                    strokeWidth={isH ? 2 : 0}
-                    style={{ transition: 'opacity 0.15s' }} />
-                {isH ? (() => {
-                    const lines = [p.name, _t('businessIntelligence.workforce.units.tickets', { count: Math.round(p.total) })]
-                    const lineH = 12
-                    const padX = 8
-                    const padY = 4
-                    const boxW = Math.max(...lines.map(l => l.length)) * 5.5 + padX * 2
-                    const boxH = lines.length * lineH + padY * 2
-                    const bx = cx - boxW / 2
-                    const by = cy - boxH / 2 - 4
-                    return (
-                        <g>
-                            <rect x={bx} y={by} width={boxW} height={boxH} rx="6"
-                                fill="rgba(15,23,42,0.85)" />
-                            <text x={cx} y={by + padY + 9} fill="#fff"
-                                fontSize="9" textAnchor="middle" fontWeight="700">
-                                {lines.map((line, i) => (
-                                    <tspan key={i} x={cx} dy={i === 0 ? 0 : lineH}>{line}</tspan>
-                                ))}
-                            </text>
-                        </g>
-                    )
-                })() : (
-                    <text x={cx} y={cy} fill="var(--color-text-primary)"
-                        fontSize="9" textAnchor="middle" fontWeight="600">
-                        {p.name}
-                    </text>
-                )}
+            <g key={idx} onMouseEnter={() => setHovered(idx)} onMouseLeave={() => setHovered(-1)} style={{ cursor: 'pointer' }}>
+                <circle cx={cx} cy={cy} r={r} fill={color} opacity={isH ? 0.9 : 0.45}
+                    stroke={isH ? 'var(--color-text-primary)' : 'none'} strokeWidth={isH ? 2 : 0} style={{ transition: 'opacity 0.15s' }} />
+                {isH
+                    ? <BubbleTooltip cx={cx} cy={cy} lines={[p.name, _t('businessIntelligence.workforce.units.tickets', { count: String(Math.round(p.total)) })]} />
+                    : <text x={cx} y={cy} fill="var(--color-text-primary)" fontSize="9" textAnchor="middle" fontWeight="600">{p.name}</text>}
             </g>
         )
     }
 
     return (
         <div style={{ width: '100%' }}>
-            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet"
-                style={{ width: '100%', height: '420px', display: 'block' }}>
-                {/* Quadrant backgrounds */}
-                <rect x={pad.left} y={pad.top} width={getX(medSla) - pad.left} height={getY(medSat) - pad.top}
-                    fill="rgba(16,185,129,0.06)" />
-                <rect x={getX(medSla)} y={pad.top} width={vbWidth - pad.right - getX(medSla)} height={getY(medSat) - pad.top}
-                    fill="rgba(59,130,246,0.06)" />
-                <rect x={pad.left} y={getY(medSat)} width={getX(medSla) - pad.left} height={pad.top + ih - getY(medSat)}
-                    fill="rgba(245,158,11,0.06)" />
-                <rect x={getX(medSla)} y={getY(medSat)} width={vbWidth - pad.right - getX(medSla)} height={pad.top + ih - getY(medSat)}
-                    fill="rgba(239,68,68,0.06)" />
-                {/* Quadrant labels */}
-                <text x={pad.left + (getX(medSla) - pad.left) / 2} y={pad.top + 14}
-                    fill="var(--color-text-secondary)" fontSize="10" textAnchor="middle" opacity={0.7}>
+            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '420px', display: 'block' }}>
+                <rect x={pad.left} y={pad.top} width={getX(medSla) - pad.left} height={getY(medSat) - pad.top} fill="rgba(16,185,129,0.06)" />
+                <rect x={getX(medSla)} y={pad.top} width={vbWidth - pad.right - getX(medSla)} height={getY(medSat) - pad.top} fill="rgba(59,130,246,0.06)" />
+                <rect x={pad.left} y={getY(medSat)} width={getX(medSla) - pad.left} height={pad.top + ih - getY(medSat)} fill="rgba(245,158,11,0.06)" />
+                <rect x={getX(medSla)} y={getY(medSat)} width={vbWidth - pad.right - getX(medSla)} height={pad.top + ih - getY(medSat)} fill="rgba(239,68,68,0.06)" />
+                <text x={pad.left + (getX(medSla) - pad.left) / 2} y={pad.top + 14} fill="var(--color-text-secondary)" fontSize="10" textAnchor="middle" opacity={0.7}>
                     {_t('businessIntelligence.workforce.quadrantLabels.highSlaHighSat')}
                 </text>
-                <text x={getX(medSla) + (vbWidth - pad.right - getX(medSla)) / 2} y={pad.top + 14}
-                    fill="var(--color-text-secondary)" fontSize="10" textAnchor="middle" opacity={0.7}>
+                <text x={getX(medSla) + (vbWidth - pad.right - getX(medSla)) / 2} y={pad.top + 14} fill="var(--color-text-secondary)" fontSize="10" textAnchor="middle" opacity={0.7}>
                     {_t('businessIntelligence.workforce.quadrantLabels.lowSlaLowSat')}
                 </text>
-                {/* Median crosshairs */}
-                <line x1={getX(medSla)} y1={pad.top} x2={getX(medSla)} y2={pad.top + ih}
-                    stroke="var(--color-border)" strokeDasharray="4 4" />
-                <line x1={pad.left} y1={getY(medSat)} x2={pad.left + iw} y2={getY(medSat)}
-                    stroke="var(--color-border)" strokeDasharray="4 4" />
-                {/* Y-axis grid lines and labels */}
+                <line x1={getX(medSla)} y1={pad.top} x2={getX(medSla)} y2={pad.top + ih} stroke="var(--color-border)" strokeDasharray="4 4" />
+                <line x1={pad.left} y1={getY(medSat)} x2={pad.left + iw} y2={getY(medSat)} stroke="var(--color-border)" strokeDasharray="4 4" />
                 {[0, 1, 2, 3, 4, 5].map(val => {
                     const y = getY(val)
-                    return (
-                        <g key={`y${val}`}>
-                            <line x1={pad.left} y1={y} x2={vbWidth - pad.right} y2={y}
-                                stroke="var(--color-border)" strokeDasharray="2 2" opacity={0.4} />
-                            <text x={pad.left - 10} y={y + 4}
-                                fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">{val}</text>
-                        </g>
-                    )
+                    return (<g key={`y${val}`}>
+                        <line x1={pad.left} y1={y} x2={vbWidth - pad.right} y2={y} stroke="var(--color-border)" strokeDasharray="2 2" opacity={0.4} />
+                        <text x={pad.left - 10} y={y + 4} fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">{val}</text>
+                    </g>)
                 })}
-                {/* X-axis labels */}
                 {[0, 25, 50, 75, 100].map(val => (
-                    <text key={`x${val}`} x={getX(val)} y={vbHeight - 30}
-                        fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">
-                        {val}%
-                    </text>
+                    <text key={`x${val}`} x={getX(val)} y={vbHeight - 30} fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">{val}%</text>
                 ))}
-                {/* Axis titles */}
-                <text x={pad.left + iw / 2} y={vbHeight - 8}
-                    fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500">
-                    {xAxisLabel}
-                </text>
-                <text x={14} y={pad.top + ih / 2}
-                    fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500"
-                    transform={`rotate(-90, 14, ${pad.top + ih / 2})`}>
-                    {yAxisLabel}
-                </text>
-                {/* Bubbles */}
+                <text x={pad.left + iw / 2} y={vbHeight - 8} fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500">{xAxisLabel}</text>
+                <text x={14} y={pad.top + ih / 2} fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500" transform={`rotate(-90, 14, ${pad.top + ih / 2})`}>{yAxisLabel}</text>
                 {bubbles.filter(b => b.idx !== hovered).map(b => drawBubble(b, false))}
                 {bubbles.filter(b => b.idx === hovered).map(b => drawBubble(b, true))}
             </svg>
@@ -1854,139 +1669,52 @@ function GenericTabPanel({
     const renderLineChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
         const colors = chart.config?.colors || ['#5b8db8', '#10b981']
         const seriesNames = chart.config?.series || [_t('businessIntelligence.incidents.charts.volumeSeries')]
-
-        // Parse multi-series data from compound labels (format: "period|value1|value2|...")
         const dataPoints = chart.items.map(item => {
             const parts = item.label.split('|')
-            return {
-                period: parts[0] || item.label,
-                values: parts.slice(1).map(v => parseFloat(v) || 0)
-            }
+            return { period: parts[0] || item.label, values: parts.slice(1).map(v => parseFloat(v) || 0) }
         })
-
-        // Get all values for scaling, filter out zeros for better visualization
         const allValues = dataPoints.flatMap(dp => dp.values).filter(v => v > 0)
         const maxVal = Math.max(...allValues, 1)
-
-        // Use a very wide viewBox for horizontal stretching
         const vbWidth = 1000
         const vbHeight = 360
         const padding = { top: 24, right: 30, bottom: 72, left: 60 }
         const innerWidth = vbWidth - padding.left - padding.right
         const innerHeight = vbHeight - padding.top - padding.bottom
-
-        const getY = (value: number) => padding.top + innerHeight - (value / maxVal) * innerHeight
-        const getX = (index: number) => {
-            if (dataPoints.length <= 1) return padding.left + innerWidth / 2
-            return padding.left + (index / (dataPoints.length - 1)) * innerWidth
-        }
-
-        // Generate Y-axis labels
-        const yAxisLabels = [0, 0.25, 0.5, 0.75, 1].map(ratio => ({
-            value: Math.round(maxVal * ratio),
-            y: getY(maxVal * ratio)
-        }))
+        const getY = (v: number) => padding.top + innerHeight - (v / maxVal) * innerHeight
+        const getX = (i: number) => dataPoints.length <= 1 ? padding.left + innerWidth / 2 : padding.left + (i / (dataPoints.length - 1)) * innerWidth
+        const yAxisLabels = [0, 0.25, 0.5, 0.75, 1].map(r => ({ value: Math.round(maxVal * r), y: getY(maxVal * r) }))
 
         return (
             <div style={{ width: '100%' }}>
-                <svg
-                    viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-                    preserveAspectRatio="none"
-                    style={{ width: '100%', height: '360px', display: 'block' }}
-                >
-                    {/* Y-axis grid lines and labels */}
+                <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="none" style={{ width: '100%', height: '360px', display: 'block' }}>
                     {yAxisLabels.map((label, idx) => (
                         <g key={idx}>
-                            <line
-                                x1={padding.left}
-                                y1={label.y}
-                                x2={vbWidth - padding.right}
-                                y2={label.y}
-                                stroke="var(--color-border)"
-                                strokeDasharray="4 4"
-                            />
-                            <text
-                                x={padding.left - 10}
-                                y={label.y + 4}
-                                fill="var(--color-text-secondary)"
-                                fontSize="12"
-                                textAnchor="end"
-                            >
-                                {label.value}
-                            </text>
+                            <line x1={padding.left} y1={label.y} x2={vbWidth - padding.right} y2={label.y} stroke="var(--color-border)" strokeDasharray="4 4" />
+                            <text x={padding.left - 10} y={label.y + 4} fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">{label.value}</text>
                         </g>
                     ))}
-
-                    {/* Data lines for each series */}
-                    {seriesNames.map((_, seriesIdx) => {
-                        const points = dataPoints
-                            .map((dp, idx) => {
-                                const val = dp.values[seriesIdx]
-                                if (val === undefined || val === 0) return null
-                                return `${getX(idx)},${getY(val)}`
-                            })
-                            .filter(Boolean)
-                            .join(' ')
-
+                    {seriesNames.map((_, si) => {
+                        const pts = dataPoints.map((dp, idx) => { const v = dp.values[si]; return (v === undefined || v === 0) ? null : `${getX(idx)},${getY(v)}` }).filter(Boolean).join(' ')
                         return (
-                            <g key={seriesIdx}>
-                                <polyline
-                                    points={points}
-                                    fill="none"
-                                    stroke={colors[seriesIdx] || '#5b8db8'}
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {/* Data points */}
-                                {dataPoints.map((dp, idx) => {
-                                    const val = dp.values[seriesIdx]
-                                    if (val === undefined || val === 0) return null
-                                    return (
-                                        <circle
-                                            key={idx}
-                                            cx={getX(idx)}
-                                            cy={getY(val)}
-                                            r="4"
-                                            fill={colors[seriesIdx] || '#5b8db8'}
-                                        />
-                                    )
-                                })}
+                            <g key={si}>
+                                <polyline points={pts} fill="none" stroke={colors[si] || '#5b8db8'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                {dataPoints.map((dp, idx) => { const v = dp.values[si]; return (v === undefined || v === 0) ? null : <circle key={idx} cx={getX(idx)} cy={getY(v)} r="4" fill={colors[si] || '#5b8db8'} /> })}
                             </g>
                         )
                     })}
-
-                    {/* X-axis labels with auto-wrapping */}
                     {(() => {
-                        const colWidth = dataPoints.length > 1
-                            ? innerWidth / (dataPoints.length - 1)
-                            : innerWidth
-                        const maxCharsPerLine = Math.max(4, Math.floor(colWidth / 7))
-                        const needsWrap = dataPoints.some(dp => dp.period.length > maxCharsPerLine)
-                        const splitPeriod = (label: string): string[] => {
-                            return splitAxisLabel(label, needsWrap)
-                        }
+                        const colW = dataPoints.length > 1 ? innerWidth / (dataPoints.length - 1) : innerWidth
+                        const maxC = Math.max(4, Math.floor(colW / 7))
+                        const wrap = dataPoints.some(dp => dp.period.length > maxC)
                         return dataPoints.map((dp, idx) => {
-                            if (!shouldRenderAxisLabel(idx, dataPoints.length, 12)) {
-                                return null
-                            }
-                            const lines = splitPeriod(dp.period)
-                            return lines.map((line, lineIdx) => (
-                                <text
-                                    key={`${idx}-${lineIdx}`}
-                                    x={getX(idx)}
-                                    y={vbHeight - padding.bottom + 14 + lineIdx * 14}
-                                    fill="var(--color-text-secondary)"
-                                    fontSize="11"
-                                    textAnchor="middle"
-                                >
-                                    {line}
-                                </text>
+                            if (!shouldRenderAxisLabel(idx, dataPoints.length, 12)) return null
+                            return splitAxisLabel(dp.period, wrap).map((line, li) => (
+                                <text key={`${idx}-${li}`} x={getX(idx)} y={vbHeight - padding.bottom + 14 + li * 14} fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">{line}</text>
                             ))
                         })
                     })()}
                 </svg>
-                {!options?.hideLegend ? (
+                {!options?.hideLegend && (
                     <div className="line-chart-legend">
                         {seriesNames.map((name, idx) => (
                             <span key={name} className="line-chart-legend-item">
@@ -1995,117 +1723,85 @@ function GenericTabPanel({
                             </span>
                         ))}
                     </div>
-                ) : null}
+                )}
             </div>
+        )
+    }
+
+    const renderStackedBarSvg = (
+        dataPoints: { label: string; values: number[] }[],
+        colors: string[],
+        maxVal: number,
+    ) => {
+        const vbWidth = 500
+        const vbHeight = 280
+        const padding = { top: 20, right: 20, bottom: 30, left: 50 }
+        const innerWidth = vbWidth - padding.left - padding.right
+        const innerHeight = vbHeight - padding.top - padding.bottom
+        const getY = (value: number) => padding.top + innerHeight - (value / maxVal) * innerHeight
+        const groupWidth = innerWidth / dataPoints.length
+        const barWidth = Math.min(70, groupWidth * 0.65)
+
+        const yAxisLabels = Array.from({ length: 6 }, (_, i) => {
+            const value = (maxVal / 5) * i
+            return { value: Math.round(value), y: getY(value) }
+        })
+
+        return (
+            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet" style={{ width: '100%', display: 'block' }}>
+                {yAxisLabels.map((label, idx) => (
+                    <g key={idx}>
+                        <line x1={padding.left} y1={label.y} x2={vbWidth - padding.right} y2={label.y} stroke="var(--color-border)" strokeDasharray="4 4" />
+                        <text x={padding.left - 8} y={label.y + 5} fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">{label.value}</text>
+                    </g>
+                ))}
+                {dataPoints.map((dp, groupIdx) => {
+                    const groupX = padding.left + groupIdx * groupWidth + groupWidth / 2
+                    const barX = groupX - barWidth / 2
+                    let cumulative = 0
+                    return (
+                        <g key={groupIdx}>
+                            {dp.values.map((val, seriesIdx) => {
+                                const segHeight = (val / maxVal) * innerHeight
+                                const segY = getY(cumulative + val)
+                                cumulative += val
+                                return (
+                                    <g key={seriesIdx}>
+                                        <rect x={barX} y={segY} width={barWidth} height={segHeight}
+                                            fill={colors[seriesIdx]} rx={seriesIdx === dp.values.length - 1 ? 3 : 0} opacity="0.85" />
+                                        {val > 0 && (
+                                            <text x={barX + barWidth / 2} y={segY + segHeight / 2 + 5} fill="white" fontSize="12" textAnchor="middle" fontWeight="600">
+                                                {Math.round(val)}
+                                            </text>
+                                        )}
+                                    </g>
+                                )
+                            })}
+                            <text x={groupX} y={vbHeight - 6} fill="var(--color-text-secondary)" fontSize="12" textAnchor="middle" fontWeight="500">{dp.label}</text>
+                        </g>
+                    )
+                })}
+            </svg>
         )
     }
 
     const renderStackedBarChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
         const colors = chart.config?.colors || ['#5b8db8', '#ef4444']
         const seriesNames = chart.config?.series?.length ? chart.config.series : [`${_t('businessIntelligence.incidents.charts.volumeSeries')} 1`, `${_t('businessIntelligence.incidents.charts.slaSeries')} 2`]
-
-        // Parse compound labels: "category|val1|val2|..."
         const dataPoints = chart.items.map(item => {
             const parts = item.label.split('|')
-            return {
-                label: parts[0] || item.label,
-                values: parts.slice(1).map(v => parseFloat(v) || 0),
-            }
+            return { label: parts[0] || item.label, values: parts.slice(1).map(v => parseFloat(v) || 0) }
         })
-
         const maxVal = Math.max(...dataPoints.map(dp => dp.values.reduce((a: number, b: number) => a + b, 0)), 1)
-        const vbWidth = 500
-        const vbHeight = 280
-        const padding = { top: 20, right: 20, bottom: 30, left: 50 }
-        const innerWidth = vbWidth - padding.left - padding.right
-        const innerHeight = vbHeight - padding.top - padding.bottom
-
-        const getY = (value: number) => padding.top + innerHeight - (value / maxVal) * innerHeight
-        const groupWidth = innerWidth / dataPoints.length
-        const barWidth = Math.min(70, groupWidth * 0.65)
-
-        // Y-axis labels
-        const yTicks = 5
-        const yAxisLabels = Array.from({ length: yTicks + 1 }, (_, i) => {
-            const value = (maxVal / yTicks) * i
-            return { value: Math.round(value), y: getY(value) }
-        })
 
         return (
             <div style={{ width: '100%', minWidth: 0 }}>
-                <svg
-                    viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ width: '100%', display: 'block' }}
-                >
-                    {/* Y-axis grid lines and labels */}
-                    {yAxisLabels.map((label, idx) => (
-                        <g key={idx}>
-                            <line
-                                x1={padding.left} y1={label.y}
-                                x2={vbWidth - padding.right} y2={label.y}
-                                stroke="var(--color-border)" strokeDasharray="4 4"
-                            />
-                            <text
-                                x={padding.left - 8} y={label.y + 5}
-                                fill="var(--color-text-secondary)" fontSize="12" textAnchor="end"
-                            >
-                                {label.value}
-                            </text>
-                        </g>
-                    ))}
-
-                    {/* Stacked bars */}
-                    {dataPoints.map((dp, groupIdx) => {
-                        const groupX = padding.left + groupIdx * groupWidth + groupWidth / 2
-                        const barX = groupX - barWidth / 2
-                        let cumulative = 0
-
-                        return (
-                            <g key={groupIdx}>
-                                {dp.values.map((val, seriesIdx) => {
-                                    const segHeight = (val / maxVal) * innerHeight
-                                    const segY = getY(cumulative + val)
-                                    cumulative += val
-                                    return (
-                                        <g key={seriesIdx}>
-                                            <rect
-                                                x={barX} y={segY}
-                                                width={barWidth} height={segHeight}
-                                                fill={colors[seriesIdx]} rx={seriesIdx === dp.values.length - 1 ? 3 : 0}
-                                                opacity="0.85"
-                                            />
-                                            {val > 0 && (
-                                                <text
-                                                    x={barX + barWidth / 2} y={segY + segHeight / 2 + 5}
-                                                    fill="white" fontSize="12"
-                                                    textAnchor="middle" fontWeight="600"
-                                                >
-                                                    {Math.round(val)}
-                                                </text>
-                                            )}
-                                        </g>
-                                    )
-                                })}
-                                <text
-                                    x={groupX} y={vbHeight - 6}
-                                    fill="var(--color-text-secondary)" fontSize="12"
-                                    textAnchor="middle" fontWeight="500"
-                                >
-                                    {dp.label}
-                                </text>
-                            </g>
-                        )
-                    })}
-                </svg>
+                {renderStackedBarSvg(dataPoints, colors, maxVal)}
                 {!options?.hideLegend ? (
                     <div className="line-chart-legend">
                         {seriesNames.map((name, idx) => (
                             <span key={name} className="line-chart-legend-item">
-                                <span
-                                    className="line-chart-legend-line"
-                                    style={{ background: colors[idx], borderRadius: '2px', height: '12px' }}
-                                />
+                                <span className="line-chart-legend-line" style={{ background: colors[idx], borderRadius: '2px', height: '12px' }} />
                                 {name}
                             </span>
                         ))}
@@ -2231,115 +1927,87 @@ function GenericTabPanel({
         )
     }
 
-    const renderGroupedBarChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
-        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
-        const seriesNames = chart.config?.series?.length ? chart.config.series : []
-
-        // Parse compound labels: "label|val1|val2|..."
-        const dataPoints = chart.items.map(item => {
-            const parts = item.label.split('|')
-            return {
-                label: parts[0] || item.label,
-                values: parts.slice(1).map(v => parseFloat(v) || 0),
-            }
-        })
-
-        const maxVal = Math.max(...dataPoints.flatMap(dp => dp.values), 1)
-        const yAxisLabel = chart.config?.yAxisLabel || ''
-        const isPercentage = !yAxisLabel ? (maxVal <= 100 && dataPoints.some(dp => dp.values.some(v => v > 5))) : yAxisLabel.includes('%') || yAxisLabel.includes('率')
+    const renderGroupedBarSvg = (
+        dataPoints: { label: string; values: number[] }[],
+        colors: string[],
+        seriesNames: string[],
+        maxVal: number,
+        isPercentage: boolean,
+    ) => {
         const vbWidth = 800
         const vbHeight = 280
         const padding = { top: 30, right: 30, bottom: 40, left: 60 }
         const innerWidth = vbWidth - padding.left - padding.right
         const innerHeight = vbHeight - padding.top - padding.bottom
-
         const getY = (value: number) => padding.top + innerHeight - (value / maxVal) * innerHeight
         const groupWidth = innerWidth / dataPoints.length
         const barWidth = Math.min(36, (groupWidth * 0.6) / seriesNames.length)
         const barGap = 4
 
-        // Y-axis labels
         const yAxisLabels = [0, 0.25, 0.5, 0.75, 1].map(ratio => ({
-            value: Math.round(maxVal * ratio),
-            y: getY(maxVal * ratio),
+            value: Math.round(maxVal * ratio), y: getY(maxVal * ratio),
         }))
+
+        const formatVal = (val: number) => isPercentage ? `${val.toFixed(1)}%` : (val % 1 === 0 ? val : val.toFixed(1))
+
+        return (
+            <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet"
+                style={{ width: '100%', height: '280px', display: 'block' }}>
+                {yAxisLabels.map((label, idx) => (
+                    <g key={idx}>
+                        <line x1={padding.left} y1={label.y} x2={vbWidth - padding.right} y2={label.y} stroke="var(--color-border)" strokeDasharray="4 4" />
+                        <text x={padding.left - 10} y={label.y + 4} fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">
+                            {isPercentage ? `${label.value}%` : label.value}
+                        </text>
+                    </g>
+                ))}
+                {dataPoints.map((dp, groupIdx) => {
+                    const groupX = padding.left + groupIdx * groupWidth + groupWidth / 2
+                    const totalBarsWidth = seriesNames.length * barWidth + (seriesNames.length - 1) * barGap
+                    const startX = groupX - totalBarsWidth / 2
+                    return (
+                        <g key={groupIdx}>
+                            {seriesNames.map((_, seriesIdx) => {
+                                const val = dp.values[seriesIdx] || 0
+                                const barX = startX + seriesIdx * (barWidth + barGap)
+                                const barY = getY(val)
+                                return (
+                                    <g key={seriesIdx}>
+                                        <rect x={barX} y={barY} width={barWidth} height={innerHeight - (barY - padding.top)}
+                                            fill={colors[seriesIdx]} rx="3" opacity="0.85" />
+                                        <text x={barX + barWidth / 2} y={barY - 5} fill={colors[seriesIdx]} fontSize="11" textAnchor="middle" fontWeight="600">
+                                            {formatVal(val)}
+                                        </text>
+                                    </g>
+                                )
+                            })}
+                            <text x={groupX} y={vbHeight - 15} fill="var(--color-text-secondary)" fontSize="13" textAnchor="middle" fontWeight="500">{dp.label}</text>
+                        </g>
+                    )
+                })}
+            </svg>
+        )
+    }
+
+    const renderGroupedBarChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
+        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
+        const seriesNames = chart.config?.series?.length ? chart.config.series : []
+        const dataPoints = chart.items.map(item => {
+            const parts = item.label.split('|')
+            return { label: parts[0] || item.label, values: parts.slice(1).map(v => parseFloat(v) || 0) }
+        })
+        const maxVal = Math.max(...dataPoints.flatMap(dp => dp.values), 1)
+        const yAxisLabel = chart.config?.yAxisLabel || ''
+        const isPercentage = !yAxisLabel ? (maxVal <= 100 && dataPoints.some(dp => dp.values.some(v => v > 5))) : yAxisLabel.includes('%') || yAxisLabel.includes('率')
 
         return (
             <div style={{ width: '100%' }}>
-                <svg
-                    viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ width: '100%', height: '280px', display: 'block' }}
-                >
-                    {/* Y-axis grid lines and labels */}
-                    {yAxisLabels.map((label, idx) => (
-                        <g key={idx}>
-                            <line
-                                x1={padding.left} y1={label.y}
-                                x2={vbWidth - padding.right} y2={label.y}
-                                stroke="var(--color-border)" strokeDasharray="4 4"
-                            />
-                            <text
-                                x={padding.left - 10} y={label.y + 4}
-                                fill="var(--color-text-secondary)" fontSize="12" textAnchor="end"
-                            >
-                                {isPercentage ? `${label.value}%` : label.value}
-                            </text>
-                        </g>
-                    ))}
-
-                    {/* Grouped bars */}
-                    {dataPoints.map((dp, groupIdx) => {
-                        const groupX = padding.left + groupIdx * groupWidth + groupWidth / 2
-                        const totalBarsWidth = seriesNames.length * barWidth + (seriesNames.length - 1) * barGap
-                        const startX = groupX - totalBarsWidth / 2
-
-                        return (
-                            <g key={groupIdx}>
-                                {seriesNames.map((_, seriesIdx) => {
-                                    const val = dp.values[seriesIdx] || 0
-                                    const barX = startX + seriesIdx * (barWidth + barGap)
-                                    const barY = getY(val)
-                                    const barHeight = innerHeight - (barY - padding.top)
-                                    return (
-                                        <g key={seriesIdx}>
-                                            <rect
-                                                x={barX} y={barY}
-                                                width={barWidth} height={barHeight}
-                                                fill={colors[seriesIdx]} rx="3" opacity="0.85"
-                                            />
-                                            <text
-                                                x={barX + barWidth / 2} y={barY - 5}
-                                                fill={colors[seriesIdx]} fontSize="11"
-                                                textAnchor="middle" fontWeight="600"
-                                            >
-                                                {(() => {
-                                                    if (isPercentage) return `${val.toFixed(1)}%`
-                                                    return val % 1 === 0 ? val : val.toFixed(1)
-                                                })()}
-                                            </text>
-                                        </g>
-                                    )
-                                })}
-                                <text
-                                    x={groupX} y={vbHeight - 15}
-                                    fill="var(--color-text-secondary)" fontSize="13"
-                                    textAnchor="middle" fontWeight="500"
-                                >
-                                    {dp.label}
-                                </text>
-                            </g>
-                        )
-                    })}
-                </svg>
+                {renderGroupedBarSvg(dataPoints, colors, seriesNames, maxVal, isPercentage)}
                 {!options?.hideLegend ? (
                     <div className="line-chart-legend">
                         {seriesNames.map((name, idx) => (
                             <span key={name} className="line-chart-legend-item">
-                                <span
-                                    className="line-chart-legend-line"
-                                    style={{ background: colors[idx], borderRadius: '2px', height: '12px' }}
-                                />
+                                <span className="line-chart-legend-line" style={{ background: colors[idx], borderRadius: '2px', height: '12px' }} />
                                 {name}
                             </span>
                         ))}
@@ -2349,15 +2017,22 @@ function GenericTabPanel({
         )
     }
 
-    const renderComboChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
-        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
-        const seriesNames = chart.config?.series || [
-            _t('businessIntelligence.incidents.charts.volumeSeries'),
-            _t('businessIntelligence.incidents.charts.slaSeries'),
-        ]
+    interface ComboDataPoint {
+        period: string
+        volume: number
+        completionRate: number
+        causedCount: number
+    }
 
-        // Parse combo data: format "period|volume|completionRate" or "period|volume|completionRate|causedCount"
-        const dataPoints = chart.items.map(item => {
+    interface ComboScale {
+        isScoreScale: boolean
+        isPercentageScale: boolean
+        isCountScale: boolean
+        maxRate: number
+    }
+
+    const parseComboData = (chart: ChartSection, seriesNames: string[]) => {
+        const dataPoints: ComboDataPoint[] = chart.items.map(item => {
             const parts = item.label.split('|')
             return {
                 period: parts[0] || item.label,
@@ -2367,14 +2042,10 @@ function GenericTabPanel({
             }
         })
 
-        // Calculate max values for each axis
         const hasCausedLine = seriesNames.length >= 3 && dataPoints.some(dp => dp.causedCount > 0)
         const maxVolume = Math.max(...dataPoints.map(dp => dp.volume), ...dataPoints.map(dp => dp.causedCount), 1)
         const maxLineValue = Math.max(...dataPoints.map(dp => dp.completionRate), 0)
-        // Auto-detect right Y-axis mode:
-        // 1. Score scale: values ≤ 5 (satisfaction scores 1-5)
-        // 2. Count scale: values > 5 and series name doesn't contain percentage indicators
-        // 3. Percentage scale: series name contains "率" or values clearly %
+
         const secondSeries = seriesNames.length > 1 ? seriesNames[1] : ''
         const isScoreScale = maxLineValue <= 5 && maxLineValue > 0
         const isPercentageScale = !isScoreScale && (secondSeries.includes('率') || secondSeries.includes('%'))
@@ -2385,189 +2056,159 @@ function GenericTabPanel({
             return 100
         })()
 
+        return {
+            dataPoints,
+            hasCausedLine,
+            maxVolume,
+            scale: { isScoreScale, isPercentageScale, isCountScale, maxRate } as ComboScale,
+        }
+    }
+
+    const renderComboSvg = (
+        dataPoints: ComboDataPoint[],
+        colors: string[],
+        hasCausedLine: boolean,
+        maxVolume: number,
+        scale: ComboScale,
+    ) => {
         const vbWidth = 1000
         const vbHeight = 360
         const padding = { top: 28, right: 60, bottom: 72, left: 60 }
         const innerWidth = vbWidth - padding.left - padding.right
         const innerHeight = vbHeight - padding.top - padding.bottom
 
-        // Bar chart Y-axis (left) - volume
         const getBarY = (value: number) => padding.top + innerHeight - (value / maxVolume) * innerHeight
-        // Line chart Y-axis (right) - percentage or score
-        const getLineY = (value: number) => padding.top + innerHeight - (value / maxRate) * innerHeight
-
+        const getLineY = (value: number) => padding.top + innerHeight - (value / scale.maxRate) * innerHeight
         const getBarX = (index: number) => {
-            const barWidth = innerWidth / dataPoints.length
-            return padding.left + index * barWidth + barWidth / 2
+            const colWidth = innerWidth / dataPoints.length
+            return padding.left + index * colWidth + colWidth / 2
         }
-
         const barWidth = Math.min(60, (innerWidth / dataPoints.length) * 0.6)
 
-        // Generate Y-axis labels for bar (left)
         const barYAxisLabels = [0, 0.25, 0.5, 0.75, 1].map(ratio => ({
             value: Math.round(maxVolume * ratio),
             y: getBarY(maxVolume * ratio),
         }))
 
-        // Generate Y-axis labels for line (right) - score, count, or percentage
         const lineYAxisLabels = (() => {
-            if (isScoreScale) return [0, 1, 2, 3, 4, 5].map(value => ({ value, y: getLineY(value) }))
-            if (isPercentageScale) return [0, 25, 50, 75, 100].map(value => ({ value, y: getLineY(value) }))
-            return [0, 0.25, 0.5, 0.75, 1].map(ratio => ({ value: Math.round(maxRate * ratio), y: getLineY(maxRate * ratio) }))
+            if (scale.isScoreScale) return [0, 1, 2, 3, 4, 5].map(v => ({ value: v, y: getLineY(v) }))
+            if (scale.isPercentageScale) return [0, 25, 50, 75, 100].map(v => ({ value: v, y: getLineY(v) }))
+            return [0, 0.25, 0.5, 0.75, 1].map(ratio => ({ value: Math.round(scale.maxRate * ratio), y: getLineY(scale.maxRate * ratio) }))
         })()
 
-        // Build line path
         const linePoints = dataPoints
             .map((dp, idx) => `${getBarX(idx)},${getLineY(dp.completionRate)}`)
             .join(' ')
 
-        return (
-            <div style={{ width: '100%' }}>
-                <svg
-                    viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ width: '100%', height: '360px', display: 'block' }}
-                >
-                    {/* Y-axis grid lines */}
-                    {barYAxisLabels.map((label, idx) => (
-                        <line
-                            key={idx}
-                            x1={padding.left}
-                            y1={label.y}
-                            x2={vbWidth - padding.right}
-                            y2={label.y}
-                            stroke="var(--color-border)"
-                            strokeDasharray="4 4"
-                        />
-                    ))}
-
-                    {/* Left Y-axis labels (volume) */}
-                    {barYAxisLabels.map((label, idx) => (
-                        <text
-                            key={idx}
-                            x={padding.left - 10}
-                            y={label.y + 4}
-                            fill="var(--color-text-secondary)"
-                            fontSize="12"
-                            textAnchor="end"
-                        >
-                            {label.value}
-                        </text>
-                    ))}
-
-                    {/* Right Y-axis labels (score or percentage) */}
-                    {lineYAxisLabels.map((label, idx) => (
-                        <text
-                            key={idx}
-                            x={vbWidth - padding.right + 10}
-                            y={label.y + 4}
-                            fill={colors[1]}
-                            fontSize="12"
-                            textAnchor="start"
-                        >
-                            {(() => {
-                                if (isPercentageScale) return `${label.value}%`
-                                return label.value
-                            })()}
-                        </text>
-                    ))}
-
-                    {/* Bars */}
-                    {dataPoints.map((dp, idx) => (
-                        <rect
-                            key={idx}
-                            x={getBarX(idx) - barWidth / 2}
-                            y={getBarY(dp.volume)}
-                            width={barWidth}
-                            height={innerHeight - (getBarY(dp.volume) - padding.top)}
-                            fill={colors[0]}
-                            rx="4"
-                            opacity="0.85"
-                        />
-                    ))}
-
-                    {/* Line overlay */}
+        const renderCausedLine = () => {
+            if (!hasCausedLine) return null
+            const causedPoints = dataPoints
+                .map((dp, idx) => `${getBarX(idx)},${getBarY(dp.causedCount)}`)
+                .join(' ')
+            return (
+                <g>
                     <polyline
-                        points={linePoints}
+                        points={causedPoints}
                         fill="none"
-                        stroke={colors[1]}
-                        strokeWidth="3"
+                        stroke={colors[2] || '#ef4444'}
+                        strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        strokeDasharray="6 3"
                     />
-
-                    {/* Line data points */}
-                    {dataPoints.map((dp, idx) => (
+                    {dataPoints.map((dp, idx) => dp.causedCount > 0 ? (
                         <circle
-                            key={idx}
+                            key={`c${idx}`}
                             cx={getBarX(idx)}
-                            cy={getLineY(dp.completionRate)}
-                            r="4"
-                            fill={colors[1]}
+                            cy={getBarY(dp.causedCount)}
+                            r="3.5"
+                            fill={colors[2] || '#ef4444'}
                             stroke="white"
                             strokeWidth="2"
                         />
-                    ))}
+                    ) : null)}
+                </g>
+            )
+        }
 
-                    {/* Second line overlay (causedCount, left Y-axis scale) */}
-                    {hasCausedLine && (() => {
-                        const causedPoints = dataPoints
-                            .map((dp, idx) => `${getBarX(idx)},${getBarY(dp.causedCount)}`)
-                            .join(' ')
-                        return (
-                            <g>
-                                <polyline
-                                    points={causedPoints}
-                                    fill="none"
-                                    stroke={colors[2] || '#ef4444'}
-                                    strokeWidth="2.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeDasharray="6 3"
-                                />
-                                {dataPoints.map((dp, idx) => dp.causedCount > 0 ? (
-                                    <circle
-                                        key={`c${idx}`}
-                                        cx={getBarX(idx)}
-                                        cy={getBarY(dp.causedCount)}
-                                        r="3.5"
-                                        fill={colors[2] || '#ef4444'}
-                                        stroke="white"
-                                        strokeWidth="2"
-                                    />
-                                ) : null)}
-                            </g>
-                        )
-                    })()}
+        const renderXLabels = () => {
+            const colWidth = innerWidth / dataPoints.length
+            const maxCharsPerLine = Math.max(4, Math.floor(colWidth / 7))
+            const needsWrap = dataPoints.some(dp => dp.period.length > maxCharsPerLine)
+            return dataPoints.map((dp, idx) => {
+                if (!shouldRenderAxisLabel(idx, dataPoints.length, 12)) return null
+                const lines = splitAxisLabel(dp.period, needsWrap)
+                return lines.map((line, lineIdx) => (
+                    <text
+                        key={`${idx}-${lineIdx}`}
+                        x={getBarX(idx)}
+                        y={vbHeight - padding.bottom + 14 + lineIdx * 14}
+                        fill="var(--color-text-secondary)"
+                        fontSize="12"
+                        textAnchor="middle"
+                    >
+                        {line}
+                    </text>
+                ))
+            })
+        }
 
-                    {/* X-axis labels with auto-wrapping */}
-                    {(() => {
-                        const colWidth = innerWidth / dataPoints.length
-                        const maxCharsPerLine = Math.max(4, Math.floor(colWidth / 7))
-                        const needsWrap = dataPoints.some(dp => dp.period.length > maxCharsPerLine)
-                        const splitPeriod = (label: string): string[] => {
-                            return splitAxisLabel(label, needsWrap)
-                        }
-                        return dataPoints.map((dp, idx) => {
-                            if (!shouldRenderAxisLabel(idx, dataPoints.length, 12)) {
-                                return null
-                            }
-                            const lines = splitPeriod(dp.period)
-                            return lines.map((line, lineIdx) => (
-                                <text
-                                    key={`${idx}-${lineIdx}`}
-                                    x={getBarX(idx)}
-                                    y={vbHeight - padding.bottom + 14 + lineIdx * 14}
-                                    fill="var(--color-text-secondary)"
-                                    fontSize="12"
-                                    textAnchor="middle"
-                                >
-                                    {line}
-                                </text>
-                            ))
-                        })
-                    })()}
-                </svg>
+        return (
+            <svg
+                viewBox={`0 0 ${vbWidth} ${vbHeight}`}
+                preserveAspectRatio="xMidYMid meet"
+                style={{ width: '100%', height: '360px', display: 'block' }}
+            >
+                {/* Y-axis grid lines */}
+                {barYAxisLabels.map((label, idx) => (
+                    <line key={idx} x1={padding.left} y1={label.y} x2={vbWidth - padding.right} y2={label.y} stroke="var(--color-border)" strokeDasharray="4 4" />
+                ))}
+
+                {/* Left Y-axis labels (volume) */}
+                {barYAxisLabels.map((label, idx) => (
+                    <text key={idx} x={padding.left - 10} y={label.y + 4} fill="var(--color-text-secondary)" fontSize="12" textAnchor="end">
+                        {label.value}
+                    </text>
+                ))}
+
+                {/* Right Y-axis labels (score or percentage) */}
+                {lineYAxisLabels.map((label, idx) => (
+                    <text key={idx} x={vbWidth - padding.right + 10} y={label.y + 4} fill={colors[1]} fontSize="12" textAnchor="start">
+                        {scale.isPercentageScale ? `${label.value}%` : label.value}
+                    </text>
+                ))}
+
+                {/* Bars */}
+                {dataPoints.map((dp, idx) => (
+                    <rect key={idx} x={getBarX(idx) - barWidth / 2} y={getBarY(dp.volume)} width={barWidth}
+                        height={innerHeight - (getBarY(dp.volume) - padding.top)} fill={colors[0]} rx="4" opacity="0.85" />
+                ))}
+
+                {/* Line overlay */}
+                <polyline points={linePoints} fill="none" stroke={colors[1]} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+                {/* Line data points */}
+                {dataPoints.map((dp, idx) => (
+                    <circle key={idx} cx={getBarX(idx)} cy={getLineY(dp.completionRate)} r="4" fill={colors[1]} stroke="white" strokeWidth="2" />
+                ))}
+
+                {renderCausedLine()}
+                {renderXLabels()}
+            </svg>
+        )
+    }
+
+    const renderComboChart = (chart: ChartSection, options?: { hideLegend?: boolean }) => {
+        const colors = chart.config?.colors || ['#5b8db8', '#10b981']
+        const seriesNames = chart.config?.series || [
+            _t('businessIntelligence.incidents.charts.volumeSeries'),
+            _t('businessIntelligence.incidents.charts.slaSeries'),
+        ]
+        const { dataPoints, hasCausedLine, maxVolume, scale } = parseComboData(chart, seriesNames)
+
+        return (
+            <div style={{ width: '100%' }}>
+                {renderComboSvg(dataPoints, colors, hasCausedLine, maxVolume, scale)}
                 {!options?.hideLegend ? (
                     <div className="line-chart-legend">
                         {seriesNames.map((name, idx) => (
@@ -2599,8 +2240,25 @@ function GenericTabPanel({
         return renderWeekdayHeatmap(chart)
     }
 
-    const renderFulfillmentHeatmap = (chart: ChartSection) => {
-        // Parse: "person|category|avgHours", value = avgHours
+    const fulfillmentCellColor = (val: number) => {
+        const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+        const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t)
+        if (val <= 12) {
+            const t = clamp(val / 12, 0, 1)
+            return `rgba(16,185,129,${0.35 + t * 0.3})`
+        } else if (val <= 20) {
+            const t = clamp((val - 12) / 8, 0, 1)
+            return `rgba(${lerp(16, 245, t)},${lerp(185, 158, t)},${lerp(129, 11, t)},0.55)`
+        } else if (val <= 28) {
+            const t = clamp((val - 20) / 8, 0, 1)
+            return `rgba(${lerp(245, 239, t)},${lerp(158, 68, t)},${lerp(11, 68, t)},0.55)`
+        } else {
+            const t = clamp((val - 28) / 20, 0, 1)
+            return `rgba(239,68,68,${0.55 + t * 0.3})`
+        }
+    }
+
+    const parseFulfillmentHeatmapData = (chart: ChartSection) => {
         const yLabelsSet: string[] = []
         const xLabelsSet: string[] = []
         const ySeen = new Set<string>()
@@ -2615,67 +2273,39 @@ function GenericTabPanel({
         if (yLabels.length === 0 || xLabels.length === 0) return null
 
         const cellMap = new Map<string, { avgHours: number; label: string }>()
-        let maxVal = 0
         for (const item of chart.items) {
             const parts = item.label.split('|')
             cellMap.set(parts[0] + '|' + parts[1], { avgHours: item.value, label: parts[2] })
-            if (item.value > maxVal) maxVal = item.value
         }
 
         const vbWidth = 900
-        const xLabelZone = 45  // space for multi-line x-axis labels
+        const xLabelZone = 45
         const padding = { top: 10, right: 20, bottom: 8, left: 130 }
         const gridHeight = yLabels.length * 48
         const vbHeight = padding.top + gridHeight + padding.bottom + xLabelZone
         const innerWidth = vbWidth - padding.left - padding.right
-        const innerHeight = gridHeight
         const cellW = innerWidth / xLabels.length
-        const cellH = innerHeight / yLabels.length
+        const cellH = gridHeight / yLabels.length
 
+        return { yLabels, xLabels, cellMap, vbWidth, vbHeight, padding, gridHeight, innerWidth, cellW, cellH }
+    }
+
+    const renderFulfillmentHeatmap = (chart: ChartSection) => {
+        const parsed = parseFulfillmentHeatmapData(chart)
+        if (!parsed) return null
+        const { yLabels, xLabels, cellMap, vbWidth, vbHeight, padding, gridHeight, cellW, cellH } = parsed
         const trunc = (s: string, max: number) => s.length > max ? s.slice(0, max) + '…' : s
-
-        // Color scale: fixed thresholds with operational meaning
-        // < 12h → green (fast), 12-20h → yellow-green, 20-28h → orange, > 28h → red
-        const cellColor = (val: number) => {
-            const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
-            const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t)
-            if (val <= 12) {
-                // green
-                const t = clamp(val / 12, 0, 1)
-                return `rgba(16,185,129,${0.35 + t * 0.3})`
-            } else if (val <= 20) {
-                // green → yellow
-                const t = clamp((val - 12) / 8, 0, 1)
-                const r = lerp(16, 245, t)
-                const g = lerp(185, 158, t)
-                const b = lerp(129, 11, t)
-                return `rgba(${r},${g},${b},0.55)`
-            } else if (val <= 28) {
-                // yellow → orange-red
-                const t = clamp((val - 20) / 8, 0, 1)
-                const r = lerp(245, 239, t)
-                const g = lerp(158, 68, t)
-                const b = lerp(11, 68, t)
-                return `rgba(${r},${g},${b},0.55)`
-            } else {
-                // red (capped at 48h for opacity)
-                const t = clamp((val - 28) / 20, 0, 1)
-                return `rgba(239,68,68,${0.55 + t * 0.3})`
-            }
-        }
 
         return (
             <div style={{ width: '100%' }}>
                 <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet"
                     style={{ width: '100%', height: `${vbHeight}px`, display: 'block' }}>
-                    {/* Y-axis labels (persons) */}
                     {yLabels.map((label, idx) => (
                         <text key={label} x={padding.left - 8} y={padding.top + idx * cellH + cellH / 2 + 4}
                             fill="var(--color-text-secondary)" fontSize="11" textAnchor="end">
                             {trunc(label, 16)}
                         </text>
                     ))}
-                    {/* X-axis labels (categories), word-wrapped */}
                     {xLabels.map((label, idx) => {
                         const cx = padding.left + idx * cellW + cellW / 2
                         const words = label.split(' ')
@@ -2683,12 +2313,7 @@ function GenericTabPanel({
                         let cur = ''
                         for (const w of words) {
                             const next = cur ? cur + ' ' + w : w
-                            if (next.length > 12 && cur) {
-                                lines.push(cur)
-                                cur = w
-                            } else {
-                                cur = next
-                            }
+                            if (next.length > 12 && cur) { lines.push(cur); cur = w } else { cur = next }
                         }
                         if (cur) lines.push(cur)
                         return (
@@ -2700,7 +2325,6 @@ function GenericTabPanel({
                             </text>
                         )
                     })}
-                    {/* Cells */}
                     {yLabels.map((person, yi) =>
                         xLabels.map((cat, xi) => {
                             const cell = cellMap.get(person + '|' + cat)
@@ -2714,7 +2338,7 @@ function GenericTabPanel({
                                 <g key={`${yi}-${xi}`}>
                                     <rect x={padding.left + xi * cellW + 1} y={padding.top + yi * cellH + 1}
                                         width={cellW - 2} height={cellH - 2} rx="3"
-                                        fill={cellColor(cell.avgHours)} />
+                                        fill={fulfillmentCellColor(cell.avgHours)} />
                                     <text x={padding.left + xi * cellW + cellW / 2}
                                         y={padding.top + yi * cellH + cellH / 2 + 3}
                                         fill="var(--color-text-secondary)" fontSize="9" textAnchor="middle">
@@ -2729,6 +2353,28 @@ function GenericTabPanel({
         )
     }
 
+    const parseWeekdayHeatmapData = (chart: ChartSection) => {
+        const cellMap = new Map<string, { changeCount: number; incidentCount: number }>()
+        let maxChange = 0
+        for (const item of chart.items) {
+            const parts = item.label.split('|')
+            const changeCount = parseFloat(parts[2]) || 0
+            const incidentCount = parseFloat(parts[3]) || 0
+            cellMap.set(parts[0] + '-' + parts[1], { changeCount, incidentCount })
+            if (changeCount > maxChange) maxChange = changeCount
+        }
+        const vbWidth = 900
+        const vbHeight = 280
+        const padding = { top: 10, right: 20, bottom: 30, left: 50 }
+        const innerWidth = vbWidth - padding.left - padding.right
+        const innerHeight = vbHeight - padding.top - padding.bottom
+        return {
+            cellMap, maxChange,
+            vbWidth, vbHeight, padding,
+            cellW: innerWidth / 24, cellH: innerHeight / 7,
+        }
+    }
+
     const renderWeekdayHeatmap = (chart: ChartSection) => {
         const colors = chart.config?.colors || ['#5b8db8', '#ef4444']
         const dayLabels = [
@@ -2740,95 +2386,39 @@ function GenericTabPanel({
             _t('businessIntelligence.incidents.weekdays.saturday'),
             _t('businessIntelligence.incidents.weekdays.sunday'),
         ]
-
-        // Parse heatmap data: "dow|hour|changeCount|incidentCount"
-        const cellMap = new Map<string, { changeCount: number; incidentCount: number }>()
-        let maxChange = 0
-        for (const item of chart.items) {
-            const parts = item.label.split('|')
-            const dow = parts[0]
-            const hour = parts[1]
-            const changeCount = parseFloat(parts[2]) || 0
-            const incidentCount = parseFloat(parts[3]) || 0
-            cellMap.set(dow + '-' + hour, { changeCount, incidentCount })
-            if (changeCount > maxChange) maxChange = changeCount
-        }
-
-        const vbWidth = 900
-        const vbHeight = 280
-        const padding = { top: 10, right: 20, bottom: 30, left: 50 }
-        const innerWidth = vbWidth - padding.left - padding.right
-        const innerHeight = vbHeight - padding.top - padding.bottom
-        const cellW = innerWidth / 24
-        const cellH = innerHeight / 7
+        const { cellMap, maxChange, vbWidth, vbHeight, padding, cellW, cellH } = parseWeekdayHeatmapData(chart)
 
         return (
             <div style={{ width: '100%' }}>
-                <svg
-                    viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ width: '100%', height: '280px', display: 'block' }}
-                >
-                    {/* Y-axis labels (days) */}
+                <svg viewBox={`0 0 ${vbWidth} ${vbHeight}`} preserveAspectRatio="xMidYMid meet"
+                    style={{ width: '100%', height: '280px', display: 'block' }}>
                     {dayLabels.map((label, idx) => (
-                        <text
-                            key={label}
-                            x={padding.left - 8}
-                            y={padding.top + idx * cellH + cellH / 2 + 4}
-                            fill="var(--color-text-secondary)"
-                            fontSize="11"
-                            textAnchor="end"
-                        >
-                            {label}
-                        </text>
+                        <text key={label} x={padding.left - 8} y={padding.top + idx * cellH + cellH / 2 + 4}
+                            fill="var(--color-text-secondary)" fontSize="11" textAnchor="end">{label}</text>
                     ))}
-                    {/* X-axis labels (hours) */}
                     {[0, 3, 6, 9, 12, 15, 18, 21].map(hour => (
-                        <text
-                            key={hour}
-                            x={padding.left + hour * cellW + cellW / 2}
-                            y={vbHeight - 8}
-                            fill="var(--color-text-secondary)"
-                            fontSize="11"
-                            textAnchor="middle"
-                        >
-                            {hour}h
-                        </text>
+                        <text key={hour} x={padding.left + hour * cellW + cellW / 2} y={vbHeight - 8}
+                            fill="var(--color-text-secondary)" fontSize="11" textAnchor="middle">{hour}h</text>
                     ))}
-                    {/* Cells */}
                     {Array.from({ length: 7 }, (_, dow) =>
                         Array.from({ length: 24 }, (_, hour) => {
                             const cell = cellMap.get((dow + 1) + '-' + hour)
                             const changeCount = cell?.changeCount || 0
-                            const incidentCount = cell?.incidentCount || 0
                             const opacity = maxChange > 0 ? 0.06 + 0.84 * (changeCount / maxChange) : 0.06
                             const x = padding.left + hour * cellW
                             const y = padding.top + dow * cellH
                             return (
                                 <g key={`${dow}-${hour}`}>
-                                    <rect
-                                        x={x + 1} y={y + 1}
-                                        width={cellW - 2} height={cellH - 2}
-                                        rx="3"
-                                        fill={`rgba(91, 141, 184, ${opacity})`}
-                                    />
+                                    <rect x={x + 1} y={y + 1} width={cellW - 2} height={cellH - 2} rx="3"
+                                        fill={`rgba(91, 141, 184, ${opacity})`} />
                                     {changeCount > 0 && (
-                                        <text
-                                            x={x + cellW / 2} y={y + cellH / 2 + 3}
-                                            fill={opacity > 0.5 ? 'white' : 'var(--color-text-secondary)'}
-                                            fontSize="9"
-                                            textAnchor="middle"
-                                        >
+                                        <text x={x + cellW / 2} y={y + cellH / 2 + 3}
+                                            fill={opacity > 0.5 ? 'white' : 'var(--color-text-secondary)'} fontSize="9" textAnchor="middle">
                                             {changeCount}
                                         </text>
                                     )}
-                                    {incidentCount > 0 && (
-                                        <circle
-                                            cx={x + cellW - 6} cy={y + 6}
-                                            r="4"
-                                            fill={colors[1]}
-                                            opacity="0.85"
-                                        />
+                                    {(cell?.incidentCount || 0) > 0 && (
+                                        <circle cx={x + cellW - 6} cy={y + 6} r="4" fill={colors[1]} opacity="0.85" />
                                     )}
                                 </g>
                             )
@@ -3233,8 +2823,7 @@ function GenericTabPanel({
     )
 }
 
-export default function BusinessIntelligence() {
-    const { t } = useTranslation()
+function useBusinessIntelligence(t: ReturnType<typeof useTranslation>['t']) {
     const { showToast } = useToast()
     const [overview, setOverview] = useState<OverviewResponse | null>(null)
     const [activeTabId, setActiveTabId] = useState<string>('executive-summary')
@@ -3245,80 +2834,50 @@ export default function BusinessIntelligence() {
 
     const loadOverview = useCallback(async (options?: { forceRefresh?: boolean; startDate?: string; endDate?: string }) => {
         const forceRefresh = options?.forceRefresh === true
-        const startDate = options?.startDate
-        const endDate = options?.endDate
-
-        if (forceRefresh) {
-            setRefreshing(true)
-        } else {
-            setLoading(true)
-        }
+        if (forceRefresh) { setRefreshing(true) } else { setLoading(true) }
         setError(null)
         try {
             const params = new URLSearchParams()
-            if (startDate) params.append('startDate', startDate)
-            if (endDate) params.append('endDate', endDate)
+            if (options?.startDate) params.append('startDate', options.startDate)
+            if (options?.endDate) params.append('endDate', options.endDate)
             const queryString = params.toString()
             const baseUrl = forceRefresh ? `${runtime.BUSINESS_INTELLIGENCE_SERVICE_URL}/refresh` : `${runtime.BUSINESS_INTELLIGENCE_SERVICE_URL}/overview`
             const url = queryString ? `${baseUrl}?${queryString}` : baseUrl
 
-            const response = await fetch(url, {
-                method: forceRefresh ? 'POST' : 'GET',
-            })
-
+            const response = await fetch(url, { method: forceRefresh ? 'POST' : 'GET' })
             const contentType = response.headers.get('content-type') || ''
             const isJson = contentType.includes('application/json')
 
             if (!response.ok) {
-                if (!isJson) {
-                    throw new Error(t('businessIntelligence.serviceUnavailable', {
-                        status: response.status,
-                        statusText: response.statusText,
-                    }))
-                }
-
+                if (!isJson) throw new Error(t('businessIntelligence.serviceUnavailable', { status: response.status, statusText: response.statusText }))
                 const errorPayload = await response.json().catch(() => null) as { message?: string } | null
                 throw new Error(errorPayload?.message || `${response.status} ${response.statusText}`)
             }
-
-            if (!isJson) {
-                throw new Error(t('businessIntelligence.invalidJsonResponse'))
-            }
+            if (!isJson) throw new Error(t('businessIntelligence.invalidJsonResponse'))
 
             const data = await response.json() as OverviewResponse
             setOverview(data)
             setActiveTabId(current => (data.tabs.length > 0 && !data.tabs.some(tab => tab.id === current) ? data.tabs[0].id : current))
-            if (forceRefresh) {
-                showToast('success', t('businessIntelligence.refreshSuccess'))
-            }
+            if (forceRefresh) showToast('success', t('businessIntelligence.refreshSuccess'))
         } catch (requestError) {
             const message = requestError instanceof Error ? requestError.message : t('common.unknownError')
             setError(message)
-            if (forceRefresh) {
-                showToast('error', t('businessIntelligence.refreshFailed', { error: message }))
-            }
+            if (forceRefresh) showToast('error', t('businessIntelligence.refreshFailed', { error: message }))
         } finally {
             setLoading(false)
             setRefreshing(false)
         }
     }, [showToast, t])
 
-    // Load data when reporting period changes (also covers initial load)
     useEffect(() => {
         if (reportingPeriod.preset === 'custom') {
             if (reportingPeriod.startDate && reportingPeriod.endDate) {
-                void loadOverview({
-                    startDate: reportingPeriod.startDate,
-                    endDate: reportingPeriod.endDate,
-                })
+                void loadOverview({ startDate: reportingPeriod.startDate, endDate: reportingPeriod.endDate })
             }
             return
         }
         if (reportingPeriod.startDate && reportingPeriod.endDate) {
-            void loadOverview({
-                startDate: reportingPeriod.startDate,
-                endDate: reportingPeriod.endDate,
-            })
+            void loadOverview({ startDate: reportingPeriod.startDate, endDate: reportingPeriod.endDate })
         } else {
             void loadOverview()
         }
@@ -3329,28 +2888,26 @@ export default function BusinessIntelligence() {
         return overview.tabContents[activeTabId] || overview.tabContents[overview.tabs[0]?.id || ''] || null
     }, [activeTabId, overview])
 
+    return { overview, activeTab, activeTabId, setActiveTabId, loading, refreshing, error, reportingPeriod, setReportingPeriod, loadOverview }
+}
+
+export default function BusinessIntelligence() {
+    const { t } = useTranslation()
+    const {
+        overview, activeTab, setActiveTabId,
+        loading, refreshing, error, reportingPeriod, setReportingPeriod, loadOverview,
+    } = useBusinessIntelligence(t)
+
     return (
         <div className="page-container sidebar-top-page page-shell-wide business-intelligence-page">
             <div className="business-intelligence-header">
-                <PageHeader
-                    title={t('businessIntelligence.title')}
-                    subtitle={t('businessIntelligence.subtitle')}
-                />
+                <PageHeader title={t('businessIntelligence.title')} subtitle={t('businessIntelligence.subtitle')} />
                 <div className="business-intelligence-header-controls">
                     <FilterInlineGroup>
-                        <ReportingPeriodSelector
-                            value={reportingPeriod}
-                            onChange={setReportingPeriod}
-                            disabled={loading || refreshing}
-                        />
+                        <ReportingPeriodSelector value={reportingPeriod} onChange={setReportingPeriod} disabled={loading || refreshing} />
                     </FilterInlineGroup>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        iconOnly
-                        className="business-intelligence-refresh-button"
-                        onClick={() => void loadOverview({ forceRefresh: true })}
-                        disabled={refreshing}
+                    <Button variant="secondary" size="sm" iconOnly className="business-intelligence-refresh-button"
+                        onClick={() => void loadOverview({ forceRefresh: true })} disabled={refreshing}
                         aria-label={refreshing ? t('businessIntelligence.refreshing') : t('businessIntelligence.refresh')}
                         title={refreshing ? t('businessIntelligence.refreshing') : t('businessIntelligence.refresh')}
                         leadingIcon={<RefreshCw size={15} className={refreshing ? 'business-intelligence-refresh-icon spinning' : 'business-intelligence-refresh-icon'} />}
@@ -3358,11 +2915,7 @@ export default function BusinessIntelligence() {
                 </div>
             </div>
 
-            {error ? (
-                <div className="conn-banner conn-banner-error">
-                    {t('common.connectionError', { error })}
-                </div>
-            ) : null}
+            {error && <div className="conn-banner conn-banner-error">{t('common.connectionError', { error })}</div>}
 
             {loading && (
                 <div className="empty-state">
@@ -3374,19 +2927,14 @@ export default function BusinessIntelligence() {
                 <>
                     <div className="config-tabs" role="tablist" aria-label={t('businessIntelligence.tabsLabel')}>
                         {overview.tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                role="tab"
+                            <button key={tab.id} type="button" role="tab"
                                 aria-selected={tab.id === activeTab.id}
                                 className={`config-tab ${tab.id === activeTab.id ? 'config-tab-active' : ''}`}
-                                onClick={() => setActiveTabId(tab.id)}
-                            >
+                                onClick={() => setActiveTabId(tab.id)}>
                                 {getBusinessIntelligenceTabLabel(tab, t)}
                             </button>
                         ))}
                     </div>
-
                     {activeTab.id === 'executive-summary' && activeTab.executiveSummary ? (
                         <ExecutiveSummaryPanel summary={activeTab.executiveSummary} cards={localizeExecutiveTab(activeTab, t).cards} t={t} />
                     ) : (
