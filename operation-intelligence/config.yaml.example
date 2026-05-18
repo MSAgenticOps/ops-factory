@@ -35,6 +35,16 @@ operation-intelligence:
     #    crt-file-name: "client.jks"
     #    strict-ssl: false                       # reject insecure SSL fallback (default: true)
 
+  call-chain:
+    enabled: true
+    query-size: 100
+    max-time-range-ms: 1800000            # 30 minutes (max query time range)
+    rotation-interval-ms: 3600000         # 1 hour (data file rotation)
+    normalize-data-retention-days: 90     # data retention days
+    time-split:
+      initial-minutes: 15
+      degrade-minutes: [10, 5]
+
   logging:
     access-log-enabled: true
 
