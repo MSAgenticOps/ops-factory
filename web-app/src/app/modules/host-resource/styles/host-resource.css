@@ -1453,6 +1453,13 @@
     margin-bottom: var(--spacing-2, 8px);
 }
 
+.hr-type-def-card-desc-truncate {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .hr-type-def-card-knowledge-label {
     font-size: 0.75rem;
     color: var(--text-secondary, #94a3b8);
