@@ -15,6 +15,39 @@ const IMPORT_TYPES: ImportType[] = [
     'Whitelist',
 ]
 
+// Sample CSV content for each import type
+const SAMPLE_CSVS: Record<ImportType, string> = {
+    ClusterTypes: `name,code,description,knowledge,commandPrefix,envVariables
+Web Cluster,web-cluster,Web service cluster,Common commands: nginx,tomcat,/usr/bin/,JAVA_HOME=/opt/java;NODE_ENV=production
+Database Cluster,db-cluster,Database service cluster,Common commands: mysql,postgres,/usr/bin/,DB_PORT=3306`,
+    BusinessTypes: `name,code,description,knowledge
+Payment Service,payment,Payment related services,Standard payment flow
+User Service,user,User management services,User registration, login, authentication`,
+    HostGroups: `name,code,parentGroup,description
+Production Environment,prod,,Production servers
+Production-Web,web,Production Environment,Production Web servers
+Production-DB,db,Production Environment,Production database servers`,
+    Clusters: `name,type,purpose,group,description
+Web01,Web Cluster,Frontend services,Production-Web,Web frontend server cluster
+DB01,Database Cluster,Data storage,Production-DB,MySQL database cluster`,
+    Hosts: `name,hostname,ip,businessIp,port,os,location,username,authType,credential,business,cluster,purpose,tags,description
+web-server-01,web01,192.168.1.10,,22,Linux,Beijing Datacenter,root,password,,Web01,Web Server,web;prod,Primary Web Server
+web-server-02,web02,192.168.1.11,,22,Linux,Beijing Datacenter,root,password,,Web01,Web Server,web;prod,Backup Web Server`,
+    BusinessServices: `name,code,group,businessType,description,tags,priority,contactInfo
+Payment Service,payment-svc,Production Environment,Payment Service,Online payment interface,payment;prod,High,Ops Team
+User Service,user-svc,Production Environment,User Service,User management features,user;prod,Medium,Dev Team`,
+    Relations: `sourceNode,destNode,description
+web-server-01,db-server-01,Web server accessing database
+web-server-02,db-server-01,Backup web server accessing database`,
+    SOPs: `name,description,version,triggerCondition,enabled,mode,stepsDescription,tags
+Server Restart,Regularly restart servers to free resources,v1.0,Memory usage over 90%,true,structured,1.Check current memory usage;2.Notify相关人员;3.Execute restart;4.Verify service recovery,restart;ops
+Log Cleanup,Regularly clean up log files,v1.1,Disk usage over 80%,true,structured,1.Check log directory;2.Delete logs older than 7 days;3.Verify disk space,cleanup;ops`,
+    Whitelist: `pattern,description,enabled
+ls -la,List files,true
+ps aux,View processes,true
+cat /var/log/*,View logs,false`,
+}
+
 interface ImportDialogProps {
     open: boolean
     onClose: () => void
@@ -53,6 +86,18 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
         const text = await selectedFile.text()
         const res = await onImport(selectedType, text)
         setResult(res)
+    }
+
+    const downloadSample = () => {
+        if (!selectedType) return
+        const csv = SAMPLE_CSVS[selectedType]
+        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${selectedType.toLowerCase()}_sample.csv`
+        a.click()
+        URL.revokeObjectURL(url)
     }
 
     const handleClose = () => {
@@ -137,6 +182,20 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                     </div>
                     <div className="hr-import-encoding-hint">
                         {t('hostResource.importEncodingHint')}
+                    </div>
+                    <div className="hr-import-sample-area">
+                        <div className="hr-import-sample-header">
+                            <span>{t('hostResource.importSampleTitle')}</span>
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-xs"
+                                onClick={downloadSample}
+                                disabled={importing}
+                            >
+                                {t('hostResource.importDownloadSample')}
+                            </button>
+                        </div>
+                        <pre className="hr-import-sample-content">{SAMPLE_CSVS[selectedType]}</pre>
                     </div>
                     <div className="hr-import-file-area">
                         <input

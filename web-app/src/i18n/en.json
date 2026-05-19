@@ -2259,6 +2259,8 @@
     "importStep1": "Step 1: Select Import Type",
     "importStep2": "Step 2: Select CSV File",
     "importEncodingHint": "Note: CSV files must be UTF-8 encoded. If your file uses GBK or other encoding, please convert it to UTF-8 first (e.g., using Notepad: File → Save As → Encoding select UTF-8).",
+    "importSampleTitle": "CSV Sample Format",
+    "importDownloadSample": "Download Sample",
     "importStart": "Start Import",
     "importContinue": "Import More",
     "importClose": "Close",
