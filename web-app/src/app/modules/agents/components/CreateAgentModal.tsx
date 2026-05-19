@@ -88,7 +88,7 @@ export function CreateAgentModal({
                     )}
 
                     <div className="form-group">
-                        <label className="form-label">{t('agents.agentName')}</label>
+                        <label className="form-label">{t('agents.agentName')} <span className="form-required">*</span></label>
                         <input
                             className="form-input"
                             type="text"
