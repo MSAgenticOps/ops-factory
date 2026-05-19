@@ -142,8 +142,8 @@ export function useResourceImport(deps: ImportDeps) {
             } else {
                 // For other types, check if file has unique fields of other types
                 const unexpectedFields = Object.entries(typeUniqueFields)
-                    .filter(([checkType, fields]) => checkType !== type)
-                    .filter(([checkType]) => typeUniqueFields[checkType].length > 0)
+                    .filter(([checkType]) => checkType !== type)
+                    .filter(([checkType]) => typeUniqueFields[checkType as ImportType].length > 0)
                     .filter(([, fields]) => fields.some(field => firstRowKeys.has(field.toLowerCase())))
 
                 if (unexpectedFields.length > 0) {
