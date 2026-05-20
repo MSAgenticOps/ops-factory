@@ -168,16 +168,25 @@ function setRuntimeConfig(config: RuntimeConfig): void {
 }
 
 async function loadRuntimeConfig(): Promise<RuntimeConfig> {
-    const response = await trackedFetch('/config.json', {
-        cache: 'no-store',
-        category: 'app',
-        name: 'app.context_init',
-    })
-    if (!response.ok) {
-        throw new Error(`Failed to load /config.json (${response.status})`)
+    // Resolve config.json relative to the HTML page directory at runtime,
+    // so it works regardless of deployment path (e.g. /adc-static/.../dist/)
+    const baseDir = window.location.pathname.replace(/[^/]*$/, '')
+    const configUrl = baseDir + 'config.json'
+    try {
+        const response = await trackedFetch(configUrl, {
+            cache: 'no-store',
+            category: 'app',
+            name: 'app.context_init',
+        })
+        if (!response.ok) {
+            console.warn(`Failed to load config.json (${response.status}), using defaults`)
+            return {}
+        }
+        return (await response.json()) as RuntimeConfig
+    } catch (error) {
+        console.warn('Failed to load config.json, using defaults:', error)
+        return {}
     }
-
-    return (await response.json()) as RuntimeConfig
 }
 
 export async function initializeRuntimeConfig(): Promise<void> {

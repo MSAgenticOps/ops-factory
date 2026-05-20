@@ -29,7 +29,7 @@ export default function TypeCard({ item, onEdit, onDelete }: Props) {
         <div className="hr-type-def-card">
             <div className="hr-type-def-card-header">
                 <span className="hr-type-def-card-color" style={{ background: item.color }} />
-                <span className="hr-type-def-card-name">{item.name}</span>
+                <span className="hr-type-def-card-name" title={item.name}>{item.name}</span>
                 {item.mode === 'primary-backup' && (
                     <span className="hr-mode-badge">
                         {t('hostResource.clusterModePrimaryBackup')}
@@ -37,12 +37,12 @@ export default function TypeCard({ item, onEdit, onDelete }: Props) {
                 )}
             </div>
             {item.description && (
-                <div className="hr-type-def-card-desc">{item.description}</div>
+                <div className="hr-type-def-card-desc" title={item.description}>{item.description}</div>
             )}
             {item.knowledge && (
                 <>
                     <div className="hr-type-def-card-knowledge-label">{t('hostResource.knowledge')}</div>
-                    <div className="hr-type-def-card-knowledge">{item.knowledge}</div>
+                    <div className="hr-type-def-card-knowledge" title={item.knowledge}>{item.knowledge}</div>
                 </>
             )}
             <ResourceCardActionGroup className="hr-type-def-card-footer">

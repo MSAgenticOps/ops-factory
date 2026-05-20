@@ -2283,6 +2283,8 @@
     "clusterHostCount": "{{count}} hosts",
     "clusterRelationsTitle": "Cluster Relations",
     "clusterRelationsSubtitle": "The main graph shows business and cluster call paths. Click a cluster to inspect its summary and sync the host list above.",
+    "filterByGroup": "Filter by Group",
+    "allGroups": "All Groups",
     "clusterHostsTitle": "Cluster Hosts",
     "selectClusterToViewHosts": "Click a cluster node in the topology to inspect the hosts contained in that cluster here.",
     "noHostsInCluster": "No hosts are attached to this cluster yet",
