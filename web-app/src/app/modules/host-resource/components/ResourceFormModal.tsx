@@ -153,6 +153,32 @@ export default function ResourceFormModal({
         return ids
     }, [groups])
 
+    // 获取环境组的所有父组ID（包括自身）
+    const getAncestorIds = useCallback((groupId: string): Set<string> => {
+        const ids = new Set<string>()
+        let currentGroupId: string | null = groupId
+        while (currentGroupId) {
+            ids.add(currentGroupId)
+            const group = groups.find(g => g.id === currentGroupId)
+            if (!group || !group.parentId) break
+            currentGroupId = group.parentId
+        }
+        return ids
+    }, [groups])
+
+    // 获取环境组及其所有祖先和后代ID（完整层级范围）
+    const getRelatedGroupIds = useCallback((groupId: string): Set<string> => {
+        const ancestorIds = getAncestorIds(groupId)
+        const descendantIds = new Set<string>()
+        for (const id of ancestorIds) {
+            const descendants = getDescendantIds(id)
+            for (const d of descendants) {
+                descendantIds.add(d)
+            }
+        }
+        return new Set([...ancestorIds, ...descendantIds])
+    }, [getAncestorIds, getDescendantIds])
+
     const parentCandidates = useMemo(() => {
         const excludeIds = editingItem?.type === 'group' ? getDescendantIds(editingItem.data.id) : new Set<string>()
         // Allow 1st-level (no parentId) and 2nd-level (parentId points to a root group)
@@ -321,6 +347,28 @@ export default function ResourceFormModal({
                 const trimmedHostName = hostName.trim()
                 const duplicate = hosts.some(h => h.name?.toLowerCase() === trimmedHostName.toLowerCase() && h.id !== editingHostId)
                 if (duplicate) { setError(t('hostResource.duplicateName', { name: trimmedHostName })); setSaving(false); return }
+
+                // SSH IP重复校验（在同一环境组层级中）
+                const cluster = hostClusterId ? clusters.find(c => c.id === hostClusterId) : null
+                const relatedGroupIds = cluster?.groupId ? getRelatedGroupIds(cluster.groupId) : new Set<string>()
+
+                const trimmedIp = hostIp.trim()
+                if (trimmedIp && relatedGroupIds.size > 0) {
+                    const duplicateIpHost = hosts.find(h => {
+                        if (h.id === editingHostId) return false
+                        if (!h.clusterId || !h.ip) return false
+                        const hostCluster = clusters.find(c => c.id === h.clusterId)
+                        if (!hostCluster?.groupId) return false
+                        const hostGroupIds = getRelatedGroupIds(hostCluster.groupId)
+                        return [...hostGroupIds].some(id => relatedGroupIds.has(id)) && h.ip.trim() === trimmedIp
+                    })
+                    if (duplicateIpHost) {
+                        setError(t('hostResource.duplicateIp', { ip: trimmedIp, host: duplicateIpHost.name }))
+                        setSaving(false)
+                        return
+                    }
+                }
+
                 const payload: Record<string, unknown> = {
                     name: hostName.trim(), hostname: hostname.trim() || null, ip: hostIp.trim(), port: hostPort,
                     os: hostOs.trim() || null, location: hostLocation.trim() || null, username: hostUsername.trim(),
@@ -344,7 +392,8 @@ export default function ResourceFormModal({
         hostUsername, hostAuthType, hostCredential, hostClusterId, hostPurpose, hostBusiness,
         hostDescription, hostCustomAttributes, hostRole,
         bsName, bsCode, bsGroupId, bsSelectedBusinessTypeId, bsTags, bsPriority, bsDescription,
-        onSaveGroup, onSaveCluster, onSaveBusinessService, onSaveHost, onClose, t, editingItem, hosts])
+        onSaveGroup, onSaveCluster, onSaveBusinessService, onSaveHost, onClose, t, editingItem, hosts,
+        getRelatedGroupIds, clusters])
 
     const canSave = () => {
         if (selectedType === 'group') return groupName.trim().length > 0
