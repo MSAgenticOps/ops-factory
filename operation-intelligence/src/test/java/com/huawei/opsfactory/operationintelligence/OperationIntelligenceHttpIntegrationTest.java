@@ -31,8 +31,9 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureWebTestClient
 class OperationIntelligenceHttpIntegrationTest {
 
@@ -132,7 +133,7 @@ class OperationIntelligenceHttpIntegrationTest {
     private static void deleteRecursively(Path root) throws IOException {
         if (!Files.exists(root))
             return;
-        try (var paths = Files.walk(root)) {
+        try (Stream<Path> paths = Files.walk(root)) {
             paths.sorted(Comparator.reverseOrder()).forEach(path -> {
                 try {
                     Files.deleteIfExists(path);

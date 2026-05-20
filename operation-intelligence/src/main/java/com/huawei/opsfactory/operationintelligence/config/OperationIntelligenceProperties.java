@@ -32,6 +32,8 @@ public class OperationIntelligenceProperties {
 
     private Qos qos = new Qos();
 
+    private KnowledgeGraph knowledgeGraph = new KnowledgeGraph();
+
     private Logging logging = new Logging();
 
     /**
@@ -104,6 +106,24 @@ public class OperationIntelligenceProperties {
      */
     public void setQos(Qos qos) {
         this.qos = qos;
+    }
+
+    /**
+     * Gets the knowledge graph.
+     *
+     * @return the result
+     */
+    public KnowledgeGraph getKnowledgeGraph() {
+        return knowledgeGraph;
+    }
+
+    /**
+     * Sets the knowledge graph.
+     *
+     * @param knowledgeGraph the knowledgeGraph
+     */
+    public void setKnowledgeGraph(KnowledgeGraph knowledgeGraph) {
+        this.knowledgeGraph = knowledgeGraph;
     }
 
     /**
@@ -734,6 +754,88 @@ public class OperationIntelligenceProperties {
          */
         public void setAccessLogEnabled(boolean accessLogEnabled) {
             this.accessLogEnabled = accessLogEnabled;
+        }
+    }
+
+    public static class KnowledgeGraph {
+        private boolean enabled = true;
+
+        private String dataDir = "knowledge-graph";
+
+        private int maxHops = 4;
+
+        private int snapshotRetention = 3;
+
+        /**
+         * Checks whether the enabled.
+         *
+         * @return the result
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets the enabled.
+         *
+         * @param enabled the enabled
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Gets the data dir.
+         *
+         * @return the result
+         */
+        public String getDataDir() {
+            return dataDir;
+        }
+
+        /**
+         * Sets the data dir.
+         *
+         * @param dataDir the dataDir
+         */
+        public void setDataDir(String dataDir) {
+            this.dataDir = dataDir;
+        }
+
+        /**
+         * Gets the max hops.
+         *
+         * @return the result
+         */
+        public int getMaxHops() {
+            return maxHops;
+        }
+
+        /**
+         * Sets the max hops.
+         *
+         * @param maxHops the maxHops
+         */
+        public void setMaxHops(int maxHops) {
+            this.maxHops = maxHops;
+        }
+
+        /**
+         * Gets the snapshot retention.
+         *
+         * @return the result
+         */
+        public int getSnapshotRetention() {
+            return snapshotRetention;
+        }
+
+        /**
+         * Sets the snapshot retention.
+         *
+         * @param snapshotRetention the snapshotRetention
+         */
+        public void setSnapshotRetention(int snapshotRetention) {
+            this.snapshotRetention = snapshotRetention;
         }
     }
 }
