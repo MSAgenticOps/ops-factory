@@ -38,6 +38,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
+    const requiredStar = <span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span>
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<ClusterType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
@@ -296,7 +297,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                         </div>
                         <div className="modal-body">
                             <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeName')}</label>
+                                <label className="form-label">{t('hostResource.typeName')}{requiredStar}</label>
                                 <input
                                     className="form-input"
                                     value={form.name}
