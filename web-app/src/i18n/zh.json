@@ -2276,6 +2276,8 @@
     "importEncodingHint": "注意：CSV 文件必须是 UTF-8 编码。如果您的文件使用 GBK 或其他编码，请先转换为 UTF-8（例如使用记事本：文件 → 另存为 → 编码选择 UTF-8）。",
     "importSampleTitle": "CSV 样例格式",
     "importDownloadSample": "下载样例",
+    "importSelectFile": "选择文件",
+    "importNoFileSelected": "未选择文件",
     "importStart": "开始导入",
     "importContinue": "继续导入",
     "importClose": "关闭",
