@@ -767,10 +767,6 @@ export default function ResourceFormModal({
                                                         const bt = businessTypes.find(b => b.id === btId)
                                                         if (bt) {
                                                             setBsCode(bt.code)
-                                                            if (!editingItem) {
-                                                                setBsName(bt.name)
-                                                                setBsDescription(bt.description)
-                                                            }
                                                         }
                                                     } else {
                                                         setBsCode('')
