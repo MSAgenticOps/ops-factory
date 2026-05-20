@@ -130,7 +130,10 @@ function WhitelistFormModal({
                     )}
 
                     <div className="form-group">
-                        <label className="form-label">{t('remoteDiagnosis.whitelist.pattern')}</label>
+                        <label className="form-label">
+                            {t('remoteDiagnosis.whitelist.pattern')}
+                            <span className="form-required">*</span>
+                        </label>
                         <input
                             className="form-input"
                             type="text"
