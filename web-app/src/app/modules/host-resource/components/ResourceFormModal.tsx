@@ -103,12 +103,11 @@ export default function ResourceFormModal({
     const [hostUsername, setHostUsername] = useState(editingItem?.type === 'host' ? editingItem.data.username : '')
     const [hostAuthType, setHostAuthType] = useState<'password' | 'key'>(editingItem?.type === 'host' ? editingItem.data.authType : 'password')
     const [hostCredential, setHostCredential] = useState(editingItem?.type === 'host' ? '***' : '')
-    const [hostClusterIds, setHostClusterIds] = useState<string[]>(() => {
+    const [hostClusterId, setHostClusterId] = useState<string>(() => {
         if (editingItem?.type === 'host') {
-            const ids = (editingItem.data as any).clusterIds
-            return ids && ids.length > 0 ? ids : editingItem.data.clusterId ? [editingItem.data.clusterId] : []
+            return editingItem.data.clusterId ?? ''
         }
-        return defaultClusterId ? [defaultClusterId] : []
+        return defaultClusterId ?? ''
     })
     const [hostPurpose, setHostPurpose] = useState(editingItem?.type === 'host' ? (editingItem.data.purpose ?? '') : '')
     const [hostBusiness, setHostBusiness] = useState(editingItem?.type === 'host' ? (editingItem.data.business ?? '') : '')
@@ -337,7 +336,7 @@ export default function ResourceFormModal({
                 const payload: Record<string, unknown> = {
                     name: hostName.trim(), hostname: hostname.trim() || null, ip: hostIp.trim(), port: hostPort,
                     os: hostOs.trim() || null, location: hostLocation.trim() || null, username: hostUsername.trim(),
-                    authType: hostAuthType, clusterId: hostClusterIds[0] || null, clusterIds: hostClusterIds.length > 0 ? hostClusterIds : undefined, purpose: hostPurpose.trim() || null,
+                    authType: hostAuthType, clusterId: hostClusterId || null, purpose: hostPurpose.trim() || null,
                     business: hostBusiness.trim() || null, description: hostDescription.trim(),
                     customAttributes: hostCustomAttributes.filter(attr => attr.key.trim().length > 0),
                     businessIp: hostBusinessIp.trim() || null,
@@ -354,7 +353,7 @@ export default function ResourceFormModal({
         }
     }, [selectedType, groupName, groupParentId, groupDescription, groupCode, groupEnabled, clusterName, clusterType, clusterPurpose,
         clusterGroupId, clusterDescription, hostName, hostname, hostIp, hostBusinessIp, hostPort, hostOs, hostLocation,
-        hostUsername, hostAuthType, hostCredential, hostClusterIds, hostPurpose, hostBusiness,
+        hostUsername, hostAuthType, hostCredential, hostClusterId, hostPurpose, hostBusiness,
         hostDescription, hostCustomAttributes, hostRole,
         bsName, bsCode, bsGroupId, bsSelectedBusinessTypeId, bsTags, bsPriority, bsDescription,
         onSaveGroup, onSaveCluster, onSaveBusinessService, onSaveHost, onClose, t, editingItem, hosts])
@@ -836,19 +835,18 @@ export default function ResourceFormModal({
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.cluster')}</label>
-                                            <MultiSelectDropdown
-                                                options={clusters.map(c => ({ value: c.id, label: c.name }))}
-                                                selectedIds={hostClusterIds}
-                                                onChange={(ids) => {
-                                                    const removed = hostClusterIds.filter(id => !ids.includes(id))
-                                                    setHostClusterIds(ids)
-                                                    if (removed.length > 0) setHostRole('')
+                                            <SearchableSelect
+                                                value={hostClusterId}
+                                                onChange={(id) => {
+                                                    if (id !== hostClusterId) setHostRole('')
+                                                    setHostClusterId(id)
                                                 }}
+                                                options={clusters.map(c => ({ value: c.id, label: c.name }))}
                                                 placeholder={clusters.length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
                                             />
                                         </div>
                                         {(() => {
-                                            const selectedCluster = clusters.find(c => c.id === hostClusterIds[0])
+                                            const selectedCluster = clusters.find(c => c.id === hostClusterId)
                                             const clusterTypeName = selectedCluster?.type ?? ''
                                             const clusterTypeObj = clusterTypes.find(ct => ct.name === clusterTypeName)
                                             const clusterMode = clusterTypeObj?.mode ?? 'peer'

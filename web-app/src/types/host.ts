@@ -12,7 +12,6 @@ export interface Host {
     credential?: string
     business?: string
     clusterId?: string
-    clusterIds?: string[]
     purpose?: string
     tags: string[]
     description: string
@@ -39,8 +38,7 @@ export interface HostCreateRequest {
     authType: 'password' | 'key'
     credential: string
     business?: string
-    clusterId?: string | string[]
-    clusterIds?: string[]
+    clusterId?: string
     purpose?: string
     tags: string[]
     description?: string
