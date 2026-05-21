@@ -103,10 +103,11 @@ function TreeNodeItem({ node, depth, selectedId, selectedType, selectedIds, onSe
                 style={{ paddingLeft: depth * 16 + 8 }}
                 onClick={handleClick}
             >
-                {hasChildren && (
+                {isFolder && (
                     <span
                         className={`hr-tree-chevron ${expanded ? 'hr-tree-chevron-open' : ''}`}
                         onClick={handleToggle}
+                        style={{ opacity: hasChildren ? 1 : 0.3 }}
                     >
                         &#9654;
                     </span>
