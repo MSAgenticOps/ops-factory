@@ -77,6 +77,10 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
         if (!form.name.trim()) return
         setSaving(true)
         try {
+            const cleanedForm = {
+                ...form,
+                envVariables: form.envVariables.filter(ev => ev.key.trim() !== ''),
+            }
             if (editing) {
                 // Check if type name or code is in use when editing
                 const inUseByName = clusters.filter(c => c.type === form.name)
@@ -100,9 +104,9 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                     return
                 }
 
-                await onUpdate(editing.id, form)
+                await onUpdate(editing.id, cleanedForm)
             } else {
-                await onCreate(form)
+                await onCreate(cleanedForm)
             }
             setShowModal(false)
         } catch (err) {
@@ -110,7 +114,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
         } finally {
             setSaving(false)
         }
-    }, [editing, form, onCreate, onUpdate, showToast])
+    }, [editing, form, onCreate, onUpdate, showToast, t])
 
     const handleDelete = useCallback(async (item: ClusterType) => {
         const inUseByName = clusters.filter(c => c.type === item.name)
