@@ -6,6 +6,8 @@
     "knowledgeServiceUrl": "",
     "businessIntelligenceServiceUrl": "",
 	"skillMarketServiceUrl": "",
+	"operationIntelligenceServiceUrl": "",
+    "operationIntelligenceSecretKey": "test",
     "logging": {
         "level": "info",
         "consoleEnabled": true,
