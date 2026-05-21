@@ -1834,6 +1834,7 @@
     "saveFailed": "Failed to save memory file",
     "deleted": "Memory file deleted",
     "deleteFailed": "Failed to delete memory file",
+    "deleteConfirm": "Click delete again to confirm removing",
     "emptyFile": "Empty file — click Edit to add content",
     "formatHint": "Separate entries with blank lines. Lines starting with # are parsed as tags.",
     "entryCount": "{{count}} entry",
