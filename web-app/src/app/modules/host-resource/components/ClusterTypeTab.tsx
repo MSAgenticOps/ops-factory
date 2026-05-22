@@ -181,15 +181,31 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
             variant: 'danger',
             confirmLabel: t('common.delete'),
         })
-        if (confirmed) {
-            try {
-                for (const id of selectedIds) {
-                    await onDelete(id)
-                }
-                setSelectedIds(new Set())
-            } catch (err) {
-                showToast('error', err instanceof Error ? err.message : 'Failed')
+
+        if (!confirmed) return
+
+        try {
+            const results = await Promise.allSettled(
+                Array.from(selectedIds).map(id => onDelete(id))
+            )
+
+            const successful = results.filter(r => r.status === 'fulfilled').length
+            const failed = results.filter(r => r.status === 'rejected').length
+            const totalCount = selectedIds.size
+
+            if (failed > 0) {
+                showToast('warning', t('hostResource.deletePartialResult', {
+                    success: successful,
+                    failed,
+                    total: totalCount
+                }))
+            } else {
+                showToast('success', t('hostResource.deleteSuccess', { count: totalCount }))
             }
+
+            setSelectedIds(new Set())
+        } catch (err) {
+            showToast('error', err instanceof Error ? err.message : 'Failed')
         }
     }, [clusterTypes, clusters, selectedIds, onDelete, t, requestConfirm, showToast])
 

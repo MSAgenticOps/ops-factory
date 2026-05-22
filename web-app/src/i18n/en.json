@@ -2285,6 +2285,8 @@
     "confirmDeleteClusterTypes": "Are you sure you want to delete {{count}} selected cluster types?",
     "clusterTypeInUse": "Cluster type \"{{name}}\" is used by the following clusters: {{clusters}}. Please delete them first.",
     "clusterTypesInUseBatch": "The following cluster types are in use and cannot be deleted: {{names}}",
+    "deletePartialResult": "Deleted {{success}}/{{total}} items, {{failed}} failed",
+    "deleteSuccess": "Successfully deleted {{count}} items",
     "confirmDeleteBusinessType": "Are you sure you want to delete this business type?",
     "sourceType": "Source Type",
     "sourceTypeHost": "Host",

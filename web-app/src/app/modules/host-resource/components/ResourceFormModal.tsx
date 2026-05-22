@@ -178,7 +178,7 @@ export default function ResourceFormModal({
             }
         }
         return new Set([...ancestorIds, ...descendantIds])
-    }, [getAncestorIds, getDescendantIds])
+    }, [getAncestorIds, getDescendantIds, groups])
 
     const parentCandidates = useMemo(() => {
         const excludeIds = editingItem?.type === 'group' ? getDescendantIds(editingItem.data.id) : new Set<string>()
