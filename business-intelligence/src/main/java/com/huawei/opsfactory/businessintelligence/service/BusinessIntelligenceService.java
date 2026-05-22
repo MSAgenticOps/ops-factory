@@ -202,7 +202,7 @@ public class BusinessIntelligenceService {
             .filter(row -> isWithinDateRange(row.get(BiColumns.LOGGED_DATE), start, end))
             .collect(Collectors.toList());
 
-        return new BiRawData(filteredIncidents, filteredIncidentSlaCriteria, filteredChanges, filteredRequests, filteredProblems);
+        return new BiRawData(filteredIncidents, filteredIncidentSlaCriteria, filteredChanges, filteredRequests, filteredProblems, rawData.requestSlaCriteria());
     }
 
     private boolean isWithinDateRange(String dateStr, LocalDate start, LocalDate end) {
@@ -306,7 +306,10 @@ public class BusinessIntelligenceService {
 
         long incidentSlaBreached = incident.totalCount() - Math.round(incident.slaRate() * incident.totalCount());
         long changeFailures = change.totalCount() - Math.round(change.successRate() * change.totalCount());
-        long requestOpen = rawData.requests().stream().filter(row -> !"Fulfilled".equalsIgnoreCase(clean(row.get(BiColumns.STATUS)))).count();
+        long requestOpen = rawData.requests().stream().filter(row -> {
+            String closeCode = clean(row.get(BiColumns.CLOSE_CODE));
+            return !("Fulfilled".equalsIgnoreCase(closeCode) || "Cancelled".equalsIgnoreCase(closeCode));
+        }).count();
         long problemOpen = rawData.problems().stream().filter(row -> !matchesAny(clean(row.get(BiColumns.STATUS)), List.of("Resolved", "Closed"))).count();
 
         return new TabContent(
@@ -344,66 +347,90 @@ public class BusinessIntelligenceService {
     }
 
     private TabContent buildSlaAnalysis(BiRawData rawData, String startDate, String endDate) {
+        // ── Incident SLA ──
         List<IncidentSlaRecord> slaRecords = buildIncidentSlaRecords(rawData);
         BiModels.SlaAnalysisSummary summary = buildSlaAnalysisSummary(slaRecords);
-        return new TabContent(
-            "sla-analysis",
-            "SLA分析",
-            "多维度观察事件SLA履约情况，并进行违约情况分析。",
-            null,
-            summary,
-            List.of(
-                card("sla-overall", "综合达成率", summary.hero().overallComplianceRate(), toneFromRate(summary.hero().overallComplianceRate())),
-                card("sla-response", "响应达成率", summary.hero().responseComplianceRate(), summary.response().tone()),
-                card("sla-resolution", "解决达成率", summary.hero().resolutionComplianceRate(), summary.resolution().tone()),
-                card("sla-high-priority", "P1/P2达成率", summary.hero().highPriorityComplianceRate(), toneFromRate(summary.hero().highPriorityComplianceRate())),
-                card("sla-response-breached", "响应违约数", summary.violationBreakdown().responseBreached(), summary.violationBreakdown().responseBreached() > 0 ? "warning" : "success"),
-                card("sla-resolution-breached", "解决违约数", summary.violationBreakdown().resolutionBreached(), summary.violationBreakdown().resolutionBreached() > 0 ? "warning" : "success")
-            ),
-            List.of(
-                lineChart("sla-trend", "SLA达成率趋势", buildSlaWeeklyTrendData(rawData, startDate, endDate),
-                    List.of("响应达成率", "解决达成率", "P1/P2达成率"),
-                    List.of("#10b981", "#5b8db8", "#f59e0b")),
-                new ChartSection("priority-comparison", "优先级SLA达成率对比", "grouped-bar",
-                    summary.priorityRows().stream()
-                        .map(row -> new ChartDatum(
-                            row.priority() + "|" + String.format("%.1f", parsePercentage(row.responseComplianceRate())) + "|" + String.format("%.1f", parsePercentage(row.resolutionComplianceRate())),
-                            parsePercentage(row.responseComplianceRate())))
-                        .toList(),
-                    new ChartConfig(List.of("响应达成率", "解决达成率"), null, List.of("#10b981", "#5b8db8"), "优先级", "达成率(%)")),
-                pieChart("violation-by-priority", "违约优先级分布",
-                    slaRecords.stream()
-                        .filter(IncidentSlaRecord::anyBreached)
-                        .collect(Collectors.groupingBy(IncidentSlaRecord::priority, LinkedHashMap::new, Collectors.counting()))
-                        .entrySet().stream()
-                        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                        .map(e -> new ChartDatum(e.getKey(), e.getValue()))
-                        .toList(),
-                    List.of("#ef4444", "#f59e0b", "#eab308", "#10b981")),
-                pieChart("violation-by-category", "违约事件类型分布",
-                    slaRecords.stream()
-                        .filter(IncidentSlaRecord::anyBreached)
-                        .collect(Collectors.groupingBy(r -> defaultLabel(r.category(), "未标注"), LinkedHashMap::new, Collectors.counting()))
-                        .entrySet().stream()
-                        .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                        .limit(8)
+
+        List<MetricCard> incidentCards = List.of(
+            card("sla-overall", "综合达成率", summary.hero().overallComplianceRate(), toneFromRate(summary.hero().overallComplianceRate())),
+            card("sla-response", "响应达成率", summary.hero().responseComplianceRate(), summary.response().tone()),
+            card("sla-resolution", "解决达成率", summary.hero().resolutionComplianceRate(), summary.resolution().tone()),
+            card("sla-high-priority", "P1/P2达成率", summary.hero().highPriorityComplianceRate(), toneFromRate(summary.hero().highPriorityComplianceRate())),
+            card("sla-response-breached", "响应违约数", summary.violationBreakdown().responseBreached(), summary.violationBreakdown().responseBreached() > 0 ? "warning" : "success"),
+            card("sla-resolution-breached", "解决违约数", summary.violationBreakdown().resolutionBreached(), summary.violationBreakdown().resolutionBreached() > 0 ? "warning" : "success")
+        );
+
+        List<ChartSection> incidentCharts = List.of(
+            lineChart("sla-trend", "SLA达成率趋势", buildSlaWeeklyTrendData(rawData, startDate, endDate),
+                List.of("响应达成率", "解决达成率", "P1/P2达成率"),
+                List.of("#10b981", "#5b8db8", "#f59e0b")),
+            new ChartSection("priority-comparison", "优先级SLA达成率对比", "grouped-bar",
+                summary.priorityRows().stream()
+                    .map(row -> new ChartDatum(
+                        row.priority() + "|" + String.format("%.1f", parsePercentage(row.responseComplianceRate())) + "|" + String.format("%.1f", parsePercentage(row.resolutionComplianceRate())),
+                        parsePercentage(row.responseComplianceRate())))
+                    .toList(),
+                new ChartConfig(List.of("响应达成率", "解决达成率"), null, List.of("#10b981", "#5b8db8"), "优先级", "达成率(%)")),
+            pieChart("violation-by-priority", "违约优先级分布",
+                slaRecords.stream()
+                    .filter(IncidentSlaRecord::anyBreached)
+                    .collect(Collectors.groupingBy(IncidentSlaRecord::priority, LinkedHashMap::new, Collectors.counting()))
+                    .entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .map(e -> new ChartDatum(e.getKey(), e.getValue()))
+                    .toList(),
+                List.of("#ef4444", "#f59e0b", "#eab308", "#10b981")),
+            pieChart("violation-by-category", "违约事件类型分布",
+                slaRecords.stream()
+                    .filter(IncidentSlaRecord::anyBreached)
+                    .collect(Collectors.groupingBy(r -> defaultLabel(r.category(), "未标注"), LinkedHashMap::new, Collectors.counting()))
+                    .entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(8)
                         .map(e -> new ChartDatum(e.getKey(), e.getValue()))
                         .toList(),
                     List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082", "#5e9bb5", "#7ca65a"))
-            ),
-            List.of(
-                table("sla-violation-samples", "违约样本", List.of("编号", "标题", "优先级", "类别", "处理人", "响应时长", "解决时长", "违约类型"), summary.violationSamples().stream()
-                    .map(sample -> List.of(
-                        sample.orderNumber(),
-                        sample.orderName(),
-                        sample.priority(),
-                        sample.category(),
-                        sample.resolver(),
-                        sample.responseDuration(),
-                        sample.resolutionDuration(),
-                        sample.violationType()
-                    )).toList())
-            )
+        );
+
+        List<BiModels.TableSection> incidentTables = List.of(
+            table("sla-violation-samples", "违约样本", List.of("编号", "标题", "优先级", "类别", "处理人", "响应时长", "解决时长", "违约类型"), summary.violationSamples().stream()
+                .map(sample -> List.of(
+                    sample.orderNumber(),
+                    sample.orderName(),
+                    sample.priority(),
+                    sample.category(),
+                    sample.resolver(),
+                    sample.responseDuration(),
+                    sample.resolutionDuration(),
+                    sample.violationType()
+                )).toList())
+        );
+
+        // ── Request SLA ──
+        List<BusinessIntelligenceMetricsService.RequestSlaRecord> reqRecords = metricsService.buildRequestSlaRecords(rawData);
+        List<MetricCard> requestCards = buildRequestSlaCards(reqRecords);
+        List<ChartSection> requestCharts = buildRequestSlaCharts(reqRecords, rawData, startDate, endDate);
+        List<BiModels.TableSection> requestTables = buildRequestSlaTables(reqRecords);
+
+        // ── Merge ──
+        List<MetricCard> allCards = new ArrayList<>(incidentCards);
+        allCards.addAll(requestCards);
+
+        List<ChartSection> allCharts = new ArrayList<>(incidentCharts);
+        allCharts.addAll(requestCharts);
+
+        List<BiModels.TableSection> allTables = new ArrayList<>(incidentTables);
+        allTables.addAll(requestTables);
+
+        return new TabContent(
+            "sla-analysis",
+            "SLA分析",
+            "事件与请求SLA履约情况分析。",
+            null,
+            summary,
+            allCards,
+            allCharts,
+            allTables
         );
     }
 
@@ -456,7 +483,7 @@ public class BusinessIntelligenceService {
                     .limit(15)
                     .<List<String>>map(row -> List.of(
                         defaultLabel(row.get(BiColumns.ORDER_NUMBER), "—"),
-                        defaultLabel(row.get("Order Name"), "—"),
+                        defaultLabel(row.get(BiColumns.TITLE), "—"),
                         defaultLabel(row.get(BiColumns.PRIORITY), "—"),
                         defaultLabel(row.get(BiColumns.RESOLVER), "—"),
                         formatMinutes(parseDouble(row.get(BiColumns.RESOLUTION_TIME_M))),
@@ -607,15 +634,18 @@ public class BusinessIntelligenceService {
                     new ChartConfig(List.of("提前完成", "按时完成", "延期完成"), null, List.of("#10b981", "#5b8db8", "#ef4444"), "变更类型", "数量"))
             ),
             List.of(
-                table("change-failed-table", "失败或回退样本", List.of("编号", "标题", "状态", "是否成功", "是否回退"), changes.stream()
-                    .filter(row -> !isYes(row.get(BiColumns.SUCCESS)) || isYes(row.get("Backout Performed")))
+                table("change-failed-table", "失败或回退样本", List.of("编号", "标题", "状态", "关闭方式", "是否回退"), changes.stream()
+                    .filter(row -> {
+                        String cc = clean(row.get(BiColumns.SUCCESS));
+                        return !"Successful".equalsIgnoreCase(cc) && !"Cancelled".equalsIgnoreCase(cc);
+                    })
                     .limit(10)
                     .map(row -> List.of(
                         defaultLabel(row.get(BiColumns.CHANGE_NUMBER), "—"),
-                        defaultLabel(row.get("Change Title"), "—"),
+                        defaultLabel(row.get(BiColumns.TITLE), "—"),
                         defaultLabel(row.get(BiColumns.STATUS), "—"),
                         defaultLabel(row.get(BiColumns.SUCCESS), "—"),
-                        defaultLabel(row.get("Backout Performed"), "—")
+                        "Backed_out".equalsIgnoreCase(clean(row.get(BiColumns.SUCCESS))) ? "是" : "否"
                     )).toList())
             )
         );
@@ -637,7 +667,7 @@ public class BusinessIntelligenceService {
             .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
             .limit(8)
             .map(entry -> {
-                long success = entry.getValue().stream().filter(row -> isYes(row.get(BiColumns.SUCCESS))).count();
+                long success = entry.getValue().stream().filter(row -> isSuccessful(row.get(BiColumns.SUCCESS))).count();
                 long failure = entry.getValue().size() - success;
                 return new ChartDatum(entry.getKey() + "|" + success + "|" + failure, success);
             })
@@ -646,9 +676,9 @@ public class BusinessIntelligenceService {
 
     private List<ChartDatum> buildRiskLevelDistribution(List<Map<String, String>> changes) {
         return changes.stream()
-            .filter(row -> isYes(row.get(BiColumns.INCIDENT_CAUSED)))
+            .filter(row -> isNonEmpty(row.get(BiColumns.INCIDENT_CAUSED)))
             .collect(Collectors.groupingBy(
-                row -> defaultLabel(row.get("Risk Level"), "未标注"),
+                row -> defaultLabel(row.get(BiColumns.RISK), "未标注"),
                 LinkedHashMap::new, Collectors.counting()))
             .entrySet().stream()
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -660,8 +690,8 @@ public class BusinessIntelligenceService {
     private List<ChartDatum> buildPlanDeviation(List<Map<String, String>> changes) {
         return changes.stream()
             .filter(row -> {
-                String plannedEnd = row.get("Planned End");
-                String actualEnd = row.get("Actual End");
+                String plannedEnd = row.get(BiColumns.PLANNED_END);
+                String actualEnd = row.get(BiColumns.ACTUAL_END);
                 return plannedEnd != null && !plannedEnd.isBlank() && actualEnd != null && !actualEnd.isBlank();
             })
             .collect(Collectors.groupingBy(
@@ -672,8 +702,8 @@ public class BusinessIntelligenceService {
             .map(entry -> {
                 long early = 0, onTime = 0, late = 0;
                 for (Map<String, String> row : entry.getValue()) {
-                    LocalDateTime plannedEnd = parseDate(row.get("Planned End"));
-                    LocalDateTime actualEnd = parseDate(row.get("Actual End"));
+                    LocalDateTime plannedEnd = parseDate(row.get(BiColumns.PLANNED_END));
+                    LocalDateTime actualEnd = parseDate(row.get(BiColumns.ACTUAL_END));
                     if (plannedEnd == null || actualEnd == null) continue;
                     long diffHours = java.time.Duration.between(plannedEnd, actualEnd).toHours();
                     if (diffHours < -1) early++;
@@ -705,7 +735,7 @@ public class BusinessIntelligenceService {
                 comboChart("request-volume-trend", "请求单量趋势", buildRequestWeeklyTrendData(rawData, startDate, endDate),
                     List.of("请求单量", "平均满意度"), List.of("#5b8db8", "#10b981")),
                 // Row 2: combo chart - SLA rate & avg fulfillment time by category
-                comboChart("request-sla-time", "SLA达成率与平均耗时", buildRequestSlaByCategoryData(requests),
+                comboChart("request-sla-time", "SLA达成率与平均耗时", buildRequestSlaByCategoryData(requests, rawData.requestSlaCriteria().isEmpty() ? rawData.incidentSlaCriteria() : rawData.requestSlaCriteria()),
                     List.of("平均耗时(h)", "SLA达成率"), List.of("#5b8db8", "#10b981")),
                 // Row 3 left: pie chart - request type distribution
                 pieChart("request-type-pie", "请求类型分布", topCounts(requests, BiColumns.REQUEST_TYPE, 6),
@@ -728,11 +758,11 @@ public class BusinessIntelligenceService {
                     .limit(15)
                     .map(row -> List.of(
                         defaultLabel(row.get(BiColumns.REQUEST_NUMBER), "—"),
-                        defaultLabel(row.get("Request Title"), "—"),
+                        defaultLabel(row.get(BiColumns.TITLE), "—"),
                         defaultLabel(row.get(BiColumns.CATEGORY), "—"),
-                        defaultLabel(row.get(BiColumns.FULFILLMENT_TIME_H), "—"),
+                        formatHours(parseDouble(row.get(BiColumns.REQUEST_RESOLUTION_TIME_M)) / 60.0),
                         defaultLabel(row.get(BiColumns.SATISFACTION_SCORE), "—"),
-                        defaultLabel(row.get("Feedback"), "—")
+                        defaultLabel(row.get("feedback"), "—")
                     )).toList())
             )
         );
@@ -744,7 +774,8 @@ public class BusinessIntelligenceService {
         return mergeTrendSeries(List.of(countTrend, csatTrend));
     }
 
-    private List<ChartDatum> buildRequestSlaByCategoryData(List<Map<String, String>> requests) {
+    private List<ChartDatum> buildRequestSlaByCategoryData(List<Map<String, String>> requests, List<Map<String, String>> slaCriteria) {
+        Map<String, Double> resolutionTargets = buildCriteriaMap(slaCriteria, List.of("resolution_sla_min"));
         return requests.stream()
             .collect(Collectors.groupingBy(
                 row -> defaultLabel(row.get(BiColumns.CATEGORY), "未标注"),
@@ -754,10 +785,18 @@ public class BusinessIntelligenceService {
             .limit(8)
             .map(entry -> {
                 List<Map<String, String>> rows = entry.getValue();
-                long slaCount = rows.stream().filter(row -> isYes(row.get(BiColumns.SLA_MET))).count();
-                double slaRate = percentageValue(slaCount, rows.size()) * 100.0;
+                long slaCount = rows.stream().filter(row -> {
+                    String rt = clean(row.get(BiColumns.REQUEST_RESOLUTION_TIME_M));
+                    if (rt.isEmpty()) return false;
+                    double minutes = parseDouble(rt);
+                    String priority = clean(row.get(BiColumns.PRIORITY));
+                    Double target = resolutionTargets.get(priority);
+                    return target != null && minutes <= target;
+                }).count();
+                long withTime = rows.stream().filter(row -> !clean(row.get(BiColumns.REQUEST_RESOLUTION_TIME_M)).isEmpty()).count();
+                double slaRate = percentageValue(slaCount, withTime > 0 ? withTime : rows.size()) * 100.0;
                 double avgTime = rows.stream()
-                    .mapToDouble(row -> parseDouble(row.get(BiColumns.FULFILLMENT_TIME_H)))
+                    .mapToDouble(row -> parseDouble(row.get(BiColumns.REQUEST_RESOLUTION_TIME_M)) / 60.0)
                     .filter(v -> v > 0)
                     .average().orElse(0);
                 return new ChartDatum(
@@ -833,9 +872,9 @@ public class BusinessIntelligenceService {
                     .limit(10)
                     .map(row -> List.of(
                         defaultLabel(row.get(BiColumns.PROBLEM_NUMBER), "—"),
-                        defaultLabel(row.get("Problem Title"), "—"),
+                        defaultLabel(row.get(BiColumns.TITLE), "—"),
                         defaultLabel(row.get(BiColumns.STATUS), "—"),
-                        defaultLabel(row.get("Related Incidents"), "0")
+                        defaultLabel(row.get(BiColumns.RELATED_INCIDENT_COUNT), "0")
                     )).toList())
             )
         );
@@ -880,14 +919,14 @@ public class BusinessIntelligenceService {
 
     private List<ChartDatum> buildProblemIncidentRanking(List<Map<String, String>> problems) {
         return problems.stream()
-            .filter(row -> !clean(row.get("Related Incidents")).isBlank())
+            .filter(row -> !clean(row.get(BiColumns.RELATED_INCIDENT_COUNT)).isBlank())
             .collect(Collectors.groupingBy(
                 row -> defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"),
                 LinkedHashMap::new, Collectors.toList()))
             .entrySet().stream()
             .map(entry -> {
                 long incidentCount = entry.getValue().stream()
-                    .mapToLong(row -> parseLong(row.get("Related Incidents")))
+                    .mapToLong(row -> parseLong(row.get(BiColumns.RELATED_INCIDENT_COUNT)))
                     .sum();
                 return new ChartDatum(entry.getKey(), incidentCount);
             })
@@ -907,8 +946,10 @@ public class BusinessIntelligenceService {
             .map(entry -> {
                 long green = 0, blue = 0, red = 0;
                 for (Map<String, String> row : entry.getValue()) {
-                    boolean workaround = isYes(row.get(BiColumns.WORKAROUND_AVAILABLE));
-                    boolean permanentFix = isYes(row.get("Permanent Fix Implemented"));
+                    String workaroundVal = row.get(BiColumns.WORKAROUND_AVAILABLE);
+                    boolean workaround = workaroundVal != null && !workaroundVal.isBlank();
+                    String fixVal = row.get(BiColumns.PERMANENT_FIX);
+                    boolean permanentFix = fixVal != null && !fixVal.isBlank();
                     if (workaround && permanentFix) green++;
                     else if (workaround && !permanentFix) blue++;
                     else red++;
@@ -1007,10 +1048,10 @@ public class BusinessIntelligenceService {
                 table("cross-change-incident-detail", "变更致事件关联明细",
                     List.of("变更编号", "变更标题", "完成时间", "48h内P1/P2事件", "风险等级"),
                     changes.stream()
-                        .filter(ch -> isYes(ch.get(BiColumns.INCIDENT_CAUSED)))
+                        .filter(ch -> isNonEmpty(ch.get(BiColumns.INCIDENT_CAUSED)))
                         .limit(15)
                         .map(ch -> {
-                            LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
+                            LocalDateTime actualEnd = parseDate(ch.get(BiColumns.ACTUAL_END));
                             String linkedIncidents = findIncidentsWithin48h(incidents, actualEnd).stream()
                                 .map(inc -> defaultLabel(inc.get(BiColumns.ORDER_NUMBER), ""))
                                 .filter(s -> !s.isBlank())
@@ -1018,10 +1059,10 @@ public class BusinessIntelligenceService {
                                 .orElse("—");
                             return List.of(
                                 defaultLabel(ch.get(BiColumns.CHANGE_NUMBER), "—"),
-                                defaultLabel(ch.get("Change Title"), "—"),
+                                defaultLabel(ch.get(BiColumns.TITLE), "—"),
                                 actualEnd != null ? actualEnd.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "—",
                                 linkedIncidents,
-                                defaultLabel(ch.get("Risk Level"), "—")
+                                defaultLabel(ch.get(BiColumns.RISK), "—")
                             );
                         }).toList()),
                 table("cross-aging-problems", "老化问题清单",
@@ -1031,7 +1072,7 @@ public class BusinessIntelligenceService {
                             LocalDateTime logged = parseDate(row.get(BiColumns.LOGGED_DATE));
                             long agingDays = 0;
                             if (logged != null) {
-                                LocalDateTime resolved = parseDate(row.get("Resolution Date"));
+                                LocalDateTime resolved = parseDate(row.get(BiColumns.RESOLVED_AT));
                                 LocalDateTime end = resolved != null ? resolved : LocalDateTime.now();
                                 agingDays = java.time.Duration.between(logged, end).toDays();
                             }
@@ -1046,7 +1087,7 @@ public class BusinessIntelligenceService {
                                 defaultLabel(row.get(BiColumns.PROBLEM_NUMBER), "—"),
                                 defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"),
                                 String.valueOf(agingDays),
-                                defaultLabel(row.get("Related Incidents"), "0"),
+                                defaultLabel(row.get(BiColumns.RELATED_INCIDENT_COUNT), "0"),
                                 defaultLabel(row.get(BiColumns.PRIORITY), "—"),
                                 defaultLabel(row.get(BiColumns.STATUS), "—")
                             );
@@ -1081,15 +1122,13 @@ public class BusinessIntelligenceService {
 
         for (Map<String, String> ch : changes) {
             LocalDateTime date = parseDate(ch.get(BiColumns.REQUESTED_DATE));
-            if (date == null) date = parseDate(ch.get("Actual End"));
+            if (date == null) date = parseDate(ch.get(BiColumns.ACTUAL_END));
             if (date == null) continue;
             String week = formatPeriodLabel(date, "weekly");
             changeByWeek.merge(week, 1L, Long::sum);
-            if (isYes(ch.get(BiColumns.INCIDENT_CAUSED))) {
-                LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
-                long p1p2 = findIncidentsWithin48h(incidents, actualEnd).size();
-                causedByWeek.merge(week, p1p2, Long::sum);
-            }
+            LocalDateTime actualEnd = parseDate(ch.get(BiColumns.ACTUAL_END));
+            long p1p2 = findIncidentsWithin48h(incidents, actualEnd).size();
+            causedByWeek.merge(week, p1p2, Long::sum);
         }
 
         Set<String> allWeeks = new TreeSet<>(changeByWeek.keySet());
@@ -1115,14 +1154,14 @@ public class BusinessIntelligenceService {
         }
 
         for (Map<String, String> ch : changes) {
-            LocalDateTime date = parseDate(ch.get("Actual Start"));
+            LocalDateTime date = parseDate(ch.get(BiColumns.ACTUAL_START));
             if (date == null) continue;
             int dow = date.getDayOfWeek().getValue(); // 1=Mon, 7=Sun
             int hour = date.getHour();
             String key = dow + "|" + hour;
             grid.get(key)[0]++;
-            if (isYes(ch.get(BiColumns.INCIDENT_CAUSED))) {
-                LocalDateTime actualEnd = parseDate(ch.get("Actual End"));
+            if (isNonEmpty(ch.get(BiColumns.INCIDENT_CAUSED))) {
+                LocalDateTime actualEnd = parseDate(ch.get(BiColumns.ACTUAL_END));
                 List<Map<String, String>> linked = findIncidentsWithin48h(incidents, actualEnd);
                 for (Map<String, String> inc : linked) {
                     LocalDateTime incBegin = parseDate(inc.get(BiColumns.BEGIN_DATE));
@@ -1164,14 +1203,14 @@ public class BusinessIntelligenceService {
                 .mapToLong(row -> {
                     LocalDateTime logged = parseDate(row.get(BiColumns.LOGGED_DATE));
                     if (logged == null) return 0;
-                    LocalDateTime resolved = parseDate(row.get("Resolution Date"));
+                    LocalDateTime resolved = parseDate(row.get(BiColumns.RESOLVED_AT));
                     LocalDateTime end = resolved != null ? resolved : LocalDateTime.now();
                     return java.time.Duration.between(logged, end).toDays();
                 }).average().orElse(0);
 
             // Sum of all related incidents
             long totalIncidents = probs.stream()
-                .mapToLong(row -> parseLong(row.get("Related Incidents")))
+                .mapToLong(row -> parseLong(row.get(BiColumns.RELATED_INCIDENT_COUNT)))
                 .sum();
 
             // Dominant root cause category
@@ -1345,11 +1384,11 @@ public class BusinessIntelligenceService {
         }
         // Requests: Fulfillment Time(h), cap at 72h
         for (var row : rawData.requests()) {
-            String person = defaultLabel(row.get("Assignee"), "未标注");
+            String person = defaultLabel(row.get(BiColumns.ASSIGNED_TO), "未标注");
             if (!topPersonSet.contains(person)) continue;
             String cat = clean(row.get(BiColumns.CATEGORY));
             if (cat.isBlank()) continue;
-            double hours = Math.min(parseDouble(row.get(BiColumns.FULFILLMENT_TIME_H)), 72.0);
+            double hours = Math.min(parseDouble(row.get(BiColumns.REQUEST_RESOLUTION_TIME_M)) / 60.0, 72.0);
             if (hours <= 0) continue;
             cellMap.computeIfAbsent(person, k -> new LinkedHashMap<>())
                 .computeIfAbsent(cat, k -> new double[2]);
@@ -1482,8 +1521,9 @@ public class BusinessIntelligenceService {
             String resolver = defaultLabel(row.get(BiColumns.RESPONDER), "未标注");
             long[] s = stats.computeIfAbsent(resolver, k -> new long[3]);
             s[1]++;
-            if (isYes(row.get("Permanent Fix Implemented"))) s[0]++;
-            s[2] += (long) parseDouble(row.get("Related Incidents"));
+            String fixVal = row.get(BiColumns.PERMANENT_FIX);
+            if (fixVal != null && !fixVal.isBlank()) s[0]++;
+            s[2] += (long) parseDouble(row.get(BiColumns.RELATED_INCIDENT_COUNT));
             String rc = clean(row.get(BiColumns.ROOT_CAUSE_CATEGORY));
             if (!rc.isBlank()) mainRootCause.merge(resolver, rc, (a, b) -> a);
         }
@@ -1504,14 +1544,14 @@ public class BusinessIntelligenceService {
         Map<String, long[]> stats = new LinkedHashMap<>();
         for (var row : rawData.changes()) {
             String type = clean(row.get(BiColumns.CHANGE_TYPE));
-            String risk = clean(row.get("Risk Level"));
+            String risk = clean(row.get(BiColumns.RISK));
             if (!"Emergency".equalsIgnoreCase(type) && !"High".equalsIgnoreCase(risk)) continue;
-            String impl = defaultLabel(row.get("Implementer"), "未标注");
+            String impl = defaultLabel(row.get(BiColumns.ASSIGNED_TO), "未标注");
             long[] s = stats.computeIfAbsent(impl, k -> new long[4]);
             s[0]++;
-            if (isYes(row.get(BiColumns.SUCCESS))) s[1]++;
-            if (isYes(row.get("Backout Performed"))) s[2]++;
-            if (isYes(row.get(BiColumns.INCIDENT_CAUSED))) s[3]++;
+            if (isSuccessful(row.get(BiColumns.SUCCESS))) s[1]++;
+            if ("Backed_out".equalsIgnoreCase(clean(row.get(BiColumns.SUCCESS)))) s[2]++;
+            if (isNonEmpty(row.get(BiColumns.INCIDENT_CAUSED))) s[3]++;
         }
         List<List<String>> rows = stats.entrySet().stream()
             .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
@@ -1667,29 +1707,29 @@ public class BusinessIntelligenceService {
     }
 
     private List<IncidentSlaRecord> buildIncidentSlaRecords(BiRawData rawData) {
-        Map<String, Double> responseCriteria = buildIncidentCriteriaMap(rawData.incidentSlaCriteria(), List.of("Response （minutes）", "Response (minutes)", "Response"));
-        Map<String, Double> resolutionCriteria = buildIncidentCriteriaMap(rawData.incidentSlaCriteria(), List.of("Resolution （hours）", "Resolution (hours)", "Resolution"));
+        Map<String, Double> responseCriteria = buildIncidentCriteriaMap(rawData.incidentSlaCriteria(), List.of("response_sla_min"));
+        Map<String, Double> resolutionCriteria = buildIncidentCriteriaMap(rawData.incidentSlaCriteria(), List.of("resolution_sla_min"));
         return rawData.incidents().stream()
             .map(row -> {
-                String priority = clean(row.get("Priority"));
+                String priority = clean(row.get("priority"));
                 Double responseTarget = responseCriteria.get(priority);
                 Double resolutionTarget = resolutionCriteria.get(priority);
                 if (priority.isBlank() || responseTarget == null || resolutionTarget == null) {
                     return null;
                 }
-                double responseMinutes = parseDouble(row.get("Response Time(m)"));
-                double resolutionMinutes = parseDouble(row.get("Resolution Time(m)"));
+                double responseMinutes = parseDouble(row.get("response_time_minutes"));
+                double resolutionMinutes = parseDouble(row.get("resolution_time_minutes"));
                 return new IncidentSlaRecord(
-                    row.get("Order Number"),
-                    row.get("Order Name"),
+                    row.get("ticket_id"),
+                    row.get(BiColumns.TITLE),
                     priority,
-                    row.get("Category"),
-                    row.get("Resolver"),
-                    parseDate(row.get("Begin Date")),
+                    row.get("category"),
+                    row.get(BiColumns.ASSIGNED_TO),
+                    parseDate(row.get("opened_at")),
                     responseMinutes,
                     resolutionMinutes,
                     responseMinutes <= responseTarget,
-                    resolutionMinutes / 60.0 <= resolutionTarget
+                    resolutionMinutes <= resolutionTarget
                 );
             })
             .filter(Objects::nonNull)
@@ -1698,9 +1738,9 @@ public class BusinessIntelligenceService {
 
     private Map<String, Double> buildIncidentCriteriaMap(List<Map<String, String>> rows, List<String> candidateKeys) {
         return rows.stream()
-            .filter(row -> !clean(row.get("Priority")).isBlank())
+            .filter(row -> !clean(row.get("priority")).isBlank())
             .collect(Collectors.toMap(
-                row -> clean(row.get("Priority")),
+                row -> clean(row.get("priority")),
                 row -> parseDouble(findFirstValue(row, candidateKeys)),
                 (left, right) -> right,
                 LinkedHashMap::new
@@ -1797,6 +1837,108 @@ public class BusinessIntelligenceService {
         return mergeTrendSeries(List.of(responseTrend, resolutionTrend, p12Trend));
     }
 
+    private List<MetricCard> buildRequestSlaCards(List<BusinessIntelligenceMetricsService.RequestSlaRecord> records) {
+        long total = records.size();
+        long overallMet = records.stream().filter(BusinessIntelligenceMetricsService.RequestSlaRecord::overallMet).count();
+        long breached = total - overallMet;
+        String overallRate = percentage(overallMet, total);
+
+        double avgDeliveryHours = records.stream()
+            .mapToDouble(BusinessIntelligenceMetricsService.RequestSlaRecord::resolutionMinutes).filter(v -> v > 0).average().orElse(0) / 60.0;
+
+        double breachedCsat = records.stream()
+            .filter(BusinessIntelligenceMetricsService.RequestSlaRecord::anyBreached)
+            .mapToDouble(BusinessIntelligenceMetricsService.RequestSlaRecord::satisfactionScore).filter(v -> v > 0).average().orElse(0);
+
+        return List.of(
+            card("req-sla-overall", "请求SLA达成率", overallRate, toneFromRate(overallRate)),
+            card("req-sla-breached", "请求违约数", String.valueOf(breached), breached > 0 ? "warning" : "success"),
+            card("req-sla-avg-delivery", "平均交付时长", String.format(Locale.ROOT, "%.1fh", avgDeliveryHours), "neutral"),
+            card("req-sla-breached-csat", "违约关联满意度", formatNumber(breachedCsat), breachedCsat > 0 && breachedCsat < 3.5 ? "danger" : "success")
+        );
+    }
+
+    private List<ChartSection> buildRequestSlaCharts(List<BusinessIntelligenceMetricsService.RequestSlaRecord> records, BiRawData rawData, String startDate, String endDate) {
+        // SLA + Satisfaction trend (combo)
+        TrendResult slaTrend = metricsService.getTrends(rawData, "requests", "sla_rate", "week", null, startDate, endDate);
+        TrendResult csatTrend = metricsService.getTrends(rawData, "requests", "csat", "week", null, startDate, endDate);
+        List<ChartDatum> trendData = mergeTrendSeries(List.of(slaTrend, csatTrend));
+
+        // Catalog comparison (grouped-bar): response vs resolution compliance per catalog_item
+        List<ChartDatum> catalogComparison = records.stream()
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.catalogItem(), "未标注"), LinkedHashMap::new, Collectors.toList()))
+            .entrySet().stream()
+            .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+            .limit(8)
+            .map(entry -> {
+                List<BusinessIntelligenceMetricsService.RequestSlaRecord> group = entry.getValue();
+                long respMet = group.stream().filter(BusinessIntelligenceMetricsService.RequestSlaRecord::responseMet).count();
+                long resoMet = group.stream().filter(BusinessIntelligenceMetricsService.RequestSlaRecord::resolutionMet).count();
+                double respRate = percentageValue(respMet, group.size()) * 100.0;
+                double resoRate = percentageValue(resoMet, group.size()) * 100.0;
+                return new ChartDatum(
+                    entry.getKey() + "|" + String.format(Locale.ROOT, "%.1f", respRate) + "|" + String.format(Locale.ROOT, "%.1f", resoRate),
+                    respRate);
+            }).toList();
+
+        // Violation by department (pie)
+        List<ChartDatum> violationByDept = records.stream()
+            .filter(BusinessIntelligenceMetricsService.RequestSlaRecord::anyBreached)
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.requesterDept(), "未标注"), LinkedHashMap::new, Collectors.counting()))
+            .entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(8)
+            .map(e -> new ChartDatum(e.getKey(), e.getValue()))
+            .toList();
+
+        // Violation by catalog (pie)
+        List<ChartDatum> violationByCatalog = records.stream()
+            .filter(BusinessIntelligenceMetricsService.RequestSlaRecord::anyBreached)
+            .collect(Collectors.groupingBy(r -> defaultLabel(r.catalogItem(), "未标注"), LinkedHashMap::new, Collectors.counting()))
+            .entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(8)
+            .map(e -> new ChartDatum(e.getKey(), e.getValue()))
+            .toList();
+
+        return List.of(
+            comboChart("req-sla-trend", "请求SLA与满意度趋势", trendData,
+                List.of("SLA达成率", "平均满意度"),
+                List.of("#8b5cf6", "#10b981")),
+            new ChartSection("req-sla-catalog-comparison", "服务目录SLA达成率对比", "grouped-bar",
+                catalogComparison,
+                new ChartConfig(List.of("响应达成率", "解决达成率"), null, List.of("#10b981", "#5b8db8"), "服务目录", "达成率(%)")),
+            pieChart("req-sla-violation-by-dept", "违约请求部门分布", violationByDept,
+                List.of("#8b7fc7", "#10b981", "#f59e0b", "#ef4444", "#5b8db8", "#c97082", "#5e9bb5", "#7ca65a")),
+            pieChart("req-sla-violation-by-catalog", "违约服务目录分布", violationByCatalog,
+                List.of("#5b8db8", "#10b981", "#f59e0b", "#ef4444", "#8b7fc7", "#c97082", "#5e9bb5", "#7ca65a"))
+        );
+    }
+
+    private List<BiModels.TableSection> buildRequestSlaTables(List<BusinessIntelligenceMetricsService.RequestSlaRecord> records) {
+        return List.of(
+            table("req-sla-violation-samples", "请求违约及低满意度样本",
+                List.of("编号", "标题", "服务目录", "请求部门", "处理人", "响应时长", "解决时长", "违约类型", "满意度"),
+                records.stream()
+                    .filter(BusinessIntelligenceMetricsService.RequestSlaRecord::anyBreached)
+                    .sorted(Comparator
+                        .comparing((BusinessIntelligenceMetricsService.RequestSlaRecord r) -> priorityRank(r.priority()))
+                        .thenComparing(BusinessIntelligenceMetricsService.RequestSlaRecord::resolutionMinutes, Comparator.reverseOrder()))
+                    .limit(12)
+                    .map(r -> List.of(
+                        defaultLabel(r.orderNumber(), "—"),
+                        defaultLabel(r.title(), "—"),
+                        defaultLabel(r.catalogItem(), "未标注"),
+                        defaultLabel(r.requesterDept(), "未标注"),
+                        defaultLabel(r.assignee(), "未分配"),
+                        formatHours(r.responseMinutes() / 60.0),
+                        formatHours(r.resolutionMinutes() / 60.0),
+                        r.violationType(),
+                        r.satisfactionScore() > 0 ? String.format(Locale.ROOT, "%.1f", r.satisfactionScore()) : "—"
+                    )).toList())
+        );
+    }
+
     private String buildSlaSummarySentence(double responseRate, double resolutionRate, List<BiModels.SlaPriorityRow> priorityRows, List<BiModels.SlaRiskRow> categoryRisks) {
         BiModels.SlaPriorityRow weakestPriority = priorityRows.stream()
             .min(Comparator.comparingDouble(row -> parsePercentage(row.resolutionComplianceRate())))
@@ -1836,6 +1978,14 @@ public class BusinessIntelligenceService {
 
     private boolean isYes(String value) {
         return clean(value).equalsIgnoreCase("Yes");
+    }
+
+    private boolean isSuccessful(String value) {
+        return clean(value).equalsIgnoreCase("Successful");
+    }
+
+    private boolean isNonEmpty(String value) {
+        return value != null && !value.isBlank();
     }
 
     private boolean matchesAny(String value, List<String> candidates) {
@@ -2031,10 +2181,10 @@ public class BusinessIntelligenceService {
 
     private List<LocalDateTime> collectDates(BiRawData rawData) {
         List<LocalDateTime> dates = new ArrayList<>();
-        addDates(dates, rawData.incidents(), "Begin Date");
-        addDates(dates, rawData.changes(), "Requested Date");
-        addDates(dates, rawData.requests(), "Requested Date");
-        addDates(dates, rawData.problems(), "Logged Date");
+        addDates(dates, rawData.incidents(), "opened_at");
+        addDates(dates, rawData.changes(), "opened_at");
+        addDates(dates, rawData.requests(), "opened_at");
+        addDates(dates, rawData.problems(), "opened_at");
         return dates;
     }
 
@@ -2127,5 +2277,22 @@ public class BusinessIntelligenceService {
             rowIndex++;
         }
         return rowIndex;
+    }
+
+    private Map<String, Double> buildCriteriaMap(List<Map<String, String>> criteria,
+                                                  List<String> candidateKeys) {
+        Map<String, Double> map = new LinkedHashMap<>();
+        for (Map<String, String> row : criteria) {
+            String priority = row.getOrDefault(BiColumns.PRIORITY, "").trim();
+            if (priority.isEmpty()) continue;
+            for (String key : candidateKeys) {
+                String val = row.getOrDefault(key, "").trim();
+                if (!val.isEmpty()) {
+                    map.put(priority, parseDouble(val));
+                    break;
+                }
+            }
+        }
+        return map;
     }
 }
