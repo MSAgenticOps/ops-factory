@@ -2200,7 +2200,7 @@
     "relationCount": "关系",
     "confirmDeleteGroup": "确定删除此环境组？",
     "confirmDeleteCluster": "确定删除此集群？",
-    "confirmForceDeleteGroup": "该环境组下存在子资源，强制删除将同时删除所有子分组、集群、主机和关联关系。确定继续？",
+    "confirmForceDeleteGroup": "该环境组下存在子资源，强制删除将同时删除所有子分组、集群、主机、业务服务和关联关系。确定继续？",
     "confirmForceDeleteCluster": "该集群下存在主机，强制删除将同时删除所有主机和关联关系。确定继续？",
     "confirmDeleteClustersWithHosts": "选中的 {{count}} 个集群中共有 {{totalHosts}} 台主机，强制删除将同时删除所有主机和关联关系。确定继续？",
     "selectedClusters": "{{count}} 个集群",
