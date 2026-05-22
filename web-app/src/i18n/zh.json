@@ -2203,6 +2203,8 @@
     "confirmForceDeleteGroup": "该环境组下存在子资源，强制删除将同时删除所有子分组、集群、主机和关联关系。确定继续？",
     "confirmForceDeleteCluster": "该集群下存在主机，强制删除将同时删除所有主机和关联关系。确定继续？",
     "confirmDeleteClustersWithHosts": "选中的 {{count}} 个集群中共有 {{totalHosts}} 台主机，强制删除将同时删除所有主机和关联关系。确定继续？",
+    "selectedClusters": "{{count}} 个集群",
+    "selectedBusinessServices": "{{count}} 个业务服务",
     "confirmDeleteBusinessService": "确定删除此业务服务？",
     "bsName": "业务名称",
     "bsCode": "业务编码",

@@ -238,8 +238,10 @@ export default function HostResourcePage() {
             return { ...node, type: 'group' as TreeNodeType }
         })
 
-        // Add clusters that are not associated with any group as top-level nodes
-        const orphanClusters = clusters.filter(c => !c.groupId)
+        // Collect all valid group IDs
+        const validGroupIds = new Set(groups.map(g => g.id))
+        // Add clusters that are not associated with any valid group as top-level nodes
+        const orphanClusters = clusters.filter(c => !c.groupId || !validGroupIds.has(c.groupId))
         for (const c of orphanClusters) {
             const hostCount = clusterHostMap.get(c.id) || 0
             tree.push({
@@ -248,6 +250,23 @@ export default function HostResourcePage() {
                 name: c.name,
                 subtitle: c.type + (hostCount > 0 ? ` (${hostCount} ${t('hostResource.hostCountUnit')})` : ''),
                 raw: c,
+            })
+        }
+
+        // Add business services that are not associated with any valid group as top-level nodes
+        const orphanBusinessServices = businessServices.filter(bs => !bs.groupId || !validGroupIds.has(bs.groupId))
+        for (const bs of orphanBusinessServices) {
+            const hostNames = bs.hostIds
+                .map(hid => allHosts.find(h => h.id === hid)?.name)
+                .filter(Boolean)
+                .join(', ')
+            const businessType = bs.businessTypeId ? businessTypesHook.businessTypes.find(bt => bt.id === bs.businessTypeId) : null
+            tree.push({
+                id: bs.id,
+                type: 'business-service' as TreeNodeType,
+                name: bs.name,
+                subtitle: hostNames || (businessType?.name || bs.code),
+                raw: bs,
             })
         }
 
@@ -462,8 +481,20 @@ export default function HostResourcePage() {
     const handleBatchDeleteClusters = useCallback(async () => {
         if (selectedClusterIds.size === 0) return
 
+        // Separate selected clusters and business services
         const selectedClusters = clusters.filter(c => selectedClusterIds.has(c.id))
-        if (selectedClusters.length === 0) return
+        const selectedBusinessServices = businessServices.filter(bs => selectedClusterIds.has(bs.id))
+
+        if (selectedClusters.length === 0 && selectedBusinessServices.length === 0) return
+
+        // Build confirmation message
+        const parts: string[] = []
+        if (selectedClusters.length > 0) {
+            parts.push(t('hostResource.selectedClusters', { count: selectedClusters.length }))
+        }
+        if (selectedBusinessServices.length > 0) {
+            parts.push(t('hostResource.selectedBusinessServices', { count: selectedBusinessServices.length }))
+        }
 
         // Check for hosts in selected clusters
         let hasHosts = false
@@ -475,17 +506,20 @@ export default function HostResourcePage() {
             }
         }
 
+        let confirmMessage = parts.join(', ')
         if (hasHosts) {
-            const confirmed = await requestConfirm({
-                title: t('common.confirmTitle'),
-                message: t('hostResource.confirmDeleteClustersWithHosts', { count: selectedClusterIds.size, totalHosts: [...hostCountMap.values()].reduce((a, b) => a + b, 0) }),
-                variant: 'danger',
-                confirmLabel: t('common.delete'),
-            })
-            if (!confirmed) return
+            confirmMessage += t('hostResource.confirmDeleteClustersWithHosts', { count: selectedClusterIds.size, totalHosts: [...hostCountMap.values()].reduce((a, b) => a + b, 0) })
         }
 
-        // Force delete all selected clusters
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: confirmMessage,
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
+        if (!confirmed) return
+
+        // Delete selected clusters
         for (const cluster of selectedClusters) {
             try {
                 await deleteCluster(cluster.id, true)
@@ -493,8 +527,18 @@ export default function HostResourcePage() {
                 showToast('error', err instanceof Error ? err.message : 'Failed')
             }
         }
+
+        // Delete selected business services
+        for (const bs of selectedBusinessServices) {
+            try {
+                await deleteBusinessService(bs.id)
+            } catch (err) {
+                showToast('error', err instanceof Error ? err.message : 'Failed')
+            }
+        }
+
         setSelectedClusterIds(new Set())
-    }, [selectedClusterIds, clusters, allHosts, deleteCluster, t, requestConfirm, showToast])
+    }, [selectedClusterIds, clusters, businessServices, allHosts, deleteCluster, deleteBusinessService, t, requestConfirm, showToast])
 
     const defaultGroupIdForCreate = selected?.type === 'group' || selected?.type === 'subgroup' ? selected.id : undefined
     const defaultClusterIdForCreate = selected?.type === 'cluster' ? selected.id : undefined
