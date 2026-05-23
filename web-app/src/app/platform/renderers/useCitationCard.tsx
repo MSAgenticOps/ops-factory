@@ -23,8 +23,8 @@ export function useCitationCard(dependency: unknown): UseCitationCardReturn {
     const [showCard, setShowCard] = useState(false)
     const [cardPosition, setCardPosition] = useState<'above' | 'below'>('above')
     const [cardStyle, setCardStyle] = useState<CardStyle | null>(null)
-    const markRef = useRef<HTMLSpanElement>(null!)
-    const cardRef = useRef<HTMLDivElement>(null!)
+    const markRef = useRef<HTMLSpanElement>(null)
+    const cardRef = useRef<HTMLDivElement>(null)
     const showTimeout = useRef<ReturnType<typeof setTimeout>>()
     const hideTimeout = useRef<ReturnType<typeof setTimeout>>()
 
