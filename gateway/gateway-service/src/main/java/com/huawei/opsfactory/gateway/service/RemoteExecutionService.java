@@ -75,7 +75,7 @@ public class RemoteExecutionService {
         // Step 1: Get host with decrypted credential
         Map<String, Object> host = resolveHost(hostId);
         if (host == null) {
-            return buildResult(hostId, "", "", "", -1, "", "Host not found: " + hostId, 0L);
+            return buildResult(new ExecutionContext(hostId, "", "", ""), -1, "", "Host not found: " + hostId, 0L);
         }
 
         String hostName = (String) host.getOrDefault("name", "");
@@ -84,6 +84,7 @@ public class RemoteExecutionService {
         String username = (String) host.get("username");
         String authType = (String) host.get("authType");
         String credential = (String) host.get("credential");
+        ExecutionContext ctx = new ExecutionContext(hostId, hostname, username, hostName);
 
         // Step 2: Resolve command prefix and environment variables from cluster type
         EnvResolution envResolution = resolveClusterEnv(hostId, host);
@@ -91,8 +92,7 @@ public class RemoteExecutionService {
         Map<String, String> envVars = envResolution.envVars;
 
         // Step 3: Build effective command (substitution, validation, prefix)
-        CommandResolution cmdResolution =
-            buildEffectiveCommand(hostId, hostname, username, hostName, command, commandPrefix, envVars);
+        CommandResolution cmdResolution = buildEffectiveCommand(ctx, command, commandPrefix, envVars);
         if (cmdResolution.result != null) {
             return cmdResolution.result;
         }
@@ -136,8 +136,7 @@ public class RemoteExecutionService {
                 String output = outputBuffer.toString(StandardCharsets.UTF_8);
                 String errorOutput = errorBuffer.toString(StandardCharsets.UTF_8);
 
-                Map<String, Object> result = buildResult(hostId, hostname, username, hostName, exitCode, output,
-                    errorOutput, duration);
+                Map<String, Object> result = buildResult(ctx, exitCode, output, errorOutput, duration);
                 result.put("command", command);
                 result.put("effectiveCommand", effectiveCommand);
                 return result;
@@ -145,14 +144,12 @@ public class RemoteExecutionService {
         } catch (JSchException | IOException e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());
-            return buildResult(hostId, hostname, username, hostName, -1, "",
-                "SSH execution failed: " + e.getMessage(), duration);
+            return buildResult(ctx, -1, "", "SSH execution failed: " + e.getMessage(), duration);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             long duration = System.currentTimeMillis() - startTime;
             log.warn("SSH execution interrupted for host {}", hostId);
-            return buildResult(hostId, hostname, username, hostName, -1, "",
-                "SSH execution interrupted", duration);
+            return buildResult(ctx, -1, "", "SSH execution interrupted", duration);
         } finally {
             if (channel != null) {
                 channel.disconnect();
@@ -223,8 +220,8 @@ public class RemoteExecutionService {
      * Returns a CommandResolution where result is non-null if validation failed (caller should return immediately),
      * or effectiveCommand is set when the command is ready to execute.
      */
-    private CommandResolution buildEffectiveCommand(String hostId, String hostname, String username, String hostName,
-        String command, String commandPrefix, Map<String, String> envVars) {
+    private CommandResolution buildEffectiveCommand(ExecutionContext ctx, String command,
+        String commandPrefix, Map<String, String> envVars) {
         // Replace ${VAR} and $VAR placeholders (sorted longest key first to avoid partial matches)
         String effectiveCommand = command;
         List<String> sortedKeys = new ArrayList<>(envVars.keySet());
@@ -240,7 +237,7 @@ public class RemoteExecutionService {
         // Validate resolved command against whitelist
         List<String> rejected = commandWhitelistService.validateCommand(effectiveCommand);
         if (!rejected.isEmpty()) {
-            Map<String, Object> result = buildResult(hostId, hostname, username, hostName, -1, "",
+            Map<String, Object> result = buildResult(ctx, -1, "",
                 "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected),
                 0L);
             result.put("rejectedCommands", rejected);
@@ -300,13 +297,13 @@ public class RemoteExecutionService {
     /**
      * Builds a standard result map for remote execution responses.
      */
-    private Map<String, Object> buildResult(String hostId, String hostname, String username, String hostName,
-        int exitCode, String output, String error, long duration) {
+    private Map<String, Object> buildResult(ExecutionContext ctx, int exitCode,
+        String output, String error, long duration) {
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("hostId", hostId);
-        result.put("hostIp", hostname);
-        result.put("username", username);
-        result.put("hostName", hostName);
+        result.put("hostId", ctx.hostId);
+        result.put("hostIp", ctx.hostname);
+        result.put("username", ctx.username);
+        result.put("hostName", ctx.hostName);
         result.put("exitCode", exitCode);
         result.put("output", output);
         result.put("error", error);
@@ -338,6 +335,23 @@ public class RemoteExecutionService {
         CommandResolution(String effectiveCommand, Map<String, Object> result) {
             this.effectiveCommand = effectiveCommand;
             this.result = result;
+        }
+    }
+
+    /**
+     * Encapsulates host identity fields shared across remote execution result building.
+     */
+    private static final class ExecutionContext {
+        final String hostId;
+        final String hostname;
+        final String username;
+        final String hostName;
+
+        ExecutionContext(String hostId, String hostname, String username, String hostName) {
+            this.hostId = hostId;
+            this.hostname = hostname;
+            this.username = username;
+            this.hostName = hostName;
         }
     }
 

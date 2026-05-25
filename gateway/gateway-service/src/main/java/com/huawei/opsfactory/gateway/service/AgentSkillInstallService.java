@@ -194,7 +194,7 @@ public class AgentSkillInstallService {
                     continue;
                 }
                 long entrySize = entry.getSize();
-                if (entrySize > MAX_ZIP_ENTRY_SIZE) {
+                if (entrySize > 0 && entrySize > MAX_ZIP_ENTRY_SIZE) {
                     throw new IllegalStateException("Zip entry too large: " + entry.getName());
                 }
                 String safeName = safeZipName(entry.getName());

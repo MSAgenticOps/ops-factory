@@ -55,7 +55,7 @@ public class MetricsBuffer {
 
     private int snapshotCount = 0;
 
-    private boolean dirty = false;
+    private volatile boolean dirty = false;
 
     private int timingWriteIndex = 0;
 
@@ -227,9 +227,7 @@ public class MetricsBuffer {
                 }
             }
             // Reset dirty since this is just a restore, not new data
-            synchronized (this) {
-                dirty = false;
-            }
+            dirty = false;
             log.info("Restored {} metrics snapshots from {} (discarded {} stale)", restored, persistPath,
                 loaded.size() - restored);
         } catch (IOException | IllegalArgumentException e) {

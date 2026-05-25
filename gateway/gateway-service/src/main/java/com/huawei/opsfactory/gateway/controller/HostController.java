@@ -30,9 +30,8 @@ import org.springframework.web.server.ServerWebExchange;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -143,7 +142,7 @@ public class HostController {
 
         // Build disabledClusterIds for the "list all hosts" fallback path
         List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
-        Set<String> disabledClusterIds = new java.util.HashSet<>();
+        Set<String> disabledClusterIds = new HashSet<>();
         for (Map<String, Object> c : allClusters) {
             if (Boolean.FALSE.equals(c.get("enabled")) || disabledGroupIds.contains(c.get("groupId"))) {
                 disabledClusterIds.add((String) c.get("id"));
@@ -186,8 +185,8 @@ public class HostController {
         final Set<String> clusterIds;
 
         DisabledSets(Set<String> groupIds, Set<String> clusterIds) {
-            this.groupIds = groupIds;
-            this.clusterIds = clusterIds;
+            this.groupIds = Set.copyOf(groupIds);
+            this.clusterIds = Set.copyOf(clusterIds);
         }
     }
 

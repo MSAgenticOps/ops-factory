@@ -195,10 +195,11 @@ public class QosCollectionScheduler {
         List<IndicatorRawData> rawBatch = new ArrayList<>();
         List<IndicatorDetailData> detailBatch = new ArrayList<>();
         List<IndicatorNormalizeData> normalizeBatch = new ArrayList<>();
+        PerformanceCollectBatch batch = new PerformanceCollectBatch(envInfo, envCode, envScopes, neScoreSums,
+            rawBatch, detailBatch, startTime, endTime);
 
         for (DnCluster cluster : clusters) {
-            collectForCluster(envInfo, envCode, cluster, envScopes, neScoreSums, rawBatch, detailBatch, startTime,
-                endTime);
+            collectForCluster(batch, cluster);
         }
 
         aggregateNormalizeScores(envCode, neScoreSums, normalizeBatch, endTime);
@@ -208,23 +209,21 @@ public class QosCollectionScheduler {
         normalizeDataStore.appendAll(normalizeBatch);
     }
 
-    private void collectForCluster(DvEnvironmentInfo envInfo, String envCode, DnCluster cluster,
-        List<PerformanceIndicatorScope> envScopes, Map<String, Map<String, List<BigDecimal>>> neScoreSums,
-        List<IndicatorRawData> rawBatch, List<IndicatorDetailData> detailBatch, long startTime, long endTime) {
+    private void collectForCluster(PerformanceCollectBatch batch, DnCluster cluster) {
         List<DnElement> elements =
             cluster.getElements() != null ? cluster.getElements() : List.of();
         for (DnElement element : elements) {
-            List<String> dns = buildDns(envInfo, element);
-            for (PerformanceIndicatorScope scope : envScopes) {
-                List<PerformanceDataResult> perfData = dvClient.fetchPerformanceData(envInfo, scope.getMoType(),
-                    scope.getMeasUnitKey(), dns, startTime, endTime);
+            List<String> dns = buildDns(batch.envInfo, element);
+            for (PerformanceIndicatorScope scope : batch.envScopes) {
+                List<PerformanceDataResult> perfData = dvClient.fetchPerformanceData(batch.envInfo, scope.getMoType(),
+                    scope.getMeasUnitKey(), dns, batch.startTime, batch.endTime);
                 if (perfData == null || perfData.isEmpty()) {
                     continue;
                 }
                 for (PerformanceDataResult pr : perfData) {
-                    rawBatch.add(buildRawData(envCode, pr, endTime));
-                    BigDecimal score = collectScore(neScoreSums, scope, pr);
-                    detailBatch.add(buildDetailData(envCode, scope, pr, endTime, score));
+                    batch.rawBatch.add(buildRawData(batch.envCode, pr, batch.endTime));
+                    BigDecimal score = collectScore(batch.neScoreSums, scope, pr);
+                    batch.detailBatch.add(buildDetailData(batch.envCode, scope, pr, batch.endTime, score));
                 }
             }
         }
@@ -316,8 +315,6 @@ public class QosCollectionScheduler {
         }
         return alarmBatch;
     }
-
-
 
     /**
      * collect Resource Data.
@@ -472,5 +469,31 @@ public class QosCollectionScheduler {
         weights.put("2", new BigDecimal("0.6"));
         weights.put("3", new BigDecimal("0.3"));
         return weights;
+    }
+
+    private static final class PerformanceCollectBatch {
+        final DvEnvironmentInfo envInfo;
+        final String envCode;
+        final List<PerformanceIndicatorScope> envScopes;
+        final Map<String, Map<String, List<BigDecimal>>> neScoreSums;
+        final List<IndicatorRawData> rawBatch;
+        final List<IndicatorDetailData> detailBatch;
+        final long startTime;
+        final long endTime;
+
+        PerformanceCollectBatch(DvEnvironmentInfo envInfo, String envCode,
+            List<PerformanceIndicatorScope> envScopes,
+            Map<String, Map<String, List<BigDecimal>>> neScoreSums,
+            List<IndicatorRawData> rawBatch, List<IndicatorDetailData> detailBatch,
+            long startTime, long endTime) {
+            this.envInfo = envInfo;
+            this.envCode = envCode;
+            this.envScopes = envScopes;
+            this.neScoreSums = neScoreSums;
+            this.rawBatch = rawBatch;
+            this.detailBatch = detailBatch;
+            this.startTime = startTime;
+            this.endTime = endTime;
+        }
     }
 }
