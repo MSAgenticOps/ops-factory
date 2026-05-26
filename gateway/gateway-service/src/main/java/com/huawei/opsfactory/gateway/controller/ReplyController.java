@@ -10,7 +10,6 @@ import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.hook.HookContext;
 import com.huawei.opsfactory.gateway.hook.HookPipeline;
-import com.huawei.opsfactory.gateway.logging.GatewayLogContext;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
@@ -68,6 +67,32 @@ public class ReplyController {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    private static final Map<String, String> SESSION_ERROR_MESSAGE_KEYS;
+
+    static {
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("gateway_submit_timeout", "chat.sessionErrors.gatewaySubmitTimeout");
+        map.put("gateway_submit_failed", "chat.sessionErrors.gatewaySubmitFailed");
+        map.put("gateway_events_failed", "chat.sessionErrors.gatewayEventsFailed");
+        map.put("gateway_cancel_failed", "chat.sessionErrors.gatewayCancelFailed");
+        map.put("gateway_unauthorized", "chat.sessionErrors.gatewayUnauthorized");
+        map.put("gateway_agent_not_found", "chat.sessionErrors.gatewayAgentNotFound");
+        map.put("gateway_agent_unavailable", "chat.sessionErrors.gatewayAgentUnavailable");
+        map.put("gateway_goosed_unavailable", "chat.sessionErrors.gatewayGoosedUnavailable");
+        map.put("gateway_max_duration_reached", "chat.sessionErrors.gatewayMaxDurationReached");
+        map.put("gateway_rate_limited", "chat.sessionErrors.gatewayRateLimited");
+        map.put("goosed_active_request_conflict", "chat.sessionErrors.goosedActiveRequestConflict");
+        map.put("goosed_request_rejected", "chat.sessionErrors.goosedRequestRejected");
+        map.put("goosed_error", "chat.sessionErrors.goosedError");
+        map.put("provider_timeout", "chat.sessionErrors.providerTimeout");
+        map.put("provider_rate_limited", "chat.sessionErrors.providerRateLimited");
+        map.put("provider_auth_or_quota_failed", "chat.sessionErrors.providerAuthOrQuotaFailed");
+        map.put("tool_execution_failed", "chat.sessionErrors.toolExecutionFailed");
+        map.put("mcp_unavailable", "chat.sessionErrors.mcpUnavailable");
+        map.put("context_too_large", "chat.sessionErrors.contextTooLarge");
+        SESSION_ERROR_MESSAGE_KEYS = Collections.unmodifiableMap(map);
+    }
+
     private final InstanceManager instanceManager;
 
     private final GoosedProxy goosedProxy;
@@ -116,11 +141,9 @@ public class ReplyController {
         @RequestBody String body, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         HookContext ctx = new HookContext(body, agentId, userId);
-        GatewayLogContext.run(requestId, userId, sessionId,
-            () -> log.info("[SESSION-REPLY] request received " + "agentId={} userId={} sessionId={} bodyLen={}",
-                agentId, userId, sessionId, body.length()));
+        log.info("[SESSION-REPLY] request received agentId={} userId={} sessionId={} bodyLen={}", agentId, userId, sessionId,
+            body.length());
         String chatRequestId = extractRequestId(body);
 
         return hookPipeline.executeRequest(ctx)
@@ -133,30 +156,22 @@ public class ReplyController {
                     .then(snapshotFilesBeforeReply(agentId, userId, sessionId, chatRequestId))
                     .then(goosedProxy.proxySessionCommandWithBody(exchange.getResponse(), instance.getPort(), path,
                         HttpMethod.POST, processedBody, instance.getSecretKey()))
-                    .doOnSubscribe(sub -> GatewayLogContext.run(requestId, userId, sessionId,
-                        () -> log.info(
-                            "[SESSION-REPLY] forwarding agentId={} " + "userId={} sessionId={} port={} path={}",
-                            agentId, userId, sessionId, instance.getPort(), path)))
+                    .doOnSubscribe(sub -> log
+                        .info("[SESSION-REPLY] forwarding agentId={} userId={} sessionId={} port={} path={}", agentId,
+                            userId, sessionId, instance.getPort(), path))
                     .doOnSuccess(ignored -> {
                         if (exchange.getResponse().getStatusCode() == null
                             || !exchange.getResponse().getStatusCode().is2xxSuccessful()) {
                             removeFileSnapshot(agentId, userId, sessionId, chatRequestId);
                         }
-                        GatewayLogContext
-                            .run(requestId, userId, sessionId,
-                                () -> log.info(
-                                    "[SESSION-REPLY] completed agentId={} userId={} sessionId={} "
-                                        + "totalMs={} status={}",
-                                    agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
-                                    exchange.getResponse().getStatusCode()));
+                        log.info("[SESSION-REPLY] completed agentId={} userId={} sessionId={} totalMs={} status={}", agentId,
+                            userId, sessionId, System.currentTimeMillis() - requestStart,
+                            exchange.getResponse().getStatusCode());
                     })
                     .doOnError(err -> {
                         removeFileSnapshot(agentId, userId, sessionId, chatRequestId);
-                        GatewayLogContext.run(requestId, userId, sessionId,
-                            () -> log.warn(
-                                "[SESSION-REPLY] failed agentId={} userId={} sessionId={} " + "totalMs={} error={}",
-                                agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
-                                err.getMessage()));
+                        log.warn("[SESSION-REPLY] failed agentId={} userId={} sessionId={} totalMs={} error={}", agentId, userId,
+                            sessionId, System.currentTimeMillis() - requestStart, err.getMessage());
                     });
             }))
             .onErrorResume(err -> writeSessionError(exchange, err, agentId, userId, sessionId, chatRequestId,
@@ -178,10 +193,8 @@ public class ReplyController {
         @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, sessionId,
-            () -> log.info("[SESSION-EVENTS] subscribe agentId={} " + "userId={} sessionId={} lastEventId={}", agentId,
-                userId, sessionId, lastEventId));
+        log.info("[SESSION-EVENTS] subscribe agentId={} userId={} sessionId={} lastEventId={}", agentId, userId, sessionId,
+            lastEventId);
 
         return instanceManager.getOrSpawn(agentId, userId).flatMap(instance -> {
             instance.touch();
@@ -191,16 +204,15 @@ public class ReplyController {
                 .then(goosedProxy.proxySessionEvents(exchange.getResponse(), instance.getPort(), path,
                     instance.getSecretKey(), lastEventId, agentId, userId, sessionId,
                     eventJson -> outputFilesBeforeTerminalEvent(agentId, userId, sessionId, eventJson)))
-                .doOnSubscribe(sub -> GatewayLogContext.run(requestId, userId, sessionId,
-                    () -> log.info("[SESSION-EVENTS] forwarding agentId={} userId={} sessionId={} " + "port={} path={}",
-                        agentId, userId, sessionId, instance.getPort(), path)))
-                .doOnSuccess(ignored -> GatewayLogContext.run(requestId, userId, sessionId,
-                    () -> log.info("[SESSION-EVENTS] ended agentId={} userId={} sessionId={} " + "totalMs={} status={}",
-                        agentId, userId, sessionId, System.currentTimeMillis() - requestStart,
-                        exchange.getResponse().getStatusCode())))
-                .doOnError(err -> GatewayLogContext.run(requestId, userId, sessionId,
-                    () -> log.warn("[SESSION-EVENTS] failed agentId={} userId={} sessionId={} " + "totalMs={} error={}",
-                        agentId, userId, sessionId, System.currentTimeMillis() - requestStart, err.getMessage())));
+                .doOnSubscribe(sub -> log
+                    .info("[SESSION-EVENTS] forwarding agentId={} userId={} sessionId={} port={} path={}", agentId,
+                        userId, sessionId, instance.getPort(), path))
+                .doOnSuccess(ignored -> log
+                    .info("[SESSION-EVENTS] ended agentId={} userId={} sessionId={} totalMs={} status={}", agentId,
+                        userId, sessionId, System.currentTimeMillis() - requestStart,
+                        exchange.getResponse().getStatusCode()))
+                .doOnError(err -> log.warn("[SESSION-EVENTS] failed agentId={} userId={} sessionId={} totalMs={} error={}",
+                    agentId, userId, sessionId, System.currentTimeMillis() - requestStart, err.getMessage()));
         })
             .onErrorResume(err -> writeSessionError(exchange, err, agentId, userId, sessionId, null,
                 "gateway_events_failed", requestStart));
@@ -513,48 +525,7 @@ public class ReplyController {
     }
 
     private String sessionErrorMessageKey(String code) {
-        return switch (code) {
-            case "gateway_submit_timeout":
-                yield "chat.sessionErrors.gatewaySubmitTimeout";
-            case "gateway_submit_failed":
-                yield "chat.sessionErrors.gatewaySubmitFailed";
-            case "gateway_events_failed":
-                yield "chat.sessionErrors.gatewayEventsFailed";
-            case "gateway_cancel_failed":
-                yield "chat.sessionErrors.gatewayCancelFailed";
-            case "gateway_unauthorized":
-                yield "chat.sessionErrors.gatewayUnauthorized";
-            case "gateway_agent_not_found":
-                yield "chat.sessionErrors.gatewayAgentNotFound";
-            case "gateway_agent_unavailable":
-                yield "chat.sessionErrors.gatewayAgentUnavailable";
-            case "gateway_goosed_unavailable":
-                yield "chat.sessionErrors.gatewayGoosedUnavailable";
-            case "gateway_max_duration_reached":
-                yield "chat.sessionErrors.gatewayMaxDurationReached";
-            case "gateway_rate_limited":
-                yield "chat.sessionErrors.gatewayRateLimited";
-            case "goosed_active_request_conflict":
-                yield "chat.sessionErrors.goosedActiveRequestConflict";
-            case "goosed_request_rejected":
-                yield "chat.sessionErrors.goosedRequestRejected";
-            case "goosed_error":
-                yield "chat.sessionErrors.goosedError";
-            case "provider_timeout":
-                yield "chat.sessionErrors.providerTimeout";
-            case "provider_rate_limited":
-                yield "chat.sessionErrors.providerRateLimited";
-            case "provider_auth_or_quota_failed":
-                yield "chat.sessionErrors.providerAuthOrQuotaFailed";
-            case "tool_execution_failed":
-                yield "chat.sessionErrors.toolExecutionFailed";
-            case "mcp_unavailable":
-                yield "chat.sessionErrors.mcpUnavailable";
-            case "context_too_large":
-                yield "chat.sessionErrors.contextTooLarge";
-            default:
-                yield "chat.sessionErrors.unknown";
-        };
+        return SESSION_ERROR_MESSAGE_KEYS.getOrDefault(code, "chat.sessionErrors.unknown");
     }
 
     private String normalizeReplyUserMessageCreated(String body) {
@@ -687,7 +658,6 @@ public class ReplyController {
             int total = conv.size();
             int limit = Math.min(total, 30);
             List<String> head = new ArrayList<>(limit);
-
             int createdCount = 0;
             int inversionCount = 0;
             String prevRole = null;
@@ -695,33 +665,21 @@ public class ReplyController {
             for (int i = 0; i < total; i++) {
                 JsonNode m = conv.get(i);
                 String role = m.hasNonNull("role") ? m.get("role").asText() : "";
+
+                if (prevRole != null && "assistant".equals(prevRole) && "user".equals(role)) {
+                    inversionCount++;
+                }
                 if ("user".equals(role) || "assistant".equals(role)) {
                     prevRole = prevRole == null ? role : prevRole;
                 }
-                if (prevRole != null && "assistant".equals(prevRole) && "user".equals(role)) {
-                    inversionCount += 1;
-                }
                 prevRole = role;
 
-                JsonNode created = m.get("created");
-                if (created != null && created.isNumber()) {
-                    createdCount += 1;
-                } else if (created != null && created.isTextual() && !created.asText().trim().isEmpty()) {
-                    createdCount += 1;
-                } else if (m.hasNonNull("created_at") || m.hasNonNull("createdAt")) {
-                    createdCount += 1;
+                if (hasCreatedTimestamp(m)) {
+                    createdCount++;
                 }
 
                 if (i < limit) {
-                    String id = m.hasNonNull("id") ? m.get("id").asText() : "";
-                    String createdRaw = created != null && !created.isNull() ? created.asText() : "";
-                    if (createdRaw.isEmpty() && m.hasNonNull("created_at")) {
-                        createdRaw = m.get("created_at").asText();
-                    }
-                    if (createdRaw.isEmpty() && m.hasNonNull("createdAt")) {
-                        createdRaw = m.get("createdAt").asText();
-                    }
-                    head.add(i + ":" + role + ":" + id + ":" + createdRaw);
+                    head.add(buildDigestEntry(i, m, role));
                 }
             }
 
@@ -733,6 +691,43 @@ public class ReplyController {
             log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} parseFailed err={}", agentId, userId,
                 sessionId, e.getMessage());
         }
+    }
+
+    private static boolean hasCreatedTimestamp(JsonNode message) {
+        JsonNode created = message.get("created");
+        if (created != null && created.isNumber()) {
+            return true;
+        }
+        if (created != null && created.isTextual() && !created.asText().trim().isEmpty()) {
+            return true;
+        }
+        if (message.hasNonNull("created_at") || message.hasNonNull("createdAt")) {
+            return true;
+        }
+        return false;
+    }
+
+    private static String buildDigestEntry(int index, JsonNode message, String role) {
+        String id = message.hasNonNull("id") ? message.get("id").asText() : "";
+        String createdRaw = resolveCreatedRaw(message);
+        return index + ":" + role + ":" + id + ":" + createdRaw;
+    }
+
+    private static String resolveCreatedRaw(JsonNode message) {
+        JsonNode created = message.get("created");
+        if (created != null && !created.isNull()) {
+            String text = created.asText();
+            if (!text.isEmpty()) {
+                return text;
+            }
+        }
+        if (message.hasNonNull("created_at")) {
+            return message.get("created_at").asText();
+        }
+        if (message.hasNonNull("createdAt")) {
+            return message.get("createdAt").asText();
+        }
+        return "";
     }
 
     /**

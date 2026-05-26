@@ -26,7 +26,7 @@ const operationIntelligenceModule: AppModule = {
             group: 'business',
             order: 11,
             titleKey: 'sidebar.operationIntelligence',
-            icon: 'businessIntelligence',
+            icon: 'operationIntelligence',
             routeId: 'operation-intelligence.index',
             end: true,
         },

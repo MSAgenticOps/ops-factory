@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { csvToObjects } from '../../../../utils/csvExport'
-import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType } from '../../../../types/host'
+import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
@@ -17,7 +17,8 @@ export type ImportType =
 
 export interface ImportError {
     row: number
-    message: string
+    code: string
+    params?: Record<string, string>
 }
 
 export interface ImportProgress {
@@ -46,6 +47,7 @@ interface ImportDeps {
     clusters: Cluster[]
     allHosts: Host[]
     businessServices: BusinessService[]
+    relations: HostRelation[]
     clusterTypes: ClusterType[]
     businessTypes: BusinessType[]
 
@@ -55,7 +57,7 @@ interface ImportDeps {
     createCluster: (body: Partial<Cluster>) => Promise<Cluster>
     createHost: (body: HostCreateRequest) => Promise<Host>
     createBusinessService: (body: Partial<BusinessService>) => Promise<BusinessService>
-    createRelation: (body: Partial<import('../../../../types/host').HostRelation>) => Promise<unknown>
+    createRelation: (body: Partial<HostRelation>) => Promise<unknown>
     createClusterType: (body: Partial<ClusterType>) => Promise<unknown>
     createBusinessType: (body: Partial<BusinessType>) => Promise<unknown>
     createSop: (body: SopCreateRequest) => Promise<unknown>
@@ -68,15 +70,105 @@ export function useResourceImport(deps: ImportDeps) {
 
     const importCsv = useCallback(async (type: ImportType, csvText: string): Promise<ImportResult> => {
         const rows = csvToObjects(csvText)
-        if (rows.length === 0) {
-            return { success: 0, failed: 0, errors: [{ row: 0, message: 'No data rows found' }] }
+            if (rows.length === 0) {
+                return { success: 0, failed: 0, errors: [{ row: 0, code: 'import.noDataRows' }] }
+            }
+
+        // Validate CSV type matches selected import type
+        const firstRowKeys = new Set(Object.keys(rows[0]).map(k => k.toLowerCase()))
+
+        // Required fields for each type
+        const typeRequiredFields: Record<ImportType, string[]> = {
+            ClusterTypes: ['name', 'code'],
+            BusinessTypes: ['name', 'code'],
+            HostGroups: ['name'],
+            Clusters: ['name', 'type'],
+            Hosts: ['name', 'ip', 'username'],
+            BusinessServices: ['name', 'code'],
+            Relations: ['sourcenode', 'destnode'],
+            SOPs: ['name'],
+            Whitelist: ['pattern'],
         }
 
-        setImporting(true)
-        setProgress({ current: 0, total: rows.length, phase: type })
+        // Unique fields to help distinguish types
+        const typeUniqueFields: Record<ImportType, string[]> = {
+            ClusterTypes: ['commandprefix', 'envvariables'],
+            BusinessTypes: [], // Distinguished from ClusterTypes by NOT having commandprefix/envvariables
+            HostGroups: ['parentgroup'],
+            Clusters: ['type', 'group'],
+            Hosts: ['ip', 'port', 'username', 'authtype', 'credential'],
+            BusinessServices: ['businesstype'],
+            Relations: ['sourcenode', 'destnode'],
+            SOPs: ['version', 'triggercondition', 'enabled', 'mode'],
+            Whitelist: ['pattern'],
+        }
 
-        const errors: ImportError[] = []
-        let success = 0
+        // Check required fields
+        const required = typeRequiredFields[type]
+        const missingRequired = required.filter(field => !firstRowKeys.has(field.toLowerCase()))
+        if (missingRequired.length > 0) {
+            return {
+                success: 0,
+                failed: rows.length,
+                errors: [{
+                    row: 0,
+                    code: 'import.missingRequiredColumns',
+                    params: { type, columns: missingRequired.join(', ') }
+                }]
+            }
+        }
+
+        // Special handling for ClusterTypes vs BusinessTypes (both have 'name' and 'code')
+        if (type === 'ClusterTypes') {
+            // ClusterTypes should NOT have businesstype
+            if (firstRowKeys.has('businesstype')) {
+                return {
+                    success: 0, failed: rows.length,
+                    errors: [{ row: 0, code: 'import.wrongFileType.suggestBusinessTypes' }]
+                }
+            }
+            // ClusterTypes should have commandprefix (optional) or envvariables (optional)
+            if (!firstRowKeys.has('commandprefix') && !firstRowKeys.has('envvariables')) {
+                return {
+                    success: 0, failed: rows.length,
+                    errors: [{ row: 0, code: 'import.wrongFileType.suggestBusinessTypes' }]
+                }
+            }
+        } else if (type === 'BusinessTypes') {
+            // BusinessTypes should NOT have commandprefix, envvariables, or businesstype
+            if (firstRowKeys.has('commandprefix') || firstRowKeys.has('envvariables')) {
+                return {
+                    success: 0, failed: rows.length,
+                    errors: [{ row: 0, code: 'import.wrongFileType.suggestClusterTypes' }]
+                }
+            }
+        } else {
+            // For other types, check if file has unique fields of other types
+            const unexpectedFields = Object.entries(typeUniqueFields)
+                .filter(([checkType]) => checkType !== type)
+                .filter(([checkType]) => typeUniqueFields[checkType as ImportType].length > 0)
+                .filter(([, fields]) => fields.some(field => firstRowKeys.has(field.toLowerCase())))
+
+            if (unexpectedFields.length > 0) {
+                const suggestions = unexpectedFields.map(([checkType]) => checkType).join(' or ')
+                return {
+                    success: 0,
+                    failed: rows.length,
+                    errors: [{
+                        row: 0,
+                        code: 'import.wrongFileType.suggestOther',
+                        params: { types: suggestions }
+                    }]
+                }
+            }
+        }
+
+            setImporting(true)
+            setProgress({ current: 0, total: rows.length, phase: type })
+
+            try {
+                const errors: ImportError[] = []
+                let success = 0
 
         // Build lookup maps from current data
         const groupNameToId = new Map(deps.groups.map(g => [g.name, g.id]))
@@ -87,6 +179,13 @@ export function useResourceImport(deps: ImportDeps) {
         const businessTypeNameToId = new Map(deps.businessTypes.map(bt => [bt.name, bt.id]))
         const hostNameToId = new Map(deps.allHosts.map(h => [h.name, h.id]))
         const bsNameToId = new Map(deps.businessServices.map(bs => [bs.name, bs.id]))
+        const existingRelationKeys = new Set(deps.relations.map(r => `${r.sourceHostId}->${r.targetHostId}`))
+
+        // Track names created during this import to deduplicate within CSV
+        const createdClusterTypeNames = new Set(deps.clusterTypes.map(ct => ct.name))
+        const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
+        const createdSopNames = new Set<string>()
+        const createdPatterns = new Set<string>()
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
@@ -95,6 +194,10 @@ export function useResourceImport(deps: ImportDeps) {
             try {
                 switch (type) {
                     case 'ClusterTypes': {
+                        if (createdClusterTypeNames.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'ClusterType', name: row.name } })
+                            continue
+                        }
                         await deps.createClusterType({
                             name: row.name,
                             code: row.code,
@@ -108,22 +211,32 @@ export function useResourceImport(deps: ImportDeps) {
                                 })
                                 : undefined,
                         })
+                        createdClusterTypeNames.add(row.name)
                         success++
                         break
                     }
 
                     case 'BusinessTypes': {
+                        if (createdBusinessTypeNames.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'BusinessType', name: row.name } })
+                            continue
+                        }
                         await deps.createBusinessType({
                             name: row.name,
                             code: row.code,
                             description: row.description || '',
                             knowledge: row.knowledge || '',
                         })
+                        createdBusinessTypeNames.add(row.name)
                         success++
                         break
                     }
 
                     case 'HostGroups': {
+                        if (groupNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'HostGroup', name: row.name } })
+                            continue
+                        }
                         const created = await deps.createGroup({
                             name: row.name,
                             code: row.code || undefined,
@@ -136,6 +249,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Clusters': {
+                        if (clusterNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Cluster', name: row.name } })
+                            continue
+                        }
                         const groupId = row.group
                             ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                             : undefined
@@ -144,7 +261,7 @@ export function useResourceImport(deps: ImportDeps) {
                             typeName = clusterTypeCodeToName.get(typeName) || typeName
                         }
                         if (!groupId && row.group) {
-                            errors.push({ row: i + 1, message: `Group "${row.group}" not found` })
+                            errors.push({ row: i + 1, code: 'import.groupNotFound', params: { group: row.group } })
                             continue
                         }
                         const created = await deps.createCluster({
@@ -160,13 +277,18 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Hosts': {
+                        if (hostNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Host', name: row.name } })
+                            continue
+                        }
                         const clusterId = row.cluster
                             ? clusterNameToId.get(row.cluster)
                             : undefined
                         if (!clusterId && row.cluster) {
-                            errors.push({ row: i + 1, message: `Cluster "${row.cluster}" not found` })
+                            errors.push({ row: i + 1, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
                             continue
                         }
+                        const roleValue = row.role as string | undefined
                         const created = await deps.createHost({
                             name: row.name,
                             ip: row.ip,
@@ -181,6 +303,7 @@ export function useResourceImport(deps: ImportDeps) {
                             business: row.business || undefined,
                             clusterId,
                             purpose: row.purpose || undefined,
+                            role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
                             tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                             description: row.description || undefined,
                         })
@@ -190,6 +313,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'BusinessServices': {
+                        if (bsNameToId.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'BusinessService', name: row.name } })
+                            continue
+                        }
                         const groupId = row.group
                             ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                             : undefined
@@ -197,7 +324,7 @@ export function useResourceImport(deps: ImportDeps) {
                             ? businessTypeNameToId.get(row.businesstype)
                             : undefined
                         if (!groupId && row.group) {
-                            errors.push({ row: i + 1, message: `Group "${row.group}" not found` })
+                            errors.push({ row: i + 1, code: 'import.groupNotFound', params: { group: row.group } })
                             continue
                         }
                         const created = await deps.createBusinessService({
@@ -220,13 +347,19 @@ export function useResourceImport(deps: ImportDeps) {
                         const sourceHostId = hostNameToId.get(row.sourcenode)
                         const destHostId = hostNameToId.get(row.destnode)
                         if (!destHostId) {
-                            errors.push({ row: i + 1, message: `Target host "${row.destnode}" not found` })
+                            errors.push({ row: i + 1, code: 'import.targetHostNotFound', params: { host: row.destnode } })
                             continue
                         }
                         if (!sourceBsId && !sourceHostId) {
-                            errors.push({ row: i + 1, message: `Source node "${row.sourcenode}" not found as host or business service` })
+                            errors.push({ row: i + 1, code: 'import.sourceNodeNotFound', params: { node: row.sourcenode } })
                             continue
                         }
+                        const relationKey = `${sourceBsId || sourceHostId}->${destHostId}`
+                        if (existingRelationKeys.has(relationKey)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Relation', name: `${row.sourcenode} -> ${row.destnode}` } })
+                            continue
+                        }
+                        existingRelationKeys.add(relationKey)
                         await deps.createRelation({
                             sourceHostId: sourceBsId || sourceHostId!,
                             targetHostId: destHostId,
@@ -238,6 +371,10 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'SOPs': {
+                        if (createdSopNames.has(row.name)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'SOP', name: row.name } })
+                            continue
+                        }
                         const tags = row.tags
                             ? row.tags.split(';').map(t => t.trim()).filter(Boolean)
                             : []
@@ -251,16 +388,22 @@ export function useResourceImport(deps: ImportDeps) {
                             stepsDescription: row.stepsdescription || '',
                             tags,
                         })
+                        createdSopNames.add(row.name)
                         success++
                         break
                     }
 
                     case 'Whitelist': {
+                        if (createdPatterns.has(row.pattern)) {
+                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Whitelist', name: row.pattern } })
+                            continue
+                        }
                         await deps.addWhitelistCommand({
                             pattern: row.pattern,
                             description: row.description || '',
                             enabled: row.enabled !== 'false',
                         })
+                        createdPatterns.add(row.pattern)
                         success++
                         break
                     }
@@ -269,7 +412,7 @@ export function useResourceImport(deps: ImportDeps) {
                 }
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err)
-                errors.push({ row: i + 1, message: msg })
+                errors.push({ row: i + 1, code: 'import.rowError', params: { message: msg } })
             }
         }
 
@@ -284,7 +427,8 @@ export function useResourceImport(deps: ImportDeps) {
                     try {
                         await deps.updateGroup(groupId, { parentId })
                     } catch (err) {
-                        errors.push({ row: i + 1, message: `Failed to set parent: ${err instanceof Error ? err.message : String(err)}` })
+                        const msg = err instanceof Error ? err.message : String(err)
+                        errors.push({ row: i + 1, code: 'import.setParentFailed', params: { message: msg } })
                     }
                 }
             }
@@ -303,9 +447,19 @@ export function useResourceImport(deps: ImportDeps) {
             ])
         } catch { /* non-critical refresh failure */ }
 
-        setImporting(false)
-        setProgress(null)
-        return { success, failed: errors.length, errors }
+            setImporting(false)
+            setProgress(null)
+            return { success, failed: errors.length, errors }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            setImporting(false)
+            setProgress(null)
+            return {
+                success: 0,
+                failed: rows.length,
+                errors: [{ row: 0, code: 'import.importFailed', params: { message: msg } }]
+        }
+    }
     }, [deps])
 
     return { importing, progress, importCsv }

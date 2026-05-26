@@ -8,7 +8,6 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
-import com.huawei.opsfactory.gateway.logging.GatewayLogContext;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
@@ -106,6 +105,9 @@ public class SessionController {
     public Mono<String> startSession(@PathVariable("agentId") String agentId, @RequestBody String body,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
+        if (userId == null) {
+            return Mono.just("{\"success\":false,\"error\":\"User ID is required\"}");
+        }
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         long requestStart = System.currentTimeMillis();
         // Inject working_dir into the request body (override any client-supplied value)
@@ -121,16 +123,12 @@ public class SessionController {
         }
         String finalBody = modifiedBody;
         boolean resident = agentConfigService.isResidentInstance(agentId, userId);
-        GatewayLogContext.run(requestId, userId,
-            () -> log.info("[SESSION-START] begin agentId={} userId={} " + "resident={} bodyLen={}", agentId, userId,
-                resident, body.length()));
+        log.info("[SESSION-START] begin agentId={} userId={} resident={} bodyLen={}", agentId, userId, resident,
+            body.length());
         return instanceManager.getOrSpawn(agentId, userId).flatMap(instance -> {
             long afterInstanceMs = System.currentTimeMillis() - requestStart;
-            GatewayLogContext.run(requestId, userId,
-                () -> log.info(
-                    "[SESSION-START] instance resolved "
-                        + "agentId={} userId={} resident={} port={} pid={} resolveMs={}",
-                    agentId, userId, resident, instance.getPort(), instance.getPid(), afterInstanceMs));
+            log.info("[SESSION-START] instance resolved agentId={} userId={} resident={} port={} pid={} resolveMs={}",
+                agentId, userId, resident, instance.getPort(), instance.getPid(), afterInstanceMs);
             long startCallStart = System.currentTimeMillis();
             return goosedProxy
                 .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/start", finalBody, 120, instance.getSecretKey())
@@ -141,10 +139,8 @@ public class SessionController {
                     // This matches Node.js legacy and Goose Desktop behavior.
                     String sessionId = extractSessionId(startResponse);
                     String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";
-                    GatewayLogContext.run(requestId, userId, sessionId,
-                        () -> log.info("[SESSION-START] "
-                            + "goosed start complete agentId={} userId={} sessionId={} port={} " + "startCallMs={}",
-                            agentId, userId, sessionId, instance.getPort(), startCallMs));
+                    log.info("[SESSION-START] goosed start complete agentId={} userId={} sessionId={} port={} startCallMs={}",
+                        agentId, userId, sessionId, instance.getPort(), startCallMs);
                     long resumeStart = System.currentTimeMillis();
                     return goosedProxy
                         .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120,
@@ -152,12 +148,9 @@ public class SessionController {
                         .doOnNext(r -> {
                             long resumeMs = System.currentTimeMillis() - resumeStart;
                             instance.markSessionResumed(sessionId);
-                            GatewayLogContext.run(requestId, userId, sessionId,
-                                () -> log.info(
-                                    "[SESSION-START] session ready agentId={} userId={} sessionId={}"
-                                        + " resident={} port={} resumeMs={} totalMs={}",
-                                    agentId, userId, sessionId, resident, instance.getPort(), resumeMs,
-                                    System.currentTimeMillis() - requestStart));
+                            log.info("[SESSION-START] session ready agentId={} userId={} sessionId={} resident={} port={} resumeMs={} totalMs={}",
+                                agentId, userId, sessionId, resident, instance.getPort(), resumeMs,
+                                System.currentTimeMillis() - requestStart);
                         })
                         .thenReturn(startResponse);
                 });
@@ -170,7 +163,7 @@ public class SessionController {
             Object id = map.get("id");
             return id != null ? id.toString() : null;
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to parse session ID from start response", e);
+            throw new IllegalStateException("Failed to parse session ID from start response", e);
         }
     }
 
@@ -192,10 +185,8 @@ public class SessionController {
         @RequestParam(value = "agentId", required = false) String agentId,
         @RequestParam(value = "type", required = false) String type, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId,
-            () -> log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex,
-                pageSize, search, agentId, type));
+        log.info("[SESSION-LIST] begin userId={} page={}/{} search={} agentId={} type={}", userId, pageIndex, pageSize,
+            search, agentId, type);
         int safePageIndex = Math.max(1, pageIndex);
         int safePageSize = Math.max(1, Math.min(pageSize, 200));
 
@@ -203,7 +194,7 @@ public class SessionController {
         List<Map<String, Object>> cached = sessionCacheService.get(userId);
         if (cached != null) {
             String result = applyFiltersAndPaginate(cached, safePageIndex, safePageSize, search, agentId, type);
-            GatewayLogContext.run(requestId, userId, () -> log.info("[SESSION-LIST] cache hit userId={}", userId));
+            log.info("[SESSION-LIST] cache hit userId={}", userId);
             return Mono.just(result);
         }
 
@@ -239,8 +230,7 @@ public class SessionController {
                 });
                 // Cache atomically: concurrent request may have already cached
                 List<Map<String, Object>> effective = sessionCacheService.getOrFetch(userId, () -> parsed);
-                GatewayLogContext.run(requestId, userId,
-                    () -> log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size()));
+                log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size());
                 return applyFiltersAndPaginate(effective, safePageIndex, safePageSize, search, agentId, type);
             });
     }
@@ -253,24 +243,8 @@ public class SessionController {
         String search, String agentId, String type) {
         List<Map<String, Object>> filtered = new ArrayList<>();
         for (Map<String, Object> m : sortedSessions) {
-            if (agentId != null && !agentId.isBlank() && !agentId.equals(m.get("agentId"))) {
+            if (!matchesFilters(m, agentId, type, search)) {
                 continue;
-            }
-            if (type != null && !type.isBlank()) {
-                String sessionType = m.getOrDefault("session_type", "user") instanceof String s ? s : "user";
-                String scheduleId = m.get("schedule_id") instanceof String s && !s.isBlank() ? s : null;
-                if ("user".equals(type) && (!"user".equals(sessionType) || scheduleId != null)) {
-                    continue;
-                }
-                if ("scheduled".equals(type) && (scheduleId == null && !"scheduled".equals(sessionType))) {
-                    continue;
-                }
-            }
-            if (search != null && !search.isBlank()) {
-                String name = m.getOrDefault("name", "") instanceof String s ? s.toLowerCase(Locale.ROOT) : "";
-                if (!name.contains(search.toLowerCase(Locale.ROOT))) {
-                    continue;
-                }
             }
             filtered.add(m);
         }
@@ -286,8 +260,36 @@ public class SessionController {
         try {
             return MAPPER.writeValueAsString(response);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize paginated response", e);
+            throw new IllegalStateException("Failed to serialize paginated response", e);
         }
+    }
+
+    private boolean matchesFilters(Map<String, Object> session, String agentId, String type, String search) {
+        if (agentId != null && !agentId.isBlank() && !agentId.equals(session.get("agentId"))) {
+            return false;
+        }
+        if (type != null && !type.isBlank() && !matchesType(session, type)) {
+            return false;
+        }
+        if (search != null && !search.isBlank()) {
+            String name = session.getOrDefault("name", "") instanceof String s ? s.toLowerCase(Locale.ROOT) : "";
+            if (!name.contains(search.toLowerCase(Locale.ROOT))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean matchesType(Map<String, Object> session, String type) {
+        String sessionType = session.getOrDefault("session_type", "user") instanceof String s ? s : "user";
+        String scheduleId = session.get("schedule_id") instanceof String s && !s.isBlank() ? s : null;
+        if ("user".equals(type)) {
+            return "user".equals(sessionType) && scheduleId == null;
+        }
+        if ("scheduled".equals(type)) {
+            return scheduleId != null || "scheduled".equals(sessionType);
+        }
+        return true;
     }
 
     /**
@@ -353,16 +355,13 @@ public class SessionController {
     public Mono<String> getSession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
         ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId,
-            () -> log.info("[SESSION-GET] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId));
+        log.info("[SESSION-GET] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId);
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId,
                 instance.getSecretKey()))
             .map(json -> injectAgentId(json, agentId))
-            .doOnSuccess(json -> GatewayLogContext.run(requestId, userId,
-                () -> log.info("[SESSION-GET]" + " complete agentId={} userId={} sessionId={}", agentId, userId,
-                    sessionId)))
+            .doOnSuccess(json -> log.info("[SESSION-GET] complete agentId={} userId={} sessionId={}", agentId, userId,
+                sessionId))
             .onErrorResume(WebClientResponseException.class, e -> {
                 if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
                     return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "session not found"));
@@ -383,16 +382,13 @@ public class SessionController {
     public Mono<String> getSessionGlobal(@PathVariable("sessionId") String sessionId,
         @RequestParam("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log
-            .info("[SESSION-GET] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId));
+        log.info("[SESSION-GET] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId);
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(instance -> goosedProxy.fetchJson(instance.getPort(), "/sessions/" + sessionId,
                 instance.getSecretKey()))
             .map(json -> injectAgentId(json, agentId))
-            .doOnSuccess(json -> GatewayLogContext.run(requestId, userId,
-                () -> log.info("[SESSION-GET] " + "complete agentId={} userId={} sessionId={} scope=global", agentId,
-                    userId, sessionId)))
+            .doOnSuccess(json -> log
+                .info("[SESSION-GET] complete agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId))
             .onErrorResume(WebClientResponseException.class, e -> {
                 if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
                     return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "session not found"));
@@ -413,9 +409,7 @@ public class SessionController {
     public Mono<Void> deleteSession(@PathVariable("agentId") String agentId,
         @PathVariable("sessionId") String sessionId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId,
-            () -> log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId));
+        log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId);
         Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
@@ -424,9 +418,7 @@ public class SessionController {
                 "/sessions/" + sessionId, instance.getSecretKey()))
             .doOnSuccess(ignored -> {
                 sessionCacheService.invalidate(userId);
-                GatewayLogContext.run(requestId, userId,
-                    () -> log.info("[SESSION-DELETE] complete agentId={} " + "userId={} sessionId={}", agentId, userId,
-                        sessionId));
+                log.info("[SESSION-DELETE] complete agentId={} userId={} sessionId={}", agentId, userId, sessionId);
             });
     }
 
@@ -442,9 +434,7 @@ public class SessionController {
     public Mono<Void> deleteSessionGlobal(@PathVariable("sessionId") String sessionId,
         @RequestParam("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log
-            .info("[SESSION-DELETE] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId));
+        log.info("[SESSION-DELETE] begin agentId={} userId={} sessionId={} scope=global", agentId, userId, sessionId);
         Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
@@ -453,9 +443,8 @@ public class SessionController {
                 "/sessions/" + sessionId, instance.getSecretKey()))
             .doOnSuccess(ignored -> {
                 sessionCacheService.invalidate(userId);
-                GatewayLogContext.run(requestId, userId,
-                    () -> log.info("[SESSION-DELETE] complete agentId={} " + "userId={} sessionId={} scope=global",
-                        agentId, userId, sessionId));
+                log.info("[SESSION-DELETE] complete agentId={} userId={} sessionId={} scope=global", agentId, userId,
+                    sessionId);
             });
     }
 
@@ -472,9 +461,7 @@ public class SessionController {
     public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable("agentId") String agentId,
         @PathVariable("sessionId") String sessionId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId, () -> log
-            .info("[SESSION-CLEANUP-EMPTY] begin agentId={} " + "userId={} sessionId={}", agentId, userId, sessionId));
+        log.info("[SESSION-CLEANUP-EMPTY] begin agentId={} userId={} sessionId={}", agentId, userId, sessionId);
 
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(
@@ -482,10 +469,8 @@ public class SessionController {
                     .flatMap(json -> {
                         EmptySessionDecision decision = shouldDeleteEmptySession(json);
                         if (!decision.delete()) {
-                            GatewayLogContext.run(requestId, userId,
-                                () -> log.info(
-                                    "[SESSION-CLEANUP-EMPTY] skip agentId={} userId={} sessionId={} reason={}", agentId,
-                                    userId, sessionId, decision.reason()));
+                            log.info("[SESSION-CLEANUP-EMPTY] skip agentId={} userId={} sessionId={} reason={}", agentId,
+                                userId, sessionId, decision.reason());
                             return Mono.just(cleanupResult(false, decision.reason()));
                         }
 
@@ -495,9 +480,9 @@ public class SessionController {
                             .then(Mono.fromRunnable(() -> cleanupUploads(userId, agentId, sessionId))
                                 .subscribeOn(Schedulers.boundedElastic()))
                             .thenReturn(cleanupResult(true, "empty_session_deleted"))
-                            .doOnSuccess(result -> GatewayLogContext.run(requestId, userId,
-                                () -> log.info("[SESSION-CLEANUP-EMPTY] deleted agentId={} userId={} sessionId={}",
-                                    agentId, userId, sessionId)));
+                            .doOnSuccess(result -> log
+                                .info("[SESSION-CLEANUP-EMPTY] deleted agentId={} userId={} sessionId={}", agentId, userId,
+                                    sessionId));
                     }))
             .onErrorResume(WebClientResponseException.class, e -> {
                 if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -600,18 +585,14 @@ public class SessionController {
     public Mono<Void> renameSession(@PathVariable("agentId") String agentId,
         @PathVariable("sessionId") String sessionId, @RequestBody String body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
-        String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
-        GatewayLogContext.run(requestId, userId,
-            () -> log.info("[SESSION-RENAME] begin agentId={} userId={} " + "sessionId={} bodyLen={}", agentId, userId,
-                sessionId, body.length()));
+        log.info("[SESSION-RENAME] begin agentId={} userId={} sessionId={} bodyLen={}", agentId, userId, sessionId,
+            body.length());
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(instance -> goosedProxy.proxyWithBody(exchange.getResponse(), instance.getPort(),
                 "/sessions/" + sessionId + "/name", HttpMethod.PUT, body, instance.getSecretKey()))
             .doOnSuccess(ignored -> {
                 sessionCacheService.invalidate(userId);
-                GatewayLogContext.run(requestId, userId,
-                    () -> log.info("[SESSION-RENAME] complete agentId={} " + "userId={} sessionId={}", agentId, userId,
-                        sessionId));
+                log.info("[SESSION-RENAME] complete agentId={} userId={} sessionId={}", agentId, userId, sessionId);
             });
     }
 

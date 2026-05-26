@@ -5,11 +5,12 @@
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
+import com.huawei.opsfactory.gateway.config.ReactorMdcConfiguration;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
-import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -92,13 +93,12 @@ public class UserContextFilter implements WebFilter {
         }
 
         exchange.getAttributes().put(USER_ID_ATTR, userId);
-        ThreadContext.put("userId", userId);
 
         // Trigger pre-warm for authenticated users, except diagnostics that must not mutate runtime state.
         if (!isTraceEndpoint(path)) {
             prewarmService.onUserActivity(userId);
         }
 
-        return chain.filter(exchange);
+        return chain.filter(exchange).contextWrite(Context.of(ReactorMdcConfiguration.USER_ID_KEY, userId));
     }
 }

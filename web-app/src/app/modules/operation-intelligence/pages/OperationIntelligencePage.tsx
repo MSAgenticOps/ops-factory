@@ -54,7 +54,7 @@ export default function OperationIntelligencePage({ embedded = false }: Operatio
     useEffect(() => { fetchData() }, [fetchData])
 
     useEffect(() => {
-        const timer = setInterval(fetchData, 60000)
+        const timer = setInterval(() => fetchData(), 60000)
         return () => clearInterval(timer)
     }, [fetchData])
 

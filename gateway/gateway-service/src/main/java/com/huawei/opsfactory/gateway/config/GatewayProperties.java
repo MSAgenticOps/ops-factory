@@ -977,6 +977,8 @@ public class GatewayProperties {
 
         private int sseChunkPreviewMaxChars = 160;
 
+        private boolean mdcPropagationEnabled = true;
+
         /**
          * Returns the access log enabled flag.
          *
@@ -1047,6 +1049,24 @@ public class GatewayProperties {
          */
         public void setSseChunkPreviewMaxChars(int sseChunkPreviewMaxChars) {
             this.sseChunkPreviewMaxChars = sseChunkPreviewMaxChars;
+        }
+
+        /**
+         * Returns the MDC propagation enabled flag.
+         *
+         * @return the MDC propagation enabled flag
+         */
+        public boolean isMdcPropagationEnabled() {
+            return mdcPropagationEnabled;
+        }
+
+        /**
+         * Updates the MDC propagation enabled flag.
+         *
+         * @param mdcPropagationEnabled the MDC propagation enabled flag
+         */
+        public void setMdcPropagationEnabled(boolean mdcPropagationEnabled) {
+            this.mdcPropagationEnabled = mdcPropagationEnabled;
         }
     }
 
@@ -1470,19 +1490,5 @@ public class GatewayProperties {
     public String toString() {
         return "GatewayProperties{" + "secretKey='***'" + ", corsOrigin='" + corsOrigin + '\'' + ", gooseTls="
             + gooseTls + ", gooseScheme='" + gooseScheme() + '\'' + ", goosedBin='" + goosedBin + '\'' + '}';
-    }
-
-    private void normalizeGoosedBin() {
-        if (goosedBin == null || goosedBin.isBlank()) {
-            return;
-        }
-        Path rawPath = Path.of(goosedBin);
-        if (rawPath.isAbsolute()) {
-            return;
-        }
-        Path candidate = getGatewayRootPath().resolve(goosedBin).normalize();
-        if (Files.exists(candidate)) {
-            goosedBin = candidate.toString();
-        }
     }
 }

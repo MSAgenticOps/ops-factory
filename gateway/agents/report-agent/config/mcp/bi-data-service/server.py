@@ -143,13 +143,13 @@ def _build_date_params(args: Dict[str, Any]) -> Dict[str, str]:
 
 
 DEFAULT_FIELDS_MAP: Dict[str, List[str]] = {
-    "incidents": ["Order Number", "Priority", "Category", "Resolver", "Order Status",
-                  "Response Time(m)", "Resolution Time(m)", "Begin Date", "End Date"],
-    "changes": ["Change Number", "Change Type", "Status", "Category", "Success", "Incident Caused"],
-    "requests": ["Request Number", "Request Type", "Status", "Requester Dept",
-                 "Fulfillment Time(h)", "SLA Met", "Satisfaction Score"],
-    "problems": ["Problem Number", "Status", "Priority", "Root Cause Category",
-                 "Known Error", "Workaround Available"],
+    "incidents": ["ticket_id", "priority", "category", "assigned_to", "status",
+                  "response_time_minutes", "resolution_time_minutes", "opened_at", "closed_at"],
+    "changes": ["ticket_id", "change_type", "status", "category", "close_code", "incident_ids"],
+    "requests": ["ticket_id", "catalog_item", "status", "requester_dept",
+                 "resolution_time_minutes", "satisfaction_score"],
+    "problems": ["ticket_id", "status", "priority", "cause_code",
+                 "known_error", "workaround"],
 }
 
 # Per-domain KPI fields to keep in get_all_metrics summary mode
@@ -235,55 +235,47 @@ def _handle_get_all_metrics(args: Dict[str, Any], config: RuntimeConfig) -> Any:
 
 
 _FIELD_CONTEXT: Dict[str, str] = {
-    "incidents": "Incident (故障/事件) tickets. Each row is one incident with its priority, status, assigned resolver, and time metrics.",
-    "changes": "Change (变更) tickets. Each row is one change request with its type, risk level, implementer, and outcome.",
-    "requests": "Service Request (服务请求) tickets. Each row is one request with its type, fulfillment time, SLA status, and satisfaction score.",
+    "incidents": "Incident (故障/事件) tickets. Each row is one incident with its priority, status, assigned_to, and time metrics.",
+    "changes": "Change (变更) tickets. Each row is one change request with its type, risk, assigned_to, and close_code.",
+    "requests": "Service Request (服务请求) tickets. Each row is one request with its type, resolution_time_minutes, SLA compliance, and satisfaction score.",
     "problems": "Problem (问题) tickets. Each row is one problem record with its root cause, status, and resolution details.",
 }
 
 _FIELD_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
     "incidents": {
-        "Order Number": "Unique incident ID (e.g. INC0001)",
-        "Priority": "Severity: P1 (critical) > P2 (high) > P3 (medium) > P4 (low)",
-        "Category": "Incident type (Database, Network, Application, etc.)",
-        "Resolver": "Person assigned to resolve this incident",
-        "Order Status": "Current status: Completed = resolved, Suspended = on hold/pending, In Progress = being worked on",
-        "Current Phase": "Workflow phase the ticket is in",
-        "Response Time(m)": "Minutes from ticket creation to first response",
-        "Resolution Time(m)": "Minutes from ticket creation to resolution",
-        "Total Time(m)": "Total duration in minutes",
-        "Begin Date": "When the incident was opened",
-        "End Date": "When the incident was closed",
+        "ticket_id": "Unique incident ID (e.g. INC0001)",
+        "priority": "Severity: P1 (critical) > P2 (high) > P3 (medium) > P4 (low)",
+        "category": "Incident type (Database, Network, Application, etc.)",
+        "assigned_to": "Person currently assigned to handle this incident",
+        "status": "Current status: Closed = resolved, Open/Pending/In Progress = active",
+        "response_time_minutes": "Minutes from ticket creation to first response",
+        "resolution_time_minutes": "Minutes from ticket creation to resolution",
+        "opened_at": "When the incident was opened",
+        "closed_at": "When the incident was closed",
     },
     "changes": {
-        "Change Number": "Unique change ID (e.g. CHG0001)",
-        "Change Type": "Standard (pre-approved), Normal (requires approval), Emergency (urgent)",
-        "Risk Level": "Impact risk: Low, Medium, High, Critical",
-        "Status": "Current change status",
-        "Category": "Change area: Application, Infrastructure, Database, Network, Security",
-        "Implementer": "Person implementing the change",
-        "Success": "Whether the change was successful: Yes/No",
-        "Incident Caused": "Whether this change caused an incident: Yes/No",
+        "ticket_id": "Unique change ID (e.g. CHG0001)",
+        "change_type": "Standard (pre-approved), Normal (requires approval), Emergency (urgent)",
+        "status": "Current change status",
+        "category": "Change area: Application, Infrastructure, Database, Network, Security",
+        "close_code": "Outcome: Successful or Failed",
+        "incident_ids": "Comma-separated incident IDs caused by this change, if any",
     },
     "requests": {
-        "Request Number": "Unique request ID (e.g. REQ0001)",
-        "Request Type": "Request category: Access, Provisioning, Information, Standard Change",
-        "Status": "Current request status",
-        "Requester Dept": "Department that submitted the request",
-        "Assignee": "Person fulfilling the request",
-        "Fulfillment Time(h)": "Hours to complete the request",
-        "SLA Met": "Whether SLA was met: Yes/No",
-        "Satisfaction Score": "User satisfaction rating 1-5",
+        "ticket_id": "Unique request ID (e.g. REQ0001)",
+        "catalog_item": "Service catalog item: Access, Provisioning, Information, Standard Change",
+        "status": "Current request status",
+        "requester_dept": "Department that submitted the request",
+        "resolution_time_minutes": "Minutes to fulfill the request",
+        "satisfaction_score": "User satisfaction rating 1-5",
     },
     "problems": {
-        "Problem Number": "Unique problem ID (e.g. PRB0001)",
-        "Status": "Current problem status",
-        "Priority": "Severity: P1-P4",
-        "Root Cause Category": "Root cause classification: Human Error, Process Gap, Technical Defect, Vendor Issue, Unknown",
-        "Known Error": "Whether root cause is identified: Yes/No",
-        "Workaround Available": "Whether a temporary fix exists: Yes/No",
-        "Permanent Fix Implemented": "Whether a permanent fix is in place: Yes/No",
-        "Resolver": "Person who resolved the problem",
+        "ticket_id": "Unique problem ID (e.g. PRB0001)",
+        "status": "Current problem status",
+        "priority": "Severity: P1-P4",
+        "cause_code": "Root cause classification: Human Error, Process Gap, Technical Defect, Vendor Issue, Unknown",
+        "known_error": "Whether root cause is identified: TRUE/FALSE",
+        "workaround": "Temporary workaround description, if available",
     },
 }
 
@@ -389,15 +381,13 @@ def _handle_analyze_sla_rate(args: Dict[str, Any], config: RuntimeConfig) -> Any
     if by_priority:
         result["by_priority"] = sla_data.get("priorityBreakdown", {})
 
-    # 4. by_category — SLA rate by Category
+    # 4. by_category — SLA risk by Category (from SLA endpoint)
     if by_category:
-        result["by_category"] = _bi_request("POST", "/data/incidents/query", config,
-            body={"aggregate": {"metric": "percentage", "field": "SLA Compliant", "value": "Yes", "groupBy": "Category"}})
+        result["by_category"] = sla_data.get("topCategoryRisks", [])
 
-    # 5. by_resolver — SLA rate by Resolver
+    # 5. by_resolver — SLA risk by assigned_to (from SLA endpoint)
     if by_resolver:
-        result["by_resolver"] = _bi_request("POST", "/data/incidents/query", config,
-            body={"aggregate": {"metric": "percentage", "field": "SLA Compliant", "value": "Yes", "groupBy": "Resolver"}})
+        result["by_resolver"] = sla_data.get("topResolverRisks", [])
 
     # 6. by_time trend
     if by_time:
@@ -415,6 +405,46 @@ def _handle_analyze_sla_rate(args: Dict[str, Any], config: RuntimeConfig) -> Any
         trends.append(p12_trend)
 
         result["by_time"] = _merge_trend_series(trends)
+
+    return result
+
+
+def _handle_analyze_request_sla_rate(args: Dict[str, Any], config: RuntimeConfig) -> Any:
+    by_catalog = args.get("by_catalog", True)
+    by_department = args.get("by_department", False)
+    by_priority = args.get("by_priority", False)
+    by_time = args.get("by_time", False)
+    interval = args.get("interval", "week")
+
+    if interval not in VALID_INTERVALS:
+        raise ToolExecutionError(f"Invalid interval: {interval}. Valid: {', '.join(sorted(VALID_INTERVALS))}")
+
+    params = _build_date_params(args)
+
+    # 1. Overall + grouped SLA data from /metrics/requests
+    request_data = _bi_request("GET", "/metrics/requests", config, params=params or None)
+    result: Dict[str, Any] = {
+        "total": request_data.get("totalCount", 0),
+        "sla_rate": request_data.get("slaRate", 0),
+        "avg_csat": request_data.get("avgCsat", 0),
+        "avg_fulfillment_hours": request_data.get("avgFulfillmentHours", 0),
+    }
+
+    # 2. Grouped SLA breakdowns (response/resolution/overall rates per group)
+    if by_catalog:
+        result["by_catalog"] = request_data.get("slaByCatalog", [])
+
+    if by_priority:
+        result["by_priority"] = request_data.get("slaByPriority", [])
+
+    if by_department:
+        result["by_department"] = request_data.get("slaByDepartment", [])
+
+    # 3. by_time trend
+    if by_time:
+        sla_trend = _get_trends("requests", "sla_rate", interval, config, args)
+        sla_trend["name"] = "sla_rate"
+        result["by_time"] = _merge_trend_series([sla_trend])
 
     return result
 
@@ -448,8 +478,8 @@ def _handle_analyze_incident_volume(args: Dict[str, Any], config: RuntimeConfig)
         cat_body = {
             "aggregate": {
                 "metric": "distribution",
-                "field": "Category",
-                "groupBy": "Category",
+                "field": "category",
+                "groupBy": "category",
             }
         }
         result["by_category"] = _bi_request("POST", "/data/incidents/query", config, body=cat_body)
@@ -485,8 +515,8 @@ def _handle_analyze_mttr(args: Dict[str, Any], config: RuntimeConfig) -> Any:
     # Overall MTTR from incident metrics
     incident_data = _bi_request("GET", "/metrics/incidents", config, params=params or None)
     result: Dict[str, Any] = {
-        "overall_mttr_hours": incident_data.get("mttr", incident_data.get("avgResolutionTime", 0)),
-        "p1p2_mttr_hours": incident_data.get("p1p2Mttr", incident_data.get("p1p2_avg_resolution_time", 0)),
+        "overall_mttr_hours": incident_data.get("mttrHours", 0),
+        "p1p2_mttr_hours": incident_data.get("p1p2MttrHours", 0),
     }
 
     # by_priority
@@ -494,8 +524,8 @@ def _handle_analyze_mttr(args: Dict[str, Any], config: RuntimeConfig) -> Any:
         prio_body = {
             "aggregate": {
                 "metric": "avg",
-                "field": "Resolution Time(m)",
-                "groupBy": "Priority",
+                "field": "resolution_time_minutes",
+                "groupBy": "priority",
             }
         }
         result["by_priority"] = _bi_request("POST", "/data/incidents/query", config, body=prio_body)
@@ -505,8 +535,8 @@ def _handle_analyze_mttr(args: Dict[str, Any], config: RuntimeConfig) -> Any:
         cat_body = {
             "aggregate": {
                 "metric": "avg",
-                "field": "Resolution Time(m)",
-                "groupBy": "Category",
+                "field": "resolution_time_minutes",
+                "groupBy": "category",
             }
         }
         result["by_category"] = _bi_request("POST", "/data/incidents/query", config, body=cat_body)
@@ -516,8 +546,8 @@ def _handle_analyze_mttr(args: Dict[str, Any], config: RuntimeConfig) -> Any:
         res_body = {
             "aggregate": {
                 "metric": "avg",
-                "field": "Resolution Time(m)",
-                "groupBy": "Resolver",
+                "field": "resolution_time_minutes",
+                "groupBy": "assigned_to",
             }
         }
         result["by_resolver"] = _bi_request("POST", "/data/incidents/query", config, body=res_body)
@@ -568,8 +598,8 @@ def _handle_analyze_change_success_rate(args: Dict[str, Any], config: RuntimeCon
         cat_body = {
             "aggregate": {
                 "metric": "distribution",
-                "field": "Category",
-                "groupBy": "Category",
+                "field": "category",
+                "groupBy": "category",
             }
         }
         result["by_category"] = _bi_request("POST", "/data/changes/query", config, body=cat_body)
@@ -579,8 +609,8 @@ def _handle_analyze_change_success_rate(args: Dict[str, Any], config: RuntimeCon
         risk_body = {
             "aggregate": {
                 "metric": "distribution",
-                "field": "Risk Level",
-                "groupBy": "Risk Level",
+                "field": "risk",
+                "groupBy": "risk",
             }
         }
         result["by_risk_level"] = _bi_request("POST", "/data/changes/query", config, body=risk_body)
@@ -635,8 +665,8 @@ def _handle_analyze_request_performance(args: Dict[str, Any], config: RuntimeCon
         dept_body = {
             "aggregate": {
                 "metric": "distribution",
-                "field": "Department",
-                "groupBy": "Department",
+                "field": "requester_dept",
+                "groupBy": "requester_dept",
             }
         }
         result["by_department"] = _bi_request("POST", "/data/requests/query", config, body=dept_body)
@@ -651,6 +681,10 @@ def _handle_analyze_request_performance(args: Dict[str, Any], config: RuntimeCon
         csat_trend = _get_trends("requests", "csat", interval, config, args)
         csat_trend["name"] = "csat"
         trends.append(csat_trend)
+
+        sla_trend = _get_trends("requests", "sla_rate", interval, config, args)
+        sla_trend["name"] = "sla_rate"
+        trends.append(sla_trend)
 
         result["by_time"] = _merge_trend_series(trends)
 
@@ -686,8 +720,8 @@ def _handle_analyze_problem_metrics(args: Dict[str, Any], config: RuntimeConfig)
         rc_body = {
             "aggregate": {
                 "metric": "distribution",
-                "field": "Root Cause",
-                "groupBy": "Root Cause",
+                "field": "cause_code",
+                "groupBy": "cause_code",
             }
         }
         result["by_root_cause"] = _bi_request("POST", "/data/problems/query", config, body=rc_body)
@@ -816,9 +850,10 @@ TOOLS = [
     {
         "name": "analyze_sla_rate",
         "description": (
-            "Analyze SLA compliance rate. Returns overall rate, response/resolution rates, breach count, and average times. "
+            "Analyze INCIDENT SLA compliance rate. Returns overall rate, response/resolution rates, breach count, and average times. "
             "Default includes by_priority breakdown (P1-P4). Optional: by_category (all categories), by_resolver (all resolvers), "
-            "by_time (multi-series weekly trend: response + resolution + P1/P2 rates). Use sla_type to focus on response or resolution only."
+            "by_time (multi-series weekly trend: response + resolution + P1/P2 rates). Use sla_type to focus on response or resolution only. "
+            "This tool covers Incident SLA only. For Request SLA, use analyze_request_sla_rate."
         ),
         "inputSchema": {
             "type": "object",
@@ -831,6 +866,28 @@ TOOLS = [
                              "enum": ["day", "week", "month"]},
                 "sla_type": {"type": "string", "description": "Focus on response, resolution, or both", "default": "both",
                              "enum": ["response", "resolution", "both"]},
+                "startDate": {"type": "string", "description": "Optional start date (ISO format)"},
+                "endDate": {"type": "string", "description": "Optional end date (ISO format)"},
+            },
+        },
+    },
+    {
+        "name": "analyze_request_sla_rate",
+        "description": (
+            "Analyze service request SLA compliance rate. Returns overall SLA rate (response AND resolution dual-check), "
+            "avg CSAT, avg fulfillment hours. Default includes by_catalog SLA breakdown (response/resolution/overall rates per group). "
+            "Optional: by_priority SLA breakdown, by_department SLA breakdown, by_time trend. "
+            "For Incident SLA, use analyze_sla_rate instead."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "by_catalog": {"type": "boolean", "description": "Include SLA breakdown by service catalog", "default": True},
+                "by_priority": {"type": "boolean", "description": "Include SLA breakdown by priority"},
+                "by_department": {"type": "boolean", "description": "Include SLA breakdown by requester department"},
+                "by_time": {"type": "boolean", "description": "Include time-series SLA rate trend"},
+                "interval": {"type": "string", "description": "Time interval: day, week, or month", "default": "week",
+                             "enum": ["day", "week", "month"]},
                 "startDate": {"type": "string", "description": "Optional start date (ISO format)"},
                 "endDate": {"type": "string", "description": "Optional end date (ISO format)"},
             },
@@ -899,7 +956,7 @@ TOOLS = [
         "name": "analyze_request_performance",
         "description": (
             "Analyze service request performance. Returns total count, fulfilled count, SLA rate, avg CSAT, avg fulfillment hours. "
-            "Default includes by_type distribution. Optional: by_department, by_time trend (volume + CSAT)."
+            "Default includes by_type distribution. Optional: by_department, by_time trend (volume + CSAT + SLA rate)."
         ),
         "inputSchema": {
             "type": "object",
@@ -973,6 +1030,8 @@ def dispatch_tool(name: str, args: Dict[str, Any], config: RuntimeConfig) -> Any
         return _handle_analyze_change_success_rate(args, config)
     if name == "analyze_request_performance":
         return _handle_analyze_request_performance(args, config)
+    if name == "analyze_request_sla_rate":
+        return _handle_analyze_request_sla_rate(args, config)
     if name == "analyze_problem_metrics":
         return _handle_analyze_problem_metrics(args, config)
     if name == "analyze_workforce_performance":

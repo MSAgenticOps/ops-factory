@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
@@ -9,6 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+
+/**
+ * The SearchService.
+ * @author x00000000
+ * @since 2026-05-26
+ */
 
 @Service
 public class SearchService {
@@ -150,13 +160,6 @@ public class SearchService {
             .toList();
     }
 
-    private <T> List<T> limit(List<T> items, int topK) {
-        if (topK <= 0 || items.size() <= topK) {
-            return items;
-        }
-        return new ArrayList<>(items.subList(0, topK));
-    }
-
     private List<SearchMatch> filterByThreshold(List<SearchMatch> matches, Double threshold) {
         if (threshold == null) {
             return matches;
@@ -188,10 +191,6 @@ public class SearchService {
 
     private double semanticScore(Map<String, Double> semanticByChunkId, String chunkId) {
         return semanticByChunkId.getOrDefault(chunkId, 0.0);
-    }
-
-    private double clamp(double value) {
-        return Math.max(0, Math.min(1, value));
     }
 
     public record SearchOptions(

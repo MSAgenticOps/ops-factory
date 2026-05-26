@@ -47,8 +47,8 @@ class RequestLoggingFilterIntegrationTest {
             assertThat(requestId).isNotBlank();
             assertThat(appender.events())
                 .anySatisfy(event -> {
-                    String loggedRequestId = Objects.toString(event.getContextData().getValue(LoggingKeys.REQUEST_ID), null);
-                    assertThat(event.getMessage().getFormattedMessage())
+                    String loggedRequestId = event.getMDCPropertyMap().get(LoggingKeys.REQUEST_ID);
+                    assertThat(event.getFormattedMessage())
                         .contains("HTTP GET /business-intelligence/overview completed status=200");
                     assertThat(loggedRequestId).isEqualTo(requestId);
                 });
@@ -68,7 +68,7 @@ class RequestLoggingFilterIntegrationTest {
             assertThat(result.getResponse().getHeader(LoggingKeys.REQUEST_ID_HEADER)).isEqualTo(requestId);
             assertThat(appender.events())
                 .anySatisfy(event -> {
-                    String loggedRequestId = Objects.toString(event.getContextData().getValue(LoggingKeys.REQUEST_ID), null);
+                    String loggedRequestId = event.getMDCPropertyMap().get(LoggingKeys.REQUEST_ID);
                     assertThat(loggedRequestId).isEqualTo(requestId);
                 });
         }
@@ -76,11 +76,12 @@ class RequestLoggingFilterIntegrationTest {
 
     private static BiRawData sampleData() {
         return new BiRawData(
-            List.of(Map.of("Order Number", "INC-001", "SLA Compliant", "Yes")),
-            List.of(Map.of("Priority", "P1", "Response (minutes)", "15", "Resolution (hours)", "4")),
-            List.of(Map.of("Change Number", "CHG-001", "Success", "Yes", "Incident Caused", "No")),
-            List.of(Map.of("Request Number", "REQ-001", "Status", "Fulfilled", "SLA Met", "Yes")),
-            List.of(Map.of("Problem Number", "PRB-001", "Status", "Resolved"))
+            List.of(Map.of("ticket_id", "INC-001", "SLA Compliant", "Yes", "priority", "P1")),
+            List.of(Map.of("priority", "P1", "response_sla_min", "15", "resolution_sla_min", "240")),
+            List.of(Map.of("ticket_id", "CHG-001", "close_code", "Successful", "incident_ids", "")),
+            List.of(Map.of("ticket_id", "REQ-001", "status", "Closed", "close_code", "Fulfilled", "priority", "P2", "response_time_minutes", "30", "resolution_time_minutes", "120")),
+            List.of(Map.of("ticket_id", "PRB-001", "status", "Resolved")),
+            List.of(Map.of("priority", "P1", "response_sla_min", "180", "resolution_sla_min", "7200"))
         );
     }
 }
