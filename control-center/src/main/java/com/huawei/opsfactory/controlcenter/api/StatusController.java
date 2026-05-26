@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-@RestController
+@RestController("controlCenterStatusController")
 @RequestMapping("/control-center")
 public class StatusController {
 

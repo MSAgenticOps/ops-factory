@@ -765,6 +765,7 @@ public class OperationIntelligenceProperties {
         private long maxTimeRangeMs = 1800000;
         private long rotationIntervalMs = 3600000;
         private long normalizeDataRetentionDays = 90;
+        private double minCallRatio = 3.0;
         private TimeSplit timeSplit = new TimeSplit();
 
         /**
@@ -891,6 +892,24 @@ public class OperationIntelligenceProperties {
          */
         public void setMaxTimeRangeMs(long maxTimeRangeMs) {
             this.maxTimeRangeMs = maxTimeRangeMs;
+        }
+
+        /**
+         * Gets the min call ratio.
+         *
+         * @return the min call ratio
+         */
+        public double getMinCallRatio() {
+            return minCallRatio;
+        }
+
+        /**
+         * Sets the min call ratio.
+         *
+         * @param minCallRatio the minCallRatio
+         */
+        public void setMinCallRatio(double minCallRatio) {
+            this.minCallRatio = minCallRatio;
         }
 
         /**

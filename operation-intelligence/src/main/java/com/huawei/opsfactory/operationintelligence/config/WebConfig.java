@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,7 +20,7 @@ import java.util.List;
  * @author x00000000
  * @since 2026-05-11
  */
-@Configuration
+@Configuration("operationIntelligenceWebConfig")
 public class WebConfig {
 
     private final OperationIntelligenceProperties properties;
@@ -40,7 +40,7 @@ public class WebConfig {
      * @return the result
      */
     @Bean
-    public CorsWebFilter corsWebFilter() {
+    public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         String corsOrigin = properties.getCorsOrigin();
         if (StringUtils.hasText(corsOrigin)) {
@@ -57,6 +57,6 @@ public class WebConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        return new CorsWebFilter(source);
+        return new CorsFilter(source);
     }
 }

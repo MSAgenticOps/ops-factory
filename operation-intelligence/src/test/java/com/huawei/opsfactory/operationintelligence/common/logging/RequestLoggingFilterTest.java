@@ -32,7 +32,7 @@ class RequestLoggingFilterTest {
         OperationIntelligenceProperties properties = new OperationIntelligenceProperties();
         RequestLoggingFilter filter = new RequestLoggingFilter(properties);
 
-        // Filter is a WebFilter
-        assertTrue(filter instanceof org.springframework.web.server.WebFilter);
+        // Filter is a Servlet Filter
+        assertTrue(filter instanceof jakarta.servlet.Filter);
     }
 }

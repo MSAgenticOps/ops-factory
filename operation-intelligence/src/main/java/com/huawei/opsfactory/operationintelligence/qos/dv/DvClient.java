@@ -12,22 +12,20 @@ import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.netty.handler.ssl.SslContext;
-
 import jakarta.annotation.PreDestroy;
-
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import reactor.netty.http.client.HttpClient;
-import reactor.netty.resources.ConnectionProvider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
-import java.time.Duration;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -35,7 +33,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Dv Client.
@@ -62,13 +66,13 @@ public class DvClient {
 
     private final int maxConnections;
 
-    private final Duration requestTimeout;
+    private final int connectTimeoutMs;
+
+    private final int requestTimeoutMs;
 
     private final int queryLimit;
 
-    private final ConcurrentHashMap<String, WebClient> clientCache = new ConcurrentHashMap<>();
-
-    private final ConcurrentHashMap<String, ConnectionProvider> providerCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, RestClient> clientCache = new ConcurrentHashMap<>();
 
     /**
      * Dv Client.
@@ -84,7 +88,8 @@ public class DvClient {
         this.properties = properties;
 
         this.maxConnections = 10;
-        this.requestTimeout = Duration.ofSeconds(60);
+        this.connectTimeoutMs = 10000;
+        this.requestTimeoutMs = 60000;
         this.queryLimit = properties.getCallChain().getQueryLimit();
     }
 
@@ -139,7 +144,7 @@ public class DvClient {
 
     private List<String> doFetchMos(DvEnvironmentInfo env, List<String> dns) {
         try {
-            WebClient webClient = getOrCreateWebClient(env);
+            RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/rest/eammimservice/v1/openapi/mit/mos";
@@ -148,11 +153,9 @@ public class DvClient {
             String response = webClient.post()
                 .uri(url)
                 .headers(h -> headers.forEach(h::add))
-                .body(Mono.just(jsonBody), String.class)
+                .body(jsonBody)
                 .retrieve()
-                .bodyToMono(String.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block(requestTimeout);
+                .body(String.class);
 
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
@@ -186,7 +189,7 @@ public class DvClient {
     private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, String moType, String measUnitKey,
         List<String> dns, long startTime, long endTime) {
         try {
-            WebClient webClient = getOrCreateWebClient(env);
+            RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/rest/dvpmservice/v1/openapi/monitor/history/data";
@@ -210,11 +213,9 @@ public class DvClient {
             String response = webClient.post()
                 .uri(url)
                 .headers(h -> headers.forEach(h::add))
-                .body(Mono.just(jsonBody), String.class)
+                .body(jsonBody)
                 .retrieve()
-                .bodyToMono(String.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block(requestTimeout);
+                .body(String.class);
 
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
@@ -246,7 +247,7 @@ public class DvClient {
     private List<AlarmInfo> doFetchCurrentAlarms(DvEnvironmentInfo env, long startTime, long endTime,
         List<String> severities, List<String> dns) {
         try {
-            WebClient webClient = getOrCreateWebClient(env);
+            RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/rest/fault/v1/current-alarms/scroll";
@@ -255,11 +256,9 @@ public class DvClient {
             String response = webClient.post()
                 .uri(url)
                 .headers(h -> headers.forEach(h::add))
-                .body(Mono.just(jsonBody), String.class)
+                .body(jsonBody)
                 .retrieve()
-                .bodyToMono(String.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block(requestTimeout);
+                .body(String.class);
 
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
@@ -306,17 +305,30 @@ public class DvClient {
         throw new IllegalStateException(operationName + " failed after " + MAX_RETRIES + " retries", lastException);
     }
 
-    private WebClient getOrCreateWebClient(DvEnvironmentInfo env) {
+    private RestClient getOrCreateRestClient(DvEnvironmentInfo env) {
         return clientCache.computeIfAbsent(env.getServerUrl(), url -> {
-            SslContext sslContext =
-                sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
-            ConnectionProvider provider = ConnectionProvider.builder("dv-" + url.hashCode())
-                .maxConnections(maxConnections).build();
-            providerCache.put(url, provider);
-            HttpClient httpClient = HttpClient.create(provider)
-                .secure(t -> t.sslContext(sslContext).handshakeTimeout(Duration.ofSeconds(10)))
-                .responseTimeout(requestTimeout);
-            return WebClient.builder().clientConnector(new ReactorClientHttpConnector(httpClient)).build();
+            ClientHttpRequestFactory requestFactory;
+            try {
+                SSLContext sslContext = sslFactory.createSslContext(env.getCrtContent(), env.getCrtFileName(), env.isStrictSsl());
+                requestFactory = new SimpleClientHttpRequestFactory() {
+                    @Override
+                    protected void prepareConnection(java.net.HttpURLConnection conn, String httpMethod) throws IOException {
+                        super.prepareConnection(conn, httpMethod);
+                        if (conn instanceof javax.net.ssl.HttpsURLConnection httpsConn) {
+                            httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
+                            httpsConn.setConnectTimeout(connectTimeoutMs);
+                            httpsConn.setReadTimeout(requestTimeoutMs);
+                            httpsConn.setHostnameVerifier((hostname, session) -> true);
+                        }
+                    }
+                };
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to create SSL context for " + url, e);
+            }
+            return RestClient.builder()
+                .requestFactory(requestFactory)
+                .baseUrl(url)
+                .build();
         });
     }
 
@@ -326,8 +338,6 @@ public class DvClient {
     @PreDestroy
     public void shutdown() {
         clientCache.clear();
-        providerCache.values().forEach(ConnectionProvider::dispose);
-        providerCache.clear();
     }
 
     private Map<String, Object> buildAlarmQuery(long startTime, long endTime, List<String> severities,
@@ -552,7 +562,7 @@ public class DvClient {
                                                           long endTime,
                                                           int querySize) {
         try {
-            WebClient webClient = getOrCreateWebClient(env);
+            RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/cmp/api/logmatrix/v1/logdata/tracelog";
@@ -563,11 +573,9 @@ public class DvClient {
             String response = webClient.post()
                 .uri(url)
                 .headers(h -> headers.forEach(h::add))
-                .body(Mono.just(jsonBody), String.class)
+                .body(jsonBody)
                 .retrieve()
-                .bodyToMono(String.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block(requestTimeout);
+                .body(String.class);
 
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
@@ -588,7 +596,7 @@ public class DvClient {
                                                    long endTime,
                                                    int querySize) {
         try {
-            WebClient webClient = getOrCreateWebClient(env);
+            RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/cmp/api/logmatrix/v1/logdata/tracelog";
@@ -601,19 +609,9 @@ public class DvClient {
             String response = webClient.post()
                 .uri(url)
                 .headers(h -> headers.forEach(h::add))
-                .body(Mono.just(jsonBody), String.class)
+                .body(jsonBody)
                 .retrieve()
-                .onStatus(
-                    status -> !status.is2xxSuccessful(),
-                    clientResponse -> clientResponse.bodyToMono(String.class)
-                        .map(errorBody -> {
-                            log.error("DV request failed with status {}", clientResponse.statusCode());
-                            return new RuntimeException("DV request failed with status " + clientResponse.statusCode());
-                        })
-                )
-                .bodyToMono(String.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block(requestTimeout);
+                .body(String.class);
 
             log.info("[TraceLog Response] URL: {}, Status: {}", url, response != null && !response.isBlank() ? "OK" : "Empty");
 

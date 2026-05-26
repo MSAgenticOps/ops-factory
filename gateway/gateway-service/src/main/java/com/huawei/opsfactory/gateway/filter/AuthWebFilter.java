@@ -7,27 +7,28 @@ package com.huawei.opsfactory.gateway.filter;
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
-import reactor.core.publisher.Mono;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
+
+import java.io.IOException;
 
 /**
- * Web filter that validates the secret key on every non-preflight, non-webhook request.
+ * Servlet filter that validates the secret key on every non-preflight, non-webhook request.
  *
  * @author x00000000
  * @since 2026-05-09
  */
-@Component
+@Component("gatewayAuthWebFilter")
 @Order(2)
-public class AuthWebFilter implements WebFilter {
+public class AuthWebFilter implements jakarta.servlet.Filter {
     private static final Logger log = LoggerFactory.getLogger(AuthWebFilter.class);
 
     private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
@@ -35,7 +36,7 @@ public class AuthWebFilter implements WebFilter {
     private final GatewayProperties properties;
 
     /**
-     * Creates the auth web filter instance.
+     * Creates the auth servlet filter instance.
      *
      * @param properties gateway configuration properties containing the secret key
      */
@@ -46,35 +47,41 @@ public class AuthWebFilter implements WebFilter {
     /**
      * Filters incoming HTTP requests by validating the secret key.
      *
-     * @param exchange current HTTP exchange
-     * @param chain filter chain to continue processing
-     * @return Mono that completes when filtering is done
+     * @param servletRequest  the servlet request
+     * @param servletResponse the servlet response
+     * @param filterChain     the filter chain
+     * @throws IOException      if an I/O error occurs
+     * @throws ServletException if a servlet error occurs
      */
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        ServerHttpRequest request = exchange.getRequest();
+    public void doFilter(jakarta.servlet.ServletRequest servletRequest, jakarta.servlet.ServletResponse servletResponse,
+            FilterChain filterChain) throws IOException, ServletException {
+        HttpServletRequest request = (HttpServletRequest) servletRequest;
+        HttpServletResponse response = (HttpServletResponse) servletResponse;
 
         // OPTIONS preflight passes through
-        if (request.getMethod() != null && "OPTIONS".equalsIgnoreCase(request.getMethod().name())) {
-            return chain.filter(exchange);
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        if (request.getURI().getPath().startsWith(CHANNEL_WEBHOOK_PREFIX)) {
-            return chain.filter(exchange);
+        if (request.getRequestURI().startsWith(CHANNEL_WEBHOOK_PREFIX)) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
         // Check secret key from header or query param
-        String key = request.getHeaders().getFirst(GatewayConstants.HEADER_SECRET_KEY);
+        String key = request.getHeader(GatewayConstants.HEADER_SECRET_KEY);
         if (key == null || key.isBlank()) {
-            key = request.getQueryParams().getFirst(GatewayConstants.QUERY_KEY);
+            key = request.getParameter(GatewayConstants.QUERY_KEY);
         }
 
         if (!properties.getSecretKey().equals(key)) {
-            log.warn("Rejecting unauthorized request path={} reason=invalid-secret-key", request.getURI().getPath());
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            log.warn("Rejecting unauthorized request path={} reason=invalid-secret-key", request.getRequestURI());
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return;
         }
 
-        return chain.filter(exchange);
+        filterChain.doFilter(request, response);
     }
 }

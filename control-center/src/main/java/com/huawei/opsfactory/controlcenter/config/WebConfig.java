@@ -8,7 +8,7 @@ import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-@Configuration
+@Configuration("controlCenterWebConfig")
 public class WebConfig implements WebMvcConfigurer {
 
     private final ControlCenterProperties properties;
