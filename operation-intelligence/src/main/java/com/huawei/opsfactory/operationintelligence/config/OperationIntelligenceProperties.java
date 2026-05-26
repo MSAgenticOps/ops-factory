@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.operationintelligence.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -647,7 +649,7 @@ public class OperationIntelligenceProperties {
              *
              * @return the result
              */
-            @com.fasterxml.jackson.annotation.JsonIgnore
+            @JsonIgnore
             public String getUtmPassword() {
                 return utmPassword;
             }
