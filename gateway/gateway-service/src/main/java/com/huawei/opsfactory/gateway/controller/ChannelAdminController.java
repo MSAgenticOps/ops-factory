@@ -92,7 +92,8 @@ public class ChannelAdminController {
      * @return a channel by ID
      */
     @GetMapping("/{channelId}")
-    public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable("channelId") String channelId, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<ChannelDetail>> getChannel(@PathVariable("channelId") String channelId,
+        ServerWebExchange exchange) {
         String userId = currentUserId(exchange);
         return Mono.fromCallable(() -> {
             ChannelDetail detail = channelConfigService.getChannel(channelId, userId);

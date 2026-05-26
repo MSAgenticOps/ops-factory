@@ -1373,10 +1373,11 @@ public class GatewayProperties {
         }
     }
 
+    /** Operation intelligence proxy configuration. */
     public static class OperationIntelligence {
-        private String baseUrl = "http://127.0.0.1:8096";
+        private String baseUrl = "http://localhost:8096";
 
-        private String secretKey = "test";
+        private String secretKey = "";
 
         private int requestTimeoutMs = 30000;
 
@@ -1452,6 +1453,16 @@ public class GatewayProperties {
          */
         public void setMaxResponseSizeMb(int maxResponseSizeMb) {
             this.maxResponseSizeMb = maxResponseSizeMb;
+        }
+
+        @Override
+        public String toString() {
+            return "OperationIntelligence{"
+                + "baseUrl='" + baseUrl + '\''
+                + ", secretKey='***'"
+                + ", requestTimeoutMs=" + requestTimeoutMs
+                + ", maxResponseSizeMb=" + maxResponseSizeMb
+                + '}';
         }
     }
 

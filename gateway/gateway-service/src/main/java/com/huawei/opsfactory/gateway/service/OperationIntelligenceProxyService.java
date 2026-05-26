@@ -6,19 +6,20 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
+import reactor.core.publisher.Mono;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import reactor.core.publisher.Mono;
-
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
@@ -46,9 +47,7 @@ public class OperationIntelligenceProxyService {
         ExchangeStrategies strategies = ExchangeStrategies.builder()
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(maxResponseBytes))
             .build();
-        this.webClient = WebClient.builder()
-            .exchangeStrategies(strategies)
-            .build();
+        this.webClient = WebClient.builder().exchangeStrategies(strategies).build();
     }
 
     /**
@@ -70,15 +69,11 @@ public class OperationIntelligenceProxyService {
             .header("x-secret-key", properties.getOperationIntelligence().getSecretKey())
             .headers(headers -> copyForwardHeaders(exchange, headers));
 
-        Mono<String> requestBody = exchange.getRequest()
-            .getBody()
-            .map(buffer -> {
-                byte[] bytes = new byte[buffer.readableByteCount()];
-                buffer.read(bytes);
-                return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
-            })
-            .reduce(String::concat)
-            .defaultIfEmpty("");
+        Mono<String> requestBody = exchange.getRequest().getBody().map(buffer -> {
+            byte[] bytes = new byte[buffer.readableByteCount()];
+            buffer.read(bytes);
+            return new String(bytes, StandardCharsets.UTF_8);
+        }).reduce(String::concat).defaultIfEmpty("");
 
         return requestBody.flatMap(body -> send(spec, body))
             .timeout(Duration.ofMillis(properties.getOperationIntelligence().getRequestTimeoutMs()));

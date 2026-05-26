@@ -42,7 +42,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriUtils;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -174,7 +173,8 @@ public class ReplyController {
      * @return a {@code Mono<Void>} that completes when the SSE stream ends or errors out
      */
     @GetMapping(value = "/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Mono<Void> sessionEvents(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
+    public Mono<Void> sessionEvents(@PathVariable("agentId") String agentId,
+        @PathVariable("sessionId") String sessionId,
         @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
@@ -216,8 +216,8 @@ public class ReplyController {
      * @return a {@code Mono<Void>} that completes once the cancel command has been proxied
      */
     @PostMapping(value = "/sessions/{sessionId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Void> sessionCancel(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
-        @RequestBody String body, ServerWebExchange exchange) {
+    public Mono<Void> sessionCancel(@PathVariable("agentId") String agentId,
+        @PathVariable("sessionId") String sessionId, @RequestBody String body, ServerWebExchange exchange) {
         long requestStart = System.currentTimeMillis();
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         log.info("[SESSION-CANCEL] request received agentId={} userId={} sessionId={} bodyLen={}", agentId, userId,
@@ -650,7 +650,8 @@ public class ReplyController {
      * @return a {@code Mono<String>} emitting the JSON response from the goosed resume endpoint
      */
     @PostMapping(value = {"/resume", "/agent/resume"}, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> resume(@PathVariable("agentId") String agentId, @RequestBody String body, ServerWebExchange exchange) {
+    public Mono<String> resume(@PathVariable("agentId") String agentId, @RequestBody String body,
+        ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String sessionId = JsonUtil.extractSessionId(body);
         return instanceManager.getOrSpawn(agentId, userId)
@@ -743,7 +744,8 @@ public class ReplyController {
      * @return the restarts the agent instance with a fresh configuration
      */
     @PostMapping({"/restart", "/agent/restart"})
-    public Mono<Void> restart(@PathVariable("agentId") String agentId, @RequestBody String body, ServerWebExchange exchange) {
+    public Mono<Void> restart(@PathVariable("agentId") String agentId, @RequestBody String body,
+        ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         return instanceManager.getOrSpawn(agentId, userId)
             .flatMap(instance -> goosedProxy.proxyWithBody(exchange.getResponse(), instance.getPort(), "/agent/restart",

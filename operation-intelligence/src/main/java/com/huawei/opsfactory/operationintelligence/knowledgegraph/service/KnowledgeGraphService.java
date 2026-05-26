@@ -55,6 +55,15 @@ public class KnowledgeGraphService {
 
     private final GraphSnapshotStore snapshotStore;
 
+    /**
+     * Constructs a KnowledgeGraphService.
+     *
+     * @param properties the operation intelligence properties
+     * @param schemaRegistry the schema registry
+     * @param graphStore the in-memory graph store
+     * @param ontologyStore the ontology file store
+     * @param snapshotStore the snapshot file store
+     */
     public KnowledgeGraphService(OperationIntelligenceProperties properties, GraphSchemaRegistry schemaRegistry,
         InMemoryGraphStore graphStore, GraphOntologyStore ontologyStore, GraphSnapshotStore snapshotStore) {
         this.properties = properties;
@@ -154,10 +163,7 @@ public class KnowledgeGraphService {
         envCodes.addAll(graphStore.listEnvironmentCodes(ontologyId));
         envCodes.addAll(snapshotStore.listEnvironmentCodes(ontologyId));
         String resolvedOntologyId = ontologyId;
-        return envCodes.stream()
-            .sorted()
-            .map(envCode -> toEnvironment(resolvedOntologyId, envCode))
-            .toList();
+        return envCodes.stream().sorted().map(envCode -> toEnvironment(resolvedOntologyId, envCode)).toList();
     }
 
     /**
@@ -297,13 +303,12 @@ public class KnowledgeGraphService {
      */
     public Map<String, Object> getResourceTree(String ontologyId, String envCode) {
         GraphSnapshot snapshot = getRequiredSnapshot(ontologyId, envCode);
-        Map<String, List<GraphEntity>> grouped = snapshot.getEntities()
-            .stream()
-            .collect(Collectors.groupingBy(GraphEntity::getType, LinkedHashMap::new, Collectors.toList()));
-        List<Map<String, Object>> roots = grouped.entrySet()
-            .stream()
-            .map(entry -> toResourceGroup(entry.getKey(), entry.getValue()))
-            .toList();
+        Map<String,
+            List<GraphEntity>> grouped = snapshot.getEntities()
+                .stream()
+                .collect(Collectors.groupingBy(GraphEntity::getType, LinkedHashMap::new, Collectors.toList()));
+        List<Map<String, Object>> roots =
+            grouped.entrySet().stream().map(entry -> toResourceGroup(entry.getKey(), entry.getValue())).toList();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("envCode", snapshot.getEnvCode());
         result.put("total", snapshot.getEntities().size());
@@ -380,8 +385,7 @@ public class KnowledgeGraphService {
         int limit = boundedLimit(request.get("limit"), 10, 100);
         Set<String> entityScope = entityId == null || entityId.isBlank()
             ? snapshot.getEntities().stream().map(GraphEntity::getId).collect(Collectors.toSet())
-            : querySubgraph(ontologyId, envCode, entityId, boundedHops(request.get("maxHops"), 4))
-                .getEntities()
+            : querySubgraph(ontologyId, envCode, entityId, boundedHops(request.get("maxHops"), 4)).getEntities()
                 .stream()
                 .map(GraphEntity::getId)
                 .collect(Collectors.toSet());
@@ -450,15 +454,21 @@ public class KnowledgeGraphService {
     private String resolveEnvironmentName(String ontologyId, String envCode) {
         return graphStore.getSnapshot(ontologyId, envCode)
             .or(() -> snapshotStore.loadLatest(ontologyId, envCode))
-            .map(snapshot -> firstNonBlank(
-                stringValue(snapshot.getMetadata().get("envName")),
-                stringValue(snapshot.getMetadata().get("environmentName")),
-                snapshot.getEntities().stream()
-                    .map(entity -> stringValue(entity.getProperties().get("environmentName")))
+            .map(snapshot -> {
+                Map<String, Object> metadata = snapshot.getMetadata();
+                String envName = metadata != null ? stringValue(metadata.get("envName")) : null;
+                String envNameAlt = metadata != null ? stringValue(metadata.get("environmentName")) : null;
+                String entityEnvName = snapshot.getEntities()
+                    .stream()
+                    .map(entity -> {
+                        Map<String, Object> props = entity.getProperties();
+                        return props != null ? stringValue(props.get("environmentName")) : null;
+                    })
                     .filter(value -> value != null && !value.isBlank())
                     .findFirst()
-                    .orElse(null),
-                envCode))
+                    .orElse(null);
+                return firstNonBlank(List.of(envName, envNameAlt, entityEnvName, envCode));
+            })
             .orElse(envCode);
     }
 
@@ -476,10 +486,8 @@ public class KnowledgeGraphService {
         group.put("type", type);
         group.put("name", type);
         group.put("count", entities.size());
-        group.put("children", entities.stream()
-            .sorted(Comparator.comparing(GraphEntity::getId))
-            .map(this::toResourceNode)
-            .toList());
+        group.put("children",
+            entities.stream().sorted(Comparator.comparing(GraphEntity::getId)).map(this::toResourceNode).toList());
         return group;
     }
 
@@ -513,7 +521,7 @@ public class KnowledgeGraphService {
     }
 
     private Comparator<Map<String, Object>> candidateComparator() {
-        return Comparator.<Map<String, Object>, Integer>comparing(candidate -> (Integer) candidate.get("score"))
+        return Comparator.<Map<String, Object>, Integer> comparing(candidate -> (Integer) candidate.get("score"))
             .reversed();
     }
 
@@ -577,7 +585,7 @@ public class KnowledgeGraphService {
         return value == null ? null : value.toString();
     }
 
-    private String firstNonBlank(String... values) {
+    private String firstNonBlank(List<String> values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
                 return value;
@@ -605,9 +613,8 @@ public class KnowledgeGraphService {
     }
 
     private String resolveOntologyId(String ontologyId) {
-        String resolvedOntologyId = ontologyId == null || ontologyId.isBlank()
-            ? GraphSchemaRegistry.DEFAULT_ONTOLOGY_ID
-            : ontologyId;
+        String resolvedOntologyId =
+            ontologyId == null || ontologyId.isBlank() ? GraphSchemaRegistry.DEFAULT_ONTOLOGY_ID : ontologyId;
         requireSafeId(resolvedOntologyId, "ontologyId");
         return resolvedOntologyId;
     }

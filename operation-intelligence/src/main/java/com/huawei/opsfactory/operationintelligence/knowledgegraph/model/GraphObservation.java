@@ -34,82 +34,182 @@ public class GraphObservation {
 
     private GraphSource source = new GraphSource();
 
+    /**
+     * Gets the id.
+     *
+     * @return the id
+     */
     public String getId() {
         return id;
     }
 
+    /**
+     * Sets the id.
+     *
+     * @param id the id
+     */
     public void setId(String id) {
         this.id = id;
     }
 
+    /**
+     * Gets the entityId.
+     *
+     * @return the entityId
+     */
     public String getEntityId() {
         return entityId;
     }
 
+    /**
+     * Sets the entityId.
+     *
+     * @param entityId the entityId
+     */
     public void setEntityId(String entityId) {
         this.entityId = entityId;
     }
 
+    /**
+     * Gets the observedAt.
+     *
+     * @return the observedAt
+     */
     public String getObservedAt() {
         return observedAt;
     }
 
+    /**
+     * Sets the observedAt.
+     *
+     * @param observedAt the observedAt
+     */
     public void setObservedAt(String observedAt) {
         this.observedAt = observedAt;
     }
 
+    /**
+     * Gets the category.
+     *
+     * @return the category
+     */
     public String getCategory() {
         return category;
     }
 
+    /**
+     * Sets the category.
+     *
+     * @param category the category
+     */
     public void setCategory(String category) {
         this.category = category;
     }
 
+    /**
+     * Gets the name.
+     *
+     * @return the name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Sets the name.
+     *
+     * @param name the name
+     */
     public void setName(String name) {
         this.name = name;
     }
 
+    /**
+     * Gets the severity.
+     *
+     * @return the severity
+     */
     public String getSeverity() {
         return severity;
     }
 
+    /**
+     * Sets the severity.
+     *
+     * @param severity the severity
+     */
     public void setSeverity(String severity) {
         this.severity = severity;
     }
 
+    /**
+     * Gets the value.
+     *
+     * @return the value
+     */
     public Object getValue() {
         return value;
     }
 
+    /**
+     * Sets the value.
+     *
+     * @param value the value
+     */
     public void setValue(Object value) {
         this.value = value;
     }
 
+    /**
+     * Gets the unit.
+     *
+     * @return the unit
+     */
     public String getUnit() {
         return unit;
     }
 
+    /**
+     * Sets the unit.
+     *
+     * @param unit the unit
+     */
     public void setUnit(String unit) {
         this.unit = unit;
     }
 
+    /**
+     * Gets the properties.
+     *
+     * @return the properties
+     */
     public Map<String, Object> getProperties() {
         return properties;
     }
 
+    /**
+     * Sets the properties.
+     *
+     * @param properties the properties
+     */
     public void setProperties(Map<String, Object> properties) {
         this.properties = properties == null ? new LinkedHashMap<>() : new LinkedHashMap<>(properties);
     }
 
+    /**
+     * Gets the source.
+     *
+     * @return the source
+     */
     public GraphSource getSource() {
         return source;
     }
 
+    /**
+     * Sets the source.
+     *
+     * @param source the source
+     */
     public void setSource(GraphSource source) {
         this.source = source == null ? new GraphSource() : source;
     }

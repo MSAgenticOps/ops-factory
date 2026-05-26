@@ -15,18 +15,38 @@ public class GraphSource {
 
     private String externalId;
 
+    /**
+     * Gets the system.
+     *
+     * @return the system
+     */
     public String getSystem() {
         return system;
     }
 
+    /**
+     * Sets the system.
+     *
+     * @param system the system
+     */
     public void setSystem(String system) {
         this.system = system;
     }
 
+    /**
+     * Gets the externalId.
+     *
+     * @return the externalId
+     */
     public String getExternalId() {
         return externalId;
     }
 
+    /**
+     * Sets the externalId.
+     *
+     * @param externalId the externalId
+     */
     public void setExternalId(String externalId) {
         this.externalId = externalId;
     }

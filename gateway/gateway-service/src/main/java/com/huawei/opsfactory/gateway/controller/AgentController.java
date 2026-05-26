@@ -150,7 +150,8 @@ public class AgentController {
      * @throws ResponseStatusException if the agent configuration files cannot be removed from disk
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable("id") String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteAgent(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         try {
             instanceManager.stopAllForAgent(id);
             agentConfigService.deleteAgent(id);
@@ -186,7 +187,8 @@ public class AgentController {
      *         and agents.md content; or 404 if the agent is not found
      */
     @GetMapping("/{id}/config")
-    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable("id") String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> getConfig(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
         if (entry == null) {
             return Mono.just(ResponseEntity.notFound().build());
@@ -281,8 +283,8 @@ public class AgentController {
         }
         try {
             Map<String, Object> provider = agentConfigService.createCustomProvider(id, body);
-            return Mono.just(ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("success", (Object) true, "provider", provider)));
+            return Mono.just(
+                ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", (Object) true, "provider", provider)));
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);

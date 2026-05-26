@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,8 +56,8 @@ public class InMemoryGraphStore {
      */
     public GraphSnapshot upsert(GraphSnapshot incoming) {
         String key = graphKey(incoming.getOntologyId(), incoming.getEnvCode());
-        EnvGraph envGraph = graphs.computeIfAbsent(key, item -> new EnvGraph(incoming.getOntologyId(),
-            incoming.getEnvCode()));
+        EnvGraph envGraph =
+            graphs.computeIfAbsent(key, item -> new EnvGraph(incoming.getOntologyId(), incoming.getEnvCode()));
         envGraph.lock.writeLock().lock();
         try {
             envGraph.upsert(incoming);
@@ -116,10 +117,7 @@ public class InMemoryGraphStore {
      */
     public int countOntologySnapshots(String ontologyId) {
         String keyPrefix = ontologyId + "::";
-        return (int) graphs.keySet()
-            .stream()
-            .filter(key -> key.startsWith(keyPrefix))
-            .count();
+        return (int) graphs.keySet().stream().filter(key -> key.startsWith(keyPrefix)).count();
     }
 
     /**
@@ -146,10 +144,7 @@ public class InMemoryGraphStore {
      */
     public int deleteOntology(String ontologyId) {
         String keyPrefix = ontologyId + "::";
-        List<String> keys = graphs.keySet()
-            .stream()
-            .filter(key -> key.startsWith(keyPrefix))
-            .toList();
+        List<String> keys = graphs.keySet().stream().filter(key -> key.startsWith(keyPrefix)).toList();
         keys.forEach(graphs::remove);
         return keys.size();
     }
@@ -293,14 +288,8 @@ public class InMemoryGraphStore {
                 return Optional.empty();
             }
             GraphSnapshot result = envGraph.toSnapshot(null);
-            result.setEntities(searchResult.entityIds()
-                .stream()
-                .map(envGraph.entities::get)
-                .toList());
-            result.setRelations(searchResult.relationIds()
-                .stream()
-                .map(envGraph.relations::get)
-                .toList());
+            result.setEntities(searchResult.entityIds().stream().map(envGraph.entities::get).toList());
+            result.setRelations(searchResult.relationIds().stream().map(envGraph.relations::get).toList());
             result.setObservations(result.getObservations()
                 .stream()
                 .filter(observation -> searchResult.entityIds().contains(observation.getEntityId()))
@@ -361,18 +350,25 @@ public class InMemoryGraphStore {
             if (currentDistance >= maxHops) {
                 continue;
             }
-            for (String relationId : envGraph.entityRelations.getOrDefault(current, Set.of())) {
-                GraphRelation relation = envGraph.relations.get(relationId);
-                if (relation == null || !isDirectionalMatch(relation, current, downstream)) {
-                    continue;
-                }
-                String next = downstream ? relation.getTo() : relation.getFrom();
-                selectedRelations.add(relationId);
-                selectedEntities.add(next);
-                if (!distance.containsKey(next)) {
-                    distance.put(next, currentDistance + 1);
-                    queue.add(next);
-                }
+            processDirectionalNeighbors(envGraph, current, downstream, currentDistance, distance, queue,
+                selectedEntities, selectedRelations);
+        }
+    }
+
+    private void processDirectionalNeighbors(EnvGraph envGraph, String current, boolean downstream,
+        int currentDistance, Map<String, Integer> distance, Queue<String> queue, Set<String> selectedEntities,
+        Set<String> selectedRelations) {
+        for (String relationId : envGraph.entityRelations.getOrDefault(current, Set.of())) {
+            GraphRelation relation = envGraph.relations.get(relationId);
+            if (relation == null || !isDirectionalMatch(relation, current, downstream)) {
+                continue;
+            }
+            String next = downstream ? relation.getTo() : relation.getFrom();
+            selectedRelations.add(relationId);
+            selectedEntities.add(next);
+            if (!distance.containsKey(next)) {
+                distance.put(next, currentDistance + 1);
+                queue.add(next);
             }
         }
     }
@@ -435,8 +431,8 @@ public class InMemoryGraphStore {
             entityIds.add(previous);
             current = previous;
         }
-        java.util.Collections.reverse(entityIds);
-        java.util.Collections.reverse(relationIds);
+        Collections.reverse(entityIds);
+        Collections.reverse(relationIds);
         return new PathSearchResult(true, entityIds, relationIds);
     }
 
@@ -456,6 +452,14 @@ public class InMemoryGraphStore {
 
         private final String envCode;
 
+        private final Map<String, GraphEntity> entities = new LinkedHashMap<>();
+
+        private final Map<String, GraphRelation> relations = new LinkedHashMap<>();
+
+        private final Map<String, GraphObservation> observations = new LinkedHashMap<>();
+
+        private final Map<String, Set<String>> entityRelations = new LinkedHashMap<>();
+
         private String schemaVersion = "1.0";
 
         private String snapshotId;
@@ -465,14 +469,6 @@ public class InMemoryGraphStore {
         private String sourceSystem;
 
         private Map<String, Object> metadata = new LinkedHashMap<>();
-
-        private final Map<String, GraphEntity> entities = new LinkedHashMap<>();
-
-        private final Map<String, GraphRelation> relations = new LinkedHashMap<>();
-
-        private final Map<String, GraphObservation> observations = new LinkedHashMap<>();
-
-        private final Map<String, Set<String>> entityRelations = new LinkedHashMap<>();
 
         EnvGraph(String ontologyId, String envCode) {
             this.ontologyId = ontologyId;
@@ -485,12 +481,16 @@ public class InMemoryGraphStore {
             return envGraph;
         }
 
+        private static String firstNonBlank(String first, String second) {
+            return first == null || first.isBlank() ? second : first;
+        }
+
         void upsert(GraphSnapshot snapshot) {
             schemaVersion = firstNonBlank(snapshot.getSchemaVersion(), schemaVersion);
             snapshotId = firstNonBlank(snapshot.getSnapshotId(), snapshotId);
             generatedAt = firstNonBlank(snapshot.getGeneratedAt(), generatedAt);
             sourceSystem = firstNonBlank(snapshot.getSourceSystem(), sourceSystem);
-            metadata = new LinkedHashMap<>(snapshot.getMetadata());
+            metadata = new LinkedHashMap<>(snapshot.getMetadata() != null ? snapshot.getMetadata() : Map.of());
             for (GraphEntity entity : snapshot.getEntities()) {
                 entities.put(entity.getId(), entity);
             }
@@ -510,15 +510,13 @@ public class InMemoryGraphStore {
             GraphSnapshot snapshot = new GraphSnapshot();
             snapshot.setOntologyId(ontologyId);
             snapshot.setEnvCode(envCode);
-            snapshot.setSchemaVersion(request == null
-                ? schemaVersion
-                : firstNonBlank(request.getSchemaVersion(), schemaVersion));
+            snapshot.setSchemaVersion(
+                request == null ? schemaVersion : firstNonBlank(request.getSchemaVersion(), schemaVersion));
             snapshot.setSnapshotId(request == null ? snapshotId : firstNonBlank(request.getSnapshotId(), snapshotId));
-            snapshot.setGeneratedAt(request == null
-                ? generatedAt
-                : firstNonBlank(request.getGeneratedAt(), generatedAt));
-            snapshot.setSourceSystem(request == null ? sourceSystem : firstNonBlank(request.getSourceSystem(),
-                sourceSystem));
+            snapshot
+                .setGeneratedAt(request == null ? generatedAt : firstNonBlank(request.getGeneratedAt(), generatedAt));
+            snapshot.setSourceSystem(
+                request == null ? sourceSystem : firstNonBlank(request.getSourceSystem(), sourceSystem));
             snapshot.setImportMode("UPSERT");
             snapshot.setMetadata(request == null ? metadata : request.getMetadata());
             snapshot.setEntities(new ArrayList<>(entities.values()));
@@ -549,10 +547,6 @@ public class InMemoryGraphStore {
             if (relationIds.isEmpty()) {
                 entityRelations.remove(entityId);
             }
-        }
-
-        private static String firstNonBlank(String first, String second) {
-            return first == null || first.isBlank() ? second : first;
         }
     }
 }

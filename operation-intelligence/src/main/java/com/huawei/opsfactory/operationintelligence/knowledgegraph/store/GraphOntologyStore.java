@@ -4,10 +4,11 @@
 
 package com.huawei.opsfactory.operationintelligence.knowledgegraph.store;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphOntology;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,11 @@ public class GraphOntologyStore {
 
     private final OperationIntelligenceProperties properties;
 
+    /**
+     * Constructs a GraphOntologyStore.
+     *
+     * @param properties the operation intelligence properties
+     */
     public GraphOntologyStore(OperationIntelligenceProperties properties) {
         this.properties = properties;
     }

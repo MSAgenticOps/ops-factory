@@ -18,13 +18,14 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 
+/** Unit tests for GraphSchemaRegistry ontology registration and validation. */
 class GraphSchemaRegistryTest {
     @Test
     void register_allowsSameRelationTypeWithDifferentEndpoints() {
         GraphSchemaRegistry registry = new GraphSchemaRegistry();
-        GraphOntology ontology = ontology("multi-endpoint-relation-v1", List.of(
-            relationType("calls", List.of("BusinessService"), List.of("Cluster")),
-            relationType("calls", List.of("Cluster"), List.of("Cluster"))));
+        GraphOntology ontology = ontology("multi-endpoint-relation-v1",
+            List.of(relationType("calls", List.of("BusinessService"), List.of("Cluster")),
+                relationType("calls", List.of("Cluster"), List.of("Cluster"))));
 
         GraphOntology registered = registry.register(ontology);
 
@@ -35,12 +36,12 @@ class GraphSchemaRegistryTest {
     @Test
     void register_rejectsSameRelationTypeWithSameEndpoints() {
         GraphSchemaRegistry registry = new GraphSchemaRegistry();
-        GraphOntology ontology = ontology("duplicate-relation-v1", List.of(
-            relationType("calls", List.of("BusinessService"), List.of("Cluster")),
-            relationType("calls", List.of("BusinessService"), List.of("Cluster"))));
+        GraphOntology ontology = ontology("duplicate-relation-v1",
+            List.of(relationType("calls", List.of("BusinessService"), List.of("Cluster")),
+                relationType("calls", List.of("BusinessService"), List.of("Cluster"))));
 
-        ResponseStatusException exception = Assertions.assertThrows(ResponseStatusException.class,
-            () -> registry.register(ontology));
+        ResponseStatusException exception =
+            Assertions.assertThrows(ResponseStatusException.class, () -> registry.register(ontology));
 
         Assertions.assertTrue(exception.getReason().contains("Duplicate relation definition"));
     }
@@ -48,18 +49,15 @@ class GraphSchemaRegistryTest {
     @Test
     void validate_matchesAnyEndpointDefinitionForSameRelationType() {
         GraphSchemaRegistry registry = new GraphSchemaRegistry();
-        GraphOntology ontology = ontology("runtime-topology-v1", List.of(
-            relationType("calls", List.of("BusinessService"), List.of("Cluster")),
-            relationType("calls", List.of("Cluster"), List.of("Cluster"))));
+        GraphOntology ontology = ontology("runtime-topology-v1",
+            List.of(relationType("calls", List.of("BusinessService"), List.of("Cluster")),
+                relationType("calls", List.of("Cluster"), List.of("Cluster"))));
         registry.register(ontology);
 
         GraphSnapshot snapshot = snapshot("runtime-topology-v1",
-            List.of(
-                entity("business-order", "BusinessService"),
-                entity("cluster-order", "Cluster"),
+            List.of(entity("business-order", "BusinessService"), entity("cluster-order", "Cluster"),
                 entity("cluster-db", "Cluster")),
-            List.of(
-                relation("rel-business-cluster", "calls", "business-order", "cluster-order"),
+            List.of(relation("rel-business-cluster", "calls", "business-order", "cluster-order"),
                 relation("rel-cluster-cluster", "calls", "cluster-order", "cluster-db")));
 
         Assertions.assertDoesNotThrow(() -> registry.validate(snapshot));
@@ -70,9 +68,7 @@ class GraphSchemaRegistryTest {
         ontology.setOntologyId(ontologyId);
         ontology.setName(ontologyId);
         ontology.setSourceSystem("test");
-        ontology.setEntityTypes(List.of(
-            entityType("BusinessService"),
-            entityType("Cluster")));
+        ontology.setEntityTypes(List.of(entityType("BusinessService"), entityType("Cluster")));
         ontology.setRelationTypes(relationTypes);
         return ontology;
     }

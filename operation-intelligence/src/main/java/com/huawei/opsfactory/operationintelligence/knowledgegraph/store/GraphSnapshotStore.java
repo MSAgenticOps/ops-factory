@@ -4,10 +4,11 @@
 
 package com.huawei.opsfactory.operationintelligence.knowledgegraph.store;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,11 @@ public class GraphSnapshotStore {
 
     private final OperationIntelligenceProperties properties;
 
+    /**
+     * Constructs a GraphSnapshotStore.
+     *
+     * @param properties the operation intelligence properties
+     */
     public GraphSnapshotStore(OperationIntelligenceProperties properties) {
         this.properties = properties;
     }
@@ -65,17 +71,25 @@ public class GraphSnapshotStore {
      * @param snapshot the snapshot
      */
     public void save(GraphSnapshot snapshot) {
+        Path envDir = envDir(snapshot.getOntologyId(), snapshot.getEnvCode());
+        Path tmp = null;
         try {
-            Path envDir = envDir(snapshot.getOntologyId(), snapshot.getEnvCode());
             Files.createDirectories(envDir);
-            String fileName = "snapshot_" + OffsetDateTime.now().format(FILE_TS_FORMAT) + "_"
-                + UUID.randomUUID() + ".json";
-            Path tmp = envDir.resolve(fileName + ".tmp");
+            String fileName =
+                "snapshot_" + OffsetDateTime.now().format(FILE_TS_FORMAT) + "_" + UUID.randomUUID() + ".json";
+            tmp = envDir.resolve(fileName + ".tmp");
             Path target = envDir.resolve(fileName);
             MAPPER.writeValue(tmp.toFile(), snapshot);
             Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             cleanup(envDir);
         } catch (IOException e) {
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException deleteEx) {
+                    log.warn("Failed to delete temp file {}: {}", tmp, deleteEx.getMessage());
+                }
+            }
             throw new IllegalStateException("Failed to save graph snapshot", e);
         }
     }
@@ -131,9 +145,7 @@ public class GraphSnapshotStore {
             return 0;
         }
         try (Stream<Path> envDirs = Files.list(ontologyDir)) {
-            return (int) envDirs.filter(Files::isDirectory)
-                .filter(envDir -> !listSnapshots(envDir).isEmpty())
-                .count();
+            return (int) envDirs.filter(Files::isDirectory).filter(envDir -> !listSnapshots(envDir).isEmpty()).count();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to count graph snapshots", e);
         }

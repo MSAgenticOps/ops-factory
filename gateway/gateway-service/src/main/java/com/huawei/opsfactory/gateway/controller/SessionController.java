@@ -4,7 +4,6 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
-import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
@@ -191,8 +190,7 @@ public class SessionController {
         @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
         @RequestParam(value = "search", required = false) String search,
         @RequestParam(value = "agentId", required = false) String agentId,
-        @RequestParam(value = "type", required = false) String type,
-        ServerWebExchange exchange) {
+        @RequestParam(value = "type", required = false) String type, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId,
@@ -382,8 +380,8 @@ public class SessionController {
      * @return Mono emitting the session detail as a JSON string with agentId injected
      */
     @GetMapping(value = "/sessions/{sessionId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<String> getSessionGlobal(@PathVariable("sessionId") String sessionId, @RequestParam("agentId") String agentId,
-        ServerWebExchange exchange) {
+    public Mono<String> getSessionGlobal(@PathVariable("sessionId") String sessionId,
+        @RequestParam("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId, () -> log
@@ -412,8 +410,8 @@ public class SessionController {
      * @return Mono that completes when the delete has been proxied
      */
     @DeleteMapping("/agents/{agentId}/sessions/{sessionId}")
-    public Mono<Void> deleteSession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
-        ServerWebExchange exchange) {
+    public Mono<Void> deleteSession(@PathVariable("agentId") String agentId,
+        @PathVariable("sessionId") String sessionId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId,
@@ -441,8 +439,8 @@ public class SessionController {
      * @return Mono that completes when the delete has been proxied
      */
     @DeleteMapping("/sessions/{sessionId}")
-    public Mono<Void> deleteSessionGlobal(@PathVariable("sessionId") String sessionId, @RequestParam("agentId") String agentId,
-        ServerWebExchange exchange) {
+    public Mono<Void> deleteSessionGlobal(@PathVariable("sessionId") String sessionId,
+        @RequestParam("agentId") String agentId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId, () -> log
@@ -471,8 +469,8 @@ public class SessionController {
      */
     @PostMapping(value = "/agents/{agentId}/sessions/{sessionId}/cleanup-empty",
         produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
-        ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> cleanupEmptySession(@PathVariable("agentId") String agentId,
+        @PathVariable("sessionId") String sessionId, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId, () -> log
@@ -599,8 +597,8 @@ public class SessionController {
      * @return Mono that completes when the rename has been proxied
      */
     @PutMapping("/agents/{agentId}/sessions/{sessionId}/name")
-    public Mono<Void> renameSession(@PathVariable("agentId") String agentId, @PathVariable("sessionId") String sessionId,
-        @RequestBody String body, ServerWebExchange exchange) {
+    public Mono<Void> renameSession(@PathVariable("agentId") String agentId,
+        @PathVariable("sessionId") String sessionId, @RequestBody String body, ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         String requestId = exchange.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         GatewayLogContext.run(requestId, userId,

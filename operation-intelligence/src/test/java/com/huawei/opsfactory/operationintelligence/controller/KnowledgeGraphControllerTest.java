@@ -7,7 +7,9 @@ package com.huawei.opsfactory.operationintelligence.controller;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.KnowledgeGraphService;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +26,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+/** Integration tests for KnowledgeGraph REST API endpoints. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureWebTestClient
 class KnowledgeGraphControllerTest {
@@ -53,6 +57,29 @@ class KnowledgeGraphControllerTest {
     @AfterAll
     static void tearDown() throws IOException {
         deleteRecursively(DATA_ROOT);
+    }
+
+    private static Path createTempDataRoot() {
+        try {
+            return Files.createTempDirectory("operation-intelligence-kg-test-");
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to create test data root", e);
+        }
+    }
+
+    private static void deleteRecursively(Path root) throws IOException {
+        if (!Files.exists(root)) {
+            return;
+        }
+        try (Stream<Path> paths = Files.walk(root)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to delete " + path, e);
+                }
+            });
+        }
     }
 
     @BeforeEach
@@ -93,7 +120,7 @@ class KnowledgeGraphControllerTest {
         Path snapshotDir = DATA_ROOT.resolve("knowledge-graph").resolve("b2b-callchain-v1").resolve("prod");
         try (Stream<Path> paths = Files.list(snapshotDir)) {
             long snapshotCount = paths.filter(path -> path.getFileName().toString().endsWith(".json")).count();
-            org.junit.jupiter.api.Assertions.assertEquals(1, snapshotCount);
+            Assertions.assertEquals(1, snapshotCount);
         }
     }
 
@@ -101,14 +128,10 @@ class KnowledgeGraphControllerTest {
     void importGraph_acceptsLargeEntityJsonPayload() {
         importB2bOntology();
         String largeDescription = "large-import-payload-".repeat(20000);
-        Map<String, Object> body = Map.of(
-            "ontologyId", "b2b-callchain-v1",
-            "envCode", "large",
-            "schemaVersion", "1.0",
-            "sourceSystem", "large-import-test",
-            "importMode", "UPSERT",
-            "entities", java.util.List.of(
-                entity("svc-large-import", "Service", "LargeImportService",
+        Map<String,
+            Object> body = Map.of("ontologyId", "b2b-callchain-v1", "envCode", "large", "schemaVersion", "1.0",
+                "sourceSystem", "large-import-test", "importMode", "UPSERT", "entities",
+                List.of(entity("svc-large-import", "Service", "LargeImportService",
                     Map.of("serviceName", "LargeImportService", "description", largeDescription))));
 
         webTestClient.post()
@@ -127,15 +150,10 @@ class KnowledgeGraphControllerTest {
     @Test
     void importGraph_supportsIncrementalRelationsReferencingExistingEntities() throws IOException {
         importB2bOntology();
-        Map<String, Object> entitiesOnly = Map.of(
-            "ontologyId", "b2b-callchain-v1",
-            "envCode", "incremental",
-            "schemaVersion", "1.0",
-            "sourceSystem", "incremental-test",
-            "importMode", "UPSERT",
-            "entities", java.util.List.of(
-                entity("svc-incremental", "Service", "IncrementalService",
-                    Map.of("serviceName", "IncrementalService")),
+        Map<String, Object> entitiesOnly = Map.of("ontologyId", "b2b-callchain-v1", "envCode", "incremental",
+            "schemaVersion", "1.0", "sourceSystem", "incremental-test", "importMode", "UPSERT", "entities",
+            List.of(
+                entity("svc-incremental", "Service", "IncrementalService", Map.of("serviceName", "IncrementalService")),
                 entity("cluster-incremental", "Cluster", "IncrementalCluster",
                     Map.of("clusterName", "IncrementalCluster"))));
         webTestClient.post()
@@ -147,14 +165,10 @@ class KnowledgeGraphControllerTest {
             .expectStatus()
             .isOk();
 
-        Map<String, Object> relationOnly = Map.of(
-            "ontologyId", "b2b-callchain-v1",
-            "envCode", "incremental",
-            "schemaVersion", "1.0",
-            "sourceSystem", "incremental-test",
-            "importMode", "UPSERT",
-            "relations", java.util.List.of(
-                relation("rel-incremental-deployed", "deployed_in", "svc-incremental", "cluster-incremental")));
+        Map<String,
+            Object> relationOnly = Map.of("ontologyId", "b2b-callchain-v1", "envCode", "incremental", "schemaVersion",
+                "1.0", "sourceSystem", "incremental-test", "importMode", "UPSERT", "relations", List
+                    .of(relation("rel-incremental-deployed", "deployed_in", "svc-incremental", "cluster-incremental")));
         webTestClient.post()
             .uri("/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
@@ -184,20 +198,16 @@ class KnowledgeGraphControllerTest {
         Path snapshotDir = DATA_ROOT.resolve("knowledge-graph").resolve("b2b-callchain-v1").resolve("incremental");
         try (Stream<Path> paths = Files.list(snapshotDir)) {
             long snapshotCount = paths.filter(path -> path.getFileName().toString().endsWith(".json")).count();
-            org.junit.jupiter.api.Assertions.assertEquals(2, snapshotCount);
+            Assertions.assertEquals(2, snapshotCount);
         }
     }
 
     @Test
     void importGraph_rejectsUnsafeEnvironmentPath() {
-        Map<String, Object> body = Map.of(
-            "ontologyId", "b2b-callchain-v1",
-            "envCode", "../escape",
-            "schemaVersion", "1.0",
-            "sourceSystem", "path-test",
-            "importMode", "UPSERT",
-            "entities", java.util.List.of(
-                entity("svc-path-test", "Service", "PathTestService", Map.of("serviceName", "PathTestService"))));
+        Map<String,
+            Object> body = Map.of("ontologyId", "b2b-callchain-v1", "envCode", "../escape", "schemaVersion", "1.0",
+                "sourceSystem", "path-test", "importMode", "UPSERT", "entities", List.of(
+                    entity("svc-path-test", "Service", "PathTestService", Map.of("serviceName", "PathTestService"))));
 
         webTestClient.post()
             .uri("/operation-intelligence/graph/admin/import")
@@ -208,9 +218,8 @@ class KnowledgeGraphControllerTest {
             .expectStatus()
             .isBadRequest();
 
-        org.junit.jupiter.api.Assertions.assertFalse(Files.exists(DATA_ROOT.resolve("escape")));
+        Assertions.assertFalse(Files.exists(DATA_ROOT.resolve("escape")));
     }
-
 
     @Test
     void querySubgraph_supportsFourHops() throws IOException {
@@ -241,11 +250,8 @@ class KnowledgeGraphControllerTest {
             .uri("/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of(
-                "envCode", "prod",
-                "entityId", "cluster-prod-rsp",
-                "upstreamHops", 1,
-                "downstreamHops", 0))
+            .bodyValue(
+                Map.of("envCode", "prod", "entityId", "cluster-prod-rsp", "upstreamHops", 1, "downstreamHops", 0))
             .exchange()
             .expectStatus()
             .isOk()
@@ -259,11 +265,8 @@ class KnowledgeGraphControllerTest {
             .uri("/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of(
-                "envCode", "prod",
-                "entityId", "cluster-prod-rsp",
-                "upstreamHops", 0,
-                "downstreamHops", 1))
+            .bodyValue(
+                Map.of("envCode", "prod", "entityId", "cluster-prod-rsp", "upstreamHops", 0, "downstreamHops", 1))
             .exchange()
             .expectStatus()
             .isOk()
@@ -282,12 +285,8 @@ class KnowledgeGraphControllerTest {
             .uri("/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of(
-                "ontologyId", "huawei-mo-resource-v1",
-                "envCode", "prod",
-                "entityId", "app-order",
-                "upstreamHops", 0,
-                "downstreamHops", 3))
+            .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod", "entityId", "app-order",
+                "upstreamHops", 0, "downstreamHops", 3))
             .exchange()
             .expectStatus()
             .isOk()
@@ -389,11 +388,8 @@ class KnowledgeGraphControllerTest {
             .uri("/operation-intelligence/graph/impact-path")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of(
-                "envCode", "prod",
-                "fromEntityId", "svc-prod-bes-business-common-sysparambs",
-                "toEntityId", "cluster-prod-rsp",
-                "maxHops", 4))
+            .bodyValue(Map.of("envCode", "prod", "fromEntityId", "svc-prod-bes-business-common-sysparambs",
+                "toEntityId", "cluster-prod-rsp", "maxHops", 4))
             .exchange()
             .expectStatus()
             .isOk()
@@ -474,9 +470,9 @@ class KnowledgeGraphControllerTest {
             .jsonPath("$.result.manifest.observationCount")
             .isEqualTo(2)
             .jsonPath("$.result.schemaDsl")
-            .value(org.hamcrest.Matchers.containsString("BusinessCapability"))
+            .value(Matchers.containsString("BusinessCapability"))
             .jsonPath("$.result.schemaDsl")
-            .value(org.hamcrest.Matchers.containsString("deployed_in"))
+            .value(Matchers.containsString("deployed_in"))
             .jsonPath("$.result.snapshot.entities.length()")
             .isEqualTo(4)
             .jsonPath("$.result.snapshot.relations[0].type")
@@ -488,11 +484,10 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         knowledgeGraphService.init();
-        GraphSnapshot subgraph =
-            knowledgeGraphService.querySubgraph("b2b-callchain-v1", "prod", "svc-prod-bes-business-common-datadictbs",
-                4);
-        org.junit.jupiter.api.Assertions.assertEquals(3, subgraph.getEntities().size());
-        org.junit.jupiter.api.Assertions.assertEquals(2, subgraph.getRelations().size());
+        GraphSnapshot subgraph = knowledgeGraphService.querySubgraph("b2b-callchain-v1", "prod",
+            "svc-prod-bes-business-common-datadictbs", 4);
+        Assertions.assertEquals(3, subgraph.getEntities().size());
+        Assertions.assertEquals(2, subgraph.getRelations().size());
     }
 
     @Test
@@ -537,7 +532,7 @@ class KnowledgeGraphControllerTest {
             .jsonPath("$.result.manifest.ontologyId")
             .isEqualTo("huawei-mo-resource-v1")
             .jsonPath("$.result.schemaDsl")
-            .value(org.hamcrest.Matchers.containsString("runs_on_host"))
+            .value(Matchers.containsString("runs_on_host"))
             .jsonPath("$.result.snapshot.ontologyId")
             .isEqualTo("huawei-mo-resource-v1");
     }
@@ -650,63 +645,49 @@ class KnowledgeGraphControllerTest {
             .uri("/operation-intelligence/graph/ontologies")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of(
-                "ontologyId", "b2b-callchain-v1",
-                "name", "B2B Call Chain Ontology",
-                "version", "1.0",
-                "sourceSystem", "test",
-                "entityTypes", java.util.List.of(
-                    entityType("BusinessCapability", java.util.List.of("menuId", "menuName")),
-                    entityType("Service", java.util.List.of("serviceName")),
-                    entityType("Cluster", java.util.List.of("clusterName"))),
-                "relationTypes", java.util.List.of(
-                    relationType("deployed_in", "deployment", java.util.List.of("Service"),
-                        java.util.List.of("Cluster")),
-                    relationType("calls", "runtime", java.util.List.of("Service"), java.util.List.of("Service")))))
+            .bodyValue(Map.of("ontologyId", "b2b-callchain-v1", "name", "B2B Call Chain Ontology", "version", "1.0",
+                "sourceSystem", "test", "entityTypes",
+                List.of(entityType("BusinessCapability", List.of("menuId", "menuName")),
+                    entityType("Service", List.of("serviceName")),
+                    entityType("Cluster", List.of("clusterName"))),
+                "relationTypes",
+                List.of(
+                    relationType("deployed_in", "deployment", List.of("Service"),
+                        List.of("Cluster")),
+                    relationType("calls", "runtime", List.of("Service"), List.of("Service")))))
             .exchange()
             .expectStatus()
             .isOk();
     }
 
     private Map<String, Object> resourceOntology() {
-        return Map.of(
-            "ontologyId", "huawei-mo-resource-v1",
-            "name", "Huawei MO Resource Ontology",
-            "version", "1.0",
-            "sourceSystem", "test",
-            "entityTypes", java.util.List.of(
-                entityType("ApplicationComponent", java.util.List.of("dn", "rawType")),
-                entityType("ComputeNode", java.util.List.of("dn", "rawType")),
-                entityType("Host", java.util.List.of("hostIp")),
-                entityType("Container", java.util.List.of("dn", "rawType"))),
-            "relationTypes", java.util.List.of(
-                relationType("contains", "deployment", java.util.List.of("*"), java.util.List.of("*")),
-                relationType("runs_on_host", "deployment",
-                    java.util.List.of("ApplicationComponent", "Container"),
-                    java.util.List.of("Host")),
-                relationType("calls", "runtime",
-                    java.util.List.of("ApplicationComponent"),
-                    java.util.List.of("ApplicationComponent"))));
+        return Map.of("ontologyId", "huawei-mo-resource-v1", "name", "Huawei MO Resource Ontology", "version", "1.0",
+            "sourceSystem", "test", "entityTypes",
+            List.of(entityType("ApplicationComponent", List.of("dn", "rawType")),
+                entityType("ComputeNode", List.of("dn", "rawType")),
+                entityType("Host", List.of("hostIp")),
+                entityType("Container", List.of("dn", "rawType"))),
+            "relationTypes",
+            List.of(relationType("contains", "deployment", List.of("*"), List.of("*")),
+                relationType("runs_on_host", "deployment", List.of("ApplicationComponent", "Container"),
+                    List.of("Host")),
+                relationType("calls", "runtime", List.of("ApplicationComponent"),
+                    List.of("ApplicationComponent"))));
     }
 
     private Map<String, Object> resourceSnapshot() {
-        return Map.of(
-            "ontologyId", "huawei-mo-resource-v1",
-            "envCode", "prod",
-            "schemaVersion", "1.0",
-            "sourceSystem", "mo-export",
-            "importMode", "UPSERT",
-            "entities", java.util.List.of(
-                entity("app-order", "ApplicationComponent", "OrderApp", Map.of("dn", "app-order", "rawType",
-                    "OrderSchedulerApp", "serviceName", "OrderApp")),
-                entity("app-pay", "ApplicationComponent", "PayApp", Map.of("dn", "app-pay", "rawType",
-                    "PaymentApp", "serviceName", "PayApp")),
-                entity("container-order", "Container", "order-docker", Map.of("dn", "docker:order", "rawType",
-                    "Docker")),
-                entity("host-192-168-200-42", "Host", "host-192-168-200-42", Map.of("hostIp",
-                    "192.168.200.42"))),
-            "relations", java.util.List.of(
-                relation("rel-app-container", "contains", "app-order", "container-order"),
+        return Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod", "schemaVersion", "1.0", "sourceSystem",
+            "mo-export", "importMode", "UPSERT", "entities",
+            List.of(
+                entity("app-order", "ApplicationComponent", "OrderApp",
+                    Map.of("dn", "app-order", "rawType", "OrderSchedulerApp", "serviceName", "OrderApp")),
+                entity("app-pay", "ApplicationComponent", "PayApp",
+                    Map.of("dn", "app-pay", "rawType", "PaymentApp", "serviceName", "PayApp")),
+                entity("container-order", "Container", "order-docker",
+                    Map.of("dn", "docker:order", "rawType", "Docker")),
+                entity("host-192-168-200-42", "Host", "host-192-168-200-42", Map.of("hostIp", "192.168.200.42"))),
+            "relations",
+            List.of(relation("rel-app-container", "contains", "app-order", "container-order"),
                 relation("rel-container-host", "runs_on_host", "container-order", "host-192-168-200-42"),
                 relation("rel-app-calls", "calls", "app-order", "app-pay")));
     }
@@ -730,12 +711,12 @@ class KnowledgeGraphControllerTest {
             .isOk();
     }
 
-    private Map<String, Object> entityType(String type, java.util.List<String> requiredProperties) {
+    private Map<String, Object> entityType(String type, List<String> requiredProperties) {
         return Map.of("type", type, "requiredProperties", requiredProperties);
     }
 
-    private Map<String, Object> relationType(String type, String layer, java.util.List<String> from,
-        java.util.List<String> to) {
+    private Map<String, Object> relationType(String type, String layer, List<String> from,
+        List<String> to) {
         return Map.of("type", type, "layer", layer, "from", from, "to", to);
     }
 
@@ -745,28 +726,5 @@ class KnowledgeGraphControllerTest {
 
     private Map<String, Object> relation(String id, String type, String from, String to) {
         return Map.of("id", id, "type", type, "from", from, "to", to);
-    }
-
-    private static Path createTempDataRoot() {
-        try {
-            return Files.createTempDirectory("operation-intelligence-kg-test-");
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to create test data root", e);
-        }
-    }
-
-    private static void deleteRecursively(Path root) throws IOException {
-        if (!Files.exists(root)) {
-            return;
-        }
-        try (Stream<Path> paths = Files.walk(root)) {
-            paths.sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException e) {
-                    throw new IllegalStateException("Failed to delete " + path, e);
-                }
-            });
-        }
     }
 }

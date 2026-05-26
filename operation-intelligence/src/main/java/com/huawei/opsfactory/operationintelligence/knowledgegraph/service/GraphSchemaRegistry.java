@@ -60,10 +60,7 @@ public class GraphSchemaRegistry {
      * @return ontologies
      */
     public List<GraphOntology> listOntologies() {
-        return ontologies.values()
-            .stream()
-            .sorted(Comparator.comparing(GraphOntology::getOntologyId))
-            .toList();
+        return ontologies.values().stream().sorted(Comparator.comparing(GraphOntology::getOntologyId)).toList();
     }
 
     /**
@@ -256,33 +253,23 @@ public class GraphSchemaRegistry {
     private Map<String, EntityTypeDefinition> entityTypeMap(GraphOntology ontology) {
         return ontology.getEntityTypes()
             .stream()
-            .collect(Collectors.toMap(
-                EntityTypeDefinition::getType,
-                item -> item,
-                (first, second) -> first,
+            .collect(Collectors.toMap(EntityTypeDefinition::getType, item -> item, (first, second) -> first,
                 LinkedHashMap::new));
     }
 
     private Map<String, List<RelationTypeDefinition>> relationTypeMap(GraphOntology ontology) {
         return ontology.getRelationTypes()
             .stream()
-            .collect(Collectors.groupingBy(
-                RelationTypeDefinition::getType,
-                LinkedHashMap::new,
-                Collectors.toList()));
+            .collect(Collectors.groupingBy(RelationTypeDefinition::getType, LinkedHashMap::new, Collectors.toList()));
     }
 
     private String relationSignature(RelationTypeDefinition relationType) {
-        return String.join("::",
-            relationType.getType(),
-            normalizedEndpointTypes(relationType.getFrom()),
+        return String.join("::", relationType.getType(), normalizedEndpointTypes(relationType.getFrom()),
             normalizedEndpointTypes(relationType.getTo()));
     }
 
     private String normalizedEndpointTypes(List<String> endpointTypes) {
-        return endpointTypes.stream()
-            .sorted()
-            .collect(Collectors.joining(","));
+        return endpointTypes.stream().sorted().collect(Collectors.joining(","));
     }
 
     private void requireText(String value, String fieldName) {
@@ -292,7 +279,8 @@ public class GraphSchemaRegistry {
     }
 
     private void requireProperty(GraphEntity entity, String propertyName) {
-        Object value = entity.getProperties().get(propertyName);
+        Map<String, Object> properties = entity.getProperties();
+        Object value = properties != null ? properties.get(propertyName) : null;
         if (value == null || value.toString().isBlank()) {
             throw badRequest(entity.getType() + "." + propertyName + " is required");
         }

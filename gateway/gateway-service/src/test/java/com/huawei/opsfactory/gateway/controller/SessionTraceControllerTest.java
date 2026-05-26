@@ -75,9 +75,8 @@ public class SessionTraceControllerTest {
      */
     @Test
     public void testStartTrace_succeeds_forAnyUser() {
-        when(traceService.startTrace("regular-user", "qa-agent", "20260429_2"))
-            .thenReturn(new TraceJobSnapshot("job-2", "running", "regular-user", "qa-agent", "20260429_2",
-                null, "trace collection running"));
+        when(traceService.startTrace("regular-user", "qa-agent", "20260429_2")).thenReturn(new TraceJobSnapshot("job-2",
+            "running", "regular-user", "qa-agent", "20260429_2", null, "trace collection running"));
 
         webTestClient.post()
             .uri("/gateway/agents/qa-agent/sessions/20260429_2/trace")

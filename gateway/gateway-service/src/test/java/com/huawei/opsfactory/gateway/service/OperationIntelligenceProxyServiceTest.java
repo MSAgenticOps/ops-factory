@@ -25,9 +25,8 @@ public class OperationIntelligenceProxyServiceTest {
      */
     @Test
     public void testTargetPathStripsGatewayPrefix() {
-        MockServerHttpRequest request = MockServerHttpRequest
-            .get("/gateway/operation-intelligence/graph/resources/tree?envCode=prod")
-            .build();
+        MockServerHttpRequest request =
+            MockServerHttpRequest.get("/gateway/operation-intelligence/graph/resources/tree?envCode=prod").build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         OperationIntelligenceProxyService service = new OperationIntelligenceProxyService(new GatewayProperties());
 
@@ -39,9 +38,8 @@ public class OperationIntelligenceProxyServiceTest {
      */
     @Test
     public void testTargetPathPreservesBackendPath() {
-        MockServerHttpRequest request = MockServerHttpRequest
-            .get("/operation-intelligence/graph/resources/tree?envCode=prod")
-            .build();
+        MockServerHttpRequest request =
+            MockServerHttpRequest.get("/operation-intelligence/graph/resources/tree?envCode=prod").build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         OperationIntelligenceProxyService service = new OperationIntelligenceProxyService(new GatewayProperties());
 

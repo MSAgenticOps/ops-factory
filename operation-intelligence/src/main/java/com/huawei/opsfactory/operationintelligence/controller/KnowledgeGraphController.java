@@ -36,6 +36,11 @@ import java.util.Map;
 public class KnowledgeGraphController {
     private final KnowledgeGraphService knowledgeGraphService;
 
+    /**
+     * Constructs a KnowledgeGraphController.
+     *
+     * @param knowledgeGraphService the knowledge graph service
+     */
     public KnowledgeGraphController(KnowledgeGraphService knowledgeGraphService) {
         this.knowledgeGraphService = knowledgeGraphService;
     }
@@ -82,8 +87,8 @@ public class KnowledgeGraphController {
      * @return the result
      */
     @GetMapping("/environments")
-    public Mono<Map<String, Object>> listEnvironments(@RequestParam(value = "ontologyId", required = false)
-        String ontologyId) {
+    public Mono<Map<String, Object>>
+        listEnvironments(@RequestParam(value = "ontologyId", required = false) String ontologyId) {
         return Mono.fromCallable(() -> ok("result", knowledgeGraphService.listEnvironments(ontologyId)))
             .subscribeOn(Schedulers.boundedElastic());
     }
@@ -101,9 +106,9 @@ public class KnowledgeGraphController {
     }
 
     /**
-     * Deletes one ontology and all graph snapshots under it.
+     * Deletes one ontology and all graph snapshots under it via POST body.
      *
-     * @param request the request
+     * @param request the request containing ontologyId
      * @return the result
      */
     @PostMapping("/admin/delete-ontology")
@@ -134,16 +139,17 @@ public class KnowledgeGraphController {
      * @return the result
      */
     @DeleteMapping("/admin/entities")
-    public Mono<Map<String, Object>> deleteEntities(@RequestParam(value = "ontologyId", required = false)
-        String ontologyId, @RequestParam("envCode") String envCode) {
+    public Mono<Map<String, Object>> deleteEntities(
+        @RequestParam(value = "ontologyId", required = false) String ontologyId,
+        @RequestParam("envCode") String envCode) {
         return Mono.fromCallable(() -> ok("result", knowledgeGraphService.deleteEntities(ontologyId, envCode)))
             .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
-     * Deletes graph entities for one environment.
+     * Deletes graph entities for one environment via POST body.
      *
-     * @param request the request
+     * @param request the request containing ontologyId and envCode
      * @return the result
      */
     @PostMapping("/admin/delete-entities")
@@ -197,9 +203,10 @@ public class KnowledgeGraphController {
             String entityId = stringValue(request.get("entityId"));
             if (request.containsKey("upstreamHops") || request.containsKey("downstreamHops")) {
                 int upstreamHops = request.containsKey("upstreamHops") ? intValue(request.get("upstreamHops")) : 0;
-                int downstreamHops = request.containsKey("downstreamHops") ? intValue(request.get("downstreamHops")) : 0;
-                return ok("result", knowledgeGraphService.querySubgraph(ontologyId, envCode, entityId, upstreamHops,
-                    downstreamHops));
+                int downstreamHops =
+                    request.containsKey("downstreamHops") ? intValue(request.get("downstreamHops")) : 0;
+                return ok("result",
+                    knowledgeGraphService.querySubgraph(ontologyId, envCode, entityId, upstreamHops, downstreamHops));
             }
             int maxHops = request.containsKey("maxHops") ? intValue(request.get("maxHops")) : 1;
             return ok("result", knowledgeGraphService.querySubgraph(ontologyId, envCode, entityId, maxHops));

@@ -24,7 +24,7 @@ public class OperationIntelligenceProperties {
 
     private static final String CONFIG_PATH_KEY = "OI_CONFIG_PATH";
 
-    private String secretKey = "test";
+    private String secretKey = "";
 
     private String corsOrigin = "*";
 
@@ -757,6 +757,7 @@ public class OperationIntelligenceProperties {
         }
     }
 
+    /** Knowledge graph configuration. */
     public static class KnowledgeGraph {
         private boolean enabled = true;
 

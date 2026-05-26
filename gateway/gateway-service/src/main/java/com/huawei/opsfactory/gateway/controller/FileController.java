@@ -218,8 +218,9 @@ public class FileController {
      * @return the uploads a file to the agent workspace for a specific session
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<Map<String, Object>> uploadFile(@PathVariable("agentId") String agentId, @RequestPart("file") FilePart filePart,
-        @RequestPart("sessionId") String sessionId, ServerWebExchange exchange) {
+    public Mono<Map<String, Object>> uploadFile(@PathVariable("agentId") String agentId,
+        @RequestPart("file") FilePart filePart, @RequestPart("sessionId") String sessionId,
+        ServerWebExchange exchange) {
         String userId = exchange.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path uploadsDir = agentConfigService.getUserAgentDir(userId, agentId).resolve("uploads").resolve(sessionId);
 

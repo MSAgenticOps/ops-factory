@@ -6,12 +6,12 @@ package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.service.OperationIntelligenceProxyService;
 
+import reactor.core.publisher.Mono;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
-
-import reactor.core.publisher.Mono;
 
 /**
  * Gateway proxy for operation-intelligence endpoints.
@@ -23,6 +23,11 @@ import reactor.core.publisher.Mono;
 public class OperationIntelligenceProxyController {
     private final OperationIntelligenceProxyService proxyService;
 
+    /**
+     * Constructs an OperationIntelligenceProxyController.
+     *
+     * @param proxyService the proxy service
+     */
     public OperationIntelligenceProxyController(OperationIntelligenceProxyService proxyService) {
         this.proxyService = proxyService;
     }

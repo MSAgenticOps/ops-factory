@@ -101,8 +101,8 @@ public class GatewayPropertiesTest {
     @Test
     public void testOperationIntelligenceDefaults() {
         GatewayProperties.OperationIntelligence operationIntelligence = new GatewayProperties.OperationIntelligence();
-        assertEquals("http://127.0.0.1:8096", operationIntelligence.getBaseUrl());
-        assertEquals("test", operationIntelligence.getSecretKey());
+        assertEquals("http://localhost:8096", operationIntelligence.getBaseUrl());
+        assertEquals("", operationIntelligence.getSecretKey());
         assertEquals(30000, operationIntelligence.getRequestTimeoutMs());
     }
 

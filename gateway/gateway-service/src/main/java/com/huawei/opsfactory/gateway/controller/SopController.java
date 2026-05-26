@@ -160,7 +160,8 @@ public class SopController {
      * @return a mono wrapping a response entity with a success flag, or 404 if the SOP does not exist
      */
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteSop(@PathVariable("id") String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Map<String, Object>>> deleteSop(@PathVariable("id") String id,
+        ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
             boolean deleted = sopService.deleteSop(id);
             if (!deleted) {
