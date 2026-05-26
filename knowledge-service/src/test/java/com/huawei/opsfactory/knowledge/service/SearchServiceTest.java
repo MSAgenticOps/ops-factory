@@ -116,10 +116,14 @@ class SearchServiceTest {
         );
 
         assertThat(result).hasSize(2);
-        double expectedScoreBoth = 1.0 / (60 + 1);
+
         SearchService.SearchMatch match1 = result.stream()
             .filter(m -> m.chunk().id().equals("chk-1")).findFirst().orElseThrow();
-        assertThat(match1.fusionScore()).isEqualTo(expectedScoreBoth);
+        assertThat(match1.fusionScore()).isEqualTo(1.0 / (60 + 1));
+
+        SearchService.SearchMatch match2 = result.stream()
+            .filter(m -> m.chunk().id().equals("chk-2")).findFirst().orElseThrow();
+        assertThat(match2.fusionScore()).isEqualTo(1.0 / (60 + 1));
     }
 
     @Test

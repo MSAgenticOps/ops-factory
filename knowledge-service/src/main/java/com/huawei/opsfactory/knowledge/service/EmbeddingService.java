@@ -15,12 +15,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -148,10 +150,10 @@ public class EmbeddingService {
 
         try {
             return remoteEmbeddings(inputs);
-        } catch (Exception ex) {
+        } catch (IOException | InterruptedException ex) {
             log.warn(
                 "Remote embedding failed, falling back to local embeddings model={} endpoint={} batchSize={} reason={}",
-                properties.getEmbedding().getModel(), resolveEmbeddingsEndpoint(properties.getEmbedding().getBaseUrl()),
+                properties.getEmbedding().getModel(), maskEndpoint(properties.getEmbedding().getBaseUrl()),
                 inputs.size(), ex.getMessage());
             log.debug("Remote embedding failure details", ex);
             return inputs.stream().map(this::localEmbedding).toList();
@@ -164,7 +166,7 @@ public class EmbeddingService {
         return StringUtils.hasText(apiKey) && !DEFAULT_PLACEHOLDER_KEY.equals(apiKey) && StringUtils.hasText(baseUrl);
     }
 
-    private List<List<Double>> remoteEmbeddings(List<String> inputs) throws Exception {
+    private List<List<Double>> remoteEmbeddings(List<String> inputs) throws IOException, InterruptedException {
         URI endpoint = URI.create(resolveEmbeddingsEndpoint(properties.getEmbedding().getBaseUrl()));
         Map<String, Object> body = Map.of("model", properties.getEmbedding().getModel(), "dimensions",
             expectedEmbeddingDimension(), "input", inputs);
@@ -206,6 +208,14 @@ public class EmbeddingService {
             return normalized;
         }
         return normalized + "/embeddings";
+    }
+
+    private String maskEndpoint(String url) {
+        try {
+            return URI.create(url).getHost();
+        } catch (Exception e) {
+            return "***";
+        }
     }
 
     private List<Double> localEmbedding(String input) {
@@ -270,7 +280,7 @@ public class EmbeddingService {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of()
                 .formatHex(digest.digest((value == null ? "" : value).getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Failed to hash embedding payload", e);
         }
     }

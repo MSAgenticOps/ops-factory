@@ -29,7 +29,6 @@ class KeywordExtractorTest {
         );
 
         assertThat(keywords).isNotEmpty();
-        assertThat(keywords).isInstanceOf(List.class);
     }
 
     @Test
@@ -72,12 +71,11 @@ class KeywordExtractorTest {
     @Test
     void shouldReturnKeywordsSortedByFrequency() {
         List<String> keywords = KeywordExtractor.extract(
-            "search search search index index query", 10
+            "服务器 服务器 服务器 监控 监控 告警", 10
         );
 
-        assertThat(keywords).isNotEmpty();
-        if (keywords.size() >= 2) {
-            assertThat(keywords.get(0)).isEqualTo("search");
-        }
+        assertThat(keywords).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(keywords.get(0)).isEqualTo("服务器");
+        assertThat(keywords.get(1)).isEqualTo("监控");
     }
 }
