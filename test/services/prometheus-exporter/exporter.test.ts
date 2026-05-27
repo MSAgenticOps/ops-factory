@@ -4,7 +4,7 @@ import { ChildProcess, spawn, execFileSync } from 'node:child_process'
 import { resolve, join } from 'node:path'
 import { writeFileSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { stringify } from 'yaml'
+import yaml from 'js-yaml'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sleep } from '../../platform/shared/helpers.js'
 
@@ -73,12 +73,12 @@ async function startMockMonitoringGateway(): Promise<MockGateway> {
 
     if (pathname === '/runtime-source/system' || pathname === '/ops-gateway/runtime-source/system') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify(MOCK_SYSTEM))
+      res.end(JSON.yaml.dump(MOCK_SYSTEM))
       return
     }
     if (pathname === '/runtime-source/instances' || pathname === '/ops-gateway/runtime-source/instances') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify(MOCK_INSTANCES))
+      res.end(JSON.yaml.dump(MOCK_INSTANCES))
       return
     }
     if (pathname === '/status' || pathname === '/ops-gateway/status') {
@@ -124,7 +124,7 @@ async function startExporter(gatewayPort: number): Promise<ExporterHandle> {
     gatewaySecretKey: SECRET_KEY,
     collectTimeoutMs: 3000,
   }
-  writeFileSync(testConfigPath, stringify(testConfig), 'utf-8')
+  writeFileSync(testConfigPath, yaml.dump(testConfig), 'utf-8')
 
   const child = spawn('java', ['-Dserver.port=' + String(port), '-jar', 'target/prometheus-exporter.jar'], {
     cwd: EXPORTER_DIR,
