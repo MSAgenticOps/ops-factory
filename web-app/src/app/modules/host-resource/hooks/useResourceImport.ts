@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { csvToObjects } from '../../../../utils/csvExport'
+import { isValidIp } from '../../../../utils/ip-validation'
 import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
@@ -173,6 +174,7 @@ export function useResourceImport(deps: ImportDeps) {
         // Build lookup maps from current data
         const groupNameToId = new Map(deps.groups.map(g => [g.name, g.id]))
         const groupCodeToId = new Map(deps.groups.map(g => [g.code ?? '', g.id]))
+        const clusterGroupedKeyToId = new Map(deps.clusters.map(c => [`${c.groupId ?? ''}:${c.name}`, c.id]))
         const clusterNameToId = new Map(deps.clusters.map(c => [c.name, c.id]))
         const clusterTypeNameSet = new Set(deps.clusterTypes.map(ct => ct.name))
         const clusterTypeCodeToName = new Map(deps.clusterTypes.map(ct => [ct.code, ct.name]))
@@ -195,7 +197,7 @@ export function useResourceImport(deps: ImportDeps) {
                 switch (type) {
                     case 'ClusterTypes': {
                         if (createdClusterTypeNames.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'ClusterType', name: row.name } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'ClusterType', name: row.name } })
                             continue
                         }
                         await deps.createClusterType({
@@ -218,7 +220,7 @@ export function useResourceImport(deps: ImportDeps) {
 
                     case 'BusinessTypes': {
                         if (createdBusinessTypeNames.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'BusinessType', name: row.name } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessType', name: row.name } })
                             continue
                         }
                         await deps.createBusinessType({
@@ -234,7 +236,7 @@ export function useResourceImport(deps: ImportDeps) {
 
                     case 'HostGroups': {
                         if (groupNameToId.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'HostGroup', name: row.name } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'HostGroup', name: row.name } })
                             continue
                         }
                         const created = await deps.createGroup({
@@ -249,19 +251,20 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Clusters': {
-                        if (clusterNameToId.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Cluster', name: row.name } })
-                            continue
-                        }
                         const groupId = row.group
                             ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                             : undefined
+                        const clusterKey = `${groupId ?? ''}:${row.name}`
+                        if (clusterGroupedKeyToId.has(clusterKey)) {
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Cluster', name: row.name } })
+                            continue
+                        }
                         let typeName = row.type || ''
                         if (typeName && !clusterTypeNameSet.has(typeName)) {
                             typeName = clusterTypeCodeToName.get(typeName) || typeName
                         }
                         if (!groupId && row.group) {
-                            errors.push({ row: i + 1, code: 'import.groupNotFound', params: { group: row.group } })
+                            errors.push({ row: i + 2, code: 'import.groupNotFound', params: { group: row.group } })
                             continue
                         }
                         const created = await deps.createCluster({
@@ -271,29 +274,53 @@ export function useResourceImport(deps: ImportDeps) {
                             groupId,
                             description: row.description || '',
                         })
+                        clusterGroupedKeyToId.set(clusterKey, created.id)
                         clusterNameToId.set(row.name, created.id)
                         success++
                         break
                     }
 
                     case 'Hosts': {
-                        if (hostNameToId.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Host', name: row.name } })
+                        const hostName = row.name?.trim() || ''
+                        const hostIp = row.ip?.trim() || ''
+                        const hostUsername = row.username?.trim() || ''
+                        if (!hostName) {
+                            errors.push({ row: i + 2, code: 'import.hostNameRequired' })
+                            continue
+                        }
+                        if (hostName.length > 100) {
+                            errors.push({ row: i + 2, code: 'import.hostNameTooLong', params: { length: String(hostName.length) } })
+                            continue
+                        }
+                        if (!hostIp) {
+                            errors.push({ row: i + 2, code: 'import.hostIpRequired' })
+                            continue
+                        }
+                        if (!isValidIp(hostIp)) {
+                            errors.push({ row: i + 2, code: 'import.hostIpInvalid', params: { ip: hostIp } })
+                            continue
+                        }
+                        if (!hostUsername) {
+                            errors.push({ row: i + 2, code: 'import.hostUsernameRequired' })
+                            continue
+                        }
+                        if (hostNameToId.has(hostName)) {
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Host', name: hostName } })
                             continue
                         }
                         const clusterId = row.cluster
                             ? clusterNameToId.get(row.cluster)
                             : undefined
                         if (!clusterId && row.cluster) {
-                            errors.push({ row: i + 1, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
+                            errors.push({ row: i + 2, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
                             continue
                         }
                         const roleValue = row.role as string | undefined
                         const created = await deps.createHost({
-                            name: row.name,
-                            ip: row.ip,
+                            name: hostName,
+                            ip: hostIp,
                             port: row.port ? parseInt(row.port, 10) : 22,
-                            username: row.username,
+                            username: hostUsername,
                             authType: (row.authtype === 'key' ? 'key' : 'password') as 'password' | 'key',
                             credential: row.credential || '',
                             hostname: row.hostname || undefined,
@@ -314,7 +341,7 @@ export function useResourceImport(deps: ImportDeps) {
 
                     case 'BusinessServices': {
                         if (bsNameToId.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'BusinessService', name: row.name } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: row.name } })
                             continue
                         }
                         const groupId = row.group
@@ -324,7 +351,7 @@ export function useResourceImport(deps: ImportDeps) {
                             ? businessTypeNameToId.get(row.businesstype)
                             : undefined
                         if (!groupId && row.group) {
-                            errors.push({ row: i + 1, code: 'import.groupNotFound', params: { group: row.group } })
+                            errors.push({ row: i + 2, code: 'import.groupNotFound', params: { group: row.group } })
                             continue
                         }
                         const created = await deps.createBusinessService({
@@ -347,16 +374,16 @@ export function useResourceImport(deps: ImportDeps) {
                         const sourceHostId = hostNameToId.get(row.sourcenode)
                         const destHostId = hostNameToId.get(row.destnode)
                         if (!destHostId) {
-                            errors.push({ row: i + 1, code: 'import.targetHostNotFound', params: { host: row.destnode } })
+                            errors.push({ row: i + 2, code: 'import.targetHostNotFound', params: { host: row.destnode } })
                             continue
                         }
                         if (!sourceBsId && !sourceHostId) {
-                            errors.push({ row: i + 1, code: 'import.sourceNodeNotFound', params: { node: row.sourcenode } })
+                            errors.push({ row: i + 2, code: 'import.sourceNodeNotFound', params: { node: row.sourcenode } })
                             continue
                         }
                         const relationKey = `${sourceBsId || sourceHostId}->${destHostId}`
                         if (existingRelationKeys.has(relationKey)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Relation', name: `${row.sourcenode} -> ${row.destnode}` } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Relation', name: `${row.sourcenode} -> ${row.destnode}` } })
                             continue
                         }
                         existingRelationKeys.add(relationKey)
@@ -372,7 +399,7 @@ export function useResourceImport(deps: ImportDeps) {
 
                     case 'SOPs': {
                         if (createdSopNames.has(row.name)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'SOP', name: row.name } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: row.name } })
                             continue
                         }
                         const tags = row.tags
@@ -395,7 +422,7 @@ export function useResourceImport(deps: ImportDeps) {
 
                     case 'Whitelist': {
                         if (createdPatterns.has(row.pattern)) {
-                            errors.push({ row: i + 1, code: 'import.duplicate', params: { type: 'Whitelist', name: row.pattern } })
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: row.pattern } })
                             continue
                         }
                         await deps.addWhitelistCommand({
@@ -412,7 +439,7 @@ export function useResourceImport(deps: ImportDeps) {
                 }
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err)
-                errors.push({ row: i + 1, code: 'import.rowError', params: { message: msg } })
+                errors.push({ row: i + 2, code: 'import.rowError', params: { message: msg } })
             }
         }
 
@@ -428,7 +455,7 @@ export function useResourceImport(deps: ImportDeps) {
                         await deps.updateGroup(groupId, { parentId })
                     } catch (err) {
                         const msg = err instanceof Error ? err.message : String(err)
-                        errors.push({ row: i + 1, code: 'import.setParentFailed', params: { message: msg } })
+                        errors.push({ row: i + 2, code: 'import.setParentFailed', params: { message: msg } })
                     }
                 }
             }
