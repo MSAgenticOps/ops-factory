@@ -9,6 +9,8 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,13 +23,16 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-
-import jakarta.annotation.PostConstruct;
 
 /**
  * Manages cluster-level relations including topology graph data, neighbor resolution, and cascade deletes.
@@ -54,6 +59,8 @@ public class ClusterRelationService {
     private ClusterTypeService clusterTypeService;
 
     private BusinessServiceService businessServiceService;
+
+    private HostGroupService hostGroupService;
 
     /**
      * Creates the cluster relation service instance.
@@ -104,6 +111,17 @@ public class ClusterRelationService {
     @Autowired
     public void setBusinessServiceService(BusinessServiceService businessServiceService) {
         this.businessServiceService = businessServiceService;
+    }
+
+    /**
+     * Sets the host group service via lazy injection.
+     *
+     * @param hostGroupService the host group service via lazy injection
+     */
+    @Lazy
+    @Autowired
+    public void setHostGroupService(HostGroupService hostGroupService) {
+        this.hostGroupService = hostGroupService;
     }
 
     /**
@@ -475,10 +493,8 @@ public class ClusterRelationService {
     }
 
     private void processRelationsForGraph(List<Map<String, Object>> allRelations,
-            Map<String, Map<String, Object>> clusterMap,
-            List<Map<String, Object>> matchedEdges,
-            Map<String, Map<String, Object>> bsNodes,
-            Map<String, Map<String, Object>> hostNodes) {
+        Map<String, Map<String, Object>> clusterMap, List<Map<String, Object>> matchedEdges,
+        Map<String, Map<String, Object>> bsNodes, Map<String, Map<String, Object>> hostNodes) {
 
         for (Map<String, Object> rel : allRelations) {
             String sourceId = (String) rel.get("sourceId");
@@ -538,8 +554,7 @@ public class ClusterRelationService {
     }
 
     private List<Map<String, Object>> buildGraphNodes(Map<String, Map<String, Object>> clusterMap,
-            Map<String, Map<String, Object>> hostNodes,
-            Map<String, Map<String, Object>> bsNodes) {
+        Map<String, Map<String, Object>> hostNodes, Map<String, Map<String, Object>> bsNodes) {
 
         List<Map<String, Object>> nodes = new ArrayList<>();
         for (Map<String, Object> c : clusterMap.values()) {
@@ -775,11 +790,42 @@ public class ClusterRelationService {
     }
 
     private void collectSubGroupClusters(String groupId, List<Map<String, Object>> clusters) {
-        try {
+        // Single pass: read all groups and all clusters once
+        List<Map<String, Object>> allGroups = hostGroupService.listGroups();
+
+        // BFS to collect all descendant group IDs
+        Set<String> descendantIds = new LinkedHashSet<>();
+        Deque<String> queue = new ArrayDeque<>();
+        queue.add(groupId);
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            for (Map<String, Object> g : allGroups) {
+                String parentId = (String) g.get("parentId");
+                if (current.equals(parentId)) {
+                    String childId = (String) g.get("id");
+                    if (descendantIds.add(childId)) {
+                        queue.add(childId);
+                    }
+                }
+            }
+        }
+
+        // Single pass: read all clusters once, filter by descendant group IDs
+        if (!descendantIds.isEmpty()) {
             List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
-            // Already collected direct clusters; nothing more needed since listClusters(groupId) already handles that
-        } catch (IllegalArgumentException e) {
-            log.debug("Skipping subgroup cluster collection for group {}", groupId);
+            Set<String> existingIds = new HashSet<>();
+            for (Map<String, Object> c : clusters) {
+                existingIds.add((String) c.get("id"));
+            }
+            for (Map<String, Object> c : allClusters) {
+                Object cg = c.get("groupId");
+                if (cg != null && descendantIds.contains(cg.toString())) {
+                    String cid = (String) c.get("id");
+                    if (existingIds.add(cid)) {
+                        clusters.add(c);
+                    }
+                }
+            }
         }
     }
 
