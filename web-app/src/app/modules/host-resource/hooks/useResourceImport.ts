@@ -281,28 +281,31 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Hosts': {
-                        if (!row.name?.trim()) {
+                        const hostName = row.name?.trim() || ''
+                        const hostIp = row.ip?.trim() || ''
+                        const hostUsername = row.username?.trim() || ''
+                        if (!hostName) {
                             errors.push({ row: i + 2, code: 'import.hostNameRequired' })
                             continue
                         }
-                        if (row.name.trim().length > 100) {
-                            errors.push({ row: i + 2, code: 'import.hostNameTooLong', params: { length: String(row.name.trim().length) } })
+                        if (hostName.length > 100) {
+                            errors.push({ row: i + 2, code: 'import.hostNameTooLong', params: { length: String(hostName.length) } })
                             continue
                         }
-                        if (!row.ip?.trim()) {
+                        if (!hostIp) {
                             errors.push({ row: i + 2, code: 'import.hostIpRequired' })
                             continue
                         }
-                        if (!isValidIp(row.ip)) {
-                            errors.push({ row: i + 2, code: 'import.hostIpInvalid', params: { ip: row.ip } })
+                        if (!isValidIp(hostIp)) {
+                            errors.push({ row: i + 2, code: 'import.hostIpInvalid', params: { ip: hostIp } })
                             continue
                         }
-                        if (!row.username?.trim()) {
+                        if (!hostUsername) {
                             errors.push({ row: i + 2, code: 'import.hostUsernameRequired' })
                             continue
                         }
-                        if (hostNameToId.has(row.name)) {
-                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Host', name: row.name } })
+                        if (hostNameToId.has(hostName)) {
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Host', name: hostName } })
                             continue
                         }
                         const clusterId = row.cluster
@@ -314,10 +317,10 @@ export function useResourceImport(deps: ImportDeps) {
                         }
                         const roleValue = row.role as string | undefined
                         const created = await deps.createHost({
-                            name: row.name.trim(),
-                            ip: row.ip.trim(),
+                            name: hostName,
+                            ip: hostIp,
                             port: row.port ? parseInt(row.port, 10) : 22,
-                            username: row.username.trim(),
+                            username: hostUsername,
                             authType: (row.authtype === 'key' ? 'key' : 'password') as 'password' | 'key',
                             credential: row.credential || '',
                             hostname: row.hostname || undefined,

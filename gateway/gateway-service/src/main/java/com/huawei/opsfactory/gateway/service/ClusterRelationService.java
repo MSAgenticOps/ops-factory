@@ -24,9 +24,12 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.annotation.PostConstruct;
@@ -790,34 +793,42 @@ public class ClusterRelationService {
     }
 
     private void collectSubGroupClusters(String groupId, List<Map<String, Object>> clusters) {
+        // Single pass: read all groups and all clusters once
         List<Map<String, Object>> allGroups = hostGroupService.listGroups();
 
-        // Build child index: parentId -> list of child groups
-        Map<String, List<Map<String, Object>>> childrenMap = new LinkedHashMap<>();
-        for (Map<String, Object> g : allGroups) {
-            String parentId = (String) g.get("parentId");
-            if (parentId != null) {
-                childrenMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(g);
-            }
-        }
-
-        // Collect all descendant group IDs via BFS
-        List<String> descendantIds = new ArrayList<>();
+        // BFS to collect all descendant group IDs
+        Set<String> descendantIds = new LinkedHashSet<>();
         Deque<String> queue = new ArrayDeque<>();
         queue.add(groupId);
         while (!queue.isEmpty()) {
             String current = queue.poll();
-            List<Map<String, Object>> children = childrenMap.getOrDefault(current, List.of());
-            for (Map<String, Object> child : children) {
-                String childId = (String) child.get("id");
-                descendantIds.add(childId);
-                queue.add(childId);
+            for (Map<String, Object> g : allGroups) {
+                String parentId = (String) g.get("parentId");
+                if (current.equals(parentId)) {
+                    String childId = (String) g.get("id");
+                    if (descendantIds.add(childId)) {
+                        queue.add(childId);
+                    }
+                }
             }
         }
 
-        // Collect clusters from all descendant groups
-        for (String childId : descendantIds) {
-            clusters.addAll(clusterService.listClusters(childId, null));
+        // Single pass: read all clusters once, filter by descendant group IDs
+        if (!descendantIds.isEmpty()) {
+            List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
+            Set<String> existingIds = new HashSet<>();
+            for (Map<String, Object> c : clusters) {
+                existingIds.add((String) c.get("id"));
+            }
+            for (Map<String, Object> c : allClusters) {
+                Object cg = c.get("groupId");
+                if (cg != null && descendantIds.contains(cg.toString())) {
+                    String cid = (String) c.get("id");
+                    if (existingIds.add(cid)) {
+                        clusters.add(c);
+                    }
+                }
+            }
         }
     }
 

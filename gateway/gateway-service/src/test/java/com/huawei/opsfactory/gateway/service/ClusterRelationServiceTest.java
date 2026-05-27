@@ -167,16 +167,13 @@ public class ClusterRelationServiceTest {
     @Test
     public void testEmptyGroupHierarchy_noClusters() throws Exception {
         String root = createGroupOnDisk("root", "ROOT", null);
-        createGroupOnDisk("a", "A", root);
-        createGroupOnDisk("b", "B", a());
+        String groupA = createGroupOnDisk("a", "A", root);
+        createGroupOnDisk("b", "B", groupA);
 
         List<Map<String, Object>> result = invokeCollect(root);
 
         assertTrue(result.isEmpty());
     }
-
-    // Helper to return a dummy value for the "a" ID
-    private String a() { return "a"; }
 
     // ── Disk helpers ──────────────────────────────────────────────
 
