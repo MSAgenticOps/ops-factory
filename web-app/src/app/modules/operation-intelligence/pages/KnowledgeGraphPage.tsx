@@ -1799,6 +1799,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                             <button
                                                 type="button"
                                                 className="kg-tree-group-title"
+                                                title={group.name}
                                                 data-selected={selectedResourceTreeItem?.kind === 'group'
                                                     && selectedResourceTreeItem.groupId === group.id
                                                     && !selectedResourceEntity ? 'true' : undefined}
@@ -1838,6 +1839,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                                                             <button
                                                                                 type="button"
                                                                                 className="kg-tree-group-title kg-tree-nested-title"
+                                                                                title={childGroup.name}
                                                                                 data-selected={selectedResourceTreeItem?.kind === 'nested-group'
                                                                                     && selectedResourceTreeItem.parentId === node.entity.id
                                                                                     && selectedResourceTreeItem.childType === childGroup.type ? 'true' : undefined}

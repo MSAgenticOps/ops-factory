@@ -880,6 +880,19 @@
     transform: rotate(45deg);
 }
 
+.kg-tree-group-title > svg,
+.kg-tree-group-title > strong,
+.kg-tree-group-title::after {
+    flex-shrink: 0;
+}
+
+.kg-tree-group-title > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .kg-tree-children {
     display: flex;
     flex-direction: column;
