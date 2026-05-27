@@ -549,10 +549,10 @@ public class AgentConfigServiceTest {
     @Test
     public void testGettersResolveCorrectPaths() {
         Path agentsDir = service.getAgentsDir();
-        assertTrue(agentsDir.toString().endsWith("gateway/agents"));
+        assertTrue(agentsDir.endsWith(Path.of("gateway", "agents")));
 
         Path usersDir = service.getUsersDir();
-        assertTrue(usersDir.toString().endsWith("gateway/users"));
+        assertTrue(usersDir.endsWith(Path.of("gateway", "users")));
     }
 
     /**
@@ -561,7 +561,7 @@ public class AgentConfigServiceTest {
     @Test
     public void testGetAgentConfigDir() {
         Path configDir = service.getAgentConfigDir("test-agent");
-        assertTrue(configDir.toString().endsWith("agents/test-agent/config"));
+        assertTrue(configDir.endsWith(Path.of("agents", "test-agent", "config")));
     }
 
     /**

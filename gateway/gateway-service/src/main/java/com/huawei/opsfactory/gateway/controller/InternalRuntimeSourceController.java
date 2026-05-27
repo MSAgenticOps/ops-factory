@@ -172,7 +172,7 @@ public class InternalRuntimeSourceController {
             current.put("totalSessions", latest.getTotalSessions());
             result.put("current", current);
         } else {
-            result.put("current", null);
+            result.put("current", Map.of());
         }
 
         int totalRequests = 0;

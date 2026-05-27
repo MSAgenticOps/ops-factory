@@ -62,8 +62,8 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
                 .thenReturn(((HookContext) invocation.getArgument(0)).getBody()));
         when(instanceManager.getOrSpawn("test-agent", "alice"))
             .thenReturn(Mono.delay(Duration.ofMillis(90)).thenReturn(mockInstance));
-        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
-            eq(HttpMethod.POST), anyString(), eq("test-secret"))).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
+            anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         long elapsedMs = executeSessionReplyAndMeasure(replyBody("00000000-0000-4000-8000-000000000001"));
 
@@ -84,8 +84,8 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
         when(goosedProxy.fetchJson(eq(9999), eq(org.springframework.http.HttpMethod.POST), eq("/agent/resume"),
             anyString(), anyInt(), anyString()))
             .thenReturn(Mono.delay(Duration.ofMillis(120)).thenReturn("{\"ok\":true}"));
-        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
-            eq(HttpMethod.POST), anyString(), eq("test-secret"))).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
+            anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         long elapsedMs = executeSessionReplyAndMeasure(body);
 
@@ -103,8 +103,9 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
         when(hookPipeline.executeRequest(any(HookContext.class)))
             .thenAnswer(invocation -> Mono.just(((HookContext) invocation.getArgument(0)).getBody()));
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
-            eq(HttpMethod.POST), anyString(), eq("test-secret"))).thenReturn(Mono.delay(Duration.ofMillis(150)).then());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
+            anyString(), anyInt(), eq("test-secret")))
+            .thenReturn(Mono.delay(Duration.ofMillis(150)).thenReturn("{}"));
 
         long elapsedMs = executeSessionReplyAndMeasure(replyBody("00000000-0000-4000-8000-000000000003"));
 

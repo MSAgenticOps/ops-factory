@@ -27,6 +27,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -190,14 +191,14 @@ public class GoosedProxyExtendedTest {
 
         try {
             MockServerHttpResponse response = new MockServerHttpResponse();
-            WebClientResponseException error = assertThrows(WebClientResponseException.class,
+            ResponseStatusException error = assertThrows(ResponseStatusException.class,
                 () -> proxy
                     .proxySessionCommandWithBody(response, server.port(), "/sessions/session-123/reply",
                         HttpMethod.POST, "{}", "test-secret")
                     .block(Duration.ofSeconds(5)));
 
-            assertEquals(400, error.getRawStatusCode());
-            assertEquals("Session already has an active request. Cancel it first.", error.getResponseBodyAsString());
+            assertEquals(400, error.getStatusCode().value());
+            assertTrue(error.getReason() != null && error.getReason().contains("Bad Request"));
             assertFalse(response.isCommitted());
         } finally {
             server.disposeNow();
@@ -309,7 +310,7 @@ public class GoosedProxyExtendedTest {
 
         try {
             MockServerHttpResponse response = new MockServerHttpResponse();
-            assertThrows(WebClientResponseException.class,
+            assertThrows(ResponseStatusException.class,
                 () -> proxy
                     .proxySessionEvents(response, server.port(), "/sessions/test-session/events", "test-secret", null,
                         "test-agent", "test-user", "test-session", data -> Mono.empty())

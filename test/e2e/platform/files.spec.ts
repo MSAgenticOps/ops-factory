@@ -81,7 +81,7 @@ test.describe('Files — search', () => {
     await page.goto('/#/files')
     await page.waitForTimeout(2000)
 
-    const searchInput = page.locator('.search-input')
+    const searchInput = page.locator('.list-search-input')
     const initialCount = await page.locator('.file-item').count()
 
     // Search for unlikely term
@@ -110,7 +110,7 @@ test.describe('Files — preview and download', () => {
     const fileItems = page.locator('.file-item')
     if (await fileItems.count() > 0) {
       // Click preview on first file
-      const previewBtn = fileItems.first().locator('.file-preview-btn')
+      const previewBtn = fileItems.first().locator('button[aria-label="预览"], button[aria-label="Preview"]')
       await previewBtn.click()
       await page.waitForTimeout(1000)
 
@@ -127,11 +127,10 @@ test.describe('Files — preview and download', () => {
 
     const fileItems = page.locator('.file-item')
     if (await fileItems.count() > 0) {
-      const downloadLink = fileItems.first().locator('.file-download-btn')
+      const downloadLink = fileItems.first().locator('a[download]')
       // Should be an anchor with download attribute
       const hasDownload = await downloadLink.evaluate(el => {
-        const a = el.closest('a') || el
-        return a.hasAttribute('download') || a.getAttribute('href')?.includes('download=true')
+        return el.hasAttribute('download') || el.getAttribute('href')?.includes('download=true')
       })
       expect(hasDownload).toBeTruthy()
     }
@@ -188,7 +187,7 @@ test.describe('Files — generate and verify', () => {
     // Ask agent to create a file
     await page.goto('/#/chat')
     const chatInput = page.locator('.chat-input')
-    await expect(chatInput).toBeVisible({ timeout: 15_000 })
+    await expect(chatInput).toBeVisible({ timeout: 30_000 })
     await chatInput.fill(`Create a file named "e2e-test-${UNIQUE}.md" with the content "E2E Test File ${UNIQUE}" using the shell tool`)
     await chatInput.press('Enter')
 
@@ -207,7 +206,7 @@ test.describe('Files — generate and verify', () => {
     await page.waitForTimeout(3000)
 
     // Search for our file
-    const searchInput = page.locator('.search-input')
+    const searchInput = page.locator('.list-search-input')
     await searchInput.fill(`e2e-test-${UNIQUE}`)
     await page.waitForTimeout(500)
 

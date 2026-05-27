@@ -90,7 +90,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     @Test
     public void deleteSessionGlobal_authenticated_removesOwnerAndProxies() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"), any())).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-xyz"), eq(null), anyInt(),
+            anyString())).thenReturn(Mono.just("{}"));
 
         webClient.delete()
             .uri("/gateway/sessions/session-xyz?agentId=test-agent")
@@ -100,7 +101,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-xyz"), any());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-xyz"), eq(null), anyInt(),
+            anyString());
     }
 
     /**
@@ -229,8 +231,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
     @Test
     public void renameSession_authenticated_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxyWithBody(any(), eq(9999), eq("/sessions/session-123/name"), eq(HttpMethod.PUT),
-            anyString(), anyString())).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.PUT), eq("/sessions/session-123/name"),
+            anyString(), anyInt(), anyString())).thenReturn(Mono.just("{}"));
 
         webClient.put()
             .uri("/gateway/agents/test-agent/sessions/session-123/name")
@@ -242,8 +244,8 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk();
 
-        verify(goosedProxy).proxyWithBody(any(), eq(9999), eq("/sessions/session-123/name"), eq(HttpMethod.PUT),
-            anyString(), anyString());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.PUT), eq("/sessions/session-123/name"),
+            anyString(), anyInt(), anyString());
     }
 
     /**

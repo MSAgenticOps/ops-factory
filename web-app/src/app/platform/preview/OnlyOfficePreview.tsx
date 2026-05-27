@@ -57,7 +57,7 @@ export default function OnlyOfficePreview({
                 editorRef.current = null
             }
 
-            let fileUrl = `${fileBaseUrl}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${runtime.GATEWAY_SECRET_KEY}`
+            let fileUrl = `${fileBaseUrl}/agents/${agentId}/files/get?path=${encodeURIComponent(path)}&key=${runtime.GATEWAY_SECRET_KEY}`
             if (rootId) fileUrl += `&rootId=${encodeURIComponent(rootId)}`
             if (userId) fileUrl += `&uid=${encodeURIComponent(userId)}`
 
@@ -132,7 +132,7 @@ export default function OnlyOfficePreview({
     }, [name, path, agentId, type, rootId, onlyofficeUrl, fileBaseUrl, userId, i18n.language])
 
     if (scriptError) {
-        let downloadUrl = `${runtime.GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${runtime.GATEWAY_SECRET_KEY}`
+        let downloadUrl = `${runtime.GATEWAY_URL}/agents/${agentId}/files/get?path=${encodeURIComponent(path)}&key=${runtime.GATEWAY_SECRET_KEY}`
         if (rootId) downloadUrl += `&rootId=${encodeURIComponent(rootId)}`
         if (userId) downloadUrl += `&uid=${encodeURIComponent(userId)}`
         return (

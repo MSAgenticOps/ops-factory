@@ -86,24 +86,27 @@ public class FileController {
      *
      * @param agentId agent identifier
      * @param path file path relative to working directory
+     * @param rootId optional scan root identifier
      * @param download force download flag
      * @param request current HTTP request
      * @return the download or retrieve result
      */
     @GetMapping(value = "/files/get")
     public ResponseEntity<?> getFile(@PathVariable("agentId") String agentId, @RequestParam String path,
-        @RequestParam(defaultValue = "false") boolean download, HttpServletRequest request) {
+            @RequestParam(required = false) String rootId,
+            @RequestParam(defaultValue = "false") boolean download, HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        Path baseDir = resolveBaseDir(workingDir, rootId);
         String relativePath = URLDecoder.decode(path, StandardCharsets.UTF_8);
 
         // Check for path traversal
-        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+        if (!PathSanitizer.isSafe(baseDir, relativePath)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "path traversal not allowed"));
         }
 
         try {
-            Resource resource = fileService.resolveFile(workingDir, relativePath);
+            Resource resource = fileService.resolveFile(baseDir, relativePath);
             if (resource == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "file not found"));
             }
@@ -145,13 +148,14 @@ public class FileController {
         throws IOException {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        Path baseDir = resolveBaseDir(workingDir, rootId);
         String relativePath = URLDecoder.decode(path, StandardCharsets.UTF_8);
 
-        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+        if (!PathSanitizer.isSafe(baseDir, relativePath)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "path traversal not allowed"));
         }
 
-        boolean deleted = fileService.deleteFile(workingDir, relativePath);
+        boolean deleted = fileService.deleteFile(baseDir, relativePath);
         if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "file not found"));
         }
@@ -169,12 +173,14 @@ public class FileController {
      */
     @PutMapping(value = "/files/update", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> updateFile(@PathVariable("agentId") String agentId,
-        @RequestParam String path, @RequestBody FileUpdateRequest requestBody, HttpServletRequest request) {
+            @RequestParam String path, @RequestParam(required = false) String rootId,
+            @RequestBody FileUpdateRequest requestBody, HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
         Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+        Path baseDir = resolveBaseDir(workingDir, rootId);
         String relativePath = URLDecoder.decode(path, StandardCharsets.UTF_8);
 
-        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+        if (!PathSanitizer.isSafe(baseDir, relativePath)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "path traversal not allowed"));
         }
 
@@ -183,7 +189,7 @@ public class FileController {
                 .body(Map.of("error", "file type is not editable"));
         }
 
-        boolean updated = fileService.updateTextFile(workingDir, relativePath, requestBody.content());
+        boolean updated = fileService.updateTextFile(baseDir, relativePath, requestBody.content());
         if (!updated) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "file not found"));
         }
@@ -244,6 +250,14 @@ public class FileController {
     @PostMapping(value = "/files/upload/error", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> uploadFileNotMultipart() {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Upload requires multipart/form-data content type");
+    }
+
+    private Path resolveBaseDir(Path workingDir, String rootId) {
+        if (rootId == null || rootId.isBlank()) {
+            return workingDir;
+        }
+        return fileService.resolveFileScanRoot(workingDir, rootId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown file root: " + rootId));
     }
 
     private record FileUpdateRequest(String content) {

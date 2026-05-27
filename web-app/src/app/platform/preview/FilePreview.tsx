@@ -131,11 +131,6 @@ function decodeFileName(name: string): string {
     }
 }
 
-function appendRootId(url: string, rootId?: string): string {
-    if (!rootId) return url
-    return `${url}${url.includes('?') ? '&' : '?'}rootId=${encodeURIComponent(rootId)}`
-}
-
 function renderLineNumberText(content: string, className: string) {
     const lines = content.split('\n')
 
@@ -277,7 +272,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         setEditError(null)
 
         try {
-            const response = await fetch(appendRootId(`${runtime.GATEWAY_URL}/agents/${targetFile.agentId}/files/${encodeURIComponent(targetFile.path)}`, targetFile.rootId), {
+            const response = await fetch(`${runtime.GATEWAY_URL}/agents/${targetFile.agentId}/files/update?path=${encodeURIComponent(targetFile.path)}${targetFile.rootId ? `&rootId=${encodeURIComponent(targetFile.rootId)}` : ''}`, {
                 method: 'PUT',
                 headers: gatewayHeaders(userId),
                 body: JSON.stringify({ content: editDraft }),
@@ -312,7 +307,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         if (!previewFile.agentId) {
             return ''
         }
-        let url = `${runtime.GATEWAY_URL}/agents/${previewFile.agentId}/files/${encodeURIComponent(previewFile.path)}?key=${runtime.GATEWAY_SECRET_KEY}`
+        let url = `${runtime.GATEWAY_URL}/agents/${previewFile.agentId}/files/get?path=${encodeURIComponent(previewFile.path)}&key=${runtime.GATEWAY_SECRET_KEY}`
         if (previewFile.rootId) url += `&rootId=${encodeURIComponent(previewFile.rootId)}`
         if (userId) url += `&uid=${encodeURIComponent(userId)}`
         return url
