@@ -1,0 +1,1684 @@
+.finops-page {
+    --ui-chart-card-title-size: 1.125rem;
+    gap: 0;
+}
+
+/* ── Global Viewport Scrollbar: Active Scroll Only ── */
+body.finops-page-active {
+    scrollbar-color: transparent transparent;
+    scrollbar-width: thin;
+}
+
+body.finops-page-active.is-scrolling {
+    scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+}
+
+body.finops-page-active::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+body.finops-page-active::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+body.finops-page-active::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-full);
+    background: transparent;
+    transition: background var(--transition-fast);
+}
+
+body.finops-page-active.is-scrolling::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.25);
+}
+
+body.finops-page-active.is-scrolling::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.45);
+}
+
+.finops-page .page-header {
+    margin-bottom: var(--spacing-6);
+}
+
+.finops-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-4);
+    flex-wrap: wrap;
+}
+
+.finops-period-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+}
+
+.finops-period-strip strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.finops-period-strip small {
+    color: var(--color-text-muted);
+}
+
+/* ── Refresh button spin ── */
+.finops-refresh-spinning svg {
+    animation: finops-spin 0.8s linear infinite;
+}
+
+@keyframes finops-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ── Tabs ── */
+.finops-page .finops-tabs {
+    display: flex;
+    gap: var(--spacing-1);
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0;
+    scrollbar-width: none;
+}
+
+.finops-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.finops-tabs .config-tab {
+    margin-bottom: -1px;
+    padding: var(--spacing-2) var(--spacing-4);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.finops-tabs .config-tab:hover {
+    color: var(--color-text-primary);
+}
+
+.finops-tabs .config-tab-active {
+    border-bottom-color: var(--color-text-primary);
+    color: var(--color-text-primary);
+}
+
+/* ── Tab content fade-in ── */
+.finops-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-5);
+    padding-bottom: var(--spacing-6);
+    animation: finops-fade-in 220ms ease-out;
+}
+
+@keyframes finops-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Workbench ── */
+.finops-workbench {
+    display: flex;
+    flex-direction: column;
+}
+
+.finops-page .finops-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-5);
+}
+
+.finops-content {
+    display: block;
+}
+
+.finops-main {
+    min-width: 0;
+}
+
+/* ── Dimension view (per-tab layout) ── */
+.finops-dimension-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-5);
+}
+
+/* ── Analysis header card (DimensionHeader) ── */
+.finops-analysis-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+    padding: var(--spacing-5) var(--spacing-6);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg-secondary) 48%, transparent) 0%, var(--color-bg-primary) 100%);
+}
+
+.finops-analysis-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 0.95fr);
+    gap: var(--spacing-5);
+    align-items: start;
+}
+
+.finops-analysis-copy {
+    min-width: 0;
+}
+
+.finops-analysis-copy h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--ui-chart-card-title-size);
+    font-weight: var(--ui-chart-card-title-weight);
+    line-height: var(--ui-chart-card-title-line-height);
+}
+
+.finops-analysis-copy p {
+    max-width: 760px;
+    margin: 6px 0 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+}
+
+/* ── Metric strip (4 KPI cells) ── */
+.finops-analysis-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-4);
+}
+
+.finops-analysis-metric {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--spacing-2) var(--spacing-3);
+}
+
+.finops-analysis-metric span,
+.finops-analysis-metric small {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-analysis-metric strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Split bar (stacked horizontal bar + legend) ── */
+.finops-split {
+    display: grid;
+    gap: var(--spacing-3);
+}
+
+.finops-split-bar {
+    display: flex;
+    height: 10px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--color-border) 46%, transparent);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.finops-split-bar i {
+    display: block;
+    min-width: 0;
+    height: 100%;
+    animation: finops-bar-grow 600ms ease-out both;
+    transform-origin: left;
+}
+
+@keyframes finops-bar-grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+.finops-split-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2) var(--spacing-4);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+}
+
+.finops-split-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-width: 0;
+}
+
+.finops-split-legend i {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 2px;
+}
+
+.finops-split-legend b {
+    max-width: 180px;
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-split-legend strong {
+    color: var(--color-text-primary);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-split-legend small {
+    color: var(--color-text-muted);
+}
+
+/* ── Overview grid (2-col layout on wide screens) ── */
+.finops-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-5);
+}
+
+.finops-card-span {
+    grid-column: 1 / -1;
+}
+
+.finops-overview-card {
+    min-height: 360px;
+}
+
+.finops-overview-card-body {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-height: 260px;
+}
+
+.finops-trend-chart {
+    width: 100%;
+    height: 260px;
+    margin-top: var(--spacing-3);
+}
+
+/* ── Token mix ── */
+.finops-token-mix {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.finops-top-drivers {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.finops-top-driver {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.finops-top-driver-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.finops-top-driver-copy div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spacing-3);
+    align-items: center;
+}
+
+.finops-top-driver strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-top-driver span,
+.finops-top-driver small {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.finops-top-driver small {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-top-driver-bar {
+    height: 7px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+}
+
+.finops-top-driver-bar i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--chart-5);
+    animation: finops-bar-grow 600ms ease-out both;
+    transform-origin: left;
+}
+
+/* ── Donut chart ── */
+.finops-donut-card {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--spacing-8);
+    width: 100%;
+}
+
+.finops-donut {
+    width: 180px;
+    height: 180px;
+    transform: rotate(-90deg);
+    animation: finops-donut-fade-in 850ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes finops-donut-fade-in {
+    from {
+        transform: rotate(-180deg) scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: rotate(-90deg) scale(1);
+        opacity: 1;
+    }
+}
+
+.finops-donut-track {
+    fill: none;
+    stroke: var(--color-bg-secondary);
+    stroke-width: 13;
+}
+
+.finops-donut-segment {
+    fill: none;
+    stroke-width: 13;
+    stroke-linecap: butt;
+}
+
+.finops-donut-total,
+.finops-donut-caption {
+    transform: rotate(90deg);
+    transform-origin: 60px 60px;
+    fill: var(--color-text-primary);
+}
+
+.finops-donut-total {
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.finops-donut-caption {
+    fill: var(--color-text-secondary);
+    font-size: 10px;
+}
+
+/* ── Donut legend ── */
+.finops-donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    min-width: 0;
+}
+
+.finops-donut-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px 64px;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    padding: 2px 0;
+    border-radius: var(--radius-sm);
+}
+
+.finops-donut-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-donut-label i {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.finops-donut-row strong {
+    color: var(--color-text-primary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-donut-row small {
+    color: var(--color-text-muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Token mix bar ── */
+.finops-token-mix-bar {
+    display: flex;
+    height: 14px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+}
+
+.finops-token-mix-bar i {
+    display: block;
+    height: 100%;
+    animation: finops-bar-grow 600ms ease-out both;
+    transform-origin: left;
+}
+
+.finops-token-mix-input {
+    background: var(--color-accent);
+}
+
+.finops-token-mix-output {
+    background: var(--chart-2);
+}
+
+.finops-token-mix-legend {
+    display: grid;
+    gap: var(--spacing-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.finops-token-mix-legend span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+}
+
+.finops-token-mix-legend b {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+}
+
+.finops-dot-input {
+    background: var(--color-accent);
+}
+
+.finops-dot-output {
+    background: var(--chart-2);
+}
+
+/* ── Trend + Distribution inline charts ── */
+.finops-trend,
+.finops-distribution {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.finops-trend-row,
+.finops-distribution-row {
+    display: grid;
+    grid-template-columns: minmax(92px, 150px) minmax(120px, 1fr) minmax(64px, auto);
+    align-items: center;
+    gap: var(--spacing-3);
+    min-width: 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+}
+
+.finops-distribution-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-trend-row strong,
+.finops-distribution-row strong {
+    color: var(--color-text-primary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-trend-bar {
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: rgba(148, 163, 184, 0.12);
+}
+
+.finops-trend-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--chart-1);
+    animation: finops-bar-grow 500ms ease-out both;
+    transform-origin: left;
+}
+
+/* ── Data table ── */
+.finops-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+    font-size: var(--font-size-sm);
+}
+
+.finops-table th,
+.finops-table td {
+    max-width: 220px;
+    min-width: 84px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.finops-table th {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--color-bg-secondary);
+}
+
+.finops-table td {
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-table tbody tr {
+    transition: background var(--transition-fast);
+}
+
+.finops-table tbody tr:hover {
+    background: var(--color-bg-hover);
+}
+
+.finops-clickable-row {
+    cursor: pointer;
+}
+
+.finops-clickable-row:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+}
+
+.finops-row-selected td {
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.finops-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.finops-page .analytics-table-card-shell {
+    scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
+    scrollbar-width: thin;
+}
+
+.finops-page .analytics-table-card-shell::-webkit-scrollbar {
+    height: 6px;
+}
+
+.finops-page .analytics-table-card-shell::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.finops-page .analytics-table-card-shell::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-full);
+    background: rgba(100, 116, 139, 0.28);
+}
+
+.finops-page .analytics-table-card-shell::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.42);
+}
+
+.finops-table-loading {
+    margin-bottom: var(--spacing-3);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.finops-strong-cell {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.finops-session-cell {
+    min-width: 260px;
+    max-width: 360px;
+}
+
+/* ── Session detail drawer ── */
+.finops-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    justify-content: flex-end;
+    background: rgba(15, 23, 42, 0.18);
+}
+
+.finops-session-drawer {
+    display: flex;
+    width: min(680px, calc(100vw - 280px));
+    min-width: 560px;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    flex-direction: column;
+    border-left: 1px solid var(--color-border);
+    background: var(--color-bg-primary);
+    box-shadow: -18px 0 40px rgba(15, 23, 42, 0.16);
+    animation: finops-drawer-in 180ms ease-out;
+}
+
+@keyframes finops-drawer-in {
+    from { transform: translateX(18px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.finops-drawer-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spacing-4);
+    align-items: center;
+    padding: var(--spacing-4) var(--spacing-6);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.finops-drawer-header span {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.finops-drawer-header h2 {
+    margin: 0;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 1.125rem;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-drawer-close {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.finops-drawer-close:hover {
+    border-color: var(--color-border);
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.finops-drawer-body {
+    display: block;
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    padding: var(--spacing-5) var(--spacing-6) var(--spacing-6);
+}
+
+.finops-drawer-body > * {
+    margin-bottom: var(--spacing-5);
+}
+
+.finops-drawer-body > *:last-child {
+    margin-bottom: 0;
+}
+
+.finops-drawer-body .pagination {
+    padding: var(--spacing-4) var(--spacing-4) var(--spacing-4);
+    margin-top: 0;
+}
+
+/* ── Drawer Body Scrollbar: Active Scroll Only ── */
+.finops-drawer-body {
+    scrollbar-color: transparent transparent;
+    scrollbar-width: thin;
+}
+
+.finops-drawer-body.is-scrolling {
+    scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+}
+
+.finops-drawer-body::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.finops-drawer-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.finops-drawer-body::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-full);
+    background: transparent;
+    transition: background var(--transition-fast);
+}
+
+.finops-drawer-body.is-scrolling::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.25);
+}
+
+.finops-drawer-body.is-scrolling::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.45);
+}
+
+.finops-drawer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2) var(--spacing-4);
+    padding-bottom: var(--spacing-3);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+}
+
+.finops-drawer-meta span {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.finops-drawer-meta b {
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.finops-mini-metric {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-secondary);
+}
+
+.finops-mini-metric span {
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+}
+
+.finops-mini-metric strong {
+    display: block;
+    overflow: hidden;
+    margin-top: 4px;
+    color: var(--color-text-primary);
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-drawer-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-3);
+}
+
+.finops-mini-metric {
+    padding: var(--spacing-3);
+}
+
+.finops-mini-metric strong {
+    font-size: 1.125rem;
+}
+
+.finops-drawer-note {
+    padding: 10px 12px;
+    border-left: 3px solid var(--chart-3);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--chart-3) 6%, transparent);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+}
+
+.finops-drawer-insights {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-3);
+}
+
+.finops-insight-line {
+    min-width: 0;
+    padding: var(--spacing-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-primary);
+}
+
+.finops-insight-line span {
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+}
+
+.finops-insight-line strong {
+    display: block;
+    overflow: hidden;
+    margin-top: 5px;
+    color: var(--color-text-primary);
+    font-weight: 700;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-insight-line small {
+    display: block;
+    overflow: hidden;
+    margin-top: 4px;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-role-filter {
+    display: flex;
+    gap: var(--spacing-2);
+    padding-bottom: var(--spacing-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.finops-role-filter button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: 5px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-primary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.finops-role-filter button b {
+    min-width: 18px;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    transition: all var(--transition-fast);
+}
+
+.finops-role-filter button:hover:not(:disabled) {
+    border-color: var(--color-text-secondary);
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+}
+
+.finops-role-filter button.active {
+    font-weight: 600;
+}
+
+.finops-role-filter-all.active {
+    border-color: #64748b;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.finops-role-filter-all.active b {
+    background: #64748b;
+    color: #ffffff;
+}
+
+.finops-role-filter-user.active {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(59, 130, 246, 0.08);
+    color: #2563eb;
+}
+
+.finops-role-filter-user.active b {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.finops-role-filter-assistant.active {
+    border-color: rgba(124, 58, 237, 0.4);
+    background: rgba(124, 58, 237, 0.08);
+    color: #7c3aed;
+}
+
+.finops-role-filter-assistant.active b {
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+.finops-role-filter-tool.active {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.finops-role-filter-tool.active b {
+    background: #d97706;
+    color: #ffffff;
+}
+
+.finops-role-filter button:disabled {
+    border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.finops-message-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.finops-message-item {
+    padding: var(--spacing-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: all var(--transition-fast);
+}
+
+.finops-message-item:hover {
+    border-color: var(--color-text-muted);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.finops-message-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+}
+
+.finops-message-title {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.finops-message-role {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+}
+
+.finops-role-user {
+    background: rgba(59, 130, 246, 0.08);
+    color: #2563eb;
+}
+
+.finops-role-assistant {
+    background: rgba(124, 58, 237, 0.08);
+    color: #7c3aed;
+}
+
+.finops-role-tool {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+}
+
+.finops-message-tool-name {
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-message-duration {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    line-height: 1;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-message-tokens-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    line-height: 1;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: #0f766e;
+    background: #f0fdfa;
+    border: 1px solid #ccfbf1;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-message-error-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    line-height: 1;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.finops-message-head time {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.finops-message-preview {
+    display: block;
+    width: 100%;
+    margin: var(--spacing-2) 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    text-align: left;
+}
+
+.finops-message-preview:hover {
+    color: var(--color-accent);
+}
+
+.finops-message-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-2);
+}
+
+.finops-meta-size {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    line-height: 1;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.finops-meta-size.finops-size-large {
+    color: #d97706;
+}
+
+.finops-meta-divider {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+}
+
+.finops-meta-visibility {
+    color: var(--color-text-muted);
+}
+
+.finops-message-content {
+    max-height: 340px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: var(--spacing-3) 0 0;
+    padding: var(--spacing-3) 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary, #f8fafc);
+    color: #334155;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: var(--font-size-xs);
+    line-height: 1.55;
+}
+
+/* ── Custom Scrollbar: Active Scroll Only ── */
+.finops-message-content {
+    scrollbar-color: transparent transparent;
+    scrollbar-width: thin;
+}
+
+.finops-message-content.is-scrolling {
+    scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+}
+
+.finops-message-content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.finops-message-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.finops-message-content::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-full);
+    background: transparent;
+    transition: background var(--transition-fast);
+}
+
+.finops-message-content.is-scrolling::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.25);
+}
+
+.finops-message-content.is-scrolling::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.45);
+}
+
+/* ── Code Lines with select-safe Line Numbers ── */
+.finops-code-line {
+    display: flex;
+    align-items: flex-start;
+    padding: 0 var(--spacing-3);
+    width: 100%;
+}
+
+.finops-code-line:hover {
+    background: rgba(148, 163, 184, 0.06);
+}
+
+.finops-line-number {
+    flex: 0 0 36px;
+    user-select: none;
+    color: var(--color-text-muted);
+    text-align: right;
+    padding-right: var(--spacing-3);
+    border-right: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+    margin-right: var(--spacing-3);
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-line-text {
+    flex: 1;
+    min-width: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.finops-content-truncated-warning {
+    padding: var(--spacing-2) var(--spacing-3);
+    background: rgba(239, 68, 68, 0.05);
+    color: var(--color-error);
+    border-top: 1px solid rgba(239, 68, 68, 0.12);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+}
+
+/* ── Responsive: middle breakpoint ── */
+@media (max-width: 1024px) {
+    .finops-analysis-top {
+        grid-template-columns: 1fr;
+    }
+
+    .finops-analysis-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .finops-overview-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Responsive: mobile ── */
+@media (max-width: 768px) {
+    .finops-page .finops-metrics,
+    .finops-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .finops-analysis-top,
+    .finops-analysis-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .finops-trend-row,
+    .finops-distribution-row {
+        grid-template-columns: minmax(80px, 0.42fr) minmax(90px, 1fr) minmax(56px, auto);
+    }
+
+    .finops-donut-card {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .finops-table th,
+    .finops-table td {
+        min-width: 96px;
+    }
+
+    .finops-session-drawer {
+        width: 100vw;
+        min-width: 0;
+    }
+
+    .finops-drawer-insights,
+    .finops-drawer-metrics {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+/* ── Visual Optimization Enhancements ── */
+
+/* 1. StatCard layout and quiet category accents */
+.finops-page .stat-card {
+    position: relative;
+    overflow: hidden;
+    gap: var(--spacing-3);
+    border-color: color-mix(in srgb, var(--color-border) 84%, transparent);
+    background: var(--color-bg-primary);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.finops-page .stat-card:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+/* absolute positioning for icons inside StatCard */
+.finops-page .stat-card-head {
+    position: relative;
+    width: 100%;
+}
+
+.finops-page .stat-card-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.finops-page .stat-card-icon-slot {
+    position: absolute;
+    right: 0;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.finops-page .finops-stat-total-tokens .stat-card-icon-slot {
+    background: color-mix(in srgb, var(--chart-5) 10%, transparent);
+    color: var(--chart-5);
+}
+
+.finops-page .finops-stat-sessions .stat-card-icon-slot {
+    background: color-mix(in srgb, var(--chart-1) 10%, transparent);
+    color: var(--chart-1);
+}
+
+.finops-page .finops-stat-input-tokens .stat-card-icon-slot {
+    background: color-mix(in srgb, var(--chart-2) 10%, transparent);
+    color: var(--chart-2);
+}
+
+.finops-page .finops-stat-output-tokens .stat-card-icon-slot {
+    background: color-mix(in srgb, var(--chart-3) 10%, transparent);
+    color: var(--chart-3);
+}
+
+.finops-page .finops-stat-active-users .stat-card-icon-slot {
+    background: color-mix(in srgb, var(--chart-7) 10%, transparent);
+    color: var(--chart-7);
+}
+
+.finops-page .finops-stat-active-agents .stat-card-icon-slot {
+    background: color-mix(in srgb, var(--chart-8) 10%, transparent);
+    color: var(--chart-8);
+}
+
+/* 2. Task execution load styling */
+.finops-task-load-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-5);
+    width: 100%;
+}
+
+.finops-task-load-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--spacing-3);
+}
+
+.finops-task-load-head span {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.finops-task-load-head strong {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-task-load-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.finops-task-load-row small {
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-task-load-bar {
+    height: 6px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+}
+
+.finops-task-load-bar i {
+    display: block;
+    height: 100%;
+    min-width: 4px;
+    border-radius: inherit;
+    animation: finops-bar-grow 600ms ease-out both;
+    transform-origin: left;
+}
+
+/* 3. Model distribution list */
+.finops-model-distribution {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-2);
+    width: 100%;
+}
+
+.finops-model-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-lg);
+}
+
+.finops-model-row-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.finops-model-name {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--spacing-2);
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-model-name i {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    border-radius: 3px;
+}
+
+.finops-model-row-head strong {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.finops-model-provider {
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.finops-model-bar {
+    height: 6px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+}
+
+.finops-model-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    animation: finops-bar-grow 600ms ease-out both;
+    transform-origin: left;
+}
+
+.finops-model-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+}
+
+/* 4. Top Users Leaderboard styling */
+.finops-leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    width: 100%;
+    justify-content: center;
+}
+
+.finops-leaderboard-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+}
+
+.finops-leaderboard-rank {
+    flex: 0 0 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+.rank-badge.rank-1 {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.rank-badge.rank-2 {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.rank-badge.rank-3 {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.finops-leaderboard-avatar {
+    flex: 0 0 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.finops-leaderboard-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+}
+
+.info-top .user-id {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+}
+
+.info-top .user-value {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.info-bar {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+    overflow: hidden;
+}
+
+.info-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    animation: finops-bar-grow 600ms ease-out both;
+    transform-origin: left;
+}

@@ -1,0 +1,12 @@
+server:
+  port: 8097
+
+finops:
+  secret-key: "change-me"
+  cors-origin: "http://127.0.0.1:5173"
+  data-root: "../gateway/users"
+  snapshot-dir: "./data/snapshots"
+  scan:
+    refresh-interval-ms: 300000
+    max-db-open-ms: 5000
+    retention-days: 30

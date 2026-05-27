@@ -24,6 +24,8 @@
             }
         ]
     },
+    "finopsServiceUrl": "http://127.0.0.1:8097",
+    "finopsSecretKey": "change-me",
     "logging": {
         "level": "info",
         "consoleEnabled": true,

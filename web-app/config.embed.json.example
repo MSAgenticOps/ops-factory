@@ -24,6 +24,8 @@
             }
         ]
     },
+    "finopsServiceUrl": "",
+    "finopsSecretKey": "change-me",
     "logging": {
         "level": "info",
         "consoleEnabled": true,

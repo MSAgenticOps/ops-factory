@@ -16,7 +16,7 @@ describe('operation intelligence frontend structure', () => {
         expect(moduleSource).toContain("path: '/operation-intelligence'")
         expect(moduleSource).toContain("path: '/operation-intelligence/knowledge-graph'")
         expect(moduleSource).toContain("titleKey: 'sidebar.operationIntelligence'")
-        expect(moduleSource).toContain("icon: 'businessIntelligence'")
+        expect(moduleSource).toContain("icon: 'operationIntelligence'")
         expect(moduleSource).not.toContain("titleKey: 'sidebar.operationKnowledgeGraph'")
         expect(moduleSource).toContain('end: true')
         expect(moduleSource).toContain("access: 'authenticated'")
