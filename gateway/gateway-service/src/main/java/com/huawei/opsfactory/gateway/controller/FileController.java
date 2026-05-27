@@ -245,6 +245,63 @@ public class FileController {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Upload requires multipart/form-data content type");
     }
 
+    /**
+     * Serves a file by path embedded in the URL (wildcard route).
+     * Compatible with the legacy /files/{path} URL pattern used by the frontend.
+     *
+     * @param agentId agent identifier
+     * @param request current HTTP request
+     * @return the file content
+     */
+    @GetMapping("/files/**")
+    public ResponseEntity<?> getFileByPath(@PathVariable("agentId") String agentId,
+            HttpServletRequest request) {
+        String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
+        Path workingDir = agentConfigService.getUserAgentDir(userId, agentId);
+
+        String requestUri = request.getRequestURI();
+        String prefix = "/gateway/agents/" + agentId + "/files/";
+        int idx = requestUri.indexOf(prefix);
+        if (idx < 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "invalid file path"));
+        }
+        String relativePath = URLDecoder.decode(requestUri.substring(idx + prefix.length()), StandardCharsets.UTF_8);
+
+        if (relativePath.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "file path is empty"));
+        }
+
+        if (!PathSanitizer.isSafe(workingDir, relativePath)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "path traversal not allowed"));
+        }
+
+        try {
+            Resource resource = fileService.resolveFile(workingDir, relativePath);
+            if (resource == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "file not found"));
+            }
+
+            String filename = resource.getFilename();
+            String mimeType = fileService.getMimeType(filename != null ? filename : "");
+            boolean inline = fileService.isInline(mimeType);
+
+            byte[] content;
+            try (InputStream is = resource.getInputStream()) {
+                content = is.readAllBytes();
+            }
+
+            String encodedFilename = java.net.URLEncoder.encode(filename, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            String contentDisposition = (inline ? "inline" : "attachment")
+                + "; filename=\"" + filename + "\"; filename*=UTF-8''" + encodedFilename;
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(mimeType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
+                .body(content);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file", e);
+        }
+    }
+
     private record FileUpdateRequest(String content) {
     }
 }
