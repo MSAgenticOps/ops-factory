@@ -16,7 +16,7 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.5.14</spring-boot.version>
-        <poi.version>5.4.1</poi.version>
+        <poi.version>5.5.1</poi.version>
     </properties>
 
     <dependencyManagement>

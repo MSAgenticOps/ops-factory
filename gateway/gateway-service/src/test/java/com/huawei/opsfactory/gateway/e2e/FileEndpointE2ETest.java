@@ -23,10 +23,10 @@ import java.util.Optional;
 
 /**
  * E2E tests for FileController endpoints:
- * GET /agents/{agentId}/files
- * GET /agents/{agentId}/files/**
- * PUT /agents/{agentId}/files/**
- * DELETE /agents/{agentId}/files/**
+ * GET  /agents/{agentId}/files/list
+ * GET  /agents/{agentId}/files/get?path=...
+ * PUT  /agents/{agentId}/files/update?path=...
+ * DELETE /agents/{agentId}/files/delete?path=...
  * POST /agents/{agentId}/files/upload
  *
  * @author x00000000
@@ -58,7 +58,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
                 Map.of("name", "notes.txt", "path", "data/notes.txt", "size", 256)));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files")
+            .uri("/gateway/agents/test-agent/files/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -85,7 +85,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.listFiles(any(Path.class))).thenReturn(Collections.emptyList());
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files")
+            .uri("/gateway/agents/test-agent/files/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -101,7 +101,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listFiles_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/agents/test-agent/files").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/gateway/agents/test-agent/files/list").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -114,7 +114,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.listFiles(any(Path.class))).thenThrow(new IllegalStateException("disk error"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files")
+            .uri("/gateway/agents/test-agent/files/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -144,7 +144,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.isInline("text/plain")).thenReturn(true);
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files/data/readme.txt")
+            .uri("/gateway/agents/test-agent/files/get?path=data/readme.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -178,7 +178,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.isInline("application/zip")).thenReturn(false);
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files/archive.zip")
+            .uri("/gateway/agents/test-agent/files/get?path=archive.zip")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -198,7 +198,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.resolveFile(any(Path.class), eq("nonexistent.txt"))).thenReturn(null);
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files/nonexistent.txt")
+            .uri("/gateway/agents/test-agent/files/get?path=nonexistent.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -212,7 +212,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     @Test
     public void getFile_unauthenticated_returns401() {
         webClient.get()
-            .uri("/gateway/agents/test-agent/files/data/secret.txt")
+            .uri("/gateway/agents/test-agent/files/get?path=data/secret.txt")
             .exchange()
             .expectStatus()
             .isUnauthorized();
@@ -240,7 +240,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.isInline("text/plain")).thenReturn(true);
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files/data/subdir/nested.txt")
+            .uri("/gateway/agents/test-agent/files/get?path=data/subdir/nested.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -273,7 +273,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.isInline("text/markdown")).thenReturn(true);
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/files/report.md?rootId=output")
+            .uri("/gateway/agents/test-agent/files/get?path=report.md&rootId=output")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -294,7 +294,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.updateTextFile(any(Path.class), eq("data/readme.md"), eq("# Updated"))).thenReturn(true);
 
         webClient.put()
-            .uri("/gateway/agents/test-agent/files/data/readme.md")
+            .uri("/gateway/agents/test-agent/files/update?path=data/readme.md")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -320,7 +320,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.updateTextFile(any(Path.class), eq("data/missing.txt"), eq("Updated"))).thenReturn(false);
 
         webClient.put()
-            .uri("/gateway/agents/test-agent/files/data/missing.txt")
+            .uri("/gateway/agents/test-agent/files/update?path=data/missing.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -341,7 +341,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.isEditableTextFile("deck.pptx")).thenReturn(false);
 
         webClient.put()
-            .uri("/gateway/agents/test-agent/files/deck.pptx")
+            .uri("/gateway/agents/test-agent/files/update?path=deck.pptx")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -360,7 +360,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     @Test
     public void updateFile_pathTraversal_returns403() {
         webClient.put()
-            .uri("/gateway/agents/test-agent/files/..%2F..%2Fsecret.txt")
+            .uri("/gateway/agents/test-agent/files/update?path=..%2F..%2Fsecret.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -379,7 +379,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     @Test
     public void updateFile_unauthenticated_returns401() {
         webClient.put()
-            .uri("/gateway/agents/test-agent/files/data/readme.txt")
+            .uri("/gateway/agents/test-agent/files/update?path=data/readme.txt")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("content", "Updated"))
             .exchange()
@@ -397,7 +397,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.deleteFile(any(Path.class), eq("data/readme.txt"))).thenReturn(true);
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent/files/data/readme.txt")
+            .uri("/gateway/agents/test-agent/files/delete?path=data/readme.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -420,7 +420,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
         when(fileService.deleteFile(any(Path.class), eq("data/missing.txt"))).thenReturn(false);
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent/files/data/missing.txt")
+            .uri("/gateway/agents/test-agent/files/delete?path=data/missing.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -437,7 +437,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     @Test
     public void deleteFile_pathTraversal_returns403() {
         webClient.delete()
-            .uri("/gateway/agents/test-agent/files/..%2F..%2Fsecret.txt")
+            .uri("/gateway/agents/test-agent/files/delete?path=..%2F..%2Fsecret.txt")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -454,7 +454,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
     @Test
     public void deleteFile_unauthenticated_returns401() {
         webClient.delete()
-            .uri("/gateway/agents/test-agent/files/data/readme.txt")
+            .uri("/gateway/agents/test-agent/files/delete?path=data/readme.txt")
             .exchange()
             .expectStatus()
             .isUnauthorized();
@@ -489,7 +489,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
         // Alice sees her files
         webClient.get()
-            .uri("/gateway/agents/test-agent/files")
+            .uri("/gateway/agents/test-agent/files/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -501,7 +501,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
 
         // Bob sees his files
         webClient.get()
-            .uri("/gateway/agents/test-agent/files")
+            .uri("/gateway/agents/test-agent/files/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "bob")
             .exchange()

@@ -107,7 +107,7 @@ public class FileAttachmentHookTest {
         Path validFile = agentsDir.resolve("test.txt");
         Files.writeString(validFile, "content");
 
-        String filePath = validFile.toAbsolutePath().normalize().toString();
+        String filePath = escapeJsonString(validFile.toAbsolutePath().normalize().toString());
         String body =
             "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See file " + filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
@@ -129,7 +129,7 @@ public class FileAttachmentHookTest {
         Files.writeString(otherFile, "secret");
 
         // Attempt to reference a file outside the user's own directory via the users path
-        String filePath = otherFile.toAbsolutePath().normalize().toString();
+        String filePath = escapeJsonString(otherFile.toAbsolutePath().normalize().toString());
         String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See " + filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
 
@@ -151,7 +151,7 @@ public class FileAttachmentHookTest {
         Files.createDirectories(agentsDir);
 
         String filePath =
-            agentsDir.resolve("agent1").resolve("nonexistent.txt").toAbsolutePath().normalize().toString();
+            escapeJsonString(agentsDir.resolve("agent1").resolve("nonexistent.txt").toAbsolutePath().normalize().toString());
         String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See " + filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
 
@@ -189,5 +189,9 @@ public class FileAttachmentHookTest {
         String body = "{\"user_message\": {\"content\": []}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
         StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
+    }
+
+    private static String escapeJsonString(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

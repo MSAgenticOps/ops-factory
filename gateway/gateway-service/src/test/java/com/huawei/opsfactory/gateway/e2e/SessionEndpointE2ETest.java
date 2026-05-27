@@ -350,7 +350,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     @Test
     public void listAgentSessions_authenticated_proxiesToGoosed() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions"), any())).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq("/sessions"), anyString())).thenReturn(Mono.just("[]"));
 
         webClient.get()
             .uri("/gateway/agents/test-agent/sessions")
@@ -360,7 +360,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions"), any());
+        verify(goosedProxy).fetchJson(eq(9999), eq("/sessions"), anyString());
     }
 
     /**
@@ -404,7 +404,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     @Test
     public void deleteSession_authenticated_removesOwnerAndProxies() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(runningInstance));
-        when(goosedProxy.proxy(any(), any(), eq(9999), eq("/sessions/session-456"), any())).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-456"), eq(null), anyInt(),
+            anyString())).thenReturn(Mono.just("{}"));
 
         webClient.delete()
             .uri("/gateway/agents/test-agent/sessions/session-456")
@@ -414,7 +415,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk();
 
-        verify(goosedProxy).proxy(any(), any(), eq(9999), eq("/sessions/session-456"), any());
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.DELETE), eq("/sessions/session-456"), eq(null), anyInt(),
+            anyString());
     }
 
     /**

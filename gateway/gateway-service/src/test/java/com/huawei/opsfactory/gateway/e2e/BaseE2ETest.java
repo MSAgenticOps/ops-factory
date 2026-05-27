@@ -12,6 +12,7 @@ import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.FileService;
 import com.huawei.opsfactory.gateway.service.LangfuseService;
+import com.huawei.opsfactory.gateway.service.OperationIntelligenceProxyService;
 import com.huawei.opsfactory.gateway.service.SessionService;
 
 import org.junit.runner.RunWith;
@@ -68,4 +69,7 @@ public abstract class BaseE2ETest {
 
     @MockBean
     protected MetricsBuffer metricsBuffer;
+
+    @MockBean
+    protected OperationIntelligenceProxyService operationIntelligenceProxyService;
 }
