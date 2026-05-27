@@ -69,41 +69,45 @@ class SessionDbReaderTest {
 
     private static void createFixtureDb(Path db) throws Exception {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + db)) {
-            connection.createStatement().execute("""
-                create table sessions (
-                    id text primary key,
-                    name text,
-                    session_type text,
-                    working_dir text,
-                    created_at text,
-                    updated_at text,
-                    total_tokens integer,
-                    input_tokens integer,
-                    output_tokens integer,
-                    accumulated_total_tokens integer,
-                    accumulated_input_tokens integer,
-                    accumulated_output_tokens integer,
-                    schedule_id text,
-                    recipe_json text,
-                    provider_name text,
-                    model_config_json text,
-                    goose_mode text,
-                    thread_id text
-                )
-                """);
-            connection.createStatement().execute("""
-                create table messages (
-                    id integer primary key,
-                    message_id text,
-                    session_id text,
-                    role text,
-                    content_json text,
-                    created_timestamp integer,
-                    timestamp integer,
-                    tokens integer,
-                    metadata_json text
-                )
-                """);
+            try (var statement = connection.createStatement()) {
+                statement.execute("""
+                    create table sessions (
+                        id text primary key,
+                        name text,
+                        session_type text,
+                        working_dir text,
+                        created_at text,
+                        updated_at text,
+                        total_tokens integer,
+                        input_tokens integer,
+                        output_tokens integer,
+                        accumulated_total_tokens integer,
+                        accumulated_input_tokens integer,
+                        accumulated_output_tokens integer,
+                        schedule_id text,
+                        recipe_json text,
+                        provider_name text,
+                        model_config_json text,
+                        goose_mode text,
+                        thread_id text
+                    )
+                    """);
+            }
+            try (var statement = connection.createStatement()) {
+                statement.execute("""
+                    create table messages (
+                        id integer primary key,
+                        message_id text,
+                        session_id text,
+                        role text,
+                        content_json text,
+                        created_timestamp integer,
+                        timestamp integer,
+                        tokens integer,
+                        metadata_json text
+                    )
+                    """);
+            }
             insertSession(connection, "manual-1", "New Chat", null, null, null,
                 "custom_qwen", "{\"model\":\"qwen/qwen3.5-27b\"}", 1200, 1000, 200);
             insertSession(connection, "scheduled-1", null, null, "schedule-1",
