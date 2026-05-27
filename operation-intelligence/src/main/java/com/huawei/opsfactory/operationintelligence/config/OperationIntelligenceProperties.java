@@ -206,6 +206,9 @@ public class OperationIntelligenceProperties {
         return (configuredPath == null || configuredPath.isBlank()) ? null : configuredPath;
     }
 
+    /**
+     * QoS configuration properties for data collection and metrics.
+     */
     public static class Qos {
         private boolean enabled = true;
 
@@ -735,6 +738,11 @@ public class OperationIntelligenceProperties {
         }
     }
 
+    /**
+     * Logging configuration properties.
+         * @author x00000000
+         * @since 2026-05-27
+     */
     public static class Logging {
         private boolean accessLogEnabled = true;
 
@@ -757,6 +765,11 @@ public class OperationIntelligenceProperties {
         }
     }
 
+    /**
+     * Call chain configuration properties for tracing and log analysis.
+         * @author x00000000
+         * @since 2026-05-27
+     */
     public static class CallChain {
         private boolean enabled = true;
         private int querySize = 100;

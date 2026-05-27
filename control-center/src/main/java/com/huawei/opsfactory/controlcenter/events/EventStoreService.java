@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.controlcenter.events;
 
 import com.huawei.opsfactory.controlcenter.model.ControlCenterEvent;

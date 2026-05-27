@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Call Chain Builder Test.
  *
- * @author call-chain
+ * @author x00000000
  * @since 2026-05-14
  */
 class CallChainBuilderTest {

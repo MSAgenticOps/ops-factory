@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * Call Chain Statistics Calculator.
  * Calculates statistics for call flows and nodes.
  *
- * @author call-chain
+ * @author x00000000
  * @since 2026-05-14
  */
 @Component

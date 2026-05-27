@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
@@ -133,7 +134,7 @@ public class CatchAllProxyControllerTest {
         request.setAttribute(UserContextFilter.USER_ID_ATTR, ADMIN_USER_ID);
 
         when(instanceManager.getOrSpawn(TEST_AGENT_ID, ADMIN_USER_ID))
-            .thenReturn(Mono.error(new RuntimeException("Instance not found")));
+            .thenThrow(new RuntimeException("Instance not found"));
 
         try {
             controller.proxyStatus(TEST_AGENT_ID, request);

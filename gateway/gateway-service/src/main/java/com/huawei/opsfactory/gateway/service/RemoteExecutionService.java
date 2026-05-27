@@ -327,6 +327,8 @@ public class RemoteExecutionService {
     /**
      * Holds the result of effective-command building. Exactly one of effectiveCommand or result is non-null:
      * effectiveCommand is set on success; result is set when validation fails (caller should return immediately).
+     * @author x00000000
+     * @since 2026-05-27
      */
     private static class CommandResolution {
         final String effectiveCommand;
@@ -340,6 +342,8 @@ public class RemoteExecutionService {
 
     /**
      * Encapsulates host identity fields shared across remote execution result building.
+     * @author x00000000
+     * @since 2026-05-27
      */
     private static final class ExecutionContext {
         final String hostId;
