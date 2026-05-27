@@ -8,6 +8,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
+/**
+ * Exporter Application.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ExporterApplication {
 
     public static void main(String[] args) {

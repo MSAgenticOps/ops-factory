@@ -27,6 +27,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 
+/**
+ * Skill Catalog Service Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class SkillCatalogServiceTest {
 
     @TempDir

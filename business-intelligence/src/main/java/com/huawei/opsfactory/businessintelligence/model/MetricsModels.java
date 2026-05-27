@@ -8,6 +8,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Metrics Models.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public final class MetricsModels {
 
     private MetricsModels() {}

@@ -15,6 +15,12 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Configuration("controlCenterWebConfig")
+/**
+ * Web Config.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class WebConfig implements WebMvcConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(WebConfig.class);

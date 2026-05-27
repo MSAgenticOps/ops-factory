@@ -16,6 +16,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 
 @SpringBootTest
+/**
+ * Config Yaml Logging Properties Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class ConfigYamlLoggingPropertiesTest {
 
     @Autowired

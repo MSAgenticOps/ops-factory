@@ -44,6 +44,12 @@ import java.util.Map;
 @RunWith(SpringRunner.class)
 @WebMvcTest(HostController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Host Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class HostControllerTest {
     @Autowired
     private MockMvc mockMvc;

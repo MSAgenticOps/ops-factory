@@ -12,6 +12,12 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * Business Intelligence Startup Logger.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class BusinessIntelligenceStartupLogger implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(BusinessIntelligenceStartupLogger.class);

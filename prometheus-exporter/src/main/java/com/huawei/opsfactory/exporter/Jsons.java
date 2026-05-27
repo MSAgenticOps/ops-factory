@@ -10,6 +10,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Jsons.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public final class Jsons {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

@@ -15,6 +15,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
+/**
+ * Control Center Secret Filter.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ControlCenterSecretFilter extends OncePerRequestFilter {
 
     private static final String SECRET_HEADER = "x-secret-key";

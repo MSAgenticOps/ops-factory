@@ -26,6 +26,12 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+/**
+ * Request Logging Filter Integration Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class RequestLoggingFilterIntegrationTest {
 
     @Autowired

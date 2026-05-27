@@ -12,6 +12,12 @@ import com.huawei.opsfactory.controlcenter.registry.ManagedServiceRegistry;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * Service Action Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ServiceActionService {
 
     private final ManagedServiceRegistry registry;

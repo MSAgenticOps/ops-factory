@@ -24,6 +24,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+/**
+ * Api Exception Handler Integration Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class ApiExceptionHandlerIntegrationTest {
 
     @Autowired

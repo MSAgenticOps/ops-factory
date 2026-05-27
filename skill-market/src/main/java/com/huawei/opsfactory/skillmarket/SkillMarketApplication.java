@@ -10,6 +10,12 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
+/**
+ * Skill Market Application.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class SkillMarketApplication {
 
     public static void main(String[] args) {

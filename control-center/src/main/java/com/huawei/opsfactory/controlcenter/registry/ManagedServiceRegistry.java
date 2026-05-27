@@ -12,6 +12,12 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+/**
+ * Managed Service Registry.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ManagedServiceRegistry {
 
     private final Map<String, ControlCenterProperties.ServiceTarget> servicesById;

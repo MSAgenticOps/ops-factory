@@ -32,6 +32,12 @@ import java.util.Map;
  * @since 2026-05-09
  */
 @Service
+/**
+ * Remote Execution Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class RemoteExecutionService {
     private static final Logger log = LoggerFactory.getLogger(RemoteExecutionService.class);
 

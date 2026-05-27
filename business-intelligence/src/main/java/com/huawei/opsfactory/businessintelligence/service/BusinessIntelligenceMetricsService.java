@@ -73,6 +73,12 @@ import org.springframework.stereotype.Service;
  * configurable TTL (default 5 minutes) to avoid re-parsing Excel on every request.
  */
 @Service
+/**
+ * Business Intelligence Metrics Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class BusinessIntelligenceMetricsService {
 
     private static final Logger log = LoggerFactory.getLogger(BusinessIntelligenceMetricsService.class);
@@ -1661,6 +1667,12 @@ public class BusinessIntelligenceMetricsService {
         double permanentFixRate() { return problemCount > 0 ? (double)permanentFixCount / problemCount : 0; }
     }
 
+/**
+     * Person Metrics Builder.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     private class PersonMetricsBuilder {
         int incidentCount; double totalResolutionTime; int incidentSlaYes, incidentSlaTotal, p1p2Count;
         int changeCount, changeSuccessCount, changeBackoutCount, emergencyCount;

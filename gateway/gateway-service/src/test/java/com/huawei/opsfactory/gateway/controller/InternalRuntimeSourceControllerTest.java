@@ -41,6 +41,12 @@ import java.util.Map;
 @RunWith(SpringRunner.class)
 @WebMvcTest(InternalRuntimeSourceController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Internal Runtime Source Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class InternalRuntimeSourceControllerTest {
     @Autowired
     private MockMvc mockMvc;

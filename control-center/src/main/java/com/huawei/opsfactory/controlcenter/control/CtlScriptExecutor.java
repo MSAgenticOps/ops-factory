@@ -13,6 +13,12 @@ import java.nio.file.Path;
 import java.util.List;
 
 @Component
+/**
+ * Ctl Script Executor.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class CtlScriptExecutor {
 
     private static final String ANSI_PATTERN = "\\u001B\\[[;\\d]*m";

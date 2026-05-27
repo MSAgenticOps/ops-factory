@@ -38,6 +38,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @WebMvcTest(AgentSkillController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Agent Skill Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class AgentSkillControllerTest {
     @Autowired
     private MockMvc mockMvc;

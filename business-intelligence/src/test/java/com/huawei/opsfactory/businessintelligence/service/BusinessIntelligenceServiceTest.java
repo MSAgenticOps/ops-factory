@@ -19,6 +19,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Business Intelligence Service Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class BusinessIntelligenceServiceTest {
 
     @Test
@@ -65,6 +71,12 @@ class BusinessIntelligenceServiceTest {
         return properties;
     }
 
+/**
+     * Counting Provider.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     private static final class CountingProvider implements BiDataProvider {
 
         private final AtomicInteger loads;

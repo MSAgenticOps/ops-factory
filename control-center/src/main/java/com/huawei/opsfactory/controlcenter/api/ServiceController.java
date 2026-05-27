@@ -16,6 +16,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/control-center/services")
+/**
+ * Service Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ServiceController {
 
     private final ServiceHealthProbeService probeService;

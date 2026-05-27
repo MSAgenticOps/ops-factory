@@ -9,6 +9,12 @@ import java.util.List;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 
+/**
+ * Test Log Appender.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public final class TestLogAppender extends AppenderBase<ILoggingEvent> implements AutoCloseable {
 
     private final ch.qos.logback.classic.Logger logger;

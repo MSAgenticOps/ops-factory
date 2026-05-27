@@ -15,6 +15,12 @@ import org.springframework.context.annotation.Configuration;
 import org.yaml.snakeyaml.Yaml;
 
 @Configuration
+/**
+ * Exporter Config Loader.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ExporterConfigLoader {
 
     @Bean

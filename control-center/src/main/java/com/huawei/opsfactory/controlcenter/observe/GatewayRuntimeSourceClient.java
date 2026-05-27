@@ -14,6 +14,12 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 @Service
+/**
+ * Gateway Runtime Source Client.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class GatewayRuntimeSourceClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

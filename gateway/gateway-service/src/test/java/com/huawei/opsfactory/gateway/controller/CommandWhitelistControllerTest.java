@@ -43,6 +43,12 @@ import java.util.Map;
 @RunWith(SpringRunner.class)
 @WebMvcTest(CommandWhitelistController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Command Whitelist Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class CommandWhitelistControllerTest {
     @Autowired
     private MockMvc mockMvc;

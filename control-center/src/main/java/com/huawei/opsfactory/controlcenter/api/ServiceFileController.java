@@ -19,6 +19,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/control-center/services/{id}")
+/**
+ * Service File Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ServiceFileController {
 
     private final ManagedServiceFileService managedServiceFileService;

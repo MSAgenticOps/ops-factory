@@ -43,6 +43,12 @@ import java.util.Map;
 @RunWith(SpringRunner.class)
 @WebMvcTest(BusinessServiceController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Business Service Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class BusinessServiceControllerTest {
     @Autowired
     private MockMvc mockMvc;

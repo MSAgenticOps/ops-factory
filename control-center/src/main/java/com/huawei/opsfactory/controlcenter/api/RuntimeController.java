@@ -13,6 +13,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/control-center/runtime")
+/**
+ * Runtime Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class RuntimeController {
 
     private final GatewayRuntimeSourceClient gatewayRuntimeSourceClient;

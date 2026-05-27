@@ -10,6 +10,12 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Jsons Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class JsonsTest {
 
     // --- asMap ---

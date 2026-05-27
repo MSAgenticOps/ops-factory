@@ -48,6 +48,12 @@ import java.util.Set;
 @RunWith(SpringRunner.class)
 @WebMvcTest(HostGroupController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Host Group Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class HostGroupControllerTest {
     @Autowired
     private MockMvc mockMvc;

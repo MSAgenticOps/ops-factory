@@ -4,6 +4,12 @@
 
 package com.huawei.opsfactory.businessintelligence.common.logging;
 
+/**
+ * Logging Keys.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public final class LoggingKeys {
 
     public static final String REQUEST_ID = "requestId";

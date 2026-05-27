@@ -14,6 +14,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 @Configuration("skillMarketWebConfig")
+/**
+ * Web Config.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class WebConfig {
 
     private final SkillMarketProperties properties;

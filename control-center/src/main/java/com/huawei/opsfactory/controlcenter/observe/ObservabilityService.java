@@ -22,6 +22,12 @@ import java.util.Map;
 import java.util.TreeMap;
 
 @Service
+/**
+ * Observability Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ObservabilityService {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

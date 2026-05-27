@@ -4,6 +4,12 @@
 
 package com.huawei.opsfactory.skillmarket.common.error;
 
+/**
+ * Api Conflict Exception.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ApiConflictException extends RuntimeException {
 
     private final String code;

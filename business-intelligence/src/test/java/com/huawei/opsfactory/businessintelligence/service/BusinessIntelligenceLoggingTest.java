@@ -15,6 +15,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Business Intelligence Logging Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class BusinessIntelligenceLoggingTest {
 
     @Test
@@ -39,6 +45,12 @@ class BusinessIntelligenceLoggingTest {
         return properties;
     }
 
+/**
+     * Counting Provider.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     private static final class CountingProvider implements BiDataProvider {
 
         private final AtomicInteger loads;

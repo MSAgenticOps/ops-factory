@@ -14,6 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping
+/**
+ * Exporter Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ExporterController {
 
     private final GatewayMetricsCollector collector;

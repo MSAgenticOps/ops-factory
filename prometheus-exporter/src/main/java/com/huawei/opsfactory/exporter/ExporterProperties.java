@@ -4,6 +4,12 @@
 
 package com.huawei.opsfactory.exporter;
 
+/**
+ * Exporter Properties.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ExporterProperties {
     private int port = 9091;
     private String gatewayUrl;

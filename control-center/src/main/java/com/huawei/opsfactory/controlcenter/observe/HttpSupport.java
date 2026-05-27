@@ -16,6 +16,12 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 @Component
+/**
+ * Http Support.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class HttpSupport {
 
     private final ControlCenterProperties properties;

@@ -15,6 +15,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/control-center/observability")
+/**
+ * Observability Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ObservabilityController {
 
     private final ObservabilityService observabilityService;

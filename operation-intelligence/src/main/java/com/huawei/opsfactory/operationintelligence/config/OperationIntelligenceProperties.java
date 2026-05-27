@@ -18,6 +18,12 @@ import java.util.List;
  * @since 2026-05-11
  */
 @ConfigurationProperties(prefix = "operation-intelligence")
+/**
+ * Operation Intelligence Properties.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class OperationIntelligenceProperties {
 
     private static final Logger log = LoggerFactory.getLogger(OperationIntelligenceProperties.class);
@@ -390,6 +396,12 @@ public class OperationIntelligenceProperties {
             this.dvEnvironments = dvEnvironments;
         }
 
+/**
+         * Weights.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
         public static class Weights {
             private double availability = 0.4;
 
@@ -452,6 +464,12 @@ public class OperationIntelligenceProperties {
             }
         }
 
+/**
+         * Thresholds.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
         public static class Thresholds {
             private double good = 0.9;
 
@@ -514,6 +532,12 @@ public class OperationIntelligenceProperties {
             }
         }
 
+/**
+         * Dv Environment.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
         public static class DvEnvironment {
             private String envCode;
 
@@ -943,6 +967,12 @@ public class OperationIntelligenceProperties {
             this.timeSplit = timeSplit;
         }
 
+/**
+         * Time Split.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
         public static class TimeSplit {
             private long initialMinutes = 15;
             private List<Long> degradeMinutes = List.of(10L, 5L);

@@ -26,6 +26,12 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * Excel Bi Data Provider.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ExcelBiDataProvider implements BiDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(ExcelBiDataProvider.class);

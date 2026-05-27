@@ -66,6 +66,12 @@ import java.util.List;
 @RunWith(SpringRunner.class)
 @WebMvcTest(ChannelAdminController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Channel Admin Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ChannelAdminControllerTest {
     @Autowired
     private MockMvc mockMvc;

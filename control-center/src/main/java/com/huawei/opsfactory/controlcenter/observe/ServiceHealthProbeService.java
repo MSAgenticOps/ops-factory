@@ -17,6 +17,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+/**
+ * Service Health Probe Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ServiceHealthProbeService {
 
     private final ManagedServiceRegistry registry;

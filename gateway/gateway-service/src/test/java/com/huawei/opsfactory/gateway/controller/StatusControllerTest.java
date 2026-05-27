@@ -32,6 +32,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @WebMvcTest(StatusController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Status Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class StatusControllerTest {
     @Autowired
     private MockMvc mockMvc;

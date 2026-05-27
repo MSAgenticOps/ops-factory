@@ -41,6 +41,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest({SkillController.class, SystemController.class})
 @Import({SkillMarketProperties.class, WebConfig.class})
+/**
+ * Skill Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class SkillControllerTest {
 
     @Autowired

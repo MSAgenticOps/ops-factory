@@ -13,6 +13,12 @@ import java.util.Deque;
 import java.util.List;
 
 @Service
+/**
+ * Event Store Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class EventStoreService {
 
     private static final int MAX_EVENTS = 200;

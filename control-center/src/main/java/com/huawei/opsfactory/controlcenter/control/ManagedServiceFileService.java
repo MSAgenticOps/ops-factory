@@ -19,6 +19,12 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 @Service
+/**
+ * Managed Service File Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ManagedServiceFileService {
 
     private final ManagedServiceRegistry registry;

@@ -38,6 +38,12 @@ import java.util.Map;
 @RunWith(SpringRunner.class)
 @WebMvcTest(RemoteExecController.class)
 @Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+/**
+ * Remote Exec Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class RemoteExecControllerTest {
     @Autowired
     private MockMvc mockMvc;
