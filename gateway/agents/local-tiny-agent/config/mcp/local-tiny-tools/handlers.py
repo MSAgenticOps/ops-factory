@@ -372,8 +372,11 @@ async def _allowed_roots() -> list[str]:
         if p.exists():
             try:
                 seen[str(p.resolve())] = None
-            except Exception:
-                pass
+            except OSError as exc:
+                # Symlink loop, permission denied, or transient FS error during
+                # resolve(): skip this root but record why so misconfigured
+                # LOCAL_TINY_COMMAND_ROOTS entries are debuggable.
+                log_info("allowed_root_skipped", {"root": root, "error": str(exc)})
     return list(seen.keys())
 
 

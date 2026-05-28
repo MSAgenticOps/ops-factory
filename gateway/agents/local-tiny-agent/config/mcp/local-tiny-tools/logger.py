@@ -39,8 +39,20 @@ def log(level: str, event: str, details: dict | None = None) -> None:
     try:
         with open(LOG_FILE_PATH, "a", encoding="utf-8") as f:
             f.write(f"{line}\n")
-    except Exception:
-        pass
+    except OSError as exc:
+        # File-side logging is best-effort: stderr is the MCP-safe primary
+        # channel (already written above). Surface the failure once so a
+        # read-only / out-of-space log mount isn't completely invisible, but
+        # never raise from the logger — that would crash whoever called us.
+        diag = json.dumps({
+            "level": "ERROR",
+            "service": "local_tiny_tools",
+            "event": "log_file_write_failed",
+            "path": LOG_FILE_PATH,
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+        sys.stderr.write(f"{diag}\n")
+        sys.stderr.flush()
 
 
 def log_info(event: str, details: dict | None = None) -> None:
