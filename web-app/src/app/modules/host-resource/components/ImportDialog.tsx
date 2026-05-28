@@ -214,6 +214,48 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSetParentFailed', { message: err.params?.message })
             case 'import.importFailed':
                 return t('hostResource.importErrorImportFailed', { message: err.params?.message })
+            case 'import.clusterTypeNameRequired':
+                return t('hostResource.importErrorClusterTypeNameRequired')
+            case 'import.clusterTypeNameTooLong':
+                return t('hostResource.importErrorClusterTypeNameTooLong', { length: err.params?.length })
+            case 'import.clusterTypeCodeRequired':
+                return t('hostResource.importErrorClusterTypeCodeRequired')
+            case 'import.clusterTypeCodeTooLong':
+                return t('hostResource.importErrorClusterTypeCodeTooLong', { length: err.params?.length })
+            case 'import.clusterTypeInvalidMode':
+                return t('hostResource.importErrorClusterTypeInvalidMode', { mode: err.params?.mode })
+            case 'import.businessTypeNameRequired':
+                return t('hostResource.importErrorBusinessTypeNameRequired')
+            case 'import.businessTypeNameTooLong':
+                return t('hostResource.importErrorBusinessTypeNameTooLong', { length: err.params?.length })
+            case 'import.businessTypeCodeTooLong':
+                return t('hostResource.importErrorBusinessTypeCodeTooLong', { length: err.params?.length })
+            case 'import.hostGroupNameRequired':
+                return t('hostResource.importErrorHostGroupNameRequired')
+            case 'import.hostGroupNameTooLong':
+                return t('hostResource.importErrorHostGroupNameTooLong', { length: err.params?.length })
+            case 'import.hostGroupCodeTooLong':
+                return t('hostResource.importErrorHostGroupCodeTooLong', { length: err.params?.length })
+            case 'import.businessServiceNameRequired':
+                return t('hostResource.importErrorBusinessServiceNameRequired')
+            case 'import.businessServiceNameTooLong':
+                return t('hostResource.importErrorBusinessServiceNameTooLong', { length: err.params?.length })
+            case 'import.businessServiceCodeTooLong':
+                return t('hostResource.importErrorBusinessServiceCodeTooLong', { length: err.params?.length })
+            case 'import.sopNameRequired':
+                return t('hostResource.importErrorSopNameRequired')
+            case 'import.sopNameTooLong':
+                return t('hostResource.importErrorSopNameTooLong', { length: err.params?.length })
+            case 'import.sopVersionTooLong':
+                return t('hostResource.importErrorSopVersionTooLong', { length: err.params?.length })
+            case 'import.sopInvalidMode':
+                return t('hostResource.importErrorSopInvalidMode', { mode: err.params?.mode })
+            case 'import.sopTriggerConditionTooLong':
+                return t('hostResource.importErrorSopTriggerConditionTooLong', { length: err.params?.length })
+            case 'import.sopStepsDescriptionTooLong':
+                return t('hostResource.importErrorSopStepsDescriptionTooLong', { length: err.params?.length })
+            case 'import.whitelistPatternRequired':
+                return t('hostResource.importErrorWhitelistPatternRequired')
             default:
                 return err.code
         }

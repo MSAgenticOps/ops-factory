@@ -138,14 +138,53 @@ export function useResourceImport(deps: ImportDeps) {
                     try {
                         switch (type) {
                             case 'ClusterTypes': {
-                                if (createdClusterTypeNames.has(row.name)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'ClusterType', name: row.name } })
+                                const typeName = row.name?.trim() || ''
+                                if (!typeName) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeNameRequired' })
+                                    continue
+                                }
+                                const nameResult = validateAndSanitize(typeName, 'Name')
+                                if (!nameResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeNameTooLong', params: { length: String(nameResult.sanitized.length) } })
+                                    continue
+                                }
+                                const typeCode = row.code?.trim() || ''
+                                if (!typeCode) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(typeCode, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
+                                }
+                                if (row.description) {
+                                    const description = row.description?.trim() || ''
+                                    if (description.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(description.length) } })
+                                        continue
+                                    }
+                                }
+                                if (row.clusterMode && row.clusterMode !== 'Peer' && row.clusterMode !== 'Primary-Backup') {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeInvalidMode', params: { mode: row.clusterMode } })
+                                    continue
+                                }
+                                if (createdClusterTypeNames.has(nameResult.sanitized)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'ClusterType', name: nameResult.sanitized } })
                                     continue
                                 }
                                 await deps.createClusterType({
-                                    name: row.name,
-                                    code: row.code,
-                                    description: row.description || '',
+                                    name: nameResult.sanitized,
+                                    code: codeResult.sanitized,
+                                    description: row.description ? row.description.trim() : '',
                                     knowledge: row.knowledge || '',
                                     color: row.typeColor || '',
                                     mode: row.clusterMode === 'Peer' ? 'peer' : (row.clusterMode === 'Primary-Backup' ? 'primary-backup' : undefined),
@@ -157,38 +196,83 @@ export function useResourceImport(deps: ImportDeps) {
                                         })
                                         : undefined,
                                 })
-                                createdClusterTypeNames.add(row.name)
+                                createdClusterTypeNames.add(nameResult.sanitized)
                                 success++
                                 break
                             }
 
                             case 'BusinessTypes': {
-                                if (createdBusinessTypeNames.has(row.name)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessType', name: row.name } })
+                                const typeName = row.name?.trim() || ''
+                                if (!typeName) {
+                                    errors.push({ row: i + 2, code: 'import.businessTypeNameRequired' })
                                     continue
                                 }
-                                await deps.createBusinessType({
-                                    name: row.name,
-                                    code: row.code,
-                                    description: row.description || '',
-                                    color: row.typeColor || '',
-                                    knowledge: row.knowledge || '',
-                                })
-                                createdBusinessTypeNames.add(row.name)
-                                success++
-                                break
-                            }
-
-                            case 'HostGroups': {
-                                const nameResult = validateAndSanitize(row.name, 'Name')
+                                const nameResult = validateAndSanitize(typeName, 'Name')
                                 if (!nameResult.valid) {
                                     errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.businessTypeNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
                                 if (row.code) {
                                     const codeResult = validateAndSanitize(row.code, 'Code')
                                     if (!codeResult.valid) {
                                         errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                        continue
+                                    }
+                                    if (codeResult.sanitized.length > 50) {
+                                        errors.push({ row: i + 2, code: 'import.businessTypeCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                        continue
+                                    }
+                                }
+                                if (row.description) {
+                                    const description = row.description?.trim() || ''
+                                    if (description.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(description.length) } })
+                                        continue
+                                    }
+                                }
+                                if (createdBusinessTypeNames.has(nameResult.sanitized)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessType', name: nameResult.sanitized } })
+                                    continue
+                                }
+                                await deps.createBusinessType({
+                                    name: nameResult.sanitized,
+                                    code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : '',
+                                    description: row.description ? row.description.trim() : '',
+                                    color: row.typeColor || '',
+                                    knowledge: row.knowledge || '',
+                                })
+                                createdBusinessTypeNames.add(nameResult.sanitized)
+                                success++
+                                break
+                            }
+
+                            case 'HostGroups': {
+                                const groupName = row.name?.trim() || ''
+                                if (!groupName) {
+                                    errors.push({ row: i + 2, code: 'import.hostGroupNameRequired' })
+                                    continue
+                                }
+                                const nameResult = validateAndSanitize(groupName, 'Name')
+                                if (!nameResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.hostGroupNameTooLong', params: { length: String(nameResult.sanitized.length) } })
+                                    continue
+                                }
+                                if (row.code) {
+                                    const codeResult = validateAndSanitize(row.code, 'Code')
+                                    if (!codeResult.valid) {
+                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                        continue
+                                    }
+                                    if (codeResult.sanitized.length > 50) {
+                                        errors.push({ row: i + 2, code: 'import.hostGroupCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
                                         continue
                                     }
                                 }
@@ -198,9 +282,13 @@ export function useResourceImport(deps: ImportDeps) {
                                         errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
                                         continue
                                     }
+                                    if (descResult.sanitized.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(descResult.sanitized.length) } })
+                                        continue
+                                    }
                                 }
-                                if (groupNameToId.has(row.name)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'HostGroup', name: row.name } })
+                                if (groupNameToId.has(nameResult.sanitized)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'HostGroup', name: nameResult.sanitized } })
                                     continue
                                 }
                                 const created = await deps.createGroup({
@@ -209,8 +297,8 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     enabled: row.enabled === 'true',
                                 })
-                                groupNameToId.set(row.name, created.id)
-                                if (row.code) groupCodeToId.set(row.code, created.id)
+                                groupNameToId.set(nameResult.sanitized, created.id)
+                                if (row.code) groupCodeToId.set(validateAndSanitize(row.code, 'Code').sanitized, created.id)
                                 success++
                                 break
                             }
@@ -415,15 +503,28 @@ export function useResourceImport(deps: ImportDeps) {
                             }
 
                             case 'BusinessServices': {
-                                const nameResult = validateAndSanitize(row.name, 'Name')
+                                const serviceName = row.name?.trim() || ''
+                                if (!serviceName) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceNameRequired' })
+                                    continue
+                                }
+                                const nameResult = validateAndSanitize(serviceName, 'Name')
                                 if (!nameResult.valid) {
                                     errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
                                 if (row.code) {
                                     const codeResult = validateAndSanitize(row.code, 'Code')
                                     if (!codeResult.valid) {
                                         errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                        continue
+                                    }
+                                    if (codeResult.sanitized.length > 50) {
+                                        errors.push({ row: i + 2, code: 'import.businessServiceCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
                                         continue
                                     }
                                 }
@@ -433,9 +534,13 @@ export function useResourceImport(deps: ImportDeps) {
                                         errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
                                         continue
                                     }
+                                    if (descResult.sanitized.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(descResult.sanitized.length) } })
+                                        continue
+                                    }
                                 }
-                                if (bsNameToId.has(row.name)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: row.name } })
+                                if (bsNameToId.has(nameResult.sanitized)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: nameResult.sanitized } })
                                     continue
                                 }
                                 const groupId = row.group
@@ -450,14 +555,14 @@ export function useResourceImport(deps: ImportDeps) {
                                 }
                                 const created = await deps.createBusinessService({
                                     name: nameResult.sanitized,
-                                    code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : row.code,
+                                    code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : '',
                                     groupId,
                                     businessTypeId,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                                     priority: row.priority || '',
                                 })
-                                bsNameToId.set(row.name, created.id)
+                                bsNameToId.set(nameResult.sanitized, created.id)
                                 success++
                                 break
                             }
@@ -492,8 +597,58 @@ export function useResourceImport(deps: ImportDeps) {
 
                             case 'SOPs': {
                                 console.log('[Import SOPs] Row data:', JSON.stringify(row, null, 2))
-                                if (createdSopNames.has(row.name)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: row.name } })
+                                const sopName = row.name?.trim() || ''
+                                if (!sopName) {
+                                    errors.push({ row: i + 2, code: 'import.sopNameRequired' })
+                                    continue
+                                }
+                                const nameResult = validateAndSanitize(sopName, 'Name')
+                                if (!nameResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.sopNameTooLong', params: { length: String(nameResult.sanitized.length) } })
+                                    continue
+                                }
+                                if (row.version) {
+                                    const versionResult = validateAndSanitize(row.version, 'Version')
+                                    if (!versionResult.valid) {
+                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Version' } })
+                                        continue
+                                    }
+                                    if (versionResult.sanitized.length > 50) {
+                                        errors.push({ row: i + 2, code: 'import.sopVersionTooLong', params: { length: String(versionResult.sanitized.length) } })
+                                        continue
+                                    }
+                                }
+                                if (row.mode && row.mode !== 'structured' && row.mode !== 'natural_language') {
+                                    errors.push({ row: i + 2, code: 'import.sopInvalidMode', params: { mode: row.mode } })
+                                    continue
+                                }
+                                if (row.description) {
+                                    const description = row.description?.trim() || ''
+                                    if (description.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(description.length) } })
+                                        continue
+                                    }
+                                }
+                                if (row.triggerCondition) {
+                                    const triggerCondition = row.triggerCondition?.trim() || ''
+                                    if (triggerCondition.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.sopTriggerConditionTooLong', params: { length: String(triggerCondition.length) } })
+                                        continue
+                                    }
+                                }
+                                if (row.stepsDescription) {
+                                    const stepsDescription = row.stepsDescription?.trim() || ''
+                                    if (stepsDescription.length > 1000) {
+                                        errors.push({ row: i + 2, code: 'import.sopStepsDescriptionTooLong', params: { length: String(stepsDescription.length) } })
+                                        continue
+                                    }
+                                }
+                                if (createdSopNames.has(nameResult.sanitized)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: nameResult.sanitized } })
                                     continue
                                 }
                                 const tags = (row.targetTags || row.sopTags || row.tags)
@@ -507,43 +662,59 @@ export function useResourceImport(deps: ImportDeps) {
                                             nodes = []
                                         }
                                     } catch {
-                                        errors.push({ row: i + 2, code: 'import.invalidNodes', params: { name: row.name } })
+                                        errors.push({ row: i + 2, code: 'import.invalidNodes', params: { name: nameResult.sanitized } })
                                         continue
                                     }
                                 }
                                 const sopData = {
-                                    name: row.name,
-                                    description: row.description || '',
+                                    name: nameResult.sanitized,
+                                    description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     version: row.version || '',
-                                    triggerCondition: row.triggerCondition || '',
+                                    triggerCondition: row.triggerCondition ? validateAndSanitize(row.triggerCondition, 'TriggerCondition').sanitized : '',
                                     enabled: row.enabled !== 'false',
                                     mode: (row.mode === 'natural_language' ? 'natural_language' : 'structured') as 'structured' | 'natural_language',
-                                    stepsDescription: row.stepsDescription || '',
+                                    stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
                                     tags,
                                     nodes,
                                 }
                                 console.log('[Import SOPs] Creating SOP:', JSON.stringify(sopData, null, 2))
                                 await deps.createSop(sopData)
-                                createdSopNames.add(row.name)
+                                createdSopNames.add(nameResult.sanitized)
                                 success++
                                 break
                             }
 
                             case 'Whitelist': {
-                                if (createdPatterns.has(row.pattern)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: row.pattern } })
+                                const pattern = row.pattern?.trim() || ''
+                                if (!pattern) {
+                                    errors.push({ row: i + 2, code: 'import.whitelistPatternRequired' })
                                     continue
                                 }
-                                if (!/^[a-zA-Z0-9_\-./\s]+$/.test(row.pattern)) {
-                                    errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: row.pattern } })
+                                if (createdPatterns.has(pattern)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: pattern } })
                                     continue
+                                }
+                                if (!/^[a-zA-Z0-9_\-./\s]+$/.test(pattern)) {
+                                    errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
+                                    continue
+                                }
+                                if (row.description) {
+                                    const descResult = validateAndSanitize(row.description, 'Description')
+                                    if (!descResult.valid) {
+                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
+                                        continue
+                                    }
+                                    if (descResult.sanitized.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(descResult.sanitized.length) } })
+                                        continue
+                                    }
                                 }
                                 await deps.addWhitelistCommand({
-                                    pattern: row.pattern,
-                                    description: row.description || '',
+                                    pattern: pattern,
+                                    description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     enabled: row.enabled !== 'false',
                                 })
-                                createdPatterns.add(row.pattern)
+                                createdPatterns.add(pattern)
                                 success++
                                 break
                             }

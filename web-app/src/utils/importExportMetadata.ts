@@ -240,7 +240,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         descriptionSheetName: '字段说明',
         fields: [
             { name: 'name', labelKey: 'field_sops_name', enLabel: 'SOP Name', zhLabel: 'SOP 名称', required: true, validation: { type: 'string', maxLength: 100 } },
-            { name: 'version', labelKey: 'field_sops_version', enLabel: 'Version', zhLabel: '版本号', required: false, validation: { type: 'string' } },
+            { name: 'version', labelKey: 'field_sops_version', enLabel: 'Version', zhLabel: '版本号', required: false, validation: { type: 'string', maxLength: 50 } },
             { name: 'mode', labelKey: 'field_sops_mode', enLabel: 'Mode', zhLabel: '模式', required: false, validation: { type: 'enum', enumValues: ['structured', 'natural_language'] } },
             { name: 'enabled', labelKey: 'field_sops_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['true', 'false'] } },
             { name: 'description', labelKey: 'field_sops_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
