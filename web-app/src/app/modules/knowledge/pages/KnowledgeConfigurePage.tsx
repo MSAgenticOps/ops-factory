@@ -6,6 +6,7 @@ import { usePreview } from '../../../platform/providers/PreviewContext'
 import { runtime } from '../../../../config/runtime'
 import { useKnowledgeSourceDetail } from '../hooks/useKnowledgeSourceDetail'
 import { getErrorMessage } from '../../../../utils/errorMessages'
+import { getFilenameFromDisposition, triggerDownload } from '../../../../utils/fileDownload'
 import KnowledgeChunksTab from '../components/KnowledgeChunksTab'
 import KnowledgeRetrievalTab from '../components/KnowledgeRetrievalTab'
 import type { ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
@@ -747,41 +748,14 @@ function getDocumentDownloadUrl(documentId: string): string {
     return `${runtime.KNOWLEDGE_SERVICE_URL}/documents/${documentId}/original`
 }
 
-function getFilenameFromDisposition(disposition: string | null, fallback: string): string {
-    if (!disposition) return fallback
-
-    const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i)
-    if (encodedMatch) {
-        try {
-            return decodeURIComponent(encodedMatch[1])
-        } catch {
-            return encodedMatch[1]
-        }
-    }
-
-    const quotedMatch = disposition.match(/filename="([^"]+)"/i)
-    if (quotedMatch) return quotedMatch[1]
-
-    const bareMatch = disposition.match(/filename=([^;]+)/i)
-    if (bareMatch) return bareMatch[1].trim()
-
-    return fallback
-}
-
-function triggerDocumentDownload(blob: Blob, filename: string): void {
-    const objectUrl = window.URL.createObjectURL(blob)
-    const anchor = window.document.createElement('a')
-
-    anchor.href = objectUrl
-    anchor.download = filename
-    window.document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    window.URL.revokeObjectURL(objectUrl)
-}
-
 function getDocumentDisplayTitle(document: Pick<KnowledgeDocumentSummary, 'name' | 'title'>): string {
     return document.title?.trim() || document.name
+}
+
+function getDisplayDownloadName(document: Pick<KnowledgeDocumentSummary, 'name' | 'title'>): string {
+    if (!document.title?.trim()) return document.name
+    const ext = document.name.includes('.') ? '.' + document.name.split('.').pop() : ''
+    return document.title.trim() + ext
 }
 
 function getDocumentType(document: Pick<KnowledgeDocumentSummary, 'name' | 'contentType'>): string {
@@ -843,6 +817,10 @@ function isAllowedUploadFile(
     maxFileSizeMb: number | undefined,
     allowedContentTypes: string[] | undefined
 ): string | null {
+    if (file.name.length > 64) {
+        return 'knowledge.uploadFileNameTooLong'
+    }
+
     if (maxFileSizeMb && file.size > maxFileSizeMb * 1024 * 1024) {
         return 'knowledge.uploadFileTooLarge'
     }
@@ -883,7 +861,8 @@ function appendFilesToQueue(
     files: File[],
     currentItems: UploadQueueItem[],
     maxFileSizeMb: number | undefined,
-    allowedContentTypes: string[] | undefined
+    allowedContentTypes: string[] | undefined,
+    existingFileNames?: Set<string>
 ): UploadQueueItem[] {
     const existingKeys = new Set(currentItems.map(item => `${item.file.name}:${item.file.size}:${item.file.lastModified}`))
     const nextItems = [...currentItems]
@@ -893,11 +872,15 @@ function appendFilesToQueue(
         if (existingKeys.has(key)) continue
         existingKeys.add(key)
 
+        const error = existingFileNames?.has(file.name)
+            ? 'knowledge.uploadDuplicateName'
+            : isAllowedUploadFile(file, maxFileSizeMb, allowedContentTypes)
+
         nextItems.push({
             id: key,
             file,
             status: 'pending',
-            error: isAllowedUploadFile(file, maxFileSizeMb, allowedContentTypes),
+            error,
         })
     }
 
@@ -1461,6 +1444,7 @@ function RenameDocumentModal({
 }) {
     const { t } = useTranslation()
     const [title, setTitle] = useState(document.title || document.name)
+    const isOverLimit = title.length > 64
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -1484,8 +1468,12 @@ function RenameDocumentModal({
                             type="text"
                             value={title}
                             onChange={event => setTitle(event.target.value)}
+                            maxLength={64}
                             autoFocus
                         />
+                        <div className={`knowledge-field-hint${isOverLimit ? ' knowledge-field-hint--error' : ''}`}>
+                            {isOverLimit ? t('knowledge.renameDocumentTooLong') : `${title.length}/64`}
+                        </div>
                     </div>
                 </div>
 
@@ -1493,7 +1481,7 @@ function RenameDocumentModal({
                     <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
                         {t('common.cancel')}
                     </button>
-                    <button className="btn btn-primary" onClick={() => onConfirm(title.trim())} disabled={saving || !title.trim()}>
+                    <button className="btn btn-primary" onClick={() => onConfirm(title.trim())} disabled={saving || !title.trim() || isOverLimit}>
                         {saving ? t('knowledge.saving') : t('common.save')}
                     </button>
                 </div>
@@ -1507,6 +1495,7 @@ function UploadDocumentsModal({
     sourceName,
     maxFileSizeMb,
     allowedContentTypes,
+    existingFileNames,
     onClose,
     onUploaded,
 }: {
@@ -1514,6 +1503,7 @@ function UploadDocumentsModal({
     sourceName: string
     maxFileSizeMb?: number
     allowedContentTypes?: string[]
+    existingFileNames?: Set<string>
     onClose: () => void
     onUploaded: () => Promise<void>
 }) {
@@ -1527,14 +1517,14 @@ function UploadDocumentsModal({
     const handleAddFiles = useCallback((files: File[]) => {
         setRequestError(null)
         setItems(current => {
-            const next = appendFilesToQueue(files, current, maxFileSizeMb, allowedContentTypes)
+            const next = appendFilesToQueue(files, current, maxFileSizeMb, allowedContentTypes, existingFileNames)
             if (next.length > UPLOAD_BATCH_MAX_FILES) {
                 setRequestError(t('knowledge.uploadBatchTooMany', { max: UPLOAD_BATCH_MAX_FILES, count: next.length }))
                 return current
             }
             return next
         })
-    }, [allowedContentTypes, maxFileSizeMb, t])
+    }, [allowedContentTypes, maxFileSizeMb, existingFileNames, t])
 
     const handleSubmit = useCallback(async () => {
         const pendingItems = items.filter(item => item.status === 'pending' && !item.error)
@@ -2290,10 +2280,10 @@ export default function KnowledgeConfigure() {
             const blob = await response.blob()
             const filename = getFilenameFromDisposition(
                 response.headers.get('Content-Disposition'),
-                knowledgeDocument.name
+                getDisplayDownloadName(knowledgeDocument)
             )
 
-            triggerDocumentDownload(blob, filename)
+            triggerDownload(blob, filename)
         } catch (err) {
             showToast(
                 'error',
@@ -2317,12 +2307,14 @@ export default function KnowledgeConfigure() {
             }
 
             const previewData = data as KnowledgeDocumentPreview
+            const previewDisplayName = previewData.title || getDocumentDisplayTitle(knowledgeDocument)
             await openPreview({
-                name: previewData.title || getDocumentDisplayTitle(knowledgeDocument),
+                name: previewDisplayName,
                 path: `knowledge-document:${knowledgeDocument.id}`,
                 type: 'md',
                 content: previewData.markdownPreview,
                 downloadUrl: getDocumentDownloadUrl(knowledgeDocument.id),
+                downloadFilename: getDisplayDownloadName(knowledgeDocument),
                 previewKind: 'markdown',
             })
         } catch (err) {
@@ -3053,6 +3045,7 @@ export default function KnowledgeConfigure() {
                     sourceName={source.name}
                     maxFileSizeMb={defaults?.ingest.maxFileSizeMb}
                     allowedContentTypes={defaults?.ingest.allowedContentTypes}
+                    existingFileNames={new Set(documents.map(d => d.name))}
                     onClose={() => setShowUploadModal(false)}
                     onUploaded={loadDocuments}
                 />
