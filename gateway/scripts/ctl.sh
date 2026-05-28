@@ -167,14 +167,15 @@ gateway_url() {
 # --- Build ---
 build_gateway() {
     local jar="${SERVICE_DIR}/gateway-service/target/gateway-service.jar"
+    local lib_dir="${SERVICE_DIR}/gateway-service/target/lib"
 
     # Skip build if JAR exists and no source changes
     if [ -f "${jar}" ]; then
         local jar_time
         jar_time="$(stat -f "%m" "${jar}" 2>/dev/null || stat -c "%Y" "${jar}" 2>/dev/null)"
         local newest_src
-        newest_src="$(find "${SERVICE_DIR}" -name "*.java" -newer "${jar}" -print -quit 2>/dev/null)"
-        if [ -z "${newest_src}" ]; then
+        newest_src="$(find "${SERVICE_DIR}" \( -name "*.java" -o -name "pom.xml" \) -newer "${jar}" -print -quit 2>/dev/null)"
+        if [ -z "${newest_src}" ] && [ -d "${lib_dir}" ] && find "${lib_dir}" -mindepth 1 -print -quit >/dev/null 2>&1; then
             log_info "JAR is up-to-date, skipping build"
             return 0
         fi
@@ -182,6 +183,7 @@ build_gateway() {
 
     log_info "Building Java gateway..."
     cd "${SERVICE_DIR}"
+    rm -rf "${lib_dir}"
     "${MVN}" package -DskipTests -q || {
         log_error "Maven build failed"
         return 1

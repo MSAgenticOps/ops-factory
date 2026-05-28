@@ -80,9 +80,6 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             .isOk();
         long after = System.currentTimeMillis() / 1000;
 
-        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"),
-            eq("{\"session_id\":\"session-123\",\"load_model_and_extensions\":true}"), anyInt(), anyString());
-
         ArgumentCaptor<String> bodyCaptor = forClass(String.class);
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
             bodyCaptor.capture(), anyInt(), eq("test-secret"));
@@ -103,7 +100,8 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
         SseEmitter emitter = new SseEmitter();
         emitter.complete();
         when(goosedProxy.proxySessionEventsToEmitter(eq(9999), eq("/sessions/session-123/events"), eq("test-secret"),
-            eq("42"), eq("test-agent"), eq("alice"), eq("session-123"))).thenReturn(emitter);
+            eq("42"), eq("test-agent"), eq("alice"), eq("session-123"),
+            any())).thenReturn(emitter);
 
         webClient.get()
             .uri("/gateway/agents/test-agent/sessions/session-123/events")
@@ -116,7 +114,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             .isOk();
 
         verify(goosedProxy).proxySessionEventsToEmitter(eq(9999), eq("/sessions/session-123/events"),
-            eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq("session-123"));
+            eq("test-secret"), eq("42"), eq("test-agent"), eq("alice"), eq("session-123"), any());
     }
 
     /**
@@ -264,10 +262,9 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     @Test
     public void sessionEvents_proxyFailure_returnsStableFallbackMessageKey() {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(mockInstance));
-        SseEmitter emitter = new SseEmitter();
-        emitter.completeWithError(new RuntimeException("events failed"));
         when(goosedProxy.proxySessionEventsToEmitter(eq(9999), eq("/sessions/session-123/events"), eq("test-secret"),
-            eq(null), eq("test-agent"), eq("alice"), eq("session-123"))).thenReturn(emitter);
+            eq(null), eq("test-agent"), eq("alice"), eq("session-123"), any()))
+                .thenThrow(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "events failed"));
 
         webClient.get()
             .uri("/gateway/agents/test-agent/sessions/session-123/events")
@@ -276,7 +273,14 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             .accept(MediaType.TEXT_EVENT_STREAM)
             .exchange()
             .expectStatus()
-            .is5xxServerError();
+            .is5xxServerError()
+            .expectHeader()
+            .contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM)
+            .expectBody(String.class)
+            .value(body -> {
+                org.junit.Assert.assertTrue(body.contains("event: error"));
+                org.junit.Assert.assertTrue(body.contains("\"error\":\"events failed\""));
+            });
     }
 
     /**

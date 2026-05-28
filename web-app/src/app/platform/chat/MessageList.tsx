@@ -10,6 +10,7 @@ import { runtime } from '../../../config/runtime'
 import type { ChatMessage, DetectedFile, ToolResponseMap } from '../../../types/message'
 
 const BOTTOM_THRESHOLD_PX = 24
+const PENDING_OUTPUT_FILES_TTL_MS = 60_000
 
 function isSameDay(a: number, b: number): boolean {
     const da = new Date(a * 1000)
@@ -51,6 +52,9 @@ const fileIdentity = (file: DetectedFile): string =>
 
 const fileEventSignature = (files: DetectedFile[]): string =>
     files.map(fileIdentity).join('|')
+
+const buildPendingOutputFilesKey = (event: OutputFilesEvent): string =>
+    `${event.sessionId}:${event.requestId ?? 'no-request'}:${fileEventSignature(event.files)}`
 
 const mergeDetectedFiles = (existing: DetectedFile[], incoming: DetectedFile[]): DetectedFile[] => {
     const order: string[] = []
@@ -210,6 +214,11 @@ interface MessageListProps {
     showAnchorSpacer?: boolean
 }
 
+interface PendingOutputFilesEntry {
+    event: OutputFilesEvent
+    receivedAt: number
+}
+
 export default function MessageList({
     messages,
     isLoading = false,
@@ -227,6 +236,7 @@ export default function MessageList({
     const containerRef = useRef<HTMLDivElement>(null)
     const bottomRef = useRef<HTMLDivElement>(null)
     const [messageOutputFiles, setMessageOutputFiles] = useState<Map<string, DetectedFile[]>>(new Map())
+    const [pendingOutputFiles, setPendingOutputFiles] = useState<Map<string, PendingOutputFilesEntry>>(new Map())
     const processedOutputFilesRef = useRef<Set<string>>(new Set())
     const liveOutputFileMessageIdsRef = useRef<Set<string>>(new Set())
     const hasInitializedScrollRef = useRef(false)
@@ -277,20 +287,22 @@ export default function MessageList({
         return undefined
     }, [displayMessages])
 
-    const outputFilesTargetMessageId = useMemo(() => {
-        if (!outputFilesEvent?.requestId) return finalAssistantTextMessageId
+    const assistantMessageIdByRequestId = useMemo(() => {
+        const next = new Map<string, string>()
         for (let i = displayMessages.length - 1; i >= 0; i--) {
             const msg = displayMessages[i]
+            const requestId = msg.metadata?.requestId
             if (
                 msg.role === 'assistant' &&
                 hasDisplayTextContent(msg) &&
-                msg.metadata?.requestId === outputFilesEvent.requestId
+                requestId &&
+                !next.has(requestId)
             ) {
-                return msg.id
+                next.set(requestId, msg.id ?? `display-message-${i}`)
             }
         }
-        return undefined
-    }, [displayMessages, finalAssistantTextMessageId, outputFilesEvent?.requestId])
+        return next
+    }, [displayMessages])
 
     const toolResponses = useMemo<ToolResponseMap>(() => {
         const map: ToolResponseMap = new Map()
@@ -336,12 +348,15 @@ export default function MessageList({
         }
     }, [scrollContainerRef])
 
-    // ── Real-time: handle OutputFiles SSE event ─────────────────────
-    // When the gateway sends an OutputFiles event after a session reply completes,
-    // attach the files to the matching assistant message and persist the mapping.
+    // ── Real-time: stage OutputFiles SSE event ──────────────────────
+    // Request-scoped events stay pending until their exact assistant message is present.
     useEffect(() => {
-        if (!outputFilesEvent || !agentId || !outputFilesTargetMessageId) return
+        if (!outputFilesEvent || outputFilesEvent.files.length === 0) return
         if (!sessionId || outputFilesEvent.sessionId !== sessionId) return
+
+        const targetMessageId = outputFilesEvent.requestId
+            ? assistantMessageIdByRequestId.get(outputFilesEvent.requestId)
+            : finalAssistantTextMessageId
 
         const files: DetectedFile[] = outputFilesEvent.files.map(f => ({
             path: f.path,
@@ -351,30 +366,136 @@ export default function MessageList({
             displayPath: f.displayPath,
         }))
 
-        // Deduplicate exact event re-renders while still allowing later batches for the same message.
-        const eventKey = `${outputFilesEvent.sessionId}:${outputFilesTargetMessageId}:${fileEventSignature(files)}`
-        if (processedOutputFilesRef.current.has(eventKey)) return
-        processedOutputFilesRef.current.add(eventKey)
-        liveOutputFileMessageIdsRef.current.add(outputFilesTargetMessageId)
+        if (targetMessageId) {
+            const eventKey = `${outputFilesEvent.sessionId}:${targetMessageId}:${fileEventSignature(files)}`
+            if (processedOutputFilesRef.current.has(eventKey)) {
+                return
+            }
 
-        const filesToPersist = mergeDetectedFiles(messageOutputFiles.get(outputFilesTargetMessageId) ?? [], files)
-        setMessageOutputFiles(prev => {
+            processedOutputFilesRef.current.add(eventKey)
+            liveOutputFileMessageIdsRef.current.add(targetMessageId)
+
+            const filesToPersist = mergeDetectedFiles(messageOutputFiles.get(targetMessageId) ?? [], files)
+            setMessageOutputFiles(prev => {
+                const next = new Map(prev)
+                next.set(targetMessageId, mergeDetectedFiles(next.get(targetMessageId) ?? [], files))
+                return next
+            })
+
+            fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/file-capsules`, {
+                method: 'POST',
+                headers: { ...gatewayHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: outputFilesEvent.sessionId,
+                    messageId: targetMessageId,
+                    files: filesToPersist,
+                }),
+            }).catch(() => { /* best-effort persistence */ })
+            return
+        }
+
+        const pendingKey = buildPendingOutputFilesKey(outputFilesEvent)
+        setPendingOutputFiles(prev => {
+            const existing = prev.get(pendingKey)
+            if (
+                existing &&
+                existing.event.requestId === outputFilesEvent.requestId &&
+                existing.event.sessionId === outputFilesEvent.sessionId &&
+                fileEventSignature(existing.event.files) === fileEventSignature(outputFilesEvent.files)
+            ) {
+                return prev
+            }
             const next = new Map(prev)
-            next.set(outputFilesTargetMessageId, mergeDetectedFiles(next.get(outputFilesTargetMessageId) ?? [], files))
+            next.set(pendingKey, {
+                event: outputFilesEvent,
+                receivedAt: Date.now(),
+            })
             return next
         })
+    }, [
+        agentId,
+        sessionId,
+        outputFilesEvent,
+        assistantMessageIdByRequestId,
+        finalAssistantTextMessageId,
+        gatewayHeaders,
+        messageOutputFiles,
+    ])
 
-        // Persist to gateway (fire-and-forget)
-        fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/file-capsules`, {
-            method: 'POST',
-            headers: { ...gatewayHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sessionId: outputFilesEvent.sessionId,
-                messageId: outputFilesTargetMessageId,
+    // ── Real-time: resolve staged OutputFiles to the right assistant message ──
+    useEffect(() => {
+        if (!agentId || !sessionId || pendingOutputFiles.size === 0) return
+
+        const now = Date.now()
+        const remaining = new Map<string, PendingOutputFilesEntry>()
+        const nextMessageOutputFiles = new Map(messageOutputFiles)
+        const payloads: Array<{ sessionId: string; messageId: string; files: DetectedFile[] }> = []
+
+        for (const [pendingKey, entry] of pendingOutputFiles.entries()) {
+            if (entry.event.sessionId !== sessionId) {
+                continue
+            }
+            if (now - entry.receivedAt > PENDING_OUTPUT_FILES_TTL_MS) {
+                continue
+            }
+
+            const targetMessageId = entry.event.requestId
+                ? assistantMessageIdByRequestId.get(entry.event.requestId)
+                : finalAssistantTextMessageId
+
+            if (!targetMessageId) {
+                remaining.set(pendingKey, entry)
+                continue
+            }
+
+            const files: DetectedFile[] = entry.event.files.map(f => ({
+                path: f.path,
+                name: f.name,
+                ext: f.ext,
+                rootId: f.rootId,
+                displayPath: f.displayPath,
+            }))
+
+            const eventKey = `${entry.event.sessionId}:${targetMessageId}:${fileEventSignature(files)}`
+            if (processedOutputFilesRef.current.has(eventKey)) {
+                continue
+            }
+
+            processedOutputFilesRef.current.add(eventKey)
+            liveOutputFileMessageIdsRef.current.add(targetMessageId)
+
+            const filesToPersist = mergeDetectedFiles(nextMessageOutputFiles.get(targetMessageId) ?? [], files)
+            nextMessageOutputFiles.set(targetMessageId, filesToPersist)
+            payloads.push({
+                sessionId: entry.event.sessionId,
+                messageId: targetMessageId,
                 files: filesToPersist,
-            }),
-        }).catch(() => { /* best-effort persistence */ })
-    }, [outputFilesEvent, agentId, sessionId, outputFilesTargetMessageId, messageOutputFiles, gatewayHeaders])
+            })
+        }
+
+        if (payloads.length > 0) {
+            setMessageOutputFiles(nextMessageOutputFiles)
+            for (const payload of payloads) {
+                fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/file-capsules`, {
+                    method: 'POST',
+                    headers: { ...gatewayHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                }).catch(() => { /* best-effort persistence */ })
+            }
+        }
+
+        if (payloads.length > 0 || remaining.size !== pendingOutputFiles.size) {
+            setPendingOutputFiles(remaining)
+        }
+    }, [
+        agentId,
+        sessionId,
+        pendingOutputFiles,
+        messageOutputFiles,
+        assistantMessageIdByRequestId,
+        finalAssistantTextMessageId,
+        gatewayHeaders,
+    ])
 
     // ── Resume: load persisted file capsules from gateway ───────────
     useEffect(() => {
@@ -426,6 +547,7 @@ export default function MessageList({
     // Reset state when agent or session changes
     useEffect(() => {
         setMessageOutputFiles(new Map())
+        setPendingOutputFiles(new Map())
         processedOutputFilesRef.current = new Set()
         liveOutputFileMessageIdsRef.current = new Set()
         hasInitializedScrollRef.current = false

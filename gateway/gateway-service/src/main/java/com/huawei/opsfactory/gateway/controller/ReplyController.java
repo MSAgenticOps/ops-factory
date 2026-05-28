@@ -40,6 +40,9 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriUtils;
 
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -216,7 +219,9 @@ public class ReplyController {
             sessionId, instance.getPort(), path);
 
         return goosedProxy.proxySessionEventsToEmitter(instance.getPort(), path, instance.getSecretKey(), lastEventId,
-            agentId, userId, sessionId);
+            agentId, userId, sessionId,
+            eventJson -> Mono.fromCallable(() -> outputFilesBeforeTerminalEvent(agentId, userId, sessionId, eventJson))
+                .subscribeOn(Schedulers.boundedElastic()));
     }
 
     /**

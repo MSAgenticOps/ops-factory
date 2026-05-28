@@ -528,6 +528,122 @@ describe('MessageList tool error rendering', () => {
         expect(screen.queryByText('missing-request.md')).toBeNull()
     })
 
+    it('keeps request-scoped OutputFiles pending until the matching assistant message appears', async () => {
+        const { fetchMock } = createFetchMock({})
+        vi.stubGlobal('fetch', fetchMock)
+
+        const initialMessages: ChatMessage[] = [
+            {
+                id: 'assistant-latest',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Latest done' }],
+                metadata: { requestId: 'req-latest' },
+            },
+        ]
+
+        const view = renderMessageListWithPreview(initialMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                requestId: 'req-pending',
+                files: [{
+                    path: 'pending-report.md',
+                    name: 'pending-report.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'pending-report.md',
+                }],
+            },
+        })
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )).toBe(false)
+        })
+        expect(screen.queryByText('pending-report.md')).toBeNull()
+
+        const updatedMessages: ChatMessage[] = [
+            {
+                id: 'assistant-match',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Matched done' }],
+                metadata: { requestId: 'req-pending' },
+            },
+            ...initialMessages,
+        ]
+
+        rerenderWithPreview(view, updatedMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: null,
+        })
+
+        await waitFor(() => {
+            const postCall = fetchMock.mock.calls.find(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )
+            expect(postCall).toBeTruthy()
+            const body = JSON.parse(String(postCall?.[1]?.body))
+            expect(body.messageId).toBe('assistant-match')
+        })
+        expect(screen.getByText('pending-report.md')).toBeTruthy()
+    })
+
+    it('does not fall back a pending request-scoped file to a later assistant reply', async () => {
+        const { fetchMock } = createFetchMock({})
+        vi.stubGlobal('fetch', fetchMock)
+
+        const firstMessages: ChatMessage[] = [
+            {
+                id: 'assistant-first',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'First done' }],
+                metadata: { requestId: 'req-first' },
+            },
+        ]
+
+        const view = renderMessageListWithPreview(firstMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                requestId: 'req-missing',
+                files: [{
+                    path: 'first-report.md',
+                    name: 'first-report.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'first-report.md',
+                }],
+            },
+        })
+
+        const secondMessages: ChatMessage[] = [
+            ...firstMessages,
+            {
+                id: 'assistant-second',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Second done' }],
+                metadata: { requestId: 'req-second' },
+            },
+        ]
+
+        rerenderWithPreview(view, secondMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: null,
+        })
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )).toBe(false)
+        })
+        expect(screen.queryByText('first-report.md')).toBeNull()
+    })
+
     it('restores output file capsules from persisted session entries', async () => {
         const { fetchMock } = createFetchMock({
             persistedEntries: {
