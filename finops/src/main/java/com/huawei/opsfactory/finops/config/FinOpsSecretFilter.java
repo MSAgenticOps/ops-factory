@@ -9,6 +9,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Enforces the optional FinOps shared-secret header.
+ *
+ * @since 2026-05-28
+ */
 @Component
 public class FinOpsSecretFilter extends OncePerRequestFilter {
 

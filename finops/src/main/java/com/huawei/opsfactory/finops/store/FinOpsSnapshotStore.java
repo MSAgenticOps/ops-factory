@@ -3,11 +3,17 @@ package com.huawei.opsfactory.finops.store;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionMessageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SnapshotStatus;
+import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSnapshotPayload;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
+/**
+ * Stores the latest FinOps snapshot in memory for API reads.
+ *
+ * @since 2026-05-28
+ */
 @Component
 public class FinOpsSnapshotStore {
 
@@ -19,7 +25,7 @@ public class FinOpsSnapshotStore {
         return current.get();
     }
 
-    public Snapshot update(SessionDbReader.ScanResult scanResult) {
+    public Snapshot update(UsageSnapshotPayload scanResult) {
         Snapshot snapshot = new Snapshot(
             List.copyOf(scanResult.sessions()),
             List.copyOf(scanResult.messages()),

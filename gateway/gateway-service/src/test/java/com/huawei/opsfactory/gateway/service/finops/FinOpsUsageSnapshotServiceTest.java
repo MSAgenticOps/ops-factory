@@ -1,10 +1,13 @@
-package com.huawei.opsfactory.finops.store;
+package com.huawei.opsfactory.gateway.service.finops;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.finops.config.FinOpsProperties;
-import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
+import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SessionUsageRecord;
+import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SnapshotPayload;
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -15,7 +18,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-class SessionDbReaderTest {
+class FinOpsUsageSnapshotServiceTest {
 
     @TempDir
     private Path tempDir;
@@ -26,11 +29,11 @@ class SessionDbReaderTest {
         Files.createDirectories(db.getParent());
         createFixtureDb(db);
 
-        FinOpsProperties properties = new FinOpsProperties();
-        properties.setDataRoot(tempDir.toString());
-        SessionDbReader reader = new SessionDbReader(properties, new ObjectMapper());
+        AgentConfigService agentConfigService = mock(AgentConfigService.class);
+        when(agentConfigService.getUsersDir()).thenReturn(tempDir);
+        FinOpsUsageSnapshotService snapshotService = new FinOpsUsageSnapshotService(agentConfigService, new ObjectMapper());
 
-        SessionDbReader.ScanResult result = reader.scan();
+        SnapshotPayload result = snapshotService.snapshot();
         List<SessionUsageRecord> sessions = result.sessions().stream()
             .sorted(Comparator.comparing(SessionUsageRecord::id))
             .toList();

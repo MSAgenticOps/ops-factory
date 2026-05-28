@@ -1,16 +1,20 @@
-package com.huawei.opsfactory.finops.store;
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
+package com.huawei.opsfactory.gateway.service.finops;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.finops.config.FinOpsProperties;
-import com.huawei.opsfactory.finops.model.FinOpsModels.SessionMessageRecord;
-import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
+import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SessionMessageRecord;
+import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SessionUsageRecord;
+import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SnapshotPayload;
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -33,13 +37,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-@Component
-public class SessionDbReader {
+/**
+ * Builds FinOps usage snapshots from gateway-managed goosed session stores.
+ *
+ * @since 2026-05-28
+ */
+@Service
+public class FinOpsUsageSnapshotService {
 
-    private static final Logger log = LoggerFactory.getLogger(SessionDbReader.class);
+    private static final Logger log = LoggerFactory.getLogger(FinOpsUsageSnapshotService.class);
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+    private static final int MAX_DB_OPEN_SECONDS = 5;
     private static final int MESSAGE_TEXT_LIMIT = 12_000;
     private static final int MESSAGE_PREVIEW_LIMIT = 280;
     private static final Pattern TOOL_NAME_PATTERN = Pattern.compile("\\btool(?:Request|Response|_use|_result)\\s+([A-Za-z0-9_.:-]+)");
@@ -51,19 +61,24 @@ public class SessionDbReader {
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
     );
 
-    private final FinOpsProperties properties;
+    private final AgentConfigService agentConfigService;
     private final ObjectMapper objectMapper;
 
-    public SessionDbReader(FinOpsProperties properties, ObjectMapper objectMapper) {
-        this.properties = properties;
+    public FinOpsUsageSnapshotService(AgentConfigService agentConfigService, ObjectMapper objectMapper) {
+        this.agentConfigService = agentConfigService;
         this.objectMapper = objectMapper;
     }
 
-    public ScanResult scan() {
-        Path dataRoot = Paths.get(properties.getDataRoot()).toAbsolutePath().normalize();
+    /**
+     * Returns a read-only usage snapshot for every goosed session database under the gateway users directory.
+     *
+     * @return normalized usage snapshot payload
+     */
+    public SnapshotPayload snapshot() {
+        Path dataRoot = agentConfigService.getUsersDir().toAbsolutePath().normalize();
         if (!Files.isDirectory(dataRoot)) {
             log.warn("FinOps data root does not exist or is not a directory: {}", dataRoot);
-            return new ScanResult(List.of(), List.of(), 0, 0, dataRoot.toString(), "Data root not found: " + dataRoot);
+            return new SnapshotPayload(List.of(), List.of(), 0, 0, dataRoot.toString(), "Data root not found: " + dataRoot);
         }
 
         List<Path> dbs;
@@ -88,7 +103,7 @@ public class SessionDbReader {
                 log.warn("Skipping unreadable FinOps session DB {}", db, ex);
             }
         }
-        return new ScanResult(sessions, messages, dbs.size(), skipped, dataRoot.toString(), lastError);
+        return new SnapshotPayload(sessions, messages, dbs.size(), skipped, dataRoot.toString(), lastError);
     }
 
     private boolean isSessionDb(Path path) {
@@ -112,7 +127,7 @@ public class SessionDbReader {
         String url = "jdbc:sqlite:file:" + db.toAbsolutePath() + "?mode=ro";
         try (Connection connection = DriverManager.getConnection(url)) {
             try (Statement statement = connection.createStatement()) {
-                statement.setQueryTimeout(Math.max(1, properties.getScan().getMaxDbOpenMs() / 1000));
+                statement.setQueryTimeout(MAX_DB_OPEN_SECONDS);
                 statement.execute("PRAGMA query_only = true");
             }
             Map<String, MessageStats> messageStats = readMessageStats(connection);
@@ -660,16 +675,6 @@ public class SessionDbReader {
             return value;
         }
         return value.substring(0, max);
-    }
-
-    public record ScanResult(
-        List<SessionUsageRecord> sessions,
-        List<SessionMessageRecord> messages,
-        int sourceDbCount,
-        int skippedDbCount,
-        String dataSource,
-        String lastError
-    ) {
     }
 
     private record DbReadResult(List<SessionUsageRecord> sessions, List<SessionMessageRecord> messages) {

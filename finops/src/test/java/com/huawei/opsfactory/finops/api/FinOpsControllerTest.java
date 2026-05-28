@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionMessageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
+import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSnapshotPayload;
 import com.huawei.opsfactory.finops.store.FinOpsSnapshotStore;
-import com.huawei.opsfactory.finops.store.SessionDbReader;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +23,8 @@ import org.springframework.http.ResponseEntity;
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
         "finops.secret-key=test-secret",
-        "finops.data-root=target/missing-finops-test-data",
-        "finops.scan.refresh-interval-ms=3600000"
+        "finops.scan.refresh-interval-ms=3600000",
+        "finops.scan.refresh-on-startup=false"
     }
 )
 class FinOpsControllerTest {
@@ -44,7 +44,7 @@ class FinOpsControllerTest {
 
     @Test
     void exposesOverviewWithConfiguredSecret() {
-        snapshotStore.update(new SessionDbReader.ScanResult(List.of(session("session-1")), List.of(), 1, 0, "test", null));
+        snapshotStore.update(new UsageSnapshotPayload(List.of(session("session-1")), List.of(), 1, 0, "test", null));
 
         ResponseEntity<String> response = restTemplate.exchange(
             "/finops/overview?compare=true",
@@ -68,7 +68,7 @@ class FinOpsControllerTest {
 
     @Test
     void exposesPaginatedListsWithPublicSessionFieldsOnly() {
-        snapshotStore.update(new SessionDbReader.ScanResult(List.of(session("session-1"), session("session-2")), List.of(), 1, 0, "test", null));
+        snapshotStore.update(new UsageSnapshotPayload(List.of(session("session-1"), session("session-2")), List.of(), 1, 0, "test", null));
 
         ResponseEntity<String> response = getWithSecret("/finops/sessions?page=1&size=1");
 
@@ -95,7 +95,7 @@ class FinOpsControllerTest {
     @Test
     void exposesSessionMessagesForUserAgentScopedSession() {
         Instant now = Instant.now();
-        snapshotStore.update(new SessionDbReader.ScanResult(
+        snapshotStore.update(new UsageSnapshotPayload(
             List.of(session("session-1")),
             List.of(new SessionMessageRecord(
                 "session-1",

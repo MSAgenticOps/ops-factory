@@ -26,6 +26,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
+/**
+ * Aggregates raw session usage records into FinOps summaries and distributions.
+ *
+ * @since 2026-05-28
+ */
 @Service
 public class UsageAggregationService {
 

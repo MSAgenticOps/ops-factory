@@ -9,6 +9,11 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Converts FinOps service exceptions into stable API error responses.
+ *
+ * @since 2026-05-28
+ */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 

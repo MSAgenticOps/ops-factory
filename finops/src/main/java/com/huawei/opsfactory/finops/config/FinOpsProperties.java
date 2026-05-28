@@ -2,13 +2,17 @@ package com.huawei.opsfactory.finops.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * Configuration properties for the FinOps service.
+ *
+ * @since 2026-05-28
+ */
 @ConfigurationProperties(prefix = "finops")
 public class FinOpsProperties {
 
-    private String secretKey = "change-me";
+    private String secretKey = "";
     private String corsOrigin = "http://127.0.0.1:5173";
-    private String dataRoot = "../gateway/users";
-    private String snapshotDir = "./data/snapshots";
+    private Gateway gateway = new Gateway();
     private Scan scan = new Scan();
 
     public String getSecretKey() {
@@ -27,20 +31,12 @@ public class FinOpsProperties {
         this.corsOrigin = corsOrigin;
     }
 
-    public String getDataRoot() {
-        return dataRoot;
+    public Gateway getGateway() {
+        return gateway;
     }
 
-    public void setDataRoot(String dataRoot) {
-        this.dataRoot = dataRoot;
-    }
-
-    public String getSnapshotDir() {
-        return snapshotDir;
-    }
-
-    public void setSnapshotDir(String snapshotDir) {
-        this.snapshotDir = snapshotDir;
+    public void setGateway(Gateway gateway) {
+        this.gateway = gateway;
     }
 
     public Scan getScan() {
@@ -51,10 +47,12 @@ public class FinOpsProperties {
         this.scan = scan;
     }
 
+    /**
+     * Snapshot refresh settings.
+     */
     public static class Scan {
         private long refreshIntervalMs = 300000;
-        private int maxDbOpenMs = 5000;
-        private int retentionDays = 30;
+        private boolean refreshOnStartup = true;
 
         public long getRefreshIntervalMs() {
             return refreshIntervalMs;
@@ -64,20 +62,45 @@ public class FinOpsProperties {
             this.refreshIntervalMs = refreshIntervalMs;
         }
 
-        public int getMaxDbOpenMs() {
-            return maxDbOpenMs;
+        public boolean isRefreshOnStartup() {
+            return refreshOnStartup;
         }
 
-        public void setMaxDbOpenMs(int maxDbOpenMs) {
-            this.maxDbOpenMs = maxDbOpenMs;
+        public void setRefreshOnStartup(boolean refreshOnStartup) {
+            this.refreshOnStartup = refreshOnStartup;
+        }
+    }
+
+    /**
+     * Gateway connection settings used to read usage snapshots.
+     */
+    public static class Gateway {
+        private String baseUrl = "http://127.0.0.1:3000";
+        private String secretKey = "";
+        private long timeoutMs = 30000;
+
+        public String getBaseUrl() {
+            return baseUrl;
         }
 
-        public int getRetentionDays() {
-            return retentionDays;
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
         }
 
-        public void setRetentionDays(int retentionDays) {
-            this.retentionDays = retentionDays;
+        public String getSecretKey() {
+            return secretKey;
+        }
+
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
+        }
+
+        public long getTimeoutMs() {
+            return timeoutMs;
+        }
+
+        public void setTimeoutMs(long timeoutMs) {
+            this.timeoutMs = timeoutMs;
         }
     }
 }

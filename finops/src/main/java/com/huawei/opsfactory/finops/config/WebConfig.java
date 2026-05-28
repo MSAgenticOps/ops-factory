@@ -9,6 +9,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Configures HTTP behavior for the FinOps API.
+ *
+ * @since 2026-05-28
+ */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 

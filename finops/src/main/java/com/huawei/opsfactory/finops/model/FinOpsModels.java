@@ -4,6 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * API and internal data models used by the FinOps service.
+ *
+ * @since 2026-05-28
+ */
 public final class FinOpsModels {
 
     private FinOpsModels() {
@@ -98,6 +103,16 @@ public final class FinOpsModels {
         boolean error,
         boolean userVisible,
         boolean agentVisible
+    ) {
+    }
+
+    public record UsageSnapshotPayload(
+        List<SessionUsageRecord> sessions,
+        List<SessionMessageRecord> messages,
+        int sourceDbCount,
+        int skippedDbCount,
+        String dataSource,
+        String lastError
     ) {
     }
 
