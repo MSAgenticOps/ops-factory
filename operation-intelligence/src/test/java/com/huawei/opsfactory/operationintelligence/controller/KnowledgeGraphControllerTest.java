@@ -611,6 +611,72 @@ class KnowledgeGraphControllerTest {
     }
 
     @Test
+    void updateEntity_updatesSnapshotAndPersistsLatestVersion() {
+        importResourceOntologyAndSnapshot();
+
+        webTestClient.put()
+            .uri("/operation-intelligence/graph/entities/host-192-168-200-42")
+            .header("x-secret-key", SECRET_KEY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of(
+                "ontologyId", "huawei-mo-resource-v1",
+                "envCode", "prod",
+                "entity", Map.of(
+                    "id", "host-192-168-200-42",
+                    "type", "Host",
+                    "name", "host-updated",
+                    "displayName", "Host Updated",
+                    "status", "Normal",
+                    "properties", Map.of("hostIp", "192.168.200.42", "sshIp", "10.10.10.10"))))
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.displayName")
+            .isEqualTo("Host Updated")
+            .jsonPath("$.result.status")
+            .isEqualTo("Normal")
+            .jsonPath("$.result.properties.sshIp")
+            .isEqualTo("10.10.10.10");
+
+        webTestClient.get()
+            .uri("/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+            .header("x-secret-key", SECRET_KEY)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.name")
+            .isEqualTo("host-updated")
+            .jsonPath("$.result.properties.sshIp")
+            .isEqualTo("10.10.10.10");
+    }
+
+    @Test
+    void deleteEntity_removesEntityFromLatestSnapshot() {
+        importResourceOntologyAndSnapshot();
+
+        webTestClient.delete()
+            .uri("/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+            .header("x-secret-key", SECRET_KEY)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.entityId")
+            .isEqualTo("host-192-168-200-42")
+            .jsonPath("$.result.deleted")
+            .isEqualTo(true);
+
+        webTestClient.get()
+            .uri("/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+            .header("x-secret-key", SECRET_KEY)
+            .exchange()
+            .expectStatus()
+            .isNotFound();
+    }
+
+    @Test
     void deleteOntology_rejectsWhenEntitySnapshotsExist() {
         importResourceOntologyAndSnapshot();
 
