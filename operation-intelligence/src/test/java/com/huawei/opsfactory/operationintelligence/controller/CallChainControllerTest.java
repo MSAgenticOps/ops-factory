@@ -70,7 +70,7 @@ class CallChainControllerTest {
         request.setCondition(List.of(condition));
         request.setStartTime(1746057600000L);
         request.setEndTime(1746058000000L);
-        request.setMod("method");
+        request.setMode("method");
 
         mockMvc.perform(post("/operation-intelligence/call-chain/query")
                 .header("x-secret-key", SECRET_KEY)

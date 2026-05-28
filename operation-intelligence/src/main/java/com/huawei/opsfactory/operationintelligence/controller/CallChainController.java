@@ -89,7 +89,7 @@ public class CallChainController {
             .toList();
 
         CallChainTree tree = callChainService.queryCallChain(request.getSolutionType(), conditions,
-                request.getStartTime(), request.getEndTime(), request.getMod());
+                request.getStartTime(), request.getEndTime(), request.getMode());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("chainType", tree.getChainType());
         response.put("conditions", tree.getConditions());
