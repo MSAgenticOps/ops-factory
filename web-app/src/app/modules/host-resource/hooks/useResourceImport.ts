@@ -127,7 +127,9 @@ export function useResourceImport(deps: ImportDeps) {
                 const existingRelationKeys = new Set(deps.relations.map(r => `${r.sourceHostId}->${r.targetHostId}`))
 
                 const createdClusterTypeNames = new Set(deps.clusterTypes.map(ct => ct.name))
+                const createdClusterTypeCodes = new Set(deps.clusterTypes.map(ct => ct.code || ''))
                 const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
+                const createdBusinessTypeCodes = new Set(deps.businessTypes.map(bt => bt.code || ''))
                 const createdSopNames = new Set<string>()
                 const createdPatterns = new Set<string>()
 
@@ -177,8 +179,13 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.clusterTypeInvalidMode', params: { mode: row.clusterMode } })
                                     continue
                                 }
-                                if (createdClusterTypeNames.has(nameResult.sanitized)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'ClusterType', name: nameResult.sanitized } })
+                                if (createdClusterTypeNames.has(nameResult.sanitized) || createdClusterTypeCodes.has(codeResult.sanitized)) {
+                                    // Determine if it's a name or code duplicate
+                                    if (createdClusterTypeCodes.has(codeResult.sanitized) && !createdClusterTypeNames.has(nameResult.sanitized)) {
+                                        errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'ClusterType', code: codeResult.sanitized } })
+                                    } else {
+                                        errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'ClusterType', name: nameResult.sanitized } })
+                                    }
                                     continue
                                 }
                                 await deps.createClusterType({
@@ -197,6 +204,7 @@ export function useResourceImport(deps: ImportDeps) {
                                         : undefined,
                                 })
                                 createdClusterTypeNames.add(nameResult.sanitized)
+                                createdClusterTypeCodes.add(codeResult.sanitized)
                                 success++
                                 break
                             }
@@ -216,16 +224,19 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.businessTypeNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
-                                if (row.code) {
-                                    const codeResult = validateAndSanitize(row.code, 'Code')
-                                    if (!codeResult.valid) {
-                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
-                                        continue
-                                    }
-                                    if (codeResult.sanitized.length > 50) {
-                                        errors.push({ row: i + 2, code: 'import.businessTypeCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
-                                        continue
-                                    }
+                                const typeCode = row.code?.trim() || ''
+                                if (!typeCode) {
+                                    errors.push({ row: i + 2, code: 'import.businessTypeCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(typeCode, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.businessTypeCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
                                 }
                                 if (row.description) {
                                     const description = row.description?.trim() || ''
@@ -234,18 +245,24 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
-                                if (createdBusinessTypeNames.has(nameResult.sanitized)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessType', name: nameResult.sanitized } })
+                                if (createdBusinessTypeNames.has(nameResult.sanitized) || createdBusinessTypeCodes.has(codeResult.sanitized)) {
+                                    // Determine if it's a name or code duplicate
+                                    if (createdBusinessTypeCodes.has(codeResult.sanitized) && !createdBusinessTypeNames.has(nameResult.sanitized)) {
+                                        errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'BusinessType', code: codeResult.sanitized } })
+                                    } else {
+                                        errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessType', name: nameResult.sanitized } })
+                                    }
                                     continue
                                 }
                                 await deps.createBusinessType({
                                     name: nameResult.sanitized,
-                                    code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : '',
+                                    code: codeResult.sanitized,
                                     description: row.description ? row.description.trim() : '',
                                     color: row.typeColor || '',
                                     knowledge: row.knowledge || '',
                                 })
                                 createdBusinessTypeNames.add(nameResult.sanitized)
+                                createdBusinessTypeCodes.add(codeResult.sanitized)
                                 success++
                                 break
                             }

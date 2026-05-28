@@ -35,7 +35,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         descriptionSheetName: '字段说明',
         fields: [
             { name: 'name', labelKey: 'field_businessTypes_name', enLabel: 'Business Type Name', zhLabel: '业务类型名称', required: true, validation: { type: 'string', maxLength: 100 } },
-            { name: 'code', labelKey: 'field_businessTypes_code', enLabel: 'Business Type Code', zhLabel: '业务类型代码', required: false, validation: { type: 'string', maxLength: 50 } },
+            { name: 'code', labelKey: 'field_businessTypes_code', enLabel: 'Business Type Code', zhLabel: '业务类型代码', required: true, validation: { type: 'string', maxLength: 50 } },
             { name: 'description', labelKey: 'field_businessTypes_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
             { name: 'typeColor', labelKey: 'field_businessTypes_typeColor', enLabel: 'Color', zhLabel: '标识颜色', required: false, validation: { type: 'string' } },
             { name: 'knowledge', labelKey: 'field_businessTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'string' } },

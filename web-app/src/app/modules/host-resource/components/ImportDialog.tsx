@@ -199,7 +199,32 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
             case 'import.hostUsernameRequired':
                 return t('hostResource.importErrorHostUsernameRequired')
             case 'import.duplicate':
-                return t('hostResource.importErrorDuplicate', { type: err.params?.type === 'Whitelist' ? t('hostResource.importType_Whitelist') : err.params?.type, name: err.params?.name })
+                return t('hostResource.importErrorDuplicate', {
+                    type: err.params?.type === 'Whitelist' ? t('hostResource.importType_Whitelist') :
+                          err.params?.type === 'ClusterType' || err.params?.type === 'ClusterTypes' ? t('hostResource.importType_ClusterTypes') :
+                          err.params?.type === 'BusinessType' || err.params?.type === 'BusinessTypes' ? t('hostResource.importType_BusinessTypes') :
+                          err.params?.type === 'HostGroup' || err.params?.type === 'HostGroups' ? t('hostResource.importType_HostGroups') :
+                          err.params?.type === 'Cluster' || err.params?.type === 'Clusters' ? t('hostResource.importType_Clusters') :
+                          err.params?.type === 'Host' || err.params?.type === 'Hosts' ? t('hostResource.importType_Hosts') :
+                          err.params?.type === 'BusinessService' || err.params?.type === 'BusinessServices' ? t('hostResource.importType_BusinessServices') :
+                          err.params?.type === 'Relation' || err.params?.type === 'Relations' ? t('hostResource.importType_Relations') :
+                          err.params?.type === 'SOP' || err.params?.type === 'SOPs' ? t('hostResource.importType_SOPs') :
+                          err.params?.type || '',
+                    name: err.params?.name
+                })
+            case 'import.duplicateCode':
+                return t('hostResource.importErrorDuplicateCode', {
+                    type: err.params?.type === 'ClusterType' || err.params?.type === 'ClusterTypes' ? t('hostResource.importType_ClusterTypes') :
+                          err.params?.type === 'BusinessType' || err.params?.type === 'BusinessTypes' ? t('hostResource.importType_BusinessTypes') :
+                          err.params?.type === 'HostGroup' || err.params?.type === 'HostGroups' ? t('hostResource.importType_HostGroups') :
+                          err.params?.type === 'Cluster' || err.params?.type === 'Clusters' ? t('hostResource.importType_Clusters') :
+                          err.params?.type === 'Host' || err.params?.type === 'Hosts' ? t('hostResource.importType_Hosts') :
+                          err.params?.type === 'BusinessService' || err.params?.type === 'BusinessServices' ? t('hostResource.importType_BusinessServices') :
+                          err.params?.type === 'Relation' || err.params?.type === 'Relations' ? t('hostResource.importType_Relations') :
+                          err.params?.type === 'SOP' || err.params?.type === 'SOPs' ? t('hostResource.importType_SOPs') :
+                          err.params?.type || '',
+                    code: err.params?.code
+                })
             case 'import.whitelistInvalidPattern':
                 return t('hostResource.importErrorWhitelistInvalidPattern', { pattern: err.params?.pattern })
             case 'import.invalidChars':
