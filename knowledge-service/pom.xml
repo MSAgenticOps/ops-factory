@@ -18,7 +18,7 @@
         <spring-boot.version>3.5.14</spring-boot.version>
         <lucene.version>9.12.2</lucene.version>
         <tika.version>3.2.3</tika.version>
-        <pdfbox.version>3.0.3</pdfbox.version>
+        <pdfbox.version>3.0.5</pdfbox.version>
     </properties>
 
     <dependencyManagement>
