@@ -24,6 +24,8 @@
             }
         ]
     },
+    "finopsServiceUrl": "",
+    "finopsSecretKey": "",
     "logging": {
         "level": "info",
         "consoleEnabled": true,

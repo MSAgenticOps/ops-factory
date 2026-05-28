@@ -30,6 +30,8 @@ interface RuntimeConfig {
         collapsedRelationRules?: KnowledgeGraphCollapsedRelationRule[]
         resourceTreeHierarchyRules?: KnowledgeGraphResourceTreeHierarchyRule[]
     }
+    finopsServiceUrl?: string
+    finopsSecretKey?: string
     logging?: {
         level?: WebappLoggingRuntimeConfig['level']
         consoleEnabled?: boolean
@@ -57,6 +59,7 @@ const SERVICE_ENDPOINTS: Record<string, ServiceEndpoint> = {
     businessIntelligence:     { pathPrefix: '/business-intelligence',   fallbackPort: 8093 },
     skillMarket:              { pathPrefix: '/skill-market',            fallbackPort: 8095 },
     operationIntelligence:    { pathPrefix: '/operation-intelligence',  fallbackPort: 8096 },
+    finops:                   { pathPrefix: '/finops',                  fallbackPort: 8097 },
 }
 
 function resolveServiceUrl(raw: string | undefined, endpoint: ServiceEndpoint): string {
@@ -106,6 +109,8 @@ export const runtime = {
         DEFAULT_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES,
     OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES:
         DEFAULT_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES,
+    FINOPS_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.finops),
+    FINOPS_SECRET_KEY: '',
 }
 
 function setRuntimeConfig(config: RuntimeConfig): void {
@@ -128,6 +133,8 @@ function setRuntimeConfig(config: RuntimeConfig): void {
         normalizeCollapsedRelationRules(config.operationIntelligenceKnowledgeGraph?.collapsedRelationRules)
     runtime.OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES =
         normalizeResourceTreeHierarchyRules(config.operationIntelligenceKnowledgeGraph?.resourceTreeHierarchyRules)
+    runtime.FINOPS_URL = resolveServiceUrl(config.finopsServiceUrl, SERVICE_ENDPOINTS.finops)
+    runtime.FINOPS_SECRET_KEY = config.finopsSecretKey ?? ''
     configureWebappLogging(config.logging)
 }
 
