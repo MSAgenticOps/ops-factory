@@ -335,10 +335,23 @@ export default function ResourceFormModal({
                 if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
 
                 if (!nameResult.sanitized) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!codeResult.sanitized) { setError(t('hostResource.codeRequired')); setSaving(false); return }
+
+                const editingGroupId = editingItem?.type === 'group' ? editingItem.data.id : null
+                const trimmedCode = codeResult.sanitized.trim()
+                const duplicateCode = groups.find(g =>
+                    g.code?.toLowerCase() === trimmedCode.toLowerCase() &&
+                    g.id !== editingGroupId
+                )
+                if (duplicateCode) {
+                    setError(t('hostResource.duplicateCode', { code: trimmedCode }))
+                    setSaving(false)
+                    return
+                }
 
                 await onSaveGroup({
                     name: nameResult.sanitized,
-                    code: codeResult.sanitized,
+                    code: trimmedCode,
                     parentId: groupParentId || null,
                     description: descResult.sanitized,
                     enabled: groupEnabled
@@ -559,7 +572,7 @@ export default function ResourceFormModal({
                                         <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.groupCode')}</label>
+                                        <label className="form-label">{t('hostResource.groupCode')}{requiredStar}</label>
                                         <input className="form-input" value={groupCode} onChange={e => setGroupCode(e.target.value)} placeholder={t('hostResource.groupCodePlaceholder', { defaultValue: '' })} />
                                     </div>
                                     <div className="form-group">
