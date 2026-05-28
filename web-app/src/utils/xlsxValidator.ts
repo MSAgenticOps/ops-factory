@@ -86,23 +86,31 @@ export function validateSheetStructure(
     })
 
     if (missingColumns.length > 0) {
+        // Get human-readable labels for missing columns (use English labels as fallback)
+        const missingColumnLabels = missingColumns.map(fieldName => {
+            const field = metadata.fields.find(f => f.name === fieldName)
+            return field ? `${field.enLabel} (${field.name})` : fieldName
+        }).join(', ')
         errors.push({
             type: 'wrong-columns',
             code: 'import.missingColumns',
             params: {
                 type: importType,
-                columns: missingColumns.join(', ')
+                columns: missingColumnLabels,
+                fieldNames: missingColumns.join(',')
             }
         })
     }
 
     if (extraColumns.length > 0) {
+        // Try to map extra columns to their closest expected labels for better error messages
+        const extraColumnLabels = extraColumns.join(', ')
         errors.push({
             type: 'wrong-columns',
             code: 'import.extraColumns',
             params: {
                 type: importType,
-                columns: extraColumns.join(', ')
+                columns: extraColumnLabels
             }
         })
     }
