@@ -4,11 +4,12 @@
 
 package com.huawei.opsfactory.operationintelligence.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphEntity;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphOntology;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.KnowledgeGraphService;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -133,8 +134,7 @@ public class KnowledgeGraphController {
      * @return the result
      */
     @DeleteMapping("/admin/entities")
-    public Map<String, Object> deleteEntities(
-        @RequestParam(value = "ontologyId", required = false) String ontologyId,
+    public Map<String, Object> deleteEntities(@RequestParam(value = "ontologyId", required = false) String ontologyId,
         @RequestParam("envCode") String envCode) {
         return ok("result", knowledgeGraphService.deleteEntities(ontologyId, envCode));
     }

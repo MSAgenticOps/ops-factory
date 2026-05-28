@@ -262,9 +262,8 @@ public class KnowledgeGraphService {
         GraphEntity existing = getEntity(ontologyId, envCode, entityId);
         GraphEntity updated = mergeEntity(existing, request, entityId);
         GraphSnapshot nextSnapshot = copySnapshot(snapshot);
-        nextSnapshot.setEntities(snapshot.getEntities().stream()
-            .map(entity -> entityId.equals(entity.getId()) ? updated : entity)
-            .toList());
+        nextSnapshot.setEntities(
+            snapshot.getEntities().stream().map(entity -> entityId.equals(entity.getId()) ? updated : entity).toList());
         nextSnapshot.setSnapshotId(null);
         nextSnapshot.setGeneratedAt(null);
         prepareDefaults(nextSnapshot);
@@ -290,13 +289,14 @@ public class KnowledgeGraphService {
         GraphSnapshot snapshot = getRequiredSnapshot(ontologyId, envCode);
         getEntity(ontologyId, envCode, entityId);
         GraphSnapshot nextSnapshot = copySnapshot(snapshot);
-        nextSnapshot.setEntities(snapshot.getEntities().stream()
-            .filter(entity -> !entityId.equals(entity.getId()))
-            .toList());
-        nextSnapshot.setRelations(snapshot.getRelations().stream()
+        nextSnapshot
+            .setEntities(snapshot.getEntities().stream().filter(entity -> !entityId.equals(entity.getId())).toList());
+        nextSnapshot.setRelations(snapshot.getRelations()
+            .stream()
             .filter(relation -> !entityId.equals(relation.getFrom()) && !entityId.equals(relation.getTo()))
             .toList());
-        nextSnapshot.setObservations(snapshot.getObservations().stream()
+        nextSnapshot.setObservations(snapshot.getObservations()
+            .stream()
             .filter(observation -> !entityId.equals(observation.getEntityId()))
             .toList());
         nextSnapshot.setSnapshotId(null);
@@ -473,8 +473,8 @@ public class KnowledgeGraphService {
         List<Map<String, Object>> candidates = snapshot.getObservations()
             .stream()
             .filter(observation -> entityScope.contains(observation.getEntityId()))
-            .filter(observation -> !"normal".equals(observation.getSeverity() == null
-                ? null : observation.getSeverity().toLowerCase(Locale.ROOT)))
+            .filter(observation -> !"normal"
+                .equals(observation.getSeverity() == null ? null : observation.getSeverity().toLowerCase(Locale.ROOT)))
             .map(observation -> toRootCauseCandidate(snapshot, observation))
             .filter(Objects::nonNull)
             .sorted(candidateComparator())
@@ -540,17 +540,11 @@ public class KnowledgeGraphService {
                 Map<String, Object> metadata = snapshot.getMetadata();
                 String envName = metadata != null ? stringValue(metadata.get("envName")) : null;
                 String envNameAlt = metadata != null ? stringValue(metadata.get("environmentName")) : null;
-                String entityEnvName = snapshot.getEntities()
-                    .stream()
-                    .map(entity -> {
-                        Map<String, Object> props = entity.getProperties();
-                        return props != null ? stringValue(props.get("environmentName")) : null;
-                    })
-                    .filter(value -> value != null && !value.isBlank())
-                    .findFirst()
-                    .orElse(null);
-                return firstNonBlank(
-                    Arrays.asList(envName, envNameAlt, entityEnvName, envCode));
+                String entityEnvName = snapshot.getEntities().stream().map(entity -> {
+                    Map<String, Object> props = entity.getProperties();
+                    return props != null ? stringValue(props.get("environmentName")) : null;
+                }).filter(value -> value != null && !value.isBlank()).findFirst().orElse(null);
+                return firstNonBlank(Arrays.asList(envName, envNameAlt, entityEnvName, envCode));
             })
             .orElse(envCode);
     }
@@ -587,7 +581,8 @@ public class KnowledgeGraphService {
         if (request.getId() != null && !request.getId().isBlank() && !entityId.equals(request.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "entity.id does not match path parameter");
         }
-        if (request.getType() != null && !request.getType().isBlank() && !existing.getType().equals(request.getType())) {
+        if (request.getType() != null && !request.getType().isBlank()
+            && !existing.getType().equals(request.getType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "entity.type cannot be changed");
         }
         GraphEntity updated = new GraphEntity();
