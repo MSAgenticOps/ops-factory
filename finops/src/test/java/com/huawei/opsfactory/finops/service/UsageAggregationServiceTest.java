@@ -8,6 +8,7 @@ import com.huawei.opsfactory.finops.model.FinOpsModels.ModelUsage;
 import com.huawei.opsfactory.finops.model.FinOpsModels.QueryFilter;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.TaskExecutionLoad;
+import com.huawei.opsfactory.finops.model.FinOpsModels.UsageFilterRequest;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSummary;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UserUsage;
 import java.time.Instant;
@@ -73,7 +74,7 @@ class UsageAggregationServiceTest {
             session("outside", "admin", "agent-b", "manual", null, "provider-a", "model-a",
                 "2026-03-01T10:00:00Z", 999, 900, 99)
         );
-        QueryFilter filter = service.buildFilter(
+        QueryFilter filter = service.buildFilter(new UsageFilterRequest(
             "2026-05-01T00:00:00Z",
             "2026-06-01T00:00:00Z",
             "agent-a",
@@ -82,7 +83,7 @@ class UsageAggregationServiceTest {
             null,
             null,
             true
-        );
+        ));
 
         assertThat(service.filterCurrent(sessions, filter)).extracting(SessionUsageRecord::id).containsExactly("current");
         assertThat(service.filterPrevious(sessions, filter)).extracting(SessionUsageRecord::id).containsExactly("previous");
@@ -92,7 +93,7 @@ class UsageAggregationServiceTest {
 
     @Test
     void rejectsInvalidTimeRange() {
-        assertThatThrownBy(() -> service.buildFilter(
+        assertThatThrownBy(() -> service.buildFilter(new UsageFilterRequest(
             "2026-06-01T00:00:00Z",
             "2026-05-01T00:00:00Z",
             null,
@@ -101,7 +102,7 @@ class UsageAggregationServiceTest {
             null,
             null,
             false
-        )).isInstanceOf(IllegalArgumentException.class)
+        ))).isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("startTime must be before endTime");
     }
 

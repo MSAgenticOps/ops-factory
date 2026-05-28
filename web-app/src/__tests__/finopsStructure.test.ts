@@ -42,9 +42,9 @@ describe('finops frontend structure', () => {
         expect(runtimeSource).toContain('FINOPS_SECRET_KEY')
         expect(viteSource).toContain("'/finops': 'http://127.0.0.1:8097'")
         expect(standalone.finopsServiceUrl).toBe('http://127.0.0.1:8097')
-        expect(standalone.finopsSecretKey).toBeTruthy()
+        expect(standalone.finopsSecretKey).toBe('')
         expect(embed.finopsServiceUrl).toBe('')
-        expect(embed.finopsSecretKey).toBeTruthy()
+        expect(embed.finopsSecretKey).toBe('')
     })
 
     it('routes API calls only to supported finops endpoints', () => {
@@ -100,13 +100,23 @@ describe('finops frontend structure', () => {
 
     it('opens message explainability only from session rows', () => {
         const pageSource = read('src/app/modules/finops/pages/FinOpsPage.tsx')
-        const drawersSource = read('src/app/modules/finops/components/DetailDrawers.tsx')
+        const sessionDrawerSource = read('src/app/modules/finops/components/SessionMessagesDrawer.tsx')
         const tabsSource = read('src/app/modules/finops/components/DimensionTabs.tsx')
 
         expect(pageSource).toContain('SessionMessagesDrawer')
         expect(pageSource).toContain('fetchFinOpsSessionMessages(currentSession)')
         expect(pageSource).toContain('onSessionSelect={setSelectedSession}')
         expect(tabsSource).toContain('finops-clickable-row')
-        expect(drawersSource).toContain('finops.drawer.messageTokens')
+        expect(sessionDrawerSource).toContain('finops.drawer.messageTokens')
+    })
+
+    it('uses message creation time for latency badges and formats sub-second gaps', () => {
+        const drawersSource = read('src/app/modules/finops/components/SessionMessagesDrawer.tsx')
+
+        expect(drawersSource).toContain('const createdAtMs = new Date(message.createdAt).getTime()')
+        expect(drawersSource).toContain('return new Date(message.insertedAt).getTime()')
+        expect(drawersSource).toContain('diff >= 0 && diff < 3600')
+        expect(drawersSource).toContain('durationSeconds >= 0')
+        expect(drawersSource).toContain("return '<1s'")
     })
 })

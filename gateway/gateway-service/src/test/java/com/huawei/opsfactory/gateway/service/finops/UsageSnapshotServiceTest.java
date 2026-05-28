@@ -5,8 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SessionUsageRecord;
-import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SnapshotPayload;
+import com.huawei.opsfactory.gateway.model.finops.UsageSnapshotModels.SessionUsageRecord;
+import com.huawei.opsfactory.gateway.model.finops.UsageSnapshotModels.SnapshotPayload;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +18,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-class FinOpsUsageSnapshotServiceTest {
+class UsageSnapshotServiceTest {
 
     @TempDir
     private Path tempDir;
@@ -31,7 +31,7 @@ class FinOpsUsageSnapshotServiceTest {
 
         AgentConfigService agentConfigService = mock(AgentConfigService.class);
         when(agentConfigService.getUsersDir()).thenReturn(tempDir);
-        FinOpsUsageSnapshotService snapshotService = new FinOpsUsageSnapshotService(agentConfigService, new ObjectMapper());
+        UsageSnapshotService snapshotService = new UsageSnapshotService(agentConfigService, new ObjectMapper());
 
         SnapshotPayload result = snapshotService.snapshot();
         List<SessionUsageRecord> sessions = result.sessions().stream()
@@ -41,12 +41,14 @@ class FinOpsUsageSnapshotServiceTest {
         assertThat(result.sourceDbCount()).isEqualTo(1);
         assertThat(result.skippedDbCount()).isZero();
         assertThat(sessions).hasSize(2);
-        assertThat(result.messages()).hasSize(4);
+        assertThat(result.messages()).hasSize(5);
         assertThat(result.messages().get(0).contentPreview()).isEqualTo("Analyze incident impact");
         assertThat(result.messages().get(2).toolResponse()).isTrue();
         assertThat(result.messages().get(2).toolName()).isEqualTo("search");
         assertThat(result.messages().get(3).toolResponse()).isTrue();
         assertThat(result.messages().get(3).toolName()).isEqualTo("call_123");
+        assertThat(result.messages().get(4).toolResponse()).isTrue();
+        assertThat(result.messages().get(4).toolName()).isEqualTo("fetch");
 
         SessionUsageRecord manual = sessions.get(0);
         assertThat(manual.id()).isEqualTo("manual-1");
@@ -57,10 +59,10 @@ class FinOpsUsageSnapshotServiceTest {
         assertThat(manual.providerName()).isEqualTo("custom_qwen");
         assertThat(manual.modelName()).isEqualTo("qwen/qwen3.5-27b");
         assertThat(manual.totalTokens()).isEqualTo(1200);
-        assertThat(manual.messageCount()).isEqualTo(4);
+        assertThat(manual.messageCount()).isEqualTo(5);
         assertThat(manual.userMessageCount()).isEqualTo(1);
-        assertThat(manual.assistantMessageCount()).isEqualTo(3);
-        assertThat(manual.toolResponseCount()).isEqualTo(2);
+        assertThat(manual.assistantMessageCount()).isEqualTo(4);
+        assertThat(manual.toolResponseCount()).isEqualTo(3);
 
         SessionUsageRecord scheduled = sessions.get(1);
         assertThat(scheduled.id()).isEqualTo("scheduled-1");
@@ -68,6 +70,25 @@ class FinOpsUsageSnapshotServiceTest {
         assertThat(scheduled.scheduleId()).isEqualTo("schedule-1");
         assertThat(scheduled.label()).isEqualTo("Daily report - Summarize operations");
         assertThat(scheduled.modelName()).isEqualTo("qwen3.5:9b");
+    }
+
+    @Test
+    void marksDbSkippedWhenMessageQueryFails() throws Exception {
+        Path db = tempDir.resolve("admin/agents/qa-agent/data/sessions/sessions.db");
+        Files.createDirectories(db.getParent());
+        createDbWithBrokenMessageSchema(db);
+
+        AgentConfigService agentConfigService = mock(AgentConfigService.class);
+        when(agentConfigService.getUsersDir()).thenReturn(tempDir);
+        UsageSnapshotService snapshotService = new UsageSnapshotService(agentConfigService, new ObjectMapper());
+
+        SnapshotPayload result = snapshotService.snapshot();
+
+        assertThat(result.sourceDbCount()).isEqualTo(1);
+        assertThat(result.skippedDbCount()).isEqualTo(1);
+        assertThat(result.sessions()).isEmpty();
+        assertThat(result.messages()).isEmpty();
+        assertThat(result.lastError()).contains("sessions.db");
     }
 
     private static void createFixtureDb(Path db) throws Exception {
@@ -120,6 +141,44 @@ class FinOpsUsageSnapshotServiceTest {
             insertMessage(connection, "m2", "manual-1", "assistant", "{\"type\":\"text\",\"text\":\"Working\"}", 2);
             insertMessage(connection, "m3", "manual-1", "assistant", "{\"toolResponse\":{\"name\":\"search\",\"ok\":true}}", 3);
             insertMessage(connection, "m4", "manual-1", "assistant", "\"toolResponse call_123 success {\\\"hits\\\":[1]}\"", 4);
+            insertMessage(connection, "m5", "manual-1", "assistant", "{\"type\":\"tool_result\",\"name\":\"fetch\",\"content\":\"done\"}", 5);
+        }
+    }
+
+    private static void createDbWithBrokenMessageSchema(Path db) throws Exception {
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + db)) {
+            try (var statement = connection.createStatement()) {
+                statement.execute("""
+                    create table sessions (
+                        id text primary key,
+                        name text,
+                        session_type text,
+                        working_dir text,
+                        created_at text,
+                        updated_at text,
+                        total_tokens integer,
+                        input_tokens integer,
+                        output_tokens integer,
+                        accumulated_total_tokens integer,
+                        accumulated_input_tokens integer,
+                        accumulated_output_tokens integer,
+                        schedule_id text,
+                        recipe_json text,
+                        provider_name text,
+                        model_config_json text,
+                        goose_mode text,
+                        thread_id text
+                    )
+                    """);
+            }
+            try (var statement = connection.createStatement()) {
+                statement.execute("""
+                    create table messages (
+                        id integer primary key,
+                        session_id text
+                    )
+                    """);
+            }
         }
     }
 

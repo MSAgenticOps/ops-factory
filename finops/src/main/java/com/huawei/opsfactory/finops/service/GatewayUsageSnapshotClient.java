@@ -1,20 +1,21 @@
 package com.huawei.opsfactory.finops.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.finops.config.FinOpsProperties;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSnapshotPayload;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import org.springframework.http.HttpHeaders;
-import org.springframework.stereotype.Service;
 
 /**
- * Reads FinOps usage snapshots from the gateway internal API.
+ * Reads FinOps usage snapshots from the gateway usage API.
  *
  * @since 2026-05-28
  */
@@ -22,12 +23,19 @@ import org.springframework.stereotype.Service;
 public class GatewayUsageSnapshotClient {
 
     private static final String SECRET_HEADER = "x-secret-key";
-    private static final String SNAPSHOT_PATH = "/gateway/internal/finops/session-usage";
+    private static final String USER_HEADER = "x-user-id";
+    private static final String SNAPSHOT_PATH = "/gateway/usage/session-snapshot";
 
     private final FinOpsProperties properties;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    /**
+     * Creates a gateway usage snapshot client.
+     *
+     * @param properties FinOps configuration properties
+     * @param objectMapper JSON object mapper
+     */
     public GatewayUsageSnapshotClient(FinOpsProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
         this.objectMapper = objectMapper;
@@ -66,6 +74,10 @@ public class GatewayUsageSnapshotClient {
         String secretKey = gateway.getSecretKey();
         if (secretKey != null && !secretKey.isBlank()) {
             builder.header(SECRET_HEADER, secretKey);
+        }
+        String userId = gateway.getUserId();
+        if (userId != null && !userId.isBlank()) {
+            builder.header(USER_HEADER, userId);
         }
         return builder.build();
     }

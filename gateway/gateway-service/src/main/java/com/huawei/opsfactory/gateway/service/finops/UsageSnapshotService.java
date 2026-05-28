@@ -4,14 +4,17 @@
 
 package com.huawei.opsfactory.gateway.service.finops;
 
+import com.huawei.opsfactory.gateway.model.finops.UsageSnapshotModels.SessionMessageRecord;
+import com.huawei.opsfactory.gateway.model.finops.UsageSnapshotModels.SessionUsageRecord;
+import com.huawei.opsfactory.gateway.model.finops.UsageSnapshotModels.SnapshotPayload;
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SessionMessageRecord;
-import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SessionUsageRecord;
-import com.huawei.opsfactory.gateway.model.finops.FinOpsUsageSnapshotModels.SnapshotPayload;
-import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,11 +24,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,40 +31,34 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 /**
- * Builds FinOps usage snapshots from gateway-managed goosed session stores.
+ * Builds usage snapshots from gateway-managed goosed session stores.
  *
  * @since 2026-05-28
  */
 @Service
-public class FinOpsUsageSnapshotService {
+public class UsageSnapshotService {
 
-    private static final Logger log = LoggerFactory.getLogger(FinOpsUsageSnapshotService.class);
+    private static final Logger log = LoggerFactory.getLogger(UsageSnapshotService.class);
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private static final int MAX_DB_OPEN_SECONDS = 5;
-    private static final int MESSAGE_TEXT_LIMIT = 12_000;
-    private static final int MESSAGE_PREVIEW_LIMIT = 280;
-    private static final Pattern TOOL_NAME_PATTERN = Pattern.compile("\\btool(?:Request|Response|_use|_result)\\s+([A-Za-z0-9_.:-]+)");
-    private static final List<DateTimeFormatter> DATE_TIME_FORMATTERS = List.of(
-        DateTimeFormatter.ISO_DATE_TIME,
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-    );
 
     private final AgentConfigService agentConfigService;
     private final ObjectMapper objectMapper;
+    private final UsageSnapshotContentParser contentParser;
+    private final UsageSnapshotTimeParser timeParser = new UsageSnapshotTimeParser();
 
-    public FinOpsUsageSnapshotService(AgentConfigService agentConfigService, ObjectMapper objectMapper) {
+    /**
+     * Creates the gateway usage snapshot service.
+     *
+     * @param agentConfigService gateway agent configuration service
+     * @param objectMapper JSON object mapper
+     */
+    public UsageSnapshotService(AgentConfigService agentConfigService, ObjectMapper objectMapper) {
         this.agentConfigService = agentConfigService;
         this.objectMapper = objectMapper;
+        this.contentParser = new UsageSnapshotContentParser(objectMapper);
     }
 
     /**
@@ -77,7 +69,7 @@ public class FinOpsUsageSnapshotService {
     public SnapshotPayload snapshot() {
         Path dataRoot = agentConfigService.getUsersDir().toAbsolutePath().normalize();
         if (!Files.isDirectory(dataRoot)) {
-            log.warn("FinOps data root does not exist or is not a directory: {}", dataRoot);
+            log.warn("Usage snapshot data root does not exist or is not a directory: {}", dataRoot);
             return new SnapshotPayload(List.of(), List.of(), 0, 0, dataRoot.toString(), "Data root not found: " + dataRoot);
         }
 
@@ -85,7 +77,7 @@ public class FinOpsUsageSnapshotService {
         try (var stream = Files.find(dataRoot, 6, (path, attrs) -> attrs.isRegularFile() && isSessionDb(path))) {
             dbs = stream.sorted().toList();
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to scan FinOps data root " + dataRoot, ex);
+            throw new IllegalStateException("Failed to scan usage snapshot data root " + dataRoot, ex);
         }
 
         List<SessionUsageRecord> sessions = new ArrayList<>();
@@ -146,7 +138,7 @@ public class FinOpsUsageSnapshotService {
         return Optional.of(new UserAgent(relative.getName(0).toString(), relative.getName(2).toString()));
     }
 
-    private Map<String, MessageStats> readMessageStats(Connection connection) {
+    private Map<String, MessageStats> readMessageStats(Connection connection) throws SQLException {
         if (!tableExists(connection, "messages")) {
             return Map.of();
         }
@@ -171,17 +163,15 @@ public class FinOpsUsageSnapshotService {
                 if ("user".equalsIgnoreCase(role)) {
                     item.userMessageCount++;
                     if (item.firstUserText == null) {
-                        item.firstUserText = extractFirstText(content);
+                        item.firstUserText = contentParser.extractFirstText(content);
                     }
                 } else if ("assistant".equalsIgnoreCase(role)) {
                     item.assistantMessageCount++;
                 }
-                if (content != null && content.contains("toolResponse")) {
+                if (contentParser.containsToolResponse(content)) {
                     item.toolResponseCount++;
                 }
             }
-        } catch (SQLException ex) {
-            log.warn("Failed to read FinOps message stats", ex);
         }
         Map<String, MessageStats> result = new HashMap<>();
         stats.forEach((key, value) -> result.put(key, value.toRecord()));
@@ -220,8 +210,8 @@ public class FinOpsUsageSnapshotService {
                     name,
                     normalizeSessionType(rs.getString("session_type"), rs.getString("schedule_id")),
                     rs.getString("working_dir"),
-                    parseInstant(rs.getObject("created_at")),
-                    parseInstant(rs.getObject("updated_at")),
+                    timeParser.parseInstant(rs.getObject("created_at")),
+                    timeParser.parseInstant(rs.getObject("updated_at")),
                     longValue(rs.getObject("total_tokens")),
                     longValue(rs.getObject("input_tokens")),
                     longValue(rs.getObject("output_tokens")),
@@ -246,7 +236,7 @@ public class FinOpsUsageSnapshotService {
         return records;
     }
 
-    private List<SessionMessageRecord> readMessages(Connection connection, UserAgent userAgent) {
+    private List<SessionMessageRecord> readMessages(Connection connection, UserAgent userAgent) throws SQLException {
         if (!tableExists(connection, "messages")) {
             return List.of();
         }
@@ -265,8 +255,8 @@ public class FinOpsUsageSnapshotService {
                     continue;
                 }
                 String contentJson = rs.getString("content_json");
-                MessageContentSummary content = summarizeContent(contentJson);
-                MessageMetadata metadata = parseMetadata(rs.getString("metadata_json"));
+                UsageSnapshotContentParser.MessageContentSummary content = contentParser.summarizeContent(contentJson);
+                UsageSnapshotContentParser.MessageMetadata metadata = contentParser.parseMetadata(rs.getString("metadata_json"));
                 records.add(new SessionMessageRecord(
                     sessionId,
                     userAgent.userId(),
@@ -274,8 +264,8 @@ public class FinOpsUsageSnapshotService {
                     blankToNull(rs.getString("message_id")),
                     longValue(rs.getObject("id")),
                     nullToEmpty(rs.getString("role")),
-                    parseInstant(rs.getObject("created_timestamp")),
-                    parseInstant(rs.getObject("timestamp")),
+                    timeParser.parseInstant(rs.getObject("created_timestamp")),
+                    timeParser.parseInstant(rs.getObject("timestamp")),
                     nullableLong(rs.getObject("tokens")),
                     content.contentLength(),
                     content.preview(),
@@ -289,21 +279,16 @@ public class FinOpsUsageSnapshotService {
                     metadata.agentVisible()
                 ));
             }
-        } catch (SQLException ex) {
-            log.warn("Failed to read FinOps message details", ex);
         }
         return records;
     }
 
-    private boolean tableExists(Connection connection, String tableName) {
+    private boolean tableExists(Connection connection, String tableName) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("select name from sqlite_master where type='table' and name=?")) {
             statement.setString(1, tableName);
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next();
             }
-        } catch (SQLException ex) {
-            log.debug("FinOps table lookup failed for {}", tableName, ex);
-            return false;
         }
     }
 
@@ -341,188 +326,6 @@ public class FinOpsUsageSnapshotService {
         return truncate(firstUserText == null || firstUserText.isBlank() ? "Session" : firstUserText.trim(), 120);
     }
 
-    private String extractFirstText(String contentJson) {
-        if (contentJson == null || contentJson.isBlank()) {
-            return null;
-        }
-        try {
-            JsonNode root = objectMapper.readTree(contentJson);
-            return findText(root);
-        } catch (JsonProcessingException ex) {
-            return null;
-        }
-    }
-
-    private MessageContentSummary summarizeContent(String contentJson) {
-        if (contentJson == null || contentJson.isBlank()) {
-            return new MessageContentSummary(0, "", "", false, false, false, null, false);
-        }
-        try {
-            JsonNode root = objectMapper.readTree(contentJson);
-            StringBuilder text = new StringBuilder();
-            ContentSignals signals = new ContentSignals();
-            collectContent(root, text, signals);
-            String normalized = normalizeWhitespace(text.isEmpty() ? contentJson : text.toString());
-            detectTextualToolSignals(normalized, signals);
-            int length = normalized.length();
-            boolean truncated = length > MESSAGE_TEXT_LIMIT;
-            String contentText = truncated ? normalized.substring(0, MESSAGE_TEXT_LIMIT) : normalized;
-            return new MessageContentSummary(
-                length,
-                truncate(normalized, MESSAGE_PREVIEW_LIMIT),
-                contentText,
-                truncated,
-                signals.toolRequest,
-                signals.toolResponse,
-                signals.toolName,
-                signals.error
-            );
-        } catch (JsonProcessingException ex) {
-            String normalized = normalizeWhitespace(contentJson);
-            int length = normalized.length();
-            boolean truncated = length > MESSAGE_TEXT_LIMIT;
-            boolean toolRequest = containsToolRequest(normalized);
-            boolean toolResponse = containsToolResponse(normalized);
-            return new MessageContentSummary(
-                length,
-                truncate(normalized, MESSAGE_PREVIEW_LIMIT),
-                truncated ? normalized.substring(0, MESSAGE_TEXT_LIMIT) : normalized,
-                truncated,
-                toolRequest,
-                toolResponse,
-                extractToolName(normalized),
-                normalized.toLowerCase(Locale.ROOT).contains("error")
-            );
-        }
-    }
-
-    private void collectContent(JsonNode node, StringBuilder text, ContentSignals signals) {
-        if (node == null || node.isNull()) {
-            return;
-        }
-        if (node.isObject()) {
-            String type = textValue(node.get("type"));
-            if ("text".equals(type) || "thinking".equals(type)) {
-                appendText(text, textValue(node.get("text")));
-                appendText(text, textValue(node.get("thinking")));
-                return;
-            }
-            if (node.has("toolRequest") || "tool_use".equals(type)) {
-                signals.toolRequest = true;
-                JsonNode tool = node.has("toolRequest") ? node.get("toolRequest") : node;
-                signals.toolName = firstNonBlank(signals.toolName, textValue(tool.get("name")), textValue(tool.get("toolName")));
-                appendText(text, summarizeJson(tool));
-            }
-            if (node.has("toolResponse") || "tool_result".equals(type)) {
-                signals.toolResponse = true;
-                JsonNode tool = node.has("toolResponse") ? node.get("toolResponse") : node;
-                signals.toolName = firstNonBlank(signals.toolName, textValue(tool.get("name")), textValue(tool.get("toolName")));
-                appendText(text, summarizeJson(tool));
-            }
-            if (node.has("error") || "error".equalsIgnoreCase(textValue(node.get("status")))) {
-                signals.error = true;
-            }
-            for (JsonNode child : node) {
-                collectContent(child, text, signals);
-            }
-            return;
-        }
-        if (node.isArray()) {
-            for (JsonNode child : node) {
-                collectContent(child, text, signals);
-            }
-            return;
-        }
-        if (node.isTextual()) {
-            appendText(text, node.asText());
-        }
-    }
-
-    private void detectTextualToolSignals(String value, ContentSignals signals) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        if (containsToolRequest(value)) {
-            signals.toolRequest = true;
-        }
-        if (containsToolResponse(value)) {
-            signals.toolResponse = true;
-        }
-        signals.toolName = firstNonBlank(signals.toolName, extractToolName(value));
-        if (value.toLowerCase(Locale.ROOT).contains("error")) {
-            signals.error = true;
-        }
-    }
-
-    private boolean containsToolRequest(String value) {
-        String text = value == null ? "" : value;
-        return text.contains("toolRequest")
-            || text.contains("tool_request")
-            || text.contains("tool_use")
-            || text.startsWith("toolRequest call_")
-            || text.startsWith("tool_use call_");
-    }
-
-    private boolean containsToolResponse(String value) {
-        String text = value == null ? "" : value;
-        return text.contains("toolResponse")
-            || text.contains("tool_response")
-            || text.contains("tool_result")
-            || text.startsWith("toolResponse call_")
-            || text.startsWith("tool_result call_");
-    }
-
-    private String extractToolName(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        Matcher matcher = TOOL_NAME_PATTERN.matcher(value);
-        return matcher.find() ? matcher.group(1) : null;
-    }
-
-    private MessageMetadata parseMetadata(String metadataJson) {
-        if (metadataJson == null || metadataJson.isBlank()) {
-            return new MessageMetadata(true, true);
-        }
-        try {
-            JsonNode root = objectMapper.readTree(metadataJson);
-            return new MessageMetadata(
-                booleanValue(root.get("userVisible"), true),
-                booleanValue(root.get("agentVisible"), true)
-            );
-        } catch (JsonProcessingException ex) {
-            return new MessageMetadata(true, true);
-        }
-    }
-
-    private String findText(JsonNode node) {
-        if (node == null || node.isNull()) {
-            return null;
-        }
-        if (node.isObject()) {
-            JsonNode type = node.get("type");
-            JsonNode text = node.get("text");
-            if (type != null && "text".equals(type.asText()) && text != null && text.isTextual()) {
-                return text.asText();
-            }
-            for (JsonNode child : node) {
-                String result = findText(child);
-                if (result != null && !result.isBlank()) {
-                    return result;
-                }
-            }
-        }
-        if (node.isArray()) {
-            for (JsonNode child : node) {
-                String result = findText(child);
-                if (result != null && !result.isBlank()) {
-                    return result;
-                }
-            }
-        }
-        return null;
-    }
-
     private String normalizeSessionType(String type, String scheduleId) {
         if (scheduleId != null && !scheduleId.isBlank()) {
             return "scheduled";
@@ -531,57 +334,6 @@ public class FinOpsUsageSnapshotService {
             return "manual";
         }
         return type.toLowerCase(Locale.ROOT);
-    }
-
-    private Instant parseInstant(Object value) {
-        if (value == null) {
-            return Instant.EPOCH;
-        }
-        if (value instanceof Number number) {
-            long raw = number.longValue();
-            return raw > 9_999_999_999L ? Instant.ofEpochMilli(raw) : Instant.ofEpochSecond(raw);
-        }
-        String text = value.toString();
-        if (text.isBlank()) {
-            return Instant.EPOCH;
-        }
-        Optional<Instant> parsedInstant = parseIsoInstant(text);
-        if (parsedInstant.isPresent()) {
-            return parsedInstant.get();
-        }
-        for (DateTimeFormatter formatter : DATE_TIME_FORMATTERS) {
-            Optional<Instant> localDateTime = parseLocalDateTime(text, formatter);
-            if (localDateTime.isPresent()) {
-                return localDateTime.get();
-            }
-        }
-        Optional<Long> epoch = parseLong(text);
-        return epoch.map(raw -> raw > 9_999_999_999L ? Instant.ofEpochMilli(raw) : Instant.ofEpochSecond(raw))
-            .orElse(Instant.EPOCH);
-    }
-
-    private Optional<Instant> parseIsoInstant(String text) {
-        try {
-            return Optional.of(Instant.parse(text));
-        } catch (DateTimeParseException ex) {
-            return Optional.empty();
-        }
-    }
-
-    private Optional<Instant> parseLocalDateTime(String text, DateTimeFormatter formatter) {
-        try {
-            return Optional.of(LocalDateTime.parse(text, formatter).toInstant(ZoneOffset.UTC));
-        } catch (DateTimeParseException ex) {
-            return Optional.empty();
-        }
-    }
-
-    private Optional<Long> parseLong(String text) {
-        try {
-            return Optional.of(Long.parseLong(text));
-        } catch (NumberFormatException ex) {
-            return Optional.empty();
-        }
     }
 
     private long longValue(Object value) {
@@ -628,48 +380,6 @@ public class FinOpsUsageSnapshotService {
         }
     }
 
-    private boolean booleanValue(JsonNode node, boolean fallback) {
-        return node == null || node.isNull() ? fallback : node.asBoolean(fallback);
-    }
-
-    private String textValue(JsonNode node) {
-        return node == null || node.isNull() ? "" : node.asText("");
-    }
-
-    private void appendText(StringBuilder target, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        if (!target.isEmpty()) {
-            target.append('\n');
-        }
-        target.append(value);
-    }
-
-    private String summarizeJson(JsonNode node) {
-        if (node == null || node.isNull()) {
-            return "";
-        }
-        String text = findText(node);
-        if (text != null && !text.isBlank()) {
-            return text;
-        }
-        return node.toString();
-    }
-
-    private String normalizeWhitespace(String value) {
-        return value == null ? "" : value.replaceAll("[\\t\\r ]+", " ").replaceAll("\\n{3,}", "\n\n").trim();
-    }
-
-    private String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-        }
-        return null;
-    }
-
     private String truncate(String value, int max) {
         if (value.length() <= max) {
             return value;
@@ -681,28 +391,6 @@ public class FinOpsUsageSnapshotService {
     }
 
     private record UserAgent(String userId, String agentId) {
-    }
-
-    private record MessageContentSummary(
-        int contentLength,
-        String preview,
-        String text,
-        boolean truncated,
-        boolean toolRequest,
-        boolean toolResponse,
-        String toolName,
-        boolean error
-    ) {
-    }
-
-    private record MessageMetadata(boolean userVisible, boolean agentVisible) {
-    }
-
-    private static final class ContentSignals {
-        private boolean toolRequest;
-        private boolean toolResponse;
-        private String toolName;
-        private boolean error;
     }
 
     private record MessageStats(

@@ -12,6 +12,10 @@ import {
     chartColorSets,
 } from './SharedComponents'
 
+interface TooltipParam {
+    name?: string
+}
+
 interface OverviewTabProps {
     trend: { bucket: string; totalTokens: number; inputTokens: number; outputTokens: number; sessionCount: number }[]
     sessionTypes: DistributionItem[]
@@ -47,7 +51,7 @@ export function OverviewTab({
             grid: {
                 top: 28,
                 right: 16,
-                bottom: 24,
+                bottom: 42,
                 left: 48,
                 containLabel: false,
             },
@@ -56,7 +60,12 @@ export function OverviewTab({
                 data: xAxisData,
                 axisLine: { lineStyle: { color: 'var(--color-border)' } },
                 axisTick: { show: false },
-                axisLabel: { color: 'var(--color-text-secondary)', fontSize: 11 },
+                axisLabel: {
+                    color: 'var(--color-text-secondary)',
+                    fontSize: 11,
+                    hideOverlap: true,
+                    margin: 10,
+                },
                 splitLine: { show: false },
             },
             yAxis: {
@@ -75,7 +84,7 @@ export function OverviewTab({
                 backgroundColor: 'var(--color-bg-primary)',
                 borderColor: 'var(--color-border)',
                 textStyle: { color: 'var(--color-text-primary)', fontSize: 12 },
-                formatter: (params: any) => {
+                formatter: (params: TooltipParam | TooltipParam[]) => {
                     const rows = Array.isArray(params) ? params : [params]
                     const first = rows[0]
                     const point = normalizedTrend.find(item => item.bucket === first?.name)
@@ -90,7 +99,7 @@ export function OverviewTab({
                         [t('finops.metrics.avgTokens'), point.sessionCount > 0 ? point.totalTokens / point.sessionCount : 0],
                     ]
                     return [
-                        `<strong>${escapeHtml(first.name)}</strong>`,
+                        `<strong>${escapeHtml(first.name ?? '')}</strong>`,
                         ...metricRows.map(([label, value]) => `${escapeHtml(String(label))}: <b>${formatNumber(Number(value))}</b>`),
                     ].join('<br/>')
                 },
@@ -139,7 +148,12 @@ export function OverviewTab({
                 className="finops-card-span"
             >
                 <div className="finops-trend-chart">
-                    <ReactECharts option={echartsOption} opts={{ renderer: 'svg' }} style={{ height: '100%', width: '100%' }} />
+                    <ReactECharts
+                        className="finops-trend-echart"
+                        option={echartsOption}
+                        opts={{ renderer: 'svg' }}
+                        style={{ width: '100%', height: '100%' }}
+                    />
                 </div>
             </SectionCard>
             <TaskExecutionLoadCard load={taskExecutionLoad} />
@@ -195,7 +209,9 @@ function TaskExecutionLoadCard({ load }: { load: TaskExecutionLoad }) {
                         </div>
                         <small>{row.detail}</small>
                         <div className="finops-task-load-bar" aria-hidden="true">
-                            <i style={{ width: `${row.ratio * 100}%`, background: row.color }} />
+                            <svg className="finops-inline-bar" viewBox="0 0 100 1" preserveAspectRatio="none">
+                                <rect x="0" y="0" width={row.ratio * 100} height="1" fill={row.color} />
+                            </svg>
                         </div>
                     </div>
                 ))}
@@ -237,14 +253,12 @@ function UserDistributionCard({ topUsers, totalTokens }: { topUsers: UserUsage[]
                 {list.map((u, index) => {
                     const percentage = totalTokens > 0 ? u.totalTokens / totalTokens : 0
                     const initials = u.userId ? u.userId.slice(0, 2).toUpperCase() : '??'
-                    const accentColor = chartColorSets.user[index % chartColorSets.user.length]
-
                     return (
                         <div className="finops-leaderboard-item" key={u.userId}>
                             <div className="finops-leaderboard-rank">
                                 <span className={`rank-badge rank-${index + 1}`}>{index + 1}</span>
                             </div>
-                            <div className="finops-leaderboard-avatar" style={{ background: `color-mix(in srgb, ${accentColor} 12%, transparent)`, color: accentColor }}>
+                            <div className={`finops-leaderboard-avatar finops-leaderboard-accent-${index % chartColorSets.user.length + 1}`}>
                                 {initials}
                             </div>
                             <div className="finops-leaderboard-info">
@@ -253,7 +267,9 @@ function UserDistributionCard({ topUsers, totalTokens }: { topUsers: UserUsage[]
                                     <span className="user-value">{formatNumber(u.totalTokens)} ({formatPercent(percentage)})</span>
                                 </div>
                                 <div className="info-bar">
-                                    <div className="info-bar-fill" style={{ width: `${percentage * 100}%`, background: accentColor }} />
+                                    <svg className="finops-inline-bar" viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true">
+                                        <rect x="0" y="0" width={percentage * 100} height="1" fill={chartColorSets.user[index % chartColorSets.user.length]} />
+                                    </svg>
                                 </div>
                             </div>
                         </div>
@@ -313,19 +329,23 @@ function ModelDistributionCard({ models, totalTokens }: { models: ModelUsage[]; 
                     const color = chartColorSets.provider[index % chartColorSets.provider.length]
                     return (
                         <div className="finops-model-row" key={`${model.modelName}-${model.providerLabel}`}>
-                            <div className="finops-model-row-head">
-                                <span className="finops-model-name" title={model.modelName}>
-                                    <i style={{ background: color }} />
-                                    {model.modelName}
-                                </span>
-                                <strong>{formatNumber(model.totalTokens)}</strong>
-                            </div>
+	                            <div className="finops-model-row-head">
+	                                <span className="finops-model-name" title={model.modelName}>
+                                        <svg className="finops-color-dot" viewBox="0 0 8 8" aria-hidden="true">
+                                            <circle cx="4" cy="4" r="4" fill={color} />
+                                        </svg>
+	                                    {model.modelName}
+	                                </span>
+	                                <strong>{formatNumber(model.totalTokens)}</strong>
+	                            </div>
                             <div className="finops-model-provider" title={model.providerLabel}>
                                 {t('finops.modelDistribution.meta', { sessions: model.sessionCount })}
-                            </div>
-                            <div className="finops-model-bar" aria-hidden="true">
-                                <span style={{ width: `${percentage * 100}%`, background: color }} />
-                            </div>
+	                            </div>
+	                            <div className="finops-model-bar" aria-hidden="true">
+                                    <svg className="finops-inline-bar" viewBox="0 0 100 1" preserveAspectRatio="none">
+                                        <rect x="0" y="0" width={percentage * 100} height="1" fill={color} />
+                                    </svg>
+	                            </div>
                             <div className="finops-model-meta">
                                 <span>{formatPercent(percentage)}</span>
                                 <span>{t('finops.modelDistribution.avgTokens', { tokens: formatNumber(model.avgTokensPerSession) })}</span>
@@ -373,12 +393,14 @@ function DonutDistribution({ items, colors, caption }: { items: Array<{ id: stri
             <div className="finops-donut-legend">
                 {items.map((item, index) => {
                     const percent = total > 0 ? item.totalTokens / total : 0
-                    return (
-                        <div className="finops-donut-row" key={item.id}>
-                            <span className="finops-donut-label" title={item.label}>
-                                <i style={{ background: colors[index % colors.length] }} />
-                                {item.label}
-                            </span>
+	                    return (
+	                        <div className="finops-donut-row" key={item.id}>
+	                            <span className="finops-donut-label" title={item.label}>
+                                    <svg className="finops-color-dot" viewBox="0 0 8 8" aria-hidden="true">
+                                        <circle cx="4" cy="4" r="4" fill={colors[index % colors.length]} />
+                                    </svg>
+	                                {item.label}
+	                            </span>
                             <strong>{formatNumber(item.totalTokens)}</strong>
                             <small>{formatPercent(percent)}</small>
                         </div>

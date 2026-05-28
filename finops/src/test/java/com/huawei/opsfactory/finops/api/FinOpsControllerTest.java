@@ -1,10 +1,12 @@
 package com.huawei.opsfactory.finops.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionMessageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSnapshotPayload;
+import com.huawei.opsfactory.finops.service.GatewayUsageSnapshotClient;
 import com.huawei.opsfactory.finops.store.FinOpsSnapshotStore;
 import java.time.Instant;
 import java.util.List;
@@ -12,6 +14,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -34,6 +37,9 @@ class FinOpsControllerTest {
 
     @Autowired
     private FinOpsSnapshotStore snapshotStore;
+
+    @MockBean
+    private GatewayUsageSnapshotClient snapshotClient;
 
     @Test
     void rejectsRequestsWithoutConfiguredSecret() {
@@ -82,6 +88,29 @@ class FinOpsControllerTest {
         assertThat(response.getBody()).doesNotContain("threadId");
         assertThat(response.getBody()).doesNotContain("modelConfig");
         assertThat(response.getBody()).doesNotContain("recipe");
+    }
+
+    @Test
+    void exposesSessionDetailByUserAgentScopedIdentity() {
+        snapshotStore.update(new UsageSnapshotPayload(
+            List.of(
+                session("shared-session", "admin", "qa-agent", "Admin scoped session"),
+                session("shared-session", "alice", "kb-agent", "Alice scoped session")
+            ),
+            List.of(),
+            1,
+            0,
+            "test",
+            null
+        ));
+
+        ResponseEntity<String> response = getWithSecret("/finops/sessions/shared-session?userId=alice&agentId=kb-agent");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("\"userId\":\"alice\"");
+        assertThat(response.getBody()).contains("\"agentId\":\"kb-agent\"");
+        assertThat(response.getBody()).contains("Alice scoped session");
+        assertThat(response.getBody()).doesNotContain("Admin scoped session");
     }
 
     @Test
@@ -138,6 +167,33 @@ class FinOpsControllerTest {
     }
 
     @Test
+    void refreshLoadsGatewaySnapshotAndMakesItAvailableToOverview() {
+        when(snapshotClient.fetchSnapshot()).thenReturn(new UsageSnapshotPayload(
+            List.of(session("gateway-session")),
+            List.of(),
+            1,
+            0,
+            "gateway",
+            null
+        ));
+
+        ResponseEntity<String> refresh = restTemplate.exchange(
+            "/finops/refresh",
+            HttpMethod.POST,
+            new HttpEntity<>(headers()),
+            String.class
+        );
+        ResponseEntity<String> overview = getWithSecret("/finops/overview?compare=true");
+
+        assertThat(refresh.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(refresh.getBody()).contains("\"status\":\"ready\"");
+        assertThat(refresh.getBody()).contains("\"sessionCount\":1");
+        assertThat(overview.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(overview.getBody()).contains("gateway-session");
+        assertThat(overview.getBody()).contains("\"totalTokens\":1000");
+    }
+
+    @Test
     void removedRecommendationAndReportEndpointsStayUnavailable() {
         assertThat(getWithSecret("/finops/recommendations").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(getWithSecret("/finops/reports/summary").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -154,12 +210,16 @@ class FinOpsControllerTest {
     }
 
     private static SessionUsageRecord session(String id) {
+        return session(id, "admin", "qa-agent", "Session " + id);
+    }
+
+    private static SessionUsageRecord session(String id, String userId, String agentId, String label) {
         Instant updatedAt = Instant.now().minusSeconds(60);
         return new SessionUsageRecord(
             id,
-            "admin",
-            "qa-agent",
-            "Session " + id,
+            userId,
+            agentId,
+            label,
             "user",
             "/tmp/internal-workdir",
             updatedAt.minusSeconds(3600),
@@ -179,7 +239,7 @@ class FinOpsControllerTest {
             1,
             1,
             1,
-            "Session " + id,
+            label,
             Map.of("secret", "raw-model-config"),
             Map.of("prompt", "raw-recipe")
         );

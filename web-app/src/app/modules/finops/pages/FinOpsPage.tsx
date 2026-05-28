@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Coins, CornerDownRight, CornerUpRight, MessageSquare, Users, Bot } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
@@ -8,6 +8,7 @@ import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useFinOps } from '../hooks/useFinOps'
+import { useScrollClass } from '../hooks/useScrollClass'
 import {
     fetchFinOpsAgents,
     fetchFinOpsModels,
@@ -17,7 +18,6 @@ import {
     type AgentUsage,
     type UserUsage,
     type SessionMessagesResponse,
-    type PageResponse,
     fetchFinOpsUsers,
 } from '../../../../services/finopsAPI'
 
@@ -26,6 +26,7 @@ import {
     DetailTabId,
     DetailPages,
     DetailData,
+    DetailPageResponse,
     PAGE_SIZE,
     formatNumber,
     formatPercent,
@@ -34,8 +35,11 @@ import {
 } from '../components/SharedComponents'
 import { OverviewTab } from '../components/OverviewTab'
 import { AgentsTab, UsersTab, SessionsTab, ModelsTab } from '../components/DimensionTabs'
-import { SessionMessagesDrawer, AgentDetailDrawer, UserDetailDrawer } from '../components/DetailDrawers'
+import { AgentDetailDrawer, UserDetailDrawer } from '../components/DetailDrawers'
+import { SessionMessagesDrawer } from '../components/SessionMessagesDrawer'
 import '../styles/finops.css'
+import '../styles/finops-drawers.css'
+import '../styles/finops-overview.css'
 
 const tabs: TabId[] = ['overview', 'agents', 'users', 'sessions', 'models']
 
@@ -55,6 +59,8 @@ export default function FinOpsPage() {
     const [sessionMessagesLoading, setSessionMessagesLoading] = useState(false)
     const [sessionMessagesError, setSessionMessagesError] = useState<string | null>(null)
     const locale = i18n.language?.startsWith('zh') ? 'zh-CN' : 'en-US'
+    const bodyTarget = useCallback(() => document.body, [])
+    const windowTarget = useCallback(() => window, [])
 
     const stats = data?.summary.current
     const topTrend = useMemo(() => data?.tokenTrend.slice(-14) ?? [], [data])
@@ -149,28 +155,11 @@ export default function FinOpsPage() {
 
     useEffect(() => {
         document.body.classList.add('finops-page-active')
-        let timeoutId: number | undefined
-
-        const handleScroll = () => {
-            document.body.classList.add('is-scrolling')
-            if (timeoutId) {
-                window.clearTimeout(timeoutId)
-            }
-            timeoutId = window.setTimeout(() => {
-                document.body.classList.remove('is-scrolling')
-            }, 800)
-        }
-
-        window.addEventListener('scroll', handleScroll, { passive: true })
         return () => {
-            window.removeEventListener('scroll', handleScroll)
             document.body.classList.remove('finops-page-active')
-            document.body.classList.remove('is-scrolling')
-            if (timeoutId) {
-                window.clearTimeout(timeoutId)
-            }
         }
     }, [])
+    useScrollClass(bodyTarget, 'is-scrolling', [], windowTarget)
 
     useEffect(() => {
         if (activeTab !== 'sessions' && activeTab !== 'agents' && activeTab !== 'users') {
@@ -189,7 +178,7 @@ export default function FinOpsPage() {
         return detailData[tab as Exclude<TabId, 'overview'>]?.totalItems ?? 0
     }
 
-    function fetchDetailPage(tab: DetailTabId, page: number): Promise<PageResponse<any>> {
+    function fetchDetailPage(tab: DetailTabId, page: number): Promise<DetailPageResponse> {
         if (tab === 'agents') return fetchFinOpsAgents(page, PAGE_SIZE)
         if (tab === 'users') return fetchFinOpsUsers(page, PAGE_SIZE)
         if (tab === 'sessions') return fetchFinOpsSessions(page, PAGE_SIZE)

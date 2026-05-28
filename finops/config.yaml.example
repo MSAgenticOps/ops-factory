@@ -6,7 +6,8 @@ finops:
   cors-origin: "http://127.0.0.1:5173"
   gateway:
     base-url: "http://127.0.0.1:3000"
-    secret-key: "${GATEWAY_API_PASSWORD:}"
+    secret-key: "${GATEWAY_SECRET_KEY:}"
+    user-id: "${FINOPS_GATEWAY_USER_ID:}"
     timeout-ms: 30000
   scan:
     refresh-interval-ms: 300000

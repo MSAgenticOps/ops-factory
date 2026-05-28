@@ -2,7 +2,15 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import Pagination from '../../../platform/ui/primitives/Pagination'
-import type { DistributionItem, OverviewResponse, PageResponse } from '../../../../services/finopsAPI'
+import type {
+    AgentUsage,
+    DistributionItem,
+    ModelUsage,
+    OverviewResponse,
+    PageResponse,
+    SessionUsage,
+    UserUsage,
+} from '../../../../services/finopsAPI'
 
 export type TabId = 'overview' | 'agents' | 'users' | 'sessions' | 'models'
 export type DetailTabId = Exclude<TabId, 'overview'>
@@ -28,11 +36,17 @@ export interface DetailPages {
 }
 
 export interface DetailData {
-    agents: PageResponse<any> | null
-    users: PageResponse<any> | null
-    sessions: PageResponse<any> | null
-    models: PageResponse<any> | null
+    agents: PageResponse<AgentUsage> | null
+    users: PageResponse<UserUsage> | null
+    sessions: PageResponse<SessionUsage> | null
+    models: PageResponse<ModelUsage> | null
 }
+
+export type DetailPageResponse =
+    | PageResponse<AgentUsage>
+    | PageResponse<UserUsage>
+    | PageResponse<SessionUsage>
+    | PageResponse<ModelUsage>
 
 export const PAGE_SIZE = 25
 
@@ -184,20 +198,24 @@ export function SplitBar({ segments }: { segments: SplitSegment[] }) {
                 {segments.map(segment => {
                     const width = total > 0 ? segment.value / total * 100 : 0
                     return (
-                        <i
+                        <svg
                             key={segment.id}
-                            style={{
-                                width: `${width}%`,
-                                background: segment.color,
-                            }}
-                        />
+                            className="finops-split-segment"
+                            width={`${width}%`}
+                            viewBox="0 0 100 1"
+                            preserveAspectRatio="none"
+                        >
+                            <rect x="0" y="0" width={width} height="1" fill={segment.color} />
+                        </svg>
                     )
                 })}
             </div>
             <div className="finops-split-legend">
                 {segments.map(segment => (
                     <span key={segment.id}>
-                        <i style={{ background: segment.color }} />
+                        <svg className="finops-color-dot" viewBox="0 0 8 8" aria-hidden="true">
+                            <circle cx="4" cy="4" r="4" fill={segment.color} />
+                        </svg>
                         <b>{segment.label}</b>
                         <strong>{formatNumber(segment.value)}</strong>
                         <small>{formatPercent(total > 0 ? segment.value / total : 0)}</small>

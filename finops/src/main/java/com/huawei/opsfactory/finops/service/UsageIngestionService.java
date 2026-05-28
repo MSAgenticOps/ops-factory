@@ -3,11 +3,12 @@ package com.huawei.opsfactory.finops.service;
 import com.huawei.opsfactory.finops.config.FinOpsProperties;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSnapshotPayload;
 import com.huawei.opsfactory.finops.store.FinOpsSnapshotStore;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import jakarta.annotation.PostConstruct;
 
 /**
  * Refreshes the in-memory FinOps snapshot from the configured gateway.
@@ -23,6 +24,13 @@ public class UsageIngestionService {
     private final GatewayUsageSnapshotClient snapshotClient;
     private final FinOpsSnapshotStore snapshotStore;
 
+    /**
+     * Creates a snapshot ingestion service.
+     *
+     * @param properties FinOps configuration properties
+     * @param snapshotClient gateway snapshot client
+     * @param snapshotStore snapshot store
+     */
     public UsageIngestionService(FinOpsProperties properties,
                                  GatewayUsageSnapshotClient snapshotClient,
                                  FinOpsSnapshotStore snapshotStore) {
@@ -31,6 +39,9 @@ public class UsageIngestionService {
         this.snapshotStore = snapshotStore;
     }
 
+    /**
+     * Refreshes the snapshot during startup when enabled.
+     */
     @PostConstruct
     public void refreshOnStartup() {
         if (!properties.getScan().isRefreshOnStartup()) {
@@ -39,6 +50,9 @@ public class UsageIngestionService {
         refresh();
     }
 
+    /**
+     * Refreshes the snapshot on the configured schedule.
+     */
     @Scheduled(
         fixedDelayString = "${finops.scan.refresh-interval-ms:300000}",
         initialDelayString = "${finops.scan.refresh-interval-ms:300000}"
@@ -47,6 +61,11 @@ public class UsageIngestionService {
         refresh();
     }
 
+    /**
+     * Fetches a fresh gateway usage snapshot and stores it.
+     *
+     * @return current snapshot after the refresh attempt
+     */
     public FinOpsSnapshotStore.Snapshot refresh() {
         try {
             UsageSnapshotPayload result = snapshotClient.fetchSnapshot();
@@ -58,7 +77,7 @@ public class UsageIngestionService {
                 snapshot.status().skippedDbCount()
             );
             return snapshot;
-        } catch (RuntimeException ex) {
+        } catch (IllegalStateException ex) {
             log.warn("FinOps snapshot refresh failed; preserving previous snapshot", ex);
             return snapshotStore.markFailed(ex);
         }

@@ -1,13 +1,14 @@
 package com.huawei.opsfactory.finops.config;
 
-import java.net.URI;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.net.URI;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Configures HTTP behavior for the FinOps API.
@@ -20,10 +21,20 @@ public class WebConfig implements WebMvcConfigurer {
     private static final Logger log = LoggerFactory.getLogger(WebConfig.class);
     private final FinOpsProperties properties;
 
+    /**
+     * Creates the FinOps web configuration.
+     *
+     * @param properties FinOps configuration properties
+     */
     public WebConfig(FinOpsProperties properties) {
         this.properties = properties;
     }
 
+    /**
+     * Adds CORS mappings for FinOps API requests.
+     *
+     * @param registry CORS registry
+     */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/finops/**")

@@ -8,8 +8,11 @@ import com.huawei.opsfactory.finops.model.FinOpsModels.QueryFilter;
 import com.huawei.opsfactory.finops.model.FinOpsModels.SessionUsageRecord;
 import com.huawei.opsfactory.finops.model.FinOpsModels.TaskExecutionLoad;
 import com.huawei.opsfactory.finops.model.FinOpsModels.TrendPoint;
+import com.huawei.opsfactory.finops.model.FinOpsModels.UsageFilterRequest;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UsageSummary;
 import com.huawei.opsfactory.finops.model.FinOpsModels.UserUsage;
+import org.springframework.stereotype.Service;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -24,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
 
 /**
  * Aggregates raw session usage records into FinOps summaries and distributions.
@@ -36,23 +38,37 @@ public class UsageAggregationService {
 
     private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
 
-    public QueryFilter buildFilter(String startTime,
-                                   String endTime,
-                                   String agentId,
-                                   String userId,
-                                   String sessionType,
-                                   String providerName,
-                                   String modelName,
-                                   Boolean compare) {
-        Instant end = parseInstant(endTime, Instant.now());
-        Instant start = parseInstant(startTime, end.minus(Duration.ofDays(30)));
+    /**
+     * Builds a normalized query filter from request parameters.
+     *
+     * @param request raw filter request
+     * @return normalized query filter
+     */
+    public QueryFilter buildFilter(UsageFilterRequest request) {
+        Instant end = parseInstant(request.endTime(), Instant.now());
+        Instant start = parseInstant(request.startTime(), end.minus(Duration.ofDays(30)));
         if (!start.isBefore(end)) {
             throw new IllegalArgumentException("startTime must be before endTime");
         }
-        return new QueryFilter(start, end, blankToNull(agentId), blankToNull(userId), blankToNull(sessionType),
-            blankToNull(providerName), blankToNull(modelName), Boolean.TRUE.equals(compare));
+        return new QueryFilter(
+            start,
+            end,
+            blankToNull(request.agentId()),
+            blankToNull(request.userId()),
+            blankToNull(request.sessionType()),
+            blankToNull(request.providerName()),
+            blankToNull(request.modelName()),
+            Boolean.TRUE.equals(request.compare())
+        );
     }
 
+    /**
+     * Filters sessions inside the current query range.
+     *
+     * @param sessions source sessions
+     * @param filter normalized query filter
+     * @return filtered current sessions
+     */
     public List<SessionUsageRecord> filterCurrent(List<SessionUsageRecord> sessions, QueryFilter filter) {
         return sessions.stream()
             .filter(session -> !session.updatedAt().isBefore(filter.startTime()) && session.updatedAt().isBefore(filter.endTime()))
@@ -64,6 +80,13 @@ public class UsageAggregationService {
             .toList();
     }
 
+    /**
+     * Filters sessions inside the previous comparison range.
+     *
+     * @param sessions source sessions
+     * @param filter normalized query filter
+     * @return filtered previous sessions
+     */
     public List<SessionUsageRecord> filterPrevious(List<SessionUsageRecord> sessions, QueryFilter filter) {
         Duration duration = Duration.between(filter.startTime(), filter.endTime());
         Instant previousStart = filter.startTime().minus(duration);
@@ -78,6 +101,13 @@ public class UsageAggregationService {
             .toList();
     }
 
+    /**
+     * Builds current and previous period comparison metrics.
+     *
+     * @param current current period sessions
+     * @param previous previous period sessions
+     * @return comparison summary
+     */
     public ComparisonSummary comparison(List<SessionUsageRecord> current, List<SessionUsageRecord> previous) {
         UsageSummary currentSummary = summarize(current);
         UsageSummary previousSummary = summarize(previous);
@@ -93,12 +123,18 @@ public class UsageAggregationService {
         );
     }
 
+    /**
+     * Summarizes session usage metrics.
+     *
+     * @param sessions source sessions
+     * @return usage summary
+     */
     public UsageSummary summarize(List<SessionUsageRecord> sessions) {
         long total = sessions.stream().mapToLong(SessionUsageRecord::totalTokens).sum();
         long input = sessions.stream().mapToLong(SessionUsageRecord::inputTokens).sum();
         long output = sessions.stream().mapToLong(SessionUsageRecord::outputTokens).sum();
         long scheduled = sessions.stream().filter(this::isScheduled).count();
-        long activeModels = sessions.stream().map(session -> session.providerName() + "/" + session.modelName()).distinct().count();
+        long activeModels = sessions.stream().map(this::providerModel).distinct().count();
         return new UsageSummary(
             sessions.size(),
             total,
@@ -113,6 +149,12 @@ public class UsageAggregationService {
         );
     }
 
+    /**
+     * Groups token usage by day.
+     *
+     * @param sessions source sessions
+     * @return ordered trend points
+     */
     public List<TrendPoint> tokenTrend(List<SessionUsageRecord> sessions) {
         Map<String, List<SessionUsageRecord>> byDay = sessions.stream()
             .collect(Collectors.groupingBy(session -> DAY_FORMATTER.format(session.updatedAt()), LinkedHashMap::new, Collectors.toList()));
@@ -128,6 +170,12 @@ public class UsageAggregationService {
             .toList();
     }
 
+    /**
+     * Aggregates sessions by agent.
+     *
+     * @param sessions source sessions
+     * @return agent usage rows ordered by token count
+     */
     public List<AgentUsage> agents(List<SessionUsageRecord> sessions) {
         return group(sessions, SessionUsageRecord::agentId).entrySet().stream()
             .map(entry -> {
@@ -149,6 +197,12 @@ public class UsageAggregationService {
             .toList();
     }
 
+    /**
+     * Aggregates sessions by user.
+     *
+     * @param sessions source sessions
+     * @return user usage rows ordered by token count
+     */
     public List<UserUsage> users(List<SessionUsageRecord> sessions) {
         return group(sessions, SessionUsageRecord::userId).entrySet().stream()
             .map(entry -> {
@@ -170,17 +224,23 @@ public class UsageAggregationService {
             .toList();
     }
 
+    /**
+     * Aggregates sessions by provider and model.
+     *
+     * @param sessions source sessions
+     * @return model usage rows ordered by token count
+     */
     public List<ModelUsage> models(List<SessionUsageRecord> sessions) {
         return sessions.stream()
-            .collect(Collectors.groupingBy(session -> session.providerName() + "\u0000" + session.modelName()))
+            .collect(Collectors.groupingBy(this::providerModel))
             .entrySet().stream()
             .map(entry -> {
                 List<SessionUsageRecord> items = entry.getValue();
-                String[] parts = entry.getKey().split("\u0000", 2);
+                ProviderModel key = entry.getKey();
                 long total = items.stream().mapToLong(SessionUsageRecord::totalTokens).sum();
                 return new ModelUsage(
-                    parts[0],
-                    parts.length > 1 ? parts[1] : "unknown",
+                    key.providerName(),
+                    key.modelName(),
                     items.size(),
                     items.stream().map(SessionUsageRecord::userId).distinct().count(),
                     items.stream().map(SessionUsageRecord::agentId).distinct().count(),
@@ -194,6 +254,17 @@ public class UsageAggregationService {
             .toList();
     }
 
+    private ProviderModel providerModel(SessionUsageRecord session) {
+        return new ProviderModel(normalizeDimension(session.providerName()), normalizeDimension(session.modelName()));
+    }
+
+    /**
+     * Builds a token distribution by the supplied classifier.
+     *
+     * @param sessions source sessions
+     * @param classifier grouping classifier
+     * @return distribution rows ordered by token count
+     */
     public List<DistributionItem> distribution(List<SessionUsageRecord> sessions, Function<SessionUsageRecord, String> classifier) {
         long totalTokens = sessions.stream().mapToLong(SessionUsageRecord::totalTokens).sum();
         return group(sessions, classifier).entrySet().stream()
@@ -205,6 +276,12 @@ public class UsageAggregationService {
             .toList();
     }
 
+    /**
+     * Calculates task execution load using each session as one task.
+     *
+     * @param sessions source sessions
+     * @return task execution load summary
+     */
     public TaskExecutionLoad taskExecutionLoad(List<SessionUsageRecord> sessions) {
         if (sessions.isEmpty()) {
             return new TaskExecutionLoad(0, 0, 0);
@@ -219,6 +296,13 @@ public class UsageAggregationService {
         );
     }
 
+    /**
+     * Returns the highest-token sessions.
+     *
+     * @param sessions source sessions
+     * @param limit maximum number of rows
+     * @return top sessions ordered by token count
+     */
     public List<SessionUsageRecord> topSessions(List<SessionUsageRecord> sessions, int limit) {
         return sessions.stream()
             .sorted(Comparator.comparingLong(SessionUsageRecord::totalTokens).reversed())
@@ -227,10 +311,11 @@ public class UsageAggregationService {
     }
 
     private Map<String, List<SessionUsageRecord>> group(List<SessionUsageRecord> sessions, Function<SessionUsageRecord, String> classifier) {
-        return sessions.stream().collect(Collectors.groupingBy(session -> {
-            String value = classifier.apply(session);
-            return value == null || value.isBlank() ? "unknown" : value;
-        }, LinkedHashMap::new, Collectors.toList()));
+        return sessions.stream().collect(Collectors.groupingBy(session -> normalizeDimension(classifier.apply(session)), LinkedHashMap::new, Collectors.toList()));
+    }
+
+    private String normalizeDimension(String value) {
+        return value == null || value.isBlank() ? "unknown" : value;
     }
 
     private long highTokenSessionCount(List<SessionUsageRecord> sessions) {
@@ -277,5 +362,8 @@ public class UsageAggregationService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private record ProviderModel(String providerName, String modelName) {
     }
 }

@@ -8,11 +8,58 @@ ROOT_DIR="$(dirname "${SERVICE_DIR}")"
 yaml_val() {
     local key="$1" file="${SERVICE_DIR}/config.yaml"
     [ -f "${file}" ] || return 0
-    node -e "const y=require('yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.parse(f);const keys='${key}'.split('.');let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" 2>/dev/null || true
+    YAML_FILE="${file}" YAML_KEY="${key}" node - <<'NODE' 2>/dev/null || true
+const fs = require('fs');
+const wanted = process.env.YAML_KEY.split('.');
+const stack = [];
+
+function resolveSpringPlaceholder(value) {
+  const match = value.match(/^\$\{([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}$/);
+  if (!match) {
+    return value;
+  }
+  const envValue = process.env[match[1]];
+  if (envValue !== undefined && envValue !== '') {
+    return envValue;
+  }
+  return match[2] ?? '';
+}
+
+for (const rawLine of fs.readFileSync(process.env.YAML_FILE, 'utf8').split(/\r?\n/)) {
+  const withoutComment = rawLine.replace(/\s+#.*$/, '');
+  if (!withoutComment.trim() || withoutComment.trimStart().startsWith('#')) {
+    continue;
+  }
+  const match = withoutComment.match(/^(\s*)([^:]+):\s*(.*)$/);
+  if (!match) {
+    continue;
+  }
+  const indent = match[1].length;
+  const key = match[2].trim();
+  let value = match[3].trim();
+  while (stack.length && stack[stack.length - 1].indent >= indent) {
+    stack.pop();
+  }
+  const path = [...stack.map((entry) => entry.key), key];
+  if (path.join('.') === wanted.join('.') && value) {
+    value = value.replace(/^['"]|['"]$/g, '');
+    value = resolveSpringPlaceholder(value);
+    process.stdout.write(value);
+    process.exit(0);
+  }
+  if (!value) {
+    stack.push({ indent, key });
+  }
+}
+NODE
 }
 
 FINOPS_PORT="${FINOPS_PORT:-$(yaml_val server.port)}"
 FINOPS_PORT="${FINOPS_PORT:-8097}"
+FINOPS_GATEWAY_BASE_URL="${FINOPS_GATEWAY_BASE_URL:-$(yaml_val finops.gateway.base-url)}"
+FINOPS_GATEWAY_BASE_URL="${FINOPS_GATEWAY_BASE_URL:-http://127.0.0.1:3000}"
+FINOPS_GATEWAY_SECRET_KEY="${FINOPS_GATEWAY_SECRET_KEY:-$(yaml_val finops.gateway.secret-key)}"
+FINOPS_GATEWAY_USER_ID="${FINOPS_GATEWAY_USER_ID:-$(yaml_val finops.gateway.user-id)}"
 MVN="${MVN:-mvn}"
 
 if ! command -v "${MVN}" &>/dev/null; then
@@ -104,7 +151,12 @@ do_startup() {
 
     if [ "${mode}" = "background" ]; then
         local log_file="${LOG_DIR}/finops.log"
-        SERVICE_PID="$(daemon_start "${PID_FILE}" "${log_file}" env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java -Dserver.port="${FINOPS_PORT}" -jar "${jar}")"
+        SERVICE_PID="$(daemon_start "${PID_FILE}" "${log_file}" env \
+            CONFIG_PATH="${SERVICE_DIR}/config.yaml" \
+            FINOPS_GATEWAY_BASE_URL="${FINOPS_GATEWAY_BASE_URL}" \
+            FINOPS_GATEWAY_SECRET_KEY="${FINOPS_GATEWAY_SECRET_KEY}" \
+            FINOPS_GATEWAY_USER_ID="${FINOPS_GATEWAY_USER_ID}" \
+            java -Dserver.port="${FINOPS_PORT}" -jar "${jar}")"
         if ! kill -0 "${SERVICE_PID}" 2>/dev/null; then
             log_error "Failed to start finops"
             return 1
@@ -115,7 +167,12 @@ do_startup() {
         fi
         log_info "finops started (PID: ${SERVICE_PID}, log: ${log_file})"
     else
-        exec env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java -Dserver.port="${FINOPS_PORT}" -jar "${jar}"
+        exec env \
+            CONFIG_PATH="${SERVICE_DIR}/config.yaml" \
+            FINOPS_GATEWAY_BASE_URL="${FINOPS_GATEWAY_BASE_URL}" \
+            FINOPS_GATEWAY_SECRET_KEY="${FINOPS_GATEWAY_SECRET_KEY}" \
+            FINOPS_GATEWAY_USER_ID="${FINOPS_GATEWAY_USER_ID}" \
+            java -Dserver.port="${FINOPS_PORT}" -jar "${jar}"
     fi
 }
 
