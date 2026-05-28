@@ -218,7 +218,7 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
     filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
     const { t } = useTranslation()
-    const downloadUrl = `${runtime.GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${runtime.GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
+    const downloadUrl = `${runtime.GATEWAY_URL}/agents/${agentId}/files/get?path=${encodeURIComponent(filePath)}&key=${runtime.GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
     const { name: visibleName, fullPath } = getFileDisplayParts(fileName, displayPath, filePath)

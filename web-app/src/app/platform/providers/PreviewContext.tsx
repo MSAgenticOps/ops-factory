@@ -46,7 +46,7 @@ interface DirectPreviewRequest {
 type PreviewRequest = AgentPreviewRequest | DirectPreviewRequest
 
 function buildAgentFileUrl(agentId: string, path: string, rootId?: string, userId?: string | null): string {
-    let url = `${runtime.GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(path)}?key=${runtime.GATEWAY_SECRET_KEY}`
+    let url = `${runtime.GATEWAY_URL}/agents/${agentId}/files/get?path=${encodeURIComponent(path)}&key=${runtime.GATEWAY_SECRET_KEY}`
     if (rootId) url += `&rootId=${encodeURIComponent(rootId)}`
     if (userId) url += `&uid=${encodeURIComponent(userId)}`
     return url

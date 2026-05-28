@@ -54,8 +54,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(),
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
-        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
-            eq(HttpMethod.POST), anyString(), eq("test-secret"))).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
+            anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.post()
             .uri("/gateway/agents/test-agent/sessions/session-123/reply")
@@ -90,8 +90,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             .expectStatus()
             .isEqualTo(413);
 
-        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(),
-            anyString());
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.POST),
+            eq("/sessions/session-123/reply"), anyString(), anyInt(), anyString());
     }
 
     /**
@@ -114,8 +114,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             .expectStatus()
             .isForbidden();
 
-        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(),
-            anyString());
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.POST),
+            eq("/sessions/session-123/reply"), anyString(), anyInt(), anyString());
     }
 
     /**
@@ -138,8 +138,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             .expectStatus()
             .is5xxServerError();
 
-        verify(goosedProxy, never()).proxySessionCommandWithBody(any(), anyInt(), anyString(), any(), anyString(),
-            anyString());
+        verify(goosedProxy, never()).fetchJson(eq(9999), eq(HttpMethod.POST),
+            eq("/sessions/session-123/reply"), anyString(), anyInt(), anyString());
     }
 
     /**
@@ -152,8 +152,8 @@ public class HookPipelineE2ETest extends BaseE2ETest {
         when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/resume"), anyString(), anyInt(),
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
-        when(goosedProxy.proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
-            eq(HttpMethod.POST), eq("{\"modified\":true}"), eq("test-secret"))).thenReturn(Mono.empty());
+        when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
+            eq("{\"modified\":true}"), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.post()
             .uri("/gateway/agents/test-agent/sessions/session-123/reply")
@@ -165,7 +165,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk();
 
-        verify(goosedProxy).proxySessionCommandWithBody(any(), eq(9999), eq("/sessions/session-123/reply"),
-            eq(HttpMethod.POST), eq("{\"modified\":true}"), eq("test-secret"));
+        verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
+            eq("{\"modified\":true}"), anyInt(), eq("test-secret"));
     }
 }

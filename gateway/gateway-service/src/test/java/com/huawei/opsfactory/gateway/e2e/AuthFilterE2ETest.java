@@ -138,20 +138,18 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      * Executes the me endpoint blank user id header returns unknown operation.
      */
     @Test
-    public void meEndpoint_blankUserIdHeader_returnsUnknown() {
-        // /me is a system endpoint: blank x-user-id does not reject, falls back to unknown
-        webClient.get()
-            .uri("/gateway/me")
-            .header(HEADER_SECRET_KEY, SECRET_KEY)
-            .header(HEADER_USER_ID, "  ")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectBody()
-            .jsonPath("$.userId")
-            .isEqualTo("unknown")
-            .jsonPath("$.role")
-            .isEqualTo("user");
+    public void meEndpoint_blankUserIdHeader_rejectedByClient() {
+        // Spring Framework 6.2 validates header values per RFC 7230 and rejects blank-only headers
+        // at the WebClient level before the request is sent
+        org.junit.Assert.assertThrows(org.springframework.web.reactive.function.client.WebClientRequestException.class, () -> {
+            webClient.get()
+                .uri("/gateway/me")
+                .header(HEADER_SECRET_KEY, SECRET_KEY)
+                .header(HEADER_USER_ID, "  ")
+                .exchange()
+                .expectStatus()
+                .is4xxClientError();
+        });
     }
 
     /**
