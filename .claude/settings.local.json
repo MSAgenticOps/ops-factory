@@ -1,25 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./scripts/ctl.sh status *)",
-      "Bash(./scripts/ctl.sh shutdown *)",
-      "Bash(mvn clean *)",
-      "Bash(./scripts/ctl.sh startup *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/knowledge-service/scripts/ctl.sh startup *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/operation-intelligence/scripts/ctl.sh startup *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/web-app/scripts/ctl.sh startup *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/gateway/scripts/ctl.sh status *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/knowledge-service/scripts/ctl.sh status *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/operation-intelligence/scripts/ctl.sh status *)",
-      "Bash(/Users/zlj/Documents/ZLJ/works/code/ops-factory/web-app/scripts/ctl.sh status *)",
-      "Bash(git status *)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)",
-      "Bash(python3 *)",
-      "Bash(gh pr *)",
-      "Read(//tmp/**)",
-      "Bash(awk '/^diff --git.*\\\\.java/{found=1} found{print} /^diff --git/ && !/\\\\.java/{found=0}')",
-      "Read(//private/tmp/**)"
     ]
   }
 }
