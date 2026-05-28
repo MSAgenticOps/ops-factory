@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { csvToObjects } from '../../../../utils/csvExport'
 import { isValidIp } from '../../../../utils/ip-validation'
+import { validateAndSanitize } from '../../../../utils/inputValidation'
 import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
@@ -235,14 +236,33 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'HostGroups': {
+                        const nameResult = validateAndSanitize(row.name, 'Name')
+                        if (!nameResult.valid) {
+                            errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                            continue
+                        }
+                        if (row.code) {
+                            const codeResult = validateAndSanitize(row.code, 'Code')
+                            if (!codeResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                continue
+                            }
+                        }
+                        if (row.description) {
+                            const descResult = validateAndSanitize(row.description, 'Description')
+                            if (!descResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
+                                continue
+                            }
+                        }
                         if (groupNameToId.has(row.name)) {
                             errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'HostGroup', name: row.name } })
                             continue
                         }
                         const created = await deps.createGroup({
-                            name: row.name,
-                            code: row.code || undefined,
-                            description: row.description || '',
+                            name: nameResult.sanitized,
+                            code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
+                            description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                         })
                         groupNameToId.set(row.name, created.id)
                         if (row.code) groupCodeToId.set(row.code, created.id)
@@ -251,6 +271,32 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'Clusters': {
+                        const nameResult = validateAndSanitize(row.name, 'Name')
+                        if (!nameResult.valid) {
+                            errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                            continue
+                        }
+                        if (row.type) {
+                            const typeResult = validateAndSanitize(row.type, 'Type')
+                            if (!typeResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Type' } })
+                                continue
+                            }
+                        }
+                        if (row.purpose) {
+                            const purposeResult = validateAndSanitize(row.purpose, 'Purpose')
+                            if (!purposeResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Purpose' } })
+                                continue
+                            }
+                        }
+                        if (row.description) {
+                            const descResult = validateAndSanitize(row.description, 'Description')
+                            if (!descResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
+                                continue
+                            }
+                        }
                         const groupId = row.group
                             ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                             : undefined
@@ -268,11 +314,11 @@ export function useResourceImport(deps: ImportDeps) {
                             continue
                         }
                         const created = await deps.createCluster({
-                            name: row.name,
+                            name: nameResult.sanitized,
                             type: typeName,
-                            purpose: row.purpose || '',
+                            purpose: row.purpose ? validateAndSanitize(row.purpose, 'Purpose').sanitized : '',
                             groupId,
-                            description: row.description || '',
+                            description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                         })
                         clusterGroupedKeyToId.set(clusterKey, created.id)
                         clusterNameToId.set(row.name, created.id)
@@ -288,6 +334,11 @@ export function useResourceImport(deps: ImportDeps) {
                             errors.push({ row: i + 2, code: 'import.hostNameRequired' })
                             continue
                         }
+                        const nameResult = validateAndSanitize(hostName, 'Name')
+                        if (!nameResult.valid) {
+                            errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                            continue
+                        }
                         if (hostName.length > 100) {
                             errors.push({ row: i + 2, code: 'import.hostNameTooLong', params: { length: String(hostName.length) } })
                             continue
@@ -300,9 +351,63 @@ export function useResourceImport(deps: ImportDeps) {
                             errors.push({ row: i + 2, code: 'import.hostIpInvalid', params: { ip: hostIp } })
                             continue
                         }
+                        if (row.businessip && !isValidIp(row.businessip)) {
+                            errors.push({ row: i + 2, code: 'import.businessIpInvalid', params: { ip: row.businessip } })
+                            continue
+                        }
                         if (!hostUsername) {
                             errors.push({ row: i + 2, code: 'import.hostUsernameRequired' })
                             continue
+                        }
+                        if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
+                            errors.push({ row: i + 2, code: 'import.usernameInvalidChars' })
+                            continue
+                        }
+                        if (row.credential && row.credential !== '***' && !/^[\x00-\x7F]*$/.test(row.credential)) {
+                            errors.push({ row: i + 2, code: 'import.credentialInvalidChars' })
+                            continue
+                        }
+                        if (row.hostname) {
+                            const hostnameResult = validateAndSanitize(row.hostname, 'Hostname')
+                            if (!hostnameResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Hostname' } })
+                                continue
+                            }
+                        }
+                        if (row.os) {
+                            const osResult = validateAndSanitize(row.os, 'OS')
+                            if (!osResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'OS' } })
+                                continue
+                            }
+                        }
+                        if (row.location) {
+                            const locationResult = validateAndSanitize(row.location, 'Location')
+                            if (!locationResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Location' } })
+                                continue
+                            }
+                        }
+                        if (row.purpose) {
+                            const purposeResult = validateAndSanitize(row.purpose, 'Purpose')
+                            if (!purposeResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Purpose' } })
+                                continue
+                            }
+                        }
+                        if (row.business) {
+                            const businessResult = validateAndSanitize(row.business, 'Business')
+                            if (!businessResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Business' } })
+                                continue
+                            }
+                        }
+                        if (row.description) {
+                            const descResult = validateAndSanitize(row.description, 'Description')
+                            if (!descResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
+                                continue
+                            }
                         }
                         if (hostNameToId.has(hostName)) {
                             errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Host', name: hostName } })
@@ -317,22 +422,22 @@ export function useResourceImport(deps: ImportDeps) {
                         }
                         const roleValue = row.role as string | undefined
                         const created = await deps.createHost({
-                            name: hostName,
+                            name: nameResult.sanitized,
                             ip: hostIp,
                             port: row.port ? parseInt(row.port, 10) : 22,
                             username: hostUsername,
                             authType: (row.authtype === 'key' ? 'key' : 'password') as 'password' | 'key',
                             credential: row.credential || '',
-                            hostname: row.hostname || undefined,
+                            hostname: row.hostname ? validateAndSanitize(row.hostname, 'Hostname').sanitized : undefined,
                             businessIp: row.businessip || undefined,
-                            os: row.os || undefined,
-                            location: row.location || undefined,
-                            business: row.business || undefined,
+                            os: row.os ? validateAndSanitize(row.os, 'OS').sanitized : undefined,
+                            location: row.location ? validateAndSanitize(row.location, 'Location').sanitized : undefined,
+                            business: row.business ? validateAndSanitize(row.business, 'Business').sanitized : undefined,
                             clusterId,
-                            purpose: row.purpose || undefined,
+                            purpose: row.purpose ? validateAndSanitize(row.purpose, 'Purpose').sanitized : undefined,
                             role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
                             tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
-                            description: row.description || undefined,
+                            description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : undefined,
                         })
                         hostNameToId.set(row.name, created.id)
                         success++
@@ -340,6 +445,25 @@ export function useResourceImport(deps: ImportDeps) {
                     }
 
                     case 'BusinessServices': {
+                        const nameResult = validateAndSanitize(row.name, 'Name')
+                        if (!nameResult.valid) {
+                            errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                            continue
+                        }
+                        if (row.code) {
+                            const codeResult = validateAndSanitize(row.code, 'Code')
+                            if (!codeResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                continue
+                            }
+                        }
+                        if (row.description) {
+                            const descResult = validateAndSanitize(row.description, 'Description')
+                            if (!descResult.valid) {
+                                errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
+                                continue
+                            }
+                        }
                         if (bsNameToId.has(row.name)) {
                             errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: row.name } })
                             continue
@@ -355,11 +479,11 @@ export function useResourceImport(deps: ImportDeps) {
                             continue
                         }
                         const created = await deps.createBusinessService({
-                            name: row.name,
-                            code: row.code,
+                            name: nameResult.sanitized,
+                            code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : row.code,
                             groupId,
                             businessTypeId,
-                            description: row.description || '',
+                            description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                             tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                             priority: row.priority || '',
                             contactInfo: row.contactinfo || '',

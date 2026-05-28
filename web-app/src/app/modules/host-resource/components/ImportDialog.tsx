@@ -157,6 +157,14 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorDuplicate', { type: err.params?.type, name: err.params?.name })
             case 'import.whitelistInvalidPattern':
                 return t('hostResource.importErrorWhitelistInvalidPattern', { pattern: err.params?.pattern })
+            case 'import.invalidChars':
+                return t('hostResource.importErrorInvalidChars', { field: err.params?.field })
+            case 'import.usernameInvalidChars':
+                return t('hostResource.importErrorUsernameInvalidChars')
+            case 'import.credentialInvalidChars':
+                return t('hostResource.importErrorCredentialInvalidChars')
+            case 'import.businessIpInvalid':
+                return t('hostResource.importErrorBusinessIpInvalid', { ip: err.params?.ip })
             case 'import.setParentFailed':
                 return t('hostResource.importErrorSetParentFailed', { message: err.params?.message })
             case 'import.importFailed':
