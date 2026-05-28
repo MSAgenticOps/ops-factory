@@ -1,10 +1,10 @@
 import json
 import threading
 import unittest
+import unittest.mock as mock
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest import mock
 
 import core
 

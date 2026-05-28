@@ -165,7 +165,8 @@ def read_configured_root_dir() -> str:
         if configured:
             return configured
     except OSError:
-        pass
+        # The agent can run before config.yaml is materialized; fall back to the default data directory.
+        return DEFAULT_ROOT_DIR
     return DEFAULT_ROOT_DIR
 
 
