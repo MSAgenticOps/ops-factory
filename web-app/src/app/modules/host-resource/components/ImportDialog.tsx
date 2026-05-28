@@ -170,6 +170,16 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorGroupNotFound', { group: err.params?.group })
             case 'import.clusterNotFound':
                 return t('hostResource.importErrorClusterNotFound', { cluster: err.params?.cluster })
+            case 'import.clusterNameRequired':
+                return t('hostResource.importErrorClusterNameRequired')
+            case 'import.clusterNameTooLong':
+                return t('hostResource.importErrorClusterNameTooLong', { length: err.params?.length })
+            case 'import.clusterTypeNotFound':
+                return t('hostResource.importErrorClusterTypeNotFound', { type: err.params?.type })
+            case 'import.purposeTooLong':
+                return t('hostResource.importErrorPurposeTooLong', { length: err.params?.length })
+            case 'import.descriptionTooLong':
+                return t('hostResource.importErrorDescriptionTooLong', { length: err.params?.length })
             case 'import.targetHostNotFound':
                 return t('hostResource.importErrorTargetHostNotFound', { host: err.params?.host })
             case 'import.sourceNodeNotFound':

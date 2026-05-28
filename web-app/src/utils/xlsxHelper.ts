@@ -136,12 +136,12 @@ export function generateSampleXlsx(importType: ImportType, t: (key: string, para
     const sampleData = metadata.sampleData || []
     const sheetData: (string | number | boolean)[][] = []
     if (sampleData.length > 0) {
-        sheetData.push(metadata.fields.map((f) => f.enLabel))
+        sheetData.push(metadata.fields.map((f) => t(`hostResource.${f.labelKey}`)))
         sampleData.forEach((row) => {
             sheetData.push(metadata.fields.map((f) => (row as Record<string, string>)[f.name] ?? ''))
         })
     } else {
-        sheetData.push(metadata.fields.map((f) => f.enLabel))
+        sheetData.push(metadata.fields.map((f) => t(`hostResource.${f.labelKey}`)))
     }
 
     const dataSheet = XLSX.utils.aoa_to_sheet(sheetData)
@@ -201,7 +201,7 @@ export function generateExportXlsx(
 
     if (data.length > 0) {
         const sheetData: (string | number | boolean)[][] = []
-        sheetData.push(metadata.fields.map((f) => f.enLabel))
+        sheetData.push(metadata.fields.map((f) => t(`hostResource.${f.labelKey}`)))
         data.forEach((row) => {
             sheetData.push(metadata.fields.map((f) => truncateCellValue(String(row[f.name] ?? ''))))
         })
@@ -246,7 +246,7 @@ export function generateMultiSheetExportXlsx(
 
         if (sheetInfo.data.length > 0) {
             const sheetData: (string | number | boolean)[][] = []
-            sheetData.push(metadata.fields.map((f) => f.enLabel))
+            sheetData.push(metadata.fields.map((f) => t(`hostResource.${f.labelKey}`)))
             sheetInfo.data.forEach((row) => {
                 sheetData.push(metadata.fields.map((f) => truncateCellValue(String(row[f.name] ?? ''))))
             })

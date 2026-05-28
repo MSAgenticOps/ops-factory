@@ -216,9 +216,18 @@ export function useResourceImport(deps: ImportDeps) {
                             }
 
                             case 'Clusters': {
-                                const nameResult = validateAndSanitize(row.name, 'Name')
+                                const clusterName = row.name?.trim() || ''
+                                if (!clusterName) {
+                                    errors.push({ row: i + 2, code: 'import.clusterNameRequired' })
+                                    continue
+                                }
+                                const nameResult = validateAndSanitize(clusterName, 'Name')
                                 if (!nameResult.valid) {
                                     errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.clusterNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
                                 if (row.type) {
@@ -234,6 +243,10 @@ export function useResourceImport(deps: ImportDeps) {
                                         errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Purpose' } })
                                         continue
                                     }
+                                    if (purposeResult.sanitized.length > 200) {
+                                        errors.push({ row: i + 2, code: 'import.purposeTooLong', params: { length: String(purposeResult.sanitized.length) } })
+                                        continue
+                                    }
                                 }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
@@ -241,18 +254,30 @@ export function useResourceImport(deps: ImportDeps) {
                                         errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Description' } })
                                         continue
                                     }
+                                    if (descResult.sanitized.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(descResult.sanitized.length) } })
+                                        continue
+                                    }
                                 }
                                 const groupId = row.group
                                     ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                                     : undefined
-                                const clusterKey = `${groupId ?? ''}:${row.name}`
+                                const clusterKey = `${groupId ?? ''}:${nameResult.sanitized}`
                                 if (clusterGroupedKeyToId.has(clusterKey)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Cluster', name: row.name } })
+                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Cluster', name: nameResult.sanitized } })
                                     continue
                                 }
-                                let typeName = row.type || ''
-                                if (typeName && !clusterTypeNameSet.has(typeName)) {
-                                    typeName = clusterTypeCodeToName.get(typeName) || typeName
+                                let typeName = row.type?.trim() || ''
+                                if (typeName) {
+                                    if (!clusterTypeNameSet.has(typeName)) {
+                                        const mappedName = clusterTypeCodeToName.get(typeName)
+                                        if (mappedName) {
+                                            typeName = mappedName
+                                        } else {
+                                            errors.push({ row: i + 2, code: 'import.clusterTypeNotFound', params: { type: typeName } })
+                                            continue
+                                        }
+                                    }
                                 }
                                 if (!groupId && row.group) {
                                     errors.push({ row: i + 2, code: 'import.groupNotFound', params: { group: row.group } })
@@ -266,7 +291,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                 })
                                 clusterGroupedKeyToId.set(clusterKey, created.id)
-                                clusterNameToId.set(row.name, created.id)
+                                clusterNameToId.set(nameResult.sanitized, created.id)
                                 success++
                                 break
                             }
