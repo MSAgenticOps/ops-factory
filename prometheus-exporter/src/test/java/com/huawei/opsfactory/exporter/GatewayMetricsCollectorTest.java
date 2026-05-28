@@ -65,14 +65,14 @@ class GatewayMetricsCollectorTest {
 
         assertContains(metrics, "opsfactory_gateway_up 1.0");
         assertContains(metrics, "opsfactory_gateway_uptime_seconds 123.456");
-        assertContains(metrics, "opsfactory_agents_configured_total 3.0");
-        assertContains(metrics, "opsfactory_instances_total{status=\"running\",} 2.0");
-        assertContains(metrics, "opsfactory_instances_total{status=\"error\",} 1.0");
+        assertContains(metrics, "opsfactory_agents_configured 3.0");
+        assertContains(metrics, "opsfactory_instances{status=\"running\"} 2.0");
+        assertContains(metrics, "opsfactory_instances{status=\"error\"} 1.0");
         // idle seconds are computed from (now - lastActivity), so they should be > 0
-        assertMetricExists(metrics, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"alice\",}");
-        assertMetricExists(metrics, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"bob\",}");
-        assertMetricExists(metrics, "opsfactory_instance_idle_seconds{agent_id=\"a2\",user_id=\"alice\",}");
-        assertContains(metrics, "opsfactory_instance_info{agent_id=\"a2\",user_id=\"alice\",port=\"50003\",status=\"error\",} 1.0");
+        assertMetricExists(metrics, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"alice\"}");
+        assertMetricExists(metrics, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"bob\"}");
+        assertMetricExists(metrics, "opsfactory_instance_idle_seconds{agent_id=\"a2\",user_id=\"alice\"}");
+        assertContains(metrics, "opsfactory_instance_metadata{agent_id=\"a2\",port=\"50003\",status=\"error\",user_id=\"alice\"} 1.0");
         assertContains(metrics, "opsfactory_langfuse_configured 1.0");
         assertContains(metrics, "opsfactory_exporter_process_cpu");
         assertContains(metrics, "opsfactory_exporter_nodejs_heap");
@@ -174,10 +174,10 @@ class GatewayMetricsCollectorTest {
         String metrics = collector.renderMetrics();
 
         assertContains(metrics, "opsfactory_gateway_up 1.0");
-        assertContains(metrics, "opsfactory_instances_total{status=\"running\",} 0.0");
-        assertContains(metrics, "opsfactory_instances_total{status=\"starting\",} 0.0");
-        assertContains(metrics, "opsfactory_instances_total{status=\"stopped\",} 0.0");
-        assertContains(metrics, "opsfactory_instances_total{status=\"error\",} 0.0");
+        assertContains(metrics, "opsfactory_instances{status=\"running\"} 0.0");
+        assertContains(metrics, "opsfactory_instances{status=\"starting\"} 0.0");
+        assertContains(metrics, "opsfactory_instances{status=\"stopped\"} 0.0");
+        assertContains(metrics, "opsfactory_instances{status=\"error\"} 0.0");
     }
 
     @Test
@@ -212,7 +212,7 @@ class GatewayMetricsCollectorTest {
 
         collector.collect();
         String metrics1 = collector.renderMetrics();
-        assertMetricExists(metrics1, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"bob\",}");
+        assertMetricExists(metrics1, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"bob\"}");
 
         // Second collect: only 1 instance (bob gone), using a new mock via another collector
         // Since we can't swap the GatewayApi, we create a new collector to verify clean state
@@ -240,10 +240,10 @@ class GatewayMetricsCollectorTest {
         String metrics2 = collector2.renderMetrics();
         // Bob should not exist in the second collector's output
         Assertions.assertFalse(
-            metrics2.lines().anyMatch(line -> line.startsWith("opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"bob\",")),
+            metrics2.lines().anyMatch(line -> line.startsWith("opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"bob\"")),
             "Stale instance data for bob should not be present"
         );
-        assertMetricExists(metrics2, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"alice\",}");
+        assertMetricExists(metrics2, "opsfactory_instance_idle_seconds{agent_id=\"a1\",user_id=\"alice\"}");
     }
 
     @Test
@@ -277,9 +277,9 @@ class GatewayMetricsCollectorTest {
         String metrics = collector.renderMetrics();
 
         // The instance_info should record the unknown status
-        assertContains(metrics, "opsfactory_instance_info{agent_id=\"a1\",user_id=\"alice\",port=\"50001\",status=\"unknown_status\",} 1.0");
+        assertContains(metrics, "opsfactory_instance_metadata{agent_id=\"a1\",port=\"50001\",status=\"unknown_status\",user_id=\"alice\"} 1.0");
         // Standard statuses should be 0
-        assertContains(metrics, "opsfactory_instances_total{status=\"running\",} 0.0");
+        assertContains(metrics, "opsfactory_instances{status=\"running\"} 0.0");
     }
 
     private static void assertContains(String metrics, String expected) {

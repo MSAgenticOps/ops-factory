@@ -6,6 +6,8 @@ package com.huawei.opsfactory.gateway.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.huawei.opsfactory.gateway.controller.SessionErrorResponseException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -59,6 +61,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles session error response exceptions with structured error body.
+     *
+     * @param ex session error response exception
+     * @return response entity with the structured error body
+     */
+    @ExceptionHandler(SessionErrorResponseException.class)
+    public ResponseEntity<Map<String, Object>> handleSessionErrorResponse(SessionErrorResponseException ex) {
+        log.warn("Session error: status={} code={}", ex.getStatusCode(), ex.getErrorBody().get("code"));
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getErrorBody());
+    }
+
+    /**
      * Handles response status exceptions and returns a normalized error body.
      *
      * @param ex ex
@@ -86,7 +100,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", false);
         body.put("error", "Resource not found: " + resourceLocation);
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     /**

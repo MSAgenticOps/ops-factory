@@ -168,11 +168,25 @@ public class ReplyController {
             log.info("[SESSION-REPLY] completed agentId={} userId={} sessionId={} totalMs={}", agentId, userId,
                 sessionId, System.currentTimeMillis() - requestStart);
             return result;
-        } catch (ResponseStatusException | WebClientResponseException | IllegalStateException err) {
+        } catch (ResponseStatusException | WebClientResponseException err) {
             removeFileSnapshot(agentId, userId, sessionId, chatRequestId);
+            long elapsedMs = System.currentTimeMillis() - requestStart;
             log.warn("[SESSION-REPLY] failed agentId={} userId={} sessionId={} totalMs={} error={}", agentId, userId,
-                sessionId, System.currentTimeMillis() - requestStart, err.getMessage());
-            throw err;
+                sessionId, elapsedMs, err.getMessage());
+            HttpStatus status = sessionErrorStatus(err);
+            Map<String, Object> errorBody =
+                sessionErrorBody(err, status, agentId, userId, sessionId, chatRequestId, "gateway_submit_failed",
+                    elapsedMs);
+            throw new SessionErrorResponseException(status, errorBody, err);
+        } catch (RuntimeException err) {
+            removeFileSnapshot(agentId, userId, sessionId, chatRequestId);
+            long elapsedMs = System.currentTimeMillis() - requestStart;
+            log.warn("[SESSION-REPLY] failed agentId={} userId={} sessionId={} totalMs={} error={}", agentId, userId,
+                sessionId, elapsedMs, err.getMessage());
+            Map<String, Object> errorBody =
+                sessionErrorBody(err, HttpStatus.INTERNAL_SERVER_ERROR, agentId, userId, sessionId, chatRequestId,
+                    "gateway_submit_failed", elapsedMs);
+            throw new SessionErrorResponseException(HttpStatus.INTERNAL_SERVER_ERROR, errorBody, err);
         }
     }
 
@@ -236,10 +250,22 @@ public class ReplyController {
             log.info("[SESSION-CANCEL] completed agentId={} userId={} sessionId={} totalMs={}", agentId, userId,
                 sessionId, System.currentTimeMillis() - requestStart);
             return result;
-        } catch (ResponseStatusException | WebClientResponseException | IllegalStateException err) {
+        } catch (ResponseStatusException | WebClientResponseException err) {
+            long elapsedMs = System.currentTimeMillis() - requestStart;
             log.warn("[SESSION-CANCEL] failed agentId={} userId={} sessionId={} totalMs={} error={}", agentId, userId,
-                sessionId, System.currentTimeMillis() - requestStart, err.getMessage());
-            throw err;
+                sessionId, elapsedMs, err.getMessage());
+            HttpStatus status = sessionErrorStatus(err);
+            Map<String, Object> errorBody =
+                sessionErrorBody(err, status, agentId, userId, sessionId, requestId, "gateway_cancel_failed", elapsedMs);
+            throw new SessionErrorResponseException(status, errorBody, err);
+        } catch (RuntimeException err) {
+            long elapsedMs = System.currentTimeMillis() - requestStart;
+            log.warn("[SESSION-CANCEL] failed agentId={} userId={} sessionId={} totalMs={} error={}", agentId, userId,
+                sessionId, elapsedMs, err.getMessage());
+            Map<String, Object> errorBody =
+                sessionErrorBody(err, HttpStatus.INTERNAL_SERVER_ERROR, agentId, userId, sessionId, requestId,
+                    "gateway_cancel_failed", elapsedMs);
+            throw new SessionErrorResponseException(HttpStatus.INTERNAL_SERVER_ERROR, errorBody, err);
         }
     }
 

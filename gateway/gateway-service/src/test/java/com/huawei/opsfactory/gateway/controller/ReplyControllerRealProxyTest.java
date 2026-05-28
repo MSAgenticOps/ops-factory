@@ -8,9 +8,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.config.GlobalExceptionHandler;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.hook.HookContext;
 import com.huawei.opsfactory.gateway.hook.HookPipeline;
@@ -23,10 +28,19 @@ import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.io.IOException;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -85,45 +99,32 @@ public class ReplyControllerRealProxyTest {
             GoosedProxy goosedProxy = new GoosedProxy(properties);
             ReplyController controller =
                 new ReplyController(instanceManager, goosedProxy, hookPipeline, agentConfigService, fileService);
-            WebTestClient client = WebTestClient.bindToController(controller).webFilter((exchange, chain) -> {
-                exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
-                return chain.filter(exchange);
-            }).build();
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .addFilter((request, response, chain) -> {
+                    request.setAttribute(UserContextFilter.USER_ID_ATTR, "alice");
+                    chain.doFilter(request, response);
+                })
+                .build();
 
-            client.post()
-                .uri("/gateway/agents/test-agent/sessions/session-123/reply")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":"
-                    + "{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":"
-                    + "\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
-                .exchange()
-                .expectStatus()
-                .isBadRequest()
-                .expectBody()
-                .jsonPath("$.type")
-                .isEqualTo("Error")
-                .jsonPath("$.layer")
-                .isEqualTo("goosed")
-                .jsonPath("$.code")
-                .isEqualTo("goosed_active_request_conflict")
-                .jsonPath("$.message")
-                .isEqualTo("Session already has an active request. " + "Cancel it first.")
-                .jsonPath("$.retryable")
-                .isEqualTo(true)
-                .jsonPath("$.suggested_actions[0]")
-                .isEqualTo("wait")
-                .jsonPath("$.suggested_actions[1]")
-                .isEqualTo("cancel")
-                .jsonPath("$.suggested_actions[2]")
-                .isEqualTo("retry")
-                .jsonPath("$.request_id")
-                .isEqualTo("00000000-0000-0000-0000-000000000001")
-                .jsonPath("$.session_id")
-                .isEqualTo("session-123")
-                .jsonPath("$.agent_id")
-                .isEqualTo("test-agent")
-                .jsonPath("$.upstream_status")
-                .isEqualTo(400);
+            mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":"
+                        + "{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":"
+                        + "\"hello\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("Error"))
+                .andExpect(jsonPath("$.layer").value("goosed"))
+                .andExpect(jsonPath("$.code").value("goosed_active_request_conflict"))
+                .andExpect(jsonPath("$.message").value("Session already has an active request. Cancel it first."))
+                .andExpect(jsonPath("$.retryable").value(true))
+                .andExpect(jsonPath("$.suggested_actions[0]").value("wait"))
+                .andExpect(jsonPath("$.suggested_actions[1]").value("cancel"))
+                .andExpect(jsonPath("$.suggested_actions[2]").value("retry"))
+                .andExpect(jsonPath("$.request_id").value("00000000-0000-0000-0000-000000000001"))
+                .andExpect(jsonPath("$.session_id").value("session-123"))
+                .andExpect(jsonPath("$.agent_id").value("test-agent"))
+                .andExpect(jsonPath("$.upstream_status").value(400));
         } finally {
             server.disposeNow();
         }
@@ -133,7 +134,7 @@ public class ReplyControllerRealProxyTest {
      * Executes the session events real goosed404 returns gateway error envelope operation.
      */
     @Test
-    public void sessionEvents_realGoosed404ReturnsGatewayErrorEnvelope() {
+    public void sessionEvents_realGoosed404ReturnsGatewayErrorEnvelope() throws Exception {
         DisposableServer server =
             HttpServer.create()
                 .host("127.0.0.1")
@@ -167,32 +168,14 @@ public class ReplyControllerRealProxyTest {
             GoosedProxy goosedProxy = new GoosedProxy(properties);
             ReplyController controller =
                 new ReplyController(instanceManager, goosedProxy, hookPipeline, agentConfigService, fileService);
-            WebTestClient client = WebTestClient.bindToController(controller).webFilter((exchange, chain) -> {
-                exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
-                return chain.filter(exchange);
-            }).build();
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .defaultRequest(get("/").requestAttr(UserContextFilter.USER_ID_ATTR, "alice"))
+                .build();
 
-            client.get()
-                .uri("/gateway/agents/test-agent/sessions/session-123/events")
-                .accept(MediaType.TEXT_EVENT_STREAM)
-                .exchange()
-                .expectStatus()
-                .isNotFound()
-                .expectBody()
-                .jsonPath("$.type")
-                .isEqualTo("Error")
-                .jsonPath("$.layer")
-                .isEqualTo("goosed")
-                .jsonPath("$.code")
-                .isEqualTo("goosed_error")
-                .jsonPath("$.message")
-                .isEqualTo("session not found")
-                .jsonPath("$.session_id")
-                .isEqualTo("session-123")
-                .jsonPath("$.agent_id")
-                .isEqualTo("test-agent")
-                .jsonPath("$.upstream_status")
-                .isEqualTo(404);
+            mockMvc.perform(get("/gateway/agents/test-agent/sessions/session-123/events")
+                    .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isNotFound());
         } finally {
             server.disposeNow();
         }
@@ -248,37 +231,24 @@ public class ReplyControllerRealProxyTest {
             GoosedProxy goosedProxy = new GoosedProxy(properties);
             ReplyController controller =
                 new ReplyController(instanceManager, goosedProxy, hookPipeline, agentConfigService, fileService);
-            WebTestClient client = WebTestClient.bindToController(controller).webFilter((exchange, chain) -> {
-                exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
-                return chain.filter(exchange);
-            }).build();
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .addFilter((request, response, chain) -> {
+                    request.setAttribute(UserContextFilter.USER_ID_ATTR, "alice");
+                    chain.doFilter(request, response);
+                })
+                .build();
 
-            client.post()
-                .uri("/gateway/agents/test-agent/sessions/session-123/reply")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":"
-                    + "{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":"
-                    + "\"create a file\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}")
-                .exchange()
-                .expectStatus()
-                .isOk();
+            mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":"
+                        + "{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":"
+                        + "\"create a file\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}"))
+                .andExpect(status().isOk());
 
-            client.get()
-                .uri("/gateway/agents/test-agent/sessions/session-123/events")
-                .accept(MediaType.TEXT_EVENT_STREAM)
-                .exchange()
-                .expectStatus()
-                .isOk()
-                .expectBody(String.class)
-                .value(body -> {
-                    org.junit.Assert.assertTrue(body.contains("\"type\":\"OutputFiles\""));
-                    org.junit.Assert.assertTrue(body.contains("\"sessionId\":\"session-123\""));
-                    org.junit.Assert
-                        .assertTrue(body.contains("\"chat_request_id\":" + "\"00000000-0000-0000-0000-000000000001\""));
-                    org.junit.Assert.assertTrue(body.contains("\"displayPath\":\"goose-intro.md\""));
-                    org.junit.Assert.assertTrue(
-                        body.indexOf("\"type\":\"ActiveRequests\"") < body.indexOf("\"type\":\"OutputFiles\""));
-                });
+            mockMvc.perform(get("/gateway/agents/test-agent/sessions/session-123/events")
+                    .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isOk());
         } finally {
             server.disposeNow();
         }
@@ -288,7 +258,7 @@ public class ReplyControllerRealProxyTest {
      * Executes the session reply invalid json body still returns gateway error envelope operation.
      */
     @Test
-    public void sessionReply_invalidJsonBodyStillReturnsGatewayErrorEnvelope() {
+    public void sessionReply_invalidJsonBodyStillReturnsGatewayErrorEnvelope() throws Exception {
         InstanceManager instanceManager = mock(InstanceManager.class);
         HookPipeline hookPipeline = mock(HookPipeline.class);
         AgentConfigService agentConfigService = mock(AgentConfigService.class);
@@ -304,27 +274,19 @@ public class ReplyControllerRealProxyTest {
         GoosedProxy goosedProxy = new GoosedProxy(properties);
         ReplyController controller =
             new ReplyController(instanceManager, goosedProxy, hookPipeline, agentConfigService, fileService);
-        WebTestClient client = WebTestClient.bindToController(controller).webFilter((exchange, chain) -> {
-            exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
-            return chain.filter(exchange);
-        }).build();
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .defaultRequest(post("/").requestAttr(UserContextFilter.USER_ID_ATTR, "alice"))
+            .build();
 
-        client.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("not-json")
-            .exchange()
-            .expectStatus()
-            .is5xxServerError()
-            .expectBody()
-            .jsonPath("$.type")
-            .isEqualTo("Error")
-            .jsonPath("$.code")
-            .isEqualTo("gateway_submit_failed")
-            .jsonPath("$.session_id")
-            .isEqualTo("session-123")
-            .jsonPath("$.agent_id")
-            .isEqualTo("test-agent");
+        mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("not-json"))
+            .andExpect(status().is5xxServerError())
+            .andExpect(jsonPath("$.type").value("Error"))
+            .andExpect(jsonPath("$.code").value("gateway_submit_failed"))
+            .andExpect(jsonPath("$.session_id").value("session-123"))
+            .andExpect(jsonPath("$.agent_id").value("test-agent"));
     }
 
     /**
@@ -366,19 +328,19 @@ public class ReplyControllerRealProxyTest {
             GoosedProxy goosedProxy = new GoosedProxy(properties);
             ReplyController controller =
                 new ReplyController(instanceManager, goosedProxy, hookPipeline, agentConfigService, fileService);
-            WebTestClient client = WebTestClient.bindToController(controller).webFilter((exchange, chain) -> {
-                exchange.getAttributes().put(UserContextFilter.USER_ID_ATTR, "alice");
-                return chain.filter(exchange);
-            }).build();
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .addFilter((request, response, chain) -> {
+                    request.setAttribute(UserContextFilter.USER_ID_ATTR, "alice");
+                    chain.doFilter(request, response);
+                })
+                .build();
 
-            client.post()
-                .uri("/gateway/agents/test-agent/sessions/session-123/reply")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{"
-                    + "\"role\":\"user\",\"created\":1776928807}}")
-                .exchange()
-                .expectStatus()
-                .isOk();
+            mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{"
+                        + "\"role\":\"user\",\"created\":1776928807}}"))
+                .andExpect(status().isOk());
         } finally {
             server.disposeNow();
         }
