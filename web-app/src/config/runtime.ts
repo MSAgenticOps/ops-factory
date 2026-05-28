@@ -16,6 +16,8 @@ export interface KnowledgeGraphResourceTreeHierarchyRule {
     threshold?: number
 }
 
+export type KnowledgeGraphTestConnectionEntityTypes = string[]
+
 interface RuntimeConfig {
     gatewayUrl?: string
     gatewaySecretKey?: string
@@ -29,6 +31,7 @@ interface RuntimeConfig {
     operationIntelligenceKnowledgeGraph?: {
         collapsedRelationRules?: KnowledgeGraphCollapsedRelationRule[]
         resourceTreeHierarchyRules?: KnowledgeGraphResourceTreeHierarchyRule[]
+        testConnectionEntityTypes?: KnowledgeGraphTestConnectionEntityTypes
     }
     finopsServiceUrl?: string
     finopsSecretKey?: string
@@ -94,6 +97,11 @@ const DEFAULT_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES: KnowledgeGraphResou
         threshold: 1,
     },
 ]
+const DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES: KnowledgeGraphTestConnectionEntityTypes = [
+    'Host',
+    'WorkerNode',
+    'K8sInstance',
+]
 
 export const runtime = {
     GATEWAY_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.gateway),
@@ -109,6 +117,8 @@ export const runtime = {
         DEFAULT_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES,
     OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES:
         DEFAULT_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES,
+    OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES:
+        DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES,
     FINOPS_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.finops),
     FINOPS_SECRET_KEY: '',
 }
@@ -133,6 +143,8 @@ function setRuntimeConfig(config: RuntimeConfig): void {
         normalizeCollapsedRelationRules(config.operationIntelligenceKnowledgeGraph?.collapsedRelationRules)
     runtime.OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES =
         normalizeResourceTreeHierarchyRules(config.operationIntelligenceKnowledgeGraph?.resourceTreeHierarchyRules)
+    runtime.OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES =
+        normalizeTestConnectionEntityTypes(config.operationIntelligenceKnowledgeGraph?.testConnectionEntityTypes)
     runtime.FINOPS_URL = resolveServiceUrl(config.finopsServiceUrl, SERVICE_ENDPOINTS.finops)
     runtime.FINOPS_SECRET_KEY = config.finopsSecretKey ?? ''
     configureWebappLogging(config.logging)
@@ -169,6 +181,19 @@ function normalizeResourceTreeHierarchyRules(
             childEntityTypes: rule.childEntityTypes,
             threshold: Math.max(1, Math.floor(rule.threshold ?? 1)),
         }))
+}
+
+function normalizeTestConnectionEntityTypes(
+    entityTypes: KnowledgeGraphTestConnectionEntityTypes | undefined,
+): KnowledgeGraphTestConnectionEntityTypes {
+    if (!entityTypes?.length) {
+        return DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES
+    }
+    const normalized = entityTypes
+        .filter(entityType => typeof entityType === 'string')
+        .map(entityType => entityType.trim())
+        .filter(entityType => entityType.length > 0)
+    return normalized.length > 0 ? Array.from(new Set(normalized)) : DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES
 }
 
 async function loadRuntimeConfig(): Promise<RuntimeConfig> {

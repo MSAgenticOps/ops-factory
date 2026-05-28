@@ -103,6 +103,7 @@ public class QueryCallChainRequest {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Condition {
         private String conditionKey;
+
         private String conditionValue;
 
         /**
