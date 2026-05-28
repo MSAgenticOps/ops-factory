@@ -21,7 +21,7 @@ export function useResourceExport() {
         businessTypes: BusinessType[]
         whitelistCommands: WhitelistCommand[]
         sops: Sop[]
-    }) => {
+    }, t: (key: string) => string) => {
         setExporting(true)
         try {
             const {
@@ -41,13 +41,15 @@ export function useResourceExport() {
                 name: ct.name,
                 code: ct.code,
                 description: ct.description || '',
+                typeColor: ct.color || '',
                 knowledge: ct.knowledge || '',
+                clusterMode: ct.mode === 'peer' ? 'Peer' : (ct.mode === 'primary-backup' ? 'Primary-Backup' : ''),
                 commandPrefix: ct.commandPrefix || '',
                 envVariables: ct.envVariables
                     ? (ct.envVariables as EnvVariable[]).map((v: EnvVariable) => `${v.key}=${v.value}`).join(';')
                     : '',
             }))
-            const ctWorkbook = generateExportXlsx('ClusterTypes', ctData)
+            const ctWorkbook = generateExportXlsx('ClusterTypes', ctData, t)
             const ctBlob = workbookToBlob(ctWorkbook)
             files.push({ name: 'cluster_types.xlsx', data: ctBlob })
 
@@ -56,9 +58,10 @@ export function useResourceExport() {
                 name: bt.name,
                 code: bt.code,
                 description: bt.description || '',
+                typeColor: bt.color || '',
                 knowledge: bt.knowledge || '',
             }))
-            const btWorkbook = generateExportXlsx('BusinessTypes', btData)
+            const btWorkbook = generateExportXlsx('BusinessTypes', btData, t)
             const btBlob = workbookToBlob(btWorkbook)
             files.push({ name: 'business_types.xlsx', data: btBlob })
 
@@ -68,8 +71,9 @@ export function useResourceExport() {
                 code: g.code || '',
                 parentGroup: g.parentId ? (groupMap.get(g.parentId)?.name ?? '') : '',
                 description: g.description || '',
+                enabled: g.enabled ? 'true' : 'false',
             }))
-            const groupWorkbook = generateExportXlsx('HostGroups', groupData)
+            const groupWorkbook = generateExportXlsx('HostGroups', groupData, t)
             const groupBlob = workbookToBlob(groupWorkbook)
             files.push({ name: 'groups.xlsx', data: groupBlob })
 
@@ -81,7 +85,7 @@ export function useResourceExport() {
                 group: c.groupId ? (groupMap.get(c.groupId)?.name ?? '') : '',
                 description: c.description || '',
             }))
-            const clusterWorkbook = generateExportXlsx('Clusters', clusterData)
+            const clusterWorkbook = generateExportXlsx('Clusters', clusterData, t)
             const clusterBlob = workbookToBlob(clusterWorkbook)
             files.push({ name: 'clusters.xlsx', data: clusterBlob })
 
@@ -90,21 +94,21 @@ export function useResourceExport() {
                 name: h.name,
                 hostname: h.hostname || '',
                 ip: h.ip,
-                businessIp: h.businessIp || '',
                 port: String(h.port),
+                businessIp: h.businessIp || '',
                 os: h.os || '',
                 location: h.location || '',
                 username: h.username,
-                authType: h.authType,
+                authType: h.authType || '',
                 credential: '',
                 business: h.business || '',
                 cluster: h.clusterId ? (clusterMap.get(h.clusterId)?.name ?? '') : '',
                 purpose: h.purpose || '',
-                role: h.role || '',
+                role: h.role === 'primary' ? 'primary' : (h.role === 'backup' ? 'backup' : ''),
                 tags: Array.isArray(h.tags) ? h.tags.join(';') : '',
                 description: h.description || '',
             }))
-            const hostWorkbook = generateExportXlsx('Hosts', hostData)
+            const hostWorkbook = generateExportXlsx('Hosts', hostData, t)
             const hostBlob = workbookToBlob(hostWorkbook)
             files.push({ name: 'hosts.xlsx', data: hostBlob })
 
@@ -117,9 +121,8 @@ export function useResourceExport() {
                 description: bs.description || '',
                 tags: Array.isArray(bs.tags) ? bs.tags.join(';') : '',
                 priority: bs.priority || '',
-                contactInfo: bs.contactInfo || '',
             }))
-            const bsWorkbook = generateExportXlsx('BusinessServices', bsData)
+            const bsWorkbook = generateExportXlsx('BusinessServices', bsData, t)
             const bsBlob = workbookToBlob(bsWorkbook)
             files.push({ name: 'business_services.xlsx', data: bsBlob })
 
@@ -160,7 +163,7 @@ export function useResourceExport() {
                 }
             }
 
-            const relWorkbook = generateExportXlsx('Relations', relData)
+            const relWorkbook = generateExportXlsx('Relations', relData, t)
             const relBlob = workbookToBlob(relWorkbook)
             files.push({ name: 'relations.xlsx', data: relBlob })
 
@@ -173,9 +176,10 @@ export function useResourceExport() {
                 enabled: String(s.enabled ?? true),
                 mode: s.mode || 'structured',
                 stepsDescription: s.stepsDescription || '',
-                tags: Array.isArray(s.tags) ? s.tags.join(';') : '',
+                targetTags: Array.isArray(s.tags) ? s.tags.join(';') : '',
+                nodes: Array.isArray(s.nodes) && s.nodes.length > 0 ? JSON.stringify(s.nodes) : '',
             }))
-            const sopWorkbook = generateExportXlsx('SOPs', sopData)
+            const sopWorkbook = generateExportXlsx('SOPs', sopData, t)
             const sopBlob = workbookToBlob(sopWorkbook)
             files.push({ name: 'sops.xlsx', data: sopBlob })
 
@@ -185,7 +189,7 @@ export function useResourceExport() {
                 description: cmd.description || '',
                 enabled: String(cmd.enabled),
             }))
-            const wlWorkbook = generateExportXlsx('Whitelist', wlData)
+            const wlWorkbook = generateExportXlsx('Whitelist', wlData, t)
             const wlBlob = workbookToBlob(wlWorkbook)
             files.push({ name: 'trustlist.xlsx', data: wlBlob })
 

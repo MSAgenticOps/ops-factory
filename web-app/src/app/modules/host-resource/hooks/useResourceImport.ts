@@ -147,6 +147,8 @@ export function useResourceImport(deps: ImportDeps) {
                                     code: row.code,
                                     description: row.description || '',
                                     knowledge: row.knowledge || '',
+                                    color: row.typeColor || '',
+                                    mode: row.clusterMode === 'Peer' ? 'peer' : (row.clusterMode === 'Primary-Backup' ? 'primary-backup' : undefined),
                                     commandPrefix: row.commandPrefix || '',
                                     envVariables: row.envVariables
                                         ? row.envVariables.split(';').filter(Boolean).map(pair => {
@@ -169,6 +171,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     name: row.name,
                                     code: row.code,
                                     description: row.description || '',
+                                    color: row.typeColor || '',
                                     knowledge: row.knowledge || '',
                                 })
                                 createdBusinessTypeNames.add(row.name)
@@ -204,6 +207,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     name: nameResult.sanitized,
                                     code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
+                                    enabled: row.enabled === 'true',
                                 })
                                 groupNameToId.set(row.name, created.id)
                                 if (row.code) groupCodeToId.set(row.code, created.id)
@@ -427,7 +431,6 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                                     priority: row.priority || '',
-                                    contactInfo: row.contactInfo || '',
                                 })
                                 bsNameToId.set(row.name, created.id)
                                 success++
@@ -463,14 +466,27 @@ export function useResourceImport(deps: ImportDeps) {
                             }
 
                             case 'SOPs': {
+                                console.log('[Import SOPs] Row data:', JSON.stringify(row, null, 2))
                                 if (createdSopNames.has(row.name)) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: row.name } })
                                     continue
                                 }
-                                const tags = row.tags
-                                    ? row.tags.split(';').map(t => t.trim()).filter(Boolean)
+                                const tags = (row.targetTags || row.sopTags || row.tags)
+                                    ? (row.targetTags || row.sopTags || row.tags).split(';').map(t => t.trim()).filter(Boolean)
                                     : []
-                                await deps.createSop({
+                                let nodes = []
+                                if (row.nodes && typeof row.nodes === 'string' && row.nodes.trim()) {
+                                    try {
+                                        nodes = JSON.parse(row.nodes)
+                                        if (!Array.isArray(nodes)) {
+                                            nodes = []
+                                        }
+                                    } catch {
+                                        errors.push({ row: i + 2, code: 'import.invalidNodes', params: { name: row.name } })
+                                        continue
+                                    }
+                                }
+                                const sopData = {
                                     name: row.name,
                                     description: row.description || '',
                                     version: row.version || '',
@@ -479,7 +495,10 @@ export function useResourceImport(deps: ImportDeps) {
                                     mode: (row.mode === 'natural_language' ? 'natural_language' : 'structured') as 'structured' | 'natural_language',
                                     stepsDescription: row.stepsDescription || '',
                                     tags,
-                                })
+                                    nodes,
+                                }
+                                console.log('[Import SOPs] Creating SOP:', JSON.stringify(sopData, null, 2))
+                                await deps.createSop(sopData)
                                 createdSopNames.add(row.name)
                                 success++
                                 break

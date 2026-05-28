@@ -16,9 +16,11 @@ export interface ValidationResult {
 
 export interface FieldMetadata {
     name: string
+    labelKey: string
+    enLabel: string
+    zhLabel: string
     required: boolean
     validation?: FieldValidation
-    description?: string
 }
 
 export interface ResourceImportMetadata {

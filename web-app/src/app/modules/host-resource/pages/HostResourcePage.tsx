@@ -604,8 +604,8 @@ export default function HostResourcePage() {
             businessTypes: businessTypesHook.businessTypes,
             whitelistCommands,
             sops: sopsHook.sops,
-        })
-    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops])
+        }, t)
+    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops, t])
 
     const openCreateModal = useCallback(() => {
         setEditingItem(null)

@@ -122,7 +122,7 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
 
     const downloadSample = () => {
         if (!selectedType) return
-        const workbook = generateSampleXlsx(selectedType)
+        const workbook = generateSampleXlsx(selectedType, t)
         const filename = selectedType === 'Whitelist' ? 'trustlist_sample.xlsx' : `${selectedType.toLowerCase()}_sample.xlsx`
         downloadWorkbook(workbook, filename)
     }
@@ -174,6 +174,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorTargetHostNotFound', { host: err.params?.host })
             case 'import.sourceNodeNotFound':
                 return t('hostResource.importErrorSourceNodeNotFound', { node: err.params?.node })
+            case 'import.invalidNodes':
+                return t('hostResource.importErrorInvalidNodes', { name: err.params?.name })
             case 'import.rowError':
                 return t('hostResource.importErrorRowError', { message: err.params?.message })
             case 'import.hostNameRequired':

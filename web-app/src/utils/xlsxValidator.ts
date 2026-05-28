@@ -63,23 +63,27 @@ export function validateSheetStructure(
         headers.push(String(header).trim())
     }
 
-    // Validate column names
-    const expectedColumns = metadata.fields.map((f) => f.name.toLowerCase())
+    // Validate column names (support both English and Chinese labels)
     const actualColumns = headers.map((h) => h.toLowerCase())
 
     // Check for missing columns
     const missingColumns: string[] = []
-    expectedColumns.forEach((col, index) => {
-        if (actualColumns[index] !== col) {
-            missingColumns.push(metadata.fields[index].name)
+    metadata.fields.forEach((field) => {
+        const enLabel = field.enLabel.toLowerCase()
+        const zhLabel = field.zhLabel.toLowerCase()
+        // Column is present if either English or Chinese label matches
+        const isPresent = actualColumns.includes(enLabel) || actualColumns.includes(zhLabel)
+        if (!isPresent) {
+            missingColumns.push(field.name)
         }
     })
 
-    // Check for extra columns
-    const extraColumns: string[] = []
-    for (let i = expectedColumns.length; i < actualColumns.length; i++) {
-        extraColumns.push(headers[i])
-    }
+    // Check for extra columns (columns that don't match any English or Chinese label)
+    const allExpectedLabels = metadata.fields.flatMap((f) => [f.enLabel.toLowerCase(), f.zhLabel.toLowerCase()])
+    const extraColumns = headers.filter((header) => {
+        const lowerHeader = header.toLowerCase()
+        return !allExpectedLabels.includes(lowerHeader)
+    })
 
     if (missingColumns.length > 0) {
         errors.push({
