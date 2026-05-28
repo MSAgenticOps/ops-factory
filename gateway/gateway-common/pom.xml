@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>gateway-common</artifactId>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
 
     <dependencies>
         <!-- Jackson for JSON model annotations -->
