@@ -86,8 +86,8 @@ public class AuthWebFilter implements Filter {
     /**
      * doFilter.
      *
-     * @param request first string
-     * @param response second string
+     * @param request the HTTP request
+     * @param response the HTTP response
      * @param chain chain
      * @throws IOException ServletException
      * @throws ServletException ServletException

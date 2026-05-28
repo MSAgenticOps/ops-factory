@@ -94,7 +94,7 @@ class QosControllerTest {
     void testGetProductConfigRule() throws Exception {
         ProductConfigRule rule = new ProductConfigRule();
         rule.setAgentSolutionType("DigitalCRM");
-        when(qosService.getProductConfigRule(anyString())).thenReturn(Optional.<ProductConfigRule> of(rule));
+        when(qosService.getProductConfigRule(anyString())).thenReturn(Optional.<ProductConfigRule>of(rule));
 
         Map<String, Object> req = Map.of("agentSolutionType", "DigitalCRM");
 
@@ -108,7 +108,7 @@ class QosControllerTest {
 
     @Test
     void testGetProductConfigRuleNotFound() throws Exception {
-        when(qosService.getProductConfigRule(anyString())).thenReturn(Optional.<ProductConfigRule> empty());
+        when(qosService.getProductConfigRule(anyString())).thenReturn(Optional.<ProductConfigRule>empty());
 
         Map<String, Object> req = Map.of("agentSolutionType", "NonExistent");
 

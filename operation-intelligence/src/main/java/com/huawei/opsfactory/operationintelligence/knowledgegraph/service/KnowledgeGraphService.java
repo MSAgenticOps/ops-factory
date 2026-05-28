@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -574,9 +575,9 @@ public class KnowledgeGraphService {
         copy.setSnapshotId(snapshot.getSnapshotId());
         copy.setGeneratedAt(snapshot.getGeneratedAt());
         copy.setMetadata(snapshot.getMetadata());
-        copy.setEntities(snapshot.getEntities());
-        copy.setRelations(snapshot.getRelations());
-        copy.setObservations(snapshot.getObservations());
+        copy.setEntities(new ArrayList<>(snapshot.getEntities()));
+        copy.setRelations(new ArrayList<>(snapshot.getRelations()));
+        copy.setObservations(new ArrayList<>(snapshot.getObservations()));
         return copy;
     }
 
@@ -610,7 +611,7 @@ public class KnowledgeGraphService {
         updated.setStatus(normalizeOptionalText(request.getStatus(), existing.getStatus()));
         updated.setLabels(existing.getLabels());
         updated.setSource(existing.getSource());
-        updated.setProperties(request.getProperties());
+        updated.setProperties(request.getProperties() != null ? request.getProperties() : existing.getProperties());
         return updated;
     }
 
