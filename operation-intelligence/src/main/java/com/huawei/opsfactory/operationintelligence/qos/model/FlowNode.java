@@ -39,7 +39,9 @@ public class FlowNode {
 
     private List<IpStat> ip;
 
-    private List<String> cluster;
+    private List<String> ClusterTypeId;
+
+    private List<String> clusterId;
 
     private Long avgCost;
 
@@ -246,21 +248,39 @@ public class FlowNode {
     }
 
     /**
-     * Gets the cluster.
+     * Gets the cluster type id.
      *
-     * @return the cluster list
+     * @return the cluster type id list
      */
-    public List<String> getCluster() {
-        return cluster;
+    public List<String> getClusterTypeId() {
+        return ClusterTypeId;
     }
 
     /**
-     * Sets the cluster.
+     * Sets the cluster type id.
      *
-     * @param cluster the cluster list
+     * @param clusterTypeId the cluster type id list
      */
-    public void setCluster(List<String> cluster) {
-        this.cluster = cluster;
+    public void setClusterTypeId(List<String> clusterTypeId) {
+        this.ClusterTypeId = clusterTypeId;
+    }
+
+    /**
+     * Gets the cluster id.
+     *
+     * @return the cluster id list
+     */
+    public List<String> getClusterId() {
+        return clusterId;
+    }
+
+    /**
+     * Sets the cluster id.
+     *
+     * @param clusterId the cluster id list
+     */
+    public void setClusterId(List<String> clusterId) {
+        this.clusterId = clusterId;
     }
 
     /**

@@ -77,13 +77,15 @@ public class CallChainService {
      * @param conditions the list of conditions (each containing conditionKey and conditionValue)
      * @param startTime the start time in milliseconds
      * @param endTime the end time in milliseconds
+     * @param mod the mode (method or service)
      * @return the call chain tree
      */
     public CallChainTree queryCallChain(String solutionType,
                                          List<Map<String, String>> conditions,
                                          long startTime,
-                                         long endTime) {
-        return doQueryCallChain(solutionType, conditions, startTime, endTime);
+                                         long endTime,
+                                         String mod) {
+        return doQueryCallChain(solutionType, conditions, startTime, endTime, mod);
     }
 
     /**
@@ -92,10 +94,11 @@ public class CallChainService {
     private CallChainTree doQueryCallChain(String solutionType,
                                           List<Map<String, String>> conditions,
                                           long startTime,
-                                          long endTime) {
-        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}]",
+                                          long endTime,
+                                          String mod) {
+        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}], mod={}",
             solutionType, conditions.size(),
-            Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime));
+            Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime), mod);
 
         // Determine chainType by matching conditionKey with config
         String chainType = determineChainType(conditions);
@@ -144,7 +147,7 @@ public class CallChainService {
 
         // Build call chain tree
         CallChainTree tree = chainBuilder.build(chainType, conditionKey, conditionValue,
-            allLogs, allLogs.size());
+            allLogs, allLogs.size(), mod);
 
         // Set conditions
         List<CallChainTree.Condition> treeConditions = conditions.stream()
