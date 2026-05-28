@@ -2324,6 +2324,7 @@
     "importStep2": "第二步：选择 XLSX 文件",
     "importSampleTitle": "XLSX 样例格式",
     "importDownloadSample": "下载样例",
+    "importNoSampleData": "暂无样例数据",
     "importSelectFile": "选择文件",
     "importNoFileSelected": "未选择文件",
     "importStart": "开始导入",

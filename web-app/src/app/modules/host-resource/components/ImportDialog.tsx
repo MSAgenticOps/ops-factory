@@ -4,7 +4,6 @@ import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import type { ImportType, ImportResult, ImportProgress } from '../hooks/useResourceImport'
 import { generateSampleXlsx, downloadWorkbook, readXlsxFile } from '../../../../utils/xlsxHelper'
 import { validateSheetStructure, type SheetValidationError } from '../../../../utils/xlsxValidator'
-import { IMPORT_METADATA } from '../../../../utils/importExportMetadata'
 
 const IMPORT_TYPES: ImportType[] = [
     'ClusterTypes',
@@ -271,39 +270,15 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                         {t('hostResource.importStep2')}
                     </div>
                     <div className="hr-import-sample-area">
-                        <div className="hr-import-sample-header">
-                            <span>{t('hostResource.importSampleTitle')}</span>
-                            <button
-                                type="button"
-                                className="btn btn-secondary btn-xs"
-                                onClick={downloadSample}
-                                disabled={importing}
-                            >
-                                {t('hostResource.importDownloadSample')}
-                            </button>
-                        </div>
-                        <div className="hr-import-sample-content">
-                            <table className="hr-import-sample-table">
-                                <thead>
-                                    <tr>
-                                        <th>字段名称</th>
-                                        <th>可选必选</th>
-                                        <th>校验规则</th>
-                                        <th>描述</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {IMPORT_METADATA[selectedType].fields.map((field, idx) => (
-                                        <tr key={idx}>
-                                            <td>{field.name}</td>
-                                            <td>{field.required ? '必填' : '可选'}</td>
-                                            <td>{field.validation ? JSON.stringify(field.validation) : '-'}</td>
-                                            <td>{field.description || '-'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-secondary btn-xs"
+                            onClick={downloadSample}
+                            disabled={importing}
+                            style={{ marginLeft: 'auto' }}
+                        >
+                            {t('hostResource.importDownloadSample')}
+                        </button>
                     </div>
                     <div className="hr-import-file-area">
                         <input

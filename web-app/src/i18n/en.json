@@ -2324,6 +2324,7 @@
     "importStep2": "Step 2: Select XLSX File",
     "importSampleTitle": "XLSX Sample Format",
     "importDownloadSample": "Download Sample",
+    "importNoSampleData": "No sample data available",
     "importSelectFile": "Select File",
     "importNoFileSelected": "No file selected",
     "importStart": "Start Import",
