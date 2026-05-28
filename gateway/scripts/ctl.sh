@@ -257,10 +257,71 @@ build_knowledge_cli_mcp() {
         "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli/dist/index.js"
 }
 
+PYTHON_MIN_MINOR=10
+
+find_python_3_10_plus() {
+    local cand ver major minor
+    for cand in python3.13 python3.12 python3.11 python3.10 python3; do
+        command -v "${cand}" >/dev/null 2>&1 || continue
+        ver="$("${cand}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "")"
+        major="${ver%%.*}"
+        minor="${ver##*.}"
+        if [ "${major}" = "3" ] && [ -n "${minor}" ] && [ "${minor}" -ge "${PYTHON_MIN_MINOR}" ] 2>/dev/null; then
+            echo "${cand}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+build_python_mcp() {
+    local label="$1"
+    local mcp_dir="$2"
+
+    if [ ! -f "${mcp_dir}/requirements.txt" ]; then
+        return 0
+    fi
+
+    local venv_dir="${mcp_dir}/.venv"
+    local stamp="${venv_dir}/.requirements-stamp"
+    local needs_install="false"
+
+    if [ ! -x "${venv_dir}/bin/python" ]; then
+        needs_install="true"
+    elif [ ! -f "${stamp}" ]; then
+        needs_install="true"
+    elif [ "${mcp_dir}/requirements.txt" -nt "${stamp}" ]; then
+        needs_install="true"
+    fi
+
+    if [ "${needs_install}" != "true" ]; then
+        log_info "${label} MCP venv is up-to-date, skipping build"
+        return 0
+    fi
+
+    local python_bin
+    python_bin="$(find_python_3_10_plus)" || {
+        log_error "${label} MCP requires python3 >= 3.${PYTHON_MIN_MINOR}; none found on PATH"
+        return 1
+    }
+
+    log_info "Building ${label} MCP venv with ${python_bin}..."
+    rm -rf "${venv_dir}"
+    "${python_bin}" -m venv "${venv_dir}" || {
+        log_error "${label} MCP venv create failed"
+        return 1
+    }
+    "${venv_dir}/bin/pip" install --quiet --disable-pip-version-check -r "${mcp_dir}/requirements.txt" || {
+        log_error "${label} MCP pip install failed"
+        return 1
+    }
+    touch "${stamp}"
+    log_info "${label} MCP build complete"
+}
+
 build_local_tiny_tools_mcp() {
-    build_node_mcp "Local-Tiny-Tools" \
-        "${SERVICE_DIR}/agents/local-tiny-agent/config/mcp/local-tiny-tools" \
-        "${SERVICE_DIR}/agents/local-tiny-agent/config/mcp/local-tiny-tools/src/index.js"
+    build_python_mcp "Local-Tiny-Tools" \
+        "${SERVICE_DIR}/agents/local-tiny-agent/config/mcp/local-tiny-tools"
 }
 
 # --- Agents (goosed) helpers ---
