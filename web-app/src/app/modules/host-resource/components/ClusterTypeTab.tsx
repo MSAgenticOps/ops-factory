@@ -7,7 +7,7 @@ import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import type { ClusterType, Cluster } from '../../../../types/host'
-import { validateAndSanitize } from '../../../../utils/inputValidation'
+import { useFormValidation } from '../../../../utils/useFormValidation'
 
 type Props = {
     clusterTypes: ClusterType[]
@@ -40,6 +40,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
+    const { validateFormData, validateEnvVariables } = useFormValidation()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<ClusterType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
@@ -78,36 +79,35 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
         if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
-            // Validate name field
-            const nameResult = validateAndSanitize(form.name, t('hostResource.typeName'))
-            if (!nameResult.valid) {
-                showToast('error', t('hostResource.invalidChars'))
+            // Validate and sanitize form fields
+            const fieldLabels = {
+                name: t('hostResource.typeName'),
+                code: t('hostResource.typeCode'),
+                description: t('hostResource.description'),
+            }
+            const validationResult = validateFormData(
+                form,
+                ['name', 'code', 'description'],
+                fieldLabels
+            )
+
+            if (!validationResult.valid) {
                 setSaving(false)
                 return
             }
 
-            // Validate code field
-            const codeResult = validateAndSanitize(form.code, t('hostResource.typeCode'))
-            if (!codeResult.valid) {
-                showToast('error', t('hostResource.invalidChars'))
-                setSaving(false)
-                return
-            }
+            const sanitizedForm = validationResult.sanitized
 
-            // Validate description field
-            const descResult = validateAndSanitize(form.description, t('hostResource.description'))
-            if (!descResult.valid) {
-                showToast('error', t('hostResource.invalidChars'))
+            // Validate and sanitize environment variables
+            const envResult = validateEnvVariables(form.envVariables)
+            if (!envResult.valid) {
                 setSaving(false)
                 return
             }
 
             const cleanedForm = {
-                ...form,
-                name: nameResult.sanitized,
-                code: codeResult.sanitized,
-                description: descResult.sanitized,
-                envVariables: form.envVariables.filter(ev => ev.key.trim() !== ''),
+                ...sanitizedForm,
+                envVariables: envResult.sanitized.filter(ev => ev.key.trim() !== ''),
             }
 
             // Check for duplicate name
@@ -157,7 +157,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
         } finally {
             setSaving(false)
         }
-    }, [editing, form, clusterTypes, clusters, onCreate, onUpdate, showToast, t])
+    }, [editing, form, clusterTypes, clusters, onCreate, onUpdate, showToast, t, validateFormData, validateEnvVariables])
 
     const handleDelete = useCallback(async (item: ClusterType) => {
         const inUseByName = clusters.filter(c => c.type === item.name)

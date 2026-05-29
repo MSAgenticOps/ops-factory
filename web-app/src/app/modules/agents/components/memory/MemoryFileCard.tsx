@@ -104,7 +104,11 @@ interface MemoryFileCardProps {
 const MAX_PREVIEW_LINES = 3
 const MAX_PREVIEW_CHARS = 50
 const MAX_CONTENT_CHARS = 20000
+// Maximum number of tags to display before showing "+N more" indicator
+// Chosen to balance information density with readability
 const MAX_VISIBLE_TAGS = 3
+// Maximum number of memory entries to show by default
+// Users can click "Show more" to view all entries
 const MAX_VISIBLE_ENTRIES = 3
 
 export default function MemoryFileCard({ category, content, onSave, onDelete, autoEdit, isDeleting = false }: MemoryFileCardProps) {
