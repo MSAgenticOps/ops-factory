@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -89,7 +90,7 @@ class CallChainSubgraphControllerTest {
 
     @Test
     void generateAndGetSubgraph_persistsStoredSnapshot() throws Exception {
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyList(), anyLong(), anyLong()))
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyList(), anyLong(), anyLong(), anyString()))
             .thenReturn(createCallChainTree());
 
         Map<String, Object> request = Map.of(

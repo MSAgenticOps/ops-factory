@@ -157,7 +157,9 @@ function getFieldDescription(labelKey: string, label: string): string {
         'field_sops_targetTags': 'Target Tags (for natural_language mode)',
         'field_sops_nodes': 'Nodes (JSON array, valid in structured mode)',
         'field_clusterTypes_clusterMode': 'Cluster Mode (Optional: Peer/Primary-Backup)',
-        'field_hostGroups_enabled': 'Enabled (Optional: true/false)',
+        'field_hostGroups_enabled': 'Enabled (Optional: TRUE/FALSE)',
+        'field_hosts_username': 'SSH login username (Must be provided together with credential)',
+        'field_hosts_credential': 'SSH password or private key (Must be provided together with username)',
         'field_hosts_authType': 'Auth Type (Optional: password/key)',
         'field_hosts_role': 'Role (Optional: primary/backup)',
     }

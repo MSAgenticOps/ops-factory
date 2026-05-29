@@ -140,7 +140,7 @@ public class XlsxUtil {
 
         switch (cellType) {
             case STRING:
-                return cell.getStringCellValue().trim();
+                return normalizeCellValue(cell.getStringCellValue().trim());
             case NUMERIC:
                 return String.valueOf(cell.getNumericCellValue());
             case BOOLEAN:
@@ -152,6 +152,28 @@ public class XlsxUtil {
             default:
                 return "";
         }
+    }
+
+    /**
+     * Normalizes cell value to handle Excel auto-capitalization of boolean values.
+     * Excel automatically converts "true"/"false" to "TRUE"/"FALSE" in string cells.
+     * This method converts them back to lowercase for consistent processing.
+     *
+     * @param value the cell value
+     * @return the normalized value
+     */
+    public static String normalizeCellValue(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        // Handle Excel auto-capitalization of boolean values
+        if ("TRUE".equalsIgnoreCase(value)) {
+            return "true";
+        }
+        if ("FALSE".equalsIgnoreCase(value)) {
+            return "false";
+        }
+        return value;
     }
 
     /**

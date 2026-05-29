@@ -57,6 +57,14 @@ export default function ResourceFormModal({
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // Auto-hide error after 3 seconds
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => setError(null), 3000)
+            return () => clearTimeout(timer)
+        }
+    }, [error])
+
     // ── Group form state ──
     const [groupName, setGroupName] = useState(editingItem?.type === 'group' ? editingItem.data.name : '')
     const [groupParentId, setGroupParentId] = useState(editingItem?.type === 'group' ? (editingItem.data.parentId ?? '') : '')
@@ -480,6 +488,17 @@ export default function ResourceFormModal({
                 if (hostCredential && hostCredential !== '***' && !/^[\x00-\x7F]*$/.test(hostCredential)) {
                     setError(t('hostResource.credentialInvalidChars')); setSaving(false); return
                 }
+                // Username and credential must both be provided or both be empty
+                // Skip validation in edit mode if credential is not modified ('***' placeholder)
+                const isEditing = editingItem?.type === 'host'
+                const credentialModified = hostCredential !== '***'
+                if (credentialModified || !isEditing) {
+                    const hasUsername = hostUsername.trim().length > 0
+                    const hasCredential = hostCredential.trim().length > 0 && hostCredential !== '***'
+                    if (hasUsername !== hasCredential) {
+                        setError(t('hostResource.usernameCredentialMismatch')); setSaving(false); return
+                    }
+                }
                 const editingHostId = editingItem?.type === 'host' ? editingItem.data.id : null
                 const trimmedHostName = nameResult.sanitized
                 const duplicate = hosts.some(h => h.name?.toLowerCase() === trimmedHostName.toLowerCase() && h.id !== editingHostId)
@@ -506,6 +525,16 @@ export default function ResourceFormModal({
                     }
                 }
 
+                // Custom attribute key duplicate validation
+                const validAttrs = hostCustomAttributes.filter(attr => attr.key.trim().length > 0)
+                const keys = validAttrs.map(attr => attr.key.trim().toLowerCase())
+                const uniqueKeys = new Set(keys)
+                if (keys.length !== uniqueKeys.size) {
+                    setError(t('hostResource.duplicateAttrKey'))
+                    setSaving(false)
+                    return
+                }
+
                 const payload: Record<string, unknown> = {
                     name: nameResult.sanitized,
                     hostname: hostnameResult.sanitized || null,
@@ -515,7 +544,7 @@ export default function ResourceFormModal({
                     authType: hostAuthType, clusterId: hostClusterId || null,
                     purpose: purposeResult.sanitized || null,
                     business: businessResult.sanitized || null, description: descResult.sanitized,
-                    customAttributes: hostCustomAttributes.filter(attr => attr.key.trim().length > 0),
+                    customAttributes: validAttrs,
                     businessIp: hostBusinessIp.trim() || null,
                     role: hostRole || null,
                 }
@@ -591,7 +620,15 @@ export default function ResourceFormModal({
                     <>
                         <div className="modal-body hr-host-modal">
                             {error && (
-                                <div className="agents-alert agents-alert-error" style={{ marginBottom: 'var(--spacing-4)' }}>
+                                <div className="agents-alert agents-alert-error" style={{
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 10,
+                                    marginBottom: 'var(--spacing-4)',
+                                    borderRadius: '0 0 4px 4px',
+                                    backgroundColor: '#fee',
+                                    border: '1px solid #fca5a5',
+                                }}>
                                     {error}
                                 </div>
                             )}
@@ -1012,7 +1049,18 @@ export default function ResourceFormModal({
                                             <SearchableSelect
                                                 value={hostClusterId}
                                                 onChange={(id) => {
-                                                    if (id !== hostClusterId) setHostRole('')
+                                                    if (id !== hostClusterId) {
+                                                        const selectedCluster = clusters.find(c => c.id === id)
+                                                        const clusterTypeName = selectedCluster?.type ?? ''
+                                                        // Use resolveClusterTypeName to handle both name and code matching
+                                                        const resolvedTypeName = resolveClusterTypeName(clusterTypeName)
+                                                        const clusterTypeObj = clusterTypes.find(ct => ct.name === resolvedTypeName)
+                                                        const clusterMode = clusterTypeObj?.mode ?? 'peer'
+                                                        // Clear role when switching to peer mode cluster
+                                                        if (clusterMode === 'peer') {
+                                                            setHostRole('')
+                                                        }
+                                                    }
                                                     setHostClusterId(id)
                                                 }}
                                                 options={clusters.map(c => ({ value: c.id, label: c.name }))}

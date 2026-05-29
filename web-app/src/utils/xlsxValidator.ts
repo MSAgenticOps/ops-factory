@@ -165,7 +165,7 @@ export function validateField(
             break
 
         case 'enum':
-            if (validation.enumValues && !validation.enumValues.includes(trimmedValue)) {
+            if (validation.enumValues && !validation.enumValues.some(v => v.toLowerCase() === trimmedValue.toLowerCase())) {
                 return { valid: false, error: `${field.name} must be one of: ${validation.enumValues.join(', ')}` }
             }
             break

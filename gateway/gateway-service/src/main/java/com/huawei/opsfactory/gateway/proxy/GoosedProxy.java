@@ -202,9 +202,9 @@ public class GoosedProxy {
                         log.warn(
                             "[GOOSED-PROXY] upstream-error method={} path={} port={} status={} "
                                 + "error={} durationMs={}",
-                            method, path, port, upstream.rawStatusCode(), truncate(errorBody, 200),
+                            method, path, port, upstream.statusCode().value(), truncate(errorBody, 200),
                             System.currentTimeMillis() - start);
-                        return Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
+                        return Mono.error(toUpstreamResponseException(upstream.statusCode().value(),
                             upstream.headers().asHttpHeaders(), errorBody));
                     });
                 }
@@ -252,10 +252,10 @@ public class GoosedProxy {
         return spec.exchangeToMono(upstream -> {
             if (upstream.statusCode().isError()) {
                 log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}", port,
-                    path, upstream.rawStatusCode(), agentId, sessionId);
+                    path, upstream.statusCode().value(), agentId, sessionId);
                 return upstream.bodyToMono(String.class)
                     .defaultIfEmpty("")
-                    .flatMap(errorBody -> Mono.error(toUpstreamResponseException(upstream.rawStatusCode(),
+                    .flatMap(errorBody -> Mono.error(toUpstreamResponseException(upstream.statusCode().value(),
                         upstream.headers().asHttpHeaders(), errorBody)));
             }
             log.info("[GOOSED-PROXY] sse-connected port={} path={} status={} agentId={} sessionId={}", port, path,
@@ -535,9 +535,10 @@ public class GoosedProxy {
         }
         if (upstream.statusCode().isError()) {
             log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}", port,
-                path, upstream.rawStatusCode(), agentId, sessionId);
+                path, upstream.statusCode().value(), agentId, sessionId);
             String errorBody = upstream.bodyToMono(String.class).defaultIfEmpty("").block(Duration.ofSeconds(5));
-            throw toUpstreamResponseException(upstream.rawStatusCode(), upstream.headers().asHttpHeaders(), errorBody);
+            throw toUpstreamResponseException(upstream.statusCode().value(), upstream.headers().asHttpHeaders(),
+                errorBody);
         }
 
         SseEmitter emitter = createSseEmitter();

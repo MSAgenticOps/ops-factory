@@ -71,6 +71,15 @@ const mergeDetectedFiles = (existing: DetectedFile[], incoming: DetectedFile[]):
     return order.map(key => byKey.get(key)!)
 }
 
+const mapOutputEventFiles = (files: OutputFilesEvent['files']): DetectedFile[] =>
+    files.map(file => ({
+        path: file.path,
+        name: file.name,
+        ext: file.ext,
+        rootId: file.rootId,
+        displayPath: file.displayPath,
+    }))
+
 const messageIdentityIds = (message: ChatMessage): string[] => {
     const ids = new Set<string>()
     if (message.id) ids.add(message.id)
@@ -452,13 +461,7 @@ export default function MessageList({
             ? assistantMessageIdByRequestId.get(outputFilesEvent.requestId)
             : finalAssistantTextMessageId
 
-        const files: DetectedFile[] = outputFilesEvent.files.map(f => ({
-            path: f.path,
-            name: f.name,
-            ext: f.ext,
-            rootId: f.rootId,
-            displayPath: f.displayPath,
-        }))
+        const files = mapOutputEventFiles(outputFilesEvent.files)
 
         if (targetMessageId) {
             const eventKey = `${outputFilesEvent.sessionId}:${targetMessageId}:${fileEventSignature(files)}`
@@ -543,13 +546,7 @@ export default function MessageList({
                 continue
             }
 
-            const files: DetectedFile[] = entry.event.files.map(f => ({
-                path: f.path,
-                name: f.name,
-                ext: f.ext,
-                rootId: f.rootId,
-                displayPath: f.displayPath,
-            }))
+            const files = mapOutputEventFiles(entry.event.files)
 
             const eventKey = `${entry.event.sessionId}:${targetMessageId}:${fileEventSignature(files)}`
             if (processedOutputFilesRef.current.has(eventKey)) {

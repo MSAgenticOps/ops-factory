@@ -234,11 +234,14 @@ export default function HostResourcePage() {
             // Clusters under this group
             const groupClusters = clusters.filter(c => c.groupId === g.id)
             for (const c of groupClusters) {
+                // Resolve cluster type name from clusterTypes by matching type field with name or code
+                const clusterType = c.type ? clusterTypesHook.clusterTypes.find(ct => ct.name === c.type || ct.code === c.type) : null
+                const displayType = clusterType?.name || c.type
                 childNodes.push({
                     id: c.id,
                     type: 'cluster' as TreeNodeType,
                     name: c.name,
-                    subtitle: c.type + (clusterHostMap.has(c.id) ? ` (${clusterHostMap.get(c.id)} ${t('hostResource.hostCountUnit')})` : ''),
+                    subtitle: displayType + (clusterHostMap.has(c.id) ? ` (${clusterHostMap.get(c.id)} ${t('hostResource.hostCountUnit')})` : ''),
                     raw: c,
                 })
             }
@@ -266,11 +269,14 @@ export default function HostResourcePage() {
         const orphanClusters = clusters.filter(c => !c.groupId || !validGroupIds.has(c.groupId))
         for (const c of orphanClusters) {
             const hostCount = clusterHostMap.get(c.id) || 0
+            // Resolve cluster type name from clusterTypes by matching type field with name or code
+            const clusterType = c.type ? clusterTypesHook.clusterTypes.find(ct => ct.name === c.type || ct.code === c.type) : null
+            const displayType = clusterType?.name || c.type
             tree.push({
                 id: c.id,
                 type: 'cluster' as TreeNodeType,
                 name: c.name,
-                subtitle: c.type + (hostCount > 0 ? ` (${hostCount} ${t('hostResource.hostCountUnit')})` : ''),
+                subtitle: displayType + (hostCount > 0 ? ` (${hostCount} ${t('hostResource.hostCountUnit')})` : ''),
                 raw: c,
             })
         }
@@ -305,7 +311,7 @@ export default function HostResourcePage() {
         markInherited(tree, false)
 
         return tree
-    }, [groups, clusters, allHosts, businessServices, t])
+    }, [groups, clusters, allHosts, businessServices, clusterTypesHook.clusterTypes, t])
 
     // Build cluster lookup for HostCard
     const clusterMap = useMemo(() => {
@@ -898,7 +904,11 @@ export default function HostResourcePage() {
                     businessTypes={businessTypesHook.businessTypes}
                     loading={businessTypesHook.loading}
                     onCreate={businessTypesHook.createBusinessType}
-                    onUpdate={businessTypesHook.updateBusinessType}
+                    onUpdate={async (id, body) => {
+                        const result = await businessTypesHook.updateBusinessType(id, body)
+                        await fetchBusinessServices()
+                        return result
+                    }}
                     onDelete={businessTypesHook.deleteBusinessType}
                 />
             )}
