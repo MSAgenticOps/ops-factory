@@ -2223,6 +2223,7 @@
     "addAttribute": "添加属性",
     "attrKey": "属性名",
     "attrValue": "属性值",
+    "duplicateAttrKey": "自定义属性名必须唯一",
     "sourceHost": "源主机",
     "targetHost": "目标主机",
     "relationDesc": "关系描述",

@@ -2223,6 +2223,7 @@
     "addAttribute": "Add Attribute",
     "attrKey": "Key",
     "attrValue": "Value",
+    "duplicateAttrKey": "Custom attribute keys must be unique",
     "sourceHost": "Source Host",
     "targetHost": "Target Host",
     "relationDesc": "Relation Description",
