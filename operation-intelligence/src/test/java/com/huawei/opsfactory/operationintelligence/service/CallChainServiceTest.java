@@ -219,7 +219,7 @@ class CallChainServiceTest {
 
         CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
             List.of(Map.of("conditionKey", "menuId", "conditionValue", "6013101010007")), 1746057600000L,
-            1746058200000L);
+            1746058200000L, "TRACE");
 
         assertNotNull(result);
         assertEquals("BES", result.getChainType());
