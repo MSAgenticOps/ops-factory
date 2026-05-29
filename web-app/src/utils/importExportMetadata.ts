@@ -59,7 +59,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'code', labelKey: 'field_hostGroups_code', enLabel: 'Host Group Code', zhLabel: '主机组代码', required: false, validation: { type: 'string', maxLength: 50 } },
             { name: 'parentGroup', labelKey: 'field_hostGroups_parentGroup', enLabel: 'Parent Group', zhLabel: '父主机组', required: false, validation: { type: 'string' } },
             { name: 'description', labelKey: 'field_hostGroups_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'enabled', labelKey: 'field_hostGroups_enabled', enLabel: 'Enabled', zhLabel: '启用状态（可选：true/false）', required: false, validation: { type: 'enum', enumValues: ['true', 'false'] } },
+            { name: 'enabled', labelKey: 'field_hostGroups_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
         ],
         sampleData: [
             {
@@ -67,14 +67,14 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 code: 'prod-servers',
                 parentGroup: 'Data Center A',
                 description: 'Production environment server group',
-                enabled: 'true',
+                enabled: 'TRUE',
             },
             {
                 name: 'Backup Servers',
                 code: 'backup-servers',
                 parentGroup: 'Data Center A',
                 description: 'Backup server group',
-                enabled: 'true',
+                enabled: 'TRUE',
             },
         ],
     },
@@ -118,9 +118,8 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'businessIp', labelKey: 'field_hosts_businessIp', enLabel: 'Business IP Address', zhLabel: '业务 IP 地址', required: false, validation: { type: 'ip' } },
             { name: 'os', labelKey: 'field_hosts_os', enLabel: 'Operating System', zhLabel: '操作系统', required: false, validation: { type: 'string' } },
             { name: 'location', labelKey: 'field_hosts_location', enLabel: 'Location', zhLabel: '部署位置', required: false, validation: { type: 'string' } },
-            { name: 'username', labelKey: 'field_hosts_username', enLabel: 'Username', zhLabel: '用户名', required: true, validation: { type: 'custom', customValidator: (value: string) => {
-                if (!value) return { valid: false, error: 'Username is required' }
-                if (!/^[\x00-\x7F]*$/.test(value)) {
+            { name: 'username', labelKey: 'field_hosts_username', enLabel: 'Username', zhLabel: '用户名', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (value && !/^[\x00-\x7F]*$/.test(value)) {
                     return { valid: false, error: 'Username must contain only ASCII characters' }
                 }
                 return { valid: true }
@@ -242,7 +241,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'name', labelKey: 'field_sops_name', enLabel: 'SOP Name', zhLabel: 'SOP 名称', required: true, validation: { type: 'string', maxLength: 100 } },
             { name: 'version', labelKey: 'field_sops_version', enLabel: 'Version', zhLabel: '版本号', required: false, validation: { type: 'string', maxLength: 50 } },
             { name: 'mode', labelKey: 'field_sops_mode', enLabel: 'Mode', zhLabel: '模式', required: false, validation: { type: 'enum', enumValues: ['structured', 'natural_language'] } },
-            { name: 'enabled', labelKey: 'field_sops_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['true', 'false'] } },
+            { name: 'enabled', labelKey: 'field_sops_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
             { name: 'description', labelKey: 'field_sops_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
             { name: 'triggerCondition', labelKey: 'field_sops_triggerCondition', enLabel: 'Trigger Condition', zhLabel: '触发条件', required: false, validation: { type: 'string', maxLength: 500 } },
             { name: 'targetTags', labelKey: 'field_sops_targetTags', enLabel: 'Target Tags', zhLabel: '目标标签', required: false, validation: { type: 'array', separator: ';' } },
@@ -254,7 +253,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 name: 'Server Restart',
                 version: 'v1.0',
                 mode: 'natural_language',
-                enabled: 'true',
+                enabled: 'TRUE',
                 description: 'Regularly restart servers to free resources',
                 triggerCondition: 'Memory usage over 90%',
                 targetTags: 'restart;ops;memory',
@@ -265,7 +264,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 name: 'Log Cleanup',
                 version: 'v1.1',
                 mode: 'natural_language',
-                enabled: 'true',
+                enabled: 'TRUE',
                 description: 'Regularly clean up log files',
                 triggerCondition: 'Disk usage over 80%',
                 targetTags: 'cleanup;ops;disk',
@@ -276,7 +275,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 name: 'Web Service Recovery',
                 version: 'v2.0',
                 mode: 'structured',
-                enabled: 'true',
+                enabled: 'TRUE',
                 description: 'Structured workflow for web service recovery',
                 triggerCondition: 'HTTP 5xx errors > 5%',
                 targetTags: 'web;recovery;structured',
@@ -292,12 +291,12 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         fields: [
             { name: 'pattern', labelKey: 'field_whitelist_pattern', enLabel: 'Command', zhLabel: '命令', required: true, validation: { type: 'regex', pattern: '^[a-zA-Z0-9_\\-./\\s]+$' } },
             { name: 'description', labelKey: 'field_whitelist_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'enabled', labelKey: 'field_whitelist_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['true', 'false'] } },
+            { name: 'enabled', labelKey: 'field_whitelist_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
         ],
         sampleData: [
-            { pattern: 'ls -la', description: 'List files', enabled: 'true' },
-            { pattern: 'ps aux', description: 'View processes', enabled: 'true' },
-            { pattern: 'cat /var/log/syslog', description: 'View logs', enabled: 'false' },
+            { pattern: 'ls -la', description: 'List files', enabled: 'TRUE' },
+            { pattern: 'ps aux', description: 'View processes', enabled: 'TRUE' },
+            { pattern: 'cat /var/log/syslog', description: 'View logs', enabled: 'FALSE' },
         ],
     },
 }

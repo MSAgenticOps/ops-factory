@@ -98,7 +98,7 @@ public class CallChainSubgraphService {
             "conditionKey", ENTRY_CONDITION_KEY,
             "conditionValue", request.getMenuId().trim()));
         CallChainTree callChainTree = callChainService.queryCallChain(
-            request.getSolutionType().trim(), conditions, timeRange.startTime(), timeRange.endTime());
+            request.getSolutionType().trim(), conditions, timeRange.startTime(), timeRange.endTime(), queryMode);
         OffsetDateTime generatedAt = OffsetDateTime.now();
         String subgraphId = "cc-subgraph-" + UUID.randomUUID().toString().replace("-", "");
         GraphSnapshot callChainGraph = buildGraphSnapshot(request, callChainTree, subgraphId, generatedAt, queryMode);
@@ -542,16 +542,7 @@ public class CallChainSubgraphService {
         if (node.getClusterId() != null && !node.getClusterId().isBlank()) {
             return node.getClusterId().trim();
         }
-        List<String> clusters = node.getCluster();
-        if (clusters == null || clusters.isEmpty()) {
-            return null;
-        }
-        return clusters.stream()
-            .filter(Objects::nonNull)
-            .map(String::trim)
-            .filter(value -> !value.isBlank())
-            .findFirst()
-            .orElse(null);
+        return null;
     }
 
     private String resolveOntologyId(String ontologyId) {

@@ -54,7 +54,7 @@ class CallChainControllerTest {
         tree.setTotalCount(100L);
         tree.setFlows(List.of());
 
-        when(callChainService.queryCallChain(anyString(), anyList(), anyLong(), anyLong())).thenReturn(tree);
+        when(callChainService.queryCallChain(anyString(), anyList(), anyLong(), anyLong(), anyString())).thenReturn(tree);
 
         QueryCallChainRequest request = new QueryCallChainRequest();
         request.setSolutionType("DigitalCRM.sit");
@@ -64,6 +64,7 @@ class CallChainControllerTest {
         request.setCondition(List.of(condition));
         request.setStartTime(1746057600000L);
         request.setEndTime(1746058000000L);
+        request.setMode("method");
 
         mockMvc
             .perform(post("/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)

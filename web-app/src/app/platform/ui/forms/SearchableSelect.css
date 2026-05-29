@@ -1,6 +1,6 @@
 .searchable-select {
     position: relative;
-    display: inline-flex;
+    display: flex;
     min-width: 0;
 }
 

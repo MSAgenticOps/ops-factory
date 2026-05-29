@@ -43,8 +43,6 @@ public class FlowNode {
 
     private String clusterId;
 
-    private String clusterId;
-
     private Long avgCost;
 
     private Long minCost;
@@ -280,24 +278,6 @@ public class FlowNode {
      * Sets the cluster id.
      *
      * @param clusterId the cluster id string
-     */
-    public void setClusterId(String clusterId) {
-        this.clusterId = clusterId;
-    }
-
-    /**
-     * Gets the cluster id.
-     *
-     * @return the cluster id
-     */
-    public String getClusterId() {
-        return clusterId;
-    }
-
-    /**
-     * Sets the cluster id.
-     *
-     * @param clusterId the cluster id
      */
     public void setClusterId(String clusterId) {
         this.clusterId = clusterId;

@@ -89,21 +89,21 @@ public class CallChainService {
      * @return the call chain tree
      */
     public CallChainTree queryCallChain(String solutionType, List<Map<String, String>> conditions, long startTime,
-        long endTime) {
+        long endTime, String mode) {
         CallChainTree mockTree = loadMockTreeIfConfigured(conditions, startTime, endTime);
         if (mockTree != null) {
             return mockTree;
         }
-        return doQueryCallChain(solutionType, conditions, startTime, endTime);
+        return doQueryCallChain(solutionType, conditions, startTime, endTime, mode);
     }
 
     /**
      * Internal implementation of query call chain.
      */
     private CallChainTree doQueryCallChain(String solutionType, List<Map<String, String>> conditions, long startTime,
-        long endTime) {
-        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}]", solutionType,
-            conditions.size(), Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime));
+        long endTime, String mode) {
+        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}], mode={}", solutionType,
+            conditions.size(), Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime), mode);
 
         // Determine chainType by matching conditionKey with config
         String chainType = determineChainType(conditions);
@@ -137,7 +137,7 @@ public class CallChainService {
         List<TraceLogRecord> allLogs = new ArrayList<>();
         int querySize = properties.getCallChain().getQuerySize();
         for (String traceId : traceIds) {
-            log.warn("Fetching logs for TraceID: {}", traceId);
+            log.debug("Fetching logs for TraceID: {}", traceId);
             List<TraceLogRecord> traceLogs =
                 dvClient.fetchByTraceId(solutionType, traceId, startTime, endTime, querySize);
             allLogs.addAll(traceLogs);
@@ -150,7 +150,7 @@ public class CallChainService {
         String conditionValue = primaryCondition.get("conditionValue");
 
         // Build call chain tree
-        CallChainTree tree = chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size());
+        CallChainTree tree = chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size(), mode);
 
         // Set conditions
         List<CallChainTree.Condition> treeConditions = conditions.stream().map(cond -> {

@@ -498,16 +498,20 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.businessIpInvalid', params: { ip: row.businessIp } })
                                     continue
                                 }
-                                if (!hostUsername) {
-                                    errors.push({ row: i + 2, code: 'import.hostUsernameRequired' })
-                                    continue
-                                }
                                 if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
                                     errors.push({ row: i + 2, code: 'import.usernameInvalidChars' })
                                     continue
                                 }
                                 if (row.credential && row.credential !== '***' && !/^[\x00-\x7F]*$/.test(row.credential)) {
                                     errors.push({ row: i + 2, code: 'import.credentialInvalidChars' })
+                                    continue
+                                }
+                                // Username and credential must both be provided or both be empty
+                                const hostCredential = row.credential?.trim() || ''
+                                const hasUsername = hostUsername.length > 0
+                                const hasCredential = hostCredential.length > 0 && hostCredential !== '***'
+                                if (hasUsername !== hasCredential) {
+                                    errors.push({ row: i + 2, code: 'import.usernameCredentialMismatch' })
                                     continue
                                 }
                                 if (row.hostname) {

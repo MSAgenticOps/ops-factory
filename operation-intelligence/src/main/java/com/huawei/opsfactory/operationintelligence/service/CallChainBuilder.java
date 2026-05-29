@@ -33,6 +33,8 @@ public class CallChainBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(CallChainBuilder.class);
 
+    private static final int SIGNATURE_LENGTH = 16;
+
     private final CallChainStatistics statisticsCalculator;
 
     private final OperationIntelligenceProperties properties;
@@ -56,10 +58,11 @@ public class CallChainBuilder {
      * @param conditionValue the condition value
      * @param logs the trace log records
      * @param totalCount the total count
+     * @param mode the mode (method or service)
      * @return the call chain tree
      */
     public CallChainTree build(String chainType, String conditionType, String conditionValue, List<TraceLogRecord> logs,
-        long totalCount) {
+        long totalCount, String mode) {
 
         // 1. 按 traceId 分组
         Map<String,
@@ -83,13 +86,19 @@ public class CallChainBuilder {
             .sorted(Comparator.comparing(CallFlow::getCallCount).reversed())
             .collect(Collectors.toList());
 
-        // 4. 构建 CallChainTree
+        // 4. service 模式：执行两步合并
+        if ("service".equals(mode)) {
+            flows = statisticsCalculator.mergeFlowsByService(flows);
+        }
+
+        // 5. 构建 CallChainTree
         CallChainTree tree = new CallChainTree();
         tree.setChainType(chainType);
         tree.setFlows(flows);
         tree.setTotalCount(totalCount);
 
-        log.info("Built call chain tree: chainType={}, flows={}, totalCount={}", chainType, flows.size(), totalCount);
+        log.info("Built call chain tree: chainType={}, flows={}, totalCount={}, mode={}",
+            chainType, flows.size(), totalCount, mode);
 
         return tree;
     }
@@ -125,12 +134,13 @@ public class CallChainBuilder {
 
     /**
      * Generate sequence signature for a trace log list.
+     * Uses SHA-256 hash for fixed-length signature.
      *
      * @param logs the trace logs
-     * @return the sequence signature
+     * @return the sequence signature (hash)
      */
     private String generateSequenceSignature(List<TraceLogRecord> logs) {
-        return logs.stream().map(log -> {
+        String signature = logs.stream().map(log -> {
             if (log.getUrl() != null) {
                 return "URL:" + log.getUrl();
             } else if (log.getServiceName() != null) {
@@ -145,6 +155,16 @@ public class CallChainBuilder {
                 return "UNKNOWN";
             }
         }).collect(Collectors.joining("->"));
+
+        // Use SHA-256 hash for fixed-length signature
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(signature.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.Base64.getEncoder().encodeToString(hash).substring(0, SIGNATURE_LENGTH);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            log.warn("SHA-256 algorithm not available, using original signature", e);
+            return signature; // Fallback to original signature
+        }
     }
 
     /**

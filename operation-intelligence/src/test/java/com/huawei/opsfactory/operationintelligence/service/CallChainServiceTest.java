@@ -97,10 +97,10 @@ class CallChainServiceTest {
         tree.setChainType(null);
         tree.setFlows(new ArrayList<>());
         tree.setTotalCount(0L);
-        when(chainBuilder.build(anyString(), anyString(), anyString(), anyList(), anyLong())).thenReturn(tree);
+        when(chainBuilder.build(anyString(), anyString(), anyString(), anyList(), anyLong(), anyString())).thenReturn(tree);
 
         CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L);
+            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L, "method");
 
         assertNotNull(result);
         assertNull(result.getChainType());
@@ -137,7 +137,7 @@ class CallChainServiceTest {
             .thenReturn(List.of(fullLog));
 
         // Mock chain builder to return a new tree for debugging
-        when(chainBuilder.build(anyString(), anyString(), anyString(), anyList(), anyLong())).thenAnswer(invocation -> {
+        when(chainBuilder.build(anyString(), anyString(), anyString(), anyList(), anyLong(), anyString())).thenAnswer(invocation -> {
             CallChainTree result = new CallChainTree();
             result.setChainType("BES");
             result.setFlows(List.of());
@@ -146,7 +146,7 @@ class CallChainServiceTest {
         });
 
         CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L);
+            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L, "method");
 
         assertNotNull(result);
         assertEquals("BES", result.getChainType());
@@ -160,7 +160,7 @@ class CallChainServiceTest {
         when(properties.getCallChain()).thenReturn(callChain);
 
         CallChainTree result =
-            callChainService.queryCallChain("DigitalCRM.sit", List.of(), 1746057600000L, 1746662400000L);
+            callChainService.queryCallChain("DigitalCRM.sit", List.of(), 1746057600000L, 1746662400000L, "method");
 
         assertNotNull(result);
     }
@@ -172,7 +172,7 @@ class CallChainServiceTest {
         when(properties.getCallChain()).thenReturn(callChain);
 
         CallChainTree result =
-            callChainService.queryCallChain("DigitalCRM.sit", new ArrayList<>(), 1746057600000L, 1746662400000L);
+            callChainService.queryCallChain("DigitalCRM.sit", new ArrayList<>(), 1746057600000L, 1746662400000L, "method");
 
         assertNotNull(result);
         assertNull(result.getChainType());
@@ -219,7 +219,7 @@ class CallChainServiceTest {
 
         CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
             List.of(Map.of("conditionKey", "menuId", "conditionValue", "6013101010007")), 1746057600000L,
-            1746058200000L);
+            1746058200000L, "TRACE");
 
         assertNotNull(result);
         assertEquals("BES", result.getChainType());
