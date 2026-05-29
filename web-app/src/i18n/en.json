@@ -730,6 +730,7 @@
     "nameTooLong": "Maximum 64 characters allowed",
     "nameInvalidChars": "Name can only contain letters, numbers, underscores, hyphens and spaces",
     "nameDuplicate": "A knowledge base with this name already exists",
+    "descTooLong": "Maximum 256 characters allowed for description",
     "searchPlaceholder": "Search knowledge bases...",
     "statusAll": "All statuses",
     "statusActive": "Active",

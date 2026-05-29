@@ -94,6 +94,7 @@ function CreateKnowledgeModal({
     const [error, setError] = useState<string | null>(null)
 
     const isNameTooLong = name.length > 64
+    const isDescTooLong = description.length > 256
     const hasInvalidChars = !!name && !/^[\p{L}\p{N}_\s-]*$/u.test(name)
     const isDuplicate = existingNames.has(name.trim())
     const canSubmit = name.trim() && !isNameTooLong && !hasInvalidChars && !isDuplicate
@@ -181,7 +182,11 @@ function CreateKnowledgeModal({
                             placeholder={t('knowledge.descriptionPlaceholder')}
                             value={description}
                             onChange={e => setDescription(e.target.value)}
+                            maxLength={256}
                         />
+                        <div className={`knowledge-field-hint${isDescTooLong ? ' knowledge-field-hint--error' : ''}`}>
+                            {isDescTooLong ? t('knowledge.descTooLong') : `${description.length}/256`}
+                        </div>
                     </div>
                 </div>
 

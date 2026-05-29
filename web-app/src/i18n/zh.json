@@ -730,6 +730,7 @@
     "nameTooLong": "最长只能输入64个字符",
     "nameInvalidChars": "名称只能包含文字、数字、下划线和连字符",
     "nameDuplicate": "已存在同名知识库",
+    "descTooLong": "描述最长只能输入256个字符",
     "searchPlaceholder": "搜索知识库...",
     "statusAll": "全部状态",
     "statusActive": "已启用",
