@@ -246,16 +246,59 @@ build_node_mcp() {
     log_info "${label} MCP build complete"
 }
 
+check_python_mcp() {
+    local label="$1"
+    local mcp_dir="$2"
+    local entry="$3"
+    local requirements="${mcp_dir}/requirements.txt"
+    local deps_dir="${mcp_dir}/.python-deps"
+
+    if [ ! -f "${entry}" ]; then
+        log_error "${label} MCP entry not found: ${entry}"
+        return 1
+    fi
+    if [ ! -f "${requirements}" ]; then
+        log_error "${label} MCP requirements not found: ${requirements}"
+        return 1
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        log_error "${label} MCP requires python3"
+        return 1
+    fi
+
+    if ! PYTHONPATH="${deps_dir}" python3 -c "import importlib.metadata as md; from mcp.server.fastmcp import FastMCP; raise SystemExit(0 if md.version('mcp') == '1.27.1' else 1)" >/dev/null 2>&1; then
+        log_info "Installing ${label} MCP Python dependencies into ${deps_dir}"
+        python3 -m pip install --disable-pip-version-check --quiet --upgrade --target "${deps_dir}" -r "${requirements}" || {
+            log_error "${label} MCP Python dependency install failed"
+            return 1
+        }
+    fi
+
+    if ! PYTHONPATH="${deps_dir}" python3 -c "import importlib.metadata as md; from mcp.server.fastmcp import FastMCP; raise SystemExit(0 if md.version('mcp') == '1.27.1' else 1)" >/dev/null 2>&1; then
+        log_error "${label} MCP requires Python dependency mcp==1.27.1. Install with: python3 -m pip install --target ${deps_dir} -r ${requirements}"
+        return 1
+    fi
+
+    log_info "${label} MCP Python dependency mcp==1.27.1 is available in ${deps_dir}"
+}
+
 build_knowledge_service_mcp() {
-    build_node_mcp "Knowledge-Service" \
+    check_python_mcp "Knowledge-Service" \
         "${SERVICE_DIR}/agents/qa-agent/config/mcp/knowledge-service" \
-        "${SERVICE_DIR}/agents/qa-agent/config/mcp/knowledge-service/dist/index.js"
+        "${SERVICE_DIR}/agents/qa-agent/config/mcp/knowledge-service/server.py"
 }
 
 build_knowledge_cli_mcp() {
-    build_node_mcp "Knowledge-Cli" \
+    check_python_mcp "Knowledge-Cli" \
         "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli" \
-        "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli/dist/index.js"
+        "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli/server.py"
+}
+
+build_supervisor_control_center_mcp() {
+    check_python_mcp "Supervisor-Control-Center" \
+        "${SERVICE_DIR}/agents/supervisor-agent/config/mcp/control-center" \
+        "${SERVICE_DIR}/agents/supervisor-agent/config/mcp/control-center/server.py"
 }
 
 build_local_tiny_tools_mcp() {
@@ -347,6 +390,7 @@ do_startup() {
     build_gateway
     build_knowledge_service_mcp
     build_knowledge_cli_mcp
+    build_supervisor_control_center_mcp
     build_local_tiny_tools_mcp
 
     local jar="${SERVICE_DIR}/gateway-service/target/gateway-service.jar"
