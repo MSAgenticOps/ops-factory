@@ -11,6 +11,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -26,6 +28,9 @@ import java.util.Map;
  * @since 2026-05-28
  */
 public class XlsxUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(XlsxUtil.class);
+
 
     /**
      * Reads an Excel file from input stream.
@@ -184,7 +189,9 @@ public class XlsxUtil {
             try {
                 workbook.close();
             } catch (IOException e) {
-                // Ignore
+                if (log.isDebugEnabled()) {
+                    log.debug("Failed to close workbook: {}", e.getMessage());
+                }
             }
         }
     }
@@ -199,7 +206,9 @@ public class XlsxUtil {
             try {
                 inputStream.close();
             } catch (IOException e) {
-                // Ignore
+                if (log.isDebugEnabled()) {
+                    log.debug("Failed to close input stream: {}", e.getMessage());
+                }
             }
         }
     }
