@@ -488,6 +488,17 @@ export default function ResourceFormModal({
                 if (hostCredential && hostCredential !== '***' && !/^[\x00-\x7F]*$/.test(hostCredential)) {
                     setError(t('hostResource.credentialInvalidChars')); setSaving(false); return
                 }
+                // Username and credential must both be provided or both be empty
+                // Skip validation in edit mode if credential is not modified ('***' placeholder)
+                const isEditing = editingItem?.type === 'host'
+                const credentialModified = hostCredential !== '***'
+                if (credentialModified || !isEditing) {
+                    const hasUsername = hostUsername.trim().length > 0
+                    const hasCredential = hostCredential.trim().length > 0 && hostCredential !== '***'
+                    if (hasUsername !== hasCredential) {
+                        setError(t('hostResource.usernameCredentialMismatch')); setSaving(false); return
+                    }
+                }
                 const editingHostId = editingItem?.type === 'host' ? editingItem.data.id : null
                 const trimmedHostName = nameResult.sanitized
                 const duplicate = hosts.some(h => h.name?.toLowerCase() === trimmedHostName.toLowerCase() && h.id !== editingHostId)
@@ -1038,7 +1049,18 @@ export default function ResourceFormModal({
                                             <SearchableSelect
                                                 value={hostClusterId}
                                                 onChange={(id) => {
-                                                    if (id !== hostClusterId) setHostRole('')
+                                                    if (id !== hostClusterId) {
+                                                        const selectedCluster = clusters.find(c => c.id === id)
+                                                        const clusterTypeName = selectedCluster?.type ?? ''
+                                                        // Use resolveClusterTypeName to handle both name and code matching
+                                                        const resolvedTypeName = resolveClusterTypeName(clusterTypeName)
+                                                        const clusterTypeObj = clusterTypes.find(ct => ct.name === resolvedTypeName)
+                                                        const clusterMode = clusterTypeObj?.mode ?? 'peer'
+                                                        // Clear role when switching to peer mode cluster
+                                                        if (clusterMode === 'peer') {
+                                                            setHostRole('')
+                                                        }
+                                                    }
                                                     setHostClusterId(id)
                                                 }}
                                                 options={clusters.map(c => ({ value: c.id, label: c.name }))}

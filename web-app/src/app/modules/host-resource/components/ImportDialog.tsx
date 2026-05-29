@@ -233,6 +233,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorUsernameInvalidChars')
             case 'import.credentialInvalidChars':
                 return t('hostResource.importErrorCredentialInvalidChars')
+            case 'import.usernameCredentialMismatch':
+                return t('hostResource.importErrorUsernameCredentialMismatch')
             case 'import.businessIpInvalid':
                 return t('hostResource.importErrorBusinessIpInvalid', { ip: err.params?.ip })
             case 'import.setParentFailed':

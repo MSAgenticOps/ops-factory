@@ -118,9 +118,8 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'businessIp', labelKey: 'field_hosts_businessIp', enLabel: 'Business IP Address', zhLabel: '业务 IP 地址', required: false, validation: { type: 'ip' } },
             { name: 'os', labelKey: 'field_hosts_os', enLabel: 'Operating System', zhLabel: '操作系统', required: false, validation: { type: 'string' } },
             { name: 'location', labelKey: 'field_hosts_location', enLabel: 'Location', zhLabel: '部署位置', required: false, validation: { type: 'string' } },
-            { name: 'username', labelKey: 'field_hosts_username', enLabel: 'Username', zhLabel: '用户名', required: true, validation: { type: 'custom', customValidator: (value: string) => {
-                if (!value) return { valid: false, error: 'Username is required' }
-                if (!/^[\x00-\x7F]*$/.test(value)) {
+            { name: 'username', labelKey: 'field_hosts_username', enLabel: 'Username', zhLabel: '用户名', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (value && !/^[\x00-\x7F]*$/.test(value)) {
                     return { valid: false, error: 'Username must contain only ASCII characters' }
                 }
                 return { valid: true }
