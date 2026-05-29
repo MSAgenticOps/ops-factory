@@ -173,8 +173,8 @@ function DeleteChunkModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.chunkDeleteTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
