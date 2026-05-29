@@ -19,9 +19,14 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>business-intelligence</module>
+        <module>control-center</module>
+        <module>finops</module>
         <module>gateway</module>
         <module>knowledge-service</module>
         <module>operation-intelligence</module>
+        <module>prometheus-exporter</module>
+        <module>skill-market</module>
     </modules>
 
     <properties>
