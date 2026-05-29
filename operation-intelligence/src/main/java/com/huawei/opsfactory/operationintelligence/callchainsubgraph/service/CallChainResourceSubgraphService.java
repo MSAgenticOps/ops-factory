@@ -144,7 +144,7 @@ public class CallChainResourceSubgraphService {
                 ? Map.of()
                 : callChainEntity.getProperties();
             Set<GraphEntity> matchedEntities = new LinkedHashSet<>();
-            String clusterId = stringValue(propertiesMap.get("clusterId"));
+            String clusterId = extractClusterId(propertiesMap);
             if (clusterId != null) {
                 matchedEntities.addAll(entitiesByClusterId.getOrDefault(normalizeLookupKey(clusterId), List.of()));
             }
@@ -283,6 +283,23 @@ public class CallChainResourceSubgraphService {
             return null;
         }
         return text.trim();
+    }
+
+    private String extractClusterId(Map<String, Object> propertiesMap) {
+        String clusterId = stringValue(propertiesMap.get("clusterId"));
+        if (clusterId != null) {
+            return clusterId;
+        }
+        Object legacyClusterIds = propertiesMap.get("clusterIds");
+        if (legacyClusterIds instanceof List<?> values) {
+            for (Object value : values) {
+                String normalizedValue = stringValue(value);
+                if (normalizedValue != null) {
+                    return normalizedValue;
+                }
+            }
+        }
+        return stringValue(legacyClusterIds);
     }
 
     private String normalizeLookupKey(String value) {

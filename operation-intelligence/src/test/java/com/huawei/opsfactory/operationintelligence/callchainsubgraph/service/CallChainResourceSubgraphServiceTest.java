@@ -49,7 +49,7 @@ class CallChainResourceSubgraphServiceTest {
         callChainServiceEntity.setName("com.huawei.bes.sm.base.notice.SMSiteMsgUIBOService");
         callChainServiceEntity.setProperties(new LinkedHashMap<>(Map.of(
             "serviceName", "com.huawei.bes.sm.base.notice.SMSiteMsgUIBOService",
-            "clusterIds", List.of("540d4035-e461-4c95-acb3-0f1f187c374d_603_BHF"))));
+            "clusterId", "540d4035-e461-4c95-acb3-0f1f187c374d_603_BHF")));
 
         CallChainResourceSubgraphService.ResourceSubgraphResult result = service.buildResourceSubgraph(
             "b2b-callchain-v1",
