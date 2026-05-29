@@ -57,6 +57,14 @@ export default function ResourceFormModal({
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // Auto-hide error after 3 seconds
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => setError(null), 3000)
+            return () => clearTimeout(timer)
+        }
+    }, [error])
+
     // ── Group form state ──
     const [groupName, setGroupName] = useState(editingItem?.type === 'group' ? editingItem.data.name : '')
     const [groupParentId, setGroupParentId] = useState(editingItem?.type === 'group' ? (editingItem.data.parentId ?? '') : '')
