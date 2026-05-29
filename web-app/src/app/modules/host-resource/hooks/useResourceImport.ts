@@ -126,6 +126,46 @@ export function useResourceImport(deps: ImportDeps) {
                 const bsNameToId = new Map(deps.businessServices.map(bs => [bs.name, bs.id]))
                 const existingRelationKeys = new Set(deps.relations.map(r => `${r.sourceHostId}->${r.targetHostId}`))
 
+                // Helper functions to get related group IDs in hierarchy
+                const getDescendantIds = (groupId: string, allGroups: HostGroup[]): Set<string> => {
+                    const ids = new Set<string>()
+                    const queue = [groupId]
+                    while (queue.length > 0) {
+                        const current = queue.shift()!
+                        ids.add(current)
+                        for (const g of allGroups) {
+                            if (g.parentId === current && !ids.has(g.id)) {
+                                queue.push(g.id)
+                            }
+                        }
+                    }
+                    return ids
+                }
+
+                const getAncestorIds = (groupId: string, allGroups: HostGroup[]): Set<string> => {
+                    const ids = new Set<string>()
+                    let currentGroupId: string | null = groupId
+                    while (currentGroupId) {
+                        ids.add(currentGroupId)
+                        const group = allGroups.find(g => g.id === currentGroupId)
+                        if (!group || !group.parentId) break
+                        currentGroupId = group.parentId
+                    }
+                    return ids
+                }
+
+                const getRelatedGroupIds = (groupId: string, allGroups: HostGroup[]): Set<string> => {
+                    const ancestorIds = getAncestorIds(groupId, allGroups)
+                    const descendantIds = new Set<string>()
+                    for (const id of ancestorIds) {
+                        const descendants = getDescendantIds(id, allGroups)
+                        for (const d of descendants) {
+                            descendantIds.add(d)
+                        }
+                    }
+                    return new Set([...ancestorIds, ...descendantIds])
+                }
+
                 const createdClusterTypeNames = new Set(deps.clusterTypes.map(ct => ct.name))
                 const createdClusterTypeCodes = new Set(deps.clusterTypes.map(ct => ct.code || ''))
                 const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
@@ -292,6 +332,11 @@ export function useResourceImport(deps: ImportDeps) {
                                         errors.push({ row: i + 2, code: 'import.hostGroupCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
                                         continue
                                     }
+                                    const trimmedCode = codeResult.sanitized.trim()
+                                    if (groupCodeToId.has(trimmedCode)) {
+                                        errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'HostGroup', code: trimmedCode } })
+                                        continue
+                                    }
                                 }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
@@ -367,11 +412,34 @@ export function useResourceImport(deps: ImportDeps) {
                                 const groupId = row.group
                                     ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                                     : undefined
-                                const clusterKey = `${groupId ?? ''}:${nameResult.sanitized}`
-                                if (clusterGroupedKeyToId.has(clusterKey)) {
-                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Cluster', name: nameResult.sanitized } })
-                                    continue
+
+                                // Check duplicate cluster name in related group hierarchy
+                                const trimmedClusterName = nameResult.sanitized
+                                if (groupId) {
+                                    const relatedGroupIds = getRelatedGroupIds(groupId, deps.groups)
+                                    // Check against existing clusters
+                                    const duplicateExisting = deps.clusters.find(c => {
+                                        if (!c.groupId || c.name?.toLowerCase() !== trimmedClusterName.toLowerCase()) return false
+                                        const cRelatedIds = getRelatedGroupIds(c.groupId, deps.groups)
+                                        return [...cRelatedIds].some(id => relatedGroupIds.has(id))
+                                    })
+                                    if (duplicateExisting) {
+                                        errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Cluster', name: trimmedClusterName } })
+                                        continue
+                                    }
+                                    // Check against already created clusters in this import
+                                    for (const [key, _id] of clusterGroupedKeyToId) {
+                                        const [cGroupId, cName] = key.split(':')
+                                        if (cName.toLowerCase() === trimmedClusterName.toLowerCase() && cGroupId) {
+                                            const cRelatedIds = getRelatedGroupIds(cGroupId, deps.groups)
+                                            if ([...cRelatedIds].some(id => relatedGroupIds.has(id))) {
+                                                errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Cluster', name: trimmedClusterName } })
+                                                continue
+                                            }
+                                        }
+                                    }
                                 }
+                                const clusterKey = `${groupId ?? ''}:${trimmedClusterName}`
                                 let typeName = row.type?.trim() || ''
                                 if (typeName) {
                                     if (!clusterTypeNameSet.has(typeName)) {
@@ -563,12 +631,48 @@ export function useResourceImport(deps: ImportDeps) {
                                 const groupId = row.group
                                     ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                                     : undefined
-                                const businessTypeId = row.businessType
-                                    ? businessTypeNameToId.get(row.businessType)
-                                    : undefined
+                                const businessType = row.businessType?.trim() || ''
+                                if (!businessType) {
+                                    errors.push({ row: i + 2, code: 'import.businessTypeRequired' })
+                                    continue
+                                }
+                                const businessTypeId = businessTypeNameToId.get(businessType)
+                                if (!businessTypeId) {
+                                    errors.push({ row: i + 2, code: 'import.businessTypeNotFound', params: { type: businessType } })
+                                    continue
+                                }
                                 if (!groupId && row.group) {
                                     errors.push({ row: i + 2, code: 'import.groupNotFound', params: { group: row.group } })
                                     continue
+                                }
+
+                                // Check duplicate business service name in related group hierarchy
+                                const trimmedBsName = nameResult.sanitized
+                                if (groupId) {
+                                    const relatedGroupIds = getRelatedGroupIds(groupId, deps.groups)
+                                    // Check against existing business services
+                                    const duplicateExisting = deps.businessServices.find(bs => {
+                                        if (!bs.groupId || bs.name?.toLowerCase() !== trimmedBsName.toLowerCase()) return false
+                                        const bsRelatedIds = getRelatedGroupIds(bs.groupId, deps.groups)
+                                        return [...bsRelatedIds].some(id => relatedGroupIds.has(id))
+                                    })
+                                    if (duplicateExisting) {
+                                        errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: trimmedBsName } })
+                                        continue
+                                    }
+                                    // Check against already created business services in this import
+                                    for (const [bsName, _bsId] of bsNameToId) {
+                                        if (bsName.toLowerCase() === trimmedBsName.toLowerCase()) {
+                                            const bs = deps.businessServices.find(b => b.name === bsName)
+                                            if (bs && bs.groupId) {
+                                                const bsRelatedIds = getRelatedGroupIds(bs.groupId, deps.groups)
+                                                if ([...bsRelatedIds].some(id => relatedGroupIds.has(id))) {
+                                                    errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: trimmedBsName } })
+                                                    continue
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 const created = await deps.createBusinessService({
                                     name: nameResult.sanitized,

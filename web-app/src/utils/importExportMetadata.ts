@@ -183,7 +183,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Business Services',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'businessType', labelKey: 'field_businessServices_businessType', enLabel: 'Business Type', zhLabel: '业务类型', required: false, validation: { type: 'string' } },
+            { name: 'businessType', labelKey: 'field_businessServices_businessType', enLabel: 'Business Type', zhLabel: '业务类型', required: true, validation: { type: 'string' } },
             { name: 'name', labelKey: 'field_businessServices_name', enLabel: 'Business Name', zhLabel: '业务名称', required: true, validation: { type: 'string', maxLength: 100 } },
             { name: 'code', labelKey: 'field_businessServices_code', enLabel: 'Business Code', zhLabel: '业务编码', required: true, validation: { type: 'string', maxLength: 50 } },
             { name: 'priority', labelKey: 'field_businessServices_priority', enLabel: 'Priority', zhLabel: '优先级', required: false, validation: { type: 'string' } },

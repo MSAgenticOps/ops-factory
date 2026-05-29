@@ -349,6 +349,16 @@ export default function ResourceFormModal({
                     return
                 }
 
+                const duplicateName = groups.find(g =>
+                    g.name?.toLowerCase() === nameResult.sanitized.toLowerCase() &&
+                    g.id !== editingGroupId
+                )
+                if (duplicateName) {
+                    setError(t('hostResource.duplicateName', { name: nameResult.sanitized }))
+                    setSaving(false)
+                    return
+                }
+
                 await onSaveGroup({
                     name: nameResult.sanitized,
                     code: trimmedCode,
@@ -373,14 +383,17 @@ export default function ResourceFormModal({
                 if (!typeResult.sanitized) { setError(t('hostResource.clusterTypeRequired')); setSaving(false); return }
                 if (!clusterGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
 
-                // Check duplicate cluster name in same group
+                // Check duplicate cluster name in related group hierarchy
                 const editingClusterId = editingItem?.type === 'cluster' ? editingItem.data.id : null
                 const trimmedClusterName = nameResult.sanitized
-                const duplicateCluster = clusters.find(c =>
-                    c.name?.toLowerCase() === trimmedClusterName.toLowerCase() &&
-                    c.groupId === clusterGroupId &&
-                    c.id !== editingClusterId
-                )
+                const relatedGroupIds = getRelatedGroupIds(clusterGroupId)
+                const duplicateCluster = clusters.find(c => {
+                    if (!c.groupId) return false
+                    if (c.id === editingClusterId) return false
+                    if (c.name?.toLowerCase() !== trimmedClusterName.toLowerCase()) return false
+                    const clusterRelatedIds = getRelatedGroupIds(c.groupId)
+                    return [...clusterRelatedIds].some(id => relatedGroupIds.has(id))
+                })
                 if (duplicateCluster) {
                     setError(t('hostResource.duplicateClusterName', { name: trimmedClusterName }))
                     setSaving(false)
@@ -405,7 +418,25 @@ export default function ResourceFormModal({
                 if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
 
                 if (!nameResult.sanitized) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!bsSelectedBusinessTypeId) { setError(t('hostResource.businessTypeRequired')); setSaving(false); return }
                 if (!bsGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
+
+                // Check duplicate business service name in related group hierarchy
+                const editingBsId = editingItem?.type === 'business-service' ? editingItem.data.id : null
+                const trimmedBsName = nameResult.sanitized
+                const relatedGroupIds = getRelatedGroupIds(bsGroupId)
+                const duplicateBs = businessServices.find(bs => {
+                    if (!bs.groupId) return false
+                    if (bs.id === editingBsId) return false
+                    if (bs.name?.toLowerCase() !== trimmedBsName.toLowerCase()) return false
+                    const bsRelatedIds = getRelatedGroupIds(bs.groupId)
+                    return [...bsRelatedIds].some(id => relatedGroupIds.has(id))
+                })
+                if (duplicateBs) {
+                    setError(t('hostResource.duplicateBusinessServiceName', { name: trimmedBsName }))
+                    setSaving(false)
+                    return
+                }
 
                 await onSaveBusinessService({
                     name: nameResult.sanitized,
@@ -776,7 +807,7 @@ export default function ResourceFormModal({
                             {selectedType === 'business-service' && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.selectBusinessType')}</label>
+                                        <label className="form-label">{t('hostResource.selectBusinessType')}{requiredStar}</label>
                                         {businessTypes.length > 0 ? (
                                             <select
                                                 className="form-input"

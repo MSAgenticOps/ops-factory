@@ -255,6 +255,10 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessTypeNameTooLong', { length: err.params?.length })
             case 'import.businessTypeCodeTooLong':
                 return t('hostResource.importErrorBusinessTypeCodeTooLong', { length: err.params?.length })
+            case 'import.businessTypeRequired':
+                return t('hostResource.importErrorBusinessTypeRequired')
+            case 'import.businessTypeNotFound':
+                return t('hostResource.importErrorBusinessTypeNotFound', { type: err.params?.type })
             case 'import.hostGroupNameRequired':
                 return t('hostResource.importErrorHostGroupNameRequired')
             case 'import.hostGroupNameTooLong':
