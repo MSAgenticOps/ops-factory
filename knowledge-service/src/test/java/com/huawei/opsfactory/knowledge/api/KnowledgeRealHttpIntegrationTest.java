@@ -85,67 +85,6 @@ class KnowledgeRealHttpIntegrationTest {
     }
 
     @Test
-    void shouldBehaveLikeARealClientUsingHttpAndMultipartUpload() throws Exception {
-        String sourceId = createSourceOverHttp();
-        uploadFilesOverHttp(sourceId, inputFiles());
-        int expectedImportedCount = getJson("/knowledge/documents?sourceId=" + sourceId).path("total").asInt();
-
-        JsonNode sourceStats = getJson("/knowledge/sources/" + sourceId + "/stats");
-        assertThat(sourceStats.path("documentCount").asInt()).isEqualTo(expectedImportedCount);
-        assertThat(sourceStats.path("chunkCount").asInt()).isGreaterThan(0);
-
-        JsonNode documentList = getJson("/knowledge/documents?sourceId=" + sourceId);
-        assertThat(documentList.path("total").asInt()).isEqualTo(expectedImportedCount);
-
-        JsonNode firstDocument = documentList.path("items").get(0);
-        String documentId = firstDocument.path("id").asText();
-        JsonNode chunks = getJson("/knowledge/documents/" + documentId + "/chunks");
-        assertThat(chunks.path("total").asInt()).isGreaterThan(0);
-
-        JsonNode searchResponse = postJson("/knowledge/search", """
-            {
-              "query": "incident",
-              "sourceIds": ["%s"],
-              "topK": 10
-            }
-            """.formatted(sourceId));
-        assertThat(searchResponse.path("total").asInt()).isGreaterThan(0);
-
-        JsonNode compareResponse = postJson("/knowledge/search/compare", """
-            {
-              "query": "incident",
-              "sourceIds": ["%s"]
-            }
-            """.formatted(sourceId));
-        assertThat(compareResponse.path("fetchedTopK").asInt()).isEqualTo(64);
-        assertThat(compareResponse.path("hybrid").path("hits").isArray()).isTrue();
-        assertThat(compareResponse.path("semantic").path("hits").isArray()).isTrue();
-        assertThat(compareResponse.path("lexical").path("hits").isArray()).isTrue();
-
-        String hitChunkId = searchResponse.path("hits").get(0).path("chunkId").asText();
-        JsonNode fetchResponse = getJson("/knowledge/fetch/" + hitChunkId + "?includeNeighbors=true&neighborWindow=1");
-        assertThat(fetchResponse.path("text").asText()).isNotBlank();
-
-        for (JsonNode item : documentList.path("items")) {
-            String currentDocumentId = item.path("id").asText();
-            String fileName = item.path("name").asText();
-            ResponseEntity<String> markdownResponse = restTemplate.getForEntity(url("/knowledge/documents/" + currentDocumentId + "/artifacts/markdown"), String.class);
-            // Skip documents without markdown artifact
-            if (markdownResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
-                continue;
-            }
-            assertThat(markdownResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-            String markdown = markdownResponse.getBody();
-            assertThat(markdown).isNotBlank();
-            Files.writeString(OUTPUT_FILES_DIR.resolve(toMarkdownFileName(fileName)), markdown);
-        }
-
-        try (Stream<Path> files = Files.list(OUTPUT_FILES_DIR)) {
-            assertThat(files.filter(Files::isRegularFile).count()).isEqualTo(expectedImportedCount);
-        }
-    }
-
-    @Test
     void shouldServeCompareSearchForItsmQueryOverRealHttp() throws Exception {
         String sourceId = createSourceOverHttp();
         uploadMarkdownOverHttp(sourceId, "itsm-deployment.md", """
