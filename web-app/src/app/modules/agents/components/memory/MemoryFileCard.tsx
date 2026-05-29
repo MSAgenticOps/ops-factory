@@ -104,6 +104,8 @@ interface MemoryFileCardProps {
 const MAX_PREVIEW_LINES = 3
 const MAX_PREVIEW_CHARS = 50
 const MAX_CONTENT_CHARS = 20000
+const MAX_VISIBLE_TAGS = 3
+const MAX_VISIBLE_ENTRIES = 3
 
 export default function MemoryFileCard({ category, content, onSave, onDelete, autoEdit, isDeleting = false }: MemoryFileCardProps) {
     const { t } = useTranslation()
@@ -112,6 +114,7 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
     const [isSaving, setIsSaving] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
     const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set())
+    const [showAllEntries, setShowAllEntries] = useState(false)
 
     const entries = useMemo(() => isEditing ? [] : parseMemoryContent(content), [isEditing, content])
 
@@ -250,7 +253,8 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                     {entries.length === 0 ? (
                         <div className="memory-entry-empty">{t('memory.emptyFile')}</div>
                     ) : (
-                        entries.map((entry, idx) => {
+                        <>
+                            {entries.slice(0, showAllEntries ? entries.length : MAX_VISIBLE_ENTRIES).map((entry, idx) => {
                             const isExpanded = expandedEntries.has(idx)
                             const shouldTruncate = !isExpanded && needsTruncate(entry.content)
                             const displayContent = shouldTruncate ? getPreviewContent(entry.content) : entry.content
@@ -259,18 +263,25 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                                 <div key={idx} className="memory-entry">
                                     <div className="memory-entry-tags">
                                         {entry.tags.length > 0 ? (
-                                            entry.tags.map(tag => {
-                                                const c = getTagColor(tag)
-                                                return (
-                                                    <span
-                                                        key={tag}
-                                                        className="memory-tag"
-                                                        style={{ background: c.bg, color: c.fg }}
-                                                    >
-                                                        {tag}
+                                            <>
+                                                {entry.tags.slice(0, MAX_VISIBLE_TAGS).map(tag => {
+                                                    const c = getTagColor(tag)
+                                                    return (
+                                                        <span
+                                                            key={tag}
+                                                            className="memory-tag"
+                                                            style={{ background: c.bg, color: c.fg }}
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    )
+                                                })}
+                                                {entry.tags.length > MAX_VISIBLE_TAGS && (
+                                                    <span className="memory-tag memory-tag-more">
+                                                        +{entry.tags.length - MAX_VISIBLE_TAGS}
                                                     </span>
-                                                )
-                                            })
+                                                )}
+                                            </>
                                         ) : (
                                             <span className="memory-tag memory-tag-untagged">{t('memory.untagged')}</span>
                                         )}
@@ -293,7 +304,17 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                                     )}
                                 </div>
                             )
-                        })
+                        })}
+                        {entries.length > MAX_VISIBLE_ENTRIES && (
+                            <button
+                                type="button"
+                                className="memory-show-all-button"
+                                onClick={() => setShowAllEntries(!showAllEntries)}
+                            >
+                                {showAllEntries ? t('memory.showLess') : t('memory.showMore', { count: entries.length - MAX_VISIBLE_ENTRIES })}
+                            </button>
+                        )}
+                        </>
                     )}
                 </div>
             )}

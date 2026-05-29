@@ -1898,6 +1898,8 @@
     "untagged": "untagged",
     "expand": "Show more",
     "collapse": "Show less",
+    "showMore": "Show more (+{{count}})",
+    "showLess": "Show less",
     "contentTooLong": "Content exceeds limit (max {{max}} characters). Please shorten and try again."
   },
   "channels": {

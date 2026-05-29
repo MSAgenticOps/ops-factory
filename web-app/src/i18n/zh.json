@@ -1898,6 +1898,8 @@
     "untagged": "未分类",
     "expand": "展开更多",
     "collapse": "收起",
+    "showMore": "查看更多 (+{{count}})",
+    "showLess": "收起",
     "contentTooLong": "内容超出限制（最大 {{max}} 字符），请缩短后重试。"
   },
   "channels": {
