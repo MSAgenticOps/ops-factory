@@ -319,6 +319,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         const url = previewFile?.downloadUrl ? baseUrl : `${baseUrl}&download=true`
         if (!url) return
         try {
+            // Knowledge-service downloads use downloadUrl directly (no auth); agent file downloads need gateway headers
             const response = await fetch(url, { headers: previewFile?.downloadUrl ? undefined : gatewayHeaders(userId) })
             if (!response.ok) throw new Error(response.statusText)
             const blob = await response.blob()
