@@ -6,7 +6,8 @@ export interface FieldValidation {
     enumValues?: string[]
     customValidator?: (value: string, row: number) => ValidationResult
     separator?: string
-    description?: string // Custom validation rule description for field description sheet
+    description?: string // Custom validation rule description i18n key for field description sheet
+    descriptionParams?: Record<string, any> // Parameters for the description i18n key
 }
 
 export interface ValidationResult {
