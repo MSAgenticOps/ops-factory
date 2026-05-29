@@ -6,7 +6,7 @@ import { usePreview } from '../../../platform/providers/PreviewContext'
 import { runtime } from '../../../../config/runtime'
 import { useKnowledgeSourceDetail } from '../hooks/useKnowledgeSourceDetail'
 import { getErrorMessage } from '../../../../utils/errorMessages'
-import { getFilenameFromDisposition, triggerDownload } from '../../../../utils/fileDownload'
+import { triggerDownload } from '../../../../utils/fileDownload'
 import KnowledgeChunksTab from '../components/KnowledgeChunksTab'
 import KnowledgeRetrievalTab from '../components/KnowledgeRetrievalTab'
 import type { ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
@@ -865,6 +865,7 @@ function appendFilesToQueue(
     existingFileNames?: Set<string>
 ): UploadQueueItem[] {
     const existingKeys = new Set(currentItems.map(item => `${item.file.name}:${item.file.size}:${item.file.lastModified}`))
+    const queuedNames = new Set(currentItems.map(item => item.file.name))
     const nextItems = [...currentItems]
 
     for (const file of files) {
@@ -872,10 +873,12 @@ function appendFilesToQueue(
         if (existingKeys.has(key)) continue
         existingKeys.add(key)
 
-        const error = existingFileNames?.has(file.name)
+        const isDuplicateName = queuedNames.has(file.name) || existingFileNames?.has(file.name)
+        const error = isDuplicateName
             ? 'knowledge.uploadDuplicateName'
             : isAllowedUploadFile(file, maxFileSizeMb, allowedContentTypes)
 
+        queuedNames.add(file.name)
         nextItems.push({
             id: key,
             file,
@@ -2278,10 +2281,7 @@ export default function KnowledgeConfigure() {
             }
 
             const blob = await response.blob()
-            const filename = getFilenameFromDisposition(
-                response.headers.get('Content-Disposition'),
-                getDisplayDownloadName(knowledgeDocument)
-            )
+            const filename = getDisplayDownloadName(knowledgeDocument)
 
             triggerDownload(blob, filename)
         } catch (err) {
