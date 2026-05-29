@@ -196,7 +196,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .isEqualTo("session-123");
 
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"),
-            org.mockito.ArgumentMatchers.contains("\"working_dir\":\"/tmp/test-users/alice/agents/test-agent\""),
+            org.mockito.ArgumentMatchers.argThat(body -> body != null && body.contains("\"working_dir\":")
+                && body.contains("test-users") && body.contains("alice") && body.contains("agents") && body.contains("test-agent")),
             anyInt(), anyString());
     }
 

@@ -66,21 +66,32 @@ public class RuntimePreparer {
 
         cleanDisallowedSkillDirs(userAgentDir);
 
-        // Symlink config -> shared agent config
+        // Symlink config -> shared agent config (fallback to copy if symlink fails)
         Path configLink = userAgentDir.resolve("config");
         Path agentConfigDir = agentsDir.resolve(agentId).resolve("config");
         if (!Files.exists(configLink) && Files.exists(agentConfigDir)) {
-            Path relative = userAgentDir.relativize(agentConfigDir);
-            Files.createSymbolicLink(configLink, relative);
-            log.info("Created config symlink: {} -> {}", configLink, relative);
+            try {
+                Path relative = userAgentDir.relativize(agentConfigDir);
+                Files.createSymbolicLink(configLink, relative);
+                log.info("Created config symlink: {} -> {}", configLink, relative);
+            } catch (IOException | UnsupportedOperationException e) {
+                // On Windows without admin rights or when symlinks are not supported, fall back to copying
+                log.debug("Symlink creation failed for config, falling back to copy: {}", e.getMessage());
+                copyRecursively(agentConfigDir, configLink);
+            }
         }
 
-        // Symlink AGENTS.md
+        // Symlink AGENTS.md (fallback to copy if symlink fails)
         Path agentsMdLink = userAgentDir.resolve("AGENTS.md");
         Path agentsMdSource = agentsDir.resolve(agentId).resolve("AGENTS.md");
         if (!Files.exists(agentsMdLink) && Files.exists(agentsMdSource)) {
-            Path relative = userAgentDir.relativize(agentsMdSource);
-            Files.createSymbolicLink(agentsMdLink, relative);
+            try {
+                Path relative = userAgentDir.relativize(agentsMdSource);
+                Files.createSymbolicLink(agentsMdLink, relative);
+            } catch (IOException | UnsupportedOperationException e) {
+                log.debug("Symlink creation failed for AGENTS.md, falling back to copy: {}", e.getMessage());
+                Files.copy(agentsMdSource, agentsMdLink);
+            }
         }
 
         // Create data and uploads dirs
@@ -116,6 +127,25 @@ public class RuntimePreparer {
             for (Path entry : paths) {
                 Files.deleteIfExists(entry);
             }
+        }
+    }
+
+    private void copyRecursively(Path source, Path target) throws IOException {
+        if (Files.isDirectory(source)) {
+            try (Stream<Path> stream = Files.walk(source)) {
+                List<Path> sources = stream.toList();
+                for (Path src : sources) {
+                    Path rel = source.relativize(src);
+                    Path dest = target.resolve(rel);
+                    if (Files.isDirectory(src)) {
+                        Files.createDirectories(dest);
+                    } else {
+                        Files.copy(src, dest);
+                    }
+                }
+            }
+        } else {
+            Files.copy(source, target);
         }
     }
 }

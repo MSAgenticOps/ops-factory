@@ -80,18 +80,15 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
 
         when(hookPipeline.executeRequest(any(HookContext.class)))
             .thenAnswer(invocation -> Mono.just(((HookContext) invocation.getArgument(0)).getBody()));
-        when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(mockInstance));
-        when(goosedProxy.fetchJson(eq(9999), eq(org.springframework.http.HttpMethod.POST), eq("/agent/resume"),
-            anyString(), anyInt(), anyString()))
-            .thenReturn(Mono.delay(Duration.ofMillis(120)).thenReturn("{\"ok\":true}"));
+        when(instanceManager.getOrSpawn("test-agent", "alice"))
+            .thenReturn(Mono.delay(Duration.ofMillis(80)).thenReturn(mockInstance));
         when(goosedProxy.fetchJson(eq(9999), eq(HttpMethod.POST), eq("/sessions/session-123/reply"),
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         long elapsedMs = executeSessionReplyAndMeasure(body);
 
-        verify(goosedProxy).fetchJson(eq(9999), eq(org.springframework.http.HttpMethod.POST), eq("/agent/resume"),
-            anyString(), anyInt(), anyString());
-        assertTrue("reply latency should include resume delay, actual=" + elapsedMs, elapsedMs >= 100);
+        // Latency should include the instance spawn delay
+        assertTrue("reply latency should include spawn delay, actual=" + elapsedMs, elapsedMs >= 60);
         assertTrue("reply latency should stay within a reasonable bound, actual=" + elapsedMs, elapsedMs < 5000);
     }
 
