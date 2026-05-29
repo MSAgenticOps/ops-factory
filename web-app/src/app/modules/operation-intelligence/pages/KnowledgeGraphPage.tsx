@@ -2652,7 +2652,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                             >
                                 <div className="kg-datetime-dialog-fields">
                                     <label className="kg-field">
-                                        <span>{t('operationIntelligence.knowledgeGraph.callChainStartTime')}</span>
+                                        <span>{t('operationIntelligence.knowledgeGraph.callChainDate')}</span>
                                         <input
                                             type="date"
                                             value={callChainDateTimeDraft.startDateValue}
@@ -2663,7 +2663,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         />
                                     </label>
                                     <label className="kg-field">
-                                        <span>{t('operationIntelligence.knowledgeGraph.callChainStartTime')}</span>
+                                        <span>{t('operationIntelligence.knowledgeGraph.callChainTime')}</span>
                                         <input
                                             type="time"
                                             value={callChainDateTimeDraft.startTimeValue}
@@ -2674,7 +2674,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         />
                                     </label>
                                     <label className="kg-field">
-                                        <span>{t('operationIntelligence.knowledgeGraph.callChainEndTime')}</span>
+                                        <span>{t('operationIntelligence.knowledgeGraph.callChainDate')}</span>
                                         <input
                                             type="date"
                                             value={callChainDateTimeDraft.endDateValue}
@@ -2685,7 +2685,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         />
                                     </label>
                                     <label className="kg-field">
-                                        <span>{t('operationIntelligence.knowledgeGraph.callChainEndTime')}</span>
+                                        <span>{t('operationIntelligence.knowledgeGraph.callChainTime')}</span>
                                         <input
                                             type="time"
                                             value={callChainDateTimeDraft.endTimeValue}

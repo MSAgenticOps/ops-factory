@@ -14,9 +14,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.io.OutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -60,9 +62,10 @@ public class CallChainSubgraphStore {
         try {
             Files.createDirectories(resolveRoot());
             cleanupExpired();
-            MAPPER.writeValue(tempFile.toFile(), result);
-            Files.move(tempFile, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            try (OutputStream outputStream = Files.newOutputStream(tempFile)) {
+                MAPPER.writeValue(outputStream, result);
+            }
+            Files.move(tempFile, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             cleanupOverflow();
         } catch (IOException e) {
             try {
@@ -70,7 +73,7 @@ public class CallChainSubgraphStore {
             } catch (IOException deleteEx) {
                 log.warn("Failed to delete temp call chain subgraph file {}: {}", tempFile, deleteEx.getMessage());
             }
-            throw new IllegalStateException("Failed to save call chain subgraph", e);
+            throw new CallChainSubgraphStoreException("Failed to save call chain subgraph", e);
         }
     }
 
@@ -93,7 +96,7 @@ public class CallChainSubgraphStore {
             }
             return Optional.of(result);
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to load call chain subgraph", e);
+            throw new CallChainSubgraphStoreException("Failed to load call chain subgraph", e);
         }
     }
 
@@ -177,7 +180,7 @@ public class CallChainSubgraphStore {
                 .sorted(Comparator.comparing(this::lastModifiedSafe))
                 .toList();
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to list call chain subgraphs", e);
+            throw new CallChainSubgraphStoreException("Failed to list call chain subgraphs", e);
         }
     }
 

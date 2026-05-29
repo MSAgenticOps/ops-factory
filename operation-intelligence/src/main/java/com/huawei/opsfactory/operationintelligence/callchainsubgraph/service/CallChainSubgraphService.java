@@ -395,6 +395,9 @@ public class CallChainSubgraphService {
             if (entity == null) {
                 continue;
             }
+            long averageCost = accumulator.occurrenceCount > 0
+                ? accumulator.totalAvgCost / accumulator.occurrenceCount
+                : 0L;
             Map<String, Object> baseProperties = new LinkedHashMap<>();
             baseProperties.put("serviceName", accumulator.serviceName);
             baseProperties.put("clusterId", accumulator.clusterId);
@@ -405,7 +408,7 @@ public class CallChainSubgraphService {
                 accumulator.entityId,
                 generatedAt,
                 "avgCost",
-                accumulator.totalAvgCost / accumulator.occurrenceCount,
+                averageCost,
                 baseProperties));
             observations.add(createObservation(
                 accumulator.entityId + "-min-cost",
@@ -421,8 +424,10 @@ public class CallChainSubgraphService {
                 "maxCost",
                 accumulator.maxCost,
                 baseProperties));
-            Map<String, Object> entityProperties = entity.getProperties();
-            entityProperties.put("avgCost", accumulator.totalAvgCost / accumulator.occurrenceCount);
+            Map<String, Object> entityProperties = entity.getProperties() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(entity.getProperties());
+            entityProperties.put("avgCost", averageCost);
             entityProperties.put("minCost", accumulator.minCost);
             entityProperties.put("maxCost", accumulator.maxCost);
             entityProperties.put("flowCount", accumulator.flowIds.size());

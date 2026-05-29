@@ -162,7 +162,7 @@ public class CallChainSubgraphHistoryItem {
      * @return the summary
      */
     public Map<String, Object> getSummary() {
-        return summary;
+        return new LinkedHashMap<>(summary);
     }
 
     /**
@@ -171,6 +171,6 @@ public class CallChainSubgraphHistoryItem {
      * @param summary the summary
      */
     public void setSummary(Map<String, Object> summary) {
-        this.summary = summary;
+        this.summary = summary == null ? new LinkedHashMap<>() : new LinkedHashMap<>(summary);
     }
 }
