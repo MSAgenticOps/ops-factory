@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,6 +32,8 @@ import java.util.stream.Collectors;
 public class CallChainBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(CallChainBuilder.class);
+
+    private static final int SIGNATURE_LENGTH = 16;
 
     private final CallChainStatistics statisticsCalculator;
 
@@ -57,10 +58,11 @@ public class CallChainBuilder {
      * @param conditionValue the condition value
      * @param logs the trace log records
      * @param totalCount the total count
+     * @param mode the mode (method or service)
      * @return the call chain tree
      */
     public CallChainTree build(String chainType, String conditionType, String conditionValue, List<TraceLogRecord> logs,
-        long totalCount, String mod) {
+        long totalCount, String mode) {
 
         // 1. 按 traceId 分组
         Map<String,
@@ -85,7 +87,7 @@ public class CallChainBuilder {
             .collect(Collectors.toList());
 
         // 4. service 模式：执行两步合并
-        if ("service".equals(mod)) {
+        if ("service".equals(mode)) {
             flows = statisticsCalculator.mergeFlowsByService(flows);
         }
 
@@ -95,8 +97,8 @@ public class CallChainBuilder {
         tree.setFlows(flows);
         tree.setTotalCount(totalCount);
 
-        log.info("Built call chain tree: chainType={}, flows={}, totalCount={}, mod={}",
-            chainType, flows.size(), totalCount, mod);
+        log.info("Built call chain tree: chainType={}, flows={}, totalCount={}, mode={}",
+            chainType, flows.size(), totalCount, mode);
 
         return tree;
     }
@@ -154,12 +156,13 @@ public class CallChainBuilder {
             }
         }).collect(Collectors.joining("->"));
 
-        // Use SHA-256 hash for fixed-length signature (16 chars)
+        // Use SHA-256 hash for fixed-length signature
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(signature.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return java.util.Base64.getEncoder().encodeToString(hash).substring(0, 16);
+            return java.util.Base64.getEncoder().encodeToString(hash).substring(0, SIGNATURE_LENGTH);
         } catch (java.security.NoSuchAlgorithmException e) {
+            log.warn("SHA-256 algorithm not available, using original signature", e);
             return signature; // Fallback to original signature
         }
     }
