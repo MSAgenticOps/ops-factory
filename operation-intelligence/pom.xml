@@ -6,12 +6,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.huawei.msz</groupId>
-        <artifactId>ms-om-parent</artifactId>
+        <groupId>com.huawei.opsfactory</groupId>
+        <artifactId>ops-factory-parent</artifactId>
         <version>1.5.1.1-SNAPSHOT</version>
     </parent>
 
-    <groupId>com.huawei.msz</groupId>
+    <groupId>com.huawei.opsfactory</groupId>
     <artifactId>operation-intelligence</artifactId>
     <version>1.5.1.1-SNAPSHOT</version>
     <packaging>jar</packaging>
@@ -49,6 +49,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+
+        <!-- SLF4J API -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
