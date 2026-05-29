@@ -754,7 +754,8 @@ function getDocumentDisplayTitle(document: Pick<KnowledgeDocumentSummary, 'name'
 
 function getDisplayDownloadName(document: Pick<KnowledgeDocumentSummary, 'name' | 'title'>): string {
     if (!document.title?.trim()) return document.name
-    const ext = document.name.includes('.') ? '.' + document.name.split('.').pop() : ''
+    const dotIdx = document.name.lastIndexOf('.')
+    const ext = dotIdx > 0 ? document.name.slice(dotIdx) : ''
     return document.title.trim() + ext
 }
 
@@ -930,8 +931,8 @@ function EditBasicInfoModal({
     }, [description, name, onClose, onSave, t])
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.editBasicInfoTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1037,8 +1038,8 @@ function EditIndexProfileModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal knowledge-profile-config-modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal knowledge-profile-config-modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.indexProfileEditorTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1157,8 +1158,8 @@ function EditRetrievalProfileModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal knowledge-profile-config-modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal knowledge-profile-config-modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.retrievalProfileEditorTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1257,8 +1258,8 @@ function DeleteKnowledgeModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.deleteTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1308,8 +1309,8 @@ function ResetProfileModal({
     const isIndex = profileType === 'index'
 
     return (
-        <div className="modal-overlay" onClick={saving ? undefined : onClose}>
-            <div className="modal modal-sm" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal modal-sm">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.restoreDefaultConfig')}</h2>
                     <button className="modal-close" onClick={onClose} disabled={saving}>&times;</button>
@@ -1353,8 +1354,8 @@ function DeleteDocumentModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.deleteDocumentTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1401,8 +1402,8 @@ function RebuildKnowledgeModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.rebuildConfirmTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1450,8 +1451,8 @@ function RenameDocumentModal({
     const isOverLimit = title.length > 64
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.renameDocumentTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -1591,8 +1592,8 @@ function UploadDocumentsModal({
     const failedCount = items.filter(item => item.status === 'failed').length
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal knowledge-upload-modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal knowledge-upload-modal">
                 <div className="modal-header">
                     <div>
                         <h2 className="modal-title">{t('knowledge.uploadTitle', { name: sourceName })}</h2>
@@ -1736,6 +1737,7 @@ export default function KnowledgeConfigure() {
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const [documents, setDocuments] = useState<KnowledgeDocumentSummary[]>([])
+    const existingFileNames = useMemo(() => new Set(documents.map(d => d.name)), [documents])
     const [documentArtifacts, setDocumentArtifacts] = useState<Record<string, KnowledgeDocumentArtifacts>>({})
     const [documentsLoading, setDocumentsLoading] = useState(false)
     const [documentsError, setDocumentsError] = useState<string | null>(null)
@@ -2336,9 +2338,13 @@ export default function KnowledgeConfigure() {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}:rebuild`, {
                 method: 'POST',
             })
-            const data = await response.json().catch(() => null) as KnowledgeJobResponse | { message?: string } | null
+            const data = await response.json().catch(() => null) as KnowledgeJobResponse | { code?: string; message?: string } | null
 
             if (!response.ok) {
+                const errorCode = (data as { code?: string } | null)?.code
+                if (errorCode === 'REBUILD_ALREADY_RUNNING' || errorCode === 'SOURCE_IN_MAINTENANCE') {
+                    throw new Error(t('knowledge.rebuildAlreadyRunning'))
+                }
                 throw new Error((data as { message?: string } | null)?.message || response.statusText)
             }
 
@@ -2465,7 +2471,7 @@ export default function KnowledgeConfigure() {
 
             {source.runtimeMessage && (
                 <div className={`conn-banner conn-banner-${runtimeBannerTone}`}>
-                    {source.runtimeMessage}
+                    {isMaintenanceMode ? t('knowledge.rebuildAlreadyRunning') : source.runtimeMessage}
                     {source.lastJobError ? ` ${source.lastJobError}` : ''}
                 </div>
             )}
@@ -3045,7 +3051,7 @@ export default function KnowledgeConfigure() {
                     sourceName={source.name}
                     maxFileSizeMb={defaults?.ingest.maxFileSizeMb}
                     allowedContentTypes={defaults?.ingest.allowedContentTypes}
-                    existingFileNames={new Set(documents.map(d => d.name))}
+                    existingFileNames={existingFileNames}
                     onClose={() => setShowUploadModal(false)}
                     onUploaded={loadDocuments}
                 />

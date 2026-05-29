@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '../../../../platform/ui/primitives/Button'
 import type { CreateProviderRequest, LlmProvider, UpdateProviderRequest } from '../../../../../types/agentConfig'
 import { formatProviderEngine } from './providerDisplay'
+import { removeLeadingZeros, validateContextLimit } from '../../../../../utils/model-validation'
 
 interface CreateProviderModalProps {
     mode: 'create' | 'edit'
@@ -45,7 +46,7 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
 
     const handleContextLimitChange = (value: string) => {
         const filtered = value.replace(/\D/g, '')
-        setContextLimit(filtered)
+        setContextLimit(removeLeadingZeros(filtered))
     }
 
     const validationErrors = useMemo(() => {
@@ -68,8 +69,13 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
             errors.baseUrl = t('agentConfigure.baseUrlFormat')
         }
 
-        if (trimmedContextLimit && !/^\d+$/.test(trimmedContextLimit)) {
-            errors.contextLimit = t('agentConfigure.contextLimitFormat')
+        if (trimmedContextLimit) {
+            const error = validateContextLimit(trimmedContextLimit)
+            if (error === 'format') {
+                errors.contextLimit = t('agentConfigure.contextLimitFormat')
+            } else if (error === 'range') {
+                errors.contextLimit = t('agentConfigure.contextLimitRange')
+            }
         }
 
         return errors

@@ -134,7 +134,7 @@ function CreateKnowledgeModal({
 
     return (
         <div className="modal-overlay">
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.createTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -239,8 +239,8 @@ function DeleteKnowledgeModal({
     }, [onClose, onDeleted, showToast, source.id, source.name, t])
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.deleteTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -277,6 +277,7 @@ export default function Knowledge() {
     const { t, i18n } = useTranslation()
     const navigate = useNavigate()
     const [sources, setSources] = useState<SourceSummary[]>([])
+    const existingSourceNames = useMemo(() => new Set(sources.map(s => s.name)), [sources])
     const [stats, setStats] = useState<Record<string, SourceStats>>({})
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -464,7 +465,7 @@ export default function Knowledge() {
 
             {showCreateModal && (
                 <CreateKnowledgeModal
-                    existingNames={new Set(sources.map(s => s.name))}
+                    existingNames={existingSourceNames}
                     onClose={() => setShowCreateModal(false)}
                     onCreated={loadSources}
                 />

@@ -4,6 +4,15 @@ import Button from '../../../../platform/ui/primitives/Button'
 import type { AgentConfig, AgentModelConfig, CreateProviderRequest, LlmProvider, UpdateProviderRequest } from '../../../../../types/agentConfig'
 import CreateProviderModal from './CreateProviderModal'
 import { formatProviderEngine } from './providerDisplay'
+import {
+    validateTemperature,
+    validateMaxTokens,
+    validateContextLimit,
+    validateContextStrategy,
+    validateAutoCompactThreshold,
+    validateMaxTurns,
+    removeLeadingZeros,
+} from '../../../../../utils/model-validation'
 
 interface ModelConfigSectionProps {
     config: AgentConfig
@@ -76,6 +85,35 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
         setIsSaving(false)
     }
 
+    const validationErrors = useMemo(() => {
+        const errors: Record<string, string> = {}
+
+        const tempError = validateTemperature(form.GOOSE_TEMPERATURE || '')
+        if (tempError === 'format') errors.temperature = t('agentConfigure.temperatureFormat')
+        else if (tempError === 'range') errors.temperature = t('agentConfigure.temperatureRange')
+
+        const tokensError = validateMaxTokens(form.GOOSE_MAX_TOKENS || '')
+        if (tokensError === 'format') errors.maxTokens = t('agentConfigure.maxTokensFormat')
+        else if (tokensError === 'range') errors.maxTokens = t('agentConfigure.maxTokensRange')
+
+        const contextError = validateContextLimit(form.GOOSE_CONTEXT_LIMIT || '')
+        if (contextError === 'format') errors.contextLimit = t('agentConfigure.contextLimitFormat')
+        else if (contextError === 'range') errors.contextLimit = t('agentConfigure.contextLimitRange')
+
+        const strategyError = validateContextStrategy(form.GOOSE_CONTEXT_STRATEGY || '')
+        if (strategyError === 'invalid') errors.contextStrategy = t('agentConfigure.contextStrategyInvalid')
+
+        const thresholdError = validateAutoCompactThreshold(form.GOOSE_AUTO_COMPACT_THRESHOLD || '')
+        if (thresholdError === 'format') errors.autoCompactThreshold = t('agentConfigure.autoCompactThresholdFormat')
+        else if (thresholdError === 'range') errors.autoCompactThreshold = t('agentConfigure.autoCompactThresholdRange')
+
+        const turnsError = validateMaxTurns(form.GOOSE_MAX_TURNS || '')
+        if (turnsError === 'format') errors.maxTurns = t('agentConfigure.maxTurnsFormat')
+        else if (turnsError === 'range') errors.maxTurns = t('agentConfigure.maxTurnsRange')
+
+        return errors
+    }, [form, t])
+
     return (
         <section className="agent-configure-section">
             <div className="agent-configure-section-header">
@@ -94,7 +132,7 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
                         variant="secondary"
                         size="sm"
                         onClick={handleSave}
-                        disabled={isSaving || !selectedProvider || !selectedModel}
+                        disabled={isSaving || !selectedProvider || !selectedModel || Object.keys(validationErrors).length > 0}
                     >
                         {isSaving ? t('agentConfigure.saving') : t('common.save')}
                     </Button>
@@ -142,16 +180,39 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
                     )}
 
                     <div className="agent-model-param-grid">
-                        {PARAM_FIELDS.map(field => (
-                            <label key={field.key} className="form-group">
-                                <span className="form-label">{t(`agentConfigure.${field.labelKey}`)}</span>
-                                <input
-                                    className="form-input"
-                                    value={String(form[field.key] || '')}
-                                    onChange={event => setForm(current => ({ ...current, [field.key]: event.target.value }))}
-                                />
-                            </label>
-                        ))}
+                        {PARAM_FIELDS.map(field => {
+                            const hasError = validationErrors[field.labelKey]
+                            const isNumericField = field.key !== 'GOOSE_CONTEXT_STRATEGY'
+
+                            return (
+                                <label key={field.key} className="form-group">
+                                    <span className="form-label">{t(`agentConfigure.${field.labelKey}`)}</span>
+                                    <input
+                                        className={`form-input ${hasError ? 'form-input-error' : ''}`}
+                                        value={String(form[field.key] || '')}
+                                        onChange={event => {
+                                            let value = event.target.value
+
+                                            if (isNumericField) {
+                                                if (field.key === 'GOOSE_TEMPERATURE') {
+                                                    value = value.replace(/[^\d.]/g, '')
+                                                    const parts = value.split('.')
+                                                    if (parts.length > 2) {
+                                                        value = parts[0] + '.' + parts.slice(1).join('')
+                                                    }
+                                                } else {
+                                                    value = value.replace(/\D/g, '')
+                                                    value = removeLeadingZeros(value)
+                                                }
+                                            }
+
+                                            setForm(current => ({ ...current, [field.key]: value }))
+                                        }}
+                                    />
+                                    {hasError && <span className="form-error">{validationErrors[field.labelKey]}</span>}
+                                </label>
+                            )
+                        })}
                     </div>
                 </div>
             )}

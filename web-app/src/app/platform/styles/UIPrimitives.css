@@ -218,6 +218,21 @@
     box-shadow: 0 0 0 3px var(--color-accent-subtle);
 }
 
+.form-input-error {
+    border-color: var(--color-error);
+}
+
+.form-input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.form-error {
+    display: block;
+    margin-top: var(--spacing-1);
+    font-size: var(--font-size-xs);
+    color: var(--color-error);
+}
+
 .form-inline-control {
     display: flex;
     align-items: center;
