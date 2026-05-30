@@ -449,7 +449,10 @@ export function SopsTab({ solutionTypes }: { solutionTypes: SolutionType[] }) {
     const filteredSops = useMemo(() => {
         let result = sops
         if (solutionFilter !== 'all') {
-            result = result.filter(s => (s.targetSolution ?? 'universal') === solutionFilter)
+            result = result.filter(s => {
+                const sol = s.targetSolution ?? 'universal'
+                return sol === solutionFilter || sol === 'universal'
+            })
         }
         if (!searchTerm.trim()) return result
         const term = searchTerm.toLowerCase()

@@ -53,7 +53,10 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
     const filteredTypes = useMemo(() => {
         let result = clusterTypes
         if (solutionFilter !== 'all') {
-            result = result.filter(ct => (ct.solutionType ?? 'universal') === solutionFilter)
+            result = result.filter(ct => {
+                const sol = ct.solutionType ?? 'universal'
+                return sol === solutionFilter || sol === 'universal'
+            })
         }
         if (!searchTerm.trim()) return result
         const term = searchTerm.toLowerCase()
