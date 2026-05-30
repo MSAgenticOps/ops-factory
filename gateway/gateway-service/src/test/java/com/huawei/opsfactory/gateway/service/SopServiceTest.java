@@ -12,6 +12,7 @@ import static org.junit.Assert.assertTrue;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import org.junit.Before;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -50,10 +51,7 @@ public class SopServiceTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
 
-        CommandWhitelistService whitelistService = new CommandWhitelistService(properties);
-        whitelistService.init();
-
-        sopService = new SopService(properties, whitelistService);
+        sopService = new SopService(properties);
         sopService.init();
 
         sopsDir = Path.of(tempFolder.getRoot().getAbsolutePath())
@@ -136,7 +134,8 @@ public class SopServiceTest {
         body.put("description", "RCPA进程异常分析");
         body.put("version", "2.0.0");
         body.put("triggerCondition", "RCPA进程异常");
-        body.put("nodes", List.of(Map.of("id", "node-1", "name", "步骤1", "command", "ps -ef")));
+        body.put("stepsDescription", "1. 检查RCPA进程状态");
+        body.put("targetSolution", "crm-commerce");
 
         Map<String, Object> result = sopService.createSop(body);
 
@@ -145,7 +144,8 @@ public class SopServiceTest {
         assertEquals("RCPA进程异常分析", result.get("description"));
         assertEquals("2.0.0", result.get("version"));
         assertEquals("RCPA进程异常", result.get("triggerCondition"));
-        assertNotNull(result.get("nodes"));
+        assertEquals("1. 检查RCPA进程状态", result.get("stepsDescription"));
+        assertEquals("crm-commerce", result.get("targetSolution"));
     }
 
     /**
@@ -163,7 +163,8 @@ public class SopServiceTest {
         assertEquals("", result.get("description"));
         assertEquals("1.0.0", result.get("version"));
         assertEquals("", result.get("triggerCondition"));
-        assertEquals(List.of(), result.get("nodes"));
+        assertEquals("", result.get("stepsDescription"));
+        assertEquals("universal", result.get("targetSolution"));
     }
 
     // ── updateSop ────────────────────────────────────────────────
@@ -210,22 +211,22 @@ public class SopServiceTest {
     }
 
     /**
-     * Tests update sop update nodes.
+     * Tests update sop update target solution.
      */
     @Test
-    public void testUpdateSop_updateNodes() {
+    public void testUpdateSop_updateTargetSolution() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "SOP");
         Map<String, Object> created = sopService.createSop(body);
         String id = (String) created.get("id");
 
-        List<Map<String, Object>> newNodes =
-            List.of(Map.of("id", "n1", "name", "Node1"), Map.of("id", "n2", "name", "Node2"));
         Map<String, Object> updates = new LinkedHashMap<>();
-        updates.put("nodes", newNodes);
+        updates.put("targetSolution", "cbs-billing");
+        updates.put("stepsDescription", "Updated steps");
 
         Map<String, Object> result = sopService.updateSop(id, updates);
-        assertEquals(newNodes, result.get("nodes"));
+        assertEquals("cbs-billing", result.get("targetSolution"));
+        assertEquals("Updated steps", result.get("stepsDescription"));
     }
 
     /**
@@ -354,7 +355,8 @@ public class SopServiceTest {
         sop.put("description", description);
         sop.put("version", "1.0.0");
         sop.put("triggerCondition", "");
-        sop.put("nodes", List.of());
+        sop.put("stepsDescription", "");
+        sop.put("targetSolution", "universal");
 
         try {
             Path file = sopsDir.resolve(id + ".json");

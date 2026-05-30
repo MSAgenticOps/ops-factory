@@ -174,9 +174,8 @@ export function useResourceExport() {
                 version: s.version || '',
                 triggerCondition: s.triggerCondition || '',
                 enabled: String(s.enabled ?? true),
-                mode: s.mode || 'structured',
                 stepsDescription: s.stepsDescription || '',
-                targetTags: Array.isArray(s.tags) ? s.tags.join(';') : '',
+                targetSolution: s.targetSolution || 'universal',
                 nodes: Array.isArray(s.nodes) && s.nodes.length > 0 ? JSON.stringify(s.nodes) : '',
             }))
             const sopWorkbook = generateExportXlsx('SOPs', sopData, t)

@@ -776,31 +776,14 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: nameResult.sanitized } })
                                     continue
                                 }
-                                const tags = (row.targetTags || row.sopTags || row.tags)
-                                    ? (row.targetTags || row.sopTags || row.tags).split(';').map(t => t.trim()).filter(Boolean)
-                                    : []
-                                let nodes = []
-                                if (row.nodes && typeof row.nodes === 'string' && row.nodes.trim()) {
-                                    try {
-                                        nodes = JSON.parse(row.nodes)
-                                        if (!Array.isArray(nodes)) {
-                                            nodes = []
-                                        }
-                                    } catch {
-                                        errors.push({ row: i + 2, code: 'import.invalidNodes', params: { name: nameResult.sanitized } })
-                                        continue
-                                    }
-                                }
                                 const sopData = {
                                     name: nameResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     version: row.version || '',
                                     triggerCondition: row.triggerCondition ? validateAndSanitize(row.triggerCondition, 'TriggerCondition').sanitized : '',
                                     enabled: row.enabled !== 'false',
-                                    mode: (row.mode === 'natural_language' ? 'natural_language' : 'structured') as 'structured' | 'natural_language',
                                     stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
-                                    tags,
-                                    nodes,
+                                    targetSolution: row.targetSolution || 'universal',
                                 }
                                 console.log('[Import SOPs] Creating SOP:', JSON.stringify(sopData, null, 2))
                                 await deps.createSop(sopData)
