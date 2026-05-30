@@ -7,6 +7,7 @@ import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import type { BusinessType } from '../../../../types/host'
+import { useFormValidation } from '../../../../utils/useFormValidation'
 
 type Props = {
     businessTypes: BusinessType[]
@@ -30,6 +31,7 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
+    const { validateFormData } = useFormValidation()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<BusinessType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
@@ -64,26 +66,45 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
         if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
+            // Validate and sanitize form fields
+            const fieldLabels = {
+                name: t('hostResource.typeName'),
+                code: t('hostResource.typeCode'),
+                description: t('hostResource.description'),
+            }
+            const validationResult = validateFormData(
+                form,
+                ['name', 'code', 'description'],
+                fieldLabels
+            )
+
+            if (!validationResult.valid) {
+                setSaving(false)
+                return
+            }
+
+            const sanitizedForm = validationResult.sanitized
+
             // Check for duplicate name
-            const duplicateName = businessTypes.find(bt => bt.name === form.name && bt.id !== editing?.id)
+            const duplicateName = businessTypes.find(bt => bt.name === sanitizedForm.name && bt.id !== editing?.id)
             if (duplicateName) {
-                showToast('error', t('hostResource.duplicateName', { name: form.name }))
+                showToast('error', t('hostResource.duplicateName', { name: sanitizedForm.name }))
                 setSaving(false)
                 return
             }
 
             // Check for duplicate code
-            const duplicateCode = businessTypes.find(bt => bt.code === form.code && bt.id !== editing?.id)
+            const duplicateCode = businessTypes.find(bt => bt.code === sanitizedForm.code && bt.id !== editing?.id)
             if (duplicateCode) {
-                showToast('error', t('hostResource.duplicateCode', { code: form.code }))
+                showToast('error', t('hostResource.duplicateCode', { code: sanitizedForm.code }))
                 setSaving(false)
                 return
             }
 
             if (editing) {
-                await onUpdate(editing.id, form)
+                await onUpdate(editing.id, sanitizedForm)
             } else {
-                await onCreate(form)
+                await onCreate(sanitizedForm)
             }
             setShowModal(false)
         } catch (err) {
@@ -91,7 +112,7 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
         } finally {
             setSaving(false)
         }
-    }, [editing, form, businessTypes, onCreate, onUpdate, showToast, t])
+    }, [editing, form, businessTypes, onCreate, onUpdate, showToast, t, validateFormData])
 
     const handleDelete = useCallback(async (item: BusinessType) => {
         const confirmed = await requestConfirm({

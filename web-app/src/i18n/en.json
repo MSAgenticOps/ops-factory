@@ -59,7 +59,8 @@
     "validationArray": "Separator for multiple values",
     "validationMaxLength": "Max {{max}} chars",
     "validationMinLength": "Min {{min}} chars",
-    "validationCustom": "Custom validation"
+    "validationCustom": "Custom validation",
+    "validationXssProtected": "String (no XSS chars: < > \" ' & ` /), max {{max}} chars"
   },
   "sidebar": {
     "home": "Home",
@@ -1207,6 +1208,8 @@
     "noMatchFiles": "No files match \"{{term}}\"",
     "deleteTitle": "Delete File",
     "deleteConfirm": "This will permanently delete \"{{name}}\". This action cannot be undone.",
+    "deleteSuccess": "Deleted {{name}}",
+    "deleteFailed": "Failed to delete file",
     "categories": {
       "all": "All",
       "doc": "Doc",
@@ -1910,6 +1913,8 @@
     "untagged": "untagged",
     "expand": "Show more",
     "collapse": "Show less",
+    "showMore": "Show more (+{{count}})",
+    "showLess": "Show less",
     "contentTooLong": "Content exceeds limit (max {{max}} characters). Please shorten and try again."
   },
   "channels": {
