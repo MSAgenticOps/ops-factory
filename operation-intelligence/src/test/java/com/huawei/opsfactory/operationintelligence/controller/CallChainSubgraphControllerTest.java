@@ -101,7 +101,7 @@ class CallChainSubgraphControllerTest {
             "startTime", 1746057600000L,
             "endTime", 1746058200000L);
 
-        MvcResult generateResult = mockMvc.perform(post("/operation-intelligence/call-chain/subgraphs")
+        MvcResult generateResult = mockMvc.perform(post("/api/operation-intelligence/call-chain/subgraphs")
                 .header("x-secret-key", SECRET_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(MAPPER.writeValueAsString(request)))
@@ -120,7 +120,7 @@ class CallChainSubgraphControllerTest {
         assertTrue(subgraphId.startsWith("cc-subgraph-"));
         assertEquals(1L, countPersistedSubgraphs());
 
-        mockMvc.perform(get("/operation-intelligence/call-chain/subgraphs/{subgraphId}", subgraphId)
+        mockMvc.perform(get("/api/operation-intelligence/call-chain/subgraphs/{subgraphId}", subgraphId)
                 .header("x-secret-key", SECRET_KEY))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
@@ -129,7 +129,7 @@ class CallChainSubgraphControllerTest {
             .andExpect(jsonPath("$.result.graph.metadata.flowCount").value(1))
             .andExpect(jsonPath("$.result.graph.relations[0].type").value("belongs_to_cluster"));
 
-        mockMvc.perform(get("/operation-intelligence/call-chain/subgraphs")
+        mockMvc.perform(get("/api/operation-intelligence/call-chain/subgraphs")
                 .header("x-secret-key", SECRET_KEY)
                 .queryParam("ontologyId", "b2b-callchain-v1")
                 .queryParam("envCode", "prod"))
@@ -147,7 +147,7 @@ class CallChainSubgraphControllerTest {
             "envCode", "prod",
             "solutionType", "DigitalCRM.sit");
 
-        mockMvc.perform(post("/operation-intelligence/call-chain/subgraphs")
+        mockMvc.perform(post("/api/operation-intelligence/call-chain/subgraphs")
             .contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(request))).andExpect(status().isUnauthorized());
     }

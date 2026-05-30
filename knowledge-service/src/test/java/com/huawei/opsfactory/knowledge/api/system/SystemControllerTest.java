@@ -26,7 +26,7 @@ class SystemControllerTest {
 
     @Test
     void shouldExposeCapabilitiesForManagementUiAndThirdPartyClients() throws Exception {
-        mockMvc.perform(get("/knowledge/capabilities"))
+        mockMvc.perform(get("/api/knowledge/capabilities"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.retrievalModes[0]").value("lexical"))
             .andExpect(jsonPath("$.retrievalModes[2]").value("hybrid"))
@@ -38,7 +38,7 @@ class SystemControllerTest {
 
     @Test
     void shouldExposeDefaultBusinessConfigurationView() throws Exception {
-        mockMvc.perform(get("/knowledge/system/defaults"))
+        mockMvc.perform(get("/api/knowledge/system/defaults"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.ingest.maxFileSizeMb").value(100))
             .andExpect(jsonPath("$.ingest.deduplication").value("sha256"))

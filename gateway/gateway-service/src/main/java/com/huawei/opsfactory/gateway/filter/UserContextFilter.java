@@ -32,7 +32,7 @@ import java.io.IOException;
 public class UserContextFilter implements jakarta.servlet.Filter {
     private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
 
-    private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
+    private static final String CHANNEL_WEBHOOK_PREFIX = "/api/gateway/channels/webhooks/";
 
     public static final String USER_ID_ATTR = "userId";
 
@@ -49,20 +49,22 @@ public class UserContextFilter implements jakarta.servlet.Filter {
 
     private static boolean isSystemEndpoint(String path) {
         return path.equals("/status") || path.equals("/me") || path.equals("/config") || path.equals("/gateway/status")
-            || path.equals("/gateway/me") || path.equals("/gateway/config");
+            || path.equals("/gateway/me") || path.equals("/gateway/config") || path.equals("/api/gateway/status")
+            || path.equals("/api/gateway/me") || path.equals("/api/gateway/config");
     }
 
     private static boolean isTraceEndpoint(String path) {
         if (path == null) {
             return false;
         }
-        if (path.startsWith("/gateway/session-traces/")) {
+        if (path.startsWith("/api/gateway/session-traces/") || path.startsWith("/gateway/session-traces/")) {
             return true;
         }
-        if (!path.startsWith("/gateway/agents/") || !path.endsWith("/trace")) {
+        String agentPrefix = path.startsWith("/api/gateway/agents/") ? "/api/gateway/agents/" : "/gateway/agents/";
+        if (!path.startsWith(agentPrefix) || !path.endsWith("/trace")) {
             return false;
         }
-        return path.substring("/gateway/agents/".length()).contains("/sessions/");
+        return path.substring(agentPrefix.length()).contains("/sessions/");
     }
 
     /**

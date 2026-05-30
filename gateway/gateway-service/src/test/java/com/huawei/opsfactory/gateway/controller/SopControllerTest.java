@@ -185,13 +185,12 @@ public class SopControllerTest {
      */
     @Test
     public void testUpdateSop_notFound() throws Exception {
-        when(sopService.updateSop(eq("nonexistent"), any()))
-            .thenThrow(new IllegalArgumentException("SOP not found: nonexistent"));
+        when(sopService.updateSop(eq("nonexistent"), any())).thenReturn(null);
 
         mockMvc.perform(put("/api/gateway/sops/nonexistent").header("x-secret-key", "test")
             .header("x-user-id", "admin")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"name\": \"Updated\"}")).andExpect(status().isConflict());
+            .content("{\"name\": \"Updated\"}")).andExpect(status().isNotFound());
     }
 
     // ── deleteSop ────────────────────────────────────────────────
@@ -234,7 +233,7 @@ public class SopControllerTest {
                 .content("{\"name\": \"TestSOP\"}"))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.error").value("SOP name already exists"));
+            .andExpect(jsonPath("$.error").value("SOP name already exists: TestSOP"));
     }
 
     // ── Auth tests ───────────────────────────────────────────────

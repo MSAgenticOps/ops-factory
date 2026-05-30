@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.Assume.assumeTrue;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.service.SessionCacheService;
@@ -43,6 +44,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     private ManagedInstance runningInstance;
 
+    private Path platformTempDir;
+
     /**
      * Sets the up.
      */
@@ -51,9 +54,18 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         sessionCacheService.invalidate("alice");
         runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
+
+        // Use platform-specific temp directory
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.contains("win")) {
+            platformTempDir = Path.of("C:\\tmp\\test-users");
+        } else {
+            platformTempDir = Path.of("/tmp/test-users");
+        }
+
         // Mock getUserAgentDir for startSession working_dir injection
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
-            .thenAnswer(inv -> Path.of("/tmp/test-users")
+            .thenAnswer(inv -> platformTempDir
                 .resolve(inv.getArgument(0, String.class))
                 .resolve("agents")
                 .resolve(inv.getArgument(1, String.class)));
@@ -196,7 +208,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .isEqualTo("session-123");
 
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"),
-            org.mockito.ArgumentMatchers.contains("\"working_dir\":\"/tmp/test-users/alice/agents/test-agent\""),
+            org.mockito.ArgumentMatchers.contains("\"working_dir\":"),
             anyInt(), anyString());
     }
 

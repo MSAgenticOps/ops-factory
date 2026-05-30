@@ -118,8 +118,9 @@ public class CommandWhitelistControllerTest {
     @Test
     public void testUpdateCommand_success() throws Exception {
         mockMvc
-            .perform(put("/api/gateway/command-whitelist/ps").header("x-secret-key", "test")
+            .perform(put("/api/gateway/command-whitelist/").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
+                .param("pattern", "ps")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"description\": \"updated desc\", \"enabled\": false}"))
             .andExpect(status().isOk())
@@ -135,8 +136,9 @@ public class CommandWhitelistControllerTest {
             .updateCommand(eq("unknown"), any());
 
         mockMvc
-            .perform(put("/api/gateway/command-whitelist/unknown").header("x-secret-key", "test")
+            .perform(put("/api/gateway/command-whitelist/").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
+                .param("pattern", "unknown")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"description\": \"test\"}"))
             .andExpect(status().isNotFound())
@@ -152,7 +154,8 @@ public class CommandWhitelistControllerTest {
     public void testDeleteCommand_success() throws Exception {
         mockMvc
             .perform(
-                delete("/api/gateway/command-whitelist/ps").header("x-secret-key", "test").header("x-user-id", "admin"))
+                delete("/api/gateway/command-whitelist/").header("x-secret-key", "test").header("x-user-id", "admin")
+                    .param("pattern", "ps"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -166,8 +169,9 @@ public class CommandWhitelistControllerTest {
             .deleteCommand("unknown");
 
         mockMvc
-            .perform(delete("/api/gateway/command-whitelist/unknown").header("x-secret-key", "test")
-                .header("x-user-id", "admin"))
+            .perform(delete("/api/gateway/command-whitelist/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .param("pattern", "unknown"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.success").value(false));
     }

@@ -26,7 +26,7 @@ class RequestLoggingFilterIntegrationTest extends KnowledgeApiIntegrationTestSup
     @Test
     void shouldGenerateRequestIdAndWriteAccessLog() throws Exception {
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestLoggingFilter.class)) {
-            MvcResult result = mockMvc.perform(get("/knowledge/system/defaults"))
+            MvcResult result = mockMvc.perform(get("/api/knowledge/system/defaults"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -37,7 +37,7 @@ class RequestLoggingFilterIntegrationTest extends KnowledgeApiIntegrationTestSup
                 .anySatisfy(event -> {
                     String loggedRequestId = event.getMDCPropertyMap().get(LoggingKeys.REQUEST_ID);
                     assertThat(event.getFormattedMessage())
-                        .contains("HTTP GET /knowledge/system/defaults completed status=200");
+                        .contains("HTTP GET /api/knowledge/system/defaults completed status=200");
                     assertThat(loggedRequestId).isEqualTo(requestId);
                 });
         }
@@ -48,7 +48,7 @@ class RequestLoggingFilterIntegrationTest extends KnowledgeApiIntegrationTestSup
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestLoggingFilter.class)) {
             String requestId = "req-fixed-123";
 
-            MvcResult result = mockMvc.perform(get("/knowledge/system/defaults")
+            MvcResult result = mockMvc.perform(get("/api/knowledge/system/defaults")
                     .header(LoggingKeys.REQUEST_ID_HEADER, requestId))
                 .andExpect(status().isOk())
                 .andReturn();

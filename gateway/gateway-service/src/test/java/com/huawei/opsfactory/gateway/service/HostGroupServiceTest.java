@@ -103,6 +103,7 @@ public class HostGroupServiceTest {
     public void testCreateGroup_enabledTrue() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "STAGING");
+        body.put("code", "STAGING");
         body.put("enabled", true);
 
         Map<String, Object> result = hostGroupService.createGroup(body);
@@ -118,6 +119,7 @@ public class HostGroupServiceTest {
     public void testUpdateGroup_setEnabled() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
 
@@ -136,6 +138,7 @@ public class HostGroupServiceTest {
     public void testUpdateGroup_reEnable() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         body.put("enabled", false);
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
@@ -154,6 +157,7 @@ public class HostGroupServiceTest {
     public void testUpdateGroup_partialUpdatePreservesEnabled() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         body.put("enabled", false);
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
@@ -174,6 +178,7 @@ public class HostGroupServiceTest {
     public void testUpdateGroup_defaultEnabledRemainsTrue() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
 
@@ -294,6 +299,7 @@ public class HostGroupServiceTest {
     public void testEnabledStatePersistedAndReadBack() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         body.put("enabled", false);
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
@@ -310,6 +316,7 @@ public class HostGroupServiceTest {
     public void testUpdateEnabledPersistedAndReadBack() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
 
