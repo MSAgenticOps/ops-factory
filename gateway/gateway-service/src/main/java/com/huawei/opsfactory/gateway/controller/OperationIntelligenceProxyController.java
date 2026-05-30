@@ -35,7 +35,7 @@ public class OperationIntelligenceProxyController {
      * @param request the request
      * @return the result
      */
-    @RequestMapping("/gateway/operation-intelligence/**")
+    @RequestMapping("/api/gateway/operation-intelligence/**")
     public ResponseEntity<String> proxy(HttpServletRequest request) {
         return proxyService.proxy(request);
     }

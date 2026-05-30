@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/control-center/events")
+@RequestMapping("/api/control-center/events")
 /**
  * Event Controller.
  *

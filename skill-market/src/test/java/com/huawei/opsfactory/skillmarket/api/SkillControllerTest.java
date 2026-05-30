@@ -62,7 +62,7 @@ class SkillControllerTest {
     void listSkillsReturnsItems() throws Exception {
         Mockito.when(service.listSkills("log")).thenReturn(List.of(summary()));
 
-        mockMvc.perform(get("/skill-market/skills").queryParam("q", "log"))
+        mockMvc.perform(get("/api/skill-market/skills").queryParam("q", "log"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.total").value(1))
             .andExpect(jsonPath("$.items[0].id").value("log-analysis"));
@@ -73,7 +73,7 @@ class SkillControllerTest {
         Mockito.when(service.createSkill(any(CreateSkillRequest.class)))
             .thenReturn(new SkillMutationResponse(summary(), List.of()));
 
-        mockMvc.perform(post("/skill-market/skills")
+        mockMvc.perform(post("/api/skill-market/skills")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -95,7 +95,7 @@ class SkillControllerTest {
             )));
         MockMultipartFile file = new MockMultipartFile("file", "skill.zip", "application/zip", new byte[] {1, 2, 3});
 
-        mockMvc.perform(multipart("/skill-market/skills:import").file(file).param("id", "log-analysis"))
+        mockMvc.perform(multipart("/api/skill-market/skills:import").file(file).param("id", "log-analysis"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.skill.id").value("log-analysis"))
             .andExpect(jsonPath("$.warnings[0].code").value("CONTAINS_SCRIPTS"));
@@ -106,7 +106,7 @@ class SkillControllerTest {
         Mockito.when(service.updateSkill(eq("log-analysis"), any(UpdateSkillRequest.class)))
             .thenReturn(new SkillMutationResponse(summary(), List.of()));
 
-        mockMvc.perform(put("/skill-market/skills/log-analysis")
+        mockMvc.perform(put("/api/skill-market/skills/log-analysis")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -138,7 +138,7 @@ class SkillControllerTest {
                 "2026-04-22T00:00:00Z"
             ));
 
-        mockMvc.perform(get("/skill-market/skills/log-analysis"))
+        mockMvc.perform(get("/api/skill-market/skills/log-analysis"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.files[1]").value("scripts/analyze.py"))
             .andExpect(jsonPath("$.instructions").value("---\nname: log-analysis\n---\n# Log Analysis\n"));
@@ -150,7 +150,7 @@ class SkillControllerTest {
         Files.write(zip, new byte[] {1, 2, 3});
         Mockito.when(service.packagePath("log-analysis")).thenReturn(zip);
 
-        mockMvc.perform(get("/skill-market/skills/log-analysis/package"))
+        mockMvc.perform(get("/api/skill-market/skills/log-analysis/package"))
             .andExpect(status().isOk())
             .andExpect(content().contentType("application/zip"))
             .andExpect(header().string("Content-Disposition", "attachment; filename=\"log-analysis.zip\""));
@@ -158,13 +158,13 @@ class SkillControllerTest {
 
     @Test
     void deleteSkillReturnsNoContent() throws Exception {
-        mockMvc.perform(delete("/skill-market/skills/log-analysis"))
+        mockMvc.perform(delete("/api/skill-market/skills/log-analysis"))
             .andExpect(status().isNoContent());
     }
 
     @Test
     void capabilitiesExposePackageLimits() throws Exception {
-        mockMvc.perform(get("/skill-market/capabilities"))
+        mockMvc.perform(get("/api/skill-market/capabilities"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.packageFormats[0]").value("zip"))
             .andExpect(jsonPath("$.limits.maxUploadSizeMb").value(50));
@@ -172,7 +172,7 @@ class SkillControllerTest {
 
     @Test
     void corsAllowsLocalhostDevOrigin() throws Exception {
-        mockMvc.perform(get("/skill-market/capabilities")
+        mockMvc.perform(get("/api/skill-market/capabilities")
                 .header("Origin", "http://localhost:5173"))
             .andExpect(status().isOk())
             .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));

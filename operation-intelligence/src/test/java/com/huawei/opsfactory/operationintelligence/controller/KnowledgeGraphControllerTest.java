@@ -96,7 +96,7 @@ class KnowledgeGraphControllerTest {
     @Test
     void graphEndpoints_requireSecret() {
         webTestClient.get()
-            .uri("/operation-intelligence/graph/entities/biz-prod-604015020?envCode=prod")
+            .uri("/api/operation-intelligence/graph/entities/biz-prod-604015020?envCode=prod")
             .exchange()
             .expectStatus()
             .isUnauthorized();
@@ -107,7 +107,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.get()
-            .uri("/operation-intelligence/graph/entities/svc-prod-bes-business-common-sysparambs?envCode=prod")
+            .uri("/api/operation-intelligence/graph/entities/svc-prod-bes-business-common-sysparambs?envCode=prod")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -140,7 +140,7 @@ class KnowledgeGraphControllerTest {
                     Map.of("serviceName", "LargeImportService", "description", largeDescription))));
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(body)
@@ -162,7 +162,7 @@ class KnowledgeGraphControllerTest {
                 entity("cluster-incremental", "Cluster", "IncrementalCluster",
                     Map.of("clusterName", "IncrementalCluster"))));
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(entitiesOnly)
@@ -175,7 +175,7 @@ class KnowledgeGraphControllerTest {
                 "1.0", "sourceSystem", "incremental-test", "importMode", "UPSERT", "relations",
                 List.of(relation("rel-incremental-deployed", "deployed_in", "svc-incremental", "cluster-incremental")));
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(relationOnly)
@@ -189,7 +189,7 @@ class KnowledgeGraphControllerTest {
             .isEqualTo(1);
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/subgraph")
+            .uri("/api/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "incremental", "entityId", "svc-incremental", "maxHops", 1))
@@ -214,7 +214,7 @@ class KnowledgeGraphControllerTest {
             List.of(entity("svc-path-test", "Service", "PathTestService", Map.of("serviceName", "PathTestService"))));
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(body)
@@ -230,7 +230,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/subgraph")
+            .uri("/api/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod", "entityId", "svc-prod-bes-business-common-sysparambs", "maxHops", 4))
@@ -251,7 +251,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/subgraph")
+            .uri("/api/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(
@@ -266,7 +266,7 @@ class KnowledgeGraphControllerTest {
             .isEqualTo(2);
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/subgraph")
+            .uri("/api/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(
@@ -286,7 +286,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/subgraph")
+            .uri("/api/operation-intelligence/graph/subgraph")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod", "entityId", "app-order",
@@ -306,7 +306,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.get()
-            .uri("/operation-intelligence/graph/resources/tree?envCode=prod")
+            .uri("/api/operation-intelligence/graph/resources/tree?envCode=prod")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -325,7 +325,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.get()
-            .uri("/operation-intelligence/graph/environments?ontologyId=huawei-mo-resource-v1")
+            .uri("/api/operation-intelligence/graph/environments?ontologyId=huawei-mo-resource-v1")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -344,7 +344,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/delete-entities")
+            .uri("/api/operation-intelligence/graph/admin/delete-entities")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod"))
@@ -353,7 +353,7 @@ class KnowledgeGraphControllerTest {
             .isOk();
 
         webTestClient.get()
-            .uri("/operation-intelligence/graph/environments?ontologyId=huawei-mo-resource-v1")
+            .uri("/api/operation-intelligence/graph/environments?ontologyId=huawei-mo-resource-v1")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -368,7 +368,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/observations/query")
+            .uri("/api/operation-intelligence/graph/observations/query")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod", "entityId", "biz-prod-604015020", "severity", "warning"))
@@ -389,7 +389,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/impact-path")
+            .uri("/api/operation-intelligence/graph/impact-path")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod", "fromEntityId", "svc-prod-bes-business-common-sysparambs",
@@ -411,7 +411,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/impact-path")
+            .uri("/api/operation-intelligence/graph/impact-path")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("fromEntityId", "svc-prod-bes-business-common-sysparambs", "toEntityId",
@@ -431,7 +431,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/impact-path")
+            .uri("/api/operation-intelligence/graph/impact-path")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod", "fromEntityId", "cluster-prod-rsp", "toEntityId",
@@ -451,7 +451,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/root-cause-candidates")
+            .uri("/api/operation-intelligence/graph/root-cause-candidates")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod", "entityId", "biz-prod-604015020", "maxHops", 0))
@@ -472,7 +472,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/diagnosis/context")
+            .uri("/api/operation-intelligence/graph/diagnosis/context")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod", "entityId", "biz-prod-604015020", "maxHops", 0))
@@ -495,7 +495,7 @@ class KnowledgeGraphControllerTest {
         importFixture();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/export")
+            .uri("/api/operation-intelligence/graph/admin/export")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("envCode", "prod"))
@@ -537,7 +537,7 @@ class KnowledgeGraphControllerTest {
     @Test
     void dynamicOntology_supportsResourceDeploymentAndRuntimeRelations() {
         webTestClient.post()
-            .uri("/operation-intelligence/graph/ontologies")
+            .uri("/api/operation-intelligence/graph/ontologies")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(resourceOntology())
@@ -551,7 +551,7 @@ class KnowledgeGraphControllerTest {
             .isEqualTo(3);
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(resourceSnapshot())
@@ -565,7 +565,7 @@ class KnowledgeGraphControllerTest {
             .isEqualTo(3);
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/export")
+            .uri("/api/operation-intelligence/graph/admin/export")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod"))
@@ -586,7 +586,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/delete-entities")
+            .uri("/api/operation-intelligence/graph/admin/delete-entities")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod"))
@@ -600,7 +600,7 @@ class KnowledgeGraphControllerTest {
             .isEqualTo("prod");
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/export")
+            .uri("/api/operation-intelligence/graph/admin/export")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod"))
@@ -614,7 +614,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.put()
-            .uri("/operation-intelligence/graph/entities/host-192-168-200-42")
+            .uri("/api/operation-intelligence/graph/entities/host-192-168-200-42")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod", "entity",
@@ -634,7 +634,7 @@ class KnowledgeGraphControllerTest {
 
         webTestClient.get()
             .uri(
-                "/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+                "/api/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -652,7 +652,7 @@ class KnowledgeGraphControllerTest {
 
         webTestClient.delete()
             .uri(
-                "/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+                "/api/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -665,7 +665,7 @@ class KnowledgeGraphControllerTest {
 
         webTestClient.get()
             .uri(
-                "/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+                "/api/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -677,7 +677,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/delete-ontology")
+            .uri("/api/operation-intelligence/graph/admin/delete-ontology")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1"))
@@ -694,7 +694,7 @@ class KnowledgeGraphControllerTest {
         importResourceOntologyAndSnapshot();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/delete-entities")
+            .uri("/api/operation-intelligence/graph/admin/delete-entities")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod"))
@@ -703,7 +703,7 @@ class KnowledgeGraphControllerTest {
             .isOk();
 
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/delete-ontology")
+            .uri("/api/operation-intelligence/graph/admin/delete-ontology")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1"))
@@ -717,7 +717,7 @@ class KnowledgeGraphControllerTest {
             .isEqualTo("huawei-mo-resource-v1");
 
         webTestClient.get()
-            .uri("/operation-intelligence/graph/ontologies/huawei-mo-resource-v1")
+            .uri("/api/operation-intelligence/graph/ontologies/huawei-mo-resource-v1")
             .header("x-secret-key", SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -729,7 +729,7 @@ class KnowledgeGraphControllerTest {
         String body = new ClassPathResource("knowledgegraph/b2b-callchain-import.json")
             .getContentAsString(StandardCharsets.UTF_8);
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(body)
@@ -749,7 +749,7 @@ class KnowledgeGraphControllerTest {
 
     private void importB2bOntology() {
         webTestClient.post()
-            .uri("/operation-intelligence/graph/ontologies")
+            .uri("/api/operation-intelligence/graph/ontologies")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of("ontologyId", "b2b-callchain-v1", "name", "B2B Call Chain Ontology", "version", "1.0",
@@ -796,7 +796,7 @@ class KnowledgeGraphControllerTest {
 
     private void importResourceOntologyAndSnapshot() {
         webTestClient.post()
-            .uri("/operation-intelligence/graph/ontologies")
+            .uri("/api/operation-intelligence/graph/ontologies")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(resourceOntology())
@@ -804,7 +804,7 @@ class KnowledgeGraphControllerTest {
             .expectStatus()
             .isOk();
         webTestClient.post()
-            .uri("/operation-intelligence/graph/admin/import")
+            .uri("/api/operation-intelligence/graph/admin/import")
             .header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(resourceSnapshot())

@@ -31,7 +31,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "commandWhitelistController")
-@RequestMapping("/gateway/command-whitelist")
+@RequestMapping("/api/gateway/command-whitelist")
 public class CommandWhitelistController {
     private final CommandWhitelistService commandWhitelistService;
 

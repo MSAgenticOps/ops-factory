@@ -94,7 +94,7 @@ class KnowledgeRealHttpIntegrationTest {
             运维智能体平台部署在 EulerOS 2 SP12 x86 环境。
             """);
 
-        JsonNode compareResponse = postJson("/knowledge/search/compare", """
+        JsonNode compareResponse = postJson("/api/knowledge/search/compare", """
             {
               "query": "ITSM",
               "sourceIds": ["%s"]
@@ -124,7 +124,7 @@ class KnowledgeRealHttpIntegrationTest {
         Integer maxDimension = jdbcTemplate.queryForObject("select max(dimension) from embedding_cache", Integer.class);
         assertThat(maxDimension).isEqualTo(1024);
 
-        JsonNode compareResponse = postJson("/knowledge/search/compare", """
+        JsonNode compareResponse = postJson("/api/knowledge/search/compare", """
             {
               "query": "ITSM",
               "sourceIds": ["%s"]
@@ -142,12 +142,12 @@ class KnowledgeRealHttpIntegrationTest {
             Shared embedding content for cache reuse.
             """);
 
-        JsonNode documents = getJson("/knowledge/documents?sourceId=" + sourceId);
+        JsonNode documents = getJson("/api/knowledge/documents?sourceId=" + sourceId);
         String documentId = documents.path("items").get(0).path("id").asText();
 
         int initialCacheCount = jdbcTemplate.queryForObject("select count(*) from embedding_cache", Integer.class);
 
-        JsonNode firstChunk = postJson("/knowledge/documents/" + documentId + "/chunks", """
+        JsonNode firstChunk = postJson("/api/knowledge/documents/" + documentId + "/chunks", """
             {
               "ordinal": 900,
               "title": "Shared chunk",
@@ -161,7 +161,7 @@ class KnowledgeRealHttpIntegrationTest {
             """);
         int afterFirstInsert = jdbcTemplate.queryForObject("select count(*) from embedding_cache", Integer.class);
 
-        JsonNode secondChunk = postJson("/knowledge/documents/" + documentId + "/chunks", """
+        JsonNode secondChunk = postJson("/api/knowledge/documents/" + documentId + "/chunks", """
             {
               "ordinal": 901,
               "title": "Shared chunk",
@@ -216,7 +216,7 @@ class KnowledgeRealHttpIntegrationTest {
         vectorIndexService.rebuildOnStartup();
 
         int cacheCountAfterRebuild = jdbcTemplate.queryForObject("select count(*) from embedding_cache", Integer.class);
-        JsonNode compareResponse = postJson("/knowledge/search/compare", """
+        JsonNode compareResponse = postJson("/api/knowledge/search/compare", """
             {
               "query": "incident deployment topology",
               "sourceIds": ["%s"]
@@ -236,7 +236,7 @@ class KnowledgeRealHttpIntegrationTest {
     }
 
     private String createSourceOverHttp(String sourceName) throws Exception {
-        JsonNode json = postJson("/knowledge/sources", """
+        JsonNode json = postJson("/api/knowledge/sources", """
             {
               "name": "%s",
               "description": "real http integration test source"
@@ -260,7 +260,7 @@ class KnowledgeRealHttpIntegrationTest {
         byteArrays.add(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
 
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(url("/knowledge/sources/" + sourceId + "/documents:ingest")))
+            .uri(URI.create(url("/api/knowledge/sources/" + sourceId + "/documents:ingest")))
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
             .POST(HttpRequest.BodyPublishers.ofByteArrays(byteArrays))
             .build();
@@ -287,7 +287,7 @@ class KnowledgeRealHttpIntegrationTest {
         ).getBytes(StandardCharsets.UTF_8);
 
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(url("/knowledge/sources/" + sourceId + "/documents:ingest")))
+            .uri(URI.create(url("/api/knowledge/sources/" + sourceId + "/documents:ingest")))
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
             .POST(HttpRequest.BodyPublishers.ofByteArray(payload))
             .build();

@@ -11,7 +11,6 @@ import com.huawei.opsfactory.gateway.service.SessionTraceService.TraceJobSnapsho
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -38,7 +37,7 @@ import java.nio.file.Path;
  */
 @RestController
 @RestSchema(schemaId = "sessionTraceController")
-@RequestMapping("/gateway")
+@RequestMapping("/api/gateway")
 public class SessionTraceController {
     private final SessionTraceService traceService;
 
@@ -86,7 +85,7 @@ public class SessionTraceController {
      * @return ResponseEntity containing the trace archive file
      */
     @GetMapping("/session-traces/{jobId}/download")
-    public ResponseEntity<FileSystemResource> downloadTrace(@PathVariable("jobId") String jobId,
+    public ResponseEntity<byte[]> downloadTrace(@PathVariable("jobId") String jobId,
         HttpServletRequest request) throws IOException {
         Path archive = traceService.getArchive(jobId);
         if (!Files.isRegularFile(archive)) {
@@ -100,12 +99,12 @@ public class SessionTraceController {
         String contentDisposition =
             "attachment; filename=\"" + filename.replace("\"", "") + "\"; filename*=UTF-8''" + encodedFilename;
 
-        FileSystemResource resource = new FileSystemResource(archive);
+        byte[] fileContent = Files.readAllBytes(archive);
         traceService.deleteJob(jobId);
 
         return ResponseEntity.ok()
             .contentType(mediaType)
             .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
-            .body(resource);
+            .body(fileContent);
     }
 }

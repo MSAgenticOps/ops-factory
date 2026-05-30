@@ -58,7 +58,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +79,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Request body exceeds maximum allowed size")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -103,7 +103,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             Mono.error(new ResponseStatusException(HttpStatus.FORBIDDEN, "File path escapes allowed directory")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -127,7 +127,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             .thenReturn(Mono.error(new RuntimeException("Unexpected hook failure")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -156,7 +156,7 @@ public class HookPipelineE2ETest extends BaseE2ETest {
             eq("{\"modified\":true}"), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)

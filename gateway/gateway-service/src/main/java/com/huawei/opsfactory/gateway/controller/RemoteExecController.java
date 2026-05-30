@@ -26,7 +26,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "remoteExecController")
-@RequestMapping("/gateway/remote")
+@RequestMapping("/api/gateway/remote")
 public class RemoteExecController {
     private final RemoteExecutionService remoteExecutionService;
 

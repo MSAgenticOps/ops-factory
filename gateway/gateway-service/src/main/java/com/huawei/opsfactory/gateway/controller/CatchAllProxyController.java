@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RestSchema(schemaId = "catchAllProxyController")
-@RequestMapping(value = "/gateway")
+@RequestMapping(value = "/api/gateway")
 @Order(999)
 public class CatchAllProxyController {
     private final InstanceManager instanceManager;

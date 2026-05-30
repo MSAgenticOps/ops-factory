@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RestSchema(schemaId = "recipeController")
-@RequestMapping("/gateway/agents/{agentId}/recipes")
+@RequestMapping("/api/gateway/agents/{agentId}/recipes")
 public class RecipeController {
     private final InstanceManager instanceManager;
 

@@ -11,6 +11,9 @@ package com.huawei.opsfactory.operationintelligence.callchainsubgraph.store;
  * @since 2026-05-29
  */
 public class CallChainSubgraphStoreException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
     /**
      * Constructs an exception with message and cause.
      *

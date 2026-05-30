@@ -41,19 +41,19 @@ class OperationIntelligenceHttpIntegrationTest {
 
     @Test
     void qosEndpoints_requireSecret() throws Exception {
-        mockMvc.perform(get("/operation-intelligence/qos/getEnvironments")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/operation-intelligence/qos/getEnvironments")).andExpect(status().isUnauthorized());
     }
 
     @Test
     void qosEndpoints_withValidSecret_success() throws Exception {
-        mockMvc.perform(get("/operation-intelligence/qos/getEnvironments").header("x-secret-key", SECRET_KEY))
+        mockMvc.perform(get("/api/operation-intelligence/qos/getEnvironments").header("x-secret-key", SECRET_KEY))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.results").isArray());
     }
 
     @Test
     void qosEndpoints_withQueryParameterKey_success() throws Exception {
-        mockMvc.perform(get("/operation-intelligence/qos/getEnvironments?key=" + SECRET_KEY))
+        mockMvc.perform(get("/api/operation-intelligence/qos/getEnvironments?key=" + SECRET_KEY))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.results").isArray());
     }
@@ -62,7 +62,7 @@ class OperationIntelligenceHttpIntegrationTest {
     void cors_preflight_requiresSecret() throws Exception {
         // CORS preflight requests should bypass auth for OPTIONS
         mockMvc
-            .perform(post("/operation-intelligence/qos/getEnvironments").header("Access-Control-Request-Method", "GET")
+            .perform(post("/api/operation-intelligence/qos/getEnvironments").header("Access-Control-Request-Method", "GET")
                 .header("Origin", "http://localhost:3000"))
             .andExpect(status().isUnauthorized());
     }

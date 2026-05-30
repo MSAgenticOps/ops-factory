@@ -116,7 +116,7 @@ public class ReplyEndpointPerformanceE2ETest extends BaseE2ETest {
     private long executeSessionReplyAndMeasure(String sessionId, String body) {
         long startNs = System.nanoTime();
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/" + sessionId + "/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/" + sessionId + "/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)

@@ -47,7 +47,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.listSkills("kb-agent")).thenReturn(Collections.emptyList());
 
         webClient.get()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -84,7 +84,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.getRegistry()).thenReturn(Collections.emptyList());
 
         webClient.get()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -102,7 +102,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listAgents_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/agents").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/agents").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -113,7 +113,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.getRegistry()).thenReturn(Collections.emptyList());
 
         webClient.get()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -135,7 +135,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Map.of("id", "test-agent", "name", "Test Agent", "provider", "openai", "model", "gpt-4o"));
 
         webClient.post()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -163,7 +163,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Map.of("id", "test", "name", "Test", "provider", "openai", "model", "gpt-4o"));
 
         webClient.post()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -186,7 +186,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
     @Test
     public void createAgent_missingId_returns400() {
         webClient.post()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -202,7 +202,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
     @Test
     public void createAgent_blankId_returns400() {
         webClient.post()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -218,7 +218,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
     @Test
     public void createAgent_missingName_returns400() {
         webClient.post()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -239,7 +239,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
             .thenThrow(new IllegalArgumentException("Agent with ID 'test-agent' already exists"));
 
         webClient.post()
-            .uri("/gateway/agents")
+            .uri("/api/gateway/agents")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -260,7 +260,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         doNothing().when(agentConfigService).deleteAgent("test-agent");
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent")
+            .uri("/api/gateway/agents/test-agent")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -285,7 +285,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         doNothing().when(agentConfigService).deleteAgent("test-agent");
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent")
+            .uri("/api/gateway/agents/test-agent")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "bob")
             .exchange()
@@ -310,7 +310,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
             .deleteAgent("nonexistent");
 
         webClient.delete()
-            .uri("/gateway/agents/nonexistent")
+            .uri("/api/gateway/agents/nonexistent")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -328,7 +328,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 Map.of("name", "coding", "description", "Code assistance", "path", "skills/coding")));
 
         webClient.get()
-            .uri("/gateway/agents/universal-agent/skills")
+            .uri("/api/gateway/agents/universal-agent/skills")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -357,7 +357,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
                 Map.of("name", "coding", "description", "Code assistance", "path", "skills/coding")));
 
         webClient.get()
-            .uri("/gateway/agents/universal-agent/skills")
+            .uri("/api/gateway/agents/universal-agent/skills")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -386,7 +386,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.getAgentsDir()).thenReturn(Path.of("/tmp/agents"));
 
         webClient.get()
-            .uri("/gateway/agents/universal-agent/config")
+            .uri("/api/gateway/agents/universal-agent/config")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -415,7 +415,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.getAgentsDir()).thenReturn(Path.of("/tmp/agents"));
 
         webClient.get()
-            .uri("/gateway/agents/universal-agent/config")
+            .uri("/api/gateway/agents/universal-agent/config")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "bob")
             .exchange()
@@ -442,7 +442,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.getAgentsDir()).thenReturn(Path.of("/tmp/agents"));
 
         webClient.get()
-            .uri("/gateway/agents/minimal-agent/config")
+            .uri("/api/gateway/agents/minimal-agent/config")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -469,7 +469,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         doNothing().when(agentConfigService).writeAgentsMd(eq("universal-agent"), anyString());
 
         webClient.put()
-            .uri("/gateway/agents/universal-agent/config")
+            .uri("/api/gateway/agents/universal-agent/config")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -496,7 +496,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
         doNothing().when(agentConfigService).writeAgentsMd(eq("universal-agent"), anyString());
 
         webClient.put()
-            .uri("/gateway/agents/universal-agent/config")
+            .uri("/api/gateway/agents/universal-agent/config")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -520,7 +520,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
             .thenReturn(new AgentRegistryEntry("universal-agent", "Universal Agent"));
 
         webClient.put()
-            .uri("/gateway/agents/universal-agent/config")
+            .uri("/api/gateway/agents/universal-agent/config")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)

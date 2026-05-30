@@ -67,7 +67,7 @@ class CallChainControllerTest {
         request.setMode("method");
 
         mockMvc
-            .perform(post("/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
+            .perform(post("/api/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(MAPPER.writeValueAsString(request)))
             .andExpect(status().isOk())
@@ -85,7 +85,7 @@ class CallChainControllerTest {
         request.setStartTime(1746057600000L);
         request.setEndTime(1746662400000L);
 
-        mockMvc.perform(post("/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
+        mockMvc.perform(post("/api/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(request))).andExpect(status().isBadRequest());
     }
@@ -98,7 +98,7 @@ class CallChainControllerTest {
         request.setStartTime(1746057600000L);
         request.setEndTime(1746058000000L);
 
-        mockMvc.perform(post("/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
+        mockMvc.perform(post("/api/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(request))).andExpect(status().isBadRequest());
     }
@@ -114,7 +114,7 @@ class CallChainControllerTest {
         request.setStartTime(1746662400000L);
         request.setEndTime(1746057600000L);
 
-        mockMvc.perform(post("/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
+        mockMvc.perform(post("/api/operation-intelligence/call-chain/query").header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(request))).andExpect(status().isBadRequest());
     }
@@ -130,7 +130,7 @@ class CallChainControllerTest {
         request.setStartTime(1746057600000L);
         request.setEndTime(1746662400000L);
 
-        mockMvc.perform(post("/operation-intelligence/call-chain/query").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/operation-intelligence/call-chain/query").contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(request))).andExpect(status().isUnauthorized());
     }
 }

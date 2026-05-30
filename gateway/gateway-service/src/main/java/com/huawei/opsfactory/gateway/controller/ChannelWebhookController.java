@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RestSchema(schemaId = "channelWebhookController")
-@RequestMapping("/gateway/channels/webhooks")
+@RequestMapping("/api/gateway/channels/webhooks")
 public class ChannelWebhookController {
     private static final Logger log = LoggerFactory.getLogger(ChannelWebhookController.class);
 

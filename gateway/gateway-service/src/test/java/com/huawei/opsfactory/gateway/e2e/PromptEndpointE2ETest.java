@@ -35,7 +35,7 @@ public class PromptEndpointE2ETest extends BaseE2ETest {
             eq("test-secret"))).thenReturn(Mono.just("{\"prompts\":[]}"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/config/prompts")
+            .uri("/api/gateway/agents/test-agent/config/prompts")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -51,6 +51,6 @@ public class PromptEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listPrompts_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/agents/test-agent/config/prompts").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/agents/test-agent/config/prompts").exchange().expectStatus().isUnauthorized();
     }
 }

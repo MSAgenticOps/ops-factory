@@ -71,7 +71,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RestSchema(schemaId = "replyController")
-@RequestMapping("/gateway/agents/{agentId}")
+@RequestMapping("/api/gateway/agents/{agentId}")
 public class ReplyController {
     private static final Logger log = LoggerFactory.getLogger(ReplyController.class);
 

@@ -94,7 +94,7 @@ class KnowledgeRetrievalIntegrationTest extends KnowledgeApiIntegrationTestSuppo
         assertThat(htmlSearch.path("total").asInt()).isGreaterThan(0);
         String hitChunkId = htmlSearch.path("hits").get(0).path("chunkId").asText();
 
-        JsonNode explain = readJson(mockMvc.perform(post("/knowledge/explain")
+        JsonNode explain = readJson(mockMvc.perform(post("/api/knowledge/explain")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -174,7 +174,7 @@ class KnowledgeRetrievalIntegrationTest extends KnowledgeApiIntegrationTestSuppo
         double topScore = baseline.path("hits").get(0).path("score").asDouble();
         double strictThreshold = topScore >= 0.999 ? 1.0 : Math.min(1.0, topScore + 0.01);
 
-        readJson(mockMvc.perform(put("/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
+        readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -268,7 +268,7 @@ class KnowledgeRetrievalIntegrationTest extends KnowledgeApiIntegrationTestSuppo
             """);
         assertThat(baseline.path("total").asInt()).isGreaterThan(0);
 
-        readJson(mockMvc.perform(put("/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
+        readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -312,7 +312,7 @@ class KnowledgeRetrievalIntegrationTest extends KnowledgeApiIntegrationTestSuppo
         double topScore = baseline.path("hits").get(0).path("score").asDouble();
         double strictThreshold = topScore >= 0.999 ? 1.0 : Math.min(1.0, topScore + 0.01);
 
-        readJson(mockMvc.perform(put("/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
+        readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -335,7 +335,7 @@ class KnowledgeRetrievalIntegrationTest extends KnowledgeApiIntegrationTestSuppo
             """.formatted(mode));
         assertThat(filtered.path("total").asInt()).isLessThan(baseline.path("total").asInt());
 
-        readJson(mockMvc.perform(put("/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
+        readJson(mockMvc.perform(put("/api/knowledge/sources/{sourceId}/config/retrieval-profile", sourceId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -367,7 +367,7 @@ class KnowledgeRetrievalIntegrationTest extends KnowledgeApiIntegrationTestSuppo
         List<String> keywords,
         String text
     ) throws Exception {
-        return readJson(mockMvc.perform(post("/knowledge/documents/{documentId}/chunks", documentId)
+        return readJson(mockMvc.perform(post("/api/knowledge/documents/{documentId}/chunks", documentId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {

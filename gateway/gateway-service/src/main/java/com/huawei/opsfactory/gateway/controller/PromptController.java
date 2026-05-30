@@ -34,7 +34,7 @@ import java.nio.charset.StandardCharsets;
  */
 @RestController
 @RestSchema(schemaId = "promptController")
-@RequestMapping("/gateway/agents/{agentId}/config/prompts")
+@RequestMapping("/api/gateway/agents/{agentId}/config/prompts")
 public class PromptController {
     private final InstanceManager instanceManager;
 

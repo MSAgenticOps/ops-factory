@@ -78,7 +78,7 @@ public class HostControllerTest {
     public void testListHosts_empty() throws Exception {
         when(hostService.listHosts(any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/gateway/hosts/").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/hosts/").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.hosts").isArray())
             .andExpect(jsonPath("$.hosts").isEmpty());
@@ -95,7 +95,7 @@ public class HostControllerTest {
         host.put("credential", "***");
         when(hostService.listHosts(any())).thenReturn(List.of(host));
 
-        mockMvc.perform(get("/gateway/hosts/").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/hosts/").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.hosts[0].id").value("host-1"))
             .andExpect(jsonPath("$.hosts[0].name").value("Server1"));
@@ -109,7 +109,7 @@ public class HostControllerTest {
         when(hostService.listHosts(any())).thenReturn(List.of());
 
         mockMvc
-            .perform(get("/gateway/hosts/?tags=RCPA,GMDB").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .perform(get("/api/gateway/hosts/?tags=RCPA,GMDB").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk());
     }
 
@@ -126,7 +126,7 @@ public class HostControllerTest {
         host.put("credential", "***");
         when(hostService.getHost("host-1")).thenReturn(host);
 
-        mockMvc.perform(get("/gateway/hosts/host-1").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/hosts/host-1").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.host.id").value("host-1"));
@@ -139,7 +139,7 @@ public class HostControllerTest {
     public void testGetHost_notFound() throws Exception {
         when(hostService.getHost("nonexistent")).thenThrow(new IllegalArgumentException("Host not found: nonexistent"));
 
-        mockMvc.perform(get("/gateway/hosts/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/hosts/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isNotFound());
     }
 
@@ -157,7 +157,7 @@ public class HostControllerTest {
         when(hostService.createHost(any())).thenReturn(created);
 
         mockMvc
-            .perform(post("/gateway/hosts/").header("x-secret-key", "test")
+            .perform(post("/api/gateway/hosts/").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"NewHost\", \"ip\": \"10.0.0.1\"}"))
@@ -174,7 +174,7 @@ public class HostControllerTest {
         when(hostService.createHost(any())).thenThrow(new RuntimeException("Encryption failed"));
 
         mockMvc
-            .perform(post("/gateway/hosts/").header("x-secret-key", "test")
+            .perform(post("/api/gateway/hosts/").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"Host\"}"))
@@ -196,7 +196,7 @@ public class HostControllerTest {
         when(hostService.updateHost(eq("host-1"), any())).thenReturn(updated);
 
         mockMvc
-            .perform(put("/gateway/hosts/host-1").header("x-secret-key", "test")
+            .perform(put("/api/gateway/hosts/host-1").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"Updated\"}"))
@@ -213,7 +213,7 @@ public class HostControllerTest {
         when(hostService.updateHost(eq("nonexistent"), any()))
             .thenThrow(new IllegalArgumentException("Host not found: nonexistent"));
 
-        mockMvc.perform(put("/gateway/hosts/nonexistent").header("x-secret-key", "test")
+        mockMvc.perform(put("/api/gateway/hosts/nonexistent").header("x-secret-key", "test")
             .header("x-user-id", "admin")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"name\": \"Updated\"}")).andExpect(status().isNotFound());
@@ -228,7 +228,7 @@ public class HostControllerTest {
     public void testDeleteHost_success() throws Exception {
         when(hostService.deleteHost("host-1")).thenReturn(true);
 
-        mockMvc.perform(delete("/gateway/hosts/host-1").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(delete("/api/gateway/hosts/host-1").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -241,7 +241,7 @@ public class HostControllerTest {
         when(hostService.deleteHost("nonexistent")).thenReturn(false);
 
         mockMvc
-            .perform(delete("/gateway/hosts/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .perform(delete("/api/gateway/hosts/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.success").value(false));
     }
@@ -255,7 +255,7 @@ public class HostControllerTest {
     public void testGetTags() throws Exception {
         when(hostService.getAllTags()).thenReturn(List.of("RCPA", "GMDB", "ALL"));
 
-        mockMvc.perform(get("/gateway/hosts/tags").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/hosts/tags").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tags[0]").value("RCPA"))
             .andExpect(jsonPath("$.tags[1]").value("GMDB"))
@@ -275,7 +275,7 @@ public class HostControllerTest {
         testResult.put("latencyMs", 45);
         when(hostService.testConnection("host-1")).thenReturn(testResult);
 
-        mockMvc.perform(post("/gateway/hosts/host-1/test").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(post("/api/gateway/hosts/host-1/test").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.reachable").value(true));
@@ -291,7 +291,7 @@ public class HostControllerTest {
         testResult.put("error", "Connection refused");
         when(hostService.testConnection("host-1")).thenReturn(testResult);
 
-        mockMvc.perform(post("/gateway/hosts/host-1/test").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(post("/api/gateway/hosts/host-1/test").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(false));
     }
@@ -303,7 +303,7 @@ public class HostControllerTest {
      */
     @Test
     public void testListHosts_unauthorized_noKey() throws Exception {
-        mockMvc.perform(get("/gateway/hosts/").header("x-user-id", "admin")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/gateway/hosts/").header("x-user-id", "admin")).andExpect(status().isUnauthorized());
     }
 
     /**
@@ -313,7 +313,7 @@ public class HostControllerTest {
     public void testListHosts_succeeds_forAnyUser() throws Exception {
         when(hostService.listHosts(any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/gateway/hosts/").header("x-secret-key", "test").header("x-user-id", "regular-user"))
+        mockMvc.perform(get("/api/gateway/hosts/").header("x-secret-key", "test").header("x-user-id", "regular-user"))
             .andExpect(status().isOk());
     }
 
@@ -328,7 +328,7 @@ public class HostControllerTest {
         created.put("credential", "***");
         when(hostService.createHost(any())).thenReturn(created);
 
-        mockMvc.perform(post("/gateway/hosts/").header("x-secret-key", "test")
+        mockMvc.perform(post("/api/gateway/hosts/").header("x-secret-key", "test")
             .header("x-user-id", "regular-user")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"name\": \"Host\"}")).andExpect(status().isCreated());

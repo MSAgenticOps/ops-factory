@@ -20,7 +20,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      */
     @Test
     public void statusEndpoint_noAuth_returns401() {
-        webClient.get().uri("/gateway/status").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/status").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -28,7 +28,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      */
     @Test
     public void protectedEndpoint_noSecretKey_returns401() {
-        webClient.get().uri("/gateway/me").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/me").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -37,7 +37,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     @Test
     public void protectedEndpoint_wrongSecretKey_returns401() {
         webClient.get()
-            .uri("/gateway/me")
+            .uri("/api/gateway/me")
             .header(HEADER_SECRET_KEY, "wrong-key")
             .exchange()
             .expectStatus()
@@ -49,7 +49,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      */
     @Test
     public void protectedEndpoint_emptySecretKey_returns401() {
-        webClient.get().uri("/gateway/me").header(HEADER_SECRET_KEY, "").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/me").header(HEADER_SECRET_KEY, "").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -57,7 +57,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      */
     @Test
     public void protectedEndpoint_validSecretKeyInHeader_returns200() {
-        webClient.get().uri("/gateway/me").header(HEADER_SECRET_KEY, SECRET_KEY).exchange().expectStatus().isOk();
+        webClient.get().uri("/api/gateway/me").header(HEADER_SECRET_KEY, SECRET_KEY).exchange().expectStatus().isOk();
     }
 
     /**
@@ -65,7 +65,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      */
     @Test
     public void protectedEndpoint_validSecretKeyInQueryParam_returns200() {
-        webClient.get().uri("/gateway/me?key=" + SECRET_KEY).exchange().expectStatus().isOk();
+        webClient.get().uri("/api/gateway/me?key=" + SECRET_KEY).exchange().expectStatus().isOk();
     }
 
     /**
@@ -73,7 +73,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
      */
     @Test
     public void optionsRequest_noAuth_passesThrough() {
-        webClient.options().uri("/gateway/me").exchange().expectStatus().isNoContent();
+        webClient.options().uri("/api/gateway/me").exchange().expectStatus().isNoContent();
     }
 
     /**
@@ -84,7 +84,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
         // /me is excluded from UserContextFilter's user-id requirement;
         // without the filter setting attributes, the controller returns defaults.
         webClient.get()
-            .uri("/gateway/me")
+            .uri("/api/gateway/me")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .exchange()
             .expectStatus()
@@ -102,7 +102,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     @Test
     public void meEndpoint_sysUser_returnsUserRole() {
         webClient.get()
-            .uri("/gateway/me")
+            .uri("/api/gateway/me")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -121,7 +121,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     @Test
     public void meEndpoint_regularUser_returnsUser() {
         webClient.get()
-            .uri("/gateway/me")
+            .uri("/api/gateway/me")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -143,7 +143,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
         // at the WebClient level before the request is sent
         org.junit.Assert.assertThrows(org.springframework.web.reactive.function.client.WebClientRequestException.class, () -> {
             webClient.get()
-                .uri("/gateway/me")
+                .uri("/api/gateway/me")
                 .header(HEADER_SECRET_KEY, SECRET_KEY)
                 .header(HEADER_USER_ID, "  ")
                 .exchange()
@@ -158,7 +158,7 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     @Test
     public void adminEndpoint_regularUser_returns200() {
         webClient.get()
-            .uri("/gateway/runtime-source/system")
+            .uri("/api/gateway/runtime-source/system")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -172,6 +172,6 @@ public class AuthFilterE2ETest extends BaseE2ETest {
     @Test
     public void adminEndpoint_noAuth_returns401() {
         // Auth filter runs before user context filter
-        webClient.get().uri("/gateway/runtime-source/system").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/runtime-source/system").exchange().expectStatus().isUnauthorized();
     }
 }

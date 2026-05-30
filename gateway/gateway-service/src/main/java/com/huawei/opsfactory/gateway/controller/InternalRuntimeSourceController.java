@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RestSchema(schemaId = "internalRuntimeSourceController")
-@RequestMapping("/gateway/runtime-source")
+@RequestMapping("/api/gateway/runtime-source")
 public class InternalRuntimeSourceController {
     private final InstanceManager instanceManager;
 

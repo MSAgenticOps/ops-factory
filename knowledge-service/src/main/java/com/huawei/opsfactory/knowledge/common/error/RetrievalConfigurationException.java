@@ -12,6 +12,8 @@ package com.huawei.opsfactory.knowledge.common.error;
 
 public class RetrievalConfigurationException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public RetrievalConfigurationException(String message) {
         super(message);
     }

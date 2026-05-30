@@ -28,7 +28,7 @@ public class WebConfig {
         this.properties = properties;
     }
 
-    @Bean
+    @Bean("businessIntelligenceCorsFilter")
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         String corsOrigin = properties.getCorsOrigin();

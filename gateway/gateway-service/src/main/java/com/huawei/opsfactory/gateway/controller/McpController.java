@@ -36,7 +36,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "mcpController")
-@RequestMapping("/gateway/agents/{agentId}/mcp")
+@RequestMapping("/api/gateway/agents/{agentId}/mcp")
 public class McpController {
     private static final String KNOWLEDGE_SERVICE_MCP = "knowledge-service";
 

@@ -48,7 +48,7 @@ class RequestLoggingFilterIntegrationTest {
     @Test
     void shouldGenerateRequestIdAndWriteAccessLog() throws Exception {
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestLoggingFilter.class)) {
-            MvcResult result = mockMvc.perform(get("/business-intelligence/overview"))
+            MvcResult result = mockMvc.perform(get("/api/business-intelligence/overview"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -59,7 +59,7 @@ class RequestLoggingFilterIntegrationTest {
                 .anySatisfy(event -> {
                     String loggedRequestId = event.getMDCPropertyMap().get(LoggingKeys.REQUEST_ID);
                     assertThat(event.getFormattedMessage())
-                        .contains("HTTP GET /business-intelligence/overview completed status=200");
+                        .contains("HTTP GET /api/business-intelligence/overview completed status=200");
                     assertThat(loggedRequestId).isEqualTo(requestId);
                 });
         }
@@ -70,7 +70,7 @@ class RequestLoggingFilterIntegrationTest {
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestLoggingFilter.class)) {
             String requestId = "req-fixed-123";
 
-            MvcResult result = mockMvc.perform(get("/business-intelligence/overview")
+            MvcResult result = mockMvc.perform(get("/api/business-intelligence/overview")
                     .header(LoggingKeys.REQUEST_ID_HEADER, requestId))
                 .andExpect(status().isOk())
                 .andReturn();

@@ -43,7 +43,7 @@ class FinOpsControllerTest {
 
     @Test
     void rejectsRequestsWithoutConfiguredSecret() {
-        ResponseEntity<String> response = restTemplate.getForEntity("/finops/overview", String.class);
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/finops/overview", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
@@ -53,7 +53,7 @@ class FinOpsControllerTest {
         snapshotStore.update(new UsageSnapshotPayload(List.of(session("session-1")), List.of(), 1, 0, "test", null));
 
         ResponseEntity<String> response = restTemplate.exchange(
-            "/finops/overview?compare=true",
+            "/api/finops/overview?compare=true",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class
@@ -76,7 +76,7 @@ class FinOpsControllerTest {
     void exposesPaginatedListsWithPublicSessionFieldsOnly() {
         snapshotStore.update(new UsageSnapshotPayload(List.of(session("session-1"), session("session-2")), List.of(), 1, 0, "test", null));
 
-        ResponseEntity<String> response = getWithSecret("/finops/sessions?page=1&size=1");
+        ResponseEntity<String> response = getWithSecret("/api/finops/sessions?page=1&size=1");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("\"page\":1");
@@ -104,7 +104,7 @@ class FinOpsControllerTest {
             null
         ));
 
-        ResponseEntity<String> response = getWithSecret("/finops/sessions/shared-session?userId=alice&agentId=kb-agent");
+        ResponseEntity<String> response = getWithSecret("/api/finops/sessions/shared-session?userId=alice&agentId=kb-agent");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("\"userId\":\"alice\"");
@@ -115,7 +115,7 @@ class FinOpsControllerTest {
 
     @Test
     void rejectsMalformedTimestampAsBadRequest() {
-        ResponseEntity<String> response = getWithSecret("/finops/overview?startTime=bad-time");
+        ResponseEntity<String> response = getWithSecret("/api/finops/overview?startTime=bad-time");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("FINOPS_INVALID_REQUEST");
@@ -153,7 +153,7 @@ class FinOpsControllerTest {
             null
         ));
 
-        ResponseEntity<String> response = getWithSecret("/finops/sessions/session-1/messages?userId=admin&agentId=qa-agent");
+        ResponseEntity<String> response = getWithSecret("/api/finops/sessions/session-1/messages?userId=admin&agentId=qa-agent");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("\"session\"");
@@ -178,12 +178,12 @@ class FinOpsControllerTest {
         ));
 
         ResponseEntity<String> refresh = restTemplate.exchange(
-            "/finops/refresh",
+            "/api/finops/refresh",
             HttpMethod.POST,
             new HttpEntity<>(headers()),
             String.class
         );
-        ResponseEntity<String> overview = getWithSecret("/finops/overview?compare=true");
+        ResponseEntity<String> overview = getWithSecret("/api/finops/overview?compare=true");
 
         assertThat(refresh.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(refresh.getBody()).contains("\"status\":\"ready\"");
@@ -195,8 +195,8 @@ class FinOpsControllerTest {
 
     @Test
     void removedRecommendationAndReportEndpointsStayUnavailable() {
-        assertThat(getWithSecret("/finops/recommendations").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(getWithSecret("/finops/reports/summary").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(getWithSecret("/api/finops/recommendations").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(getWithSecret("/api/finops/reports/summary").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     private ResponseEntity<String> getWithSecret(String path) {

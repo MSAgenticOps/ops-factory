@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
-@RequestMapping("/knowledge/stats")
+@RequestMapping("/api/knowledge/stats")
 public class StatsController {
 
     private final KnowledgeServiceFacade facade;

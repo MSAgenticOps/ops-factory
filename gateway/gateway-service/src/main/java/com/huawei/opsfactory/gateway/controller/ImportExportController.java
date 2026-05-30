@@ -39,7 +39,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "importExportController")
-@RequestMapping("/gateway/import-export")
+@RequestMapping("/api/gateway/import-export")
 public class ImportExportController {
 
     private static final Logger log = LoggerFactory.getLogger(ImportExportController.class);
