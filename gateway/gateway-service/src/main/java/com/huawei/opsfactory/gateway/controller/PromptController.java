@@ -12,6 +12,7 @@ import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -64,6 +66,10 @@ public class PromptController {
         String result =
             goosedProxy.fetchJson(instance.getPort(), HttpMethod.GET, "/config/prompts", null, 30,
                 instance.getSecretKey()).block();
+        if (result == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to load prompts for agent: " + agentId);
+        }
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(result);
     }
 
@@ -82,6 +88,10 @@ public class PromptController {
         String result =
             goosedProxy.fetchJson(instance.getPort(), HttpMethod.GET, promptPath(name), null, 30,
                 instance.getSecretKey()).block();
+        if (result == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to load prompt for agent: " + agentId);
+        }
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(result);
     }
 
@@ -119,12 +129,21 @@ public class PromptController {
         String result =
             goosedProxy.fetchJson(instance.getPort(), HttpMethod.DELETE, promptPath(name), null, 30,
                 instance.getSecretKey()).block();
+        if (result == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to reset prompt for agent: " + agentId);
+        }
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(result);
     }
 
     private ManagedInstance resolveInstance(String agentId, HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
-        return instanceManager.getOrSpawn(agentId, userId).block();
+        ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
+        if (instance == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to resolve agent instance: " + agentId);
+        }
+        return instance;
     }
 
     private String promptPath(String name) {

@@ -379,9 +379,18 @@ public class SessionController {
         @PathVariable("sessionId") String sessionId, HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
         ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
+        if (instance == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to resolve agent instance: " + agentId);
+        }
         String path = "/sessions/" + UriUtils.encodePathSegment(sessionId, StandardCharsets.UTF_8) + "/export";
-        return goosedProxy.fetchTextResponse(instance.getPort(), HttpMethod.GET, path, null, 30,
-            instance.getSecretKey()).block();
+        ResponseEntity<String> response = goosedProxy.fetchTextResponse(instance.getPort(), HttpMethod.GET, path, null,
+            30, instance.getSecretKey()).block();
+        if (response == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to export session: " + sessionId);
+        }
+        return response;
     }
 
     /**

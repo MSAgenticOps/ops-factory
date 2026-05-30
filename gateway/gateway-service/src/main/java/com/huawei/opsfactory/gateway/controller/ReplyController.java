@@ -311,11 +311,16 @@ public class ReplyController {
     public String callAgentTool(@PathVariable("agentId") String agentId, @RequestBody String body,
         HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
-        ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
+        ManagedInstance instance = resolveInstance(agentId, userId);
         instance.touch();
         instanceManager.touchAllForUser(userId);
-        return goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/call_tool", body, 30,
+        String result = goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/call_tool", body, 30,
             instance.getSecretKey()).block();
+        if (result == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to call tool for agent: " + agentId);
+        }
+        return result;
     }
 
     private String goosedSessionPath(String sessionId, String suffix) {
@@ -327,7 +332,20 @@ public class ReplyController {
         if (queryString == null || queryString.isBlank()) {
             return path;
         }
-        return path + "?" + queryString;
+        return path + "?" + sanitizeForProxyPath(queryString);
+    }
+
+    private ManagedInstance resolveInstance(String agentId, String userId) {
+        ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
+        if (instance == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to resolve agent instance: " + agentId);
+        }
+        return instance;
+    }
+
+    private String sanitizeForProxyPath(String value) {
+        return value.replace('\r', '_').replace('\n', '_');
     }
 
     private String extractRequestId(String body) {
