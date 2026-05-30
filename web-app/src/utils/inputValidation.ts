@@ -35,6 +35,20 @@ export function hasXssChars(input: string): boolean {
 }
 
 /**
+ * Check if input contains dangerous XSS characters for environment variable values.
+ * This is more permissive than hasXssChars as it allows safe characters like '/'
+ * which are common in paths and URLs.
+ *
+ * Allows: alphanumeric, spaces, and common path/URL characters
+ * Blocks: < > " ' & ` (which can break out of attribute context)
+ */
+export function hasDangerousChars(input: string): boolean {
+    // Pattern that excludes '/' from the blacklist
+    const DANGEROUS_CHARS = /[<>"'&`]/
+    return DANGEROUS_CHARS.test(input)
+}
+
+/**
  * Sanitize input for HTML content context.
  *
  * Use this when inserting user input as text content inside HTML elements:
@@ -97,6 +111,28 @@ export function validateAndSanitize(input: string, fieldName: string): { valid: 
             valid: false,
             sanitized: sanitizeHtmlContent(trimmed),
             error: fieldName + ' contains invalid characters (< > " \' & ` /). These characters are not allowed for security reasons.'
+        }
+    }
+    return {
+        valid: true,
+        sanitized: trimmed
+    }
+}
+
+/**
+ * Validate environment variable value (more permissive, allows paths and URLs).
+ *
+ * @param input - The input string to validate
+ * @param fieldName - The field name for error messages
+ * @returns Validation result with sanitized value and safety status
+ */
+export function validateEnvValue(input: string, fieldName: string): { valid: boolean; sanitized: string; error?: string } {
+    const trimmed = input.trim()
+    if (hasDangerousChars(trimmed)) {
+        return {
+            valid: false,
+            sanitized: sanitizeHtmlContent(trimmed),
+            error: fieldName + ' contains invalid characters (< > " \' & `). These characters are not allowed for security reasons.'
         }
     }
     return {

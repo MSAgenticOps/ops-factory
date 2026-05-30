@@ -30,6 +30,16 @@ export default function MemorySection({ agentId }: MemorySectionProps) {
         }
     }, [agentId, fetchMemory])
 
+    // Auto-hide delete confirm after 3 seconds
+    useEffect(() => {
+        if (deleteConfirm) {
+            const timer = setTimeout(() => {
+                setDeleteConfirm(null)
+            }, 3000)
+            return () => clearTimeout(timer)
+        }
+    }, [deleteConfirm])
+
     const handleCreate = async () => {
         const cat = newCategory.trim()
         if (!cat) {

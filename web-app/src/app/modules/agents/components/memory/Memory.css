@@ -159,12 +159,22 @@
     font-weight: 600;
     font-family: var(--font-family-mono);
     border-radius: var(--radius-md);
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .memory-tag-untagged {
     font-style: italic;
     color: var(--color-text-muted);
     background: var(--color-bg-tertiary);
+}
+
+.memory-tag-more {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-muted);
+    font-weight: 500;
 }
 
 .memory-entry-content {
@@ -201,6 +211,27 @@
 
 .memory-expand-button:hover {
     color: var(--color-link-hover);
+}
+
+.memory-show-all-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+    color: var(--color-link);
+    background: var(--color-bg-secondary);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.memory-show-all-button:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border-hover);
 }
 
 .memory-entry-empty {
