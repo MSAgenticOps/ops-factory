@@ -1,19 +1,20 @@
 # ==============================================================================
 # ops-factory Windows service restart script
 #
-# Usage: restart-gateway-webapp.ps1 [gateway|webapp|knowledge|bi|control|all] [nobuild]
+# Usage: restart-gateway-webapp.ps1 [gateway|webapp|knowledge|bi|control|oi|all] [nobuild]
 #   gateway   - restart gateway (includes sop-executor build) only (default)
 #   webapp    - restart webapp only
 #   knowledge - restart knowledge-service only
 #   bi        - restart business-intelligence only
 #   control   - restart control-center only
-#   all       - restart all services (gateway, knowledge, bi, control, webapp)
+#   oi        - restart operation-intelligence only
+#   all       - restart all services (gateway, knowledge, bi, control, oi, webapp)
 #   nobuild   - (optional) skip build steps, restart only
 # ==============================================================================
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("gateway", "webapp", "knowledge", "bi", "control", "all")]
+    [ValidateSet("gateway", "webapp", "knowledge", "bi", "control", "oi", "all")]
     [string]$Component = "all",
 
     [Parameter(Position = 1)]
@@ -31,6 +32,7 @@ $WEBAPP_PORT = 5173
 $KNOWLEDGE_PORT = 8092
 $BI_PORT = 8093
 $CONTROL_PORT = 8094
+$OI_PORT = 8096
 $GATEWAY_SECRET_KEY = "test"
 $GATEWAY_SCHEME = "http"
 
@@ -571,6 +573,104 @@ function Start-ControlCenter {
 }
 
 # ==============================================================================
+# Operation-intelligence functions
+# ==============================================================================
+
+function Stop-OIService {
+    Write-Status "INFO" "Stopping operation-intelligence on port $OI_PORT..."
+
+    $conns = netstat -ano | Select-String ":$OI_PORT " | Select-String "LISTENING"
+    foreach ($conn in $conns) {
+        $procId = ($conn -split '\s+')[-1]
+        Write-Status "INFO" "Killing PID $procId on port $OI_PORT..."
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+    }
+
+    Start-Sleep -Seconds 3
+    Write-Status "OK" "Operation-intelligence stopped"
+}
+
+function Build-OIService {
+    Write-Status "INFO" "Building operation-intelligence (Maven)..."
+
+    $JAVA_HOME = Split-Path -Parent (Split-Path -Parent $JAVA_CMD)
+    $OI_DIR = "$ROOT_DIR\operation-intelligence"
+
+    Push-Location $OI_DIR
+    $env:JAVA_HOME = $JAVA_HOME
+    & cmd.exe /c "mvn clean package -DskipTests -q" 2>&1 | ForEach-Object { Write-Host $_ }
+    $exitCode = $LASTEXITCODE
+    Pop-Location
+
+    if ($exitCode -ne 0) {
+        Write-Status "FAIL" "Operation-intelligence build failed (exit code $exitCode)"
+        Write-Status "INFO"  "Try manually: cd operation-intelligence && set JAVA_HOME=$JAVA_HOME && mvn package -DskipTests"
+        exit 1
+    }
+
+    $JAR = "$OI_DIR\target\operation-intelligence.jar"
+    if (-not (Test-Path $JAR)) {
+        Write-Status "FAIL" "Build succeeded but JAR not found: $JAR"
+        exit 1
+    }
+
+    Write-Status "OK" "Operation-intelligence build complete"
+}
+
+function Start-OIService {
+    param([string]$JavaCmd)
+
+    Write-Status "INFO" "Starting operation-intelligence at http://127.0.0.1:${OI_PORT}..."
+
+    $JAR = "$ROOT_DIR\operation-intelligence\target\operation-intelligence.jar"
+
+    if (-not (Test-Path $JAR)) {
+        Write-Status "ERROR" "JAR not found: $JAR"
+        Write-Status "ERROR" "Run 'mvn package -DskipTests' in operation-intelligence/ first"
+        exit 1
+    }
+
+    $LOG_DIR = "$ROOT_DIR\operation-intelligence\logs"
+    if (-not (Test-Path $LOG_DIR)) { New-Item -ItemType Directory -Path $LOG_DIR | Out-Null }
+
+    $javaOpts = @(
+        "-Dserver.port=$OI_PORT",
+        "-jar `"$JAR`""
+    )
+
+    $javaArgs = $javaOpts -join " "
+    $oiLog = "$LOG_DIR\operation-intelligence.log"
+    $oiErrLog = "$LOG_DIR\operation-intelligence-err.log"
+
+    $env:OI_CONFIG_PATH = "$ROOT_DIR\operation-intelligence\config.yaml"
+
+    Start-Process -FilePath $JavaCmd -ArgumentList $javaArgs `
+        -WorkingDirectory "$ROOT_DIR\operation-intelligence" `
+        -WindowStyle Minimized `
+        -RedirectStandardOutput $oiLog `
+        -RedirectStandardError $oiErrLog
+
+    Write-Status "INFO" "Waiting for operation-intelligence to become healthy (up to 30s)..."
+    $healthy = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        try {
+            $null = Invoke-WebRequest -Uri "http://127.0.0.1:${OI_PORT}/actuator/health" `
+                -TimeoutSec 2 -UseBasicParsing
+            $healthy = $true
+            Write-Status "OK" "Operation-intelligence is healthy"
+            break
+        } catch {
+            Start-Sleep -Seconds 1
+        }
+    }
+
+    if (-not $healthy) {
+        Write-Status "WARN" "Operation-intelligence health check failed after 30s"
+        Write-Status "WARN" "Check log: $LOG_DIR\operation-intelligence.log"
+    }
+}
+
+# ==============================================================================
 # Webapp functions
 # ==============================================================================
 
@@ -646,27 +746,35 @@ switch ($Component.ToLower()) {
         Stop-ControlCenter
         Start-ControlCenter -JavaCmd $JAVA_CMD
     }
+    "oi" {
+        if (-not $NoBuild) { Build-OIService }
+        Stop-OIService
+        Start-OIService -JavaCmd $JAVA_CMD
+    }
     "all" {
         if (-not $NoBuild) { Build-Gateway }
         if (-not $NoBuild) { Build-SopExecutor }
         if (-not $NoBuild) { Build-KnowledgeService }
         #if (-not $NoBuild) { Build-BIService }
         #if (-not $NoBuild) { Build-ControlCenter }
+        if (-not $NoBuild) { Build-OIService }
         if (-not $NoBuild) { Build-Webapp }
         Stop-Webapp
         #Stop-ControlCenter
         #Stop-BIService
+        Stop-OIService
         Stop-KnowledgeService
         Stop-Gateway
         Start-GatewayService -JavaCmd $JAVA_CMD
         Start-KnowledgeService -JavaCmd $JAVA_CMD
+        Start-OIService -JavaCmd $JAVA_CMD
         #Start-BIService -JavaCmd $JAVA_CMD
         #Start-ControlCenter -JavaCmd $JAVA_CMD
         Start-WebappService
     }
     default {
         Write-Status "ERROR" "Unknown component: $Component"
-        Write-Host "Usage: $([System.IO.Path]::GetFileName($PSCommandPath)) [gateway|webapp|knowledge|bi|control|all] [-NoBuild]"
+        Write-Host "Usage: $([System.IO.Path]::GetFileName($PSCommandPath)) [gateway|webapp|knowledge|bi|control|oi|all] [-NoBuild]"
         exit 1
     }
 }

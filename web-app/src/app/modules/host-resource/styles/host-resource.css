@@ -1,5 +1,60 @@
 /* Host Resource Module Styles */
 
+/* Solution type filter bar */
+.hr-solution-filter-bar {
+    display: flex;
+    gap: var(--spacing-2, 8px);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-3);
+    padding: var(--spacing-2);
+    background: var(--surface-background, #f8fafc);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.hr-solution-filter-pill {
+    padding: 4px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    background: var(--surface-default, #fff);
+    color: var(--color-text-secondary, #64748b);
+    font-size: var(--font-size-sm, 0.875rem);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.hr-solution-filter-pill:hover {
+    background: var(--surface-hover, #f1f5f9);
+    border-color: var(--color-primary-light, #93c5fd);
+}
+
+.hr-solution-filter-pill.active {
+    background: var(--color-primary, #3b82f6);
+    color: #fff;
+    border-color: var(--color-primary, #3b82f6);
+}
+
+@media (prefers-color-scheme: dark) {
+    .hr-solution-filter-bar {
+        background: var(--surface-background, #1e293b);
+        border-color: var(--border-color, #334155);
+    }
+    .hr-solution-filter-pill {
+        background: var(--surface-default, #1e293b);
+        color: var(--color-text-secondary, #94a3b8);
+        border-color: var(--border-color, #334155);
+    }
+    .hr-solution-filter-pill:hover {
+        background: var(--surface-hover, #334155);
+        border-color: var(--color-primary-light, #3b82f6);
+    }
+    .hr-solution-filter-pill.active {
+        background: var(--color-primary, #3b82f6);
+        color: #fff;
+        border-color: var(--color-primary, #3b82f6);
+    }
+}
+
 .host-resource-page {
     --hr-topology-icon-surface: #f8fafc;
     --hr-topology-icon-outline: #cbd5e1;
@@ -1782,6 +1837,14 @@
     background: rgba(248, 250, 252, 0.96);
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
+}
+
+.sop-solution-tag {
+    max-width: 8ch;
+    word-break: break-all;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
 }
 
 .sop-workflow-code-pill {
