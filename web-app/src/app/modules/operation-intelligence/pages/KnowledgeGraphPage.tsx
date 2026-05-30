@@ -3269,14 +3269,6 @@ function GraphCanvas({
                         </button>
                         <span>{Math.round(zoom * 100)}%</span>
                     </div>
-                    <button
-                        type="button"
-                        className="kg-graph-reset"
-                        onClick={resetGraphView}
-                    >
-                        {t('operationIntelligence.knowledgeGraph.resetGraph')}
-                    </button>
-                    <em>{nodes.length}</em>
                 </div>
             </div>
             <div className="kg-graph-scroll">
