@@ -94,6 +94,7 @@ function CreateKnowledgeModal({
     const [error, setError] = useState<string | null>(null)
 
     const isNameTooLong = name.length > 64
+    const isDescTooLong = description.length > 256
     const hasInvalidChars = !!name && !/^[\p{L}\p{N}_\s-]*$/u.test(name)
     const isDuplicate = existingNames.has(name.trim())
     const canSubmit = name.trim() && !isNameTooLong && !hasInvalidChars && !isDuplicate
@@ -134,7 +135,7 @@ function CreateKnowledgeModal({
 
     return (
         <div className="modal-overlay">
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.createTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -181,7 +182,11 @@ function CreateKnowledgeModal({
                             placeholder={t('knowledge.descriptionPlaceholder')}
                             value={description}
                             onChange={e => setDescription(e.target.value)}
+                            maxLength={256}
                         />
+                        <div className={`knowledge-field-hint${isDescTooLong ? ' knowledge-field-hint--error' : ''}`}>
+                            {isDescTooLong ? t('knowledge.descTooLong') : `${description.length}/256`}
+                        </div>
                     </div>
                 </div>
 
@@ -239,8 +244,8 @@ function DeleteKnowledgeModal({
     }, [onClose, onDeleted, showToast, source.id, source.name, t])
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.deleteTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -277,6 +282,7 @@ export default function Knowledge() {
     const { t, i18n } = useTranslation()
     const navigate = useNavigate()
     const [sources, setSources] = useState<SourceSummary[]>([])
+    const existingSourceNames = useMemo(() => new Set(sources.map(s => s.name)), [sources])
     const [stats, setStats] = useState<Record<string, SourceStats>>({})
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -464,7 +470,7 @@ export default function Knowledge() {
 
             {showCreateModal && (
                 <CreateKnowledgeModal
-                    existingNames={new Set(sources.map(s => s.name))}
+                    existingNames={existingSourceNames}
                     onClose={() => setShowCreateModal(false)}
                     onCreated={loadSources}
                 />

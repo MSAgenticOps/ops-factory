@@ -7,6 +7,7 @@ import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import type { ClusterType, Cluster } from '../../../../types/host'
+import { useFormValidation } from '../../../../utils/useFormValidation'
 
 type Props = {
     clusterTypes: ClusterType[]
@@ -39,6 +40,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
+    const { validateFormData, validateEnvVariables } = useFormValidation()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<ClusterType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
@@ -77,44 +79,70 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
         if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
+            // Validate and sanitize form fields
+            const fieldLabels = {
+                name: t('hostResource.typeName'),
+                code: t('hostResource.typeCode'),
+                description: t('hostResource.description'),
+            }
+            const validationResult = validateFormData(
+                form,
+                ['name', 'code', 'description'],
+                fieldLabels
+            )
+
+            if (!validationResult.valid) {
+                setSaving(false)
+                return
+            }
+
+            const sanitizedForm = validationResult.sanitized
+
+            // Validate and sanitize environment variables
+            const envResult = validateEnvVariables(form.envVariables)
+            if (!envResult.valid) {
+                setSaving(false)
+                return
+            }
+
             const cleanedForm = {
-                ...form,
-                envVariables: form.envVariables.filter(ev => ev.key.trim() !== ''),
+                ...sanitizedForm,
+                envVariables: envResult.sanitized.filter(ev => ev.key.trim() !== ''),
             }
 
             // Check for duplicate name
-            const duplicateName = clusterTypes.find(ct => ct.name === form.name && ct.id !== editing?.id)
+            const duplicateName = clusterTypes.find(ct => ct.name === cleanedForm.name && ct.id !== editing?.id)
             if (duplicateName) {
-                showToast('error', t('hostResource.duplicateName', { name: form.name }))
+                showToast('error', t('hostResource.duplicateName', { name: cleanedForm.name }))
                 setSaving(false)
                 return
             }
 
             // Check for duplicate code
-            const duplicateCode = clusterTypes.find(ct => ct.code === form.code && ct.id !== editing?.id)
+            const duplicateCode = clusterTypes.find(ct => ct.code === cleanedForm.code && ct.id !== editing?.id)
             if (duplicateCode) {
-                showToast('error', t('hostResource.duplicateCode', { code: form.code }))
+                showToast('error', t('hostResource.duplicateCode', { code: cleanedForm.code }))
                 setSaving(false)
                 return
             }
 
             if (editing) {
-                const inUseByName = clusters.filter(c => c.type === form.name)
+                const inUseByName = clusters.filter(c => c.type === cleanedForm.name)
                 // Only check code if it's not empty (empty string is not a valid type identifier)
                 const inUseByCode = editing.code ? clusters.filter(c => c.type === editing.code) : []
-                const nameChanged = form.name !== editing.name
-                const codeChanged = form.code !== editing.code
+                const nameChanged = cleanedForm.name !== editing.name
+                const codeChanged = cleanedForm.code !== editing.code
 
                 if (codeChanged && inUseByCode.length > 0) {
                     const inUseClusters = inUseByCode.map(c => c.name).join(', ')
-                    showToast('warning', t('hostResource.clusterTypeInUse', { name: form.code, clusters: inUseClusters }))
+                    showToast('warning', t('hostResource.clusterTypeInUse', { name: cleanedForm.code, clusters: inUseClusters }))
                     setSaving(false)
                     return
                 }
 
                 if (nameChanged && inUseByName.length > 0) {
                     const inUseClusters = inUseByName.map(c => c.name).join(', ')
-                    showToast('warning', t('hostResource.clusterTypeInUse', { name: form.name, clusters: inUseClusters }))
+                    showToast('warning', t('hostResource.clusterTypeInUse', { name: cleanedForm.name, clusters: inUseClusters }))
                     setSaving(false)
                     return
                 }
@@ -129,7 +157,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
         } finally {
             setSaving(false)
         }
-    }, [editing, form, clusterTypes, clusters, onCreate, onUpdate, showToast, t])
+    }, [editing, form, clusterTypes, clusters, onCreate, onUpdate, showToast, t, validateFormData, validateEnvVariables])
 
     const handleDelete = useCallback(async (item: ClusterType) => {
         const inUseByName = clusters.filter(c => c.type === item.name)
