@@ -92,7 +92,7 @@ public class ChannelAdminControllerTest {
             "connected", "WeChat session connected", "auth", "wxid_123", "", "", "", null));
 
         mockMvc
-            .perform(get("/gateway/channels/wechat-main/login-state").header("x-secret-key", "test")
+            .perform(get("/api/gateway/channels/wechat-main/login-state").header("x-secret-key", "test")
                 .header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.state.status").value("connected"))
@@ -113,7 +113,7 @@ public class ChannelAdminControllerTest {
 
         mockMvc
             .perform(
-                post("/gateway/channels/wechat-main/login").header("x-secret-key", "test").header("x-user-id", "admin"))
+                post("/api/gateway/channels/wechat-main/login").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.state.status").value("pending"));
@@ -135,7 +135,7 @@ public class ChannelAdminControllerTest {
 
         mockMvc
             .perform(
-                post("/gateway/channels/wechat-main/probe").header("x-secret-key", "test").header("x-user-id", "admin"))
+                post("/api/gateway/channels/wechat-main/probe").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.connectivity.ok").value(true));
@@ -151,7 +151,7 @@ public class ChannelAdminControllerTest {
         when(channelConfigService.createChannel(any(), eq("admin"))).thenThrow(new IllegalStateException("disk full"));
 
         mockMvc
-            .perform(post("/gateway/channels").header("x-secret-key", "test")
+            .perform(post("/api/gateway/channels").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -181,7 +181,7 @@ public class ChannelAdminControllerTest {
             .thenThrow(new IllegalStateException("helper process still running"));
 
         mockMvc
-            .perform(post("/gateway/channels/wechat-main/logout").header("x-secret-key", "test")
+            .perform(post("/api/gateway/channels/wechat-main/logout").header("x-secret-key", "test")
                 .header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))

@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
-@RequestMapping("/knowledge/jobs")
+@RequestMapping("/api/knowledge/jobs")
 public class JobController {
 
     private final KnowledgeServiceFacade facade;

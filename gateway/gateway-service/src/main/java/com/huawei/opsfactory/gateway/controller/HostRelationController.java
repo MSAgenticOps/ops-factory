@@ -39,7 +39,7 @@ import java.util.Set;
 
 @RestController
 @RestSchema(schemaId = "hostRelationController")
-@RequestMapping("/gateway/host-relations")
+@RequestMapping("/api/gateway/host-relations")
 public class HostRelationController {
     private static final Logger log = LoggerFactory.getLogger(HostRelationController.class);
 

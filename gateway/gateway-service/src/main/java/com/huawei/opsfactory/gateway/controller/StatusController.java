@@ -22,7 +22,7 @@ import java.util.Map;
  * @since 2026-05-09
  */
 @RestController("gatewayStatusController")
-@RequestMapping(value = "/gateway")
+@RequestMapping(value = "/api/gateway")
 public class StatusController {
     private final GatewayProperties properties;
 

@@ -69,7 +69,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
 
         long before = System.currentTimeMillis() / 1000;
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -105,7 +105,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             any())).thenReturn(emitter);
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/sessions/session-123/events")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/events")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .header("Last-Event-ID", "42")
@@ -128,7 +128,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"status\":\"cancelled\"}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/cancel")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/cancel")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +152,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Agent temporarily unavailable")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -196,7 +196,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 StandardCharsets.UTF_8)));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -240,7 +240,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Mono.error(new RuntimeException("proxy write failed")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -268,7 +268,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 .thenThrow(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "events failed"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/sessions/session-123/events")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/events")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .accept(MediaType.TEXT_EVENT_STREAM)
@@ -295,7 +295,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Mono.error(new RuntimeException("cancel failed")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/cancel")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/cancel")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -321,7 +321,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 Mono.error(new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Agent did not respond in time")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/cancel")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/cancel")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -346,7 +346,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/resume")
+            .uri("/api/gateway/agents/test-agent/agent/resume")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -375,7 +375,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
                 + "\"extension_results\":[]}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/resume")
+            .uri("/api/gateway/agents/test-agent/agent/resume")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -388,7 +388,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             .isEqualTo(0);
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/resume")
+            .uri("/api/gateway/agents/test-agent/agent/resume")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -415,7 +415,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"status\":\"ok\"}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -436,7 +436,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
     @Test
     public void resume_unauthenticated_returns401() {
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/resume")
+            .uri("/api/gateway/agents/test-agent/agent/resume")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("{}")
             .exchange()
@@ -454,7 +454,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/restart")
+            .uri("/api/gateway/agents/test-agent/agent/restart")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/control-center/observability")
+@RequestMapping("/api/control-center/observability")
 /**
  * Observability Controller.
  *

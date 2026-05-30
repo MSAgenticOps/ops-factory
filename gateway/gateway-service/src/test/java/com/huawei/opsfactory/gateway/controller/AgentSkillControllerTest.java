@@ -65,7 +65,7 @@ public class AgentSkillControllerTest {
             .thenReturn(Map.of("success", true, "skill", Map.of("id", "log-analysis"), "restartRequired", true));
 
         mockMvc
-            .perform(post("/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
+            .perform(post("/api/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"skillId\":\"log-analysis\"}"))
@@ -86,7 +86,7 @@ public class AgentSkillControllerTest {
             .thenReturn(Map.of("success", true, "skill", Map.of("id", "log-analysis"), "restartRequired", true));
 
         mockMvc
-            .perform(post("/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
+            .perform(post("/api/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
                 .header("x-user-id", "regular-user")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"skillId\":\"log-analysis\"}"))
@@ -107,7 +107,7 @@ public class AgentSkillControllerTest {
             .thenThrow(new SkillInstallConflictException("Skill already installed"));
 
         mockMvc
-            .perform(post("/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
+            .perform(post("/api/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"skillId\":\"log-analysis\"}"))
@@ -126,7 +126,7 @@ public class AgentSkillControllerTest {
             .thenReturn(Map.of("success", true, "skillId", "log-analysis", "restartRequired", true));
 
         mockMvc
-            .perform(delete("/gateway/agents/agent1/skills/log-analysis").header("x-secret-key", "test")
+            .perform(delete("/api/gateway/agents/agent1/skills/log-analysis").header("x-secret-key", "test")
                 .header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
@@ -145,7 +145,7 @@ public class AgentSkillControllerTest {
             .thenReturn(Map.of("success", true, "skillId", "log-analysis", "restartRequired", true));
 
         mockMvc
-            .perform(delete("/gateway/agents/agent1/skills/log-analysis").header("x-secret-key", "test")
+            .perform(delete("/api/gateway/agents/agent1/skills/log-analysis").header("x-secret-key", "test")
                 .header("x-user-id", "regular-user"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))

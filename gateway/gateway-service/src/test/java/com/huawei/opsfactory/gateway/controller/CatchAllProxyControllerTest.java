@@ -68,7 +68,7 @@ public class CatchAllProxyControllerTest {
     @Test
     public void testAuthenticatedAccess_status() {
         MockHttpServletRequest request =
-            new MockHttpServletRequest("GET", "/gateway/agents/" + TEST_AGENT_ID + "/status");
+            new MockHttpServletRequest("GET", "/api/gateway/agents/" + TEST_AGENT_ID + "/status");
         request.setAttribute(UserContextFilter.USER_ID_ATTR, TEST_USER_ID);
 
         ManagedInstance instance =
@@ -90,7 +90,7 @@ public class CatchAllProxyControllerTest {
     @Test
     public void testUserAccessToSystemInfo_allowed() {
         MockHttpServletRequest request =
-            new MockHttpServletRequest("GET", "/gateway/agents/" + TEST_AGENT_ID + "/system_info");
+            new MockHttpServletRequest("GET", "/api/gateway/agents/" + TEST_AGENT_ID + "/system_info");
         request.setAttribute(UserContextFilter.USER_ID_ATTR, TEST_USER_ID);
 
         ManagedInstance instance =
@@ -114,7 +114,7 @@ public class CatchAllProxyControllerTest {
     public void testQueryStringForwarding() {
         String queryString = "limit=5";
         MockHttpServletRequest request =
-            new MockHttpServletRequest("GET", "/gateway/agents/" + TEST_AGENT_ID + "/status?" + queryString);
+            new MockHttpServletRequest("GET", "/api/gateway/agents/" + TEST_AGENT_ID + "/status?" + queryString);
         request.setQueryString(queryString);
         request.setAttribute(UserContextFilter.USER_ID_ATTR, ADMIN_USER_ID);
 
@@ -137,7 +137,7 @@ public class CatchAllProxyControllerTest {
     @Test
     public void testInstanceManagerThrowsException() {
         MockHttpServletRequest request =
-            new MockHttpServletRequest("GET", "/gateway/agents/" + TEST_AGENT_ID + "/status");
+            new MockHttpServletRequest("GET", "/api/gateway/agents/" + TEST_AGENT_ID + "/status");
         request.setAttribute(UserContextFilter.USER_ID_ATTR, ADMIN_USER_ID);
 
         when(instanceManager.getOrSpawn(TEST_AGENT_ID, ADMIN_USER_ID))

@@ -33,7 +33,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "businessServiceController")
-@RequestMapping("/gateway/business-services")
+@RequestMapping("/api/gateway/business-services")
 public class BusinessServiceController {
     private final BusinessServiceService businessServiceService;
 

@@ -32,7 +32,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "clusterTypeController")
-@RequestMapping("/gateway/cluster-types")
+@RequestMapping("/api/gateway/cluster-types")
 public class ClusterTypeController {
     private final ClusterTypeService clusterTypeService;
 

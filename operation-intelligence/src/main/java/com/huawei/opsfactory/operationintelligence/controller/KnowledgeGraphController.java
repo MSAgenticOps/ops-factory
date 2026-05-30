@@ -33,7 +33,7 @@ import java.util.Map;
  * @since 2026-05-20
  */
 @RestController
-@RequestMapping("/operation-intelligence/graph")
+@RequestMapping("/api/operation-intelligence/graph")
 public class KnowledgeGraphController {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 

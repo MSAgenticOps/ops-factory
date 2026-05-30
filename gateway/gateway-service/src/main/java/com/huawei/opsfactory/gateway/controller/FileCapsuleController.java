@@ -34,7 +34,7 @@ import java.util.Map;
 
 @RestController
 @RestSchema(schemaId = "fileCapsuleController")
-@RequestMapping("/gateway/agents/{agentId}/file-capsules")
+@RequestMapping("/api/gateway/agents/{agentId}/file-capsules")
 public class FileCapsuleController {
     private final AgentConfigService agentConfigService;
 

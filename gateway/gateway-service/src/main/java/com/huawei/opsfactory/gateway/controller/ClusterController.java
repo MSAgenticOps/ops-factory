@@ -37,7 +37,7 @@ import java.util.Set;
 
 @RestController
 @RestSchema(schemaId = "clusterController")
-@RequestMapping("/gateway/clusters")
+@RequestMapping("/api/gateway/clusters")
 public class ClusterController {
     private final ClusterService clusterService;
 

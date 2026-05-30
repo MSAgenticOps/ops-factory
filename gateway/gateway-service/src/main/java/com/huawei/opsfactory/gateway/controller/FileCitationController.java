@@ -33,7 +33,7 @@ import java.nio.file.Path;
  */
 @RestController
 @RestSchema(schemaId = "fileCitationController")
-@RequestMapping("/gateway/agents/{agentId}/file-citations")
+@RequestMapping("/api/gateway/agents/{agentId}/file-citations")
 public class FileCitationController {
     private final AgentConfigService agentConfigService;
 

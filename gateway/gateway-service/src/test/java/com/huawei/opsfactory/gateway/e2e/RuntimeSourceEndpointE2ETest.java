@@ -36,7 +36,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
         when(langfuseService.isConfigured()).thenReturn(false);
 
         webClient.get()
-            .uri("/gateway/runtime-source/system")
+            .uri("/api/gateway/runtime-source/system")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -67,7 +67,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
         when(langfuseService.isConfigured()).thenReturn(false);
 
         webClient.get()
-            .uri("/gateway/runtime-source/system")
+            .uri("/api/gateway/runtime-source/system")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -80,7 +80,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void system_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/runtime-source/system").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/runtime-source/system").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -94,7 +94,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
         when(agentConfigService.findAgent("agent-a")).thenReturn(new AgentRegistryEntry("agent-a", "Agent A"));
 
         webClient.get()
-            .uri("/gateway/runtime-source/instances")
+            .uri("/api/gateway/runtime-source/instances")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -133,7 +133,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getAllInstances()).thenReturn(Collections.emptyList());
 
         webClient.get()
-            .uri("/gateway/runtime-source/instances")
+            .uri("/api/gateway/runtime-source/instances")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "bob")
             .exchange()
@@ -163,7 +163,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
         when(metricsBuffer.getAgentStats()).thenReturn(Collections.emptyMap());
 
         webClient.get()
-            .uri("/gateway/runtime-source/metrics")
+            .uri("/api/gateway/runtime-source/metrics")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -211,7 +211,7 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
         when(metricsBuffer.getAgentStats()).thenReturn(Collections.emptyMap());
 
         webClient.get()
-            .uri("/gateway/runtime-source/metrics")
+            .uri("/api/gateway/runtime-source/metrics")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -224,6 +224,6 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void metrics_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/runtime-source/metrics").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/runtime-source/metrics").exchange().expectStatus().isUnauthorized();
     }
 }

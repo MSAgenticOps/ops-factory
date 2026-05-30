@@ -53,7 +53,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just("[]"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/mcp")
+            .uri("/api/gateway/agents/test-agent/mcp")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
@@ -75,7 +75,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just("[]"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/mcp")
+            .uri("/api/gateway/agents/test-agent/mcp")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -90,7 +90,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void getMcpExtensions_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/agents/test-agent/mcp").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/agents/test-agent/mcp").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -103,7 +103,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"name\":\"test-mcp\"}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/mcp")
+            .uri("/api/gateway/agents/test-agent/mcp")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .contentType(MediaType.APPLICATION_JSON)
@@ -125,7 +125,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{\"name\":\"test-mcp\"}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/mcp")
+            .uri("/api/gateway/agents/test-agent/mcp")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -147,7 +147,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent/mcp/my-extension")
+            .uri("/api/gateway/agents/test-agent/mcp/my-extension")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "bob")
             .exchange()
@@ -163,7 +163,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
     @Test
     public void deleteMcpExtension_unauthenticated_returns401() {
         webClient.delete()
-            .uri("/gateway/agents/test-agent/mcp/my-extension")
+            .uri("/api/gateway/agents/test-agent/mcp/my-extension")
             .exchange()
             .expectStatus()
             .isUnauthorized();
@@ -179,7 +179,7 @@ public class McpEndpointE2ETest extends BaseE2ETest {
             eq(null), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent/mcp/my-extension")
+            .uri("/api/gateway/agents/test-agent/mcp/my-extension")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()

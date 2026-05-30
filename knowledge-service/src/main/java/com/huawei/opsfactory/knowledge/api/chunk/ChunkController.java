@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
-@RequestMapping("/knowledge")
+@RequestMapping("/api/knowledge")
 public class ChunkController {
 
     private final KnowledgeServiceFacade facade;

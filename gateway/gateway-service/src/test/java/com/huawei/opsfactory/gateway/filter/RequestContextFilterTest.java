@@ -42,7 +42,7 @@ public class RequestContextFilterTest {
      */
     @Test
     public void testGeneratesRequestIdWhenMissing() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/gateway/status");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/gateway/status");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -61,7 +61,7 @@ public class RequestContextFilterTest {
      */
     @Test
     public void testReusesIncomingRequestId() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/gateway/status");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/gateway/status");
         request.addHeader(RequestContextFilter.REQUEST_ID_HEADER, "req-123");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController("knowledgeSystemController")
-@RequestMapping("/knowledge")
+@RequestMapping("/api/knowledge")
 public class SystemController {
 
     private final KnowledgeProperties properties;

@@ -59,7 +59,7 @@ import java.util.Map;
 
 @RestController
 @RestSchema(schemaId = "sessionController")
-@RequestMapping(value = "/gateway")
+@RequestMapping(value = "/api/gateway")
 public class SessionController {
     private static final Logger log = LoggerFactory.getLogger(SessionController.class);
 

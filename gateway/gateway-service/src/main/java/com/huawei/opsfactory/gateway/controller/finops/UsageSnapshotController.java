@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2026-05-28
  */
 @RestController
-@RequestMapping("/gateway/usage")
+@RequestMapping("/api/gateway/usage")
 public class UsageSnapshotController {
 
     private final UsageSnapshotService snapshotService;

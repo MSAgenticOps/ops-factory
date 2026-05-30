@@ -37,7 +37,7 @@ import java.util.Set;
  */
 @RestController
 @RestSchema(schemaId = "hostGroupController")
-@RequestMapping("/gateway/host-groups")
+@RequestMapping("/api/gateway/host-groups")
 public class HostGroupController {
     private final HostGroupService hostGroupService;
 

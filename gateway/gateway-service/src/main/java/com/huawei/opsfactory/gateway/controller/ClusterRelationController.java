@@ -34,7 +34,7 @@ import java.util.Map;
 
 @RestController
 @RestSchema(schemaId = "clusterRelationController")
-@RequestMapping("/gateway/cluster-relations")
+@RequestMapping("/api/gateway/cluster-relations")
 public class ClusterRelationController {
     private final ClusterRelationService clusterRelationService;
 

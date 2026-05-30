@@ -44,7 +44,7 @@ import java.util.Set;
 
 @RestController
 @RestSchema(schemaId = "hostController")
-@RequestMapping("/gateway/hosts")
+@RequestMapping("/api/gateway/hosts")
 public class HostController {
     private static final Logger log = LoggerFactory.getLogger(HostController.class);
 

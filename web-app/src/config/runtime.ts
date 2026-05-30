@@ -56,13 +56,13 @@ interface ServiceEndpoint {
 }
 
 const SERVICE_ENDPOINTS: Record<string, ServiceEndpoint> = {
-    gateway:                  { pathPrefix: '/gateway',                 fallbackPort: 3000 },
-    knowledge:                { pathPrefix: '/knowledge',               fallbackPort: 8092 },
-    controlCenter:            { pathPrefix: '/control-center',          fallbackPort: 8094 },
-    businessIntelligence:     { pathPrefix: '/business-intelligence',   fallbackPort: 8093 },
-    skillMarket:              { pathPrefix: '/skill-market',            fallbackPort: 8095 },
-    operationIntelligence:    { pathPrefix: '/operation-intelligence',  fallbackPort: 8096 },
-    finops:                   { pathPrefix: '/finops',                  fallbackPort: 8097 },
+    gateway:                  { pathPrefix: '/api/gateway',                 fallbackPort: 3000 },
+    knowledge:                { pathPrefix: '/api/knowledge',               fallbackPort: 8092 },
+    controlCenter:            { pathPrefix: '/api/control-center',          fallbackPort: 8094 },
+    businessIntelligence:     { pathPrefix: '/api/business-intelligence',   fallbackPort: 8093 },
+    skillMarket:              { pathPrefix: '/api/skill-market',            fallbackPort: 8095 },
+    operationIntelligence:    { pathPrefix: '/api/operation-intelligence',  fallbackPort: 8096 },
+    finops:                   { pathPrefix: '/api/finops',                  fallbackPort: 8097 },
 }
 
 function resolveServiceUrl(raw: string | undefined, endpoint: ServiceEndpoint): string {

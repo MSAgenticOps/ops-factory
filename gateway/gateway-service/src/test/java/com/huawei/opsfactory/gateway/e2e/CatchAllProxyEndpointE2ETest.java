@@ -36,7 +36,7 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Mono.just("{\"status\":\"ok\"}"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/status")
+            .uri("/api/gateway/agents/test-agent/status")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -49,7 +49,7 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void unauthenticated_returns401() {
-        webClient.get().uri("/gateway/agents/test-agent/status").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/agents/test-agent/status").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -64,7 +64,7 @@ public class CatchAllProxyEndpointE2ETest extends BaseE2ETest {
             eq("test-secret"))).thenReturn(Mono.just("{\"status\":\"ok\"}"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/status?verbose=true")
+            .uri("/api/gateway/agents/test-agent/status?verbose=true")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "admin")
             .exchange()
