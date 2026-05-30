@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useToast } from '../app/platform/providers/ToastContext'
-import { validateAndSanitize } from './inputValidation'
+import { validateAndSanitize, validateEnvValue } from './inputValidation'
 
 export interface ValidationResult {
     valid: boolean
@@ -104,24 +104,24 @@ export function useFormValidation() {
         for (let i = 0; i < envVariables.length; i++) {
             const env = envVariables[i]
 
-            // Validate key
+            // Validate key with strict XSS check
             if (env.key && env.key.trim()) {
                 const keyResult = validateAndSanitize(env.key, 'envVariables.key')
                 if (!keyResult.valid) {
                     hasError = true
-                    const message = keyResult.error || errorMessages?.['envKey'] || 'hostResource.invalidChars'
+                    const message = errorMessages?.['envKey'] || 'hostResource.invalidChars'
                     showToast('error', message)
                     break
                 }
                 sanitized[i] = { ...env, key: keyResult.sanitized }
             }
 
-            // Validate value
+            // Validate value with permissive check (allows / for paths and URLs)
             if (env.value && env.value.trim()) {
-                const valueResult = validateAndSanitize(env.value, 'envVariables.value')
+                const valueResult = validateEnvValue(env.value, 'envVariables.value')
                 if (!valueResult.valid) {
                     hasError = true
-                    const message = valueResult.error || errorMessages?.['envValue'] || 'hostResource.invalidChars'
+                    const message = errorMessages?.['envValue'] || 'hostResource.invalidChars'
                     showToast('error', message)
                     break
                 }
