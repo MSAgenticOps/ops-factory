@@ -12,6 +12,8 @@ package com.huawei.opsfactory.skillmarket.common.error;
  */
 public class ApiConflictException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     private final String code;
 
     public ApiConflictException(String code, String message) {
