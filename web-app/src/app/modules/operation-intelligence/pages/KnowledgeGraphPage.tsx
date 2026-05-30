@@ -3169,19 +3169,15 @@ function GraphCanvas({
     )
     const zoomedWidth = Math.ceil(width * zoom)
     const zoomedHeight = Math.ceil(height * zoom)
+    const selectedNodePopoverPosition = selectedNode
+        ? {
+            left: Math.round(selectedNode.x * zoom),
+            top: Math.round((selectedNode.y + (selectedNode.height ?? GRAPH_NODE_HEIGHT) + 12) * zoom),
+        }
+        : null
 
     const updateZoom = (nextZoom: number) => {
         setZoom(Math.min(MAX_GRAPH_ZOOM, Math.max(MIN_GRAPH_ZOOM, Number(nextZoom.toFixed(2)))))
-    }
-
-    const resetGraphView = () => {
-        setZoom(DEFAULT_GRAPH_ZOOM)
-        setSelectedEdgeId(null)
-        onSelectNode(null)
-        setNodePositions(nodes.reduce<Record<string, GraphNodePosition>>((positions, node) => {
-            positions[node.id] = { x: node.x, y: node.y }
-            return positions
-        }, {}))
     }
 
     const clearGraphSelection = () => {
@@ -3394,27 +3390,24 @@ function GraphCanvas({
                             ) : null}
                         </button>
                     ))}
-                    {showNodeProperties && selectedNode ? (
+                    </div>
+                    {showNodeProperties && selectedNode && selectedNodePopoverPosition ? (
                         <div
                             className="kg-node-popover"
                             onClick={event => event.stopPropagation()}
-                            style={{
-                                left: selectedNode.x,
-                                top: selectedNode.y + (selectedNode.height ?? GRAPH_NODE_HEIGHT) + 12,
-                        }}
-                    >
-                        <strong>{nodeTitle}</strong>
-                        <div className="kg-property-list">
-                            {selectedNodeProperties.map(([key, value]) => (
-                                <div key={key} className="kg-property-row">
-                                    <span>{formatPropertyName(key)}</span>
-                                    <em>{formatPropertyValue(value)}</em>
-                                </div>
-                            ))}
+                            style={selectedNodePopoverPosition}
+                        >
+                            <strong>{nodeTitle}</strong>
+                            <div className="kg-property-list">
+                                {selectedNodeProperties.map(([key, value]) => (
+                                    <div key={key} className="kg-property-row">
+                                        <span>{formatPropertyName(key)}</span>
+                                        <em>{formatPropertyValue(value)}</em>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
                     ) : null}
-                    </div>
                 </div>
             </div>
         </div>
