@@ -166,14 +166,14 @@
 
 ##### 步骤3.3.3. 匹配 SOP
 
-- 调用 `list_sops()` 获取 SOP 列表。
-- 按优先级匹配：告警内容 vs `triggerCondition` 语义匹配（优先） > 主机 `tags` vs SOP `tags` 交集匹配。
+- 调用 `list_sops(targetSolution?)` 获取 SOP 列表。如果当前环境已确定解决方案类型，传入 `targetSolution` 参数以过滤匹配的 SOP（包括 `targetSolution` 为 `universal` 的通用 SOP）。
+- 按优先级匹配：告警内容 vs `triggerCondition` 语义匹配（优先） > SOP 的 `targetSolution` 与当前系统/集群的解决方案类型匹配（通用 SOP 始终匹配）。
 - 匹配不到则告知用户并终止。
 
 
 ##### 步骤3.3.4. 执行 SOP
 
-- 根据 `stepsDescription` 逐步推导诊断命令，只允许使用白名单内只读命令，SOP多个步骤执行中间不要停下来；
+- 根据 `stepsDescription` 逐步推导诊断命令，AI 根据步骤描述自动判断需要检查哪些集群或节点，只允许使用白名单内只读命令，SOP多个步骤执行中间不要停下来；
 
 #### 步骤3.4. 结果处理与拓扑升级
 

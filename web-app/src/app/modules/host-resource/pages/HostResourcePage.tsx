@@ -14,6 +14,7 @@ import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogConte
 import { useBusinessServices } from '../hooks/useBusinessServices'
 import { useClusterTypes } from '../hooks/useClusterTypes'
 import { useBusinessTypes } from '../hooks/useBusinessTypes'
+import { useSolutionTypes } from '../hooks/useSolutionTypes'
 import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
 import { useSops } from '../hooks/useSops'
 import { useResourceExport } from '../hooks/useResourceExport'
@@ -25,6 +26,7 @@ import RelationGraph from '../components/RelationGraph'
 import ClusterInsightPanel from '../components/ClusterInsightPanel'
 import ClusterTypeTab from '../components/ClusterTypeTab'
 import BusinessTypeTab from '../components/BusinessTypeTab'
+import SolutionTypeTab from '../components/SolutionTypeTab'
 import { SopsTab } from '../components/SopsTab'
 import { WhitelistTab } from '../components/WhitelistTab'
 import ImportDialog from '../components/ImportDialog'
@@ -43,7 +45,7 @@ type EditingItem =
     | { type: 'host'; data: Host }
     | null
 
-type TabKey = 'overview' | 'topology' | 'cluster-types' | 'business-types' | 'sop-management' | 'whitelist'
+type TabKey = 'overview' | 'topology' | 'cluster-types' | 'solution-types' | 'business-types' | 'sop-management' | 'whitelist'
 
 const PAGE_SIZE = 6
 const SIDEBAR_DEFAULT = 260
@@ -90,6 +92,7 @@ export default function HostResourcePage() {
     const { businessServices, fetchBusinessServices, createBusinessService, updateBusinessService, deleteBusinessService } = useBusinessServices()
     const clusterTypesHook = useClusterTypes()
     const businessTypesHook = useBusinessTypes()
+    const solutionTypesHook = useSolutionTypes()
     const { commands: whitelistCommands, addCommand: addWhitelistCommand, fetchWhitelist: fetchWhitelistCommands } = useCommandWhitelist()
     const sopsHook = useSops()
 
@@ -664,6 +667,7 @@ export default function HostResourcePage() {
         { key: 'overview', label: t('hostResource.tabOverview') },
         { key: 'topology', label: t('hostResource.tabTopology') },
         { key: 'cluster-types', label: t('hostResource.tabClusterTypes') },
+        { key: 'solution-types', label: t('hostResource.tabSolutionTypes') },
         { key: 'business-types', label: t('hostResource.tabBusinessTypes') },
         { key: 'sop-management', label: t('hostResource.tabSopManagement') },
         { key: 'whitelist', label: t('hostResource.tabWhitelist') },
@@ -892,10 +896,21 @@ export default function HostResourcePage() {
                 <ClusterTypeTab
                     clusterTypes={clusterTypesHook.clusterTypes}
                     clusters={clusters}
+                    solutionTypes={solutionTypesHook.solutionTypes}
                     loading={clusterTypesHook.loading}
                     onCreate={clusterTypesHook.createClusterType}
                     onUpdate={clusterTypesHook.updateClusterType}
                     onDelete={clusterTypesHook.deleteClusterType}
+                />
+            )}
+
+            {activeTab === 'solution-types' && (
+                <SolutionTypeTab
+                    solutionTypes={solutionTypesHook.solutionTypes}
+                    loading={solutionTypesHook.loading}
+                    onCreate={solutionTypesHook.createSolutionType}
+                    onUpdate={solutionTypesHook.updateSolutionType}
+                    onDelete={solutionTypesHook.deleteSolutionType}
                 />
             )}
 
@@ -913,7 +928,7 @@ export default function HostResourcePage() {
                 />
             )}
 
-            {activeTab === 'sop-management' && <SopsTab />}
+            {activeTab === 'sop-management' && <SopsTab solutionTypes={solutionTypesHook.solutionTypes} />}
 
             {activeTab === 'whitelist' && <WhitelistTab />}
 

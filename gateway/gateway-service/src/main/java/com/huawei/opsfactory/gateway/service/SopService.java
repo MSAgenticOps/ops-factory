@@ -40,8 +40,6 @@ public class SopService {
 
     private final GatewayProperties properties;
 
-    private final CommandWhitelistService commandWhitelistService;
-
     private Path gatewayRoot;
 
     private Path sopsDir;
@@ -49,9 +47,8 @@ public class SopService {
     /**
      * Creates the sop service instance.
      */
-    public SopService(GatewayProperties properties, CommandWhitelistService commandWhitelistService) {
+    public SopService(GatewayProperties properties) {
         this.properties = properties;
-        this.commandWhitelistService = commandWhitelistService;
     }
 
     /**
@@ -121,10 +118,6 @@ public class SopService {
      * @return the result
      */
     public Map<String, Object> createSop(Map<String, Object> body) {
-        String mode = String.valueOf(body.getOrDefault("mode", "structured"));
-        if (!"natural_language".equals(mode)) {
-            validateNodeCommands(body);
-        }
         String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
         validateSopNameUnique(name, null);
         String id = UUID.randomUUID().toString();
@@ -135,15 +128,13 @@ public class SopService {
         sop.put("description", body.getOrDefault("description", ""));
         sop.put("version", body.getOrDefault("version", "1.0.0"));
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
-        sop.put("nodes", body.getOrDefault("nodes", List.of()));
         sop.put("enabled", body.getOrDefault("enabled", true));
-        sop.put("mode", body.getOrDefault("mode", "structured"));
         sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("tags", body.getOrDefault("tags", List.of()));
+        sop.put("targetSolution", body.getOrDefault("targetSolution", "universal"));
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeSopFile(id, sop);
-        log.info("Created SOP: id={}, name={}, mode={}", id, sop.get("name"), mode);
+        log.info("Created SOP: id={}, name={}", id, sop.get("name"));
         return sop;
     }
 
@@ -161,10 +152,6 @@ public class SopService {
             throw new IllegalArgumentException("SOP not found: " + id);
         }
 
-        // Determine effective mode for command validation
-        String effectiveMode = body.containsKey("mode") ? String.valueOf(body.get("mode"))
-            : String.valueOf(sop.getOrDefault("mode", "structured"));
-
         // Update mutable fields
         if (body.containsKey("name")) {
             validateSopNameUnique(body.get("name").toString(), id);
@@ -179,23 +166,14 @@ public class SopService {
         if (body.containsKey("triggerCondition")) {
             sop.put("triggerCondition", body.get("triggerCondition"));
         }
-        if (body.containsKey("nodes")) {
-            if (!"natural_language".equals(effectiveMode)) {
-                validateNodeCommands(body);
-            }
-            sop.put("nodes", body.get("nodes"));
-        }
         if (body.containsKey("enabled")) {
             sop.put("enabled", body.get("enabled"));
-        }
-        if (body.containsKey("mode")) {
-            sop.put("mode", body.get("mode"));
         }
         if (body.containsKey("stepsDescription")) {
             sop.put("stepsDescription", body.get("stepsDescription"));
         }
-        if (body.containsKey("tags")) {
-            sop.put("tags", body.get("tags"));
+        if (body.containsKey("targetSolution")) {
+            sop.put("targetSolution", body.get("targetSolution"));
         }
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
@@ -243,38 +221,6 @@ public class SopService {
         }
     }
 
-    // ── Command Whitelist Validation ────────────────────────────────
-
-    @SuppressWarnings("unchecked")
-    private void validateNodeCommands(Map<String, Object> body) {
-        Object nodesObj = body.get("nodes");
-        if (!(nodesObj instanceof List<?> nodes)) {
-            return;
-        }
-
-        // Collect all validation errors before throwing
-        List<String> allErrors = new ArrayList<>();
-        for (int i = 0; i < nodes.size(); i++) {
-            if (!(nodes.get(i) instanceof Map<?, ?>)) {
-                continue;
-            }
-            Map<String, Object> node = (Map<String, Object>) nodes.get(i);
-            Object cmdObj = node.get("command");
-            if (cmdObj == null || cmdObj.toString().isBlank()) {
-                continue;
-            }
-            List<String> rejected = commandWhitelistService.validateCommand(cmdObj.toString());
-            if (!rejected.isEmpty()) {
-                allErrors.add("Node " + (i + 1) + ": " + String.join(", ", rejected));
-            }
-        }
-
-        // Throw with all errors collected
-        if (!allErrors.isEmpty()) {
-            throw new IllegalArgumentException("Command is not on Trustlist, " + String.join("; ", allErrors));
-        }
-    }
-
     // ── File I/O Helpers ─────────────────────────────────────────────
 
     /**
@@ -317,9 +263,8 @@ public class SopService {
             Map<String, Object> sop = MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
             // Ensure backward-compatible defaults for new fields
             sop.putIfAbsent("enabled", true);
-            sop.putIfAbsent("mode", "structured");
             sop.putIfAbsent("stepsDescription", "");
-            sop.putIfAbsent("tags", List.of());
+            sop.putIfAbsent("targetSolution", "universal");
             sop.putIfAbsent("requiredTools", List.of());
             return sop;
         } catch (IOException e) {

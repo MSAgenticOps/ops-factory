@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSops } from '../hooks/useSops'
-import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
-import { useClusterTypes } from '../hooks/useClusterTypes'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import { useUser } from '../../../platform/providers/UserContext'
@@ -10,30 +8,12 @@ import { runtime, gatewayHeaders } from '../../../../config/runtime'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
-import type { Sop, SopNode, SopCreateRequest } from '../../../../types/sop'
-import type { ClusterType } from '../../../../types/host'
+import type { Sop, SopCreateRequest } from '../../../../types/sop'
+import type { SolutionType } from '../../../../types/host'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function createEmptyNode(index: number): SopNode {
-    return {
-        id: `node-${Date.now()}-${index}`,
-        name: '',
-        type: 'start',
-        tags: [],
-        command: '',
-        commandVariables: {},
-        variables: [],
-        outputFormat: '',
-        analysisInstruction: '',
-        transitions: [],
-        browserUrl: '',
-        browserAction: '',
-        browserMode: 'headless',
-    }
-}
 
 function TrashIcon() {
     return (
@@ -77,324 +57,36 @@ function EditIcon() {
 }
 
 // ---------------------------------------------------------------------------
-// Variable Editor (inline sub-component)
-// ---------------------------------------------------------------------------
-
-function VariableEditor({
-    variables,
-    onChange,
-}: {
-    variables: NonNullable<SopNode['variables']>
-    onChange: (v: NonNullable<SopNode['variables']>) => void
-}) {
-    const { t } = useTranslation()
-
-    const addVar = useCallback(() => {
-        onChange([...variables, { name: '', defaultValue: '', description: '', required: false }])
-    }, [variables, onChange])
-
-    const removeVar = useCallback(
-        (index: number) => {
-            onChange(variables.filter((_, i: number) => i !== index))
-        },
-        [variables, onChange],
-    )
-
-    const updateVar = useCallback(
-        (index: number, field: string, value: string | boolean) => {
-            const next = [...variables]
-            next[index] = { ...next[index], [field]: value }
-            onChange(next)
-        },
-        [variables, onChange],
-    )
-
-    return (
-        <div className="sop-workflow-inline-editor">
-            <div className="sop-workflow-inline-editor-head">
-                <p className="sop-workflow-inline-editor-title">
-                    {t('remoteDiagnosis.sops.nodeVariables')}
-                </p>
-                <button
-                    type="button"
-                    className="btn btn-subtle sop-workflow-inline-add"
-                    onClick={addVar}
-                >
-                    + {t('remoteDiagnosis.sops.addVariable')}
-                </button>
-            </div>
-            {variables.map((v, i: number) => (
-                <div key={i} className="sop-workflow-inline-row">
-                    <input
-                        className="form-input"
-                        placeholder={t('remoteDiagnosis.sops.varName')}
-                        value={v.name}
-                        onChange={e => updateVar(i, 'name', e.target.value)}
-                    />
-                    <input
-                        className="form-input"
-                        placeholder={t('remoteDiagnosis.sops.varDefault')}
-                        value={v.defaultValue ?? ''}
-                        onChange={e => updateVar(i, 'defaultValue', e.target.value)}
-                    />
-                    <input
-                        className="form-input"
-                        placeholder={t('remoteDiagnosis.sops.varDesc')}
-                        value={v.description ?? ''}
-                        onChange={e => updateVar(i, 'description', e.target.value)}
-                    />
-                    <label className="sop-workflow-next-option">
-                        <input
-                            type="checkbox"
-                            checked={v.required ?? false}
-                            onChange={e => updateVar(i, 'required', e.target.checked)}
-                        />
-                        {t('remoteDiagnosis.sops.varRequired')}
-                    </label>
-                    <button
-                        type="button"
-                        className="knowledge-doc-action-btn knowledge-doc-action-icon danger sop-workflow-inline-remove"
-                        onClick={() => removeVar(i)}
-                        title={t('remoteDiagnosis.sops.removeNode')}
-                    >
-                        <TrashIcon />
-                    </button>
-                </div>
-            ))}
-        </div>
-    )
-}
-
-// ---------------------------------------------------------------------------
-// Transition Editor (inline sub-component)
-// ---------------------------------------------------------------------------
-
-function TransitionEditor({
-    transitions,
-    nodeNames,
-    onChange,
-}: {
-    transitions: SopNode['transitions']
-    nodeNames: string[]
-    onChange: (t: SopNode['transitions']) => void
-}) {
-    const { t } = useTranslation()
-
-    const addTransition = useCallback(() => {
-        onChange([...transitions, { condition: '', description: '', nextNodes: [] }])
-    }, [transitions, onChange])
-
-    const removeTransition = useCallback(
-        (index: number) => {
-            onChange(transitions.filter((_, i) => i !== index))
-        },
-        [transitions, onChange],
-    )
-
-    const updateTransitionCondition = useCallback(
-        (index: number, value: string) => {
-            const next = [...transitions]
-            next[index] = { ...next[index], condition: value }
-            onChange(next)
-        },
-        [transitions, onChange],
-    )
-
-    const toggleNextNode = useCallback(
-        (index: number, nodeName: string) => {
-            const next = [...transitions]
-            const current = next[index].nextNodes ?? []
-            const updated = current.includes(nodeName)
-                ? current.filter(n => n !== nodeName)
-                : [...current, nodeName]
-            next[index] = { ...next[index], nextNodes: updated }
-            onChange(next)
-        },
-        [transitions, onChange],
-    )
-
-    const toggleRequireHumanConfirm = useCallback(
-        (index: number) => {
-            const next = [...transitions]
-            next[index] = { ...next[index], requireHumanConfirm: !next[index].requireHumanConfirm }
-            onChange(next)
-        },
-        [transitions, onChange],
-    )
-
-    return (
-        <div className="sop-workflow-inline-editor">
-            <div className="sop-workflow-inline-editor-head">
-                <p className="sop-workflow-inline-editor-title">
-                    {t('remoteDiagnosis.sops.nodeTransitions')}
-                </p>
-                <button
-                    type="button"
-                    className="btn btn-subtle sop-workflow-inline-add"
-                    onClick={addTransition}
-                >
-                    + {t('remoteDiagnosis.sops.addBranch')}
-                </button>
-            </div>
-            {transitions.map((tr, i) => (
-                <div key={i} className="sop-workflow-transition-card">
-                    <div className="sop-workflow-transition-head">
-                        <input
-                            className="form-input"
-                            placeholder={t('remoteDiagnosis.sops.transitionCondition')}
-                            value={tr.condition}
-                            onChange={e => updateTransitionCondition(i, e.target.value)}
-                        />
-                        <button
-                            type="button"
-                            className="knowledge-doc-action-btn knowledge-doc-action-icon danger sop-workflow-inline-remove"
-                            onClick={() => removeTransition(i)}
-                            title={t('remoteDiagnosis.sops.removeNode')}
-                        >
-                            <TrashIcon />
-                        </button>
-                    </div>
-                    <label className="sop-workflow-transition-confirm" title={t('remoteDiagnosis.sops.transitionConfirmHint')}>
-                        <span
-                            className={`sop-workflow-switch${tr.requireHumanConfirm ? ' is-on' : ''}`}
-                            role="switch"
-                            aria-checked={!!tr.requireHumanConfirm}
-                            tabIndex={0}
-                            onClick={() => toggleRequireHumanConfirm(i)}
-                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRequireHumanConfirm(i) } }}
-                        >
-                            <span className="sop-workflow-switch-thumb" />
-                        </span>
-                        <span className="sop-workflow-transition-confirm-label">
-                            {t('remoteDiagnosis.sops.transitionConfirm')}
-                        </span>
-                    </label>
-                    {nodeNames.length > 0 && (
-                        <div className="sop-workflow-next-nodes">
-                            <span className="sop-workflow-next-label">
-                                {t('remoteDiagnosis.sops.transitionNext')}:
-                            </span>
-                            {nodeNames.map(name => {
-                                const checked = (tr.nextNodes ?? []).includes(name)
-                                return (
-                                    <label key={name} className="sop-workflow-next-option">
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            onChange={() => toggleNextNode(i, name)}
-                                        />
-                                        {name}
-                                    </label>
-                                )
-                            })}
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    )
-}
-
-// ---------------------------------------------------------------------------
-// SOP Form Modal
+// SOP Form Modal (natural language only)
 // ---------------------------------------------------------------------------
 
 function SopFormModal({
     sop,
-    clusterTypes,
+    solutionTypes,
     onClose,
     onSave,
 }: {
     sop: Sop | null
-    clusterTypes: ClusterType[]
+    solutionTypes: SolutionType[]
     onClose: () => void
     onSave: (data: SopCreateRequest) => Promise<void>
 }) {
     const { t } = useTranslation()
-    const { commands } = useCommandWhitelist()
     const [name, setName] = useState(sop?.name ?? '')
     const [description, setDescription] = useState(sop?.description ?? '')
     const [version, setVersion] = useState(sop?.version ?? '1.0')
     const [triggerCondition, setTriggerCondition] = useState(sop?.triggerCondition ?? '')
-    const [nodes, setNodes] = useState<SopNode[]>(sop?.nodes?.length ? sop.nodes : [createEmptyNode(0)])
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [commandErrors, setCommandErrors] = useState<Record<number, string>>({})
-    const [mode, setMode] = useState<'structured' | 'natural_language'>(
-        (sop?.mode as 'structured' | 'natural_language') ?? 'structured'
-    )
     const [enabled, setEnabled] = useState(sop?.enabled ?? true)
     const [stepsDescription, setStepsDescription] = useState(sop?.stepsDescription ?? '')
-    const [sopTags, setSopTags] = useState<string[]>(() => {
-        if (!sop?.tags?.length) return []
-        const lower = clusterTypes.map(ct => ({ name: ct.name, lower: ct.name.toLowerCase(), code: ct.code?.toLowerCase() ?? '' }))
-        return sop.tags.map(tag => {
-            const t = tag.toLowerCase()
-            const match = lower.find(ct => ct.lower === t || ct.code === t)
-            return match ? match.name : tag
-        })
-    })
-
-    const nodeNames = useMemo(() => nodes.map(n => n.name).filter(Boolean), [nodes])
-
-    const validateNodeCommand = useCallback((command: string): string[] => {
-        if (!command.trim()) return []
-        const enabledPatterns = commands
-            .filter(c => c.enabled)
-            .map(c => c.pattern)
-        const rejected: string[] = []
-        command.split(/[|;]/).forEach(sub => {
-            const trimmed = sub.trim()
-            if (!trimmed) return
-            const cmdName = trimmed.split(/\s+/)[0]
-            if (!cmdName) return
-            const allowed = enabledPatterns.some(p => {
-                const patternCmd = p.split(/\s+/)[0]
-                return patternCmd === cmdName || p === cmdName
-            })
-            if (!allowed) rejected.push(cmdName)
-        })
-        return rejected
-    }, [commands])
-
-    const handleAddNode = useCallback(() => {
-        setNodes(prev => [...prev, createEmptyNode(prev.length)])
-    }, [])
-
-    const handleRemoveNode = useCallback((index: number) => {
-        setNodes(prev => prev.filter((_, i) => i !== index))
-    }, [])
-
-    const handleNodeChange = useCallback((index: number, field: keyof SopNode, value: unknown) => {
-        setNodes(prev => {
-            const next = [...prev]
-            next[index] = { ...next[index], [field]: value }
-            return next
-        })
-    }, [])
+    const [targetSolution, setTargetSolution] = useState(sop?.targetSolution ?? 'universal')
 
     const handleSave = useCallback(async () => {
         setError(null)
-        setCommandErrors({})
         if (!name.trim()) {
             setError(t('remoteDiagnosis.hosts.nameRequired'))
             return
-        }
-
-        // Validate node commands only for structured mode
-        if (mode !== 'natural_language') {
-            const errors: Record<number, string> = {}
-            nodes.forEach((node, idx) => {
-                if (node.type === 'browser' || node.type === 'end') return
-                const rejected = validateNodeCommand(node.command || '')
-                if (rejected.length > 0) {
-                    errors[idx] = t('remoteDiagnosis.sops.commandNotInWhitelist', { commands: rejected.join(', ') })
-                }
-            })
-            if (Object.keys(errors).length > 0) {
-                setCommandErrors(errors)
-                return
-            }
         }
 
         setSaving(true)
@@ -404,20 +96,9 @@ function SopFormModal({
                 description: description.trim(),
                 version: version.trim(),
                 triggerCondition: triggerCondition.trim(),
-                mode,
                 enabled,
-            }
-            if (mode === 'natural_language') {
-                payload.stepsDescription = stepsDescription.trim()
-                payload.tags = sopTags
-                payload.nodes = []
-            } else {
-                // Filter out variables without name and transitions without condition
-                payload.nodes = nodes.map(node => ({
-                    ...node,
-                    variables: (node.variables ?? []).filter(v => v.name.trim().length > 0),
-                    transitions: (node.transitions ?? []).filter(t => t.condition.trim().length > 0),
-                }))
+                stepsDescription: stepsDescription.trim(),
+                targetSolution,
             }
             await onSave(payload)
         } catch (err) {
@@ -425,7 +106,7 @@ function SopFormModal({
         } finally {
             setSaving(false)
         }
-    }, [name, description, version, triggerCondition, mode, enabled, stepsDescription, sopTags, nodes, onSave, t, validateNodeCommand])
+    }, [name, description, version, triggerCondition, enabled, stepsDescription, targetSolution, onSave, t])
 
     return (
         <DetailDialog
@@ -487,14 +168,16 @@ function SopFormModal({
 
                 <div className="sop-workflow-modal-grid">
                     <div className="form-group">
-                        <label className="form-label">{t('remoteDiagnosis.sops.mode')}</label>
+                        <label className="form-label">{t('hostResource.targetSolution')}</label>
                         <select
-                            className="form-input sop-workflow-mode-select"
-                            value={mode}
-                            onChange={e => setMode(e.target.value as 'structured' | 'natural_language')}
+                            className="form-input"
+                            value={targetSolution}
+                            onChange={e => setTargetSolution(e.target.value)}
                         >
-                            <option value="structured">{t('remoteDiagnosis.sops.modeStructured')}</option>
-                            <option value="natural_language">{t('remoteDiagnosis.sops.modeNaturalLanguage')}</option>
+                            <option value="universal">{t('hostResource.universal')}</option>
+                            {solutionTypes.map(st => (
+                                <option key={st.id} value={st.id}>{st.name}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="form-group">
@@ -541,216 +224,28 @@ function SopFormModal({
                 </div>
             </section>
 
-            {mode === 'natural_language' ? (
-                <section className="knowledge-section-card sop-workflow-node-editor">
-                    <div className="sop-workflow-node-editor-head">
-                        <div className="sop-workflow-node-editor-copy">
-                            <h3 className="sop-workflow-node-editor-title">
-                                {t('remoteDiagnosis.sops.stepsDescriptionTitle')}
-                            </h3>
-                            <p className="sop-workflow-node-editor-description">
-                                {t('remoteDiagnosis.sops.stepsDescriptionHint')}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="form-group sop-workflow-compact-field">
-                        <label className="form-label">{t('remoteDiagnosis.sops.sopHostTags')}</label>
-                        <select
-                            className="form-input"
-                            value={sopTags[0] ?? ''}
-                            onChange={e => {
-                                const val = e.target.value
-                                setSopTags(val ? [val] : [])
-                            }}
-                        >
-                            <option value="">{t('hostResource.selectClusterType')}</option>
-                            {clusterTypes.map(ct => (
-                                <option key={ct.id} value={ct.name}>{ct.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">{t('remoteDiagnosis.sops.stepsDescription')}</label>
-                        <textarea
-                            className="form-input sop-workflow-steps-textarea"
-                            placeholder={t('remoteDiagnosis.sops.stepsDescriptionPlaceholder')}
-                            value={stepsDescription}
-                            onChange={e => setStepsDescription(e.target.value)}
-                            maxLength={1000}
-                        />
-                    </div>
-                </section>
-            ) : (
             <section className="knowledge-section-card sop-workflow-node-editor">
                 <div className="sop-workflow-node-editor-head">
                     <div className="sop-workflow-node-editor-copy">
                         <h3 className="sop-workflow-node-editor-title">
-                            {t('remoteDiagnosis.sops.nodeEditor')}
+                            {t('remoteDiagnosis.sops.stepsDescriptionTitle')}
                         </h3>
                         <p className="sop-workflow-node-editor-description">
-                            {t('remoteDiagnosis.sops.subtitle')}
+                            {t('remoteDiagnosis.sops.stepsDescriptionHint')}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={handleAddNode}
-                    >
-                        {t('remoteDiagnosis.sops.addNode')}
-                    </button>
                 </div>
-                {nodes.map((node, idx) => (
-                    <div key={node.id} className="sop-workflow-node-surface">
-                        <div className="sop-workflow-node-surface-head">
-                            <span className="sop-workflow-node-index">
-                                #{idx + 1}
-                            </span>
-                            {nodes.length > 1 && (
-                                <button
-                                    type="button"
-                                    className="btn btn-quiet-danger sop-workflow-inline-danger"
-                                    onClick={() => handleRemoveNode(idx)}
-                                >
-                                    {t('remoteDiagnosis.sops.removeNode')}
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="sop-workflow-modal-grid">
-                            <div className="form-group sop-workflow-compact-field">
-                                <label className="form-label">{t('remoteDiagnosis.sops.nodeName')}</label>
-                                <input
-                                    className="form-input"
-                                    value={node.name}
-                                    onChange={e => handleNodeChange(idx, 'name', e.target.value)}
-                                />
-                            </div>
-                            <div className="form-group sop-workflow-compact-field">
-                                <label className="form-label">{t('remoteDiagnosis.sops.nodeType')}</label>
-                                <select
-                                    className="form-input"
-                                    value={node.type}
-                                    onChange={e => handleNodeChange(idx, 'type', e.target.value)}
-                                >
-                                    <option value="start">{t('remoteDiagnosis.sops.startNode')}</option>
-                                    <option value="analysis">{t('remoteDiagnosis.sops.analysisNode')}</option>
-                                    <option value="browser">{t('remoteDiagnosis.sops.browserNode')}</option>
-                                    <option value="end">{t('remoteDiagnosis.sops.endNode')}</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {(() => {
-                            if (node.type === 'browser') {
-                                return (
-                                    <>
-                                        <div className="form-group sop-workflow-compact-field">
-                                            <label className="form-label">{t('remoteDiagnosis.sops.browserUrl')}</label>
-                                            <input
-                                                className="form-input"
-                                                placeholder="https://example.com"
-                                                value={node.browserUrl ?? ''}
-                                                onChange={e => handleNodeChange(idx, 'browserUrl', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="form-group sop-workflow-compact-field">
-                                            <label className="form-label">{t('remoteDiagnosis.sops.browserAction')}</label>
-                                            <textarea
-                                                className="form-input"
-                                                rows={3}
-                                                placeholder={t('remoteDiagnosis.sops.browserActionPlaceholder')}
-                                                value={node.browserAction ?? ''}
-                                                onChange={e => handleNodeChange(idx, 'browserAction', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="form-group sop-workflow-compact-field">
-                                            <label className="form-label">{t('remoteDiagnosis.sops.browserMode')}</label>
-                                            <select
-                                                className="form-input"
-                                                value={node.browserMode ?? 'headless'}
-                                                onChange={e => handleNodeChange(idx, 'browserMode', e.target.value)}
-                                            >
-                                                <option value="headless">{t('remoteDiagnosis.sops.chromiumMode')}</option>
-                                                <option value="headed">{t('remoteDiagnosis.sops.headedMode')}</option>
-                                            </select>
-                                        </div>
-                                    </>
-                                )
-                            }
-                            if (node.type === 'end') return null
-                            return (
-                            <>
-                                <div className="form-group sop-workflow-compact-field">
-                                    <label className="form-label">{t('remoteDiagnosis.sops.nodeTags')}</label>
-                                    <input
-                                        className="form-input"
-                                        placeholder="tag1, tag2"
-                                        value={node.tags?.join(', ') ?? ''}
-                                        onChange={e => {
-                                            const tags = e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                                            handleNodeChange(idx, 'tags', tags)
-                                        }}
-                                    />
-                                </div>
-
-                                <div className="form-group sop-workflow-compact-field sop-workflow-command-field">
-                                    <label className="form-label">{t('remoteDiagnosis.sops.nodeCommand')}</label>
-                                    <textarea
-                                        className="form-input"
-                                        rows={2}
-                                        value={node.command}
-                                        onChange={e => {
-                                            handleNodeChange(idx, 'command', e.target.value)
-                                            setCommandErrors(prev => {
-                                                const next = { ...prev }
-                                                delete next[idx]
-                                                return next
-                                            })
-                                        }}
-                                    />
-                                    {commandErrors[idx] && (
-                                        <div className="agents-alert agents-alert-error" style={{ marginTop: '4px' }}>
-                                            {commandErrors[idx]}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <VariableEditor
-                                    variables={node.variables ?? []}
-                                    onChange={v => handleNodeChange(idx, 'variables', v)}
-                                />
-                            </>
-                        )
-                        })()}
-
-                        <div className="form-group sop-workflow-compact-field">
-                            <label className="form-label">{t('remoteDiagnosis.sops.nodeOutputFormat')}</label>
-                            <input
-                                className="form-input"
-                                value={node.outputFormat ?? ''}
-                                onChange={e => handleNodeChange(idx, 'outputFormat', e.target.value)}
-                            />
-                        </div>
-
-                        <div className="form-group sop-workflow-compact-field sop-workflow-analysis-field">
-                            <label className="form-label">{t('remoteDiagnosis.sops.nodeAnalysis')}</label>
-                            <textarea
-                                className="form-input"
-                                rows={2}
-                                value={node.analysisInstruction ?? ''}
-                                onChange={e => handleNodeChange(idx, 'analysisInstruction', e.target.value)}
-                            />
-                        </div>
-
-                        <TransitionEditor
-                            transitions={node.transitions ?? []}
-                            nodeNames={nodeNames}
-                            onChange={tr => handleNodeChange(idx, 'transitions', tr)}
-                        />
-                    </div>
-                ))}
+                <div className="form-group">
+                    <label className="form-label">{t('remoteDiagnosis.sops.stepsDescription')}</label>
+                    <textarea
+                        className="form-input sop-workflow-steps-textarea"
+                        placeholder={t('remoteDiagnosis.sops.stepsDescriptionPlaceholder')}
+                        value={stepsDescription}
+                        onChange={e => setStepsDescription(e.target.value)}
+                        maxLength={2000}
+                    />
+                </div>
             </section>
-            )}
         </DetailDialog>
     )
 }
@@ -759,15 +254,22 @@ function SopFormModal({
 // Expandable SOP Row
 // ---------------------------------------------------------------------------
 
-function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
+function SopExpandableRow({ sop, solutionTypes, onEdit, onDelete, onToggleEnabled }: {
     sop: Sop
+    solutionTypes: SolutionType[]
     onEdit: (sop: Sop) => void
     onDelete: (sop: Sop) => void
     onToggleEnabled: (sop: Sop, enabled: boolean) => void
 }) {
     const { t } = useTranslation()
     const [expanded, setExpanded] = useState(false)
-    const isNL = sop.mode === 'natural_language'
+
+    const solutionName = useMemo(() => {
+        const sol = sop.targetSolution ?? 'universal'
+        if (sol === 'universal') return t('hostResource.universal')
+        const match = solutionTypes.find(st => st.id === sol)
+        return match ? match.name : sol
+    }, [sop.targetSolution, solutionTypes, t])
 
     return (
         <>
@@ -793,13 +295,8 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
                 <td className="sop-workflow-muted-text sop-workflow-text-truncate" title={sop.description || ''}>
                     {sop.description?.trim() || '—'}
                 </td>
-                <td className="sop-workflow-text-truncate" title={sop.triggerCondition || ''}>
-                    {sop.triggerCondition?.trim() || '—'}
-                </td>
                 <td style={{ textAlign: 'center' }}>
-                    <span className={`sop-workflow-node-type ${isNL ? 'sop-workflow-node-type-nl' : ''}`}>
-                        {isNL ? 'NL' : (sop.nodes?.length ?? 0)}
-                    </span>
+                    <span className="sop-workflow-meta-tag sop-solution-tag">{solutionName}</span>
                 </td>
                 <td style={{ textAlign: 'center' }}>
                     <div className="sop-workflow-enabled-cell">
@@ -838,146 +335,22 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
             </tr>
             {expanded && (
                 <tr className="sop-workflow-detail-row">
-                    <td colSpan={6}>
+                    <td colSpan={5}>
                         <div className="sop-workflow-detail-panel">
-                            {(() => {
-                                if (isNL) return (
-                                <div>
-                                    {sop.tags && sop.tags.length > 0 && (
-                                        <div style={{ marginBottom: 'var(--spacing-3)' }}>
-                                            <span className="sop-workflow-node-label">
-                                                {t('remoteDiagnosis.sops.sopHostTags')}:
-                                            </span>
-                                            <div className="sop-workflow-host-tags" style={{ marginTop: 4 }}>
-                                                {sop.tags.map(tag => (
-                                                    <span key={tag} className="sop-workflow-meta-tag">{tag}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <span className="sop-workflow-node-label">
-                                            {t('remoteDiagnosis.sops.stepsDescription')}:
-                                        </span>
-                                        <pre style={{ whiteSpace: 'pre-wrap', margin: 'var(--spacing-2) 0 0', fontSize: 'var(--font-size-sm)', lineHeight: 1.6, color: 'var(--color-text-primary)' }}>
-                                            {sop.stepsDescription || '—'}
-                                        </pre>
-                                    </div>
-                                </div>
-                                )
-                                if (sop.nodes && sop.nodes.length > 0) return (
-                                <div className="sop-workflow-node-list">
-                                    {sop.nodes.map((node, i) => (
-                                        <div key={node.id || i} className="sop-workflow-node-card">
-                                            <div className="sop-workflow-node-header">
-                                                <p className="sop-workflow-node-name">
-                                                    {node.name || `Node ${i + 1}`}
-                                                </p>
-                                                <span
-                                                    className={`sop-workflow-node-type ${
-                                                        (() => {
-                                                            if (node.type === 'start') return 'sop-workflow-node-type-start'
-                                                            if (node.type === 'browser') return 'sop-workflow-node-type-browser'
-                                                            if (node.type === 'end') return 'sop-workflow-node-type-end'
-                                                            return 'sop-workflow-node-type-analysis'
-                                                        })()
-                                                    }`}
-                                                >
-                                                    {(() => {
-                                                        if (node.type === 'start') return t('remoteDiagnosis.sops.startNode')
-                                                        if (node.type === 'browser') return t('remoteDiagnosis.sops.browserNode')
-                                                        if (node.type === 'end') return t('remoteDiagnosis.sops.endNode')
-                                                        return t('remoteDiagnosis.sops.analysisNode')
-                                                    })()}
-                                                </span>
-                                            </div>
-                                            <div className="sop-workflow-node-grid">
-                                                {(() => {
-                                                    if (node.type === 'browser') {
-                                                        return (
-                                                            <>
-                                                                <div className="sop-workflow-node-item">
-                                                                    <span className="sop-workflow-node-label">
-                                                                        {t('remoteDiagnosis.sops.browserUrl')}
-                                                                    </span>
-                                                                    <code className="sop-workflow-code-pill">
-                                                                        {node.browserUrl || '—'}
-                                                                    </code>
-                                                                </div>
-                                                                {node.browserAction && (
-                                                                    <div className="sop-workflow-node-item" style={{ gridColumn: '1 / -1' }}>
-                                                                        <span className="sop-workflow-node-label">
-                                                                            {t('remoteDiagnosis.sops.browserAction')}
-                                                                        </span>
-                                                                        <span className="sop-workflow-node-value">
-                                                                            {node.browserAction}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        )
-                                                    }
-                                                    if (node.type === 'end') return null
-                                                    return (
-                                                    <>
-                                                        {node.tags && node.tags.length > 0 && (
-                                                            <div className="sop-workflow-node-item">
-                                                                <span className="sop-workflow-node-label">
-                                                                    {t('remoteDiagnosis.sops.nodeTags')}
-                                                                </span>
-                                                                <div className="sop-workflow-host-tags">
-                                                                {node.tags.map(tag => (
-                                                                    <span key={tag} className="sop-workflow-meta-tag">
-                                                                        {tag}
-                                                                    </span>
-                                                                ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        <div className="sop-workflow-node-item">
-                                                            <span className="sop-workflow-node-label">
-                                                                {t('remoteDiagnosis.sops.nodeCommand')}
-                                                            </span>
-                                                            <code className="sop-workflow-code-pill">
-                                                                {node.command || '—'}
-                                                            </code>
-                                                        </div>
-                                                        {node.variables && node.variables.length > 0 && (
-                                                            <div className="sop-workflow-node-item">
-                                                                <span className="sop-workflow-node-label">
-                                                                    {t('remoteDiagnosis.sops.nodeVariables')}
-                                                                </span>
-                                                                <span className="sop-workflow-node-value">
-                                                                    {node.variables.map(v => v.name).join(', ')}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )
-                                                })()}
-                                                {node.transitions && node.transitions.length > 0 && (
-                                                    <div className="sop-workflow-node-item" style={{ gridColumn: '1 / -1' }}>
-                                                        <span className="sop-workflow-node-label">
-                                                            {t('remoteDiagnosis.sops.nodeTransitions')}
-                                                        </span>
-                                                        <span className="sop-workflow-node-value">
-                                                            {node.transitions
-                                                                .map(tr => `${tr.condition} -> ${(tr.nextNodes ?? []).join(', ') || tr.nextNodeId || '—'}${tr.requireHumanConfirm ? ' [' + t('remoteDiagnosis.sops.transitionConfirm') + ']' : ''}`)
-                                                                .join('; ')}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                )
-                                return (
-                                    <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
-                                        No nodes defined.
-                                    </div>
-                                )
-                            })()}
+                            <div>
+                                <span className="sop-workflow-node-label">
+                                    {t('hostResource.targetSolution')}:
+                                </span>
+                                <span className="sop-workflow-meta-tag" style={{ marginLeft: 8 }}>{solutionName}</span>
+                            </div>
+                            <div style={{ marginTop: 'var(--spacing-3)' }}>
+                                <span className="sop-workflow-node-label">
+                                    {t('remoteDiagnosis.sops.stepsDescription')}:
+                                </span>
+                                <pre style={{ whiteSpace: 'pre-wrap', margin: 'var(--spacing-2) 0 0', fontSize: 'var(--font-size-sm)', lineHeight: 1.6, color: 'var(--color-text-primary)' }}>
+                                    {sop.stepsDescription || '—'}
+                                </pre>
+                            </div>
                         </div>
                     </td>
                 </tr>
@@ -987,13 +360,12 @@ function SopExpandableRow({ sop, onEdit, onDelete, onToggleEnabled }: {
 }
 
 // ---------------------------------------------------------------------------
-// Sops Tab (content only, no page wrapper)
+// Sops Tab
 // ---------------------------------------------------------------------------
 
-export function SopsTab() {
+export function SopsTab({ solutionTypes }: { solutionTypes: SolutionType[] }) {
     const { t } = useTranslation()
     const { sops, isLoading, error, fetchSops, createSop, updateSop, deleteSop } = useSops()
-    const { clusterTypes } = useClusterTypes()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
     const { userId } = useUser()
@@ -1003,6 +375,7 @@ export function SopsTab() {
     const [editingSop, setEditingSop] = useState<Sop | null>(null)
     const [showAddModal, setShowAddModal] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [solutionFilter, setSolutionFilter] = useState<string>('all')
 
     useEffect(() => {
         fetchSops()
@@ -1073,10 +446,17 @@ export function SopsTab() {
     )
 
     const filteredSops = useMemo(() => {
-        if (!searchTerm.trim()) return sops
+        let result = sops
+        if (solutionFilter !== 'all') {
+            result = result.filter(s => {
+                const sol = s.targetSolution ?? 'universal'
+                return sol === solutionFilter || sol === 'universal'
+            })
+        }
+        if (!searchTerm.trim()) return result
         const term = searchTerm.toLowerCase()
-        return sops.filter(s => s.name.toLowerCase().includes(term))
-    }, [sops, searchTerm])
+        return result.filter(s => s.name.toLowerCase().includes(term))
+    }, [sops, searchTerm, solutionFilter])
 
     return (
         <div className="hr-type-tab-content">
@@ -1096,6 +476,32 @@ export function SopsTab() {
                 </div>
 
                 {error && <div className="conn-banner conn-banner-error">{error}</div>}
+
+                {solutionTypes.length > 0 && (
+                    <div className="hr-solution-filter-bar">
+                        <button
+                            className={`hr-solution-filter-pill ${solutionFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setSolutionFilter('all')}
+                        >
+                            {t('hostResource.filterAll')}
+                        </button>
+                        <button
+                            className={`hr-solution-filter-pill ${solutionFilter === 'universal' ? 'active' : ''}`}
+                            onClick={() => setSolutionFilter('universal')}
+                        >
+                            {t('hostResource.filterUniversal')}
+                        </button>
+                        {solutionTypes.map(st => (
+                            <button
+                                key={st.id}
+                                className={`hr-solution-filter-pill ${solutionFilter === st.id ? 'active' : ''}`}
+                                onClick={() => setSolutionFilter(st.id)}
+                            >
+                                {st.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {(() => {
                     if (isLoading) {
@@ -1151,9 +557,8 @@ export function SopsTab() {
                                     <tr>
                                         <th>{t('remoteDiagnosis.sops.name')}</th>
                                         <th>{t('remoteDiagnosis.sops.description')}</th>
-                                        <th>{t('remoteDiagnosis.sops.triggerCondition')}</th>
                                         <th style={{ textAlign: 'center' }}>
-                                            {t('remoteDiagnosis.sops.mode')}
+                                            {t('hostResource.targetSolution')}
                                         </th>
                                         <th style={{ textAlign: 'center' }}>
                                             {t('remoteDiagnosis.sops.status')}
@@ -1166,6 +571,7 @@ export function SopsTab() {
                                         <SopExpandableRow
                                             key={sop.id}
                                             sop={sop}
+                                            solutionTypes={solutionTypes}
                                             onEdit={s => {
                                                 setEditingSop(s)
                                                 setShowAddModal(true)
@@ -1209,7 +615,7 @@ export function SopsTab() {
             {(showAddModal || editingSop) && (
                 <SopFormModal
                     sop={editingSop}
-                    clusterTypes={clusterTypes}
+                    solutionTypes={solutionTypes}
                     onClose={() => {
                         setShowAddModal(false)
                         setEditingSop(null)
