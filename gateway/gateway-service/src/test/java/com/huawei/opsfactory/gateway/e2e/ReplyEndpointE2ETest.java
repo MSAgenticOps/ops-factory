@@ -154,7 +154,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             eq("test-secret"))).thenReturn(Mono.just("[]"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/agent/tools?session_id=session-123&extension_name=control-center")
+            .uri("/api/gateway/agents/test-agent/agent/tools?session_id=session-123&extension_name=control-center")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -177,7 +177,7 @@ public class ReplyEndpointE2ETest extends BaseE2ETest {
             eq("test-secret"))).thenReturn(Mono.just("{\"is_error\":true}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/call_tool")
+            .uri("/api/gateway/agents/test-agent/agent/call_tool")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)

@@ -263,7 +263,7 @@ public class SessionEndpointExtendedE2ETest extends BaseE2ETest {
             anyInt(), anyString())).thenReturn(Mono.just(ResponseEntity.ok().headers(headers).body("exported body")));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/sessions/session-abc/export")
+            .uri("/api/gateway/agents/test-agent/sessions/session-abc/export")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
