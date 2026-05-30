@@ -7,7 +7,6 @@ import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import type { ClusterType, Cluster, SolutionType } from '../../../../types/host'
-import type { ClusterType, Cluster } from '../../../../types/host'
 import { useFormValidation } from '../../../../utils/useFormValidation'
 
 type Props = {
