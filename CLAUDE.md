@@ -37,6 +37,31 @@ Playwright expects the app stack to already be running at `http://127.0.0.1:5173
 ## Coding Style & Naming Conventions
 Follow the existing style in each module. TypeScript in this repo uses `strict` mode, 4-space indentation in app code, semicolon-light formatting, `PascalCase` for React components, `camelCase` for hooks/utilities, and `*.test.ts(x)` for tests. Java follows standard Spring conventions: `PascalCase` classes, `camelCase` members, one public class per file, package paths under `com.huawei.opsfactory`. No repo-wide ESLint/Prettier config is checked in, so keep diffs consistent with nearby files and rely on TypeScript/Maven compilation as the baseline check.
 
+### Java File Header & Javadoc Requirements
+Every new or modified Java file must comply with the following Huaweistyle conventions enforced by Spotless and Checkstyle:
+
+- **Copyright header**: Every `.java` file must start with:
+  ```java
+  /*
+   * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+   */
+  ```
+- **Class-level Javadoc**: Every `public class`, `public interface`, and `public enum` must have a Javadoc block placed **before any annotations**, containing at minimum:
+  ```java
+  /**
+   * The {ClassName}.
+   *
+   * @author x00000000
+   * @since 2026-MM-DD
+   */
+  ```
+  Use the actual class name for the description and the current date for `@since`.
+- **Formatting**: The project uses the Eclipse formatter profile (`idea-coding-standards-guide/docs/development/configs/CodeFormatterFromEclipse.xml`). Run `mvn spotless:apply` before committing Java changes.
+- **Import order**: Follow the Huawei import grouping defined in `eclipse.importorder`; do not use wildcard imports.
+- **Line width**: 120 characters.
+
+When generating Java code, always include the copyright header and class Javadoc automatically. Do not wait for the user to ask for them.
+
 ## AI Frontend Delivery Rules
 When implementing or extending frontend features, do not start from page-specific styling. First identify which existing page pattern the change belongs to, then reuse the matching layout, interaction model, and visual primitives from the current app.
 

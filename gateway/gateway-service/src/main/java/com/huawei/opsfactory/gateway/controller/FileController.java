@@ -113,6 +113,11 @@ public class FileController {
 
             String filename = resource.getFilename();
             String mimeType = fileService.getMimeType(filename != null ? filename : "");
+            // Append charset=utf-8 for text MIME types so the browser decodes correctly
+            if (mimeType.startsWith("text/") || "application/json".equals(mimeType)
+                || "application/xml".equals(mimeType) || "text/yaml".equals(mimeType)) {
+                mimeType = mimeType + "; charset=utf-8";
+            }
             String disposition = (!download && fileService.isInline(mimeType)) ? "inline" : "attachment";
 
             byte[] content;

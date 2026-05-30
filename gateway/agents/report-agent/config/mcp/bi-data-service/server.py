@@ -1073,7 +1073,19 @@ def _check_duplicate(tool_name: str, arguments: Dict[str, Any]) -> Optional[str]
     return None
 
 
+def _strip_surrogates(obj: Any) -> Any:
+    """Recursively remove lone UTF-16 surrogates that crash stdout on Windows."""
+    if isinstance(obj, str):
+        return obj.encode("utf-8", errors="replace").decode("utf-8")
+    if isinstance(obj, dict):
+        return {k: _strip_surrogates(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_strip_surrogates(v) for v in obj]
+    return obj
+
+
 def format_tool_result(data: Any, *, is_error: bool = False) -> Dict[str, Any]:
+    data = _strip_surrogates(data)
     if isinstance(data, str):
         text = data
     else:
@@ -1134,11 +1146,15 @@ def handle_request(message: Dict[str, Any], config: RuntimeConfig) -> Optional[D
 
 
 def send_message(message: Dict[str, Any]) -> None:
+    message = _strip_surrogates(message)
     sys.stdout.write(json.dumps(message, ensure_ascii=True) + "\n")
     sys.stdout.flush()
 
 
 def main() -> int:
+    # Force UTF-8 on Windows to avoid GBK mojibake on stdin/stdout
+    sys.stdin.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8")
     config = RuntimeConfig.from_env()
     LOGGER.info("BI data service MCP server starting", config=config.masked_dict())
 

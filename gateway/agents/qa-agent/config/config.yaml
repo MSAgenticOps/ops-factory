@@ -125,7 +125,7 @@ extensions:
     available_tools: []
     x-opsfactory:
       knowledgeScope:
-        sourceId: src_f95f88dcd402
+        sourceId: src_a7fe05179d20
   analyze:
     enabled: false
     type: platform
