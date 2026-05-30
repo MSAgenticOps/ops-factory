@@ -6,11 +6,12 @@ import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
-import type { ClusterType, Cluster } from '../../../../types/host'
+import type { ClusterType, Cluster, SolutionType } from '../../../../types/host'
 
 type Props = {
     clusterTypes: ClusterType[]
     clusters: Cluster[]
+    solutionTypes: SolutionType[]
     loading: boolean
     onCreate: (body: Partial<ClusterType>) => Promise<ClusterType>
     onUpdate: (id: string, body: Partial<ClusterType>) => Promise<ClusterType>
@@ -26,6 +27,7 @@ type FormData = {
     commandPrefix: string
     envVariables: { key: string; value: string }[]
     mode: 'peer' | 'primary-backup'
+    solutionType: string
 }
 
 const emptyForm: FormData = {
@@ -33,9 +35,10 @@ const emptyForm: FormData = {
     commandPrefix: '',
     envVariables: [],
     mode: 'peer',
+    solutionType: 'universal',
 }
 
-export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCreate, onUpdate, onDelete }: Props) {
+export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
@@ -45,12 +48,17 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
     const [saving, setSaving] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [solutionFilter, setSolutionFilter] = useState<string>('all')
 
     const filteredTypes = useMemo(() => {
-        if (!searchTerm.trim()) return clusterTypes
+        let result = clusterTypes
+        if (solutionFilter !== 'all') {
+            result = result.filter(ct => (ct.solutionType ?? 'universal') === solutionFilter)
+        }
+        if (!searchTerm.trim()) return result
         const term = searchTerm.toLowerCase()
-        return clusterTypes.filter(ct => ct.name.toLowerCase().includes(term))
-    }, [clusterTypes, searchTerm])
+        return result.filter(ct => ct.name.toLowerCase().includes(term))
+    }, [clusterTypes, searchTerm, solutionFilter])
 
     const openCreate = useCallback(() => {
         setEditing(null)
@@ -69,6 +77,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
             commandPrefix: item.commandPrefix ?? '',
             envVariables: item.envVariables ?? [],
             mode: item.mode ?? 'peer',
+            solutionType: item.solutionType ?? 'universal',
         })
         setShowModal(true)
     }, [])
@@ -261,6 +270,32 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                 </button>
             </div>
 
+            {solutionTypes.length > 0 && (
+                <div className="hr-solution-filter-bar">
+                    <button
+                        className={`hr-solution-filter-pill ${solutionFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setSolutionFilter('all')}
+                    >
+                        {t('hostResource.filterAll')}
+                    </button>
+                    <button
+                        className={`hr-solution-filter-pill ${solutionFilter === 'universal' ? 'active' : ''}`}
+                        onClick={() => setSolutionFilter('universal')}
+                    >
+                        {t('hostResource.filterUniversal')}
+                    </button>
+                    {solutionTypes.map(st => (
+                        <button
+                            key={st.id}
+                            className={`hr-solution-filter-pill ${solutionFilter === st.id ? 'active' : ''}`}
+                            onClick={() => setSolutionFilter(st.id)}
+                        >
+                            {st.name}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {loading && (
                 <div className="hr-empty">{t('common.loading')}</div>
             )}
@@ -331,6 +366,19 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                     onClose={() => setShowModal(false)}
                     extraFields={
                         <>
+                            <div className="form-group">
+                                <label className="form-label">{t('hostResource.solutionType')}</label>
+                                <select
+                                    className="form-input"
+                                    value={form.solutionType}
+                                    onChange={e => setForm(f => ({ ...f, solutionType: e.target.value }))}
+                                >
+                                    <option value="universal">{t('hostResource.universal')}</option>
+                                    {solutionTypes.map(st => (
+                                        <option key={st.id} value={st.id}>{st.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="form-group">
                                 <label className="form-label">{t('hostResource.clusterMode')}</label>
                                 <select

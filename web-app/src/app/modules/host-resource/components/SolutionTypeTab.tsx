@@ -1,0 +1,154 @@
+import { useState, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import TypeCard from './TypeCard'
+import TypeFormModal from './TypeFormModal'
+import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
+import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
+import type { SolutionType } from '../../../../types/host'
+
+type Props = {
+    solutionTypes: SolutionType[]
+    loading: boolean
+    onCreate: (body: Partial<SolutionType>) => Promise<SolutionType>
+    onUpdate: (id: string, body: Partial<SolutionType>) => Promise<SolutionType>
+    onDelete: (id: string) => Promise<boolean>
+}
+
+type FormData = {
+    name: string
+    code: string
+    description: string
+    color: string
+    knowledge: string
+}
+
+const emptyForm: FormData = { name: '', code: '', description: '', color: '#8b5cf6', knowledge: '' }
+
+export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUpdate, onDelete }: Props) {
+    const { t } = useTranslation()
+    const { showToast } = useToast()
+    const { requestConfirm } = useConfirmDialog()
+    const [showModal, setShowModal] = useState(false)
+    const [editing, setEditing] = useState<SolutionType | null>(null)
+    const [form, setForm] = useState<FormData>(emptyForm)
+    const [saving, setSaving] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
+
+    const filteredTypes = useMemo(() => {
+        if (!searchTerm.trim()) return solutionTypes
+        const term = searchTerm.toLowerCase()
+        return solutionTypes.filter(st => st.name.toLowerCase().includes(term))
+    }, [solutionTypes, searchTerm])
+
+    const openCreate = useCallback(() => {
+        setEditing(null)
+        setForm(emptyForm)
+        setShowModal(true)
+    }, [])
+
+    const openEdit = useCallback((item: SolutionType) => {
+        setEditing(item)
+        setForm({
+            name: item.name,
+            code: item.code,
+            description: item.description,
+            color: item.color,
+            knowledge: item.knowledge,
+        })
+        setShowModal(true)
+    }, [])
+
+    const handleSave = useCallback(async () => {
+        if (!form.name.trim()) return
+        setSaving(true)
+        try {
+            if (editing) {
+                await onUpdate(editing.id, form)
+            } else {
+                await onCreate(form)
+            }
+            setShowModal(false)
+        } catch (err) {
+            showToast('error', err instanceof Error ? err.message : 'Failed')
+        } finally {
+            setSaving(false)
+        }
+    }, [editing, form, onCreate, onUpdate, showToast])
+
+    const handleDelete = useCallback(async (item: SolutionType) => {
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: t('hostResource.confirmDeleteSolutionType'),
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
+        if (confirmed) {
+            try {
+                await onDelete(item.id)
+            } catch (err) {
+                showToast('error', err instanceof Error ? err.message : 'Failed')
+            }
+        }
+    }, [onDelete, t, requestConfirm, showToast])
+
+    return (
+        <div className="hr-type-tab-content">
+            <div className="hr-type-tab-header">
+                <span className="hr-type-tab-heading">
+                    {t('hostResource.tabSolutionTypes')} ({solutionTypes.length})
+                </span>
+                <button className="btn btn-primary btn-sm" onClick={openCreate}>
+                    + {t('hostResource.createSolutionType')}
+                </button>
+            </div>
+
+            {loading && (
+                <div className="hr-empty">{t('common.loading')}</div>
+            )}
+            {!loading && solutionTypes.length === 0 && (
+                <div className="hr-type-tab-empty">
+                    <div className="hr-type-tab-empty-text">{t('hostResource.noSolutionTypes')}</div>
+                </div>
+            )}
+            {!loading && solutionTypes.length > 0 && (
+                <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
+                        <ListSearchInput
+                            value={searchTerm}
+                            placeholder={t('hostResource.searchSolutionTypes')}
+                            onChange={setSearchTerm}
+                        />
+                        {searchTerm && (
+                            <ListResultsMeta>
+                                {t('common.resultsFound', { count: filteredTypes.length })}
+                            </ListResultsMeta>
+                        )}
+                    </div>
+                    <div className="hr-type-def-grid">
+                        {filteredTypes.map(st => (
+                            <TypeCard
+                                key={st.id}
+                                item={st}
+                                onEdit={openEdit}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {showModal && (
+                <TypeFormModal
+                    title={editing ? t('hostResource.editSolutionType') : t('hostResource.createSolutionType')}
+                    form={form}
+                    setForm={setForm}
+                    saving={saving}
+                    onSave={handleSave}
+                    onClose={() => setShowModal(false)}
+                />
+            )}
+        </div>
+    )
+}

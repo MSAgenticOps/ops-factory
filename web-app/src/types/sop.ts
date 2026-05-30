@@ -42,10 +42,9 @@ export interface Sop {
     version: string
     triggerCondition: string
     enabled?: boolean
-    mode?: 'structured' | 'natural_language'
-    nodes: SopNode[]
+    nodes?: SopNode[]
     stepsDescription?: string
-    tags?: string[]
+    targetSolution?: string
 }
 
 export interface SopCreateRequest {
@@ -54,8 +53,6 @@ export interface SopCreateRequest {
     version?: string
     triggerCondition?: string
     enabled?: boolean
-    mode?: 'structured' | 'natural_language'
-    nodes?: SopNode[]
     stepsDescription?: string
-    tags?: string[]
+    targetSolution?: string
 }
