@@ -1,0 +1,16 @@
+{
+  "name": "minimax-m2.7",
+  "engine": "openai",
+  "display_name": "minimax/minimax-m2.7",
+  "description": "Custom OpsAgentLLM provider",
+  "api_key_env": "CUSTOM_OPSAGENTLLM_API_KEY",
+  "base_url": "https://openrouter.ai/api/v1/chat/completions",
+  "models": [
+    {
+      "name": "",
+      "context_limit": 196000
+    }
+  ],
+  "supports_streaming": true,
+  "requires_auth": true
+}
