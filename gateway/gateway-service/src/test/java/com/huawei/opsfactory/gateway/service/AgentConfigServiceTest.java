@@ -735,14 +735,30 @@ public class AgentConfigServiceTest {
         assertTrue(freshService.getRegistry().isEmpty());
     }
 
-    // ── Memory file tests ──────────────────────────────────────────
+    // ── Memory file tests (per-user) ────────────────────────────────
+
+    private static final String USER_A = "user-a";
+
+    private static final String USER_B = "user-b";
+
+    /** Per-user memory dir, matching goose's {@code XDG_CONFIG_HOME/goose/memory} (XDG = data/config). */
+    private Path userMemoryDir(String userId, String agentId) {
+        return gatewayRoot.resolve("users")
+            .resolve(userId)
+            .resolve("agents")
+            .resolve(agentId)
+            .resolve("data")
+            .resolve("config")
+            .resolve("goose")
+            .resolve("memory");
+    }
 
     /**
      * Tests list memory files empty.
      */
     @Test
     public void testListMemoryFiles_empty() {
-        List<Map<String, String>> files = service.listMemoryFiles("test-agent");
+        List<Map<String, String>> files = service.listMemoryFiles(USER_A, "test-agent");
         assertTrue(files.isEmpty());
     }
 
@@ -753,13 +769,12 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testListMemoryFiles_withFiles() throws IOException {
-        Path memoryDir =
-            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir = userMemoryDir(USER_A, "test-agent");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("development.txt"), "# tools\nuse black for formatting");
         Files.writeString(memoryDir.resolve("personal.txt"), "prefer Chinese replies");
 
-        List<Map<String, String>> files = service.listMemoryFiles("test-agent");
+        List<Map<String, String>> files = service.listMemoryFiles(USER_A, "test-agent");
         assertEquals(2, files.size());
 
         List<String> categories = files.stream().map(f -> f.get("category")).toList();
@@ -778,13 +793,12 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testListMemoryFiles_ignoresNonTxt() throws IOException {
-        Path memoryDir =
-            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir = userMemoryDir(USER_A, "test-agent");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("valid.txt"), "content");
         Files.writeString(memoryDir.resolve("ignored.md"), "markdown");
 
-        List<Map<String, String>> files = service.listMemoryFiles("test-agent");
+        List<Map<String, String>> files = service.listMemoryFiles(USER_A, "test-agent");
         assertEquals(1, files.size());
         assertEquals("valid", files.get(0).get("category"));
     }
@@ -796,12 +810,11 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testReadMemoryFile_exists() throws IOException {
-        Path memoryDir =
-            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir = userMemoryDir(USER_A, "test-agent");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("dev.txt"), "hello world");
 
-        String content = service.readMemoryFile("test-agent", "dev");
+        String content = service.readMemoryFile(USER_A, "test-agent", "dev");
         assertEquals("hello world", content);
     }
 
@@ -810,7 +823,7 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testReadMemoryFile_notFound() {
-        String content = service.readMemoryFile("test-agent", "nonexistent");
+        String content = service.readMemoryFile(USER_A, "test-agent", "nonexistent");
         assertNull(content);
     }
 
@@ -821,14 +834,9 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testWriteMemoryFile_createsDirectoryAndFile() throws IOException {
-        service.writeMemoryFile("test-agent", "new-category", "some content");
+        service.writeMemoryFile(USER_A, "test-agent", "new-category", "some content");
 
-        Path file = gatewayRoot.resolve("agents")
-            .resolve("test-agent")
-            .resolve("config")
-            .resolve("goose")
-            .resolve("memory")
-            .resolve("new-category.txt");
+        Path file = userMemoryDir(USER_A, "test-agent").resolve("new-category.txt");
         assertTrue(Files.exists(file));
         assertEquals("some content", Files.readString(file));
     }
@@ -840,10 +848,10 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testWriteMemoryFile_updatesExisting() throws IOException {
-        service.writeMemoryFile("test-agent", "cat", "v1");
-        service.writeMemoryFile("test-agent", "cat", "v2");
+        service.writeMemoryFile(USER_A, "test-agent", "cat", "v1");
+        service.writeMemoryFile(USER_A, "test-agent", "cat", "v2");
 
-        assertEquals("v2", service.readMemoryFile("test-agent", "cat"));
+        assertEquals("v2", service.readMemoryFile(USER_A, "test-agent", "cat"));
     }
 
     /**
@@ -854,7 +862,7 @@ public class AgentConfigServiceTest {
     @Test(expected = IllegalArgumentException.class)
     public void testWriteMemoryFile_tooLarge() throws IOException {
         String largeContent = "x".repeat(101 * 1024);
-        service.writeMemoryFile("test-agent", "big", largeContent);
+        service.writeMemoryFile(USER_A, "test-agent", "big", largeContent);
     }
 
     /**
@@ -864,12 +872,11 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testDeleteMemoryFile_success() throws IOException {
-        Path memoryDir =
-            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("goose").resolve("memory");
+        Path memoryDir = userMemoryDir(USER_A, "test-agent");
         Files.createDirectories(memoryDir);
         Files.writeString(memoryDir.resolve("toDelete.txt"), "bye");
 
-        service.deleteMemoryFile("test-agent", "toDelete");
+        service.deleteMemoryFile(USER_A, "test-agent", "toDelete");
         assertFalse(Files.exists(memoryDir.resolve("toDelete.txt")));
     }
 
@@ -880,7 +887,7 @@ public class AgentConfigServiceTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void testDeleteMemoryFile_notFound() throws IOException {
-        service.deleteMemoryFile("test-agent", "nonexistent");
+        service.deleteMemoryFile(USER_A, "test-agent", "nonexistent");
     }
 
     /**
@@ -891,8 +898,8 @@ public class AgentConfigServiceTest {
     @Test
     public void testWriteAndReadRoundTrip() throws IOException {
         String content = "# formatting tools\nuse black\n\n# deployment\nuse k8s";
-        service.writeMemoryFile("test-agent", "dev", content);
-        assertEquals(content, service.readMemoryFile("test-agent", "dev"));
+        service.writeMemoryFile(USER_A, "test-agent", "dev", content);
+        assertEquals(content, service.readMemoryFile(USER_A, "test-agent", "dev"));
     }
 
     /**
@@ -902,14 +909,152 @@ public class AgentConfigServiceTest {
      */
     @Test
     public void testListMemoryFiles_afterWriteAndDelete() throws IOException {
-        service.writeMemoryFile("test-agent", "a", "content-a");
-        service.writeMemoryFile("test-agent", "b", "content-b");
-        assertEquals(2, service.listMemoryFiles("test-agent").size());
+        service.writeMemoryFile(USER_A, "test-agent", "a", "content-a");
+        service.writeMemoryFile(USER_A, "test-agent", "b", "content-b");
+        assertEquals(2, service.listMemoryFiles(USER_A, "test-agent").size());
 
-        service.deleteMemoryFile("test-agent", "a");
-        List<Map<String, String>> remaining = service.listMemoryFiles("test-agent");
+        service.deleteMemoryFile(USER_A, "test-agent", "a");
+        List<Map<String, String>> remaining = service.listMemoryFiles(USER_A, "test-agent");
         assertEquals(1, remaining.size());
         assertEquals("b", remaining.get(0).get("category"));
+    }
+
+    /**
+     * Memory is per-user: two users of the same agent must not see each other's memory.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testMemoryIsolatedPerUser() throws IOException {
+        service.writeMemoryFile(USER_A, "test-agent", "shared-name", "from A");
+        service.writeMemoryFile(USER_B, "test-agent", "shared-name", "from B");
+
+        assertEquals("from A", service.readMemoryFile(USER_A, "test-agent", "shared-name"));
+        assertEquals("from B", service.readMemoryFile(USER_B, "test-agent", "shared-name"));
+
+        // A deletes its copy; B's copy is untouched.
+        service.deleteMemoryFile(USER_A, "test-agent", "shared-name");
+        assertNull(service.readMemoryFile(USER_A, "test-agent", "shared-name"));
+        assertEquals("from B", service.readMemoryFile(USER_B, "test-agent", "shared-name"));
+    }
+
+    /**
+     * The per-user memory dir must resolve under {@code data/config/goose/memory}, which is what
+     * goose loads via {@code XDG_CONFIG_HOME/goose/memory} (XDG_CONFIG_HOME = runtimeRoot/data/config).
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testWriteMemoryFile_landsAtXdgConfigHomePath() throws IOException {
+        service.writeMemoryFile(USER_A, "test-agent", "dev", "x");
+
+        Path expected = gatewayRoot.resolve("users")
+            .resolve(USER_A)
+            .resolve("agents")
+            .resolve("test-agent")
+            .resolve("data")
+            .resolve("config")
+            .resolve("goose")
+            .resolve("memory")
+            .resolve("dev.txt");
+        assertTrue(Files.exists(expected));
+    }
+
+    private Path writeSeed(String agentId, String category, String content) throws IOException {
+        Path seedDir =
+            gatewayRoot.resolve("agents").resolve(agentId).resolve("config").resolve("goose").resolve("memory");
+        Files.createDirectories(seedDir);
+        Path file = seedDir.resolve(category + ".txt");
+        Files.writeString(file, content);
+        return file;
+    }
+
+    /**
+     * On first access, the user's memory is seeded from the shared agent seed; the seeded entries
+     * are visible through the memory tab (listMemoryFiles).
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureMemorySeeded_seedsOnFirstAccess() throws IOException {
+        writeSeed("test-agent", "sla-criteria", "P1 responds in 15m");
+        writeSeed("test-agent", "ops-preferences", "no changes during freeze");
+
+        List<Map<String, String>> files = service.listMemoryFiles(USER_A, "test-agent");
+
+        List<String> categories = files.stream().map(f -> f.get("category")).toList();
+        assertEquals(2, files.size());
+        assertTrue(categories.contains("sla-criteria"));
+        assertTrue(categories.contains("ops-preferences"));
+        assertTrue(Files.exists(userMemoryDir(USER_A, "test-agent").resolve("sla-criteria.txt")));
+    }
+
+    /**
+     * Seeding is one-time: after a user clears all seeded memory, it is NOT re-seeded on later
+     * access. Guarded by the {@code data/.memory-seeded} marker, not by emptiness.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureMemorySeeded_isOneTime_notReseededAfterClear() throws IOException {
+        writeSeed("test-agent", "sla-criteria", "P1 responds in 15m");
+
+        // First access seeds.
+        assertEquals(1, service.listMemoryFiles(USER_A, "test-agent").size());
+
+        // User deletes the seeded entry.
+        service.deleteMemoryFile(USER_A, "test-agent", "sla-criteria");
+        assertTrue(service.listMemoryFiles(USER_A, "test-agent").isEmpty());
+
+        // A brand-new seed file appearing later must NOT resurrect into this user.
+        writeSeed("test-agent", "late-seed", "added after first seed");
+        assertTrue(service.listMemoryFiles(USER_A, "test-agent").isEmpty());
+    }
+
+    /**
+     * Seeding never overwrites a user's pre-existing memory of the same category.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureMemorySeeded_doesNotOverwriteExisting() throws IOException {
+        writeSeed("test-agent", "sla-criteria", "seed value");
+        // Pre-populate the user's memory with a file of the SAME category as a seed file.
+        Path userMemory = userMemoryDir(USER_A, "test-agent");
+        Files.createDirectories(userMemory);
+        Files.writeString(userMemory.resolve("sla-criteria.txt"), "user edit");
+
+        service.ensureMemorySeeded(USER_A, "test-agent");
+
+        // The user's existing entry is kept verbatim; the seed does not clobber it.
+        assertEquals("user edit", service.readMemoryFile(USER_A, "test-agent", "sla-criteria"));
+    }
+
+    /**
+     * Seeding is a no-op (but still marks done) when the agent has no shared seed.
+     */
+    @Test
+    public void testEnsureMemorySeeded_noSeedSource() {
+        service.ensureMemorySeeded(USER_A, "test-agent");
+        assertTrue(service.listMemoryFiles(USER_A, "test-agent").isEmpty());
+    }
+
+    /**
+     * Writing a memory before any seed exists still seeds first, so the user keeps both the agent's
+     * presets and their new entry (covers the tab-before-spawn ordering).
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testWriteMemoryFile_seedsBeforeWrite() throws IOException {
+        writeSeed("test-agent", "sla-criteria", "P1 responds in 15m");
+
+        service.writeMemoryFile(USER_A, "test-agent", "my-note", "user edit");
+
+        List<String> categories =
+            service.listMemoryFiles(USER_A, "test-agent").stream().map(f -> f.get("category")).toList();
+        assertTrue(categories.contains("sla-criteria"));
+        assertTrue(categories.contains("my-note"));
     }
 
     /**
