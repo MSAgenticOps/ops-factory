@@ -40,7 +40,7 @@ public class WebConfig {
      *
      * @return the result
      */
-    @Bean
+    @Bean("operationIntelligenceCorsFilter")
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         String corsOrigin = properties.getCorsOrigin();

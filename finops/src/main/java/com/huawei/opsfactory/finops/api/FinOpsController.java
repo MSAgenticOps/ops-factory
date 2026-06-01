@@ -18,6 +18,7 @@ import com.huawei.opsfactory.finops.model.FinOpsModels.UserUsage;
 import com.huawei.opsfactory.finops.service.UsageAggregationService;
 import com.huawei.opsfactory.finops.service.UsageIngestionService;
 import com.huawei.opsfactory.finops.store.FinOpsSnapshotStore;
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,7 +35,8 @@ import java.util.List;
  * @since 2026-05-28
  */
 @RestController
-@RequestMapping("/finops")
+@RestSchema(schemaId = "finOpsController")
+@RequestMapping("/api/finops")
 public class FinOpsController {
 
     private final FinOpsSnapshotStore snapshotStore;

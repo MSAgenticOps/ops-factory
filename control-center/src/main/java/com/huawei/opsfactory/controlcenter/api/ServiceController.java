@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/control-center/services")
+@RequestMapping("/api/control-center/services")
 /**
  * Service Controller.
  *

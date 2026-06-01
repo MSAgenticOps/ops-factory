@@ -39,7 +39,7 @@ import java.util.concurrent.TimeoutException;
 public class OperationIntelligenceProxyService {
     private static final Logger logger = LoggerFactory.getLogger(OperationIntelligenceProxyService.class);
 
-    private static final String GATEWAY_PREFIX = "/gateway";
+    private static final String GATEWAY_PREFIX = "/api/gateway";
 
     private static final String OI_PATH_PREFIX = "/operation-intelligence/";
 

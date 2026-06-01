@@ -36,7 +36,7 @@ public class RecipeEndpointE2ETest extends BaseE2ETest {
             eq("{\"recipe\":{\"title\":\"demo\"}}"), eq(30), eq("test-secret"))).thenReturn(Mono.just("{\"id\":\"demo\"}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/recipes/save")
+            .uri("/api/gateway/agents/test-agent/recipes/save")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -61,7 +61,7 @@ public class RecipeEndpointE2ETest extends BaseE2ETest {
             eq("test-secret"))).thenReturn(Mono.just("{\"manifests\":[]}"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/recipes/list")
+            .uri("/api/gateway/agents/test-agent/recipes/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()

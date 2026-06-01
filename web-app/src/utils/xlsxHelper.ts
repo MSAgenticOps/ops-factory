@@ -152,10 +152,8 @@ export function generateSampleXlsx(importType: ImportType, t: (key: string, para
 
 function getFieldDescription(labelKey: string, label: string): string {
     const descriptions: Record<string, string> = {
-        'field_sops_mode': 'Mode (structured/natural_language)',
-        'field_sops_stepsDescription': 'Steps Description (valid in natural_language mode)',
-        'field_sops_targetTags': 'Target Tags (for natural_language mode)',
-        'field_sops_nodes': 'Nodes (JSON array, valid in structured mode)',
+        'field_sops_targetSolution': 'Target Solution (solution type ID or universal)',
+        'field_sops_stepsDescription': 'Steps Description (natural language diagnostic steps)',
         'field_clusterTypes_clusterMode': 'Cluster Mode (Optional: Peer/Primary-Backup)',
         'field_hostGroups_enabled': 'Enabled (Optional: TRUE/FALSE)',
         'field_hosts_username': 'SSH login username (Must be provided together with credential)',

@@ -815,7 +815,7 @@ public class BusinessIntelligenceMetricsService {
 
     public LineageResult traceLineage(String domain, String ticketId) {
         BiRawData raw = loadCached();
-        String normalizedId = ticketId.trim().toLowerCase();
+        String normalizedId = ticketId.trim().toLowerCase(Locale.ROOT);
 
         List<Map<String, String>> sourceData = getDomainData(raw, domain);
         Map<String, String> source = findById(sourceData, normalizedId, idField(domain));
@@ -845,12 +845,12 @@ public class BusinessIntelligenceMetricsService {
     }
 
     private void traceFromIncident(Map<String, String> src, String srcId, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
-        String category = src.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
+        String category = src.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase(Locale.ROOT);
         LocalDateTime beginDate = parseDate(src.get(BiColumns.BEGIN_DATE));
 
         for (var c : raw.changes()) {
-            String changeCi = c.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String changeCi = c.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (!ci.isEmpty() && ci.equals(changeCi)) {
                 related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "same_ci", "high"));
             }
@@ -862,11 +862,11 @@ public class BusinessIntelligenceMetricsService {
         }
 
         for (var p : raw.problems()) {
-            String problemCi = p.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String problemCi = p.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (!ci.isEmpty() && ci.equals(problemCi)) {
                 related.add(new RelatedTicket(p.get(BiColumns.PROBLEM_NUMBER), "problems", "same_ci", "high"));
             }
-            String problemCat = p.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
+            String problemCat = p.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase(Locale.ROOT);
             if (!category.isEmpty() && category.equals(problemCat)) {
                 related.add(new RelatedTicket(p.get(BiColumns.PROBLEM_NUMBER), "problems", "same_category", "medium"));
             }
@@ -874,7 +874,7 @@ public class BusinessIntelligenceMetricsService {
     }
 
     private void traceFromChange(Map<String, String> src, String srcId, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
         LocalDateTime actualEnd = parseDate(src.get(BiColumns.ACTUAL_END));
         String incidentIdsValue = src.getOrDefault(BiColumns.INCIDENT_CAUSED, "").trim();
         boolean caused = !incidentIdsValue.isEmpty();
@@ -893,14 +893,14 @@ public class BusinessIntelligenceMetricsService {
                     }
                 }
             }
-            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (!ci.isEmpty() && ci.equals(incCi)) {
                 related.add(new RelatedTicket(incOrderNum, "incidents", "same_ci", "medium"));
             }
         }
 
         for (var p : raw.problems()) {
-            String problemCi = p.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String problemCi = p.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (!ci.isEmpty() && ci.equals(problemCi)) {
                 related.add(new RelatedTicket(p.get(BiColumns.PROBLEM_NUMBER), "problems", "same_ci", "medium"));
             }
@@ -908,22 +908,22 @@ public class BusinessIntelligenceMetricsService {
     }
 
     private void traceFromProblem(Map<String, String> src, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
-        String category = src.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
+        String category = src.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase(Locale.ROOT);
 
         for (var inc : raw.incidents()) {
-            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (!ci.isEmpty() && ci.equals(incCi)) {
                 related.add(new RelatedTicket(inc.get(BiColumns.ORDER_NUMBER), "incidents", "same_ci", "high"));
             }
-            String incCat = inc.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase();
+            String incCat = inc.getOrDefault(BiColumns.CATEGORY, "").trim().toLowerCase(Locale.ROOT);
             if (!category.isEmpty() && category.equals(incCat)) {
                 related.add(new RelatedTicket(inc.get(BiColumns.ORDER_NUMBER), "incidents", "same_category", "medium"));
             }
         }
 
         for (var c : raw.changes()) {
-            String changeCi = c.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String changeCi = c.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (!ci.isEmpty() && ci.equals(changeCi)) {
                 related.add(new RelatedTicket(c.get(BiColumns.CHANGE_NUMBER), "changes", "same_ci", "medium"));
             }
@@ -931,11 +931,11 @@ public class BusinessIntelligenceMetricsService {
     }
 
     private void traceFromRequest(Map<String, String> src, BiRawData raw, List<RelatedTicket> related) {
-        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+        String ci = src.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
         if (ci.isEmpty()) return;
 
         for (var inc : raw.incidents()) {
-            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase();
+            String incCi = inc.getOrDefault(BiColumns.CI_AFFECTED, "").trim().toLowerCase(Locale.ROOT);
             if (ci.equals(incCi)) {
                 related.add(new RelatedTicket(inc.get(BiColumns.ORDER_NUMBER), "incidents", "same_ci", "medium"));
             }
@@ -1131,7 +1131,7 @@ public class BusinessIntelligenceMetricsService {
 
     private Map<String, String> findById(List<Map<String, String>> rows, String id, String idField) {
         for (var r : rows) {
-            String val = r.getOrDefault(idField, "").trim().toLowerCase();
+            String val = r.getOrDefault(idField, "").trim().toLowerCase(Locale.ROOT);
             if (val.equals(id)) return r;
         }
         return null;
@@ -1147,21 +1147,21 @@ public class BusinessIntelligenceMetricsService {
     }
 
     private boolean applyFilter(Map<String, String> row, FilterSpec f) {
-        String cell = row.getOrDefault(f.field(), "").trim().toLowerCase();
+        String cell = row.getOrDefault(f.field(), "").trim().toLowerCase(Locale.ROOT);
         String operator = f.operator() != null ? f.operator() : "equals";
         Object value = f.value();
 
         return switch (operator) {
-            case "equals" -> cell.equals(str(value).toLowerCase());
-            case "not_equals" -> !cell.equals(str(value).toLowerCase());
-            case "contains" -> cell.contains(str(value).toLowerCase());
-            case "starts_with" -> cell.startsWith(str(value).toLowerCase());
+            case "equals" -> cell.equals(str(value).toLowerCase(Locale.ROOT));
+            case "not_equals" -> !cell.equals(str(value).toLowerCase(Locale.ROOT));
+            case "contains" -> cell.contains(str(value).toLowerCase(Locale.ROOT));
+            case "starts_with" -> cell.startsWith(str(value).toLowerCase(Locale.ROOT));
             case "greater_than" -> parseDouble(cell) > parseDouble(str(value));
             case "less_than" -> parseDouble(cell) < parseDouble(str(value));
             case "in" -> {
                 List<String> vals = value instanceof List<?> list
-                    ? list.stream().map(Object::toString).map(String::trim).map(String::toLowerCase).toList()
-                    : List.of(str(value).toLowerCase());
+                    ? list.stream().map(Object::toString).map(String::trim).map(s -> s.toLowerCase(Locale.ROOT)).toList()
+                    : List.of(str(value).toLowerCase(Locale.ROOT));
                 yield vals.contains(cell);
             }
             default -> true;
@@ -1460,13 +1460,19 @@ public class BusinessIntelligenceMetricsService {
     private LocalDate parseLocalDate(String value) {
         try {
             return LocalDate.parse(value);
-        } catch (java.time.format.DateTimeParseException ignored) {}
+        } catch (java.time.format.DateTimeParseException e) {
+            log.debug("Failed to parse as LocalDate: {}", value);
+        }
         try {
             return LocalDateTime.parse(value).toLocalDate();
-        } catch (java.time.format.DateTimeParseException ignored) {}
+        } catch (java.time.format.DateTimeParseException e) {
+            log.debug("Failed to parse as LocalDateTime: {}", value);
+        }
         try {
             return Instant.parse(value).atZone(ZoneId.systemDefault()).toLocalDate();
-        } catch (java.time.format.DateTimeParseException ignored) {}
+        } catch (java.time.format.DateTimeParseException e) {
+            log.debug("Failed to parse as Instant: {}", value);
+        }
         throw new IllegalArgumentException("Cannot parse date: " + value);
     }
 

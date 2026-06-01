@@ -33,7 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 
 @RestController
-@RequestMapping("/knowledge")
+@RequestMapping("/api/knowledge")
 public class DocumentController {
 
     private final KnowledgeServiceFacade facade;

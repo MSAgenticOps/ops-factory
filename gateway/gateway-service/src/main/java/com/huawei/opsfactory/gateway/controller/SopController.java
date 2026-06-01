@@ -34,7 +34,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "sopController")
-@RequestMapping("/gateway/sops")
+@RequestMapping("/api/gateway/sops")
 public class SopController {
     private static final Logger log = LoggerFactory.getLogger(SopController.class);
 

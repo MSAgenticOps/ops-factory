@@ -25,7 +25,7 @@ import java.util.Map;
  * @since 2026-05-27
  */
 @RestController
-@RequestMapping("/operation-intelligence/call-chain/subgraphs")
+@RequestMapping("/api/operation-intelligence/call-chain/subgraphs")
 public class CallChainSubgraphController {
     private final CallChainSubgraphService callChainSubgraphService;
 

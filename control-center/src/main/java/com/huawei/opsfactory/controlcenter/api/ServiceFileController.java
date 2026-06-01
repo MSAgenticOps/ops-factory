@@ -18,7 +18,7 @@ import org.springframework.http.HttpStatus;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/control-center/services/{id}")
+@RequestMapping("/api/control-center/services/{id}")
 /**
  * Service File Controller.
  *

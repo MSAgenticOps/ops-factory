@@ -46,7 +46,7 @@ class ApiExceptionHandlerIntegrationTest {
     @Test
     void shouldReturnNotFoundAndWriteWarnLogForUnknownTab() throws Exception {
         try (TestLogAppender appender = TestLogAppender.attachTo(ApiExceptionHandler.class)) {
-            mockMvc.perform(get("/business-intelligence/tabs/unknown-tab"))
+            mockMvc.perform(get("/api/business-intelligence/tabs/unknown-tab"))
                 .andExpect(status().isNotFound());
 
             assertThat(appender.formattedMessages())

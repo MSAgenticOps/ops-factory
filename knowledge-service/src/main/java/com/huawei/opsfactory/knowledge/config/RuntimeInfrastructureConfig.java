@@ -32,7 +32,7 @@ import org.springframework.util.StringUtils;
 @EnableConfigurationProperties({KnowledgeRuntimeProperties.class, KnowledgeDatabaseProperties.class})
 public class RuntimeInfrastructureConfig {
 
-    @Bean
+    @Bean("knowledgeDatabaseDialect")
     public DatabaseDialect databaseDialect(KnowledgeDatabaseProperties databaseProperties) {
         return switch (normalizeType(databaseProperties)) {
             case "sqlite" -> new SqliteDialect();
@@ -41,7 +41,7 @@ public class RuntimeInfrastructureConfig {
         };
     }
 
-    @Bean
+    @Bean("knowledgeDataSource")
     public DataSource dataSource(
         KnowledgeRuntimeProperties runtimeProperties,
         KnowledgeDatabaseProperties databaseProperties,
@@ -69,12 +69,12 @@ public class RuntimeInfrastructureConfig {
         return dataSource;
     }
 
-    @Bean
+    @Bean("knowledgeJdbcTemplate")
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
 
-    @Bean
+    @Bean("knowledgeFlywayConfigurationCustomizer")
     public FlywayConfigurationCustomizer flywayConfigurationCustomizer(DatabaseDialect databaseDialect) {
         return configuration -> configuration
             .locations(databaseDialect.flywayLocations().toArray(String[]::new))

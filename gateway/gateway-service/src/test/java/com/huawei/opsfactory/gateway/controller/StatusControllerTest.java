@@ -50,7 +50,7 @@ public class StatusControllerTest {
      */
     @Test
     public void testStatus() throws Exception {
-        mockMvc.perform(get("/gateway/status").header("x-secret-key", "test"))
+        mockMvc.perform(get("/api/gateway/status").header("x-secret-key", "test"))
             .andExpect(status().isOk())
             .andExpect(content().string("ok"));
     }
@@ -60,7 +60,7 @@ public class StatusControllerTest {
      */
     @Test
     public void testMe_noUserIdHeader_returnsUnknown() throws Exception {
-        mockMvc.perform(get("/gateway/me").header("x-secret-key", "test"))
+        mockMvc.perform(get("/api/gateway/me").header("x-secret-key", "test"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.userId").value("unknown"))
             .andExpect(jsonPath("$.role").value("user"));
@@ -71,7 +71,7 @@ public class StatusControllerTest {
      */
     @Test
     public void testMe_withUserIdHeader_returnsUser() throws Exception {
-        mockMvc.perform(get("/gateway/me").header("x-secret-key", "test").header("x-user-id", "user123"))
+        mockMvc.perform(get("/api/gateway/me").header("x-secret-key", "test").header("x-user-id", "user123"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.userId").value("user123"))
             .andExpect(jsonPath("$.role").value("user"));
@@ -82,7 +82,7 @@ public class StatusControllerTest {
      */
     @Test
     public void testConfig() throws Exception {
-        mockMvc.perform(get("/gateway/config").header("x-secret-key", "test"))
+        mockMvc.perform(get("/api/gateway/config").header("x-secret-key", "test"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.officePreview.enabled").value(false));
     }
@@ -92,6 +92,6 @@ public class StatusControllerTest {
      */
     @Test
     public void testUnauthorized_noKey() throws Exception {
-        mockMvc.perform(get("/gateway/me")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/gateway/me")).andExpect(status().isUnauthorized());
     }
 }

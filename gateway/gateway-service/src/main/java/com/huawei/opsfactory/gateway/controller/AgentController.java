@@ -35,7 +35,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "agentController")
-@RequestMapping("/gateway/agents")
+@RequestMapping("/api/gateway/agents")
 public class AgentController {
     private static final java.util.regex.Pattern CATEGORY_PATTERN = java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]+$");
 

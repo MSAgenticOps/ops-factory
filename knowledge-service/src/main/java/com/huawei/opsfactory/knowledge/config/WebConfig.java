@@ -29,7 +29,7 @@ public class WebConfig {
         this.properties = properties;
     }
 
-    @Bean
+    @Bean("knowledgeCorsFilter")
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
 

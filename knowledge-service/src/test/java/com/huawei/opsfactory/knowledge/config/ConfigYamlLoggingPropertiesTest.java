@@ -79,7 +79,7 @@ class ConfigYamlLoggingPropertiesTest {
     @Test
     void shouldAllowFacadeInfoLogsBecauseConfigYamlSetsInfoLevel() throws Exception {
         try (TestLogAppender appender = TestLogAppender.attachTo(KnowledgeServiceFacade.class)) {
-            mockMvc.perform(post("/knowledge/sources")
+            mockMvc.perform(post("/api/knowledge/sources")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {

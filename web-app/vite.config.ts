@@ -71,13 +71,13 @@ export default defineConfig(() => {
         server: {
             port: 5173,
             proxy: {
-                '/gateway': 'http://127.0.0.1:3000',
-                '/knowledge': 'http://127.0.0.1:8092',
-                '/control-center': 'http://127.0.0.1:8094',
-                '/business-intelligence': 'http://127.0.0.1:8093',
-                '/skill-market': 'http://127.0.0.1:8095',
-                '/operation-intelligence': 'http://127.0.0.1:8096',
-                '/finops': 'http://127.0.0.1:8097',
+                '/api/gateway': 'http://127.0.0.1:3000',
+                '/api/knowledge': 'http://127.0.0.1:8092',
+                '/api/control-center': 'http://127.0.0.1:8094',
+                '/api/business-intelligence': 'http://127.0.0.1:8093',
+                '/api/skill-market': 'http://127.0.0.1:8095',
+                '/api/operation-intelligence': 'http://127.0.0.1:8096',
+                '/api/finops': 'http://127.0.0.1:8097',
             },
         },
     }

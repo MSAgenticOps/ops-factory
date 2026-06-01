@@ -103,7 +103,7 @@ public class ReplyControllerRealProxyTest {
                 })
                 .build();
 
-            mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+            mockMvc.perform(post("/api/gateway/agents/test-agent/sessions/session-123/reply")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":"
                         + "{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":"
@@ -165,7 +165,7 @@ public class ReplyControllerRealProxyTest {
                 .defaultRequest(get("/").requestAttr(UserContextFilter.USER_ID_ATTR, "alice"))
                 .build();
 
-            mockMvc.perform(get("/gateway/agents/test-agent/sessions/session-123/events")
+            mockMvc.perform(get("/api/gateway/agents/test-agent/sessions/session-123/events")
                     .accept(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(status().isNotFound())
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, org.hamcrest.Matchers.containsString(
@@ -236,14 +236,14 @@ public class ReplyControllerRealProxyTest {
                 })
                 .build();
 
-            mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+            mockMvc.perform(post("/api/gateway/agents/test-agent/sessions/session-123/reply")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":"
                         + "{\"role\":\"user\",\"created\":1776928807,\"content\":[{\"type\":\"text\",\"text\":"
                         + "\"create a file\"}],\"metadata\":{\"userVisible\":true,\"agentVisible\":true}}}"))
                 .andExpect(status().isOk());
 
-            MvcResult initialResult = mockMvc.perform(get("/gateway/agents/test-agent/sessions/session-123/events")
+            MvcResult initialResult = mockMvc.perform(get("/api/gateway/agents/test-agent/sessions/session-123/events")
                     .accept(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(status().isOk())
                 .andExpect(request().asyncStarted())
@@ -287,7 +287,7 @@ public class ReplyControllerRealProxyTest {
             .defaultRequest(post("/").requestAttr(UserContextFilter.USER_ID_ATTR, "alice"))
             .build();
 
-        mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+        mockMvc.perform(post("/api/gateway/agents/test-agent/sessions/session-123/reply")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("not-json"))
             .andExpect(status().is5xxServerError())
@@ -344,7 +344,7 @@ public class ReplyControllerRealProxyTest {
                 })
                 .build();
 
-            mockMvc.perform(post("/gateway/agents/test-agent/sessions/session-123/reply")
+            mockMvc.perform(post("/api/gateway/agents/test-agent/sessions/session-123/reply")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"request_id\":\"00000000-0000-0000-0000-000000000001\",\"user_message\":{"
                         + "\"role\":\"user\",\"created\":1776928807}}"))

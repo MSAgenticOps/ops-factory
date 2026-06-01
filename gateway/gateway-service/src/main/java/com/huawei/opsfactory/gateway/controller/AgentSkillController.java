@@ -31,7 +31,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "agentSkillController")
-@RequestMapping("/gateway/agents")
+@RequestMapping("/api/gateway/agents")
 public class AgentSkillController {
     private final AgentSkillInstallService installService;
 

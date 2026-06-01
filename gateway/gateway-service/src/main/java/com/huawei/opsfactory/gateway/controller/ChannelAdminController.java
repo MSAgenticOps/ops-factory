@@ -45,7 +45,7 @@ import java.util.Map;
 
 @RestController
 @RestSchema(schemaId = "channelAdminController")
-@RequestMapping("/gateway/channels")
+@RequestMapping("/api/gateway/channels")
 public class ChannelAdminController {
     private static final Logger log = LoggerFactory.getLogger(ChannelAdminController.class);
 

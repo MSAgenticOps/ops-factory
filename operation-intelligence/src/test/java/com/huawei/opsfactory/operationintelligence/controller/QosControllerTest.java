@@ -53,7 +53,7 @@ class QosControllerTest {
             Map.of("envCode", "env2", "envName", "Environment 2"));
         when(qosService.getEnvironments()).thenReturn(envs);
 
-        mockMvc.perform(get("/operation-intelligence/qos/getEnvironments").header("x-secret-key", SECRET_KEY))
+        mockMvc.perform(get("/api/operation-intelligence/qos/getEnvironments").header("x-secret-key", SECRET_KEY))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.results").isArray())
             .andExpect(jsonPath("$.results.length()").value(2))
@@ -62,7 +62,7 @@ class QosControllerTest {
 
     @Test
     void testGetEnvironmentsNoAuth() throws Exception {
-        mockMvc.perform(get("/operation-intelligence/qos/getEnvironments")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/operation-intelligence/qos/getEnvironments")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -73,7 +73,7 @@ class QosControllerTest {
         Map<String, Object> req = Map.of("envCode", "test-env", "startTime", 1746057600000L, "endTime", 1746058000000L);
 
         mockMvc
-            .perform(post("/operation-intelligence/qos/getHealthIndicator").header("x-secret-key", SECRET_KEY)
+            .perform(post("/api/operation-intelligence/qos/getHealthIndicator").header("x-secret-key", SECRET_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(MAPPER.writeValueAsString(req)))
             .andExpect(status().isOk())
@@ -85,7 +85,7 @@ class QosControllerTest {
     void testGetHealthIndicatorMissingEnvCode() throws Exception {
         Map<String, Object> req = Map.of("startTime", 1746057600000L, "endTime", 1746058000000L);
 
-        mockMvc.perform(post("/operation-intelligence/qos/getHealthIndicator").header("x-secret-key", SECRET_KEY)
+        mockMvc.perform(post("/api/operation-intelligence/qos/getHealthIndicator").header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(req))).andExpect(status().isBadRequest());
     }
@@ -99,7 +99,7 @@ class QosControllerTest {
         Map<String, Object> req = Map.of("agentSolutionType", "DigitalCRM");
 
         mockMvc
-            .perform(post("/operation-intelligence/qos/getProductConfigRule").header("x-secret-key", SECRET_KEY)
+            .perform(post("/api/operation-intelligence/qos/getProductConfigRule").header("x-secret-key", SECRET_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(MAPPER.writeValueAsString(req)))
             .andExpect(status().isOk())
@@ -112,7 +112,7 @@ class QosControllerTest {
 
         Map<String, Object> req = Map.of("agentSolutionType", "NonExistent");
 
-        mockMvc.perform(post("/operation-intelligence/qos/getProductConfigRule").header("x-secret-key", SECRET_KEY)
+        mockMvc.perform(post("/api/operation-intelligence/qos/getProductConfigRule").header("x-secret-key", SECRET_KEY)
             .contentType(MediaType.APPLICATION_JSON)
             .content(MAPPER.writeValueAsString(req))).andExpect(status().isNotFound());
     }

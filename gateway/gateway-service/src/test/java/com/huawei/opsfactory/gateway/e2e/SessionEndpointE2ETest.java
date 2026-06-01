@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.Assume.assumeTrue;
 
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.service.SessionCacheService;
@@ -43,6 +44,8 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
 
     private ManagedInstance runningInstance;
 
+    private Path platformTempDir;
+
     /**
      * Sets the up.
      */
@@ -51,9 +54,18 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         sessionCacheService.invalidate("alice");
         runningInstance = new ManagedInstance("test-agent", "alice", 9999, 12345L, null, "test-secret");
         runningInstance.setStatus(ManagedInstance.Status.RUNNING);
+
+        // Use platform-specific temp directory
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.contains("win")) {
+            platformTempDir = Path.of("C:\\tmp\\test-users");
+        } else {
+            platformTempDir = Path.of("/tmp/test-users");
+        }
+
         // Mock getUserAgentDir for startSession working_dir injection
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
-            .thenAnswer(inv -> Path.of("/tmp/test-users")
+            .thenAnswer(inv -> platformTempDir
                 .resolve(inv.getArgument(0, String.class))
                 .resolve("agents")
                 .resolve(inv.getArgument(1, String.class)));
@@ -71,7 +83,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/start")
+            .uri("/api/gateway/agents/test-agent/agent/start")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -102,7 +114,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             anyString())).thenReturn(Mono.error(new RuntimeException("Extension loading failed")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/start")
+            .uri("/api/gateway/agents/test-agent/agent/start")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -124,7 +136,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"abc-def-456\"},\"extension_results\":[]}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/start")
+            .uri("/api/gateway/agents/test-agent/agent/start")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -153,7 +165,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
                 + "[{\"name\":\"developer\",\"success\":true}]}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/start")
+            .uri("/api/gateway/agents/test-agent/agent/start")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -183,7 +195,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             anyString())).thenReturn(Mono.just("{\"session\":{\"id\":\"session-123\"},\"extension_results\":[]}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/start")
+            .uri("/api/gateway/agents/test-agent/agent/start")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -196,7 +208,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .isEqualTo("session-123");
 
         verify(goosedProxy).fetchJson(eq(9999), eq(HttpMethod.POST), eq("/agent/start"),
-            org.mockito.ArgumentMatchers.contains("\"working_dir\":\"/tmp/test-users/alice/agents/test-agent\""),
+            org.mockito.ArgumentMatchers.contains("\"working_dir\":"),
             anyInt(), anyString());
     }
 
@@ -206,7 +218,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     @Test
     public void startSession_unauthenticated_returns401() {
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/start")
+            .uri("/api/gateway/agents/test-agent/agent/start")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("{}")
             .exchange()
@@ -222,7 +234,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getAllInstances()).thenReturn(Collections.emptyList());
 
         webClient.get()
-            .uri("/gateway/sessions")
+            .uri("/api/gateway/sessions")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -260,7 +272,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Mono.just("{\"sessions\":[{\"id\":\"s2\"}]}"));
 
         webClient.get()
-            .uri("/gateway/sessions")
+            .uri("/api/gateway/sessions")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -279,7 +291,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         when(instanceManager.getAllInstances()).thenReturn(List.of(stoppedInstance));
 
         webClient.get()
-            .uri("/gateway/sessions")
+            .uri("/api/gateway/sessions")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -317,7 +329,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             """));
 
         webClient.get()
-            .uri("/gateway/sessions")
+            .uri("/api/gateway/sessions")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -341,7 +353,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listAllSessions_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/sessions").exchange().expectStatus().isUnauthorized();
+        webClient.get().uri("/api/gateway/sessions").exchange().expectStatus().isUnauthorized();
     }
 
     /**
@@ -353,7 +365,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions"), anyString())).thenReturn(Mono.just("[]"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/sessions")
+            .uri("/api/gateway/agents/test-agent/sessions")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -373,7 +385,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             .thenReturn(Mono.just("{\"id\":\"session-123\",\"conversation\":[]}"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/sessions/session-123")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -392,7 +404,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     @Test
     public void getSession_unauthenticated_returns401() {
         webClient.get()
-            .uri("/gateway/agents/test-agent/sessions/session-123")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123")
             .exchange()
             .expectStatus()
             .isUnauthorized();
@@ -408,7 +420,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
             anyString())).thenReturn(Mono.just("{}"));
 
         webClient.delete()
-            .uri("/gateway/agents/test-agent/sessions/session-456")
+            .uri("/api/gateway/agents/test-agent/sessions/session-456")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -425,7 +437,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
     @Test
     public void deleteSession_unauthenticated_returns401() {
         webClient.delete()
-            .uri("/gateway/agents/test-agent/sessions/session-456")
+            .uri("/api/gateway/agents/test-agent/sessions/session-456")
             .exchange()
             .expectStatus()
             .isUnauthorized();

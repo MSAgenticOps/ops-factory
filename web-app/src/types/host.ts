@@ -104,6 +104,7 @@ export interface ClusterType {
     commandPrefix?: string
     envVariables?: EnvVariable[]
     mode?: 'peer' | 'primary-backup'
+    solutionType?: string
     createdAt: string
     updatedAt: string
 }
@@ -187,4 +188,15 @@ export interface ClusterGraphEdge {
 export interface ClusterGraphData {
     nodes: ClusterGraphNode[]
     edges: ClusterGraphEdge[]
+}
+
+export interface SolutionType {
+    id: string
+    name: string
+    code: string
+    description: string
+    color: string
+    knowledge: string
+    createdAt: string
+    updatedAt: string
 }

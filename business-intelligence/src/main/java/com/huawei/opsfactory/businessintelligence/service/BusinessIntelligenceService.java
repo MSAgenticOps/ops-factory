@@ -504,7 +504,7 @@ public class BusinessIntelligenceService {
     }
 
     private int priorityIndex(String priority) {
-        return switch (priority.toUpperCase()) {
+        return switch (priority.toUpperCase(Locale.ROOT)) {
             case "P1" -> 1;
             case "P2" -> 2;
             case "P3" -> 3;

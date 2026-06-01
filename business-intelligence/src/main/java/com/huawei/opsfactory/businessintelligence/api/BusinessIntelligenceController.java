@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2026-05-27
  */
 @RestController
-@RequestMapping("/business-intelligence")
+@RequestMapping("/api/business-intelligence")
 public class BusinessIntelligenceController {
 
     private final BusinessIntelligenceService businessIntelligenceService;

@@ -128,6 +128,7 @@ public class ClusterTypeService {
         ct.put("commandPrefix", body.getOrDefault("commandPrefix", null));
         ct.put("envVariables", body.getOrDefault("envVariables", null));
         ct.put("mode", body.getOrDefault("mode", "peer"));
+        ct.put("solutionType", body.getOrDefault("solutionType", "universal"));
         ct.put("createdAt", now);
         ct.put("updatedAt", now);
 
@@ -177,6 +178,9 @@ public class ClusterTypeService {
                 throw new IllegalArgumentException("Invalid mode: " + mode + ". Must be 'peer' or 'primary-backup'.");
             }
             ct.put("mode", mode);
+        }
+        if (body.containsKey("solutionType")) {
+            ct.put("solutionType", body.get("solutionType"));
         }
 
         ct.put("updatedAt", Instant.now().toString());

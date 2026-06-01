@@ -49,7 +49,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
             .thenReturn(Mono.error(new IllegalStateException("Per-user instance limit reached (5)")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -70,7 +70,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
             .thenReturn(Mono.error(new IllegalStateException("Global instance limit reached (50)")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "bob")
             .contentType(MediaType.APPLICATION_JSON)
@@ -97,7 +97,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
             anyString(), anyInt(), eq("test-secret"))).thenReturn(Mono.just("{}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -115,7 +115,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
     @Test
     public void sessionReply_unauthenticated_returns401() {
         webClient.post()
-            .uri("/gateway/agents/test-agent/sessions/session-123/reply")
+            .uri("/api/gateway/agents/test-agent/sessions/session-123/reply")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("{\"request_id\":\"req-1\",\"user_message\":{\"role\":\"user\",\"created\":1776928807,"
                 + "\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"metadata\":{\"userVisible\":true,"
@@ -134,7 +134,7 @@ public class InstanceLimitE2ETest extends BaseE2ETest {
             .thenReturn(Mono.error(new IllegalStateException("Per-user instance limit reached (5)")));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/agent/resume")
+            .uri("/api/gateway/agents/test-agent/agent/resume")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)

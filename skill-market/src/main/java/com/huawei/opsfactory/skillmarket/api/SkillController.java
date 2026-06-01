@@ -40,7 +40,7 @@ import org.springframework.web.multipart.MultipartFile;
  * @since 2026-05-27
  */
 @RestController
-@RequestMapping("/skill-market")
+@RequestMapping("/api/skill-market")
 public class SkillController {
 
     private final SkillCatalogService service;

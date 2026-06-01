@@ -36,7 +36,7 @@ public class ScheduleEndpointE2ETest extends BaseE2ETest {
             eq("test-secret"))).thenReturn(Mono.just("{\"jobs\":[]}"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/schedule/list")
+            .uri("/api/gateway/agents/test-agent/schedule/list")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()
@@ -59,7 +59,7 @@ public class ScheduleEndpointE2ETest extends BaseE2ETest {
             eq("{\"id\":\"job-1\"}"), eq(30), eq("test-secret"))).thenReturn(Mono.just("{\"id\":\"job-1\"}"));
 
         webClient.post()
-            .uri("/gateway/agents/test-agent/schedule/create")
+            .uri("/api/gateway/agents/test-agent/schedule/create")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .contentType(MediaType.APPLICATION_JSON)
@@ -84,7 +84,7 @@ public class ScheduleEndpointE2ETest extends BaseE2ETest {
             eq(30), eq("test-secret"))).thenReturn(Mono.just("[]"));
 
         webClient.get()
-            .uri("/gateway/agents/test-agent/schedule/job-1/sessions?limit=5")
+            .uri("/api/gateway/agents/test-agent/schedule/job-1/sessions?limit=5")
             .header(HEADER_SECRET_KEY, SECRET_KEY)
             .header(HEADER_USER_ID, "alice")
             .exchange()

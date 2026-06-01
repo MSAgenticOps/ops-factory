@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2026-05-27
  */
 @RestController("skillMarketSystemController")
-@RequestMapping("/skill-market")
+@RequestMapping("/api/skill-market")
 public class SystemController {
 
     private final SkillMarketProperties properties;

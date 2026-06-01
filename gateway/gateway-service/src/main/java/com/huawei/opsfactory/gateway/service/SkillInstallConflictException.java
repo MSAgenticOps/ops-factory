@@ -12,6 +12,8 @@ package com.huawei.opsfactory.gateway.service;
  */
 public class SkillInstallConflictException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates the skill install conflict exception instance.
      */

@@ -30,7 +30,7 @@ import java.util.Optional;
  * @since 2026-05-11
  */
 @RestController
-@RequestMapping("/operation-intelligence/qos")
+@RequestMapping("/api/operation-intelligence/qos")
 public class QosController {
 
     private static final Logger log = LoggerFactory.getLogger(QosController.class);

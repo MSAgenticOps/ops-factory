@@ -31,19 +31,19 @@ public class UserContextFilterTest {
 
     private static final String ADMIN_USER_ID = "admin";
 
-    private static final String SYSTEM_ENDPOINT = "/gateway/status";
+    private static final String SYSTEM_ENDPOINT = "/api/gateway/status";
 
     private static final String TEST_ENDPOINT = "/test";
 
     private static final String EMPTY_USER_ID = "";
 
-    private static final String TRACE_START_PATH = "/gateway/agents/qa-agent/sessions/20260429_3/trace";
+    private static final String TRACE_START_PATH = "/api/gateway/agents/qa-agent/sessions/20260429_3/trace";
 
-    private static final String TRACE_DOWNLOAD_PATH = "/gateway/session-traces/job-1/download";
+    private static final String TRACE_DOWNLOAD_PATH = "/api/gateway/session-traces/job-1/download";
 
-    private static final String AGENTS_ENDPOINT = "/gateway/agents";
+    private static final String AGENTS_ENDPOINT = "/api/gateway/agents";
 
-    private static final String USAGE_SNAPSHOT_ENDPOINT = "/gateway/usage/session-snapshot";
+    private static final String USAGE_SNAPSHOT_ENDPOINT = "/api/gateway/usage/session-snapshot";
 
     private UserContextFilter filter;
 

@@ -38,7 +38,7 @@ public class OperationIntelligenceProxyServiceTest {
     @Test
     public void testTargetPathStripsGatewayPrefix() {
         MockHttpServletRequest request =
-            new MockHttpServletRequest("GET", "/gateway/operation-intelligence/graph/resources/tree");
+            new MockHttpServletRequest("GET", "/api/gateway/operation-intelligence/graph/resources/tree");
         OperationIntelligenceProxyService service = new OperationIntelligenceProxyService(new GatewayProperties());
 
         assertEquals("/operation-intelligence/graph/resources/tree", service.targetPath(request));
@@ -113,7 +113,7 @@ public class OperationIntelligenceProxyServiceTest {
 
     private MockHttpServletRequest proxyRequest() {
         MockHttpServletRequest request =
-            new MockHttpServletRequest("GET", "/gateway/operation-intelligence/graph/resources/tree");
+            new MockHttpServletRequest("GET", "/api/gateway/operation-intelligence/graph/resources/tree");
         request.setContentType("application/json");
         return request;
     }

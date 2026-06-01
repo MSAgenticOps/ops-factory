@@ -30,7 +30,7 @@ import java.util.Map;
  * @since 2026-05-14
  */
 @RestController
-@RequestMapping("/operation-intelligence/call-chain")
+@RequestMapping("/api/operation-intelligence/call-chain")
 public class CallChainController {
 
     private static final Logger log = LoggerFactory.getLogger(CallChainController.class);

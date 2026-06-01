@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.process;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
@@ -38,6 +39,20 @@ public class RuntimePreparerTest {
      */
     @Before
     public void setUp() throws IOException {
+        // Check if symbolic links are supported (requires admin privileges on Windows)
+        Path testLink = tempFolder.getRoot().toPath().resolve("test-symlink-check");
+        Path testTarget = tempFolder.getRoot().toPath().resolve("test-target");
+        Files.createDirectory(testTarget);
+        boolean supportsSymlinks;
+        try {
+            Files.createSymbolicLink(testLink, testTarget);
+            supportsSymlinks = true;
+            Files.deleteIfExists(testLink);
+        } catch (Exception e) {
+            supportsSymlinks = false;
+        }
+        assumeTrue("Symbolic links not supported (requires admin privileges on Windows)", supportsSymlinks);
+
         gatewayRoot = tempFolder.getRoot().toPath().resolve("gateway");
         Files.createDirectories(gatewayRoot.resolve("agents").resolve("test-agent").resolve("config"));
         Files.writeString(gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("config.yaml"),

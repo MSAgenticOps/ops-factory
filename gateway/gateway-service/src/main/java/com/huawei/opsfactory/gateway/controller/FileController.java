@@ -48,7 +48,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "fileController")
-@RequestMapping("/gateway/agents/{agentId}")
+@RequestMapping("/api/gateway/agents/{agentId}")
 public class FileController {
     private final InstanceManager instanceManager;
 

@@ -46,7 +46,7 @@ public class ServletWebConfig {
      *
      * @return the CORS filter
      */
-    @Bean
+    @Bean("gatewayCorsFilter")
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public Filter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();

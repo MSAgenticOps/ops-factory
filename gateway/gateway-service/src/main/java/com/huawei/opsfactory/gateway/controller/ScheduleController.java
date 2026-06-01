@@ -37,7 +37,7 @@ import java.nio.charset.StandardCharsets;
  */
 @RestController
 @RestSchema(schemaId = "scheduleController")
-@RequestMapping("/gateway/agents/{agentId}/schedule")
+@RequestMapping("/api/gateway/agents/{agentId}/schedule")
 public class ScheduleController {
     private final InstanceManager instanceManager;
 

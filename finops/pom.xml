@@ -58,6 +58,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+
+        <!-- ServiceComb for @RestSchema support -->
+        <dependency>
+            <groupId>org.apache.servicecomb</groupId>
+            <artifactId>provider-springmvc</artifactId>
+            <version>2.9.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -95,4 +102,11 @@
             </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>huawei-cloud</id>
+            <url>https://repo.huaweicloud.com/artifactory/sdk_public/</url>
+        </repository>
+    </repositories>
 </project>
