@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "check:boundaries": "node ./scripts/check-module-bounda ries.mjs",
+    "check:boundaries": "node ./scripts/check-module-boundaries.mjs",
     "ci:local": "npm run check:boundaries && npm run build",
     "ci:strict": "npm ci && npm run ci:local",
     "test": "vitest",
