@@ -18,6 +18,8 @@ const IMPORT_TYPES: ImportType[] = [
     'Whitelist',
 ]
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
 interface ImportDialogProps {
     open: boolean
     onClose: () => void
@@ -104,6 +106,16 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
         setFileValidation(null)
 
         if (file && selectedType) {
+            // Check file size
+            if (file.size > MAX_FILE_SIZE) {
+                setFileValidation({
+                    valid: false,
+                    message: t('hostResource.importErrorFileTooLarge', { size: (MAX_FILE_SIZE / 1024 / 1024).toFixed(0) })
+                })
+                setSelectedFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+                return
+            }
             validateFile(file, selectedType)
         }
     }

@@ -2399,6 +2399,7 @@
     "importErrorInvalidFile": "文件结构无效：{{message}}",
     "importErrorParseError": "文件解析失败：{{message}}",
     "importErrorFileReadError": "文件读取失败：{{message}}",
+    "importErrorFileTooLarge": "文件大小超过限制（最大 {{size}}MB）",
     "importValidatingFile": "正在验证文件...",
     "importFileValid": "文件格式正确",
     "importErrorSheetNotFound": "文件中未找到 '{{sheet}}' 页签",

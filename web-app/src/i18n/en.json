@@ -2399,6 +2399,7 @@
     "importErrorInvalidFile": "Invalid file structure: {{message}}",
     "importErrorParseError": "Failed to parse file: {{message}}",
     "importErrorFileReadError": "Failed to read file: {{message}}",
+    "importErrorFileTooLarge": "File size exceeds limit (max {{size}}MB)",
     "importValidatingFile": "Validating file...",
     "importFileValid": "File format is valid",
     "importErrorSheetNotFound": "Sheet '{{sheet}}' not found in file",
