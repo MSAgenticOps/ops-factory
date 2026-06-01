@@ -71,8 +71,8 @@ log_fail()  { echo -e "${RED}[FAIL]${NC}  $1"; }
 
 LOG_DIR="${SERVICE_DIR}/logs"
 PID_FILE="${LOG_DIR}/gateway.pid"
-GATEWAY_HEALTH_PATH="/gateway/status"
-GATEWAY_AGENTS_PATH="/gateway/agents"
+GATEWAY_HEALTH_PATH="/api/gateway/status"
+GATEWAY_AGENTS_PATH="/api/gateway/agents"
 DAEMON_HELPER="${ROOT_DIR}/scripts/lib/service-daemon.sh"
 
 # shellcheck source=/dev/null
