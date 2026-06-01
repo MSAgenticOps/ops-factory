@@ -211,6 +211,13 @@ export interface KnowledgeIngestResponse {
     sourceId: string
     status: string
     documentCount: number
+    skipped?: KnowledgeSkippedFileInfo[]
+}
+
+export interface KnowledgeSkippedFileInfo {
+    fileName: string
+    reason: string
+    existingFileName?: string
 }
 
 export interface KnowledgeJobResponse {
