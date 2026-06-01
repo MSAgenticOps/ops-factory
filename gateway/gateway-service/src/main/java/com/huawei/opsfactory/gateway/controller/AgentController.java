@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.controller;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
+import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 
@@ -323,7 +324,8 @@ public class AgentController {
      */
     @GetMapping("/{id}/memory")
     public ResponseEntity<Map<String, Object>> listMemory(@PathVariable String id, HttpServletRequest request) {
-        List<Map<String, String>> files = agentConfigService.listMemoryFiles(id);
+        String userId = currentUserId(request);
+        List<Map<String, String>> files = agentConfigService.listMemoryFiles(userId, id);
         return ResponseEntity.ok(Map.of("files", files));
     }
 
@@ -342,7 +344,7 @@ public class AgentController {
         if (!isValidCategory(category)) {
             return badCategory();
         }
-        String content = agentConfigService.readMemoryFile(id, category);
+        String content = agentConfigService.readMemoryFile(currentUserId(request), id, category);
         if (content == null) {
             return ResponseEntity.notFound().build();
         }
@@ -366,7 +368,7 @@ public class AgentController {
             return badCategory();
         }
         try {
-            agentConfigService.writeMemoryFile(id, category, body.getOrDefault("content", ""));
+            agentConfigService.writeMemoryFile(currentUserId(request), id, category, body.getOrDefault("content", ""));
             return ResponseEntity.ok(Map.of("success", true));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
@@ -389,7 +391,7 @@ public class AgentController {
             return badCategory();
         }
         try {
-            agentConfigService.deleteMemoryFile(id, category);
+            agentConfigService.deleteMemoryFile(currentUserId(request), id, category);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
@@ -405,5 +407,17 @@ public class AgentController {
 
     private ResponseEntity<Map<String, Object>> badCategory() {
         return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Invalid category name"));
+    }
+
+    /**
+     * Resolves the current user id from the request attribute set by {@link UserContextFilter}.
+     * Memory is per-user state, so all memory CRUD must be scoped by user id. The filter rejects
+     * non-system requests without a user id, so this is non-null for memory endpoints.
+     *
+     * @param request current HTTP request
+     * @return the resolved user id
+     */
+    private String currentUserId(HttpServletRequest request) {
+        return (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
     }
 }

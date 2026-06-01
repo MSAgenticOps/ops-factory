@@ -57,6 +57,10 @@ public class InstanceManagerTest {
         agentConfigService = mock(AgentConfigService.class);
         when(agentConfigService.loadAgentConfigYaml(anyString())).thenReturn(Map.of());
         when(agentConfigService.loadAgentSecretsYaml(anyString())).thenReturn(Map.of());
+        // buildEnvironment reads XDG_CONFIG_HOME from this; stub it so spawn-path tests exercise the
+        // real spawn failure rather than NPEing on a null config-home.
+        when(agentConfigService.getGooseConfigHomeDir(anyString(), anyString()))
+            .thenReturn(java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "gateway-test", "data", "config"));
 
         instanceManager =
             new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 3000, false, "");
