@@ -254,11 +254,29 @@ export function gatewayHeaders(userId?: string | null): Record<string, string> {
     return h
 }
 
-export function controlCenterHeaders(): Record<string, string> {
-    return {
+/** Build knowledge-service request headers with user ID. */
+export function knowledgeHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
+        'Content-Type': 'application/json',
+    }
+    if (userId) h['x-user-id'] = userId
+    return h
+}
+
+/** Build knowledge-service headers for FormData uploads (no Content-Type, browser sets multipart boundary). */
+export function knowledgeFormDataHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {}
+    if (userId) h['x-user-id'] = userId
+    return h
+}
+
+export function controlCenterHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
         'Content-Type': 'application/json',
         'x-secret-key': runtime.CONTROL_CENTER_SECRET_KEY,
     }
+    if (userId) h['x-user-id'] = userId
+    return h
 }
 
 /** Convert a display name to a kebab-case ID. */

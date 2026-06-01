@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { getPreviewKind, inferFileType, needsTextContent, PreviewKind } from '../../../utils/filePreview'
 import { parseCsvTable } from '../../../utils/officePreview'
 import { useUser } from './UserContext'
-import { runtime } from '../../../config/runtime'
+import { runtime, gatewayHeaders } from '../../../config/runtime'
 
 interface OfficePreviewConfig {
     enabled: boolean
@@ -89,10 +89,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     // Fetch gateway config on mount
     useEffect(() => {
         fetch(`${runtime.GATEWAY_URL}/config`, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-secret-key': runtime.GATEWAY_SECRET_KEY,
-            },
+            headers: gatewayHeaders(userId),
         })
             .then(res => res.ok ? res.json() : null)
             .then(data => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { runtime } from '../../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import { useToast } from '../../../platform/providers/ToastContext'
 import KnowledgeChunkDetailModal from './KnowledgeChunkDetailModal'
 import type {
@@ -104,6 +104,7 @@ interface KnowledgeRetrievalTabProps {
     defaults: KnowledgeDefaults | null
     retrievalProfileDetail: KnowledgeProfileDetail | null
     disabled?: boolean
+    userId?: string | null
 }
 
 const QUERY_MAX_LENGTH = 200
@@ -618,6 +619,7 @@ function RetrievalDetailPanel({
     loading,
     error,
     canEdit,
+    userId,
     onReload,
     onClear,
 }: {
@@ -626,6 +628,7 @@ function RetrievalDetailPanel({
     loading: boolean
     error: string | null
     canEdit: boolean
+    userId?: string | null
     onReload: () => Promise<void>
     onClear: () => void
 }) {
@@ -771,9 +774,7 @@ function RetrievalDetailPanel({
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${hit.chunkId}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: knowledgeHeaders(userId),
                 body: JSON.stringify({
                     keywords,
                     text,
@@ -997,6 +998,7 @@ export default function KnowledgeRetrievalTab({
     defaults,
     retrievalProfileDetail,
     disabled = false,
+    userId,
 }: KnowledgeRetrievalTabProps) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -1033,7 +1035,9 @@ export default function KnowledgeRetrievalTab({
     const [detailError, setDetailError] = useState<string | null>(null)
 
     const loadChunkDetail = useCallback(async (chunkId: string): Promise<KnowledgeChunkDetail> => {
-        const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`)
+        const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`, {
+            headers: knowledgeHeaders(userId),
+        })
         const data = await response.json().catch(() => null) as KnowledgeChunkDetail | { message?: string } | null
 
         if (!response.ok) {
@@ -1045,7 +1049,7 @@ export default function KnowledgeRetrievalTab({
         }
 
         return data as KnowledgeChunkDetail
-    }, [])
+    }, [userId])
 
     useEffect(() => {
         setSettings(current => normalizeSettings(current, defaults))
@@ -1072,7 +1076,9 @@ export default function KnowledgeRetrievalTab({
 
         const loadDocumentNames = async () => {
             try {
-                const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${source.id}&page=1&pageSize=100`)
+                const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${source.id}&page=1&pageSize=100`, {
+                    headers: knowledgeHeaders(userId),
+                })
                 const data = await response.json().catch(() => null) as PagedResponse<KnowledgeDocumentSummary> | { message?: string } | null
 
                 if (!response.ok) {
@@ -1099,7 +1105,7 @@ export default function KnowledgeRetrievalTab({
         return () => {
             cancelled = true
         }
-    }, [source.id])
+    }, [source.id, userId])
 
     const displayResultsByMode = useMemo<Record<RetrievalMode, RetrievalDisplayHit[]>>(() => ({
         semantic: buildDisplayResults('semantic', modeResults.semantic.hits, documentNames, settings),
@@ -1177,9 +1183,7 @@ export default function KnowledgeRetrievalTab({
 
         const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/search/compare`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: knowledgeHeaders(userId),
             body: JSON.stringify(compareBody),
         })
         const data = await response.json().catch(() => null) as RetrievalCompareResponse | { message?: string } | null
@@ -1188,9 +1192,7 @@ export default function KnowledgeRetrievalTab({
             const modeResponses = await Promise.all(modes.map(async mode => {
                 const legacyResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/search`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: knowledgeHeaders(userId),
                     body: JSON.stringify({
                         ...baseBody,
                         topK: COMPARE_FETCH_TOP_K,
@@ -1235,7 +1237,7 @@ export default function KnowledgeRetrievalTab({
         }
 
         return data as RetrievalCompareResponse
-    }, [source.id, source.retrievalProfileId])
+    }, [source.id, source.retrievalProfileId, userId])
 
     const executeSearch = useCallback(async (nextQuery?: string) => {
         const effectiveQuery = (nextQuery ?? query).trim()
@@ -1668,6 +1670,7 @@ export default function KnowledgeRetrievalTab({
                 loading={detailLoading}
                 error={detailError}
                 canEdit={capabilities?.featureFlags.allowChunkEdit ?? true}
+                userId={userId}
                 onReload={async () => {
                     if (!selection) return
 

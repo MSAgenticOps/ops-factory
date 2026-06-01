@@ -3,7 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { usePreview } from '../../../platform/providers/PreviewContext'
-import { runtime } from '../../../../config/runtime'
+import { useUser } from '../../../platform/providers/UserContext'
+import { runtime, knowledgeHeaders, knowledgeFormDataHeaders } from '../../../../config/runtime'
 import { useKnowledgeSourceDetail } from '../hooks/useKnowledgeSourceDetail'
 import { getErrorMessage } from '../../../../utils/errorMessages'
 import { triggerDownload } from '../../../../utils/fileDownload'
@@ -1500,6 +1501,7 @@ function UploadDocumentsModal({
     maxFileSizeMb,
     allowedContentTypes,
     existingFileNames,
+    userId,
     onClose,
     onUploaded,
 }: {
@@ -1508,6 +1510,7 @@ function UploadDocumentsModal({
     maxFileSizeMb?: number
     allowedContentTypes?: string[]
     existingFileNames?: Set<string>
+    userId?: string | null
     onClose: () => void
     onUploaded: () => Promise<void>
 }) {
@@ -1555,6 +1558,7 @@ function UploadDocumentsModal({
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/documents:ingest`, {
                 method: 'POST',
+                headers: knowledgeFormDataHeaders(userId),
                 body: formData,
             })
             const data = await response.json().catch(() => null) as KnowledgeIngestResponse | { message?: string } | null
@@ -1711,6 +1715,7 @@ export default function KnowledgeConfigure() {
     const [searchParams, setSearchParams] = useSearchParams()
     const { showToast } = useToast()
     const { openPreview, previewFile } = usePreview()
+    const { userId } = useUser()
     const {
         source,
         stats,
@@ -1730,7 +1735,7 @@ export default function KnowledgeConfigure() {
         resetIndexProfile,
         resetRetrievalProfile,
         deleteSource,
-    } = useKnowledgeSourceDetail(sourceId)
+    } = useKnowledgeSourceDetail(sourceId, userId)
     const [showEditBasicInfoModal, setShowEditBasicInfoModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showRebuildModal, setShowRebuildModal] = useState(false)
@@ -2172,7 +2177,9 @@ export default function KnowledgeConfigure() {
         setDocumentsError(null)
 
         try {
-            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${sourceId}&page=1&pageSize=100`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${sourceId}&page=1&pageSize=100`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json() as PagedResponse<KnowledgeDocumentSummary> | { message?: string }
 
             if (!response.ok) {
@@ -2184,7 +2191,9 @@ export default function KnowledgeConfigure() {
 
             const artifactEntries = await Promise.all(items.map(async document => {
                 try {
-                    const artifactsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${document.id}/artifacts`)
+                    const artifactsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${document.id}/artifacts`, {
+                        headers: knowledgeHeaders(userId),
+                    })
                     const artifactsData = await artifactsResponse.json() as KnowledgeDocumentArtifacts
                     if (!artifactsResponse.ok) {
                         throw new Error(artifactsResponse.statusText)
@@ -2215,6 +2224,7 @@ export default function KnowledgeConfigure() {
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${deleteDocumentTarget.id}`, {
                 method: 'DELETE',
+                headers: knowledgeHeaders(userId),
             })
             const data = await response.json().catch(() => null) as { message?: string } | null
             if (!response.ok) {
@@ -2240,9 +2250,7 @@ export default function KnowledgeConfigure() {
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${renameDocumentTarget.id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: knowledgeHeaders(userId),
                 body: JSON.stringify({
                     title: nextTitle,
                 }),
@@ -2301,7 +2309,9 @@ export default function KnowledgeConfigure() {
 
     const handlePreviewDocument = useCallback(async (knowledgeDocument: KnowledgeDocumentSummary) => {
         try {
-            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${knowledgeDocument.id}/preview`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${knowledgeDocument.id}/preview`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json().catch(() => null) as KnowledgeDocumentPreview | { message?: string } | null
 
             if (!response.ok) {
@@ -2337,6 +2347,7 @@ export default function KnowledgeConfigure() {
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}:rebuild`, {
                 method: 'POST',
+                headers: knowledgeHeaders(userId),
             })
             const data = await response.json().catch(() => null) as KnowledgeJobResponse | { code?: string; message?: string } | null
 
@@ -2933,6 +2944,7 @@ export default function KnowledgeConfigure() {
                             onDocumentFilterChange={(documentId) => updateRouteState('chunks', { documentId })}
                             onChunksMutated={reload}
                             readOnly={isSourceUnavailable}
+                            userId={userId}
                         />
                     )}
 
@@ -2945,6 +2957,7 @@ export default function KnowledgeConfigure() {
                                 defaults={defaults}
                                 retrievalProfileDetail={retrievalProfileDetail}
                                 disabled={isSourceUnavailable}
+                                userId={userId}
                             />
                         </div>
                     )}
@@ -3052,6 +3065,7 @@ export default function KnowledgeConfigure() {
                     maxFileSizeMb={defaults?.ingest.maxFileSizeMb}
                     allowedContentTypes={defaults?.ingest.allowedContentTypes}
                     existingFileNames={existingFileNames}
+                    userId={userId}
                     onClose={() => setShowUploadModal(false)}
                     onUploaded={loadDocuments}
                 />

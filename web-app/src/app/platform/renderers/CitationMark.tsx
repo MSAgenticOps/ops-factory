@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
 import type { RefObject } from 'react'
-import { runtime } from '../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../config/runtime'
 import type { Citation } from '../../../utils/citationParser'
 import { useCitationCard } from './useCitationCard'
 import './CitationMark.css'
 
 interface CitationMarkProps {
     citation: Citation
+    userId?: string | null
 }
 
 const sourceNameCache = new Map<string, string>()
 
-export default function CitationMark({ citation }: CitationMarkProps) {
+export default function CitationMark({ citation, userId }: CitationMarkProps) {
     const { markRef, show, hide, renderCard } = useCitationCard(citation)
     const [sourceName, setSourceName] = useState<string | null>(citation.sourceId || null)
     const wrapperRef = markRef as RefObject<HTMLSpanElement>
@@ -30,6 +31,7 @@ export default function CitationMark({ citation }: CitationMarkProps) {
 
         let cancelled = false
         fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${citation.sourceId}`, {
+            headers: knowledgeHeaders(userId),
             signal: AbortSignal.timeout(10000),
         })
             .then(async response => {
@@ -48,7 +50,7 @@ export default function CitationMark({ citation }: CitationMarkProps) {
         return () => {
             cancelled = true
         }
-    }, [citation.sourceId])
+    }, [citation.sourceId, userId])
 
     return (
         <span className="citation-mark-wrapper" ref={wrapperRef}>
