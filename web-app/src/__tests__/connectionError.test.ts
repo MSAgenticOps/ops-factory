@@ -108,7 +108,7 @@ describe('Unified error banner CSS class — conn-banner', () => {
         { file: 'app/modules/files/pages/FilesPage.tsx', name: 'Files' },
         { file: 'app/modules/inbox/pages/InboxPage.tsx', name: 'Inbox' },
         { file: 'app/modules/agents/pages/AgentsPage.tsx', name: 'Agents' },
-        { file: 'app/modules/scheduler/pages/ScheduledActionsPage.tsx', name: 'ScheduledActions' },
+        { file: 'app/platform/scheduler/SchedulesPanel.tsx', name: 'SchedulesPanel' },
     ]
 
     for (const { file, name } of pagesToCheck) {

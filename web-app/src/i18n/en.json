@@ -1274,6 +1274,23 @@
   "scheduler": {
     "title": "Scheduler",
     "subtitle": "Create and manage cron-based actions per agent.",
+    "subtitleAgent": "Create and manage cron-based scheduled actions for this agent.",
+    "loadFailed": "Failed to load schedules.",
+    "loadRunsFailed": "Failed to load schedule runs.",
+    "operationFailed": "Operation failed.",
+    "deleteFailed": "Delete failed.",
+    "cronInvalid": "Cron expression must have 5 or 6 fields.",
+    "nameRequired": "Name is required.",
+    "instructionRequired": "Instruction is required.",
+    "created": "Scheduled action created.",
+    "updated": "Scheduled action updated.",
+    "pausedToast": "Paused {{id}}.",
+    "resumedToast": "Resumed {{id}}.",
+    "killedToast": "Killed {{id}}.",
+    "triggeredToast": "Triggered {{id}}.",
+    "runCancelledToast": "Run cancelled for {{id}}.",
+    "deletedToast": "Deleted {{id}}.",
+    "deleteConfirm": "Delete scheduled action \"{{id}}\"?",
     "agent": "Agent",
     "allAgents": "All",
     "searchPlaceholder": "Search scheduled actions...",
@@ -2041,7 +2058,8 @@
     "prompts": "Prompts",
     "mcp": "MCP",
     "skills": "Skills",
-    "memory": "Memory"
+    "memory": "Memory",
+    "schedules": "Schedules"
   },
   "market": {
     "title": "Capability Market",
