@@ -754,9 +754,20 @@ function getDocumentDisplayTitle(document: Pick<KnowledgeDocumentSummary, 'name'
 
 function getDisplayDownloadName(document: Pick<KnowledgeDocumentSummary, 'name' | 'title'>): string {
     if (!document.title?.trim()) return document.name
+    const title = document.title.trim()
+    // Check if title already contains an extension
+    if (title.includes('.')) {
+        const lastDotIdx = title.lastIndexOf('.')
+        const ext = title.slice(lastDotIdx)
+        // Only use title as-is if it ends with a known extension
+        if (['.txt', '.md', '.pdf', '.docx', '.pptx', '.xlsx', '.html', '.csv'].includes(ext.toLowerCase())) {
+            return title
+        }
+    }
+    // Otherwise, append extension from original filename
     const dotIdx = document.name.lastIndexOf('.')
     const ext = dotIdx > 0 ? document.name.slice(dotIdx) : ''
-    return document.title.trim() + ext
+    return title + ext
 }
 
 function getDocumentType(document: Pick<KnowledgeDocumentSummary, 'name' | 'contentType'>): string {
@@ -1517,6 +1528,7 @@ function UploadDocumentsModal({
     const [sessionState, setSessionState] = useState<UploadSessionState>('idle')
     const [summary, setSummary] = useState<string | null>(null)
     const [requestError, setRequestError] = useState<string | null>(null)
+    const [skippedFiles, setSkippedFiles] = useState<KnowledgeSkippedFileInfo[]>([])
 
     const handleAddFiles = useCallback((files: File[]) => {
         setRequestError(null)
@@ -1563,16 +1575,32 @@ function UploadDocumentsModal({
                 throw new Error((data as { message?: string } | null)?.message || response.statusText)
             }
 
-            const importedCount = (data as KnowledgeIngestResponse).documentCount
+            const ingestResponse = data as KnowledgeIngestResponse
+            const importedCount = ingestResponse.documentCount
+            const skipped = ingestResponse.skipped || []
+
+            // Mark all uploading items as completed first
             setItems(current => current.map(item => item.status === 'uploading' ? {
                 ...item,
                 status: 'completed',
             } : item))
-            setSummary(
-                importedCount === pendingItems.length
-                    ? t('knowledge.uploadSummarySuccess', { count: importedCount })
-                    : t('knowledge.uploadSummaryPartial', { imported: importedCount, total: pendingItems.length })
-            )
+
+            // Update skipped files state
+            setSkippedFiles(skipped)
+
+            // Set summary message based on results
+            const skippedCount = skipped.length
+            if (skippedCount > 0) {
+                setSummary(t('knowledge.uploadSummaryWithSkipped', {
+                    imported: importedCount,
+                    skipped: skippedCount,
+                    total: pendingItems.length
+                }))
+            } else if (importedCount === pendingItems.length) {
+                setSummary(t('knowledge.uploadSummarySuccess', { count: importedCount }))
+            } else {
+                setSummary(t('knowledge.uploadSummaryPartial', { imported: importedCount, total: pendingItems.length }))
+            }
             setSessionState('finished')
             await onUploaded()
         } catch (err) {
@@ -1618,7 +1646,29 @@ function UploadDocumentsModal({
                             <div className="knowledge-upload-summary-metrics">
                                 <span>{t('knowledge.uploadSummaryMetricCompleted', { count: completedCount })}</span>
                                 <span>{t('knowledge.uploadSummaryMetricFailed', { count: failedCount })}</span>
+                                {skippedFiles.length > 0 && (
+                                    <span>{t('knowledge.uploadSummaryMetricSkipped', { count: skippedFiles.length })}</span>
+                                )}
                             </div>
+                            {skippedFiles.length > 0 && (
+                                <div className="knowledge-upload-skipped-files" style={{ marginTop: 'var(--spacing-2)' }}>
+                                    <div className="knowledge-upload-skipped-title">{t('knowledge.uploadSkippedFilesTitle')}</div>
+                                    <div className="knowledge-upload-skipped-list">
+                                        {skippedFiles.map(file => (
+                                            <div key={file.fileName} className="knowledge-upload-skipped-item">
+                                                <span className="knowledge-upload-skipped-reason">
+                                                    {file.reason === 'DUPLICATE_CONTENT' && file.existingFileName
+                                                        ? t('knowledge.skipReasonDuplicateWithExisting', { uploaded: file.fileName, existing: file.existingFileName })
+                                                        : file.reason === 'DUPLICATE_CONTENT'
+                                                            ? `${file.fileName} - ${t('knowledge.skipReasonDuplicateContent')}`
+                                                            : t('knowledge.skipReasonUnknown', { reason: file.reason })
+                                                    }
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

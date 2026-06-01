@@ -906,6 +906,44 @@
     cursor: default;
 }
 
+.knowledge-upload-skipped-files {
+    margin-top: var(--spacing-2);
+    padding-top: var(--spacing-2);
+    border-top: 1px solid var(--color-border);
+}
+
+.knowledge-upload-skipped-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-2);
+}
+
+.knowledge-upload-skipped-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.knowledge-upload-skipped-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-1) 0;
+}
+
+.knowledge-upload-skipped-filename {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    flex-shrink: 0;
+}
+
+.knowledge-upload-skipped-reason {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
 .knowledge-config-stack {
     display: flex;
     flex-direction: column;

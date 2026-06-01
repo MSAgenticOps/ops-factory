@@ -150,7 +150,16 @@ public class DocumentController {
     ) {
     }
 
-    public record IngestDocumentsResponse(String jobId, String sourceId, String status, int documentCount) {
+    public record SkippedFileInfo(String fileName, String reason, String existingFileName) {
+    }
+
+    public record IngestDocumentsResponse(
+        String jobId,
+        String sourceId,
+        String status,
+        int documentCount,
+        List<SkippedFileInfo> skipped
+    ) {
     }
 
     public record DocumentDetail(
