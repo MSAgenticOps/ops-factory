@@ -489,6 +489,11 @@ public class InstanceManager {
             // Seed per-user memory before goosed launches so the new session loads the agent's
             // preset memory. Idempotent (one-time marker), shared with the memory tab's seed path.
             agentConfigService.ensureMemorySeeded(userId, agentId);
+            // Seed the agent's default scheduled tasks (e.g. fo-copilot ticket-watch-loop +
+            // memory-maintenance) before launch so goosed registers them with its in-process cron on
+            // startup. Idempotent (one-time marker), so the user's later pauses/deletes in the
+            // Scheduler tab stick. Only fires the cron reliably for resident instances.
+            agentConfigService.ensureSchedulesSeeded(userId, agentId);
             resetStuckRunningSchedules(runtimeRoot);
             int port = portAllocator.allocate();
             long prepareMs = System.currentTimeMillis() - prepareStart;

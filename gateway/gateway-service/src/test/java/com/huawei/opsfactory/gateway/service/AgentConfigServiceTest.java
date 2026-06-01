@@ -13,6 +13,9 @@ import static org.junit.Assert.assertTrue;
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -22,8 +25,10 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Test coverage for Agent Config Service.
@@ -969,6 +974,28 @@ public class AgentConfigServiceTest {
         return file;
     }
 
+    private void writeScheduleSeed(String agentId) throws IOException {
+        Path seedDir = gatewayRoot.resolve("agents").resolve(agentId).resolve("config").resolve("seed-schedules");
+        Files.createDirectories(seedDir);
+        Files.writeString(seedDir.resolve("seed.json"),
+            "[{\"id\":\"ticket-watch-loop\",\"cron\":\"0 */30 * * * *\",\"recipe\":\"watch.yaml\"},"
+                + "{\"id\":\"mem-maint\",\"cron\":\"0 0 12 * * *\",\"recipe\":\"mem.yaml\"}]");
+        Files.writeString(seedDir.resolve("watch.yaml"), "version: 1.0.0\ntitle: watch\ninstructions: run watch\n");
+        Files.writeString(seedDir.resolve("mem.yaml"), "version: 1.0.0\ntitle: mem\ninstructions: maintain memory\n");
+    }
+
+    private Path scheduleJsonPath(String userId, String agentId) {
+        return service.getUserAgentDir(userId, agentId).resolve("data").resolve("schedule.json");
+    }
+
+    private List<Map<String, Object>> readScheduledJobs(String userId, String agentId) throws IOException {
+        Path path = scheduleJsonPath(userId, agentId);
+        if (Files.notExists(path)) {
+            return List.of();
+        }
+        return new ObjectMapper().readValue(Files.readString(path), new TypeReference<List<Map<String, Object>>>() { });
+    }
+
     /**
      * On first access, the user's memory is seeded from the shared agent seed; the seeded entries
      * are visible through the memory tab (listMemoryFiles).
@@ -1055,6 +1082,147 @@ public class AgentConfigServiceTest {
             service.listMemoryFiles(USER_A, "test-agent").stream().map(f -> f.get("category")).toList();
         assertTrue(categories.contains("sla-criteria"));
         assertTrue(categories.contains("my-note"));
+    }
+
+    /**
+     * On first spawn, the agent's default scheduled tasks are seeded: each recipe is copied to
+     * {@code data/scheduled_recipes/<id>.yaml} and an active job is appended to {@code data/schedule.json}.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureSchedulesSeeded_seedsOnFirstSpawn() throws IOException {
+        writeScheduleSeed("test-agent");
+
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+
+        Path recipesDir = service.getUserAgentDir(USER_A, "test-agent").resolve("data").resolve("scheduled_recipes");
+        assertTrue(Files.exists(recipesDir.resolve("ticket-watch-loop.yaml")));
+        assertTrue(Files.exists(recipesDir.resolve("mem-maint.yaml")));
+
+        List<Map<String, Object>> jobs = readScheduledJobs(USER_A, "test-agent");
+        assertEquals(2, jobs.size());
+        Map<String, Object> watch =
+            jobs.stream().filter(j -> "ticket-watch-loop".equals(j.get("id"))).findFirst().orElseThrow();
+        assertEquals("0 */30 * * * *", watch.get("cron"));
+        assertEquals(Boolean.FALSE, watch.get("paused"));
+        assertTrue(((String) watch.get("source")).endsWith("scheduled_recipes/ticket-watch-loop.yaml"));
+        assertTrue(Files.exists(
+            service.getUserAgentDir(USER_A, "test-agent").resolve("data").resolve(".schedules-seeded")));
+    }
+
+    /**
+     * Seeding is one-time: after a user deletes a seeded task, a later spawn does NOT resurrect it.
+     * Guarded by the {@code data/.schedules-seeded} marker, not by emptiness.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureSchedulesSeeded_isOneTime_notReseededAfterDelete() throws IOException {
+        writeScheduleSeed("test-agent");
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+        assertEquals(2, readScheduledJobs(USER_A, "test-agent").size());
+
+        // User removes every task via the Scheduler tab (goosed rewrites schedule.json).
+        Files.writeString(scheduleJsonPath(USER_A, "test-agent"), "[]");
+
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+        assertTrue(readScheduledJobs(USER_A, "test-agent").isEmpty());
+    }
+
+    /**
+     * Seeding preserves schedules a user (or goosed) already created — it appends only the missing ids.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureSchedulesSeeded_mergesWithExistingSchedules() throws IOException {
+        writeScheduleSeed("test-agent");
+        Path dataDir = service.getUserAgentDir(USER_A, "test-agent").resolve("data");
+        Files.createDirectories(dataDir);
+        Files.writeString(dataDir.resolve("schedule.json"),
+            "[{\"id\":\"say-hello\",\"source\":\"/x/say-hello.yaml\",\"cron\":\"0 0 9 * * *\",\"paused\":true}]");
+
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+
+        List<String> ids = readScheduledJobs(USER_A, "test-agent").stream().map(j -> (String) j.get("id")).toList();
+        assertEquals(3, ids.size());
+        assertTrue(ids.contains("say-hello"));
+        assertTrue(ids.contains("ticket-watch-loop"));
+        assertTrue(ids.contains("mem-maint"));
+    }
+
+    /**
+     * Re-running the seed never duplicates jobs (idempotent within a single seeded lifetime).
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureSchedulesSeeded_idempotentNoDuplicates() throws IOException {
+        writeScheduleSeed("test-agent");
+
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+
+        assertEquals(2, readScheduledJobs(USER_A, "test-agent").size());
+    }
+
+    /**
+     * Seeding is a no-op (but still marks done) when the agent ships no seed-schedules manifest.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureSchedulesSeeded_noSeedSource() throws IOException {
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+
+        assertTrue(readScheduledJobs(USER_A, "test-agent").isEmpty());
+        assertTrue(Files.exists(
+            service.getUserAgentDir(USER_A, "test-agent").resolve("data").resolve(".schedules-seeded")));
+    }
+
+    /**
+     * Guards the SHIPPED fo-copilot seed manifest itself: it must parse, every entry must have a
+     * filename-safe id + cron, ids must be unique, and each referenced recipe file must exist. Catches a
+     * typo'd recipe reference or unsafe id that the synthetic-fixture tests above cannot — that would
+     * otherwise ship a permanently dead scheduled task.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testShippedFoCopilotSeed_parsesAndReferencesExistingRecipes() throws IOException {
+        Path seedDir = locateShippedSeedDir("fo-copilot");
+        assertNotNull("shipped fo-copilot seed-schedules dir not found from " + System.getProperty("user.dir"),
+            seedDir);
+
+        List<Map<String, String>> seeds = new ObjectMapper().readValue(
+            Files.readString(seedDir.resolve("seed.json")), new TypeReference<List<Map<String, String>>>() { });
+        assertFalse("shipped seed.json must declare at least one task", seeds.isEmpty());
+
+        Set<String> ids = new HashSet<>();
+        for (Map<String, String> seed : seeds) {
+            String id = seed.get("id");
+            assertNotNull("seed entry missing id", id);
+            assertTrue("id not filename-safe: " + id, id.matches("[A-Za-z0-9._-]+"));
+            assertNotNull("seed entry missing cron: " + id, seed.get("cron"));
+            assertTrue("duplicate seed id: " + id, ids.add(id));
+            String recipe = seed.get("recipe");
+            assertNotNull("seed entry missing recipe: " + id, recipe);
+            assertTrue("recipe file missing for " + id + ": " + recipe, Files.isRegularFile(seedDir.resolve(recipe)));
+        }
+    }
+
+    private Path locateShippedSeedDir(String agentId) {
+        Path cwd = Path.of(System.getProperty("user.dir"));
+        for (Path base : List.of(cwd, cwd.getParent() == null ? cwd : cwd.getParent())) {
+            for (String prefix : List.of("agents", "gateway/agents")) {
+                Path candidate = base.resolve(prefix).resolve(agentId).resolve("config").resolve("seed-schedules");
+                if (Files.isDirectory(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+        return null;
     }
 
     /**
