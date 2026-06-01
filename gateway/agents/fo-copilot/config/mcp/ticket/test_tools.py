@@ -41,7 +41,7 @@ class TicketToolsTest(unittest.TestCase):
         res = call(self.tools, "get_todo")
         self.assertTrue(res["ok"])
         tickets = res["data"]["tickets"]
-        self.assertTrue(len(tickets) >= 1)
+        self.assertGreaterEqual(len(tickets), 1)
         # concise view exposes high-signal fields and not the full timeline
         self.assertIn("slaResolveDueAt", tickets[0])
         self.assertNotIn("timeline", tickets[0])
