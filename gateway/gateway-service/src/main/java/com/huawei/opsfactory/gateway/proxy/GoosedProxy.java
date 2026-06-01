@@ -571,7 +571,7 @@ public class GoosedProxy {
         }
 
         org.springframework.web.reactive.function.client.ClientResponse upstream =
-            spec.exchange().block(Duration.ofSeconds(10));
+            spec.exchangeToMono(Mono::just).block(Duration.ofSeconds(10));
         if (upstream == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent event stream unavailable");
         }
