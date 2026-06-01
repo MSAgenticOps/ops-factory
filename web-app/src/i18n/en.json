@@ -2041,7 +2041,8 @@
     "prompts": "Prompts",
     "mcp": "MCP",
     "skills": "Skills",
-    "memory": "Memory"
+    "memory": "Memory",
+    "schedules": "Schedules"
   },
   "market": {
     "title": "Capability Market",

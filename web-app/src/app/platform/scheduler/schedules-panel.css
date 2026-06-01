@@ -287,3 +287,29 @@
         width: 100%;
     }
 }
+
+/* Embedded mode: rendered inside an agent-config "我的" section (no page shell). */
+.scheduled-page-embedded {
+    padding: 0;
+}
+
+.schedules-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    margin-bottom: var(--spacing-5);
+}
+
+.schedules-panel-title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.schedules-panel-subtitle {
+    margin: var(--spacing-1) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}

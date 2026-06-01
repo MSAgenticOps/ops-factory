@@ -2041,7 +2041,8 @@
     "prompts": "提示词",
     "mcp": "MCP",
     "skills": "技能",
-    "memory": "记忆"
+    "memory": "记忆",
+    "schedules": "定时任务"
   },
   "market": {
     "title": "能力市场",

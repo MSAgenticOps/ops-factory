@@ -9,13 +9,14 @@ import { ModelConfigSection } from '../components/model'
 import { SkillMarketDrawer, SkillSection } from '../components/skill'
 import { PromptsSection } from '../components/prompt'
 import { MemorySection } from '../components/memory'
+import SchedulesPanel from '../../../platform/scheduler/SchedulesPanel'
 import PageBackLink from '../../../platform/ui/primitives/PageBackLink'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import type { AgentModelConfig, CreateProviderRequest, UpdateProviderRequest } from '../../../../types/agentConfig'
 import type { SkillEntry } from '../../../../types/skill'
 import '../styles/agents.css'
 
-type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory'
+type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory' | 'schedules'
 
 export default function AgentConfigure() {
     const { t } = useTranslation()
@@ -150,7 +151,10 @@ export default function AgentConfigure() {
         { key: 'mcp', label: t('configTabs.mcp') },
         { key: 'skills', label: t('configTabs.skills') },
     ]
-    const mineTabs: { key: ConfigTab; label: string }[] = [{ key: 'memory', label: t('configTabs.memory') }]
+    const mineTabs: { key: ConfigTab; label: string }[] = [
+        { key: 'memory', label: t('configTabs.memory') },
+        { key: 'schedules', label: t('configTabs.schedules') },
+    ]
 
     const renderTab = (tab: { key: ConfigTab; label: string }) => (
         <button
@@ -230,6 +234,12 @@ export default function AgentConfigure() {
                         {activeTab === 'memory' && (
                             <section className="agent-configure-section">
                                 <MemorySection agentId={agentId || null} />
+                            </section>
+                        )}
+
+                        {activeTab === 'schedules' && agentId && (
+                            <section className="agent-configure-section">
+                                <SchedulesPanel agentId={agentId} embedded />
                             </section>
                         )}
                     </div>
