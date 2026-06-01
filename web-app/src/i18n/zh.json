@@ -2420,6 +2420,8 @@
     "importErrorClusterNotFound": "未找到集群：{{cluster}}",
     "importErrorClusterNameRequired": "集群名称不能为空",
     "importErrorClusterNameTooLong": "集群名称长度为{{length}}，超过100字符",
+    "importErrorClusterTypeRequired": "集群类型不能为空",
+    "importErrorClusterGroupRequired": "所属主机组不能为空",
     "importErrorClusterTypeNotFound": "未找到集群类型：{{type}}",
     "importErrorPurposeTooLong": "用途长度为{{length}}，超过200字符",
     "importErrorDescriptionTooLong": "描述长度为{{length}}，超过500字符",

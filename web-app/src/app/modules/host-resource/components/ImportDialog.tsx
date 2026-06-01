@@ -194,6 +194,10 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorClusterNameRequired')
             case 'import.clusterNameTooLong':
                 return t('hostResource.importErrorClusterNameTooLong', { length: err.params?.length })
+            case 'import.clusterTypeRequired':
+                return t('hostResource.importErrorClusterTypeRequired')
+            case 'import.clusterGroupRequired':
+                return t('hostResource.importErrorClusterGroupRequired')
             case 'import.clusterTypeNotFound':
                 return t('hostResource.importErrorClusterTypeNotFound', { type: err.params?.type })
             case 'import.purposeTooLong':
