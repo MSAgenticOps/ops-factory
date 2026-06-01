@@ -135,7 +135,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
     }, [fixedAgentId])
 
     const agentOptions = useMemo(() => (
-        [
+        // Only the all-agents overview renders the agent selector; skip the work in single-agent mode.
+        singleAgent ? [] : [
             {
                 value: ALL_AGENTS,
                 label: t('scheduler.allAgents'),
@@ -145,7 +146,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 label: agent.name,
             })),
         ]
-    ), [agents, t])
+    ), [agents, t, singleAgent])
 
     const getDraftForJob = (job: ScheduledJobRecord) => drafts[job.agentId]?.[job.id]
 
@@ -188,7 +189,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 agentName: selectedAgentInfo.name,
             })))
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Failed to load schedules')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -200,7 +201,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             const scheduleRuns = await getClientForJob(job).listScheduleSessions(job.id, 30)
             setRuns(scheduleRuns)
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Failed to load schedule runs')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.loadRunsFailed'))
         } finally {
             setRunsLoading(false)
         }
@@ -272,17 +273,17 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
 
         const targetClient = getClient(targetAgentId)
         if (!isCronLikelyValid(form.cron)) {
-            showToast('warning', 'Cron expression must have 5 or 6 fields')
+            showToast('warning', t('scheduler.cronInvalid'))
             return
         }
 
         const cleanedName = slugify(form.name)
         if (!cleanedName) {
-            showToast('warning', 'Name is required')
+            showToast('warning', t('scheduler.nameRequired'))
             return
         }
         if (!form.instruction.trim()) {
-            showToast('warning', 'Instruction is required')
+            showToast('warning', t('scheduler.instructionRequired'))
             return
         }
 
@@ -317,10 +318,10 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 if (wasPaused) {
                     await targetClient.pauseSchedule(scheduleId)
                 }
-                showToast('success', 'Scheduled action updated')
+                showToast('success', t('scheduler.updated'))
             } else {
                 await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim() })
-                showToast('success', 'Scheduled action created')
+                showToast('success', t('scheduler.created'))
             }
 
             const nextDrafts: ScheduleDraftMap = {
@@ -342,7 +343,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             setShowModal(false)
             await loadSchedules()
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
         } finally {
             setSubmitting(false)
         }
@@ -351,64 +352,66 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
     const handlePause = async (job: ScheduledJobRecord) => {
         try {
             await getClientForJob(job).pauseSchedule(job.id)
-            showToast('success', `Paused ${job.id}`)
+            showToast('success', t('scheduler.pausedToast', { id: job.id }))
             await loadSchedules()
             if (editingJob?.id === job.id && editingJob.agentId === job.agentId) {
                 setEditingJob({ ...job, paused: true, currently_running: false })
             }
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
         }
     }
 
     const handleUnpause = async (job: ScheduledJobRecord) => {
         try {
             await getClientForJob(job).unpauseSchedule(job.id)
-            showToast('success', `Unpaused ${job.id}`)
+            showToast('success', t('scheduler.resumedToast', { id: job.id }))
             await loadSchedules()
             if (editingJob?.id === job.id && editingJob.agentId === job.agentId) {
                 setEditingJob({ ...job, paused: false, currently_running: false })
             }
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
         }
     }
 
     const handleKill = async (job: ScheduledJobRecord) => {
         try {
             await getClientForJob(job).killSchedule(job.id)
-            showToast('success', `Killed ${job.id}`)
+            showToast('success', t('scheduler.killedToast', { id: job.id }))
             await loadSchedules()
             if (editingJob?.id === job.id && editingJob.agentId === job.agentId) {
                 setEditingJob({ ...job, currently_running: false })
             }
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
         }
     }
 
     const handleRunNow = async (job: ScheduledJobRecord) => {
         try {
             const sessionId = await getClientForJob(job).runScheduleNow(job.id)
-            showToast('success', sessionId === 'CANCELLED' ? `Run cancelled for ${job.id}` : `Triggered ${job.id}`)
+            showToast('success', sessionId === 'CANCELLED'
+                ? t('scheduler.runCancelledToast', { id: job.id })
+                : t('scheduler.triggeredToast', { id: job.id }))
             await loadSchedules()
             await loadRuns(job)
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Operation failed')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
         }
     }
 
     const handleDelete = async (job: ScheduledJobRecord) => {
         const confirmed = await requestConfirm({
             title: t('common.confirmTitle'),
-            message: `Delete scheduled action "${job.id}"?`,
+            message: t('scheduler.deleteConfirm', { id: job.id }),
             variant: 'danger',
             confirmLabel: t('common.delete'),
         })
         if (!confirmed) return
         try {
             await getClientForJob(job).deleteSchedule(job.id)
-            showToast('success', `Deleted ${job.id}`)
+            showToast('success', t('scheduler.deletedToast', { id: job.id }))
             if (editingJob?.id === job.id && editingJob.agentId === job.agentId) {
                 setShowModal(false)
                 setEditingJob(null)
@@ -416,7 +419,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             }
             await loadSchedules()
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : 'Delete failed')
+            showToast('error', err instanceof Error ? err.message : t('scheduler.deleteFailed'))
         }
     }
 
@@ -434,12 +437,12 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
     )
 
     return (
-        <div className={embedded ? 'scheduled-page scheduled-page-embedded' : 'page-container sidebar-top-page page-shell-wide scheduled-page'}>
+        <div className={embedded ? 'schedules-panel-embedded' : 'page-container sidebar-top-page page-shell-wide scheduled-page'}>
             {embedded ? (
                 <div className="schedules-panel-header">
                     <div>
                         <h2 className="schedules-panel-title">{t('scheduler.title')}</h2>
-                        <p className="schedules-panel-subtitle">{t('scheduler.subtitle')}</p>
+                        <p className="schedules-panel-subtitle">{t('scheduler.subtitleAgent')}</p>
                     </div>
                     {createButton}
                 </div>

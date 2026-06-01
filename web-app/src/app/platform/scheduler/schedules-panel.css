@@ -288,9 +288,9 @@
     }
 }
 
-/* Embedded mode: rendered inside an agent-config "我的" section (no page shell). */
-.scheduled-page-embedded {
-    padding: 0;
+/* Embedded mode: rendered inside an agent-config "我的" section, which already provides padding. */
+.schedules-panel-embedded {
+    display: block;
 }
 
 .schedules-panel-header {
