@@ -35,17 +35,17 @@ export function useSkillMarket(): UseSkillMarketResult {
         setIsLoading(true)
         setError(null)
         try {
-            setSkills(await apiFetchSkillList(query))
+            setSkills(await apiFetchSkillList(query, userId))
         } catch (err) {
             setError(getErrorMessage(err))
         } finally {
             setIsLoading(false)
         }
-    }, [])
+    }, [userId])
 
     const createSkill = useCallback(async (payload: { id: string; name: string; description: string; instructions: string }) => {
         try {
-            await apiCreateSkill(payload)
+            await apiCreateSkill(payload, userId)
             await fetchSkills()
             return { success: true }
         } catch (err) {
@@ -54,46 +54,46 @@ export function useSkillMarket(): UseSkillMarketResult {
             }
             return { success: false, error: getErrorMessage(err) }
         }
-    }, [fetchSkills])
+    }, [fetchSkills, userId])
 
     const fetchSkill = useCallback(async (skillId: string) => {
         try {
-            const skill = await fetchSkillDetail(skillId)
+            const skill = await fetchSkillDetail(skillId, userId)
             return { success: true, skill }
         } catch (err) {
             return { success: false, error: getErrorMessage(err) }
         }
-    }, [])
+    }, [userId])
 
     const updateSkill = useCallback(async (skillId: string, payload: { name: string; description: string; instructions: string }) => {
         try {
-            await apiUpdateSkill(skillId, payload)
+            await apiUpdateSkill(skillId, payload, userId)
             await fetchSkills()
             return { success: true }
         } catch (err) {
             return { success: false, error: getErrorMessage(err) }
         }
-    }, [fetchSkills])
+    }, [fetchSkills, userId])
 
     const importSkill = useCallback(async (file: File, id?: string) => {
         try {
-            await apiImportSkill(file, id)
+            await apiImportSkill(file, userId, id)
             await fetchSkills()
             return { success: true }
         } catch (err) {
             return { success: false, error: getErrorMessage(err) }
         }
-    }, [fetchSkills])
+    }, [fetchSkills, userId])
 
     const deleteSkill = useCallback(async (skillId: string) => {
         try {
-            await apiDeleteSkill(skillId)
+            await apiDeleteSkill(skillId, userId)
             await fetchSkills()
             return { success: true }
         } catch (err) {
             return { success: false, error: getErrorMessage(err) }
         }
-    }, [fetchSkills])
+    }, [fetchSkills, userId])
 
     const installSkill = useCallback(async (agentId: string, skillId: string) => {
         return installSkillToAgent(agentId, skillId, userId!)

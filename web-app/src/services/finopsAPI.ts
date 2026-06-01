@@ -177,18 +177,20 @@ export interface SessionMessagesResponse {
     messages: SessionMessageDetail[]
 }
 
-function finopsHeaders(): Record<string, string> {
-    return {
+function finopsHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
         'Content-Type': 'application/json',
         'x-secret-key': runtime.FINOPS_SECRET_KEY,
     }
+    if (userId) h['x-user-id'] = userId
+    return h
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, userId?: string | null): Promise<T> {
     const response = await fetch(`${runtime.FINOPS_URL}${path}`, {
         ...init,
         headers: {
-            ...finopsHeaders(),
+            ...finopsHeaders(userId),
             ...(init?.headers || {}),
         },
     })
@@ -199,46 +201,46 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return response.json() as Promise<T>
 }
 
-export async function fetchFinOpsOverview(): Promise<OverviewResponse> {
-    return request<OverviewResponse>('/overview?compare=true')
+export async function fetchFinOpsOverview(userId?: string | null): Promise<OverviewResponse> {
+    return request<OverviewResponse>('/overview?compare=true', undefined, userId)
 }
 
 function pageQuery(page: number, size: number): string {
     return `page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`
 }
 
-export async function fetchFinOpsAgents(page = 1, size = 25): Promise<PageResponse<AgentUsage>> {
-    return request<PageResponse<AgentUsage>>(`/agents?${pageQuery(page, size)}`)
+export async function fetchFinOpsAgents(page = 1, size = 25, userId?: string | null): Promise<PageResponse<AgentUsage>> {
+    return request<PageResponse<AgentUsage>>(`/agents?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsUsers(page = 1, size = 25): Promise<PageResponse<UserUsage>> {
-    return request<PageResponse<UserUsage>>(`/users?${pageQuery(page, size)}`)
+export async function fetchFinOpsUsers(page = 1, size = 25, userId?: string | null): Promise<PageResponse<UserUsage>> {
+    return request<PageResponse<UserUsage>>(`/users?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsSessions(page = 1, size = 25): Promise<PageResponse<SessionUsage>> {
-    return request<PageResponse<SessionUsage>>(`/sessions?${pageQuery(page, size)}`)
+export async function fetchFinOpsSessions(page = 1, size = 25, userId?: string | null): Promise<PageResponse<SessionUsage>> {
+    return request<PageResponse<SessionUsage>>(`/sessions?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsSessionMessages(session: SessionUsage): Promise<SessionMessagesResponse> {
+export async function fetchFinOpsSessionMessages(session: SessionUsage, userId?: string | null): Promise<SessionMessagesResponse> {
     const query = new URLSearchParams({
         userId: session.userId,
         agentId: session.agentId,
     })
-    return request<SessionMessagesResponse>(`/sessions/${encodeURIComponent(session.id)}/messages?${query.toString()}`)
+    return request<SessionMessagesResponse>(`/sessions/${encodeURIComponent(session.id)}/messages?${query.toString()}`, undefined, userId)
 }
 
-export async function fetchFinOpsModels(page = 1, size = 25): Promise<PageResponse<ModelUsage>> {
-    return request<PageResponse<ModelUsage>>(`/models?${pageQuery(page, size)}`)
+export async function fetchFinOpsModels(page = 1, size = 25, userId?: string | null): Promise<PageResponse<ModelUsage>> {
+    return request<PageResponse<ModelUsage>>(`/models?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsAgentSessions(agentId: string, page = 1, size = 25): Promise<PageResponse<SessionUsage>> {
-    return request<PageResponse<SessionUsage>>(`/agents/${encodeURIComponent(agentId)}?${pageQuery(page, size)}`)
+export async function fetchFinOpsAgentSessions(agentId: string, page = 1, size = 25, userId?: string | null): Promise<PageResponse<SessionUsage>> {
+    return request<PageResponse<SessionUsage>>(`/agents/${encodeURIComponent(agentId)}?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsUserSessions(userId: string, page = 1, size = 25): Promise<PageResponse<SessionUsage>> {
-    return request<PageResponse<SessionUsage>>(`/users/${encodeURIComponent(userId)}?${pageQuery(page, size)}`)
+export async function fetchFinOpsUserSessions(targetUserId: string, page = 1, size = 25, loggedInUserId?: string | null): Promise<PageResponse<SessionUsage>> {
+    return request<PageResponse<SessionUsage>>(`/users/${encodeURIComponent(targetUserId)}?${pageQuery(page, size)}`, undefined, loggedInUserId)
 }
 
-export async function refreshFinOpsSnapshot(): Promise<SnapshotStatus> {
-    return request<SnapshotStatus>('/refresh', { method: 'POST' })
+export async function refreshFinOpsSnapshot(userId?: string | null): Promise<SnapshotStatus> {
+    return request<SnapshotStatus>('/refresh', { method: 'POST' }, userId)
 }

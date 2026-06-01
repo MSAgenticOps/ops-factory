@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { runtime, gatewayHeaders } from '../../../../../config/runtime'
+import { runtime, gatewayHeaders, knowledgeHeaders } from '../../../../../config/runtime'
 import { getErrorMessage } from '../../../../../utils/errorMessages'
 import Button from '../../../../platform/ui/primitives/Button'
 import { useToast } from '../../../../platform/providers/ToastContext'
@@ -61,6 +61,7 @@ export default function ConfigKnowledgeModal({
             signal: AbortSignal.timeout(10000),
           }),
           fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`, {
+            headers: knowledgeHeaders(userId),
             signal: AbortSignal.timeout(10000),
           }),
         ])
@@ -122,6 +123,7 @@ export default function ConfigKnowledgeModal({
     setError(null)
     try {
       const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${encodeURIComponent(selectedSourceId)}`, {
+        headers: knowledgeHeaders(userId),
         signal: AbortSignal.timeout(10000),
       })
       const data = await response.json().catch(() => null) as { message?: string; name?: string } | null
