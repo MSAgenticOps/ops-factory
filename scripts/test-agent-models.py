@@ -82,7 +82,7 @@ class GatewayClient:
         return h
 
     def health_check(self):
-        url = f"{self.base_url}/gateway/status"
+        url = f"{self.base_url}/api/gateway/status"
         try:
             resp = requests.get(url, headers=self._headers(), timeout=10)
             return resp.status_code == 200, resp.status_code
@@ -94,13 +94,13 @@ class GatewayClient:
             return False, str(e)
 
     def list_agents(self):
-        url = f"{self.base_url}/gateway/agents"
+        url = f"{self.base_url}/api/gateway/agents"
         resp = requests.get(url, headers=self._headers(), timeout=10)
         resp.raise_for_status()
         return resp.json()
 
     def start_session(self, agent_id):
-        url = f"{self.base_url}/gateway/agents/{agent_id}/agent/start"
+        url = f"{self.base_url}/api/gateway/agents/{agent_id}/agent/start"
         resp = requests.post(url, headers=self._headers(), json={}, timeout=120)
         resp.raise_for_status()
         return resp.json()
@@ -111,8 +111,8 @@ class GatewayClient:
 
     def send_reply(self, agent_id, session_id, message):
         """按当前 gateway 协议执行 reply: 先订阅 events，再提交消息。"""
-        events_url = f"{self.base_url}/gateway/agents/{agent_id}/sessions/{session_id}/events"
-        reply_url = f"{self.base_url}/gateway/agents/{agent_id}/sessions/{session_id}/reply"
+        events_url = f"{self.base_url}/api/gateway/agents/{agent_id}/sessions/{session_id}/events"
+        reply_url = f"{self.base_url}/api/gateway/agents/{agent_id}/sessions/{session_id}/reply"
         request_id = str(uuid.uuid4())
         body = {
             "request_id": request_id,
