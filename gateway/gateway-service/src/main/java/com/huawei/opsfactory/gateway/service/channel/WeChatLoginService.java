@@ -345,7 +345,7 @@ public class WeChatLoginService {
                 Files.deleteIfExists(pidFile);
                 return;
             }
-            Map<String, Object> pidPayload = MAPPER.readValue(raw, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> pidPayload = MAPPER.readValue(raw, new TypeReference<>() {});
             Object pidObj = pidPayload.get("pid");
             if (!(pidObj instanceof Number number)) {
                 Files.deleteIfExists(pidFile);

@@ -239,7 +239,7 @@ public class WhatsAppWebLoginService {
             if (raw.isBlank()) {
                 return Map.of();
             }
-            return MAPPER.readValue(raw, new TypeReference<Map<String, Object>>() {});
+            return MAPPER.readValue(raw, new TypeReference<>() {});
         } catch (IOException e) {
             return Map.of();
         }
@@ -348,7 +348,7 @@ public class WhatsAppWebLoginService {
                 Files.deleteIfExists(pidFile);
                 return;
             }
-            Map<String, Object> pidPayload = MAPPER.readValue(raw, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> pidPayload = MAPPER.readValue(raw, new TypeReference<>() {});
             Object pidObj = pidPayload.get("pid");
             if (!(pidObj instanceof Number number)) {
                 Files.deleteIfExists(pidFile);
