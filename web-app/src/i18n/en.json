@@ -2420,6 +2420,8 @@
     "importErrorClusterNotFound": "Cluster not found: {{cluster}}",
     "importErrorClusterNameRequired": "Cluster name is required",
     "importErrorClusterNameTooLong": "Cluster name length is {{length}}, exceeding 100 characters",
+    "importErrorClusterTypeRequired": "Cluster type is required",
+    "importErrorClusterGroupRequired": "Parent host group is required",
     "importErrorClusterTypeNotFound": "Cluster type not found: {{type}}",
     "importErrorPurposeTooLong": "Purpose length is {{length}}, exceeding 200 characters",
     "importErrorDescriptionTooLong": "Description length is {{length}}, exceeding 500 characters",
