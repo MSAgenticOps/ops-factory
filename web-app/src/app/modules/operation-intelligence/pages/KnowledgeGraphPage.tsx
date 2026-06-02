@@ -17,7 +17,6 @@ import { useUser } from '../../../platform/providers/UserContext'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
-import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import {
     runtime,
     type KnowledgeGraphCollapsedRelationRule,
@@ -377,6 +376,23 @@ function normalizeEntityImportPayload(payload: unknown): GraphSnapshot {
 function normalizeOntologyImportPayload(payload: unknown): GraphOntology {
     const candidate = payload as GraphOntologyImportPackage
     return candidate.ontology ?? payload as GraphOntology
+}
+
+function normalizeOntologyName(value?: string | null): string {
+    return (value ?? '').trim().toLowerCase()
+}
+
+function findExistingOntologyCandidate(ontologies: GraphOntology[], payload: GraphOntology): GraphOntology | null {
+    const normalizedPayloadId = payload.ontologyId.trim().toLowerCase()
+    const normalizedPayloadName = normalizeOntologyName(payload.name)
+
+    return ontologies.find(ontology => {
+        const sameId = ontology.ontologyId.trim().toLowerCase() === normalizedPayloadId
+        const sameName = normalizedPayloadName
+            ? normalizeOntologyName(ontology.name) === normalizedPayloadName
+            : false
+        return sameId || sameName
+    }) ?? null
 }
 
 function clampHopValue(value: number): number {
@@ -1458,7 +1474,6 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const [callChainHistoryItems, setCallChainHistoryItems] = useState<CallChainSubgraphHistoryItem[]>([])
     const [selectedCallChainHistoryId, setSelectedCallChainHistoryId] = useState('')
     const [resourceSearch, setResourceSearch] = useState('')
-    const [entityManagementSearch, setEntityManagementSearch] = useState('')
     const [entityManagementPage, setEntityManagementPage] = useState(1)
     const [selectedResourceTreeItem, setSelectedResourceTreeItem] = useState<ResourceTreeSelection | null>(null)
     const [subgraphUpstreamHopsInput, setSubgraphUpstreamHopsInput] = useState(String(DEFAULT_SUBGRAPH_UPSTREAM_HOPS))
@@ -1529,9 +1544,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const environmentOptions = useMemo(() => {
         return environments.map(environment => ({
             value: environment.envCode,
-            label: environment.envName
-                ? `${environment.envName}(${environment.envCode})`
-                : environment.envCode,
+            label: environment.envName || environment.envCode,
         }))
     }, [environments])
     const selectedEnvironmentInfo = useMemo(() => {
@@ -1605,13 +1618,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         }
         return selectedResourceGroup?.name ?? t('operationIntelligence.knowledgeGraph.resourceInstances')
     }, [selectedResourceGroup, selectedResourceTreeItem, t])
-    const normalizedEntityManagementSearch = entityManagementSearch.trim().toLowerCase()
-    const filteredEntityManagementCards = useMemo(() => {
-        if (!normalizedEntityManagementSearch) {
-            return resourceDetailEntities
-        }
-        return resourceDetailEntities.filter(entity => getEntitySearchText(entity).includes(normalizedEntityManagementSearch))
-    }, [normalizedEntityManagementSearch, resourceDetailEntities])
+    const filteredEntityManagementCards = resourceDetailEntities
     const entityManagementTotalPages = Math.max(1, Math.ceil(filteredEntityManagementCards.length / ENTITY_MANAGEMENT_PAGE_SIZE))
     const safeEntityManagementPage = Math.min(entityManagementPage, entityManagementTotalPages)
     const paginatedEntityManagementCards = useMemo(() => {
@@ -1826,7 +1833,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
 
     useEffect(() => {
         setEntityManagementPage(1)
-    }, [entityManagementSearch, resourceDetailTitle])
+    }, [resourceDetailTitle])
 
     useEffect(() => {
         let isMounted = true
@@ -1928,6 +1935,14 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         setLoading(true)
         try {
             const payload = normalizeOntologyImportPayload(await readJsonFile(file))
+            const existingOntology = findExistingOntologyCandidate(ontologies, payload)
+            if (existingOntology) {
+                setOntologyId(existingOntology.ontologyId)
+                showToast('warning', t('operationIntelligence.knowledgeGraph.ontologyExists', {
+                    ontology: existingOntology.name || existingOntology.ontologyId,
+                }))
+                return
+            }
             const response = await importOntology(payload, userId)
             const nextOntologies = await reloadOntologies()
             const nextOntologyId = response.result.ontologyId || nextOntologies[0]?.ontologyId || ontologyId
@@ -2906,23 +2921,11 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
 
                             <section className="kg-resource-detail-panel">
                                 <div className="kg-resource-panel-header kg-resource-panel-header-management">
-                                    <div>
+                                    <div className="kg-resource-panel-title-row">
                                         <h3>{resourceDetailTitle}</h3>
                                         <p>{t('operationIntelligence.knowledgeGraph.resourceInstanceCount', {
                                             count: filteredEntityManagementCards.length,
                                         })}</p>
-                                    </div>
-                                    <div className="kg-resource-panel-tools">
-                                        <ListSearchInput
-                                            value={entityManagementSearch}
-                                            placeholder={t('operationIntelligence.knowledgeGraph.searchEntityCards')}
-                                            onChange={setEntityManagementSearch}
-                                        />
-                                        {entityManagementSearch ? (
-                                            <ListResultsMeta>
-                                                {t('common.resultsFound', { count: filteredEntityManagementCards.length })}
-                                            </ListResultsMeta>
-                                        ) : null}
                                     </div>
                                 </div>
                                 {paginatedEntityManagementCards.length > 0 ? (
