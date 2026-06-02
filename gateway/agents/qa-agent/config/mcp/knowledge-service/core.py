@@ -23,7 +23,7 @@ def _parse_timeout_seconds() -> float:
 
 KNOWLEDGE_REQUEST_TIMEOUT_SECONDS = _parse_timeout_seconds()
 KNOWLEDGE_FETCH_MAX_NEIGHBOR_WINDOW = 2
-API_PREFIX = "/knowledge"
+API_PREFIX = "/api/knowledge"
 CONFIG_FILE_PATH = Path(__file__).resolve().parents[2] / "config.yaml"
 LOG_FILE_NAME = "knowledge_service.log"
 
