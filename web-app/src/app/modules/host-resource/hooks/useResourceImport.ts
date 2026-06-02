@@ -613,16 +613,19 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.businessServiceNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
-                                if (row.code) {
-                                    const codeResult = validateAndSanitize(row.code, 'Code')
-                                    if (!codeResult.valid) {
-                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
-                                        continue
-                                    }
-                                    if (codeResult.sanitized.length > 50) {
-                                        errors.push({ row: i + 2, code: 'import.businessServiceCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
-                                        continue
-                                    }
+                                const codeValue = row.code?.trim() || ''
+                                if (!codeValue) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(codeValue, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
                                 }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
@@ -639,9 +642,20 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: nameResult.sanitized } })
                                     continue
                                 }
+                                if (!row.group?.trim()) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceGroupRequired' })
+                                    continue
+                                }
                                 const groupId = row.group
                                     ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                                     : undefined
+                                if (row.priority?.trim()) {
+                                    const validPriorities = ['P0', 'P1', 'P2', 'P3']
+                                    if (!validPriorities.includes(row.priority.trim())) {
+                                        errors.push({ row: i + 2, code: 'import.businessServicePriorityInvalid', params: { priority: row.priority } })
+                                        continue
+                                    }
+                                }
                                 const businessType = row.businessType?.trim() || ''
                                 if (!businessType) {
                                     errors.push({ row: i + 2, code: 'import.businessTypeRequired' })

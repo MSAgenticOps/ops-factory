@@ -297,6 +297,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessServiceNameTooLong', { length: err.params?.length })
             case 'import.businessServiceCodeTooLong':
                 return t('hostResource.importErrorBusinessServiceCodeTooLong', { length: err.params?.length })
+            case 'import.businessServiceCodeRequired':
+                return t('hostResource.importErrorBusinessServiceCodeRequired')
+            case 'import.businessServiceGroupRequired':
+                return t('hostResource.importErrorBusinessServiceGroupRequired')
+            case 'import.businessServicePriorityInvalid':
+                return t('hostResource.importErrorBusinessServicePriorityInvalid', { priority: err.params?.priority })
             case 'import.sopNameRequired':
                 return t('hostResource.importErrorSopNameRequired')
             case 'import.sopNameTooLong':
