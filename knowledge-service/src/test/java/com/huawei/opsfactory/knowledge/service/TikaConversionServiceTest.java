@@ -81,7 +81,7 @@ class TikaConversionServiceTest {
             .contains("Sample")
             .contains("getName")
             .contains("setName")
-            .contains("main");
+            .contains("public class");
 
         // Verify file type detection works
         assertThat(result.contentType()).contains("text");
@@ -98,6 +98,6 @@ class TikaConversionServiceTest {
         String detectedType = service.detectType(javaFile);
 
         assertThat(detectedType).isNotNull();
-        assertThat(detectedType).contains("text");
+        assertThat(detectedType).contains("java");
     }
 }

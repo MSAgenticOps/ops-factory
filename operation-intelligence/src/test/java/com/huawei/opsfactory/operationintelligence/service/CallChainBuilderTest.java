@@ -98,6 +98,86 @@ class CallChainBuilderTest {
     }
 
     @Test
+    void testBuildServiceModeWithNodeMerging() {
+        // Create test data where multiple seqNos share the same serviceName
+        List<TraceLogRecord> logs = new ArrayList<>();
+
+        TraceLogRecord log1 = new TraceLogRecord();
+        log1.setTraceId("BES111");
+        log1.setSeqNo("1");
+        log1.setServiceName("OrderService");
+        log1.setOperationName("createOrder");
+        log1.setIp("10.0.0.1");
+        log1.setCluster("TestCluster");
+        log1.setCost(100L);
+        log1.setLogMessage("ER");
+        log1.setMenuId("604015020");
+        logs.add(log1);
+
+        TraceLogRecord log2 = new TraceLogRecord();
+        log2.setTraceId("BES111");
+        log2.setSeqNo("1.1");
+        log2.setServiceName("OrderService");
+        log2.setOperationName("validateOrder");
+        log2.setIp("10.0.0.1");
+        log2.setCluster("TestCluster");
+        log2.setCost(50L);
+        log2.setLogMessage("FAIL");
+        log2.setMenuId("604015020");
+        logs.add(log2);
+
+        TraceLogRecord log3 = new TraceLogRecord();
+        log3.setTraceId("BES111");
+        log3.setSeqNo("2");
+        log3.setServiceName("PaymentService");
+        log3.setOperationName("processPayment");
+        log3.setIp("10.0.0.2");
+        log3.setCluster("TestCluster");
+        log3.setCost(75L);
+        log3.setLogMessage("ER");
+        log3.setMenuId("604015020");
+        logs.add(log3);
+
+        // Build in service mode - triggers mergeFlowsByService() and mergeServiceNodes()
+        CallChainTree tree = builder.build("BES", "menuId", "604015020", logs, 1L, "service");
+
+        assertNotNull(tree);
+        assertEquals(1, tree.getFlows().size());
+
+        // Verify nodes are merged by serviceName (3 raw nodes -> 2 merged nodes)
+        List<FlowNode> nodes = tree.getFlows().get(0).getNodes();
+        assertEquals(2, nodes.size(), "Nodes with same serviceName should be merged");
+
+        // Verify OrderService node aggregates call/success counts from seqNo 1 and 1.1
+        FlowNode orderNode = nodes.stream()
+            .filter(n -> "OrderService".equals(n.getServiceName()))
+            .findFirst()
+            .orElse(null);
+        assertNotNull(orderNode);
+        assertEquals(2L, orderNode.getCallCount(),
+            "OrderService callCount should aggregate both seqNo 1 and 1.1");
+        assertEquals(1L, orderNode.getSuccessCount(),
+            "OrderService successCount should count only successful calls (ER)");
+        assertEquals(50.0, orderNode.getSuccessPercent(), 0.001,
+            "OrderService successPercent should be 50% (1 success / 2 calls)");
+
+        // Verify operationNames are merged (deduplicated and joined with comma)
+        assertNotNull(orderNode.getOperationName());
+        assertTrue(orderNode.getOperationName().contains("createOrder"));
+        assertTrue(orderNode.getOperationName().contains("validateOrder"));
+
+        // Verify PaymentService node is not merged (only one occurrence)
+        FlowNode paymentNode = nodes.stream()
+            .filter(n -> "PaymentService".equals(n.getServiceName()))
+            .findFirst()
+            .orElse(null);
+        assertNotNull(paymentNode);
+        assertEquals(1L, paymentNode.getCallCount());
+        assertEquals(1L, paymentNode.getSuccessCount());
+        assertEquals(100.0, paymentNode.getSuccessPercent(), 0.001);
+    }
+
+    @Test
     void testBuildWithEmptyLogs() {
         List<TraceLogRecord> logs = new ArrayList<>();
 
