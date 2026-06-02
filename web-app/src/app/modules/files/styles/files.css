@@ -4,6 +4,42 @@
     gap: var(--spacing-3);
 }
 
+/* Preview mode: expand page to full width when preview is open */
+.files-page.preview-open {
+    --page-shell-max-width: none;
+}
+
+/* Adjust layout when preview is open */
+.files-page.preview-open .list-workbench {
+    flex: 0 0 45%;
+}
+
+.files-page.preview-open .list-workbench-body {
+    overflow-y: auto;
+}
+
+/* File type filter: add indentation and limit to 2 lines when preview is open */
+.files-page.preview-open .seg-filter {
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    display: flex !important;
+    flex-wrap: wrap !important;
+    max-height: 84px;
+    min-height: 84px;
+    overflow: hidden;
+    align-content: flex-start;
+    gap: 6px;
+}
+
+.files-page.preview-open .seg-filter-btn {
+    white-space: normal !important;
+    min-height: 32px;
+    flex: 0 0 auto;
+    line-height: 1.15;
+}
+
 .file-item {
     display: flex;
     align-items: center;
