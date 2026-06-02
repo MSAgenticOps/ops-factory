@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../../platform/providers/ToastContext'
-import { runtime } from '../../../../config/runtime'
+import { useUser } from '../../../platform/providers/UserContext'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import ResourceCard, {
@@ -81,10 +82,12 @@ function CreateKnowledgeModal({
     existingNames,
     onClose,
     onCreated,
+    userId,
 }: {
     existingNames: Set<string>
     onClose: () => void
     onCreated: () => Promise<void>
+    userId: string | null
 }) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -110,9 +113,7 @@ function CreateKnowledgeModal({
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: knowledgeHeaders(userId),
                 body: JSON.stringify({
                     name: name.trim(),
                     description: description.trim() || null,
@@ -211,10 +212,12 @@ function DeleteKnowledgeModal({
     source,
     onClose,
     onDeleted,
+    userId,
 }: {
     source: SourceSummary
     onClose: () => void
     onDeleted: () => Promise<void>
+    userId: string | null
 }) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -227,6 +230,7 @@ function DeleteKnowledgeModal({
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}`, {
                 method: 'DELETE',
+                headers: knowledgeHeaders(userId),
             })
             const data = await response.json().catch(() => null)
             if (!response.ok) {
@@ -281,6 +285,7 @@ function DeleteKnowledgeModal({
 export default function Knowledge() {
     const { t, i18n } = useTranslation()
     const navigate = useNavigate()
+    const { userId } = useUser()
     const [sources, setSources] = useState<SourceSummary[]>([])
     const existingSourceNames = useMemo(() => new Set(sources.map(s => s.name)), [sources])
     const [stats, setStats] = useState<Record<string, SourceStats>>({})
@@ -295,7 +300,9 @@ export default function Knowledge() {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json().catch(() => null) as SourceListResponse | null
             if (!response.ok) {
                 const errorData = data as { message?: string } | null
@@ -306,7 +313,9 @@ export default function Knowledge() {
             const statsEntries = await Promise.all(
                 (data?.items || []).map(async source => {
                     try {
-                        const statsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}/stats`)
+                        const statsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}/stats`, {
+                            headers: knowledgeHeaders(userId),
+                        })
                         const statsData = await statsResponse.json().catch(() => null) as SourceStats | null
                         if (!statsResponse.ok) {
                             throw new Error(statsResponse.statusText)
@@ -473,6 +482,7 @@ export default function Knowledge() {
                     existingNames={existingSourceNames}
                     onClose={() => setShowCreateModal(false)}
                     onCreated={loadSources}
+                    userId={userId}
                 />
             )}
 
@@ -481,6 +491,7 @@ export default function Knowledge() {
                     source={deleteTarget}
                     onClose={() => setDeleteTarget(null)}
                     onDeleted={loadSources}
+                    userId={userId}
                 />
             )}
         </div>
