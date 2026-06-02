@@ -84,7 +84,7 @@ class KnowledgeCoreTest(unittest.TestCase):
                 self.assertEqual(core.read_configured_source_id(), "src_1")
 
     def test_search_uses_configured_scope_when_source_ids_are_omitted(self):
-        KnowledgeHandler.routes[("POST", "/knowledge/search")] = {"query": "故障定位", "hits": [], "total": 0}
+        KnowledgeHandler.routes[("POST", "/api/knowledge/search")] = {"query": "故障定位", "hits": [], "total": 0}
         with mock.patch.object(core, "read_configured_source_id", return_value="src_configured"):
             result = json.loads(core.handle_search("故障定位"))
 
@@ -92,7 +92,7 @@ class KnowledgeCoreTest(unittest.TestCase):
         self.assertEqual(KnowledgeHandler.captured[0][2]["sourceIds"], ["src_configured"])
 
     def test_search_passes_explicit_source_ids(self):
-        KnowledgeHandler.routes[("POST", "/knowledge/search")] = {"query": "容量规划", "hits": [], "total": 1}
+        KnowledgeHandler.routes[("POST", "/api/knowledge/search")] = {"query": "容量规划", "hits": [], "total": 1}
         result = json.loads(core.handle_search("容量规划", sourceIds=["src_custom"], topK=3))
 
         self.assertEqual(result["total"], 1)
@@ -100,7 +100,7 @@ class KnowledgeCoreTest(unittest.TestCase):
         self.assertEqual(KnowledgeHandler.captured[0][2]["topK"], 3)
 
     def test_fetch_includes_neighbor_options(self):
-        path = "/knowledge/fetch/chk_123?includeNeighbors=true&neighborWindow=2&includeMarkdown=true&includeRawText=true"
+        path = "/api/knowledge/fetch/chk_123?includeNeighbors=true&neighborWindow=2&includeMarkdown=true&includeRawText=true"
         KnowledgeHandler.routes[("GET", path)] = {"chunkId": "chk_123", "neighbors": [{"chunkId": "chk_122"}]}
         result = json.loads(core.handle_fetch("chk_123", includeNeighbors=True, neighborWindow=2))
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { runtime } from '../../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import { useToast } from '../../../platform/providers/ToastContext'
 import KnowledgeChunkDetailModal from './KnowledgeChunkDetailModal'
 import Pagination from '../../../platform/ui/primitives/Pagination'
@@ -32,6 +32,7 @@ interface KnowledgeChunksTabProps {
     onDocumentFilterChange: (documentId: string | null) => void
     onChunksMutated?: () => Promise<void> | void
     readOnly?: boolean
+    userId?: string | null
 }
 
 const CHUNK_PAGE_SIZE = 100
@@ -142,13 +143,13 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     return data as T
 }
 
-async function loadAllPages<T>(buildUrl: (page: number, pageSize: number) => string): Promise<T[]> {
+async function loadAllPages<T>(buildUrl: (page: number, pageSize: number) => string, headers: Record<string, string>): Promise<T[]> {
     const items: T[] = []
     let page = 1
     let total = 0
 
     do {
-        const result = await requestJson<PagedResponse<T>>(buildUrl(page, CHUNK_PAGE_SIZE))
+        const result = await requestJson<PagedResponse<T>>(buildUrl(page, CHUNK_PAGE_SIZE), { headers })
         items.push(...result.items)
         total = result.total
         page += 1
@@ -216,6 +217,7 @@ export default function KnowledgeChunksTab({
     onDocumentFilterChange,
     onChunksMutated,
     readOnly = false,
+    userId,
 }: KnowledgeChunksTabProps) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -240,6 +242,8 @@ export default function KnowledgeChunksTab({
     const [deleteTarget, setDeleteTarget] = useState<KnowledgeChunkSummary | null>(null)
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [deletingChunkId, setDeletingChunkId] = useState<string | null>(null)
+
+    const headers = useMemo(() => knowledgeHeaders(userId), [userId])
 
     const editableFields = useMemo(() => new Set(capabilities?.editableChunkFields || []), [capabilities?.editableChunkFields])
     const canEditChunks = (capabilities?.featureFlags.allowChunkEdit ?? true) && !readOnly
@@ -279,7 +283,7 @@ export default function KnowledgeChunksTab({
                 })
 
                 return `${runtime.KNOWLEDGE_SERVICE_URL}/documents?${params.toString()}`
-            })
+            }, headers)
 
             setDocuments(items)
         } catch (err) {
@@ -288,7 +292,7 @@ export default function KnowledgeChunksTab({
         } finally {
             setDocumentsLoading(false)
         }
-    }, [source.id])
+    }, [headers, source.id])
 
     const loadChunks = useCallback(async () => {
         setChunksLoading(true)
@@ -307,7 +311,7 @@ export default function KnowledgeChunksTab({
                 }
 
                 return `${runtime.KNOWLEDGE_SERVICE_URL}/chunks?${params.toString()}`
-            })
+            }, headers)
 
             setChunks(items)
         } catch (err) {
@@ -316,14 +320,14 @@ export default function KnowledgeChunksTab({
         } finally {
             setChunksLoading(false)
         }
-    }, [documentFilter, source.id])
+    }, [documentFilter, headers, source.id])
 
     const loadChunkDetail = useCallback(async (chunkId: string) => {
         setDetailLoading(true)
         setDetailError(null)
 
         try {
-            const detail = await requestJson<KnowledgeChunkDetail>(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`)
+            const detail = await requestJson<KnowledgeChunkDetail>(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`, { headers })
             setSelectedChunkDetail(detail)
             setDraft({
                 documentId: detail.documentId,
@@ -341,7 +345,7 @@ export default function KnowledgeChunksTab({
         } finally {
             setDetailLoading(false)
         }
-    }, [])
+    }, [headers, t])
 
     const refreshCollections = useCallback(async () => {
         await Promise.all([
@@ -543,9 +547,7 @@ export default function KnowledgeChunksTab({
                     `${runtime.KNOWLEDGE_SERVICE_URL}/documents/${documentId}/chunks`,
                     {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers,
                         body: JSON.stringify({
                             ordinal: nextOrdinal,
                             title: derivedTitle || null,
@@ -573,9 +575,7 @@ export default function KnowledgeChunksTab({
                 `${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${selectedChunkId}`,
                 {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers,
                     body: JSON.stringify({
                         keywords: canEditKeywords ? keywords : undefined,
                         text: canEditText ? text : undefined,
@@ -601,6 +601,7 @@ export default function KnowledgeChunksTab({
         canEditText,
         chunks,
         draft,
+        headers,
         loadChunkDetail,
         panelMode,
         refreshCollections,
@@ -620,6 +621,7 @@ export default function KnowledgeChunksTab({
                 `${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${deleteTarget.id}`,
                 {
                     method: 'DELETE',
+                    headers,
                 }
             )
 
@@ -635,7 +637,7 @@ export default function KnowledgeChunksTab({
         } finally {
             setDeletingChunkId(null)
         }
-    }, [deleteTarget, handleClosePanel, refreshCollections, showToast, t])
+    }, [deleteTarget, handleClosePanel, headers, refreshCollections, showToast, t])
 
     const isEditingPanel = panelMode === 'edit' || panelMode === 'create'
     const panelEditStatusLabel = panelMode === 'create'

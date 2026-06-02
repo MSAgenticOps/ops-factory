@@ -36,6 +36,10 @@ Required secrets in `gateway/agents/qa-agent/config/secrets.yaml`:
 
 - `KNOWLEDGE_SERVICE_URL`
 
+Set `KNOWLEDGE_SERVICE_URL` to the knowledge-service origin, for example
+`http://127.0.0.1:8092`. Do not include `/api/knowledge`; the MCP appends the
+knowledge API prefix itself.
+
 Optional:
 
 - `KNOWLEDGE_REQUEST_TIMEOUT_MS`

@@ -12,6 +12,7 @@ import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -202,7 +204,12 @@ public class ScheduleController {
 
     private ManagedInstance resolveInstance(String agentId, HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
-        return instanceManager.getOrSpawn(agentId, userId).block();
+        ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
+        if (instance == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to resolve agent instance: " + agentId);
+        }
+        return instance;
     }
 
     private String appendQueryString(String path, HttpServletRequest request) {
@@ -210,7 +217,11 @@ public class ScheduleController {
         if (queryString == null || queryString.isBlank()) {
             return path;
         }
-        return path + "?" + queryString;
+        return path + "?" + sanitizeForProxyPath(queryString);
+    }
+
+    private String sanitizeForProxyPath(String value) {
+        return value.replace('\r', '_').replace('\n', '_');
     }
 
     private String encode(String value) {

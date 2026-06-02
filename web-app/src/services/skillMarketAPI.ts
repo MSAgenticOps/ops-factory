@@ -2,9 +2,27 @@ import { runtime, gatewayHeaders } from '../config/runtime'
 import { getErrorMessage } from '../utils/errorMessages'
 import type { SkillMarketDetail, SkillMarketEntry, SkillMarketListResponse, SkillMarketMutationResponse } from '../types/skillMarket'
 
-export async function fetchSkillList(query?: string): Promise<SkillMarketEntry[]> {
+function skillMarketHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
+    }
+    if (userId) h['x-user-id'] = userId
+    return h
+}
+
+function skillMarketFormDataHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
+    }
+    if (userId) h['x-user-id'] = userId
+    return h
+}
+
+export async function fetchSkillList(query?: string, userId?: string | null): Promise<SkillMarketEntry[]> {
     const params = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills${params}`, {
+        headers: skillMarketHeaders(userId),
         signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) throw new Error(await response.text())
@@ -12,47 +30,50 @@ export async function fetchSkillList(query?: string): Promise<SkillMarketEntry[]
     return data.items || []
 }
 
-export async function fetchSkillDetail(skillId: string): Promise<SkillMarketDetail> {
+export async function fetchSkillDetail(skillId: string, userId?: string | null): Promise<SkillMarketDetail> {
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
+        headers: skillMarketHeaders(userId),
         signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) throw new Error(await response.text())
     return response.json() as Promise<SkillMarketDetail>
 }
 
-export async function createSkill(payload: { id: string; name: string; description: string; instructions: string }): Promise<SkillMarketMutationResponse> {
+export async function createSkill(payload: { id: string; name: string; description: string; instructions: string }, userId?: string | null): Promise<SkillMarketMutationResponse> {
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: skillMarketHeaders(userId),
         body: JSON.stringify(payload),
     })
     if (!response.ok) throw new Error(await response.text())
     return response.json() as Promise<SkillMarketMutationResponse>
 }
 
-export async function updateSkill(skillId: string, payload: { name: string; description: string; instructions: string }): Promise<SkillMarketMutationResponse> {
+export async function updateSkill(skillId: string, payload: { name: string; description: string; instructions: string }, userId?: string | null): Promise<SkillMarketMutationResponse> {
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: skillMarketHeaders(userId),
         body: JSON.stringify(payload),
     })
     if (!response.ok) throw new Error(await response.text())
     return response.json() as Promise<SkillMarketMutationResponse>
 }
 
-export async function deleteSkill(skillId: string): Promise<void> {
+export async function deleteSkill(skillId: string, userId?: string | null): Promise<void> {
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
         method: 'DELETE',
+        headers: skillMarketHeaders(userId),
     })
     if (!response.ok) throw new Error(await response.text())
 }
 
-export async function importSkill(file: File, id?: string): Promise<SkillMarketMutationResponse> {
+export async function importSkill(file: File, userId?: string | null, id?: string): Promise<SkillMarketMutationResponse> {
     const formData = new FormData()
     formData.append('file', file)
     if (id?.trim()) formData.append('id', id.trim())
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills:import`, {
         method: 'POST',
+        headers: skillMarketFormDataHeaders(userId),
         body: formData,
     })
     if (!response.ok) {

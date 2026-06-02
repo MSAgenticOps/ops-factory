@@ -22,13 +22,13 @@ export function useAgentSkillMarket(): UseAgentSkillMarketResult {
         setIsLoading(true)
         setError(null)
         try {
-            setSkills(await fetchSkillList())
+            setSkills(await fetchSkillList(undefined, userId))
         } catch (err) {
             setError(getErrorMessage(err))
         } finally {
             setIsLoading(false)
         }
-    }, [])
+    }, [userId])
 
     const installSkill = useCallback(async (agentId: string, skillId: string) => {
         return installSkillToAgent(agentId, skillId, userId!)
