@@ -361,7 +361,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     name: nameResult.sanitized,
                                     code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
-                                    enabled: row.enabled === 'true',
+                                    enabled: row.enabled ? String(row.enabled).toUpperCase() === 'TRUE' : true,
                                 })
                                 groupNameToId.set(nameResult.sanitized, created.id)
                                 if (row.code) groupCodeToId.set(validateAndSanitize(row.code, 'Code').sanitized, created.id)
@@ -384,12 +384,16 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.clusterNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
-                                if (row.type) {
-                                    const typeResult = validateAndSanitize(row.type, 'Type')
-                                    if (!typeResult.valid) {
-                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Type' } })
-                                        continue
-                                    }
+                                // Validate required field: type (cluster type)
+                                const clusterType = row.type?.trim() || ''
+                                if (!clusterType) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeRequired' })
+                                    continue
+                                }
+                                const typeResult = validateAndSanitize(clusterType, 'Type')
+                                if (!typeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Type' } })
+                                    continue
                                 }
                                 if (row.purpose) {
                                     const purposeResult = validateAndSanitize(row.purpose, 'Purpose')
@@ -413,9 +417,17 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
-                                const groupId = row.group
-                                    ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
-                                    : undefined
+                                // Validate required field: group (parent host group)
+                                const groupName = row.group?.trim() || ''
+                                if (!groupName) {
+                                    errors.push({ row: i + 2, code: 'import.clusterGroupRequired' })
+                                    continue
+                                }
+                                const groupId = groupNameToId.get(groupName) || groupCodeToId.get(groupName)
+                                if (!groupId) {
+                                    errors.push({ row: i + 2, code: 'import.groupNotFound', params: { group: groupName } })
+                                    continue
+                                }
 
                                 // Check duplicate cluster name in related group hierarchy
                                 const trimmedClusterName = nameResult.sanitized
@@ -443,22 +455,17 @@ export function useResourceImport(deps: ImportDeps) {
                                         }
                                     }
                                 }
-                                const clusterKey = `${groupId ?? ''}:${trimmedClusterName}`
-                                let typeName = row.type?.trim() || ''
-                                if (typeName) {
-                                    if (!clusterTypeNameSet.has(typeName)) {
-                                        const mappedName = clusterTypeCodeToName.get(typeName)
-                                        if (mappedName) {
-                                            typeName = mappedName
-                                        } else {
-                                            errors.push({ row: i + 2, code: 'import.clusterTypeNotFound', params: { type: typeName } })
-                                            continue
-                                        }
+                                const clusterKey = `${groupId}:${trimmedClusterName}`
+                                // Validate cluster type exists
+                                let typeName = clusterType
+                                if (!clusterTypeNameSet.has(typeName)) {
+                                    const mappedName = clusterTypeCodeToName.get(typeName)
+                                    if (mappedName) {
+                                        typeName = mappedName
+                                    } else {
+                                        errors.push({ row: i + 2, code: 'import.clusterTypeNotFound', params: { type: typeName } })
+                                        continue
                                     }
-                                }
-                                if (!groupId && row.group) {
-                                    errors.push({ row: i + 2, code: 'import.groupNotFound', params: { group: row.group } })
-                                    continue
                                 }
                                 const created = await deps.createCluster({
                                     name: nameResult.sanitized,
@@ -785,7 +792,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     version: row.version || '',
                                     triggerCondition: row.triggerCondition ? validateAndSanitize(row.triggerCondition, 'TriggerCondition').sanitized : '',
-                                    enabled: row.enabled !== 'false',
+                                    enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
                                     stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
                                     targetSolution: row.targetSolution || 'universal',
                                 }
@@ -824,7 +831,7 @@ export function useResourceImport(deps: ImportDeps) {
                                 await deps.addWhitelistCommand({
                                     pattern: pattern,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
-                                    enabled: row.enabled !== 'false',
+                                    enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
                                 })
                                 createdPatterns.add(pattern)
                                 success++

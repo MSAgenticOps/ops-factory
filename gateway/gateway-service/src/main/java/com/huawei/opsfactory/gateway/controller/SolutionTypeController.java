@@ -32,7 +32,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "solutionTypeController")
-@RequestMapping("/gateway/solution-types")
+@RequestMapping("/api/gateway/solution-types")
 public class SolutionTypeController {
     private final SolutionTypeService solutionTypeService;
 

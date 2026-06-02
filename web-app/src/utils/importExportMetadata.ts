@@ -90,7 +90,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'code', labelKey: 'field_hostGroups_code', enLabel: 'Host Group Code', zhLabel: '主机组代码', required: false, validation: { type: 'string', maxLength: 50 } },
             { name: 'parentGroup', labelKey: 'field_hostGroups_parentGroup', enLabel: 'Parent Group', zhLabel: '父主机组', required: false, validation: { type: 'string' } },
             { name: 'description', labelKey: 'field_hostGroups_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'enabled', labelKey: 'field_hostGroups_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
+            { name: 'enabled', labelKey: 'field_hostGroups_enabled', enLabel: 'Enabled', zhLabel: '启用状态', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
         ],
         sampleData: [
             {
@@ -117,7 +117,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'name', labelKey: 'field_clusters_name', enLabel: 'Cluster Name', zhLabel: '集群名称', required: true, validation: { type: 'string', maxLength: 100 } },
             { name: 'type', labelKey: 'field_clusters_type', enLabel: 'Cluster Type', zhLabel: '集群类型', required: true, validation: { type: 'string' } },
             { name: 'purpose', labelKey: 'field_clusters_purpose', enLabel: 'Purpose', zhLabel: '用途', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'group', labelKey: 'field_clusters_group', enLabel: 'Host Group', zhLabel: '所属主机组', required: false, validation: { type: 'string' } },
+            { name: 'group', labelKey: 'field_clusters_group', enLabel: 'Host Group', zhLabel: '所属主机组', required: true, validation: { type: 'string' } },
             { name: 'description', labelKey: 'field_clusters_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
         ],
         sampleData: [

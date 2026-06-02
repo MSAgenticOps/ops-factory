@@ -18,6 +18,8 @@ const IMPORT_TYPES: ImportType[] = [
     'Whitelist',
 ]
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
 export function translateImportType(type: string | undefined, t: (key: string) => string): string {
     if (!type) return ''
     switch (type) {
@@ -128,6 +130,16 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
         setFileValidation(null)
 
         if (file && selectedType) {
+            // Check file size
+            if (file.size > MAX_FILE_SIZE) {
+                setFileValidation({
+                    valid: false,
+                    message: t('hostResource.importErrorFileTooLarge', { size: (MAX_FILE_SIZE / 1024 / 1024).toFixed(0) })
+                })
+                setSelectedFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+                return
+            }
             validateFile(file, selectedType)
         }
     }
@@ -206,6 +218,10 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorClusterNameRequired')
             case 'import.clusterNameTooLong':
                 return t('hostResource.importErrorClusterNameTooLong', { length: err.params?.length })
+            case 'import.clusterTypeRequired':
+                return t('hostResource.importErrorClusterTypeRequired')
+            case 'import.clusterGroupRequired':
+                return t('hostResource.importErrorClusterGroupRequired')
             case 'import.clusterTypeNotFound':
                 return t('hostResource.importErrorClusterTypeNotFound', { type: err.params?.type })
             case 'import.purposeTooLong':

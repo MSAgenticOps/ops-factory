@@ -87,6 +87,9 @@ public class RuntimePreparer {
         Files.createDirectories(userAgentDir.resolve("data"));
         Files.createDirectories(userAgentDir.resolve("uploads"));
 
+        // Per-user memory seeding is centralized in AgentConfigService.ensureMemorySeeded and
+        // triggered from the spawn path (InstanceManager) and the memory tab, so both readers seed
+        // the same dir exactly once. Nothing to seed here.
         return userAgentDir;
     }
 

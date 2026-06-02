@@ -395,6 +395,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                     saving={saving}
                     onSave={handleSave}
                     onClose={() => setShowModal(false)}
+                    isEditing={editing !== null}
                     extraFields={
                         <>
                             <div className="form-group">
