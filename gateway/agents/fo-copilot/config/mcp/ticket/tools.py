@@ -145,11 +145,17 @@ def _t_create(args: dict[str, Any]) -> str:
 
 def _t_update(args: dict[str, Any]) -> str:
     ticket_id = args.get("ticketId")
-    fields = args.get("fields") or {}
     if not ticket_id:
         raise ToolError("MISSING_ARG", "ticketId is required.", "Pass the ticket id.")
-    if not fields:
+    fields = args.get("fields")
+    if fields is None or fields == {}:
         raise ToolError("MISSING_ARG", "fields is required.", "Pass a fields object, e.g. {\"priority\": \"P2\"}.")
+    if not isinstance(fields, dict):
+        # Validate the type at the tool boundary so a malformed argument becomes
+        # a clear business error instead of an internal AttributeError later
+        # (e.g. fields="oops" reaching fields.items()).
+        raise ToolError("INVALID_ARG", "fields must be an object (map of fields to change).",
+                        "Pass a fields object, e.g. {\"priority\": \"P2\"}.")
     t = _store.update_fields(ticket_id, fields)
     if t is None:
         _ticket_not_found(ticket_id)
@@ -326,3 +332,12 @@ async def dispatch(name: str, args: dict[str, Any]) -> str:
         return handler(args)
     except ToolError as exc:
         return _err(exc.code, exc.message, exc.hint)
+    except Exception:
+        # Convergence point: a non-ToolError is an internal fault. Never surface
+        # its raw text across the tool boundary (G.ERR.08); return a generic,
+        # actionable business error instead.
+        return _err(
+            "TOOL_EXECUTION_FAILED",
+            "The tool failed to execute.",
+            "Check the arguments and retry; if it persists, inspect the server log.",
+        )

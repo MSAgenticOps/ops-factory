@@ -82,6 +82,15 @@ class TicketToolsTest(unittest.TestCase):
         self.assertTrue(res["ok"])
         self.assertEqual(res["data"]["priority"], "P2")
 
+    def test_update_rejects_malformed_fields(self):
+        # malformed input must converge to a clear business error and must not
+        # leak an internal AttributeError ('str' object has no attribute 'items')
+        # across the tool boundary.
+        res = call(self.tools, "update", ticketId="REQ-2087", fields="oops")
+        self.assertFalse(res["ok"])
+        self.assertEqual(res["error"]["code"], "INVALID_ARG")
+        self.assertNotIn("items", res["error"]["message"])
+
     def test_comment_records_audit(self):
         res = call(self.tools, "comment", ticketId="INC-1042", body="Mitigation in progress.")
         self.assertTrue(res["ok"])

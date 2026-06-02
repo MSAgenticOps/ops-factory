@@ -21,23 +21,27 @@ from mcp.server.stdio import stdio_server
 from mcp import types
 
 from tools import TOOLS, dispatch
+from store import resolve_data_path
 
-_LOG_PATH = Path(
-    os.environ.get("TICKET_MCP_LOG")
-    or str(Path(__file__).resolve().parent / ".data" / "server.log")
-)
+# TICKET_MCP_LOG is external (env) input; confine it to an allowed data area
+# before creating files (G.FIO.02). Absent override → default under this dir.
+_DEFAULT_LOG = Path(__file__).resolve().parent / ".data" / "server.log"
+_LOG_ENV = os.environ.get("TICKET_MCP_LOG")
+_LOG_PATH = resolve_data_path(_LOG_ENV, default=_DEFAULT_LOG) if _LOG_ENV else _DEFAULT_LOG
 
 
 def _log(event: str, detail: dict | None = None) -> None:
     """Append a structured line to a log file. Never writes to stdout (reserved
     for the JSON-RPC stream) and swallows its own errors."""
     try:
-        _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _LOG_PATH.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         line = json.dumps(
             {"time": datetime.now(timezone.utc).isoformat(), "event": event, **(detail or {})},
             ensure_ascii=False,
         )
-        with _LOG_PATH.open("a", encoding="utf-8") as fh:
+        # Owner-only perms on first create (G.FIO.01); append thereafter.
+        fd = os.open(_LOG_PATH, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(fd, "a", encoding="utf-8") as fh:
             fh.write(line + "\n")
     except OSError as exc:
         # Logging is best-effort and must never break the JSON-RPC stream on
@@ -65,9 +69,15 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[types.Text
     try:
         result = await dispatch(name, args)
     except Exception as exc:  # last-resort guard; dispatch already shapes known errors
-        _log("call_tool_failed", {"tool": name, "error": str(exc)})
+        # Keep the internal detail in the server-side log only; never return the
+        # raw exception text across the tool boundary (G.ERR.08).
+        _log("call_tool_failed", {"tool": name, "error": repr(exc)})
         result = json.dumps(
-            {"ok": False, "error": {"code": "TOOL_EXECUTION_FAILED", "message": str(exc), "hint": ""}},
+            {"ok": False, "error": {
+                "code": "TOOL_EXECUTION_FAILED",
+                "message": "Tool execution failed unexpectedly.",
+                "hint": "Check the server log for details.",
+            }},
             ensure_ascii=False,
         )
     return [types.TextContent(type="text", text=result)]

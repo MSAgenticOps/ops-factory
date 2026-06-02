@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import os
+import sys
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -216,23 +218,60 @@ def _build_seed() -> dict[str, Any]:
     return {"tickets": tickets, "candidates": candidates, "seq": 9000}
 
 
+# --- safe data-path resolution -------------------------------------------
+# The store/log file paths may come from the environment (TICKET_MOCK_STORE /
+# TICKET_MCP_LOG). os.environ is external input, so any path built from it must
+# be normalized and confined to a known data area before it is used to create
+# files (G.FIO.02 path manipulation), and the files are created with
+# owner-only permissions (G.FIO.01).
+_MODULE_DIR = Path(__file__).resolve().parent
+_DEFAULT_STORE = _MODULE_DIR / ".data" / "store.json"
+
+
+def _allowed_bases() -> list[Path]:
+    """Directories a data file is allowed to live under: the adapter's own dir,
+    the per-user runtime CWD (= GOOSE_PATH_ROOT), and the system temp dir."""
+    bases: list[Path] = []
+    for b in (_MODULE_DIR, Path.cwd(), Path(tempfile.gettempdir())):
+        rb = b.resolve()
+        if rb not in bases:
+            bases.append(rb)
+    return bases
+
+
+def resolve_data_path(raw: str, *, default: Path) -> Path:
+    """Normalize an externally-supplied path and confine it to an allowed base.
+
+    A relative path resolves against the CWD (the per-user runtime dir). The
+    result is realpath-normalized; if it escapes every allowed base (e.g. via
+    ``..`` or an absolute path into a sensitive location) the built-in default
+    is used instead and the rejection is noted on stderr."""
+    candidate = Path(raw).expanduser()
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    candidate = candidate.resolve()
+    if any(candidate == base or candidate.is_relative_to(base) for base in _allowed_bases()):
+        return candidate
+    sys.stderr.write(
+        f"[ticket-mcp] refusing out-of-bounds store/log path {candidate}; using default {default}\n"
+    )
+    return default.resolve()
+
+
 class TicketStore:
     """Whole-file load/save JSON store. Simple and synchronous — fine for a mock."""
 
     def __init__(self, path: str | None = None) -> None:
-        raw = path or os.environ.get("TICKET_MOCK_STORE") or str(
-            Path(__file__).resolve().parent / ".data" / "store.json"
-        )
-        self.path = Path(raw).expanduser()
-        if not self.path.is_absolute():
-            # relative paths resolve against CWD (= GOOSE_PATH_ROOT per-user dir)
-            self.path = Path.cwd() / self.path
+        raw = path or os.environ.get("TICKET_MOCK_STORE")
+        # raw may carry external (env) input; confine it. Absent override → the
+        # built-in default under the adapter's own data dir.
+        self.path = resolve_data_path(raw, default=_DEFAULT_STORE) if raw else _DEFAULT_STORE
         self._ensure_seeded()
 
     def _ensure_seeded(self) -> None:
         if self.path.exists():
             return
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self._save(_build_seed())
 
     def _load(self) -> dict[str, Any]:
@@ -241,7 +280,10 @@ class TicketStore:
 
     def _save(self, data: dict[str, Any]) -> None:
         tmp = self.path.with_suffix(self.path.suffix + ".tmp")
-        with tmp.open("w", encoding="utf-8") as fh:
+        # Create the temp file with owner-only permissions (G.FIO.01) before
+        # writing, then atomically swap it into place.
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False, indent=2)
         tmp.replace(self.path)
 
