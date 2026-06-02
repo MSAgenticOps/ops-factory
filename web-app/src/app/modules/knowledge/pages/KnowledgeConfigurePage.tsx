@@ -19,6 +19,7 @@ import type {
     KnowledgeMaintenanceFailure,
     KnowledgeMaintenanceJobSummary,
     KnowledgeProfileDetail,
+    KnowledgeSkippedFileInfo,
     KnowledgeSource,
     PagedResponse,
 } from '../../../../types/knowledge'
