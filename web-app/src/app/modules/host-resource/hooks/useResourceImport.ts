@@ -234,7 +234,11 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? row.description.trim() : '',
                                     knowledge: row.knowledge || '',
                                     color: row.typeColor || '',
-                                    mode: row.clusterMode === 'Peer' ? 'peer' : (row.clusterMode === 'Primary-Backup' ? 'primary-backup' : undefined),
+                                    mode: (() => {
+                                        if (row.clusterMode === 'Peer') return 'peer'
+                                        if (row.clusterMode === 'Primary-Backup') return 'primary-backup'
+                                        return undefined
+                                    })(),
                                     commandPrefix: row.commandPrefix || '',
                                     envVariables: row.envVariables
                                         ? row.envVariables.split(';').filter(Boolean).map(pair => {

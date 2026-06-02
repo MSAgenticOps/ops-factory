@@ -188,7 +188,11 @@ export default function CreateProviderModal({ mode, provider, onClose, onCreate,
                 <div className="modal-footer">
                     <Button variant="secondary" onClick={onClose} disabled={isSaving}>{t('common.cancel')}</Button>
                     <Button variant="primary" onClick={handleSave} disabled={isSaving || !isValid}>
-                        {isSaving ? t('agentConfigure.savingProvider') : isEdit ? t('common.save') : t('agentConfigure.createAction')}
+                        {(() => {
+                            if (isSaving) return t('agentConfigure.savingProvider')
+                            if (isEdit) return t('common.save')
+                            return t('agentConfigure.createAction')
+                        })()}
                     </Button>
                 </div>
             </div>

@@ -18,6 +18,30 @@ const IMPORT_TYPES: ImportType[] = [
     'Whitelist',
 ]
 
+export function translateImportType(type: string | undefined, t: (key: string) => string): string {
+    if (!type) return ''
+    switch (type) {
+        case 'Whitelist': return t('hostResource.importType_Whitelist')
+        case 'ClusterType':
+        case 'ClusterTypes': return t('hostResource.importType_ClusterTypes')
+        case 'BusinessType':
+        case 'BusinessTypes': return t('hostResource.importType_BusinessTypes')
+        case 'HostGroup':
+        case 'HostGroups': return t('hostResource.importType_HostGroups')
+        case 'Cluster':
+        case 'Clusters': return t('hostResource.importType_Clusters')
+        case 'Host':
+        case 'Hosts': return t('hostResource.importType_Hosts')
+        case 'BusinessService':
+        case 'BusinessServices': return t('hostResource.importType_BusinessServices')
+        case 'Relation':
+        case 'Relations': return t('hostResource.importType_Relations')
+        case 'SOP':
+        case 'SOPs': return t('hostResource.importType_SOPs')
+        default: return type
+    }
+}
+
 interface ImportDialogProps {
     open: boolean
     onClose: () => void
@@ -208,29 +232,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostUsernameRequired')
             case 'import.duplicate':
                 return t('hostResource.importErrorDuplicate', {
-                    type: err.params?.type === 'Whitelist' ? t('hostResource.importType_Whitelist') :
-                          err.params?.type === 'ClusterType' || err.params?.type === 'ClusterTypes' ? t('hostResource.importType_ClusterTypes') :
-                          err.params?.type === 'BusinessType' || err.params?.type === 'BusinessTypes' ? t('hostResource.importType_BusinessTypes') :
-                          err.params?.type === 'HostGroup' || err.params?.type === 'HostGroups' ? t('hostResource.importType_HostGroups') :
-                          err.params?.type === 'Cluster' || err.params?.type === 'Clusters' ? t('hostResource.importType_Clusters') :
-                          err.params?.type === 'Host' || err.params?.type === 'Hosts' ? t('hostResource.importType_Hosts') :
-                          err.params?.type === 'BusinessService' || err.params?.type === 'BusinessServices' ? t('hostResource.importType_BusinessServices') :
-                          err.params?.type === 'Relation' || err.params?.type === 'Relations' ? t('hostResource.importType_Relations') :
-                          err.params?.type === 'SOP' || err.params?.type === 'SOPs' ? t('hostResource.importType_SOPs') :
-                          err.params?.type || '',
+                    type: translateImportType(err.params?.type, t),
                     name: err.params?.name
                 })
             case 'import.duplicateCode':
                 return t('hostResource.importErrorDuplicateCode', {
-                    type: err.params?.type === 'ClusterType' || err.params?.type === 'ClusterTypes' ? t('hostResource.importType_ClusterTypes') :
-                          err.params?.type === 'BusinessType' || err.params?.type === 'BusinessTypes' ? t('hostResource.importType_BusinessTypes') :
-                          err.params?.type === 'HostGroup' || err.params?.type === 'HostGroups' ? t('hostResource.importType_HostGroups') :
-                          err.params?.type === 'Cluster' || err.params?.type === 'Clusters' ? t('hostResource.importType_Clusters') :
-                          err.params?.type === 'Host' || err.params?.type === 'Hosts' ? t('hostResource.importType_Hosts') :
-                          err.params?.type === 'BusinessService' || err.params?.type === 'BusinessServices' ? t('hostResource.importType_BusinessServices') :
-                          err.params?.type === 'Relation' || err.params?.type === 'Relations' ? t('hostResource.importType_Relations') :
-                          err.params?.type === 'SOP' || err.params?.type === 'SOPs' ? t('hostResource.importType_SOPs') :
-                          err.params?.type || '',
+                    type: translateImportType(err.params?.type, t),
                     code: err.params?.code
                 })
             case 'import.whitelistInvalidPattern':
