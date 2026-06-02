@@ -357,7 +357,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     name: nameResult.sanitized,
                                     code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
-                                    enabled: row.enabled === 'true',
+                                    enabled: row.enabled ? String(row.enabled).toUpperCase() === 'TRUE' : true,
                                 })
                                 groupNameToId.set(nameResult.sanitized, created.id)
                                 if (row.code) groupCodeToId.set(validateAndSanitize(row.code, 'Code').sanitized, created.id)
@@ -788,7 +788,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     version: row.version || '',
                                     triggerCondition: row.triggerCondition ? validateAndSanitize(row.triggerCondition, 'TriggerCondition').sanitized : '',
-                                    enabled: row.enabled !== 'false',
+                                    enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
                                     stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
                                     targetSolution: row.targetSolution || 'universal',
                                 }
@@ -827,7 +827,7 @@ export function useResourceImport(deps: ImportDeps) {
                                 await deps.addWhitelistCommand({
                                     pattern: pattern,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
-                                    enabled: row.enabled !== 'false',
+                                    enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
                                 })
                                 createdPatterns.add(pattern)
                                 success++
