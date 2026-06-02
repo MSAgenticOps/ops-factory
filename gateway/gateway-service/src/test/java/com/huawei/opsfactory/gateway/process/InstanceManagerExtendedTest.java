@@ -71,6 +71,9 @@ public class InstanceManagerExtendedTest {
         when(agentConfigService.getResidentInstances()).thenReturn(List.of());
         when(agentConfigService.getAgentConfigDir(anyString()))
             .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve(invocation.getArgument(0, String.class)));
+        // buildEnvironment sets XDG_CONFIG_HOME from this; tests pass runtimeRoot=tempFolder root.
+        when(agentConfigService.getGooseConfigHomeDir(anyString(), anyString()))
+            .thenAnswer(invocation -> tempFolder.getRoot().toPath().resolve("data").resolve("config"));
 
         instanceManager =
             new InstanceManager(properties, portAllocator, runtimePreparer, agentConfigService, 3000, false, "");
@@ -84,10 +87,8 @@ public class InstanceManagerExtendedTest {
     @Test
     public void testBuildEnvironment_coreEnvVars() throws Exception {
         Path runtimeRoot = tempFolder.getRoot().toPath();
-        Path configRoot = tempFolder.getRoot().toPath().resolve("agent-config");
         when(agentConfigService.loadAgentConfigYaml("agent1")).thenReturn(Map.of());
         when(agentConfigService.loadAgentSecretsYaml("agent1")).thenReturn(Map.of());
-        when(agentConfigService.getAgentConfigDir("agent1")).thenReturn(configRoot);
 
         Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
             int.class, Path.class);
@@ -105,7 +106,10 @@ public class InstanceManagerExtendedTest {
         assertEquals("1", env.get("GOOSE_DISABLE_KEYRING"));
         assertEquals(runtimeRoot.resolve("home").toString(), env.get("HOME"));
         assertEquals(runtimeRoot.resolve("home").toString(), env.get("USERPROFILE"));
-        assertEquals(configRoot.toAbsolutePath().normalize().toString(), env.get("XDG_CONFIG_HOME"));
+        // Memory is per-user: XDG_CONFIG_HOME points at the per-user runtime dir (data/config),
+        // not the shared agent config dir, so goose loads/writes memory under data/config/goose/memory.
+        assertEquals(runtimeRoot.resolve("data").resolve("config").toAbsolutePath().normalize().toString(),
+            env.get("XDG_CONFIG_HOME"));
     }
 
     /**
