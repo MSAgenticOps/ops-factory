@@ -3,13 +3,18 @@ import { getErrorMessage } from '../utils/errorMessages'
 import type { SkillMarketDetail, SkillMarketEntry, SkillMarketListResponse, SkillMarketMutationResponse } from '../types/skillMarket'
 
 function skillMarketHeaders(userId?: string | null): Record<string, string> {
-    const h: Record<string, string> = { 'Content-Type': 'application/json' }
+    const h: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
+    }
     if (userId) h['x-user-id'] = userId
     return h
 }
 
 function skillMarketFormDataHeaders(userId?: string | null): Record<string, string> {
-    const h: Record<string, string> = {}
+    const h: Record<string, string> = {
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
+    }
     if (userId) h['x-user-id'] = userId
     return h
 }
