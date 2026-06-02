@@ -221,6 +221,10 @@ interface GraphSnapshotImportPackage {
     snapshot?: GraphSnapshot
 }
 
+interface GraphOntologyImportPackage {
+    ontology?: GraphOntology
+}
+
 function parseOntology(schemaDsl?: string): {
     entityTypes: OntologyEntityType[]
     relationTypes: OntologyRelationType[]
@@ -368,6 +372,35 @@ function readStoredSelection(): KnowledgeGraphSelection {
 function normalizeEntityImportPayload(payload: unknown): GraphSnapshot {
     const candidate = payload as GraphSnapshotImportPackage
     return candidate.snapshot ?? payload as GraphSnapshot
+}
+
+function normalizeOntologyImportPayload(payload: unknown): GraphOntology {
+    const candidate = payload as GraphOntologyImportPackage
+    return candidate.ontology ?? payload as GraphOntology
+}
+
+function clampHopValue(value: number): number {
+    return Math.min(MAX_SUBGRAPH_HOPS, Math.max(MIN_SUBGRAPH_HOPS, value))
+}
+
+function resolveHopInputValue(value: string, fallback: number): number {
+    const trimmedValue = value.trim()
+    if (!trimmedValue) {
+        return fallback
+    }
+    const parsedValue = Number(trimmedValue)
+    if (!Number.isFinite(parsedValue)) {
+        return fallback
+    }
+    return clampHopValue(Math.trunc(parsedValue))
+}
+
+function normalizeHopInputValue(value: string, fallback: number): string {
+    return String(resolveHopInputValue(value, fallback))
+}
+
+function areSnapshotsEquivalent(left?: GraphSnapshot | null, right?: GraphSnapshot | null): boolean {
+    return JSON.stringify(left ?? null) === JSON.stringify(right ?? null)
 }
 
 function nodeTone(type: string): string {
@@ -1428,8 +1461,8 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const [entityManagementSearch, setEntityManagementSearch] = useState('')
     const [entityManagementPage, setEntityManagementPage] = useState(1)
     const [selectedResourceTreeItem, setSelectedResourceTreeItem] = useState<ResourceTreeSelection | null>(null)
-    const [subgraphUpstreamHops, setSubgraphUpstreamHops] = useState(DEFAULT_SUBGRAPH_UPSTREAM_HOPS)
-    const [subgraphDownstreamHops, setSubgraphDownstreamHops] = useState(DEFAULT_SUBGRAPH_DOWNSTREAM_HOPS)
+    const [subgraphUpstreamHopsInput, setSubgraphUpstreamHopsInput] = useState(String(DEFAULT_SUBGRAPH_UPSTREAM_HOPS))
+    const [subgraphDownstreamHopsInput, setSubgraphDownstreamHopsInput] = useState(String(DEFAULT_SUBGRAPH_DOWNSTREAM_HOPS))
     const [environments, setEnvironments] = useState<GraphEnvironmentInfo[]>([])
     const [resourceGroups, setResourceGroups] = useState<ResourceTreeGroup[]>([])
     const [observations, setObservations] = useState<GraphObservation[]>([])
@@ -1453,6 +1486,15 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const [savingEntity, setSavingEntity] = useState(false)
     const ontologyFileInputRef = useRef<HTMLInputElement | null>(null)
     const entitiesFileInputRef = useRef<HTMLInputElement | null>(null)
+
+    const subgraphUpstreamHops = useMemo(
+        () => resolveHopInputValue(subgraphUpstreamHopsInput, DEFAULT_SUBGRAPH_UPSTREAM_HOPS),
+        [subgraphUpstreamHopsInput],
+    )
+    const subgraphDownstreamHops = useMemo(
+        () => resolveHopInputValue(subgraphDownstreamHopsInput, DEFAULT_SUBGRAPH_DOWNSTREAM_HOPS),
+        [subgraphDownstreamHopsInput],
+    )
 
     const snapshot = exportPackage?.snapshot
     const selectedOntology = useMemo(() => {
@@ -1644,6 +1686,25 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         showToast('error', err instanceof Error ? err.message : t('operationIntelligence.loadFailed'))
     }, [showToast, t])
 
+    const normalizeHopInputOnBlur = useCallback((
+        value: string,
+        fallback: number,
+        setValue: (nextValue: string) => void,
+    ) => {
+        const normalizedValue = normalizeHopInputValue(value, fallback)
+        setValue(normalizedValue)
+
+        const trimmedValue = value.trim()
+        if (!trimmedValue) {
+            return
+        }
+
+        const parsedValue = Number(trimmedValue)
+        if (Number.isFinite(parsedValue) && Math.trunc(parsedValue) > MAX_SUBGRAPH_HOPS) {
+            showToast('warning', t('operationIntelligence.knowledgeGraph.maxSubgraphHops', { max: MAX_SUBGRAPH_HOPS }))
+        }
+    }, [showToast, t])
+
     const reloadCallChainSubgraphHistory = useCallback(async (
         targetOntologyId = ontologyId,
         targetEnvCode = envCode,
@@ -1672,11 +1733,11 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const loadGraph = useCallback(async (
         query?: { ontologyId?: string; envCode?: string },
         options?: { silent?: boolean },
-    ): Promise<boolean> => {
+    ): Promise<GraphExportPackage | null> => {
         const targetOntologyId = query?.ontologyId ?? ontologyId
         const targetEnvCode = query?.envCode ?? envCode
         if (!targetEnvCode) {
-            return false
+            return null
         }
         setLoading(true)
         try {
@@ -1699,12 +1760,12 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
             setExpandedResourceGroupIds(new Set())
             setExpandedResourceEntityIds(new Set())
             void reloadCallChainSubgraphHistory(targetOntologyId, targetEnvCode, { silent: true })
-            return true
+            return exportResponse.result
         } catch (err) {
             if (!options?.silent) {
                 alertApiError(err)
             }
-            return false
+            return null
         } finally {
             setLoading(false)
         }
@@ -1866,7 +1927,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const handleImportOntologyFile = async (file: File) => {
         setLoading(true)
         try {
-            const payload = await readJsonFile(file) as GraphOntology
+            const payload = normalizeOntologyImportPayload(await readJsonFile(file))
             const response = await importOntology(payload, userId)
             const nextOntologies = await reloadOntologies()
             const nextOntologyId = response.result.ontologyId || nextOntologies[0]?.ontologyId || ontologyId
@@ -1887,6 +1948,11 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         setLoading(true)
         try {
             const payload = normalizeEntityImportPayload(await readJsonFile(file))
+            const nextOntologyId = payload.ontologyId ?? ontologyId
+            const nextEnvCode = payload.envCode ?? envCode
+            const previousSnapshot = nextOntologyId === ontologyId && nextEnvCode === envCode
+                ? snapshot ?? null
+                : null
             await importGraph(payload, userId)
             if (payload.ontologyId) {
                 setOntologyId(payload.ontologyId)
@@ -1898,12 +1964,16 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                 setEntityId(payload.entities[0].id)
                 setEntityQuery('')
             }
-            await reloadGraphEnvironments(payload.ontologyId ?? ontologyId)
-            const loaded = await loadGraph({
-                ontologyId: payload.ontologyId ?? ontologyId,
-                envCode: payload.envCode ?? envCode,
+            await reloadGraphEnvironments(nextOntologyId)
+            const refreshedPackage = await loadGraph({
+                ontologyId: nextOntologyId,
+                envCode: nextEnvCode,
             })
-            if (loaded) {
+            if (previousSnapshot && refreshedPackage?.snapshot && areSnapshotsEquivalent(previousSnapshot, refreshedPackage.snapshot)) {
+                showToast('warning', t('operationIntelligence.knowledgeGraph.entitiesImportNoChanges'))
+            } else if (refreshedPackage) {
+                showToast('success', t('operationIntelligence.knowledgeGraph.entitiesImported'))
+            } else {
                 showToast('success', t('operationIntelligence.knowledgeGraph.entitiesImported'))
             }
         } catch (err) {
@@ -2513,13 +2583,18 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         type="number"
                                         min={MIN_SUBGRAPH_HOPS}
                                         max={MAX_SUBGRAPH_HOPS}
-                                        value={subgraphUpstreamHops}
+                                        value={subgraphUpstreamHopsInput}
                                         onChange={event => {
-                                            const nextHops = Number(event.target.value)
-                                            if (!Number.isNaN(nextHops)) {
-                                                setSubgraphUpstreamHops(Math.min(MAX_SUBGRAPH_HOPS, Math.max(MIN_SUBGRAPH_HOPS, nextHops)))
+                                            const nextValue = event.target.value
+                                            if (/^\d{0,2}$/.test(nextValue)) {
+                                                setSubgraphUpstreamHopsInput(nextValue)
                                             }
                                         }}
+                                        onBlur={() => normalizeHopInputOnBlur(
+                                            subgraphUpstreamHopsInput,
+                                            DEFAULT_SUBGRAPH_UPSTREAM_HOPS,
+                                            setSubgraphUpstreamHopsInput,
+                                        )}
                                     />
                                 </label>
                                 <label className="kg-field kg-hop-field">
@@ -2528,13 +2603,18 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         type="number"
                                         min={MIN_SUBGRAPH_HOPS}
                                         max={MAX_SUBGRAPH_HOPS}
-                                        value={subgraphDownstreamHops}
+                                        value={subgraphDownstreamHopsInput}
                                         onChange={event => {
-                                            const nextHops = Number(event.target.value)
-                                            if (!Number.isNaN(nextHops)) {
-                                                setSubgraphDownstreamHops(Math.min(MAX_SUBGRAPH_HOPS, Math.max(MIN_SUBGRAPH_HOPS, nextHops)))
+                                            const nextValue = event.target.value
+                                            if (/^\d{0,2}$/.test(nextValue)) {
+                                                setSubgraphDownstreamHopsInput(nextValue)
                                             }
                                         }}
+                                        onBlur={() => normalizeHopInputOnBlur(
+                                            subgraphDownstreamHopsInput,
+                                            DEFAULT_SUBGRAPH_DOWNSTREAM_HOPS,
+                                            setSubgraphDownstreamHopsInput,
+                                        )}
                                     />
                                 </label>
                                 <div className="kg-query-actions">
@@ -2778,6 +2858,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                                             <button
                                                                 type="button"
                                                                 className="kg-tree-node"
+                                                                title={toDisplayName(node.entity)}
                                                                 data-selected={selectedResourceEntity?.id === node.entity.id ? 'true' : undefined}
                                                                 aria-expanded={node.childGroups.length > 0
                                                                     ? expandedResourceEntityIds.has(node.entity.id)
@@ -3089,6 +3170,8 @@ function GraphCanvas({
     const [zoom, setZoom] = useState(DEFAULT_GRAPH_ZOOM)
     const [nodePositions, setNodePositions] = useState<Record<string, GraphNodePosition>>({})
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+    const [scrollViewportSize, setScrollViewportSize] = useState({ width: 0, height: 0 })
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null)
     const dragStateRef = useRef<{
         nodeId: string
         startClientX: number
@@ -3107,6 +3190,31 @@ function GraphCanvas({
         onSelectNode(null)
         setSelectedEdgeId(null)
     }, [nodes, onSelectNode])
+
+    useEffect(() => {
+        const container = scrollContainerRef.current
+        if (!container) {
+            return
+        }
+
+        const updateViewportSize = () => {
+            setScrollViewportSize({
+                width: container.clientWidth,
+                height: container.clientHeight,
+            })
+        }
+
+        updateViewportSize()
+
+        const observer = new ResizeObserver(() => {
+            updateViewportSize()
+        })
+        observer.observe(container)
+
+        return () => {
+            observer.disconnect()
+        }
+    }, [])
 
     const positionedNodes = useMemo(() => {
         return nodes.map(node => ({
@@ -3167,12 +3275,41 @@ function GraphCanvas({
         minHeight,
         ...positionedNodes.map(node => node.y + (node.height ?? GRAPH_NODE_HEIGHT) + 80),
     )
+    const contentMinX = Math.min(...positionedNodes.map(node => node.x))
+    const contentMaxX = Math.max(...positionedNodes.map(node => node.x + (node.width ?? GRAPH_NODE_WIDTH)))
+    const contentMinY = Math.min(...positionedNodes.map(node => node.y))
+    const contentMaxY = Math.max(...positionedNodes.map(node => node.y + (node.height ?? GRAPH_NODE_HEIGHT)))
+    const contentWidth = Math.max(0, contentMaxX - contentMinX)
+    const contentHeight = Math.max(0, contentMaxY - contentMinY)
+    const graphContentOffsetLeft = Math.max(0, Math.round((width - contentWidth) / 2 - contentMinX))
+    const graphContentOffsetTop = Math.max(0, Math.round((height - contentHeight) / 2 - contentMinY))
     const zoomedWidth = Math.ceil(width * zoom)
     const zoomedHeight = Math.ceil(height * zoom)
+    const surfaceWidth = Math.max(zoomedWidth, scrollViewportSize.width)
+    const surfaceHeight = Math.max(zoomedHeight, scrollViewportSize.height)
+    const canvasOffsetLeft = Math.max(0, Math.floor((surfaceWidth - zoomedWidth) / 2))
+    const canvasOffsetTop = Math.max(0, Math.floor((surfaceHeight - zoomedHeight) / 2))
+
+    useEffect(() => {
+        const container = scrollContainerRef.current
+        if (!container || !scrollViewportSize.width || !scrollViewportSize.height) {
+            return
+        }
+
+        const frameId = window.requestAnimationFrame(() => {
+            container.scrollLeft = Math.max(0, Math.round((surfaceWidth - scrollViewportSize.width) / 2))
+            container.scrollTop = Math.max(0, Math.round((surfaceHeight - scrollViewportSize.height) / 2))
+        })
+
+        return () => {
+            window.cancelAnimationFrame(frameId)
+        }
+    }, [scrollViewportSize.height, scrollViewportSize.width, surfaceHeight, surfaceWidth, zoom])
+
     const selectedNodePopoverPosition = selectedNode
         ? {
-            left: Math.round(selectedNode.x * zoom),
-            top: Math.round((selectedNode.y + (selectedNode.height ?? GRAPH_NODE_HEIGHT) + 12) * zoom),
+            left: canvasOffsetLeft + Math.round((selectedNode.x + graphContentOffsetLeft) * zoom),
+            top: canvasOffsetTop + Math.round((selectedNode.y + graphContentOffsetTop + (selectedNode.height ?? GRAPH_NODE_HEIGHT) + 12) * zoom),
         }
         : null
 
@@ -3267,129 +3404,136 @@ function GraphCanvas({
                     </div>
                 </div>
             </div>
-            <div className="kg-graph-scroll">
-                <div className="kg-graph-zoom-surface" style={{ width: zoomedWidth, height: zoomedHeight }}>
+            <div ref={scrollContainerRef} className="kg-graph-scroll">
+                <div className="kg-graph-zoom-surface" style={{ width: surfaceWidth, height: surfaceHeight }}>
                     <div
                         className="kg-graph-canvas"
                         style={{
                             width,
                             height,
+                            left: canvasOffsetLeft,
+                            top: canvasOffsetTop,
                             transform: `scale(${zoom})`,
                         }}
                         onClick={clearGraphSelection}
                     >
-                    <svg className="kg-graph-edges" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-                        <defs>
-                            {EDGE_STYLE_COLORS.map((color, index) => (
-                                <marker
-                                    key={color}
-                                    id={`kg-arrow-${index}`}
-                                    viewBox="0 0 8 8"
-                                    refX="7"
-                                    refY="4"
-                                    markerWidth="6"
-                                    markerHeight="6"
-                                    orient="auto-start-reverse"
-                                >
-                                    <path
-                                        d="M 1 1 L 7 4 L 1 7"
-                                        fill="none"
-                                        stroke={color}
-                                        strokeWidth="1.45"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                </marker>
-                            ))}
-                        </defs>
-                        {edges.map(edge => {
-                            const from = nodeById[edge.from]
-                            const to = nodeById[edge.to]
-                            if (!from || !to) {
-                                return null
-                            }
-                            const start = edgePoint(from, to, 'source')
-                            const end = edgePoint(from, to, 'target')
-                            const pairOffset = edgePairOffset(edge, edgeLaneOffsets[edge.id] ?? 0, nodeById)
-                            const startX = start.x + pairOffset.x
-                            const startY = start.y + pairOffset.y
-                            const endX = end.x + pairOffset.x
-                            const endY = end.y + pairOffset.y
-                            const midX = (startX + endX) / 2
-                            const midY = (startY + endY) / 2
-                            const markerId = `kg-arrow-${hashString(relationBaseType(edge.type)) % EDGE_STYLE_COLORS.length}`
-                            return (
-                                <g
-                                    key={edge.id}
+                        <div
+                            className="kg-graph-content-layer"
+                            style={{ transform: `translate(${graphContentOffsetLeft}px, ${graphContentOffsetTop}px)` }}
+                        >
+                            <svg className="kg-graph-edges" viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+                                <defs>
+                                    {EDGE_STYLE_COLORS.map((color, index) => (
+                                        <marker
+                                            key={color}
+                                            id={`kg-arrow-${index}`}
+                                            viewBox="0 0 8 8"
+                                            refX="7"
+                                            refY="4"
+                                            markerWidth="6"
+                                            markerHeight="6"
+                                            orient="auto-start-reverse"
+                                        >
+                                            <path
+                                                d="M 1 1 L 7 4 L 1 7"
+                                                fill="none"
+                                                stroke={color}
+                                                strokeWidth="1.45"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </marker>
+                                    ))}
+                                </defs>
+                                {edges.map(edge => {
+                                    const from = nodeById[edge.from]
+                                    const to = nodeById[edge.to]
+                                    if (!from || !to) {
+                                        return null
+                                    }
+                                    const start = edgePoint(from, to, 'source')
+                                    const end = edgePoint(from, to, 'target')
+                                    const pairOffset = edgePairOffset(edge, edgeLaneOffsets[edge.id] ?? 0, nodeById)
+                                    const startX = start.x + pairOffset.x
+                                    const startY = start.y + pairOffset.y
+                                    const endX = end.x + pairOffset.x
+                                    const endY = end.y + pairOffset.y
+                                    const midX = (startX + endX) / 2
+                                    const midY = (startY + endY) / 2
+                                    const markerId = `kg-arrow-${hashString(relationBaseType(edge.type)) % EDGE_STYLE_COLORS.length}`
+                                    return (
+                                        <g
+                                            key={edge.id}
+                                            className={[
+                                                'kg-graph-edge',
+                                                `kg-edge-style-${relationStyleIndex(edge.type)}`,
+                                                `kg-edge-${relationTone(edge.type)}`,
+                                                `kg-edge-type-${cssToken(relationBaseType(edge.type))}`,
+                                                selectedEdgeId === edge.id ? 'kg-graph-edge-selected' : '',
+                                                selectedNodeRelatedEdgeIds.has(edge.id) ? 'kg-graph-edge-related' : '',
+                                            ].filter(Boolean).join(' ')}
+                                            style={edgeVisualStyle(edge.type)}
+                                            onClick={event => {
+                                                event.stopPropagation()
+                                                setSelectedEdgeId(selectedEdgeId === edge.id ? null : edge.id)
+                                                onSelectNode(null)
+                                            }}
+                                        >
+                                            <line
+                                                className="kg-graph-edge-hitbox"
+                                                x1={startX}
+                                                y1={startY}
+                                                x2={endX}
+                                                y2={endY}
+                                            />
+                                            <line x1={startX} y1={startY} x2={endX} y2={endY} markerEnd={`url(#${markerId})`} />
+                                            <text x={midX} y={midY - 8}>{edge.type}</text>
+                                        </g>
+                                    )
+                                })}
+                            </svg>
+                            {positionedNodes.map(node => (
+                                <button
+                                    key={node.id}
+                                    type="button"
+                                    title={node.label.includes(node.type) ? node.label : `${node.label} · ${node.type}`}
+                                    aria-label={`${node.label} ${node.type}`}
                                     className={[
-                                        'kg-graph-edge',
-                                        `kg-edge-style-${relationStyleIndex(edge.type)}`,
-                                        `kg-edge-${relationTone(edge.type)}`,
-                                        `kg-edge-type-${cssToken(relationBaseType(edge.type))}`,
-                                        selectedEdgeId === edge.id ? 'kg-graph-edge-selected' : '',
-                                        selectedNodeRelatedEdgeIds.has(edge.id) ? 'kg-graph-edge-related' : '',
-                                    ].filter(Boolean).join(' ')}
-                                    style={edgeVisualStyle(edge.type)}
+                                        'kg-graph-node',
+                                        `kg-node-${nodeTone(node.type)}`,
+                                        `kg-node-type-${cssToken(node.type)}`,
+                                        `kg-node-shape-${nodeShapeIndex(node.type)}`,
+                                    ].join(' ')}
+                                    data-selected={selectedNodeId === node.id ? 'true' : undefined}
+                                    style={{
+                                        ...nodeVisualStyle(node.type),
+                                        left: node.x,
+                                        top: node.y,
+                                        width: node.width,
+                                        minHeight: node.height,
+                                    }}
+                                    onPointerDown={event => handleNodePointerDown(event, node)}
+                                    onPointerMove={handleNodePointerMove}
+                                    onPointerUp={handleNodePointerUp}
+                                    onPointerCancel={handleNodePointerUp}
                                     onClick={event => {
                                         event.stopPropagation()
-                                        setSelectedEdgeId(selectedEdgeId === edge.id ? null : edge.id)
-                                        onSelectNode(null)
+                                        if (wasDraggedRef.current) {
+                                            event.preventDefault()
+                                            wasDraggedRef.current = false
+                                            return
+                                        }
+                                        setSelectedEdgeId(null)
+                                        onSelectNode(showNodeProperties && selectedNodeId === node.id ? null : node.id)
                                     }}
                                 >
-                                    <line
-                                        className="kg-graph-edge-hitbox"
-                                        x1={startX}
-                                        y1={startY}
-                                        x2={endX}
-                                        y2={endY}
-                                    />
-                                    <line x1={startX} y1={startY} x2={endX} y2={endY} markerEnd={`url(#${markerId})`} />
-                                    <text x={midX} y={midY - 8}>{edge.type}</text>
-                                </g>
-                            )
-                        })}
-                    </svg>
-                    {positionedNodes.map(node => (
-                        <button
-                            key={node.id}
-                            type="button"
-                            title={node.label.includes(node.type) ? node.label : `${node.label} · ${node.type}`}
-                            aria-label={`${node.label} ${node.type}`}
-                            className={[
-                                'kg-graph-node',
-                                `kg-node-${nodeTone(node.type)}`,
-                                `kg-node-type-${cssToken(node.type)}`,
-                                `kg-node-shape-${nodeShapeIndex(node.type)}`,
-                            ].join(' ')}
-                            data-selected={selectedNodeId === node.id ? 'true' : undefined}
-                            style={{
-                                ...nodeVisualStyle(node.type),
-                                left: node.x,
-                                top: node.y,
-                                width: node.width,
-                                minHeight: node.height,
-                            }}
-                            onPointerDown={event => handleNodePointerDown(event, node)}
-                            onPointerMove={handleNodePointerMove}
-                            onPointerUp={handleNodePointerUp}
-                            onPointerCancel={handleNodePointerUp}
-                            onClick={event => {
-                                event.stopPropagation()
-                                if (wasDraggedRef.current) {
-                                    event.preventDefault()
-                                    wasDraggedRef.current = false
-                                    return
-                                }
-                                setSelectedEdgeId(null)
-                                onSelectNode(showNodeProperties && selectedNodeId === node.id ? null : node.id)
-                            }}
-                        >
-                            <strong>{node.label}</strong>
-                            {(node.collapsedChildrenCount ?? 0) > 0 ? (
-                                <span className="kg-graph-node-collapsed">+{node.collapsedChildrenCount}</span>
-                            ) : null}
-                        </button>
-                    ))}
+                                    <strong>{node.label}</strong>
+                                    {(node.collapsedChildrenCount ?? 0) > 0 ? (
+                                        <span className="kg-graph-node-collapsed">+{node.collapsedChildrenCount}</span>
+                                    ) : null}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     {showNodeProperties && selectedNode && selectedNodePopoverPosition ? (
                         <div

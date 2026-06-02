@@ -1096,12 +1096,17 @@
 }
 
 .kg-graph-canvas {
-    position: relative;
+    position: absolute;
     width: 100%;
     min-width: 1120px;
     min-height: 360px;
     background: transparent;
     transform-origin: 0 0;
+}
+
+.kg-graph-content-layer {
+    position: absolute;
+    inset: 0;
 }
 
 .kg-graph-edges {
