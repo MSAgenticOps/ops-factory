@@ -221,7 +221,10 @@ export async function fetchFinOpsSessions(page = 1, size = 25, userId?: string |
     return request<PageResponse<SessionUsage>>(`/sessions?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsSessionMessages(session: SessionUsage, userId?: string | null): Promise<SessionMessagesResponse> {
+export async function fetchFinOpsSessionMessages(
+    session: SessionUsage,
+    userId?: string | null,
+): Promise<SessionMessagesResponse> {
     const query = new URLSearchParams({
         userId: session.userId,
         agentId: session.agentId,
@@ -233,11 +236,21 @@ export async function fetchFinOpsModels(page = 1, size = 25, userId?: string | n
     return request<PageResponse<ModelUsage>>(`/models?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsAgentSessions(agentId: string, page = 1, size = 25, userId?: string | null): Promise<PageResponse<SessionUsage>> {
+export async function fetchFinOpsAgentSessions(
+    agentId: string,
+    page = 1,
+    size = 25,
+    userId?: string | null,
+): Promise<PageResponse<SessionUsage>> {
     return request<PageResponse<SessionUsage>>(`/agents/${encodeURIComponent(agentId)}?${pageQuery(page, size)}`, undefined, userId)
 }
 
-export async function fetchFinOpsUserSessions(targetUserId: string, page = 1, size = 25, loggedInUserId?: string | null): Promise<PageResponse<SessionUsage>> {
+export async function fetchFinOpsUserSessions(
+    targetUserId: string,
+    page = 1,
+    size = 25,
+    loggedInUserId?: string | null,
+): Promise<PageResponse<SessionUsage>> {
     return request<PageResponse<SessionUsage>>(`/users/${encodeURIComponent(targetUserId)}?${pageQuery(page, size)}`, undefined, loggedInUserId)
 }
 
