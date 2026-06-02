@@ -2494,7 +2494,7 @@
     "field_hostGroups_code": "主机组代码",
     "field_hostGroups_parentGroup": "父主机组",
     "field_hostGroups_description": "描述",
-    "field_hostGroups_enabled": "启用状态（可选：true/false）",
+    "field_hostGroups_enabled": "启用状态",
     "field_clusters_name": "集群名称",
     "field_clusters_type": "集群类型",
     "field_clusters_purpose": "用途",
