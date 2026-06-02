@@ -80,7 +80,7 @@ function isCronLikelyValid(cron: string): boolean {
 function loadDrafts(storageKey: string): ScheduleDraftMap {
     if (typeof window === 'undefined') return {}
     try {
-        const raw = window.localStorage.getItem(storageKey)
+        const raw = window.sessionStorage.getItem(storageKey)
         if (!raw) return {}
         const parsed = JSON.parse(raw) as ScheduleDraftMap
         return parsed && typeof parsed === 'object' ? parsed : {}
@@ -91,7 +91,7 @@ function loadDrafts(storageKey: string): ScheduleDraftMap {
 
 function saveDrafts(storageKey: string, drafts: ScheduleDraftMap): void {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(storageKey, JSON.stringify(drafts))
+    window.sessionStorage.setItem(storageKey, JSON.stringify(drafts))
 }
 
 function getScheduleStatusTone(job: ScheduledJob): ResourceStatusTone {
@@ -133,6 +133,13 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
     useEffect(() => {
         if (fixedAgentId) setSelectedAgent(fixedAgentId)
     }, [fixedAgentId])
+
+    // Reload drafts whenever the user (and thus the storage key) changes, so one user's
+    // in-memory drafts are never carried over and re-saved under another user's key after a
+    // mid-session uid switch (UserContext can update userId from the URL after mount).
+    useEffect(() => {
+        setDrafts(loadDrafts(draftsKey))
+    }, [draftsKey])
 
     const agentOptions = useMemo(() => (
         // Only the all-agents overview renders the agent selector; skip the work in single-agent mode.
@@ -189,7 +196,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 agentName: selectedAgentInfo.name,
             })))
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.loadFailed'))
+            console.error('Failed to load schedules:', err)
+            showToast('error', t('scheduler.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -201,7 +209,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             const scheduleRuns = await getClientForJob(job).listScheduleSessions(job.id, 30)
             setRuns(scheduleRuns)
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.loadRunsFailed'))
+            console.error('Failed to load schedule runs:', err)
+            showToast('error', t('scheduler.loadRunsFailed'))
         } finally {
             setRunsLoading(false)
         }
@@ -307,10 +316,19 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 const original = jobs.find(job => job.agentId === targetAgentId && job.id === editingJob.id)
                 const wasPaused = !!original?.paused
 
-                if (scheduleId === editingJob.id) {
+                const existingDraft = getDraftForJob(editingJob)
+                const recipeUnchanged = !!existingDraft
+                    && existingDraft.name === form.name.trim()
+                    && existingDraft.instruction === form.instruction.trim()
+                if (scheduleId === editingJob.id && recipeUnchanged) {
+                    // Pure cron change: update in place so the existing schedule is never deleted.
+                    await targetClient.updateSchedule(scheduleId, form.cron.trim())
+                } else if (scheduleId === editingJob.id) {
+                    // Recipe changed (no goosed recipe-update endpoint): recreate under the same id.
                     await targetClient.deleteSchedule(editingJob.id)
                     await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim() })
                 } else {
+                    // Renamed: create the new id first, only then remove the old one.
                     await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim() })
                     await targetClient.deleteSchedule(editingJob.id)
                 }
@@ -343,7 +361,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             setShowModal(false)
             await loadSchedules()
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
+            console.error('Schedule operation failed:', err)
+            showToast('error', t('scheduler.operationFailed'))
         } finally {
             setSubmitting(false)
         }
@@ -358,7 +377,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 setEditingJob({ ...job, paused: true, currently_running: false })
             }
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
+            console.error('Schedule operation failed:', err)
+            showToast('error', t('scheduler.operationFailed'))
         }
     }
 
@@ -371,7 +391,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 setEditingJob({ ...job, paused: false, currently_running: false })
             }
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
+            console.error('Schedule operation failed:', err)
+            showToast('error', t('scheduler.operationFailed'))
         }
     }
 
@@ -384,7 +405,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 setEditingJob({ ...job, currently_running: false })
             }
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
+            console.error('Schedule operation failed:', err)
+            showToast('error', t('scheduler.operationFailed'))
         }
     }
 
@@ -397,7 +419,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             await loadSchedules()
             await loadRuns(job)
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.operationFailed'))
+            console.error('Schedule operation failed:', err)
+            showToast('error', t('scheduler.operationFailed'))
         }
     }
 
@@ -419,7 +442,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             }
             await loadSchedules()
         } catch (err) {
-            showToast('error', err instanceof Error ? err.message : t('scheduler.deleteFailed'))
+            console.error('Failed to delete schedule:', err)
+            showToast('error', t('scheduler.deleteFailed'))
         }
     }
 
