@@ -60,4 +60,53 @@ class TikaConversionServiceTest {
             .doesNotContain("<h1>")
             .doesNotContain("<table>");
     }
+
+    @Test
+    void shouldParseJavaCodeFileSuccessfully() {
+        Path javaFile = Path.of("src/test/resources/inputFiles/Sample.java").toAbsolutePath().normalize();
+
+        TikaConversionService.ConversionResult result = service.convert(javaFile);
+
+        // Verify basic parsing functionality works
+        assertThat(result.contentType()).isNotNull();
+        assertThat(result.text()).isNotEmpty();
+        assertThat(result.markdown()).isNotEmpty();
+
+        // Verify content is extracted (text extraction works without jhighlight)
+        assertThat(result.text())
+            .contains("Sample")
+            .contains("getName")
+            .contains("setName")
+            .contains("main");
+
+        // Verify file type detection works
+        assertThat(result.contentType()).contains("text");
+    }
+
+    @Test
+    void shouldDetectCodeFileTypeCorrectly() {
+        Path javaFile = Path.of("src/test/resources/inputFiles/Sample.java").toAbsolutePath().normalize();
+
+        String detectedType = service.detectType(javaFile);
+
+        assertThat(detectedType).isNotNull();
+        assertThat(detectedType).contains("text");
+    }
+
+    @Test
+    void shouldParseCodeFileAfterExcludingJhighlightAndJdom2() {
+        Path javaFile = Path.of("src/test/resources/inputFiles/Sample.java").toAbsolutePath().normalize();
+
+        TikaConversionService.ConversionResult result = service.convert(javaFile);
+
+        assertThat(result.contentType()).isNotNull();
+        assertThat(result.text()).isNotEmpty();
+        assertThat(result.markdown()).isNotEmpty();
+
+        assertThat(result.text())
+            .contains("Sample")
+            .contains("getName")
+            .contains("setName")
+            .contains("main");
+    }
 }
