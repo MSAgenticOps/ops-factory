@@ -1165,6 +1165,13 @@ public class KnowledgeServiceFacade {
         return processUploadWithResult(sourceId, file).imported();
     }
 
+    /**
+     * 文档上传操作的结果。
+     *
+     * @param imported 是否成功导入，true 表示导入成功，false 表示被跳过
+     * @param skipReason 跳过原因（导入成功时为 null），例如："DUPLICATE_CONTENT"
+     * @param existingFileName 已存在文档的名称（导入成功或无冲突时为 null）
+     */
     private record UploadResult(boolean imported, String skipReason, String existingFileName) {
     }
 
