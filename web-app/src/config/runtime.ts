@@ -227,8 +227,9 @@ export async function initializeRuntimeConfig(): Promise<void> {
     // instead of failing silently on every API call later.
     try {
         const healthUrl = `${runtime.GATEWAY_URL}/status`
+        const userId = localStorage.getItem('opsfactory:userId') || 'admin'
         const res = await trackedFetch(healthUrl, {
-            headers: { 'x-secret-key': runtime.GATEWAY_SECRET_KEY },
+            headers: { 'x-secret-key': runtime.GATEWAY_SECRET_KEY, 'x-user-id': userId },
             cache: 'no-store',
             category: 'app',
             name: 'app.gateway_health_check',
@@ -258,6 +259,7 @@ export function gatewayHeaders(userId?: string | null): Record<string, string> {
 export function knowledgeHeaders(userId?: string | null): Record<string, string> {
     const h: Record<string, string> = {
         'Content-Type': 'application/json',
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
     }
     if (userId) h['x-user-id'] = userId
     return h
@@ -265,7 +267,9 @@ export function knowledgeHeaders(userId?: string | null): Record<string, string>
 
 /** Build knowledge-service headers for FormData uploads (no Content-Type, browser sets multipart boundary). */
 export function knowledgeFormDataHeaders(userId?: string | null): Record<string, string> {
-    const h: Record<string, string> = {}
+    const h: Record<string, string> = {
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
+    }
     if (userId) h['x-user-id'] = userId
     return h
 }
