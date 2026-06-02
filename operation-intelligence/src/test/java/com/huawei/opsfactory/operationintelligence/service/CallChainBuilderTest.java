@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
+import com.huawei.opsfactory.operationintelligence.qos.model.FlowNode;
 import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
 import com.huawei.opsfactory.operationintelligence.qos.parser.AppendInfoParser;
 import com.huawei.opsfactory.operationintelligence.qos.parser.TraceLogParser;
@@ -83,6 +84,17 @@ class CallChainBuilderTest {
         assertEquals("BES", tree.getChainType());
         assertEquals(1L, tree.getTotalCount());
         assertNotNull(tree.getFlows());
+        assertEquals(1, tree.getFlows().size());
+
+        // Verify node-level success statistics
+        List<FlowNode> nodes = tree.getFlows().get(0).getNodes();
+        assertEquals(3, nodes.size());
+        for (FlowNode node : nodes) {
+            assertEquals(1L, node.getCallCount(), "Node " + node.getSeqNo() + " callCount should be 1");
+            assertEquals(1L, node.getSuccessCount(), "Node " + node.getSeqNo() + " successCount should be 1");
+            assertEquals(100.0, node.getSuccessPercent(), 0.001,
+                "Node " + node.getSeqNo() + " successPercent should be 100.0");
+        }
     }
 
     @Test

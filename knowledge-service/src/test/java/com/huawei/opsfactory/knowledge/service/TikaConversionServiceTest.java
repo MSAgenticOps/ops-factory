@@ -60,4 +60,44 @@ class TikaConversionServiceTest {
             .doesNotContain("<h1>")
             .doesNotContain("<table>");
     }
+
+    /**
+     * Tests that Java code files can be parsed successfully after excluding jhighlight dependency.
+     * Verifies that basic content extraction works without syntax highlighting library.
+     */
+    @Test
+    void shouldParseJavaCodeFileSuccessfully() {
+        Path javaFile = Path.of("src/test/resources/inputFiles/Sample.java").toAbsolutePath().normalize();
+
+        TikaConversionService.ConversionResult result = service.convert(javaFile);
+
+        // Verify basic parsing functionality works
+        assertThat(result.contentType()).isNotNull();
+        assertThat(result.text()).isNotEmpty();
+        assertThat(result.markdown()).isNotEmpty();
+
+        // Verify content is extracted (text extraction works without jhighlight)
+        assertThat(result.text())
+            .contains("Sample")
+            .contains("getName")
+            .contains("setName")
+            .contains("main");
+
+        // Verify file type detection works
+        assertThat(result.contentType()).contains("text");
+    }
+
+    /**
+     * Tests that code file type detection works correctly after excluding jhighlight and jdom2 dependencies.
+     * Verifies that Tika can still detect Java files by content type.
+     */
+    @Test
+    void shouldDetectCodeFileTypeCorrectly() {
+        Path javaFile = Path.of("src/test/resources/inputFiles/Sample.java").toAbsolutePath().normalize();
+
+        String detectedType = service.detectType(javaFile);
+
+        assertThat(detectedType).isNotNull();
+        assertThat(detectedType).contains("text");
+    }
 }
