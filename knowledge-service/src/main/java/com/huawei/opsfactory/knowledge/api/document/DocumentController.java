@@ -150,6 +150,13 @@ public class DocumentController {
     ) {
     }
 
+    /**
+     * 文档导入过程中跳过的文件信息。
+     *
+     * @param fileName 被跳过的文件名
+     * @param reason 跳过原因（例如："DUPLICATE_CONTENT"）
+     * @param existingFileName 导致跳过的已存在文档名称
+     */
     public record SkippedFileInfo(String fileName, String reason, String existingFileName) {
     }
 
