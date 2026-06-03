@@ -4,6 +4,9 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,19 +67,12 @@ public class CommandWhitelistController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> addCommand(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) {
-        try {
-            commandWhitelistService.addCommand(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("command", request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Command whitelist entry conflict");
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-        }
+        HttpServletRequest httpRequest) throws ConflictException, BadRequestException {
+        commandWhitelistService.addCommand(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("command", request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -89,19 +85,13 @@ public class CommandWhitelistController {
      */
     @PutMapping
     public ResponseEntity<Map<String, Object>> updateCommand(@RequestParam("pattern") String pattern,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            commandWhitelistService.updateCommand(pattern, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("command", request);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Command not found: " + pattern);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest)
+        throws NotFoundException, BadRequestException {
+        commandWhitelistService.updateCommand(pattern, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("command", request);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -113,17 +103,10 @@ public class CommandWhitelistController {
      */
     @DeleteMapping
     public ResponseEntity<Map<String, Object>> deleteCommand(@RequestParam("pattern") String pattern,
-        HttpServletRequest httpRequest) {
-        try {
-            commandWhitelistService.deleteCommand(pattern);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Command not found: " + pattern);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        HttpServletRequest httpRequest) throws NotFoundException {
+        commandWhitelistService.deleteCommand(pattern);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        return ResponseEntity.ok(body);
     }
 }

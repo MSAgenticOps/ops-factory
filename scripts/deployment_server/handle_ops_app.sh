@@ -271,30 +271,57 @@ if [ -n "${OI_JAR}" ] && [ -f "${SOURCE_DIR}${OI_JAR}" ]; then
     # 复制新 JAR
     echo "yes" | cp "${SOURCE_DIR}${OI_JAR}" "${TARGET_OI_DIR}${OI_JAR}"
 
-    # 复制并合并配置（保留环境特有的 dv-environments）
-    if [ -f "${SOURCE_DIR}${OI_CONFIG}" ]; then
-        cp "${SOURCE_DIR}${OI_CONFIG}" "${TARGET_OI_DIR}config.yaml"
-        if [ -f "${TARGET_OI_DIR}config.yaml.bak.${timestamp}" ]; then
-            python3 -c "
+    # 复制并修改配置
+    if [ -f "${SOURCE_DIR}${OI_CONFIG_EXAMPLE}" ]; then
+        cp "${SOURCE_DIR}${OI_CONFIG_EXAMPLE}" "${TARGET_OI_DIR}config.yaml"
+
+        # 用 Python 统一修改配置（避免 sed 和 yaml 格式冲突）
+        python3 -c "
 import yaml
-bak_path = '${TARGET_OI_DIR}config.yaml.bak.${timestamp}'
-cur_path = '${TARGET_OI_DIR}config.yaml'
-with open(bak_path) as f:
-    old = yaml.safe_load(f) or {}
-with open(cur_path) as f:
-    cur = yaml.safe_load(f) or {}
-# 保留环境特有的 dv-environments
-old_dv = old.get('operation-intelligence', {}).get('qos', {}).get('dv-environments')
-if old_dv is not None:
-    cur_oi = cur.setdefault('operation-intelligence', {})
-    cur_qos = cur_oi.setdefault('qos', {})
-    cur_qos['dv-environments'] = old_dv
-with open(cur_path, 'w') as f:
-    yaml.dump(cur, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-print('OI config.yaml 合并完成')
+
+config_path = '${TARGET_OI_DIR}config.yaml'
+
+# DV 环境配置（在脚本中定义）
+dv_environments = [
+    {
+        'env-code': 'DigitalCRM.sit',
+        'env-name': 'DigitalCRM SIT',
+        'agent-solution-type': 'DigitalCRM',
+        'product-type-name': 'DigitalCRM',
+        'server-url': 'https://192.168.200.100:26335',
+        'utm-user': 'MS_USER',
+        'utm-password': 'AAaa11!!',
+        'crt-content': '',
+        'crt-file-name': 'client.jks',
+        'strict-ssl': False
+    }
+]
+
+with open(config_path) as f:
+    config = yaml.safe_load(f) or {}
+
+# 修改 spring profile
+if 'spring' not in config:
+    config['spring'] = {}
+if 'profiles' not in config['spring']:
+    config['spring']['profiles'] = {}
+config['spring']['profiles']['active'] = 'prod'
+
+# 修改 secret-key
+if 'operation-intelligence' not in config:
+    config['operation-intelligence'] = {}
+config['operation-intelligence']['secret-key'] = 'test'
+
+# 注入 dv-environments
+if 'qos' not in config['operation-intelligence']:
+    config['operation-intelligence']['qos'] = {}
+config['operation-intelligence']['qos']['dv-environments'] = dv_environments
+
+with open(config_path, 'w') as f:
+    yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+print('OI config.yaml 处理完成')
 "
-            rm -f "${TARGET_OI_DIR}config.yaml.bak.${timestamp}"
-        fi
     fi
 
     chown root:root "${TARGET_OI_DIR}${OI_JAR}"
@@ -323,8 +350,8 @@ if [ -n "${CC_JAR}" ] && [ -f "${SOURCE_DIR}${CC_JAR}" ]; then
     echo "yes" | cp "${SOURCE_DIR}${CC_JAR}" "${TARGET_CC_DIR}${CC_JAR}"
 
     # 直接替换配置
-    if [ -f "${SOURCE_DIR}${CC_CONFIG}" ]; then
-        echo "yes" | cp "${SOURCE_DIR}${CC_CONFIG}" "${TARGET_CC_DIR}config.yaml"
+    if [ -f "${SOURCE_DIR}${CC_CONFIG_EXAMPLE}" ]; then
+        echo "yes" | cp "${SOURCE_DIR}${CC_CONFIG_EXAMPLE}" "${TARGET_CC_DIR}config.yaml"
         # 修改 cors-origin 为 *
         sed -i 's/^  cors-origin:.*/  cors-origin: "*"/' "${TARGET_CC_DIR}config.yaml"
     fi
@@ -347,41 +374,30 @@ if [ -n "${KS_JAR}" ] && [ -f "${SOURCE_DIR}${KS_JAR}" ]; then
     echo "yes" | cp "${SOURCE_DIR}${KS_JAR}" "${TARGET_KS_DIR}${KS_JAR}"
 
     # 直接替换配置
-    if [ -f "${SOURCE_DIR}${KS_CONFIG}" ]; then
-        echo "yes" | cp "${SOURCE_DIR}${KS_CONFIG}" "${TARGET_KS_DIR}config.yaml"
+    if [ -f "${SOURCE_DIR}${KS_CONFIG_EXAMPLE}" ]; then
+        echo "yes" | cp "${SOURCE_DIR}${KS_CONFIG_EXAMPLE}" "${TARGET_KS_DIR}config.yaml"
     fi
 
     chown root:root "${TARGET_KS_DIR}${KS_JAR}"
     chmod 600 "${TARGET_KS_DIR}${KS_JAR}"
 fi
 
-# 10. 合并 config.yaml
-#    策略：以代码仓新 config 为基准，仅保留环境特有的 server 设置
-echo "正在合并 config.yaml..."
-cp "${TARGET_DIR}config.yaml" "${TARGET_DIR}config.yaml.bak.${timestamp}"
-cp "${SOURCE_DIR}config.yaml" "${TARGET_DIR}config.yaml"
-
-python3 -c "
-import yaml
-
-bak_path  = '${TARGET_DIR}config.yaml.bak.${timestamp}'
-cur_path  = '${TARGET_DIR}config.yaml'
-
-with open(bak_path) as f:
-    old = yaml.safe_load(f) or {}
-with open(cur_path) as f:
-    cur = yaml.safe_load(f) or {}
-
-# 仅保留环境特有的 server 设置（端口、地址、SSL 等）
-if 'server' in old:
-    cur['server'] = old['server']
-
-with open(cur_path, 'w') as f:
-    yaml.dump(cur, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-
-print('config.yaml 合并完成')
-"
-rm -f "${TARGET_DIR}config.yaml.bak.${timestamp}"
+# 10. 处理 Gateway config.yaml
+echo "正在处理 Gateway config.yaml..."
+# 备份旧配置
+if [ -f "${TARGET_DIR}config.yaml" ]; then
+	cp "${TARGET_DIR}config.yaml" "${TARGET_DIR}config.yaml.bak.${timestamp}"
+fi
+# 复制 example 为正式配置
+if [ -f "${SOURCE_DIR}config.yaml.example" ]; then
+	cp "${SOURCE_DIR}config.yaml.example" "${TARGET_DIR}config.yaml"
+	# 修改必要配置项
+	sed -i 's/^  secret-key: ""/  secret-key: "test"/' "${TARGET_DIR}config.yaml"
+	sed -i 's/^  cors-origin: "http:\/\/127\.0\.0\.1:5173"/  cors-origin: "*"/' "${TARGET_DIR}config.yaml"
+	echo "Gateway config.yaml 处理完成"
+else
+	echo "警告: config.yaml.example 不存在，跳过 Gateway 配置处理"
+fi
 
 # 11. 复制 webapp
 if [ -n "${WEBAPP_ZIP}" ] && [ -f "${SOURCE_DIR}${WEBAPP_ZIP}" ]; then

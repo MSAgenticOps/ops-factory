@@ -121,7 +121,7 @@ export function generateSampleXlsx(importType: ImportType, t: (key: string, para
 
     metadata.fields.forEach((field) => {
         const label = t(`hostResource.${field.labelKey}`)
-        const description = getFieldDescription(field.labelKey, label)
+        const description = getFieldDescription(field.labelKey, label, t as (key: string) => string)
         descriptionData.push([
             label,
             getRequiredLabel(field.required, t as (key: string) => string),
@@ -150,18 +150,10 @@ export function generateSampleXlsx(importType: ImportType, t: (key: string, para
     return workbook
 }
 
-function getFieldDescription(labelKey: string, label: string): string {
-    const descriptions: Record<string, string> = {
-        'field_sops_targetSolution': 'Target Solution (solution type ID or universal)',
-        'field_sops_stepsDescription': 'Steps Description (natural language diagnostic steps)',
-        'field_clusterTypes_clusterMode': 'Cluster Mode (Optional: Peer/Primary-Backup)',
-        'field_hostGroups_enabled': 'Enabled (Optional: TRUE/FALSE)',
-        'field_hosts_username': 'SSH login username (Must be provided together with credential)',
-        'field_hosts_credential': 'SSH password or private key (Must be provided together with username)',
-        'field_hosts_authType': 'Auth Type (Optional: password/key)',
-        'field_hosts_role': 'Role (Optional: primary/backup)',
-    }
-    return descriptions[labelKey] || label
+function getFieldDescription(labelKey: string, label: string, t: (key: string) => string): string {
+    const descKey = `hostResource.desc_${labelKey}`
+    const desc = t(descKey)
+    return desc === descKey ? label : desc
 }
 
 export function downloadWorkbook(workbook: XLSX.WorkBook, filename: string): void {
@@ -187,7 +179,7 @@ export function generateExportXlsx(
 
     metadata.fields.forEach((field) => {
         const label = t(`hostResource.${field.labelKey}`)
-        const description = getFieldDescription(field.labelKey, label)
+        const description = getFieldDescription(field.labelKey, label, t as (key: string) => string)
         descriptionData.push([
             label,
             getRequiredLabel(field.required, t as (key: string) => string),
@@ -232,7 +224,7 @@ export function generateMultiSheetExportXlsx(
 
         metadata.fields.forEach((field) => {
             const label = t(`hostResource.${field.labelKey}`)
-            const description = getFieldDescription(field.labelKey, label)
+            const description = getFieldDescription(field.labelKey, label, t as (key: string) => string)
             descriptionData.push([
                 label,
                 getRequiredLabel(field.required, t as (key: string) => string),

@@ -5,6 +5,8 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -30,11 +33,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * @deprecated Use {@link ClusterRelationService} instead. Host-level relations are replaced by cluster-level relations.
+ * HostRelationService
+ *
  * @author x00000000
  * @since 2026-05-09
  */
-@Deprecated
 @Service
 public class HostRelationService {
     private static final Logger log = LoggerFactory.getLogger(HostRelationService.class);
@@ -178,7 +181,7 @@ public class HostRelationService {
      * @param body request body
      * @return the result
      */
-    public Map<String, Object> createRelation(Map<String, Object> body) {
+    public Map<String, Object> createRelation(Map<String, Object> body) throws BadRequestException, NotFoundException {
         String sourceHostId = (String) body.get("sourceHostId");
         String targetHostId = (String) body.get("targetHostId");
         String sourceType = (String) body.getOrDefault("sourceType", "host");
@@ -187,21 +190,21 @@ public class HostRelationService {
         if ("business-service".equals(sourceType)) {
             try {
                 businessServiceService.getBusinessService(sourceHostId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source business service not found: " + sourceHostId, e);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Source business service not found", e);
             }
         } else {
             try {
                 hostService.getHost(sourceHostId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source host not found: " + sourceHostId, e);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Source host not found", e);
             }
         }
         // targetHostId always validates as a host
         try {
             hostService.getHost(targetHostId);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Target host not found: " + targetHostId, e);
+        } catch (NotFoundException e) {
+            throw new BadRequestException("Target host not found", e);
         }
 
         String id = UUID.randomUUID().toString();
@@ -235,11 +238,11 @@ public class HostRelationService {
      * @param body an existing host relation with the provided field map
      * @return the result
      */
-    public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
+    public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
         Path file = relationsDir.resolve(id + ".json");
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
-            throw new IllegalArgumentException("Host relation not found: " + id);
+            throw new NotFoundException("Host relation not found");
         }
 
         String currentSourceType = (String) relation.getOrDefault("sourceType", "host");
@@ -252,14 +255,14 @@ public class HostRelationService {
             if ("business-service".equals(currentSourceType)) {
                 try {
                     businessServiceService.getBusinessService(sourceHostId);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source business service not found: " + sourceHostId, e);
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Source business service not found", e);
                 }
             } else {
                 try {
                     hostService.getHost(sourceHostId);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source host not found: " + sourceHostId, e);
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Source host not found", e);
                 }
             }
             relation.put("sourceHostId", sourceHostId);
@@ -268,8 +271,8 @@ public class HostRelationService {
             String targetHostId = (String) body.get("targetHostId");
             try {
                 hostService.getHost(targetHostId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Target host not found: " + targetHostId, e);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Target host not found", e);
             }
             relation.put("targetHostId", targetHostId);
         }
@@ -306,7 +309,11 @@ public class HostRelationService {
 
                 // Sync hostIds if this was a business-service relation
                 if ("business-service".equals(sourceType) && sourceHostId != null && businessServiceService != null) {
-                    businessServiceService.syncHostIdsFromRelations(sourceHostId);
+                    try {
+                        businessServiceService.syncHostIdsFromRelations(sourceHostId);
+                    } catch (NotFoundException e) {
+                        log.debug("Business service not found during sync after relation delete: {}", sourceHostId);
+                    }
                 }
                 return true;
             }
@@ -436,7 +443,7 @@ public class HostRelationService {
         }
         try {
             hostMap.put(hostId, hostService.getHost(hostId));
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Skipping missing host {} while building topology", hostId);
         }
     }
@@ -468,7 +475,7 @@ public class HostRelationService {
      * @param hostId host identifier
      * @return 1-hop neighbors (upstream + downstream) for a given host
      */
-    public Map<String, Object> getNeighbors(String hostId) {
+    public Map<String, Object> getNeighbors(String hostId) throws NotFoundException {
         // 1. Validate host exists
         Map<String, Object> host = hostService.getHost(hostId);
 
@@ -519,7 +526,7 @@ public class HostRelationService {
                 } else {
                     downstream.add(entry);
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (NotFoundException e) {
                 log.debug("Skipping missing neighbor host {} while building host relation topology", neighborId);
             }
         }

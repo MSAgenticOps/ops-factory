@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { runtime, controlCenterHeaders } from '../../../../config/runtime'
 import { getErrorMessage } from '../../../../utils/errorMessages'
+import { useUser } from '../../../platform/providers/UserContext'
 
 // ---- Types matching GET /runtime/metrics response ----
 
@@ -55,6 +56,7 @@ export interface UseMetricsResult {
 }
 
 export function useMetrics(autoRefreshMs = 30_000): UseMetricsResult {
+  const { userId } = useUser()
   const [data, setData] = useState<MetricsData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +68,7 @@ export function useMetrics(autoRefreshMs = 30_000): UseMetricsResult {
     setError(null)
     try {
       const res = await fetch(`${runtime.CONTROL_CENTER_URL}/runtime/metrics`, {
-        headers: controlCenterHeaders(),
+        headers: controlCenterHeaders(userId),
         signal: signal || AbortSignal.timeout(10_000),
       })
       if (!res.ok) {
@@ -83,7 +85,7 @@ export function useMetrics(autoRefreshMs = 30_000): UseMetricsResult {
     } finally {
       if (id === fetchIdRef.current) setIsLoading(false)
     }
-  }, [])
+  }, [userId])
 
   const refresh = useCallback(() => { load() }, [load])
 

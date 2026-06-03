@@ -3,7 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { usePreview } from '../../../platform/providers/PreviewContext'
-import { runtime } from '../../../../config/runtime'
+import { useUser } from '../../../platform/providers/UserContext'
+import { runtime, knowledgeHeaders, knowledgeFormDataHeaders } from '../../../../config/runtime'
 import { useKnowledgeSourceDetail } from '../hooks/useKnowledgeSourceDetail'
 import { getErrorMessage } from '../../../../utils/errorMessages'
 import { triggerDownload } from '../../../../utils/fileDownload'
@@ -19,6 +20,7 @@ import type {
     KnowledgeMaintenanceFailure,
     KnowledgeMaintenanceJobSummary,
     KnowledgeProfileDetail,
+    KnowledgeSkippedFileInfo,
     KnowledgeSource,
     PagedResponse,
 } from '../../../../types/knowledge'
@@ -754,9 +756,20 @@ function getDocumentDisplayTitle(document: Pick<KnowledgeDocumentSummary, 'name'
 
 function getDisplayDownloadName(document: Pick<KnowledgeDocumentSummary, 'name' | 'title'>): string {
     if (!document.title?.trim()) return document.name
+    const title = document.title.trim()
+    // Check if title already contains an extension
+    if (title.includes('.')) {
+        const lastDotIdx = title.lastIndexOf('.')
+        const ext = title.slice(lastDotIdx)
+        // Only use title as-is if it ends with a known extension
+        if (['.txt', '.md', '.pdf', '.docx', '.pptx', '.xlsx', '.html', '.csv'].includes(ext.toLowerCase())) {
+            return title
+        }
+    }
+    // Otherwise, append extension from original filename
     const dotIdx = document.name.lastIndexOf('.')
     const ext = dotIdx > 0 ? document.name.slice(dotIdx) : ''
-    return document.title.trim() + ext
+    return title + ext
 }
 
 function getDocumentType(document: Pick<KnowledgeDocumentSummary, 'name' | 'contentType'>): string {
@@ -1500,6 +1513,7 @@ function UploadDocumentsModal({
     maxFileSizeMb,
     allowedContentTypes,
     existingFileNames,
+    userId,
     onClose,
     onUploaded,
 }: {
@@ -1508,6 +1522,7 @@ function UploadDocumentsModal({
     maxFileSizeMb?: number
     allowedContentTypes?: string[]
     existingFileNames?: Set<string>
+    userId?: string | null
     onClose: () => void
     onUploaded: () => Promise<void>
 }) {
@@ -1517,6 +1532,7 @@ function UploadDocumentsModal({
     const [sessionState, setSessionState] = useState<UploadSessionState>('idle')
     const [summary, setSummary] = useState<string | null>(null)
     const [requestError, setRequestError] = useState<string | null>(null)
+    const [skippedFiles, setSkippedFiles] = useState<KnowledgeSkippedFileInfo[]>([])
 
     const handleAddFiles = useCallback((files: File[]) => {
         setRequestError(null)
@@ -1555,6 +1571,7 @@ function UploadDocumentsModal({
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/documents:ingest`, {
                 method: 'POST',
+                headers: knowledgeFormDataHeaders(userId),
                 body: formData,
             })
             const data = await response.json().catch(() => null) as KnowledgeIngestResponse | { message?: string } | null
@@ -1563,16 +1580,32 @@ function UploadDocumentsModal({
                 throw new Error((data as { message?: string } | null)?.message || response.statusText)
             }
 
-            const importedCount = (data as KnowledgeIngestResponse).documentCount
+            const ingestResponse = data as KnowledgeIngestResponse
+            const importedCount = ingestResponse.documentCount
+            const skipped = ingestResponse.skipped || []
+
+            // Mark all uploading items as completed first
             setItems(current => current.map(item => item.status === 'uploading' ? {
                 ...item,
                 status: 'completed',
             } : item))
-            setSummary(
-                importedCount === pendingItems.length
-                    ? t('knowledge.uploadSummarySuccess', { count: importedCount })
-                    : t('knowledge.uploadSummaryPartial', { imported: importedCount, total: pendingItems.length })
-            )
+
+            // Update skipped files state
+            setSkippedFiles(skipped)
+
+            // Set summary message based on results
+            const skippedCount = skipped.length
+            if (skippedCount > 0) {
+                setSummary(t('knowledge.uploadSummaryWithSkipped', {
+                    imported: importedCount,
+                    skipped: skippedCount,
+                    total: pendingItems.length
+                }))
+            } else if (importedCount === pendingItems.length) {
+                setSummary(t('knowledge.uploadSummarySuccess', { count: importedCount }))
+            } else {
+                setSummary(t('knowledge.uploadSummaryPartial', { imported: importedCount, total: pendingItems.length }))
+            }
             setSessionState('finished')
             await onUploaded()
         } catch (err) {
@@ -1618,7 +1651,29 @@ function UploadDocumentsModal({
                             <div className="knowledge-upload-summary-metrics">
                                 <span>{t('knowledge.uploadSummaryMetricCompleted', { count: completedCount })}</span>
                                 <span>{t('knowledge.uploadSummaryMetricFailed', { count: failedCount })}</span>
+                                {skippedFiles.length > 0 && (
+                                    <span>{t('knowledge.uploadSummaryMetricSkipped', { count: skippedFiles.length })}</span>
+                                )}
                             </div>
+                            {skippedFiles.length > 0 && (
+                                <div className="knowledge-upload-skipped-files" style={{ marginTop: 'var(--spacing-2)' }}>
+                                    <div className="knowledge-upload-skipped-title">{t('knowledge.uploadSkippedFilesTitle')}</div>
+                                    <div className="knowledge-upload-skipped-list">
+                                        {skippedFiles.map(file => (
+                                            <div key={file.fileName} className="knowledge-upload-skipped-item">
+                                                <span className="knowledge-upload-skipped-reason">
+                                                    {file.reason === 'DUPLICATE_CONTENT' && file.existingFileName
+                                                        ? t('knowledge.skipReasonDuplicateWithExisting', { uploaded: file.fileName, existing: file.existingFileName })
+                                                        : file.reason === 'DUPLICATE_CONTENT'
+                                                            ? `${file.fileName} - ${t('knowledge.skipReasonDuplicateContent')}`
+                                                            : t('knowledge.skipReasonUnknown', { reason: file.reason })
+                                                    }
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1711,6 +1766,7 @@ export default function KnowledgeConfigure() {
     const [searchParams, setSearchParams] = useSearchParams()
     const { showToast } = useToast()
     const { openPreview, previewFile } = usePreview()
+    const { userId } = useUser()
     const {
         source,
         stats,
@@ -1730,7 +1786,7 @@ export default function KnowledgeConfigure() {
         resetIndexProfile,
         resetRetrievalProfile,
         deleteSource,
-    } = useKnowledgeSourceDetail(sourceId)
+    } = useKnowledgeSourceDetail(sourceId, userId)
     const [showEditBasicInfoModal, setShowEditBasicInfoModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showRebuildModal, setShowRebuildModal] = useState(false)
@@ -2172,7 +2228,9 @@ export default function KnowledgeConfigure() {
         setDocumentsError(null)
 
         try {
-            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${sourceId}&page=1&pageSize=100`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${sourceId}&page=1&pageSize=100`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json() as PagedResponse<KnowledgeDocumentSummary> | { message?: string }
 
             if (!response.ok) {
@@ -2184,7 +2242,9 @@ export default function KnowledgeConfigure() {
 
             const artifactEntries = await Promise.all(items.map(async document => {
                 try {
-                    const artifactsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${document.id}/artifacts`)
+                    const artifactsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${document.id}/artifacts`, {
+                        headers: knowledgeHeaders(userId),
+                    })
                     const artifactsData = await artifactsResponse.json() as KnowledgeDocumentArtifacts
                     if (!artifactsResponse.ok) {
                         throw new Error(artifactsResponse.statusText)
@@ -2215,6 +2275,7 @@ export default function KnowledgeConfigure() {
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${deleteDocumentTarget.id}`, {
                 method: 'DELETE',
+                headers: knowledgeHeaders(userId),
             })
             const data = await response.json().catch(() => null) as { message?: string } | null
             if (!response.ok) {
@@ -2240,9 +2301,7 @@ export default function KnowledgeConfigure() {
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${renameDocumentTarget.id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: knowledgeHeaders(userId),
                 body: JSON.stringify({
                     title: nextTitle,
                 }),
@@ -2301,7 +2360,9 @@ export default function KnowledgeConfigure() {
 
     const handlePreviewDocument = useCallback(async (knowledgeDocument: KnowledgeDocumentSummary) => {
         try {
-            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${knowledgeDocument.id}/preview`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${knowledgeDocument.id}/preview`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json().catch(() => null) as KnowledgeDocumentPreview | { message?: string } | null
 
             if (!response.ok) {
@@ -2337,6 +2398,7 @@ export default function KnowledgeConfigure() {
         try {
             const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}:rebuild`, {
                 method: 'POST',
+                headers: knowledgeHeaders(userId),
             })
             const data = await response.json().catch(() => null) as KnowledgeJobResponse | { code?: string; message?: string } | null
 
@@ -2933,6 +2995,7 @@ export default function KnowledgeConfigure() {
                             onDocumentFilterChange={(documentId) => updateRouteState('chunks', { documentId })}
                             onChunksMutated={reload}
                             readOnly={isSourceUnavailable}
+                            userId={userId}
                         />
                     )}
 
@@ -2945,6 +3008,7 @@ export default function KnowledgeConfigure() {
                                 defaults={defaults}
                                 retrievalProfileDetail={retrievalProfileDetail}
                                 disabled={isSourceUnavailable}
+                                userId={userId}
                             />
                         </div>
                     )}
@@ -3052,6 +3116,7 @@ export default function KnowledgeConfigure() {
                     maxFileSizeMb={defaults?.ingest.maxFileSizeMb}
                     allowedContentTypes={defaults?.ingest.allowedContentTypes}
                     existingFileNames={existingFileNames}
+                    userId={userId}
                     onClose={() => setShowUploadModal(false)}
                     onUploaded={loadDocuments}
                 />

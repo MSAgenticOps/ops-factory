@@ -14,7 +14,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
-            { name: 'code', labelKey: 'field_clusterTypes_code', enLabel: 'Cluster Type Code', zhLabel: '集群类型代码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+            { name: 'code', labelKey: 'field_clusterTypes_code', enLabel: 'Cluster Type Code', zhLabel: '集群类型编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
@@ -56,7 +56,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
-            { name: 'code', labelKey: 'field_businessTypes_code', enLabel: 'Business Type Code', zhLabel: '业务类型代码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+            { name: 'code', labelKey: 'field_businessTypes_code', enLabel: 'Business Type Code', zhLabel: '业务类型编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
@@ -86,11 +86,26 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Host Groups',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'name', labelKey: 'field_hostGroups_name', enLabel: 'Host Group Name', zhLabel: '主机组名称', required: true, validation: { type: 'string', maxLength: 100 } },
-            { name: 'code', labelKey: 'field_hostGroups_code', enLabel: 'Host Group Code', zhLabel: '主机组代码', required: false, validation: { type: 'string', maxLength: 50 } },
+            { name: 'name', labelKey: 'field_hostGroups_name', enLabel: 'Host Group Name', zhLabel: '环境组名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
+            { name: 'code', labelKey: 'field_hostGroups_code', enLabel: 'Host Group Code', zhLabel: '环境组编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 50 } } },
             { name: 'parentGroup', labelKey: 'field_hostGroups_parentGroup', enLabel: 'Parent Group', zhLabel: '父主机组', required: false, validation: { type: 'string' } },
-            { name: 'description', labelKey: 'field_hostGroups_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'enabled', labelKey: 'field_hostGroups_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
+            { name: 'description', labelKey: 'field_hostGroups_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
+            { name: 'enabled', labelKey: 'field_hostGroups_enabled', enLabel: 'Enabled', zhLabel: '启用状态', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
         ],
         sampleData: [
             {
@@ -114,11 +129,26 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Clusters',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'name', labelKey: 'field_clusters_name', enLabel: 'Cluster Name', zhLabel: '集群名称', required: true, validation: { type: 'string', maxLength: 100 } },
+            { name: 'name', labelKey: 'field_clusters_name', enLabel: 'Cluster Name', zhLabel: '集群名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
             { name: 'type', labelKey: 'field_clusters_type', enLabel: 'Cluster Type', zhLabel: '集群类型', required: true, validation: { type: 'string' } },
-            { name: 'purpose', labelKey: 'field_clusters_purpose', enLabel: 'Purpose', zhLabel: '用途', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'group', labelKey: 'field_clusters_group', enLabel: 'Host Group', zhLabel: '所属主机组', required: false, validation: { type: 'string' } },
-            { name: 'description', labelKey: 'field_clusters_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
+            { name: 'purpose', labelKey: 'field_clusters_purpose', enLabel: 'Purpose', zhLabel: '用途', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 200) return { valid: false, error: 'Exceeds maximum length of 200' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 200 } } },
+            { name: 'group', labelKey: 'field_clusters_group', enLabel: 'Host Group', zhLabel: '所属主机组', required: true, validation: { type: 'string' } },
+            { name: 'description', labelKey: 'field_clusters_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
         ],
         sampleData: [
             {
@@ -142,13 +172,31 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Hosts',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'name', labelKey: 'field_hosts_name', enLabel: 'Host Name', zhLabel: '主机名称', required: true, validation: { type: 'string', maxLength: 100 } },
-            { name: 'hostname', labelKey: 'field_hosts_hostname', enLabel: 'System Hostname', zhLabel: '系统主机名', required: false, validation: { type: 'string', maxLength: 255 } },
+            { name: 'name', labelKey: 'field_hosts_name', enLabel: 'Host Name', zhLabel: '主机名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
+            { name: 'hostname', labelKey: 'field_hosts_hostname', enLabel: 'System Hostname', zhLabel: '系统主机名', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 255) return { valid: false, error: 'Exceeds maximum length of 255' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 255 } } },
             { name: 'ip', labelKey: 'field_hosts_ip', enLabel: 'SSH IP Address', zhLabel: 'SSH IP 地址', required: true, validation: { type: 'ip' } },
             { name: 'port', labelKey: 'field_hosts_port', enLabel: 'Port', zhLabel: '端口', required: false, validation: { type: 'number' } },
             { name: 'businessIp', labelKey: 'field_hosts_businessIp', enLabel: 'Business IP Address', zhLabel: '业务 IP 地址', required: false, validation: { type: 'ip' } },
-            { name: 'os', labelKey: 'field_hosts_os', enLabel: 'Operating System', zhLabel: '操作系统', required: false, validation: { type: 'string' } },
-            { name: 'location', labelKey: 'field_hosts_location', enLabel: 'Location', zhLabel: '部署位置', required: false, validation: { type: 'string' } },
+            { name: 'os', labelKey: 'field_hosts_os', enLabel: 'Operating System', zhLabel: '操作系统', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                return { valid: true }
+            }, description: 'validationXssProtected' } },
+            { name: 'location', labelKey: 'field_hosts_location', enLabel: 'Location', zhLabel: '部署位置', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                return { valid: true }
+            }, description: 'validationXssProtected' } },
             { name: 'username', labelKey: 'field_hosts_username', enLabel: 'Username', zhLabel: '用户名', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (value && !/^[\x00-\x7F]*$/.test(value)) {
                     return { valid: false, error: 'Username must contain only ASCII characters' }
@@ -162,12 +210,26 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 }
                 return { valid: true }
             } } },
-            { name: 'business', labelKey: 'field_hosts_business', enLabel: 'Business', zhLabel: '业务', required: false, validation: { type: 'string' } },
+            { name: 'business', labelKey: 'field_hosts_business', enLabel: 'Business', zhLabel: '业务', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                return { valid: true }
+            }, description: 'validationXssProtected' } },
             { name: 'cluster', labelKey: 'field_hosts_cluster', enLabel: 'Cluster', zhLabel: '所属集群', required: false, validation: { type: 'string' } },
-            { name: 'purpose', labelKey: 'field_hosts_purpose', enLabel: 'Purpose', zhLabel: '用途', required: false, validation: { type: 'string' } },
+            { name: 'purpose', labelKey: 'field_hosts_purpose', enLabel: 'Purpose', zhLabel: '用途', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                return { valid: true }
+            }, description: 'validationXssProtected' } },
             { name: 'role', labelKey: 'field_hosts_role', enLabel: 'Role', zhLabel: '角色（可选：primary/backup）', required: false, validation: { type: 'enum', enumValues: ['primary', 'backup'] } },
             { name: 'tags', labelKey: 'field_hosts_tags', enLabel: 'Tags', zhLabel: '标签', required: false, validation: { type: 'array', separator: ';' } },
-            { name: 'description', labelKey: 'field_hosts_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
+            { name: 'description', labelKey: 'field_hosts_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
+            { name: 'customAttributes', labelKey: 'field_hosts_customAttributes', enLabel: 'Custom Attributes', zhLabel: '自定义属性', required: false, validation: { type: 'custom', description: 'validationKeyValuePairs' } },
         ],
         sampleData: [
             {
@@ -187,6 +249,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 role: 'primary',
                 tags: 'web;production',
                 description: 'Production environment web server',
+                customAttributes: 'env=production;team=ops',
             },
             {
                 name: 'DB Server 01',
@@ -205,6 +268,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 role: 'primary',
                 tags: 'database;production',
                 description: 'Production environment database server',
+                customAttributes: 'env=production;team=dba',
             },
         ],
     },
@@ -214,12 +278,27 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         descriptionSheetName: '字段说明',
         fields: [
             { name: 'businessType', labelKey: 'field_businessServices_businessType', enLabel: 'Business Type', zhLabel: '业务类型', required: true, validation: { type: 'string' } },
-            { name: 'name', labelKey: 'field_businessServices_name', enLabel: 'Business Name', zhLabel: '业务名称', required: true, validation: { type: 'string', maxLength: 100 } },
-            { name: 'code', labelKey: 'field_businessServices_code', enLabel: 'Business Code', zhLabel: '业务编码', required: true, validation: { type: 'string', maxLength: 50 } },
-            { name: 'priority', labelKey: 'field_businessServices_priority', enLabel: 'Priority', zhLabel: '优先级', required: false, validation: { type: 'string' } },
+            { name: 'name', labelKey: 'field_businessServices_name', enLabel: 'Business Name', zhLabel: '业务名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
+            { name: 'code', labelKey: 'field_businessServices_code', enLabel: 'Business Code', zhLabel: '业务编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 50 } } },
+            { name: 'priority', labelKey: 'field_businessServices_priority', enLabel: 'Priority', zhLabel: '优先级', required: false, validation: { type: 'enum', enumValues: ['P0', 'P1', 'P2', 'P3'] } },
             { name: 'group', labelKey: 'field_businessServices_group', enLabel: 'Group', zhLabel: '所属分组', required: true, validation: { type: 'string' } },
             { name: 'tags', labelKey: 'field_businessServices_tags', enLabel: 'Tags', zhLabel: '标签', required: false, validation: { type: 'array', separator: ';' } },
-            { name: 'description', labelKey: 'field_businessServices_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
+            { name: 'description', labelKey: 'field_businessServices_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
         ],
         sampleData: [
             {
@@ -269,12 +348,22 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'SOPs',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'name', labelKey: 'field_sops_name', enLabel: 'SOP Name', zhLabel: 'SOP 名称', required: true, validation: { type: 'string', maxLength: 100 } },
-            { name: 'version', labelKey: 'field_sops_version', enLabel: 'Version', zhLabel: '版本号', required: false, validation: { type: 'string', maxLength: 50 } },
+            { name: 'name', labelKey: 'field_sops_name', enLabel: 'SOP Name', zhLabel: 'SOP 名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
+            { name: 'version', labelKey: 'field_sops_version', enLabel: 'Version', zhLabel: '版本号', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 50 } } },
             { name: 'enabled', labelKey: 'field_sops_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
             { name: 'description', labelKey: 'field_sops_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
             { name: 'triggerCondition', labelKey: 'field_sops_triggerCondition', enLabel: 'Trigger Condition', zhLabel: '触发条件', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'targetSolution', labelKey: 'field_sops_targetSolution', enLabel: 'Target Solution', zhLabel: '目标解决方案类型ID或universal', required: false, validation: { type: 'string', maxLength: 100 } },
+            { name: 'targetSolution', labelKey: 'field_sops_targetSolution', enLabel: 'Target Solution', zhLabel: '目标解决方案', required: false, validation: { type: 'string', maxLength: 100 } },
             { name: 'stepsDescription', labelKey: 'field_sops_stepsDescription', enLabel: 'Steps Description', zhLabel: '诊断步骤', required: false, validation: { type: 'string', maxLength: 1000 } },
         ],
         sampleData: [
@@ -312,8 +401,22 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Whitelist',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'pattern', labelKey: 'field_whitelist_pattern', enLabel: 'Command', zhLabel: '命令', required: true, validation: { type: 'regex', pattern: '^[a-zA-Z0-9_\\-./\\s]+$' } },
-            { name: 'description', labelKey: 'field_whitelist_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
+            { name: 'pattern', labelKey: 'field_whitelist_pattern', enLabel: 'Command', zhLabel: '命令', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (!/^[a-zA-Z0-9_\-./\s]+$/.test(value)) {
+                    return { valid: false, error: 'Contains invalid characters' }
+                }
+                if (value.length > 500) {
+                    return { valid: false, error: 'Exceeds maximum length of 500' }
+                }
+                return { valid: true }
+            }, description: 'validationWhitelistPattern', descriptionParams: { max: 500 } } },
+            { name: 'description', labelKey: 'field_whitelist_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
             { name: 'enabled', labelKey: 'field_whitelist_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
         ],
         sampleData: [

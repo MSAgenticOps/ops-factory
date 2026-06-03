@@ -47,7 +47,7 @@ check_tcp() {
 }
 
 health_gateway() {
-    curl -fsS -o /dev/null --max-time 5 "http://${HEALTH_HOST}:${GATEWAY_PORT}/gateway/status" 2>&1
+    curl -fsS -o /dev/null --max-time 5 "http://${HEALTH_HOST}:${GATEWAY_PORT}/api/gateway/status" 2>&1
 }
 
 health_knowledge() {
@@ -192,7 +192,7 @@ do_status() {
     local rc=0
     echo ""
     if health_gateway; then
-        log_ok "gateway         http://${HEALTH_HOST}:${GATEWAY_PORT}/gateway/status"
+        log_ok "gateway         http://${HEALTH_HOST}:${GATEWAY_PORT}/api/gateway/status"
     else
         log_error "gateway         NOT healthy"
         rc=1

@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -324,7 +325,7 @@ public class InstanceManager {
      */
     private boolean isHealthy(int port) {
         try {
-            URL url = new URL(goosedBaseUrl(port) + "/status");
+            URL url = URI.create(goosedBaseUrl(port) + "/status").toURL();
             HttpURLConnection conn = openConnection(url);
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
@@ -334,7 +335,7 @@ public class InstanceManager {
             } finally {
                 conn.disconnect();
             }
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.debug("Health check failed for port {}: {}", port, e.getMessage());
             return false;
         }
@@ -350,7 +351,7 @@ public class InstanceManager {
      * @throws IOException if the connection fails or cannot be read
      */
     private String httpGet(int port, String path, String secretKey) throws IOException {
-        URL url = new URL(goosedBaseUrl(port) + path);
+        URL url = URI.create(goosedBaseUrl(port) + path).toURL();
         HttpURLConnection conn = openConnection(url);
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
@@ -378,7 +379,7 @@ public class InstanceManager {
      * @throws IOException if the connection fails or cannot be written
      */
     private boolean httpPost(int port, String path, String body, String secretKey) throws IOException {
-        URL url = new URL(goosedBaseUrl(port) + path);
+        URL url = URI.create(goosedBaseUrl(port) + path).toURL();
         HttpURLConnection conn = openConnection(url);
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
@@ -485,6 +486,9 @@ public class InstanceManager {
 
             long prepareStart = System.currentTimeMillis();
             Path runtimeRoot = runtimePreparer.prepare(agentId, userId);
+            // Seed per-user memory before goosed launches so the new session loads the agent's
+            // preset memory. Idempotent (one-time marker), shared with the memory tab's seed path.
+            agentConfigService.ensureMemorySeeded(userId, agentId);
             resetStuckRunningSchedules(runtimeRoot);
             int port = portAllocator.allocate();
             long prepareMs = System.currentTimeMillis() - prepareStart;
@@ -631,8 +635,15 @@ public class InstanceManager {
         env.put("GOOSE_DISABLE_KEYRING", "1");
         env.put("HOME", runtimeRoot.resolve("home").toString());
         env.put("USERPROFILE", runtimeRoot.resolve("home").toString());
-        env.put("XDG_CONFIG_HOME",
-            agentConfigService.getAgentConfigDir(agentId).toAbsolutePath().normalize().toString());
+        // Memory is per-user state (not an agent capability): point XDG_CONFIG_HOME at this
+        // instance's per-user config home so goose loads/writes memory under
+        // <configHome>/goose/memory (sibling of data/schedule.json), isolated per user. The path is
+        // owned by AgentConfigService so this reader and the memory-tab reader cannot drift.
+        // In this deployment XDG_CONFIG_HOME is effectively memory-only — config.yaml/prompts/skills/
+        // provider all resolve via GOOSE_PATH_ROOT, so redirecting it touches nothing else.
+        Path xdgConfigHome = agentConfigService.getGooseConfigHomeDir(userId, agentId).toAbsolutePath().normalize();
+        env.put("XDG_CONFIG_HOME", xdgConfigHome.toString());
+        log.info("buildEnvironment: XDG_CONFIG_HOME={} (per-user memory) for {}:{}", xdgConfigHome, agentId, userId);
         boolean gooseTlsValue = properties.isGooseTls();
         env.put("GOOSE_TLS", String.valueOf(gooseTlsValue));
         log.info("buildEnvironment: properties.isGooseTls()={}, setting GOOSE_TLS={} for {}:{}", gooseTlsValue,
@@ -676,12 +687,14 @@ public class InstanceManager {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while waiting for goosed on port " + port, e);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid goosed health check URL on port " + port, e);
         }
     }
 
     private void doWaitForReady(int port, Process process) throws IOException, InterruptedException {
         String baseUrl = goosedBaseUrl(port);
-        URL url = new URL(baseUrl + "/status");
+        URL url = URI.create(baseUrl + "/status").toURL();
         String healthCheckUrl = url.toString();
         log.info("[gooseTls config] waitForReady: using baseUrl={}, gooseScheme={}, health check URL: {}", baseUrl,
             properties.gooseScheme(), healthCheckUrl);

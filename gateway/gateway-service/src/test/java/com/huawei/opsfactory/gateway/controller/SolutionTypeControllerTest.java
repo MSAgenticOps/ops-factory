@@ -25,9 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,12 +58,14 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests list solution types empty.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testListSolutionTypes_empty() throws Exception {
         when(solutionTypeService.listSolutionTypes()).thenReturn(List.of());
 
-        mockMvc.perform(get("/gateway/solution-types/").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/solution-types/").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.solutionTypes").isArray())
             .andExpect(jsonPath("$.solutionTypes").isEmpty());
@@ -69,6 +73,8 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests list solution types with data.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testListSolutionTypes_withData() throws Exception {
@@ -77,7 +83,7 @@ public class SolutionTypeControllerTest {
         st.put("name", "CRM Commerce");
         when(solutionTypeService.listSolutionTypes()).thenReturn(List.of(st));
 
-        mockMvc.perform(get("/gateway/solution-types/").header("x-secret-key", "test").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/solution-types/").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.solutionTypes[0].id").value("st-1"))
             .andExpect(jsonPath("$.solutionTypes[0].name").value("CRM Commerce"));
@@ -87,6 +93,8 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests get solution type existing.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testGetSolutionType_existing() throws Exception {
@@ -96,7 +104,7 @@ public class SolutionTypeControllerTest {
         when(solutionTypeService.getSolutionType("st-1")).thenReturn(st);
 
         mockMvc
-            .perform(get("/gateway/solution-types/st-1").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .perform(get("/api/gateway/solution-types/st-1").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.solutionType.id").value("st-1"));
@@ -104,14 +112,16 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests get solution type not found.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testGetSolutionType_notFound() throws Exception {
         when(solutionTypeService.getSolutionType("nonexistent"))
-            .thenThrow(new IllegalArgumentException("Solution type not found: nonexistent"));
+            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Solution type not found"));
 
         mockMvc.perform(
-            get("/gateway/solution-types/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
+            get("/api/gateway/solution-types/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.success").value(false));
     }
@@ -120,6 +130,8 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests create solution type success.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testCreateSolutionType_success() throws Exception {
@@ -129,7 +141,7 @@ public class SolutionTypeControllerTest {
         when(solutionTypeService.createSolutionType(any())).thenReturn(created);
 
         mockMvc
-            .perform(post("/gateway/solution-types/").header("x-secret-key", "test")
+            .perform(post("/api/gateway/solution-types/").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"CBS Billing\", \"description\": \"CBS solution\"}"))
@@ -142,6 +154,8 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests update solution type success.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testUpdateSolutionType_success() throws Exception {
@@ -151,7 +165,7 @@ public class SolutionTypeControllerTest {
         when(solutionTypeService.updateSolutionType(eq("st-1"), any())).thenReturn(updated);
 
         mockMvc
-            .perform(put("/gateway/solution-types/st-1").header("x-secret-key", "test")
+            .perform(put("/api/gateway/solution-types/st-1").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"UpdatedSolution\"}"))
@@ -162,13 +176,15 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests update solution type not found.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testUpdateSolutionType_notFound() throws Exception {
         when(solutionTypeService.updateSolutionType(eq("nonexistent"), any()))
-            .thenThrow(new IllegalArgumentException("Solution type not found: nonexistent"));
+            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Solution type not found"));
 
-        mockMvc.perform(put("/gateway/solution-types/nonexistent").header("x-secret-key", "test")
+        mockMvc.perform(put("/api/gateway/solution-types/nonexistent").header("x-secret-key", "test")
             .header("x-user-id", "admin")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"name\": \"Updated\"}")).andExpect(status().isNotFound());
@@ -178,13 +194,15 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests delete solution type success.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testDeleteSolutionType_success() throws Exception {
         when(solutionTypeService.deleteSolutionType("st-1")).thenReturn(true);
 
         mockMvc
-            .perform(delete("/gateway/solution-types/st-1").header("x-secret-key", "test").header("x-user-id",
+            .perform(delete("/api/gateway/solution-types/st-1").header("x-secret-key", "test").header("x-user-id",
                 "admin"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
@@ -192,13 +210,15 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests delete solution type not found.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testDeleteSolutionType_notFound() throws Exception {
         when(solutionTypeService.deleteSolutionType("nonexistent")).thenReturn(false);
 
         mockMvc.perform(
-            delete("/gateway/solution-types/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
+            delete("/api/gateway/solution-types/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.success").value(false));
     }
@@ -207,22 +227,26 @@ public class SolutionTypeControllerTest {
 
     /**
      * Tests list solution types unauthorized no key.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testListSolutionTypes_unauthorized_noKey() throws Exception {
-        mockMvc.perform(get("/gateway/solution-types/").header("x-user-id", "admin"))
+        mockMvc.perform(get("/api/gateway/solution-types/").header("x-user-id", "admin"))
             .andExpect(status().isUnauthorized());
     }
 
     /**
      * Tests list solution types succeeds for any authenticated user.
+     *
+     * @throws Exception test fail
      */
     @Test
     public void testListSolutionTypes_succeeds_forAnyUser() throws Exception {
         when(solutionTypeService.listSolutionTypes()).thenReturn(List.of());
 
         mockMvc.perform(
-            get("/gateway/solution-types/").header("x-secret-key", "test").header("x-user-id", "regular-user"))
+            get("/api/gateway/solution-types/").header("x-secret-key", "test").header("x-user-id", "regular-user"))
             .andExpect(status().isOk());
     }
 }

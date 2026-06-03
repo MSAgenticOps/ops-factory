@@ -16,6 +16,9 @@ const schedulerModule: AppModule = {
             titleKey: 'sidebar.scheduler',
             icon: 'scheduler',
             routeId: 'scheduler.index',
+            // Scheduling now lives in each agent's config page ("我的" group). The standalone
+            // cross-agent route stays reachable but is removed from the sidebar.
+            hidden: true,
         },
     ],
 }

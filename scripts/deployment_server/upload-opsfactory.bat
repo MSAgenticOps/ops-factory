@@ -24,15 +24,15 @@ set "FILES[2]=C:\zhulin\goose\handle_ops_app.sh"
 set "FILES[3]=C:\zhulin\goose\handle_ops_app.conf"
 set "FILES[4]=C:\zhulin\ops-factory\web-app\dist.zip"
 set "FILES[5]=C:\zhulin\goose\agents.zip"
-set "FILES[6]=C:\zhulin\ops-factory\gateway\config.yaml"
+set "FILES[6]=C:\zhulin\ops-factory\gateway\config.yaml.example"
 set "FILES[7]=C:\zhulin\ops-factory\operation-intelligence\target\operation-intelligence.jar"
 set "FILES[8]=C:\zhulin\ops-factory\operation-intelligence\scripts\dv_server.py"
 set "FILES[9]=C:\zhulin\ops-factory\control-center\target\control-center.jar"
 set "FILES[10]=C:\zhulin\ops-factory\knowledge-service\target\knowledge-service.jar"
 
-set "OI_CONFIG_SRC=C:\zhulin\ops-factory\operation-intelligence\config.yaml"
-set "CC_CONFIG_SRC=C:\zhulin\ops-factory\control-center\config.yaml"
-set "KS_CONFIG_SRC=C:\zhulin\ops-factory\knowledge-service\config.yaml"
+set "OI_CONFIG_SRC=C:\zhulin\ops-factory\operation-intelligence\config.yaml.example"
+set "CC_CONFIG_SRC=C:\zhulin\ops-factory\control-center\config.yaml.example"
+set "KS_CONFIG_SRC=C:\zhulin\ops-factory\knowledge-service\config.yaml.example"
 
 echo Configuration:
 echo   User: %USER%
@@ -204,29 +204,29 @@ echo.
 :: Check if we need to execute remote script
 if !SUCCESS_COUNT! gtr 0 (
     echo Found %SUCCESS_COUNT% successfully uploaded files.
-    echo Uploading OI config as oi-config.yaml...
+    echo Uploading OI config as oi-config.yaml.example...
     if exist "%OI_CONFIG_SRC%" (
-        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%OI_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%oi-config.yaml
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%OI_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%oi-config.yaml.example
         if !errorlevel! equ 0 (
-            echo   OI config uploaded as oi-config.yaml: SUCCESS
+            echo   OI config uploaded as oi-config.yaml.example: SUCCESS
         ) else (
             echo   OI config upload: FAILED
         )
     )
-    echo Uploading CC config as cc-config.yaml...
+    echo Uploading CC config as cc-config.yaml.example...
     if exist "%CC_CONFIG_SRC%" (
-        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%CC_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%cc-config.yaml
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%CC_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%cc-config.yaml.example
         if !errorlevel! equ 0 (
-            echo   CC config uploaded as cc-config.yaml: SUCCESS
+            echo   CC config uploaded as cc-config.yaml.example: SUCCESS
         ) else (
             echo   CC config upload: FAILED
         )
     )
-    echo Uploading KS config as ks-config.yaml...
+    echo Uploading KS config as ks-config.yaml.example...
     if exist "%KS_CONFIG_SRC%" (
-        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%KS_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%ks-config.yaml
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%KS_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%ks-config.yaml.example
         if !errorlevel! equ 0 (
-            echo   KS config uploaded as ks-config.yaml: SUCCESS
+            echo   KS config uploaded as ks-config.yaml.example: SUCCESS
         ) else (
             echo   KS config upload: FAILED
         )

@@ -30,6 +30,7 @@ import org.yaml.snakeyaml.representer.Representer;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -723,18 +724,128 @@ public class AgentConfigService {
     // 100KB
     private static final int MAX_MEMORY_CONTENT_SIZE = 100 * 1024;
 
-    private Path getGooseMemoryDir(String agentId) {
-        return getAgentConfigDir(agentId).resolve("goose").resolve("memory");
+    /**
+     * Returns the per-user goose config home — the value Gateway sets as {@code XDG_CONFIG_HOME} for
+     * this instance, from which goose resolves memory at {@code <this>/goose/memory}. This is the
+     * single source of that path: {@link InstanceManager} reads it for the env var and
+     * {@link #getGooseMemoryDir} resolves {@code goose/memory} onto it, so the two readers (goosed
+     * and the memory tab) cannot drift. It is a real directory, distinct from the {@code config}
+     * symlink that points at the shared agent config.
+     *
+     * @param userId user identifier
+     * @param agentId agent instance identifier
+     * @return path to the per-user XDG config home ({@code runtimeRoot/data/config})
+     */
+    public Path getGooseConfigHomeDir(String userId, String agentId) {
+        return getUserAgentDir(userId, agentId).resolve("data").resolve("config");
     }
 
     /**
-     * List all memory files (*.txt) for an agent, returning category name + content.
+     * Returns the per-user goose memory directory. Memory is per-user state (sibling of the
+     * per-user {@code data/schedule.json}); it matches the {@code XDG_CONFIG_HOME/goose/memory}
+     * path goose loads from.
      *
+     * @param userId user identifier
+     * @param agentId agent instance identifier
+     * @return path to the per-user memory directory
+     */
+    private Path getGooseMemoryDir(String userId, String agentId) {
+        return getGooseConfigHomeDir(userId, agentId).resolve("goose").resolve("memory");
+    }
+
+    /**
+     * Returns the shared agent-level seed memory directory, copied into a user's memory once on
+     * first access (see {@link #ensureMemorySeeded(String, String)}).
+     *
+     * @param agentId agent instance identifier
+     * @return path to the shared seed memory directory
+     */
+    private Path getSeedMemoryDir(String agentId) {
+        return getAgentConfigDir(agentId).resolve("goose").resolve("memory");
+    }
+
+    private Path getMemorySeededMarker(String userId, String agentId) {
+        return getUserAgentDir(userId, agentId).resolve("data").resolve(".memory-seeded");
+    }
+
+    /**
+     * Seeds a user's memory from the shared agent seed exactly once, the first time that user's
+     * memory is touched (by either an instance spawn or the memory tab). Idempotency is tracked by a
+     * one-time {@code data/.memory-seeded} marker, NOT by emptiness — so a user who deliberately
+     * clears all their memory is never re-seeded. Memory is per-user state; this is a platform-wide
+     * rule applied uniformly to every agent so a user's first run inherits the agent's preset memory
+     * while later edits stay per-user. Each preset {@code *.txt} is copied only when no file of that
+     * name already exists, so an existing (user-written or already-seeded) entry is never overwritten
+     * and a seed interrupted partway completes on the next call before the marker is written.
+     *
+     * @param userId user identifier
+     * @param agentId agent instance identifier
+     */
+    public void ensureMemorySeeded(String userId, String agentId) {
+        Path marker = getMemorySeededMarker(userId, agentId);
+        if (Files.exists(marker)) {
+            return;
+        }
+        Path seedDir = getSeedMemoryDir(agentId);
+        Path targetDir = getGooseMemoryDir(userId, agentId);
+        try {
+            int copied = 0;
+            if (Files.isDirectory(seedDir)) {
+                Files.createDirectories(targetDir);
+                try (DirectoryStream<Path> seeds = Files.newDirectoryStream(seedDir, "*.txt")) {
+                    for (Path seed : seeds) {
+                        Path dest = targetDir.resolve(seed.getFileName());
+                        if (Files.isRegularFile(seed) && Files.notExists(dest)) {
+                            try {
+                                Files.copy(seed, dest);
+                                copied++;
+                            } catch (FileAlreadyExistsException concurrent) {
+                                // A concurrent seeder (spawn vs. memory tab) created it first; the
+                                // file is present, so treat this as already done and keep going.
+                                log.debug("Memory seed {} already created concurrently for {}:{}",
+                                    seed.getFileName(), agentId, userId);
+                            }
+                        }
+                    }
+                }
+            }
+            // Mark done only after the copy loop completes without error, so an interrupted seed
+            // retries; written regardless of count so a seedless agent is still marked exactly once.
+            Files.createDirectories(marker.getParent());
+            Files.writeString(marker, "", StandardCharsets.UTF_8);
+            if (copied > 0) {
+                log.info("Seeded {} memory file(s) for {}:{} into {}", copied, agentId, userId, targetDir);
+            }
+        } catch (IOException e) {
+            // Non-fatal: a failed seed must not block memory reads/writes or instance startup.
+            log.warn("Failed to seed memory for {}:{}: {}", agentId, userId, e.getMessage());
+        }
+    }
+
+    /**
+     * Returns the per-user memory dir after ensuring it has been seeded once. Single choke point so
+     * every read/write path seeds first; a new memory accessor reusing this cannot forget to seed.
+     * Destructive ops ({@link #deleteMemoryFile}) deliberately skip seeding — deleting only acts on
+     * what already exists, and seeding there could resurrect presets the user is removing.
+     *
+     * @param userId user identifier
+     * @param agentId agent instance identifier
+     * @return path to the per-user memory directory
+     */
+    private Path seededMemoryDir(String userId, String agentId) {
+        ensureMemorySeeded(userId, agentId);
+        return getGooseMemoryDir(userId, agentId);
+    }
+
+    /**
+     * List all memory files (*.txt) for a user's agent, returning category name + content.
+     *
+     * @param userId user identifier
      * @param agentId agent instance identifier
      * @return list of memory file maps, each containing category and content keys
      */
-    public List<Map<String, String>> listMemoryFiles(String agentId) {
-        Path memoryDir = getGooseMemoryDir(agentId);
+    public List<Map<String, String>> listMemoryFiles(String userId, String agentId) {
+        Path memoryDir = seededMemoryDir(userId, agentId);
         List<Map<String, String>> files = new ArrayList<>();
         if (!Files.isDirectory(memoryDir)) {
             return files;
@@ -748,7 +859,7 @@ public class AgentConfigService {
                     Map<String, String> file = new HashMap<>();
                     file.put("category", category);
                     try {
-                        file.put("content", Files.readString(entry));
+                        file.put("content", Files.readString(entry, StandardCharsets.UTF_8));
                     } catch (IOException e) {
                         log.warn("Failed to read memory file {}/{}", agentId, fileName, e);
                         file.put("content", "");
@@ -765,14 +876,15 @@ public class AgentConfigService {
     /**
      * Read a single memory file content.
      *
+     * @param userId user identifier
      * @param agentId agent instance identifier
      * @param category memory file category name (without .txt extension)
      * @return file content string, or {@code null} if not found or unreadable
      */
-    public String readMemoryFile(String agentId, String category) {
-        Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
+    public String readMemoryFile(String userId, String agentId, String category) {
+        Path filePath = seededMemoryDir(userId, agentId).resolve(category + ".txt");
         try {
-            return Files.readString(filePath);
+            return Files.readString(filePath, StandardCharsets.UTF_8);
         } catch (java.nio.file.NoSuchFileException e) {
             return null;
         } catch (IOException e) {
@@ -784,19 +896,21 @@ public class AgentConfigService {
     /**
      * Write (create/update) a memory file. Creates the memory directory if needed.
      *
+     * @param userId user identifier
      * @param agentId agent instance identifier
      * @param category memory file category name (without .txt extension)
      * @param content text content to write; must not exceed 100KB
      */
-    public void writeMemoryFile(String agentId, String category, String content) {
+    public void writeMemoryFile(String userId, String agentId, String category, String content) {
         if (content != null
-            && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+            && content.getBytes(StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
-        Path memoryDir = getGooseMemoryDir(agentId);
+        Path memoryDir = seededMemoryDir(userId, agentId);
         try {
             Files.createDirectories(memoryDir);
-            Files.writeString(memoryDir.resolve(category + ".txt"), content != null ? content : "");
+            Files.writeString(memoryDir.resolve(category + ".txt"), content != null ? content : "",
+                StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write memory file for agent: " + agentId, e);
         }
@@ -805,11 +919,14 @@ public class AgentConfigService {
     /**
      * Delete a memory file.
      *
+     * @param userId user identifier
      * @param agentId agent instance identifier
      * @param category memory file category name (without .txt extension)
      */
-    public void deleteMemoryFile(String agentId, String category) {
-        Path filePath = getGooseMemoryDir(agentId).resolve(category + ".txt");
+    public void deleteMemoryFile(String userId, String agentId, String category) {
+        // No seeding here: deletion acts only on what already exists; seeding first could re-create
+        // presets the user is clearing. Reads/writes seed via seededMemoryDir.
+        Path filePath = getGooseMemoryDir(userId, agentId).resolve(category + ".txt");
         try {
             Files.delete(filePath);
         } catch (java.nio.file.NoSuchFileException e) {

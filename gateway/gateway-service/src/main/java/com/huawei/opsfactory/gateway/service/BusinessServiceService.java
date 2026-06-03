@@ -5,6 +5,8 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -174,11 +176,11 @@ public class BusinessServiceService {
      * @param id entity identifier
      * @return a business service by its ID
      */
-    public Map<String, Object> getBusinessService(String id) {
+    public Map<String, Object> getBusinessService(String id) throws NotFoundException {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
-            throw new IllegalArgumentException("Business service not found: " + id);
+            throw new NotFoundException("Business service not found");
         }
         return bs;
     }
@@ -222,11 +224,11 @@ public class BusinessServiceService {
      * @return the result
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) {
+    public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) throws NotFoundException {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
-            throw new IllegalArgumentException("Business service not found: " + id);
+            throw new NotFoundException("Business service not found");
         }
 
         if (body.containsKey("name")) {
@@ -305,7 +307,7 @@ public class BusinessServiceService {
      * @return business service with resolved host info
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getWithResolvedHosts(String id) {
+    public Map<String, Object> getWithResolvedHosts(String id) throws NotFoundException {
         Map<String, Object> bs = getBusinessService(id);
 
         List<String> hostIds = (List<String>) bs.getOrDefault("hostIds", new ArrayList<>());
@@ -315,7 +317,7 @@ public class BusinessServiceService {
             try {
                 Map<String, Object> host = hostService.getHost(hid);
                 resolvedHosts.add(host);
-            } catch (IllegalArgumentException e) {
+            } catch (NotFoundException e) {
                 log.warn("Host {} not found for business service {}", hid, id);
             }
         }
@@ -333,7 +335,7 @@ public class BusinessServiceService {
      * @return hosts for the entry resources of a business service
      */
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> getHostsForBusinessService(String id) {
+    public List<Map<String, Object>> getHostsForBusinessService(String id) throws NotFoundException {
         Map<String, Object> bs = getBusinessService(id);
         List<String> hostIds = (List<String>) bs.getOrDefault("hostIds", new ArrayList<>());
 
@@ -341,7 +343,7 @@ public class BusinessServiceService {
         for (String hid : hostIds) {
             try {
                 hosts.add(hostService.getHost(hid));
-            } catch (IllegalArgumentException e) {
+            } catch (NotFoundException e) {
                 log.warn("Host {} not found for business service {}", hid, id);
             }
         }
@@ -356,7 +358,7 @@ public class BusinessServiceService {
      * @return topology for a business service: entry hosts + N-hop downstream expansion
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getTopologyForBusinessService(String id) {
+    public Map<String, Object> getTopologyForBusinessService(String id) throws NotFoundException {
         Map<String, Object> bs = getBusinessService(id);
         List<String> entryHostIdsList = (List<String>) bs.getOrDefault("hostIds", new ArrayList<>());
 
@@ -369,7 +371,7 @@ public class BusinessServiceService {
                 Map<String, Object> h = hostService.getHost(hid);
                 hostMap.put(hid, h);
                 entryHostIds.put(hid, true);
-            } catch (IllegalArgumentException e) {
+            } catch (NotFoundException e) {
                 log.warn("Entry host {} not found for business service {}", hid, id);
             }
         }
@@ -389,7 +391,7 @@ public class BusinessServiceService {
                         Map<String, Object> th = hostService.getHost(targetId);
                         hostMap.put(targetId, th);
                         nextFrontier.add(targetId);
-                    } catch (IllegalArgumentException e) {
+                    } catch (NotFoundException e) {
                         log.debug("Skipping missing downstream host {} for business service {}", targetId, id);
                     }
                 }
@@ -550,7 +552,7 @@ public class BusinessServiceService {
      * @param bsId bs id
      */
     @SuppressWarnings("unchecked")
-    public void syncHostIdsFromRelations(String bsId) {
+    public void syncHostIdsFromRelations(String bsId) throws NotFoundException {
         Map<String, Object> bs = getBusinessService(bsId);
         List<Map<String, Object>> rels = hostRelationService.listRelations(null, null, null, "business-service", bsId);
         List<String> newHostIds = rels.stream().map(r -> (String) r.get("targetHostId")).collect(Collectors.toList());
@@ -567,7 +569,7 @@ public class BusinessServiceService {
      * @param bsId bs id
      */
     @SuppressWarnings("unchecked")
-    public void syncHostIdsFromClusterRelations(String bsId) {
+    public void syncHostIdsFromClusterRelations(String bsId) throws NotFoundException {
         Map<String, Object> bs = getBusinessService(bsId);
         List<Map<String, Object>> allClusterRels = clusterRelationService.listRelations(null);
         List<String> newHostIds = new ArrayList<>();

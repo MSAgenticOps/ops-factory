@@ -13,7 +13,7 @@ import 'highlight.js/styles/github.css'
 import './FilePreview.css'
 import { inferFileType, needsTextContent } from '../../../utils/filePreview'
 import OnlyOfficePreview from './OnlyOfficePreview'
-import { runtime, gatewayHeaders } from '../../../config/runtime'
+import { runtime, gatewayHeaders, knowledgeHeaders, knowledgeFormDataHeaders } from '../../../config/runtime'
 import { getFilenameFromDisposition, triggerDownload } from '../../../utils/fileDownload'
 
 const MAX_LOG_LINE_NUMBER_LINES = 12000
@@ -341,7 +341,9 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         setKnowledgeSources([])
 
         try {
-            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json().catch(() => null) as KnowledgeSourceListResponse | { message?: string } | null
 
             if (!response.ok) {
@@ -369,7 +371,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                 setKnowledgeSourcesLoading(false)
             }
         }
-    }, [t])
+    }, [t, userId])
 
     const handleToggleKnowledgeMenu = useCallback(() => {
         if (!isKnowledgeMenuOpen) {
@@ -412,6 +414,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
 
             const ingestResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}/documents:ingest`, {
                 method: 'POST',
+                headers: knowledgeFormDataHeaders(userId),
                 body: formData,
             })
             const ingestData = await ingestResponse.json().catch(() => null) as KnowledgeIngestResponse | { message?: string } | null

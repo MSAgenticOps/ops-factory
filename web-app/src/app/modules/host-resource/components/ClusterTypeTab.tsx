@@ -117,9 +117,20 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                 return
             }
 
+            const nonEmptyEnvVars = envResult.sanitized.filter(ev => ev.key.trim() !== '')
+
+            // Check for duplicate env variable keys (case-insensitive)
+            const envKeys = nonEmptyEnvVars.map(ev => ev.key.trim().toLowerCase())
+            const uniqueEnvKeys = new Set(envKeys)
+            if (envKeys.length !== uniqueEnvKeys.size) {
+                showToast('error', t('hostResource.duplicateEnvVarKey'))
+                setSaving(false)
+                return
+            }
+
             const cleanedForm = {
                 ...sanitizedForm,
-                envVariables: envResult.sanitized.filter(ev => ev.key.trim() !== ''),
+                envVariables: nonEmptyEnvVars,
             }
 
             // Check for duplicate name
@@ -395,6 +406,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                     saving={saving}
                     onSave={handleSave}
                     onClose={() => setShowModal(false)}
+                    isEditing={editing !== null}
                     extraFields={
                         <>
                             <div className="form-group">

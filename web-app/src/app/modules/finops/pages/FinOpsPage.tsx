@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Coins, CornerDownRight, CornerUpRight, MessageSquare, Users, Bot } from '../../../platform/ui/icons/AppIcons'
 import { useTranslation } from 'react-i18next'
+import { useUser } from '../../../platform/providers/UserContext'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Button from '../../../platform/ui/primitives/Button'
 import StatCard from '../../../platform/ui/primitives/StatCard'
@@ -45,6 +46,7 @@ const tabs: TabId[] = ['overview', 'agents', 'users', 'sessions', 'models']
 
 export default function FinOpsPage() {
     const { t, i18n } = useTranslation()
+    const { userId } = useUser()
     const { data, loading, refreshing, error, refresh } = useFinOps()
     const [activeTab, setActiveTab] = useState<TabId>('overview')
     const [detailPages, setDetailPages] = useState<DetailPages>({ agents: 1, users: 1, sessions: 1, models: 1 })
@@ -122,7 +124,7 @@ export default function FinOpsPage() {
             setSessionMessagesLoading(true)
             setSessionMessagesError(null)
             try {
-                const response = await fetchFinOpsSessionMessages(currentSession)
+                const response = await fetchFinOpsSessionMessages(currentSession, userId)
                 if (!cancelled) {
                     setSessionMessages(response)
                 }
@@ -179,10 +181,10 @@ export default function FinOpsPage() {
     }
 
     function fetchDetailPage(tab: DetailTabId, page: number): Promise<DetailPageResponse> {
-        if (tab === 'agents') return fetchFinOpsAgents(page, PAGE_SIZE)
-        if (tab === 'users') return fetchFinOpsUsers(page, PAGE_SIZE)
-        if (tab === 'sessions') return fetchFinOpsSessions(page, PAGE_SIZE)
-        return fetchFinOpsModels(page, PAGE_SIZE)
+        if (tab === 'agents') return fetchFinOpsAgents(page, PAGE_SIZE, userId)
+        if (tab === 'users') return fetchFinOpsUsers(page, PAGE_SIZE, userId)
+        if (tab === 'sessions') return fetchFinOpsSessions(page, PAGE_SIZE, userId)
+        return fetchFinOpsModels(page, PAGE_SIZE, userId)
     }
 
     return (
