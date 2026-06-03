@@ -87,6 +87,11 @@ function WhitelistFormModal({
             return
         }
 
+        if (pattern.trim().length > 500) {
+            setError(t('remoteDiagnosis.whitelist.patternTooLong'))
+            return
+        }
+
         setSaving(true)
         try {
             await onSave({
@@ -141,6 +146,7 @@ function WhitelistFormModal({
                             value={pattern}
                             onChange={e => setPattern(e.target.value)}
                             placeholder={t('remoteDiagnosis.whitelist.patternPlaceholder')}
+                            maxLength={500}
                             autoFocus
                         />
                         <p style={{
@@ -402,8 +408,8 @@ export function WhitelistTab() {
                                 <tbody>
                                     {paginatedCommands.map(cmd => (
                                         <tr key={cmd.pattern} className="sop-workflow-table-row">
-                                            <td>
-                                                <code className="sop-workflow-code-pill">
+                                            <td style={{ maxWidth: 400, wordBreak: 'break-all', whiteSpace: 'normal' }}>
+                                                <code className="sop-workflow-code-pill" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                                                     {cmd.pattern}
                                                 </code>
                                             </td>

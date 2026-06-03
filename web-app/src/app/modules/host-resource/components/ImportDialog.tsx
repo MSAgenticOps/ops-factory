@@ -251,6 +251,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 })
             case 'import.whitelistInvalidPattern':
                 return t('hostResource.importErrorWhitelistInvalidPattern', { pattern: err.params?.pattern })
+            case 'import.whitelistPatternTooLong':
+                return t('hostResource.importErrorWhitelistPatternTooLong', { length: err.params?.length })
             case 'import.invalidChars':
                 return t('hostResource.importErrorInvalidChars', { field: err.params?.field })
             case 'import.usernameInvalidChars':
@@ -317,6 +319,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSopStepsDescriptionTooLong', { length: err.params?.length })
             case 'import.whitelistPatternRequired':
                 return t('hostResource.importErrorWhitelistPatternRequired')
+            case 'import.whitelistEnabledInvalid':
+                return t('hostResource.importErrorWhitelistEnabledInvalid', { value: err.params?.value })
             default:
                 return err.code
         }

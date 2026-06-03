@@ -36,6 +36,8 @@ public class CommandWhitelistService {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    private static final int MAX_PATTERN_LENGTH = 500;
+
     private static final List<String> DEFAULT_COMMANDS = List.of("ps", "tail", "grep", "cat", "ls", "df", "free",
         "netstat", "top", "cd", "find", "wc", "head", "date", "uptime", "echo", "iostat", "ping");
 
@@ -93,10 +95,12 @@ public class CommandWhitelistService {
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
 
-        // Dedup: reject duplicate patterns
+        // Validate pattern length
         Object patternObj = command.get("pattern");
         if (patternObj != null) {
             String newPattern = patternObj.toString();
+            validatePattern(newPattern);
+            // Dedup: reject duplicate patterns
             for (Map<String, Object> existing : commands) {
                 if (newPattern.equals(existing.get("pattern"))) {
                     throw new IllegalArgumentException("Command pattern already exists: " + newPattern);
@@ -120,6 +124,14 @@ public class CommandWhitelistService {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
+
+        // Validate new pattern length if pattern is being updated
+        if (updates.containsKey("pattern")) {
+            Object newPatternObj = updates.get("pattern");
+            if (newPatternObj != null) {
+                validatePattern(newPatternObj.toString());
+            }
+        }
 
         boolean found = false;
         for (Map<String, Object> cmd : commands) {
@@ -425,6 +437,16 @@ public class CommandWhitelistService {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("commands", new ArrayList<>());
             return empty;
+        }
+    }
+
+    private void validatePattern(String pattern) {
+        if (pattern == null || pattern.trim().isEmpty()) {
+            throw new IllegalArgumentException("Command pattern is required");
+        }
+        if (pattern.length() > MAX_PATTERN_LENGTH) {
+            throw new IllegalArgumentException(
+                "Command pattern exceeds maximum length of " + MAX_PATTERN_LENGTH + " characters");
         }
     }
 

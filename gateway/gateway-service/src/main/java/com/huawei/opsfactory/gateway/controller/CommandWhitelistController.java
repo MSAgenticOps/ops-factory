@@ -74,7 +74,10 @@ public class CommandWhitelistController {
         } catch (IllegalArgumentException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Command whitelist entry conflict");
+            body.put("error", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("exceeds maximum length")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+            }
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
     }
@@ -99,7 +102,10 @@ public class CommandWhitelistController {
         } catch (IllegalArgumentException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Command not found: " + pattern);
+            body.put("error", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("exceeds maximum length")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+            }
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
         }
     }

@@ -60,6 +60,7 @@
     "validationMaxLength": "Max {{max}} chars",
     "validationMinLength": "Min {{min}} chars",
     "validationCustom": "Custom validation",
+    "validationWhitelistPattern": "Required. Only letters, numbers, underscores, hyphens, dots, slashes and spaces. Max length {{max}}.",
     "validationXssProtected": "String (no XSS chars: < > \" ' & ` /), max {{max}} chars"
   },
   "sidebar": {
@@ -2190,6 +2191,7 @@
       "deleteConfirm": "Are you sure you want to delete command \"{{pattern}}\"?",
       "patternRequired": "Command pattern is required",
       "patternInvalidChars": "Command pattern can only contain printable ASCII characters",
+      "patternTooLong": "Command pattern cannot exceed 500 characters",
       "noCommands": "No Commands",
       "noCommandsHint": "Add commands to the whitelist",
       "exportJson": "Export JSON",
@@ -2432,6 +2434,7 @@
     "importErrorDuplicate": "{{type}} \"{{name}}\" already exists",
     "importErrorDuplicateCode": "{{type}} with code \"{{code}}\" already exists",
     "importErrorWhitelistInvalidPattern": "Invalid command pattern, only letters, numbers, underscores, hyphens, dots, slashes and spaces are allowed: {{pattern}}",
+    "importErrorWhitelistPatternTooLong": "Command pattern length is {{length}}, exceeding the limit of 500 characters",
     "importErrorInvalidChars": "{{field}} contains invalid characters (< > \" ' & ` /). These characters are not allowed for security reasons.",
     "importErrorUsernameInvalidChars": "Username can only contain ASCII characters",
     "importErrorCredentialInvalidChars": "Credential can only contain ASCII characters",
@@ -2470,6 +2473,7 @@
     "importErrorSopTriggerConditionTooLong": "Trigger condition length is {{length}}, exceeding 500 characters",
     "importErrorSopStepsDescriptionTooLong": "Steps description length is {{length}}, exceeding 1000 characters",
     "importErrorWhitelistPatternRequired": "Command pattern is required",
+    "importErrorWhitelistEnabledInvalid": "Enabled value \"{{value}}\" is invalid, must be TRUE or FALSE",
     "importErrorRow": "Row {{row}}:",
     "importType_ClusterTypes": "Cluster Types",
     "importType_BusinessTypes": "Business Types",

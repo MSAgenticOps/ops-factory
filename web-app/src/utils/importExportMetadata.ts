@@ -398,7 +398,16 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Whitelist',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'pattern', labelKey: 'field_whitelist_pattern', enLabel: 'Command', zhLabel: '命令', required: true, validation: { type: 'regex', pattern: '^[a-zA-Z0-9_\\-./\\s]+$' } },
+            { name: 'pattern', labelKey: 'field_whitelist_pattern', enLabel: 'Command', zhLabel: '命令', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (!/^[a-zA-Z0-9_\-./\s]+$/.test(value)) {
+                    return { valid: false, error: 'Contains invalid characters' }
+                }
+                if (value.length > 500) {
+                    return { valid: false, error: 'Exceeds maximum length of 500' }
+                }
+                return { valid: true }
+            }, description: 'validationWhitelistPattern', descriptionParams: { max: 500 } } },
             { name: 'description', labelKey: 'field_whitelist_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }

@@ -60,6 +60,7 @@
     "validationMaxLength": "最大{{max}}字符",
     "validationMinLength": "最小{{min}}字符",
     "validationCustom": "自定义验证",
+    "validationWhitelistPattern": "必填，只允许字母、数字、下划线、连字符、点号、斜杠和空格，最大长度 {{max}}",
     "validationXssProtected": "字符串（禁止XSS字符：< > \" ' & ` /），最大{{max}}字符"
   },
   "sidebar": {
@@ -2190,6 +2191,7 @@
       "deleteConfirm": "您确定要删除命令「{{pattern}}」吗？",
       "patternRequired": "命令为必填项",
       "patternInvalidChars": "命令只能包含可打印的 ASCII 字符",
+      "patternTooLong": "命令长度不能超过 500 字符",
       "noCommands": "暂无白名单命令",
       "noCommandsHint": "添加允许执行的命令到白名单",
       "exportJson": "导出JSON",
@@ -2432,6 +2434,7 @@
     "importErrorDuplicate": "{{type}} \"{{name}}\" 已存在",
     "importErrorDuplicateCode": "{{type}} 编码 \"{{code}}\" 已存在",
     "importErrorWhitelistInvalidPattern": "命令格式无效，只允许字母、数字、下划线、连字符、点号、斜杠和空格：{{pattern}}",
+    "importErrorWhitelistPatternTooLong": "命令长度为 {{length}}，超过 500 字符限制",
     "importErrorInvalidChars": "{{field}} 包含无效字符 (< > \" ' & ` /)，这些字符因安全原因不允许使用",
     "importErrorUsernameInvalidChars": "用户名只能包含 ASCII 字符",
     "importErrorCredentialInvalidChars": "凭据只能包含 ASCII 字符",
@@ -2470,6 +2473,7 @@
     "importErrorSopTriggerConditionTooLong": "触发条件长度为{{length}}，超过500字符",
     "importErrorSopStepsDescriptionTooLong": "诊断步骤长度为{{length}}，超过1000字符",
     "importErrorWhitelistPatternRequired": "命令模式不能为空",
+    "importErrorWhitelistEnabledInvalid": "启用状态值 \"{{value}}\" 无效，必须为 TRUE 或 FALSE",
     "importErrorRow": "第 {{row}} 行：",
     "importType_ClusterTypes": "集群类型",
     "importType_BusinessTypes": "业务类型",

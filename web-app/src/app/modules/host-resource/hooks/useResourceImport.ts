@@ -827,6 +827,10 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
                                     continue
                                 }
+                                if (pattern.length > 500) {
+                                    errors.push({ row: i + 2, code: 'import.whitelistPatternTooLong', params: { length: String(pattern.length) } })
+                                    continue
+                                }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
                                     if (!descResult.valid) {
@@ -838,10 +842,15 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
+                                const enabledValue = row.enabled ? String(row.enabled).trim().toUpperCase() : ''
+                                if (enabledValue && enabledValue !== 'TRUE' && enabledValue !== 'FALSE') {
+                                    errors.push({ row: i + 2, code: 'import.whitelistEnabledInvalid', params: { value: String(row.enabled) } })
+                                    continue
+                                }
                                 await deps.addWhitelistCommand({
                                     pattern: pattern,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
-                                    enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
+                                    enabled: enabledValue !== 'FALSE',
                                 })
                                 createdPatterns.add(pattern)
                                 success++
