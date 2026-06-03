@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.huawei.opsfactory.gateway.controller.SessionErrorResponseException;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -115,6 +118,81 @@ public class GlobalExceptionHandler {
             return null;
         }
         return ResponseEntity.status(ex.getStatusCode()).body(body);
+    }
+
+    /**
+     * Handles not-found exceptions and returns 404 with a clear error message.
+     *
+     * @param ex not found exception
+     * @param request HTTP request
+     * @param response HTTP response
+     * @return 404 response with error details
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex,
+        HttpServletRequest request, HttpServletResponse response) {
+        log.warn("Not found: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", ex.getMessage());
+        if (isSseRequest(request)) {
+            body.put("type", "Error");
+            body.put("layer", "gateway");
+            body.put("severity", "error");
+            writeSseErrorResponse(response, HttpStatus.NOT_FOUND, body);
+            return null;
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * Handles bad-request exceptions and returns 400 with a clear error message.
+     *
+     * @param ex bad request exception
+     * @param request HTTP request
+     * @param response HTTP response
+     * @return 400 response with error details
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex,
+        HttpServletRequest request, HttpServletResponse response) {
+        log.warn("Bad request: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", ex.getMessage());
+        if (isSseRequest(request)) {
+            body.put("type", "Error");
+            body.put("layer", "gateway");
+            body.put("severity", "error");
+            writeSseErrorResponse(response, HttpStatus.BAD_REQUEST, body);
+            return null;
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Handles conflict exceptions and returns 409 with a clear error message.
+     *
+     * @param ex conflict exception
+     * @param request HTTP request
+     * @param response HTTP response
+     * @return 409 response with error details
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex,
+        HttpServletRequest request, HttpServletResponse response) {
+        log.warn("Conflict: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", ex.getMessage());
+        if (isSseRequest(request)) {
+            body.put("type", "Error");
+            body.put("layer", "gateway");
+            body.put("severity", "error");
+            writeSseErrorResponse(response, HttpStatus.CONFLICT, body);
+            return null;
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     /**

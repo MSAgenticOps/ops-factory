@@ -5,6 +5,9 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +16,7 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -92,7 +93,7 @@ public class CommandWhitelistService {
      *
      * @param command adds a new command to the whitelist, rejecting duplicate patterns
      */
-    public void addCommand(Map<String, Object> command) {
+    public void addCommand(Map<String, Object> command) throws ConflictException, BadRequestException {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
@@ -105,7 +106,7 @@ public class CommandWhitelistService {
             // Dedup: reject duplicate patterns
             for (Map<String, Object> existing : commands) {
                 if (newPattern.equals(existing.get("pattern"))) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Command pattern already exists");
+                    throw new ConflictException("Command pattern already exists");
                 }
             }
         }
@@ -122,7 +123,7 @@ public class CommandWhitelistService {
      * @param pattern command pattern to match
      * @param updates fields to update
      */
-    public void updateCommand(String pattern, Map<String, Object> updates) {
+    public void updateCommand(String pattern, Map<String, Object> updates) throws NotFoundException, BadRequestException {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
@@ -149,7 +150,7 @@ public class CommandWhitelistService {
         }
 
         if (!found) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Command pattern not found");
+            throw new NotFoundException("Command pattern not found");
         }
 
         whitelist.put("commands", commands);
@@ -162,14 +163,14 @@ public class CommandWhitelistService {
      *
      * @param pattern pattern
      */
-    public void deleteCommand(String pattern) {
+    public void deleteCommand(String pattern) throws NotFoundException {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
 
         boolean removed = commands.removeIf(cmd -> pattern.equals(cmd.get("pattern")));
         if (!removed) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Command pattern not found");
+            throw new NotFoundException("Command pattern not found");
         }
 
         whitelist.put("commands", commands);
@@ -442,12 +443,12 @@ public class CommandWhitelistService {
         }
     }
 
-    private void validatePattern(String pattern) {
+    private void validatePattern(String pattern) throws BadRequestException {
         if (pattern == null || pattern.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Command pattern is required");
+            throw new BadRequestException("Command pattern is required");
         }
         if (pattern.length() > MAX_PATTERN_LENGTH) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw new BadRequestException(
                 "Command pattern exceeds maximum length of " + MAX_PATTERN_LENGTH + " characters");
         }
     }

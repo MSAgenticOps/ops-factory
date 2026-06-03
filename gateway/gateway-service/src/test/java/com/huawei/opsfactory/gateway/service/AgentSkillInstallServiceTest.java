@@ -19,7 +19,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
-import org.springframework.web.server.ResponseStatusException;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -107,7 +109,7 @@ public class AgentSkillInstallServiceTest {
         when(skillMarketClient.getSkill("log-analysis")).thenReturn(Map.of("checksum", "sha256:" + sha256(zip)));
         when(skillMarketClient.downloadPackage("log-analysis")).thenReturn(zip);
 
-        assertThrows(ResponseStatusException.class, () -> service.install("agent1", "log-analysis"));
+        assertThrows(ConflictException.class, () -> service.install("agent1", "log-analysis"));
     }
 
     /**
@@ -121,7 +123,7 @@ public class AgentSkillInstallServiceTest {
         when(skillMarketClient.getSkill("log-analysis")).thenReturn(Map.of("checksum", "sha256:bad"));
         when(skillMarketClient.downloadPackage("log-analysis")).thenReturn(zip);
 
-        assertThrows(ResponseStatusException.class, () -> service.install("agent1", "log-analysis"));
+        assertThrows(BadRequestException.class, () -> service.install("agent1", "log-analysis"));
     }
 
     /**
@@ -135,7 +137,7 @@ public class AgentSkillInstallServiceTest {
         when(skillMarketClient.getSkill("unsafe-skill")).thenReturn(Map.of("checksum", "sha256:" + sha256(zip)));
         when(skillMarketClient.downloadPackage("unsafe-skill")).thenReturn(zip);
 
-        assertThrows(ResponseStatusException.class, () -> service.install("agent1", "unsafe-skill"));
+        assertThrows(BadRequestException.class, () -> service.install("agent1", "unsafe-skill"));
     }
 
     /**
@@ -145,7 +147,7 @@ public class AgentSkillInstallServiceTest {
     public void installRequiresExistingAgent() {
         when(agentConfigService.findAgent("missing")).thenReturn(null);
 
-        assertThrows(ResponseStatusException.class, () -> service.install("missing", "log-analysis"));
+        assertThrows(NotFoundException.class, () -> service.install("missing", "log-analysis"));
     }
 
     /**
@@ -173,7 +175,7 @@ public class AgentSkillInstallServiceTest {
      */
     @Test
     public void uninstallRejectsMissingSkill() {
-        assertThrows(ResponseStatusException.class, () -> service.uninstall("agent1", "missing-skill"));
+        assertThrows(NotFoundException.class, () -> service.uninstall("agent1", "missing-skill"));
     }
 
     private byte[] zipBytes(ZipTestEntry... entries) throws IOException {

@@ -4,6 +4,9 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,7 +67,7 @@ public class CommandWhitelistController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> addCommand(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) {
+        HttpServletRequest httpRequest) throws ConflictException, BadRequestException {
         commandWhitelistService.addCommand(request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -82,7 +85,8 @@ public class CommandWhitelistController {
      */
     @PutMapping
     public ResponseEntity<Map<String, Object>> updateCommand(@RequestParam("pattern") String pattern,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest)
+        throws NotFoundException, BadRequestException {
         commandWhitelistService.updateCommand(pattern, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -99,7 +103,7 @@ public class CommandWhitelistController {
      */
     @DeleteMapping
     public ResponseEntity<Map<String, Object>> deleteCommand(@RequestParam("pattern") String pattern,
-        HttpServletRequest httpRequest) {
+        HttpServletRequest httpRequest) throws NotFoundException {
         commandWhitelistService.deleteCommand(pattern);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

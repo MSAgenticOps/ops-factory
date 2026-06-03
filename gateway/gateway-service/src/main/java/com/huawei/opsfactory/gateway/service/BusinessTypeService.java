@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +14,7 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -103,11 +102,11 @@ public class BusinessTypeService {
      * @param id entity identifier
      * @return a business type by its ID
      */
-    public Map<String, Object> getBusinessType(String id) {
+    public Map<String, Object> getBusinessType(String id) throws NotFoundException {
         Path file = businessTypesDir.resolve(id + ".json");
         Map<String, Object> bt = readFile(file);
         if (bt == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Business type not found");
+            throw new NotFoundException("Business type not found");
         }
         return bt;
     }
@@ -144,11 +143,11 @@ public class BusinessTypeService {
      * @param body an existing business type with the provided field map
      * @return the result
      */
-    public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) {
+    public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = businessTypesDir.resolve(id + ".json");
         Map<String, Object> bt = readFile(file);
         if (bt == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Business type not found");
+            throw new NotFoundException("Business type not found");
         }
 
         if (body.containsKey("name")) {

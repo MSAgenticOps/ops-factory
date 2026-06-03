@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.HostRelationService;
 
@@ -104,7 +106,8 @@ public class HostRelationController {
      * @return the neighbor hosts for a given host
      */
     @GetMapping("/hosts/{hostId}/neighbors")
-    public Map<String, Object> getHostNeighbors(@PathVariable("hostId") String hostId, HttpServletRequest request) {
+    public Map<String, Object> getHostNeighbors(@PathVariable("hostId") String hostId, HttpServletRequest request)
+        throws NotFoundException {
         return hostRelationService.getNeighbors(hostId);
     }
 
@@ -117,7 +120,7 @@ public class HostRelationController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createRelation(@RequestBody Map<String, Object> requestBody,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws BadRequestException, NotFoundException {
         Map<String, Object> relation = hostRelationService.createRelation(requestBody);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -135,7 +138,8 @@ public class HostRelationController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateRelation(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
+        @RequestBody Map<String, Object> requestBody, HttpServletRequest request)
+        throws BadRequestException, NotFoundException {
         Map<String, Object> relation = hostRelationService.updateRelation(id, requestBody);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

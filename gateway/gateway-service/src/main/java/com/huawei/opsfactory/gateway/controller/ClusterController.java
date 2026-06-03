@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
@@ -89,7 +91,8 @@ public class ClusterController {
      * @return a cluster by ID with its associated hosts
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getCluster(@PathVariable("id") String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getCluster(@PathVariable("id") String id, HttpServletRequest request)
+        throws NotFoundException {
         Map<String, Object> cluster = clusterService.getCluster(id);
         // Attach hosts for this cluster
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
@@ -156,7 +159,7 @@ public class ClusterController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateCluster(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
         Map<String, Object> cluster = clusterService.updateCluster(id, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -175,7 +178,7 @@ public class ClusterController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deleteCluster(@PathVariable("id") String id,
         @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws ConflictException {
         boolean deleted;
         if (force) {
             deleted = clusterService.forceDeleteCluster(id, hostService);

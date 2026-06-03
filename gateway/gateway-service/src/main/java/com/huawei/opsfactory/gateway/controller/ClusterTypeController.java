@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.ClusterTypeService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,7 +70,7 @@ public class ClusterTypeController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getClusterType(@PathVariable("id") String id,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws NotFoundException {
         Map<String, Object> ct = clusterTypeService.getClusterType(id);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -103,7 +105,8 @@ public class ClusterTypeController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateClusterType(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest)
+        throws NotFoundException, BadRequestException {
         Map<String, Object> ct = clusterTypeService.updateClusterType(id, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

@@ -5,6 +5,9 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +16,7 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -107,11 +108,11 @@ public class HostGroupService {
      * @param id entity identifier
      * @return a host group by its ID
      */
-    public Map<String, Object> getGroup(String id) {
+    public Map<String, Object> getGroup(String id) throws NotFoundException {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);
         if (group == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host group not found");
+            throw new NotFoundException("Host group not found");
         }
         return group;
     }
@@ -207,17 +208,17 @@ public class HostGroupService {
      * @param body request body
      * @return the result
      */
-    public Map<String, Object> createGroup(Map<String, Object> body) {
+    public Map<String, Object> createGroup(Map<String, Object> body) throws BadRequestException, ConflictException {
         String code = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
         if (code.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MSG_CODE_REQUIRED);
+            throw new BadRequestException(MSG_CODE_REQUIRED);
         }
 
         List<Map<String, Object>> allGroups = listGroups();
         boolean duplicate = allGroups.stream()
             .anyMatch(g -> code.equalsIgnoreCase(String.valueOf(g.get("code"))));
         if (duplicate) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, MSG_CODE_EXISTS);
+            throw new ConflictException(MSG_CODE_EXISTS);
         }
 
         String id = UUID.randomUUID().toString();
@@ -245,17 +246,17 @@ public class HostGroupService {
      * @param body an existing host group with the provided field map
      * @return the result
      */
-    public Map<String, Object> updateGroup(String id, Map<String, Object> body) {
+    public Map<String, Object> updateGroup(String id, Map<String, Object> body) throws NotFoundException, BadRequestException, ConflictException {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);
         if (group == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host group not found");
+            throw new NotFoundException("Host group not found");
         }
 
         if (body.containsKey("code")) {
             String newCode = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
             if (newCode.isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MSG_CODE_REQUIRED);
+                throw new BadRequestException(MSG_CODE_REQUIRED);
             }
 
             List<Map<String, Object>> allGroups = listGroups();
@@ -263,7 +264,7 @@ public class HostGroupService {
                 .filter(g -> !id.equals(g.get("id")))
                 .anyMatch(g -> newCode.equalsIgnoreCase(String.valueOf(g.get("code"))));
             if (duplicate) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, MSG_CODE_EXISTS);
+                throw new ConflictException(MSG_CODE_EXISTS);
             }
             group.put("code", newCode);
         }
@@ -293,22 +294,22 @@ public class HostGroupService {
      * @param clusterService used to check for clusters in this group
      * @return true if deleted
      */
-    public boolean deleteGroup(String id, ClusterService clusterService) {
+    public boolean deleteGroup(String id, ClusterService clusterService) throws ConflictException {
         // Check for sub-groups
         List<Map<String, Object>> allGroups = listGroups();
         for (Map<String, Object> g : allGroups) {
             String parentId = (String) g.get("parentId");
             if (id.equals(parentId)) {
-                throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Cannot delete group with sub-groups. Remove sub-groups first.");
+                throw new ConflictException(
+                    "Cannot delete group with sub-groups. Remove sub-groups first.");
             }
         }
 
         // Check for clusters
         List<Map<String, Object>> clusters = clusterService.listClusters(id, null);
         if (!clusters.isEmpty()) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT, "Cannot delete group with clusters. Remove clusters first.");
+            throw new ConflictException(
+                "Cannot delete group with clusters. Remove clusters first.");
         }
 
         Path file = groupsDir.resolve(id + ".json");

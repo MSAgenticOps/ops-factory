@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.ClusterRelationService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -85,7 +87,7 @@ public class ClusterRelationController {
      */
     @GetMapping("/clusters/{clusterId}/neighbors")
     public Map<String, Object> getClusterNeighbors(@PathVariable("clusterId") String clusterId,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws NotFoundException {
         return clusterRelationService.getClusterNeighbors(clusterId);
     }
 
@@ -97,7 +99,8 @@ public class ClusterRelationController {
      * @return Mono emitting a map with neighbor host data
      */
     @GetMapping("/hosts/{hostId}/neighbors")
-    public Map<String, Object> getHostNeighbors(@PathVariable("hostId") String hostId, HttpServletRequest request) {
+    public Map<String, Object> getHostNeighbors(@PathVariable("hostId") String hostId, HttpServletRequest request)
+        throws NotFoundException {
         return clusterRelationService.getHostNeighborsByCluster(hostId);
     }
 
@@ -110,7 +113,7 @@ public class ClusterRelationController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createRelation(@RequestBody Map<String, Object> requestBody,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws BadRequestException, NotFoundException {
         Map<String, Object> relation = clusterRelationService.createRelation(requestBody);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -128,7 +131,8 @@ public class ClusterRelationController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateRelation(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
+        @RequestBody Map<String, Object> requestBody, HttpServletRequest request)
+        throws BadRequestException, NotFoundException {
         Map<String, Object> relation = clusterRelationService.updateRelation(id, requestBody);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

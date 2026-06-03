@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.BusinessTypeService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,7 +69,7 @@ public class BusinessTypeController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getBusinessType(@PathVariable("id") String id,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws NotFoundException {
         Map<String, Object> bt = businessTypeService.getBusinessType(id);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -103,7 +104,7 @@ public class BusinessTypeController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateBusinessType(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
         Map<String, Object> bt = businessTypeService.updateBusinessType(id, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

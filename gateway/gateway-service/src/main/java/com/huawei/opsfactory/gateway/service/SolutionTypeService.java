@@ -5,6 +5,8 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +15,7 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -103,11 +103,11 @@ public class SolutionTypeService {
      * @param id entity identifier
      * @return a solution type by its ID
      */
-    public Map<String, Object> getSolutionType(String id) {
+    public Map<String, Object> getSolutionType(String id) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Solution type not found");
+            throw new NotFoundException("Solution type not found");
         }
         return st;
     }
@@ -144,11 +144,11 @@ public class SolutionTypeService {
      * @param body updated fields
      * @return the result
      */
-    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) {
+    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Solution type not found");
+            throw new NotFoundException("Solution type not found");
         }
 
         if (body.containsKey("name")) {

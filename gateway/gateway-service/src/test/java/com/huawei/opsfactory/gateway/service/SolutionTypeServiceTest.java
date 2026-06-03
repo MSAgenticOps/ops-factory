@@ -16,7 +16,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import org.springframework.web.server.ResponseStatusException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -69,7 +69,7 @@ public class SolutionTypeServiceTest {
      * Tests list solution types empty.
      */
     @Test
-    public void testListSolutionTypes_empty() {
+    public void testListSolutionTypes_empty() throws Exception {
         List<Map<String, Object>> types = solutionTypeService.listSolutionTypes();
         assertTrue(types.isEmpty());
     }
@@ -78,7 +78,7 @@ public class SolutionTypeServiceTest {
      * Tests list solution types returns all.
      */
     @Test
-    public void testListSolutionTypes_returnsAll() {
+    public void testListSolutionTypes_returnsAll() throws Exception {
         createSolutionType("st-1", "CRM Commerce", "CRM solution");
         createSolutionType("st-2", "CBS Billing", "CBS solution");
 
@@ -106,7 +106,7 @@ public class SolutionTypeServiceTest {
      * Tests get solution type existing.
      */
     @Test
-    public void testGetSolutionType_existing() {
+    public void testGetSolutionType_existing() throws Exception {
         createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
 
         Map<String, Object> st = solutionTypeService.getSolutionType("st-1");
@@ -118,8 +118,8 @@ public class SolutionTypeServiceTest {
     /**
      * Tests get solution type not found.
      */
-    @Test(expected = ResponseStatusException.class)
-    public void testGetSolutionType_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testGetSolutionType_notFound() throws Exception {
         solutionTypeService.getSolutionType("nonexistent");
     }
 
@@ -129,7 +129,7 @@ public class SolutionTypeServiceTest {
      * Tests create solution type success.
      */
     @Test
-    public void testCreateSolutionType_success() {
+    public void testCreateSolutionType_success() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "彩铃播控");
         body.put("code", "CRBT");
@@ -153,7 +153,7 @@ public class SolutionTypeServiceTest {
      * Tests create solution type default values.
      */
     @Test
-    public void testCreateSolutionType_defaultValues() {
+    public void testCreateSolutionType_defaultValues() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalSolution");
 
@@ -173,7 +173,7 @@ public class SolutionTypeServiceTest {
      * Tests update solution type success.
      */
     @Test
-    public void testUpdateSolutionType_success() {
+    public void testUpdateSolutionType_success() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("description", "orig desc");
@@ -193,7 +193,7 @@ public class SolutionTypeServiceTest {
      * Tests update solution type partial update.
      */
     @Test
-    public void testUpdateSolutionType_partialUpdate() {
+    public void testUpdateSolutionType_partialUpdate() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("code", "ORIG");
@@ -214,7 +214,7 @@ public class SolutionTypeServiceTest {
      * Tests update solution type color.
      */
     @Test
-    public void testUpdateSolutionType_color() {
+    public void testUpdateSolutionType_color() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "ST");
         body.put("color", "#ff0000");
@@ -231,8 +231,8 @@ public class SolutionTypeServiceTest {
     /**
      * Tests update solution type not found.
      */
-    @Test(expected = ResponseStatusException.class)
-    public void testUpdateSolutionType_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testUpdateSolutionType_notFound() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");
         solutionTypeService.updateSolutionType("nonexistent", updates);
@@ -244,7 +244,7 @@ public class SolutionTypeServiceTest {
      * Tests delete solution type success.
      */
     @Test
-    public void testDeleteSolutionType_success() {
+    public void testDeleteSolutionType_success() throws Exception {
         createSolutionType("st-del", "ToDelete", "desc");
 
         boolean deleted = solutionTypeService.deleteSolutionType("st-del");
@@ -256,7 +256,7 @@ public class SolutionTypeServiceTest {
      * Tests delete solution type not found.
      */
     @Test
-    public void testDeleteSolutionType_notFound() {
+    public void testDeleteSolutionType_notFound() throws Exception {
         boolean deleted = solutionTypeService.deleteSolutionType("nonexistent");
         assertFalse(deleted);
     }

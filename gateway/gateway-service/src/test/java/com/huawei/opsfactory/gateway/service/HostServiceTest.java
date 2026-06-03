@@ -15,7 +15,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.springframework.web.server.ResponseStatusException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -71,7 +71,7 @@ public class HostServiceTest {
      * Tests list hosts empty.
      */
     @Test
-    public void testListHosts_empty() {
+    public void testListHosts_empty() throws Exception {
         List<Map<String, Object>> hosts = hostService.listHosts(null);
         assertTrue(hosts.isEmpty());
     }
@@ -80,7 +80,7 @@ public class HostServiceTest {
      * Tests list hosts returns all hosts.
      */
     @Test
-    public void testListHosts_returnsAllHosts() {
+    public void testListHosts_returnsAllHosts() throws Exception {
         createHost("host-1", "Server1", "10.0.0.1", List.of("RCPA"));
         createHost("host-2", "Server2", "10.0.0.2", List.of("GMDB"));
 
@@ -92,7 +92,7 @@ public class HostServiceTest {
      * Tests list hosts credentials masked.
      */
     @Test
-    public void testListHosts_credentialsMasked() {
+    public void testListHosts_credentialsMasked() throws Exception {
         createHost("host-1", "Server1", "10.0.0.1", List.of());
 
         List<Map<String, Object>> hosts = hostService.listHosts(null);
@@ -104,7 +104,7 @@ public class HostServiceTest {
      * Tests list hosts filter by tag.
      */
     @Test
-    public void testListHosts_filterByTag() {
+    public void testListHosts_filterByTag() throws Exception {
         createHost("host-1", "Server1", "10.0.0.1", List.of("RCPA"));
         createHost("host-2", "Server2", "10.0.0.2", List.of("GMDB"));
         createHost("host-3", "Server3", "10.0.0.3", List.of("RCPA", "ALL"));
@@ -117,7 +117,7 @@ public class HostServiceTest {
      * Tests list hosts filter by tag no match.
      */
     @Test
-    public void testListHosts_filterByTagNoMatch() {
+    public void testListHosts_filterByTagNoMatch() throws Exception {
         createHost("host-1", "Server1", "10.0.0.1", List.of("RCPA"));
 
         List<Map<String, Object>> hosts = hostService.listHosts(new String[] {"NONEXISTENT"});
@@ -128,7 +128,7 @@ public class HostServiceTest {
      * Tests list hosts empty tags array.
      */
     @Test
-    public void testListHosts_emptyTagsArray() {
+    public void testListHosts_emptyTagsArray() throws Exception {
         createHost("host-1", "Server1", "10.0.0.1", List.of());
 
         List<Map<String, Object>> hosts = hostService.listHosts(new String[] {});
@@ -141,7 +141,7 @@ public class HostServiceTest {
      * Tests get host existing.
      */
     @Test
-    public void testGetHost_existing() {
+    public void testGetHost_existing() throws Exception {
         createHost("host-1", "Server1", "10.0.0.1", List.of("RCPA"));
 
         Map<String, Object> host = hostService.getHost("host-1");
@@ -153,8 +153,8 @@ public class HostServiceTest {
     /**
      * Tests get host not found.
      */
-    @Test(expected = ResponseStatusException.class)
-    public void testGetHost_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testGetHost_notFound() throws Exception {
         hostService.getHost("nonexistent");
     }
 
@@ -164,7 +164,7 @@ public class HostServiceTest {
      * Tests get host with credential decrypts credential.
      */
     @Test
-    public void testGetHostWithCredential_decryptsCredential() {
+    public void testGetHostWithCredential_decryptsCredential() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "TestHost");
         body.put("ip", "10.0.0.1");
@@ -184,8 +184,8 @@ public class HostServiceTest {
     /**
      * Tests get host with credential not found.
      */
-    @Test(expected = ResponseStatusException.class)
-    public void testGetHostWithCredential_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testGetHostWithCredential_notFound() throws Exception {
         hostService.getHostWithCredential("nonexistent");
     }
 
@@ -195,7 +195,7 @@ public class HostServiceTest {
      * Tests create host success.
      */
     @Test
-    public void testCreateHost_success() {
+    public void testCreateHost_success() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "TestHost");
         body.put("ip", "10.0.0.1");
@@ -225,7 +225,7 @@ public class HostServiceTest {
      * Tests create host default values.
      */
     @Test
-    public void testCreateHost_defaultValues() {
+    public void testCreateHost_defaultValues() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalHost");
 
@@ -244,7 +244,7 @@ public class HostServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testCreateHost_encryptedCredentialStored() throws IOException {
+    public void testCreateHost_encryptedCredentialStored() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "EncHost");
         body.put("credential", "plainTextPassword");
@@ -264,7 +264,7 @@ public class HostServiceTest {
      * Tests update host success.
      */
     @Test
-    public void testUpdateHost_success() {
+    public void testUpdateHost_success() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("ip", "10.0.0.1");
@@ -285,7 +285,7 @@ public class HostServiceTest {
      * Tests update host update credential.
      */
     @Test
-    public void testUpdateHost_updateCredential() {
+    public void testUpdateHost_updateCredential() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
         body.put("credential", "oldPassword");
@@ -307,7 +307,7 @@ public class HostServiceTest {
      * Tests update host update tags.
      */
     @Test
-    public void testUpdateHost_updateTags() {
+    public void testUpdateHost_updateTags() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
         body.put("tags", List.of("OLD"));
@@ -325,7 +325,7 @@ public class HostServiceTest {
      * Tests update host partial update.
      */
     @Test
-    public void testUpdateHost_partialUpdate() {
+    public void testUpdateHost_partialUpdate() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("ip", "10.0.0.1");
@@ -345,8 +345,8 @@ public class HostServiceTest {
     /**
      * Tests update host not found.
      */
-    @Test(expected = ResponseStatusException.class)
-    public void testUpdateHost_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testUpdateHost_notFound() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");
         hostService.updateHost("nonexistent", updates);
@@ -356,7 +356,7 @@ public class HostServiceTest {
      * Tests update host masked credential preserves original.
      */
     @Test
-    public void testUpdateHost_maskedCredentialPreservesOriginal() {
+    public void testUpdateHost_maskedCredentialPreservesOriginal() throws Exception {
         // Create host with a known password
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
@@ -383,7 +383,7 @@ public class HostServiceTest {
      * @throws InterruptedException if the operation fails
      */
     @Test
-    public void testUpdateHost_updatedAtChanges() throws InterruptedException {
+    public void testUpdateHost_updatedAtChanges() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
         hostService.createHost(body);
@@ -407,7 +407,7 @@ public class HostServiceTest {
      * Tests delete host success.
      */
     @Test
-    public void testDeleteHost_success() {
+    public void testDeleteHost_success() throws Exception {
         createHost("host-del", "ToDelete", "10.0.0.1", List.of());
 
         boolean deleted = hostService.deleteHost("host-del");
@@ -419,7 +419,7 @@ public class HostServiceTest {
      * Tests delete host not found.
      */
     @Test
-    public void testDeleteHost_notFound() {
+    public void testDeleteHost_notFound() throws Exception {
         boolean deleted = hostService.deleteHost("nonexistent");
         assertFalse(deleted);
     }
@@ -430,7 +430,7 @@ public class HostServiceTest {
      * Tests get all tags empty.
      */
     @Test
-    public void testGetAllTags_empty() {
+    public void testGetAllTags_empty() throws Exception {
         List<String> tags = hostService.getAllTags();
         assertTrue(tags.isEmpty());
     }
@@ -439,7 +439,7 @@ public class HostServiceTest {
      * Tests get all tags collects unique.
      */
     @Test
-    public void testGetAllTags_collectsUnique() {
+    public void testGetAllTags_collectsUnique() throws Exception {
         createHost("h1", "S1", "10.0.0.1", List.of("RCPA", "ALL"));
         createHost("h2", "S2", "10.0.0.2", List.of("GMDB"));
         createHost("h3", "S3", "10.0.0.3", List.of("RCPA"));
@@ -455,7 +455,7 @@ public class HostServiceTest {
      * Tests get all tags host with no tags.
      */
     @Test
-    public void testGetAllTags_hostWithNoTags() {
+    public void testGetAllTags_hostWithNoTags() throws Exception {
         createHost("h1", "S1", "10.0.0.1", null);
 
         List<String> tags = hostService.getAllTags();
@@ -468,7 +468,7 @@ public class HostServiceTest {
      * Tests connection host not found.
      */
     @Test
-    public void testConnection_hostNotFound() {
+    public void testConnection_hostNotFound() throws Exception {
         Map<String, Object> result = hostService.testConnection("nonexistent");
         assertEquals(false, result.get("success"));
     }
@@ -494,7 +494,7 @@ public class HostServiceTest {
      * Tests create host with key auth.
      */
     @Test
-    public void testCreateHost_withKeyAuth() {
+    public void testCreateHost_withKeyAuth() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "KeyHost");
         body.put("ip", "10.0.0.1");

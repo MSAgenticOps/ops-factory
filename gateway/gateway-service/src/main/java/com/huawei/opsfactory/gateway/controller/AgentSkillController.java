@@ -4,6 +4,9 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.AgentSkillInstallService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,7 +53,8 @@ public class AgentSkillController {
      */
     @PostMapping("/{agentId}/skills/install")
     public ResponseEntity<Map<String, Object>> installSkill(@PathVariable("agentId") String agentId,
-        @RequestBody Map<String, String> body, HttpServletRequest request) {
+        @RequestBody Map<String, String> body, HttpServletRequest request)
+        throws NotFoundException, BadRequestException, ConflictException {
         String skillId = body.get("skillId");
         return ResponseEntity.ok(installService.install(agentId, skillId));
     }
@@ -65,7 +69,8 @@ public class AgentSkillController {
      */
     @DeleteMapping("/{agentId}/skills/{skillId}")
     public ResponseEntity<Map<String, Object>> uninstallSkill(@PathVariable("agentId") String agentId,
-        @PathVariable("skillId") String skillId, HttpServletRequest request) {
+        @PathVariable("skillId") String skillId, HttpServletRequest request)
+        throws NotFoundException, BadRequestException {
         return ResponseEntity.ok(installService.uninstall(agentId, skillId));
     }
 
