@@ -25,7 +25,6 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 import org.yaml.snakeyaml.error.YAMLException;
-import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -1188,7 +1187,7 @@ public class AgentConfigService {
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
-        return new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(options));
+        return new Yaml(new LoaderOptions(), options);
     }
 
     /**
