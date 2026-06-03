@@ -360,7 +360,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'enabled', labelKey: 'field_sops_enabled', enLabel: 'Enabled', zhLabel: '是否启用', required: false, validation: { type: 'enum', enumValues: ['TRUE', 'FALSE'] } },
             { name: 'description', labelKey: 'field_sops_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'string', maxLength: 500 } },
             { name: 'triggerCondition', labelKey: 'field_sops_triggerCondition', enLabel: 'Trigger Condition', zhLabel: '触发条件', required: false, validation: { type: 'string', maxLength: 500 } },
-            { name: 'targetSolution', labelKey: 'field_sops_targetSolution', enLabel: 'Target Solution', zhLabel: '目标解决方案类型ID或universal', required: false, validation: { type: 'string', maxLength: 100 } },
+            { name: 'targetSolution', labelKey: 'field_sops_targetSolution', enLabel: 'Target Solution', zhLabel: '目标解决方案', required: false, validation: { type: 'string', maxLength: 100 } },
             { name: 'stepsDescription', labelKey: 'field_sops_stepsDescription', enLabel: 'Steps Description', zhLabel: '诊断步骤', required: false, validation: { type: 'string', maxLength: 1000 } },
         ],
         sampleData: [
