@@ -2458,6 +2458,7 @@
     "importErrorBusinessTypeNameRequired": "Business type name is required",
     "importErrorBusinessTypeNameTooLong": "Business type name length is {{length}}, exceeding 100 characters",
     "importErrorBusinessTypeCodeTooLong": "Business type code length is {{length}}, exceeding 50 characters",
+    "importErrorBusinessTypeCodeRequired": "Business type code is required",
     "importErrorBusinessTypeRequired": "Business type is required",
     "importErrorBusinessTypeNotFound": "Business type not found: {{type}}",
     "importErrorHostGroupNameRequired": "Host group name is required",

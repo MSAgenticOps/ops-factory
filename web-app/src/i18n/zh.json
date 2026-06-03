@@ -2459,6 +2459,7 @@
     "importErrorBusinessTypeNameRequired": "业务类型名称不能为空",
     "importErrorBusinessTypeNameTooLong": "业务类型名称长度为{{length}}，超过100字符",
     "importErrorBusinessTypeCodeTooLong": "业务类型代码长度为{{length}}，超过50字符",
+    "importErrorBusinessTypeCodeRequired": "业务类型代码不能为空",
     "importErrorBusinessTypeRequired": "业务类型不能为空",
     "importErrorBusinessTypeNotFound": "未找到业务类型：{{type}}",
     "importErrorHostGroupNameRequired": "环境组名称不能为空",

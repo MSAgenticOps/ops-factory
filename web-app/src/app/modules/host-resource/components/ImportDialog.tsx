@@ -289,6 +289,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessTypeNameTooLong', { length: err.params?.length })
             case 'import.businessTypeCodeTooLong':
                 return t('hostResource.importErrorBusinessTypeCodeTooLong', { length: err.params?.length })
+            case 'import.businessTypeCodeRequired':
+                return t('hostResource.importErrorBusinessTypeCodeRequired')
             case 'import.businessTypeRequired':
                 return t('hostResource.importErrorBusinessTypeRequired')
             case 'import.businessTypeNotFound':
