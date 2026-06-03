@@ -43,6 +43,10 @@ public class HostGroupService {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    private static final String MSG_CODE_REQUIRED = "Environment code is required";
+
+    private static final String MSG_CODE_EXISTS = "Environment code already exists";
+
     private final GatewayProperties properties;
 
     private Path groupsDir;
@@ -206,14 +210,14 @@ public class HostGroupService {
     public Map<String, Object> createGroup(Map<String, Object> body) {
         String code = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
         if (code.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "环境编码不能为空");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MSG_CODE_REQUIRED);
         }
 
         List<Map<String, Object>> allGroups = listGroups();
         boolean duplicate = allGroups.stream()
             .anyMatch(g -> code.equalsIgnoreCase(String.valueOf(g.get("code"))));
         if (duplicate) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "环境编码已存在");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, MSG_CODE_EXISTS);
         }
 
         String id = UUID.randomUUID().toString();
@@ -251,7 +255,7 @@ public class HostGroupService {
         if (body.containsKey("code")) {
             String newCode = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
             if (newCode.isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "环境编码不能为空");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MSG_CODE_REQUIRED);
             }
 
             List<Map<String, Object>> allGroups = listGroups();
@@ -259,7 +263,7 @@ public class HostGroupService {
                 .filter(g -> !id.equals(g.get("id")))
                 .anyMatch(g -> newCode.equalsIgnoreCase(String.valueOf(g.get("code"))));
             if (duplicate) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "环境编码已存在");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, MSG_CODE_EXISTS);
             }
             group.put("code", newCode);
         }
@@ -295,14 +299,16 @@ public class HostGroupService {
         for (Map<String, Object> g : allGroups) {
             String parentId = (String) g.get("parentId");
             if (id.equals(parentId)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete group with sub-groups. Remove sub-groups first.");
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Cannot delete group with sub-groups. Remove sub-groups first.");
             }
         }
 
         // Check for clusters
         List<Map<String, Object>> clusters = clusterService.listClusters(id, null);
         if (!clusters.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete group with clusters. Remove clusters first.");
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT, "Cannot delete group with clusters. Remove clusters first.");
         }
 
         Path file = groupsDir.resolve(id + ".json");

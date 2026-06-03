@@ -49,6 +49,9 @@ public class AgentSkillInstallService {
 
     private static final Pattern SKILL_ID_PATTERN = Pattern.compile("^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$");
 
+    private static final String MSG_INVALID_SKILL_ID =
+        "Skill id must use lowercase letters, numbers, and hyphens";
+
     private final AgentConfigService agentConfigService;
 
     private final SkillMarketClient skillMarketClient;
@@ -91,7 +94,8 @@ public class AgentSkillInstallService {
         String expectedChecksum = stringValue(marketSkill, "checksum");
         String actualChecksum = "sha256:" + sha256(packageBytes);
         if (!expectedChecksum.isBlank() && !expectedChecksum.equalsIgnoreCase(actualChecksum)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package checksum does not match market metadata");
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "Skill package checksum does not match market metadata");
         }
 
         try {
@@ -107,7 +111,8 @@ public class AgentSkillInstallService {
                 extractPackage(packageBytes, tempDir);
                 Path skillMd = tempDir.resolve("SKILL.md");
                 if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package must contain a non-empty SKILL.md");
+                    throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Skill package must contain a non-empty SKILL.md");
                 }
                 rejectSymbolicLinks(tempDir);
                 writeInstallMetadata(tempDir, skillId, actualChecksum);
@@ -161,7 +166,7 @@ public class AgentSkillInstallService {
         Path skillDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").resolve(skillId).normalize();
         Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").normalize();
         if (!skillDir.startsWith(skillsDir)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill id must use lowercase letters, numbers, and hyphens");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MSG_INVALID_SKILL_ID);
         }
         if (!Files.isDirectory(skillDir)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill is not installed for agent");
@@ -259,7 +264,7 @@ public class AgentSkillInstallService {
         }
         String id = value.trim().toLowerCase(Locale.ROOT);
         if (!SKILL_ID_PATTERN.matcher(id).matches()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill id must use lowercase letters, numbers, and hyphens");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, MSG_INVALID_SKILL_ID);
         }
         return id;
     }

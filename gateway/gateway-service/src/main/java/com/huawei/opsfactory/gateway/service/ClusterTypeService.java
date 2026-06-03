@@ -177,7 +177,8 @@ public class ClusterTypeService {
         if (body.containsKey("mode")) {
             String mode = (String) body.get("mode");
             if (!"peer".equals(mode) && !"primary-backup".equals(mode)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid mode. Must be 'peer' or 'primary-backup'");
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid mode. Must be 'peer' or 'primary-backup'");
             }
             ct.put("mode", mode);
         }
