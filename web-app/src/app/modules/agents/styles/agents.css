@@ -313,10 +313,19 @@
 
 .config-tabs {
     display: flex;
+    align-items: flex-end;
     gap: var(--spacing-1);
     margin-bottom: var(--spacing-6);
     border-bottom: 1px solid var(--color-border);
     padding-bottom: 0;
+}
+
+/* Separates agent-scoped tabs from user-scoped tabs (memory); same 1px divider the sidebar uses. */
+.config-tab-divider {
+    align-self: stretch;
+    width: 1px;
+    margin: 0 var(--spacing-4);
+    background: var(--color-border);
 }
 
 .config-tab {
