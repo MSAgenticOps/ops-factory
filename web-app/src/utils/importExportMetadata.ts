@@ -14,7 +14,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
-            { name: 'code', labelKey: 'field_clusterTypes_code', enLabel: 'Cluster Type Code', zhLabel: '集群类型代码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+            { name: 'code', labelKey: 'field_clusterTypes_code', enLabel: 'Cluster Type Code', zhLabel: '集群类型编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
@@ -56,7 +56,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
-            { name: 'code', labelKey: 'field_businessTypes_code', enLabel: 'Business Type Code', zhLabel: '业务类型代码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+            { name: 'code', labelKey: 'field_businessTypes_code', enLabel: 'Business Type Code', zhLabel: '业务类型编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
