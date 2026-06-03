@@ -69,7 +69,7 @@ public class HostGroupServiceTest {
      * Tests create group enabled by default.
      */
     @Test
-    public void testCreateGroup_enabledByDefault() {
+    public void testCreateGroup_enabledByDefault() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -86,7 +86,7 @@ public class HostGroupServiceTest {
      * Tests create group enabled false.
      */
     @Test
-    public void testCreateGroup_enabledFalse() {
+    public void testCreateGroup_enabledFalse() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "TEST");
         body.put("code", "TEST");
@@ -100,7 +100,7 @@ public class HostGroupServiceTest {
      * Tests create group enabled true.
      */
     @Test
-    public void testCreateGroup_enabledTrue() {
+    public void testCreateGroup_enabledTrue() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "STAGING");
         body.put("code", "STAGING");
@@ -116,7 +116,7 @@ public class HostGroupServiceTest {
      * Tests update group set enabled.
      */
     @Test
-    public void testUpdateGroup_setEnabled() {
+    public void testUpdateGroup_setEnabled() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -135,7 +135,7 @@ public class HostGroupServiceTest {
      * Tests update group re enable.
      */
     @Test
-    public void testUpdateGroup_reEnable() {
+    public void testUpdateGroup_reEnable() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -154,7 +154,7 @@ public class HostGroupServiceTest {
      * Tests update group partial update preserves enabled.
      */
     @Test
-    public void testUpdateGroup_partialUpdatePreservesEnabled() {
+    public void testUpdateGroup_partialUpdatePreservesEnabled() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -175,7 +175,7 @@ public class HostGroupServiceTest {
      * Tests update group default enabled remains true.
      */
     @Test
-    public void testUpdateGroup_defaultEnabledRemainsTrue() {
+    public void testUpdateGroup_defaultEnabledRemainsTrue() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -296,7 +296,7 @@ public class HostGroupServiceTest {
      * Tests enabled state persisted and read back.
      */
     @Test
-    public void testEnabledStatePersistedAndReadBack() {
+    public void testEnabledStatePersistedAndReadBack() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -313,7 +313,7 @@ public class HostGroupServiceTest {
      * Tests update enabled persisted and read back.
      */
     @Test
-    public void testUpdateEnabledPersistedAndReadBack() {
+    public void testUpdateEnabledPersistedAndReadBack() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");

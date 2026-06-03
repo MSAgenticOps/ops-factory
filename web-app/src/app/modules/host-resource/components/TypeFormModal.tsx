@@ -46,6 +46,7 @@ export default function TypeFormModal<T extends BaseFormData>({
                             value={form.name}
                             onChange={e => update('name', e.target.value)}
                             placeholder={t('hostResource.typeName')}
+                            maxLength={100}
                         />
                     </div>
                     <div className="form-group">
@@ -55,6 +56,7 @@ export default function TypeFormModal<T extends BaseFormData>({
                             value={form.code}
                             onChange={e => update('code', e.target.value)}
                             placeholder={t('hostResource.typeCode')}
+                            maxLength={50}
                             disabled={isEditing}
                             style={isEditing ? {
                                 backgroundColor: 'var(--surface-background, #f1f5f9)',
@@ -69,6 +71,7 @@ export default function TypeFormModal<T extends BaseFormData>({
                             className="form-input"
                             value={form.description}
                             onChange={e => update('description', e.target.value)}
+                            maxLength={500}
                         />
                     </div>
                     <div className="form-group">

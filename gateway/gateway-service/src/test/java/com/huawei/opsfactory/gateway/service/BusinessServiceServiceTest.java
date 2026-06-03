@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -71,7 +72,7 @@ public class BusinessServiceServiceTest {
      * Tests create business service.
      */
     @Test
-    public void testCreateBusinessService() {
+    public void testCreateBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "OrderService");
         body.put("code", "ORDER");
@@ -101,7 +102,7 @@ public class BusinessServiceServiceTest {
      * Tests create business service defaults.
      */
     @Test
-    public void testCreateBusinessService_defaults() {
+    public void testCreateBusinessService_defaults() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalService");
 
@@ -124,7 +125,7 @@ public class BusinessServiceServiceTest {
      * Tests get business service.
      */
     @Test
-    public void testGetBusinessService() {
+    public void testGetBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "GetTest");
         body.put("code", "GT");
@@ -140,8 +141,8 @@ public class BusinessServiceServiceTest {
     /**
      * Tests get business service not found.
      */
-    @Test(expected = IllegalArgumentException.class)
-    public void testGetBusinessService_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testGetBusinessService_notFound() throws Exception {
         businessServiceService.getBusinessService("nonexistent");
     }
 
@@ -151,7 +152,7 @@ public class BusinessServiceServiceTest {
      * Tests list business services empty.
      */
     @Test
-    public void testListBusinessServices_empty() {
+    public void testListBusinessServices_empty() throws Exception {
         List<Map<String, Object>> services = businessServiceService.listBusinessServices(null, null);
         assertTrue(services.isEmpty());
     }
@@ -160,7 +161,7 @@ public class BusinessServiceServiceTest {
      * Tests list business services returns all.
      */
     @Test
-    public void testListBusinessServices_returnsAll() {
+    public void testListBusinessServices_returnsAll() throws Exception {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of());
         createBs("bs-2", "Svc2", "S2", "group-1", List.of());
         createBs("bs-3", "Svc3", "S3", "group-2", List.of());
@@ -173,7 +174,7 @@ public class BusinessServiceServiceTest {
      * Tests list business services filter by group id.
      */
     @Test
-    public void testListBusinessServices_filterByGroupId() {
+    public void testListBusinessServices_filterByGroupId() throws Exception {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of());
         createBs("bs-2", "Svc2", "S2", "group-2", List.of());
 
@@ -186,7 +187,7 @@ public class BusinessServiceServiceTest {
      * Tests list business services filter by host id.
      */
     @Test
-    public void testListBusinessServices_filterByHostId() {
+    public void testListBusinessServices_filterByHostId() throws Exception {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of("host-1", "host-2"));
         createBs("bs-2", "Svc2", "S2", "group-1", List.of("host-3"));
 
@@ -201,7 +202,7 @@ public class BusinessServiceServiceTest {
      * Tests update business service.
      */
     @Test
-    public void testUpdateBusinessService() {
+    public void testUpdateBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("code", "ORIG");
@@ -225,7 +226,7 @@ public class BusinessServiceServiceTest {
      * Tests update business service partial update.
      */
     @Test
-    public void testUpdateBusinessService_partialUpdate() {
+    public void testUpdateBusinessService_partialUpdate() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("code", "ORIG");
@@ -246,8 +247,8 @@ public class BusinessServiceServiceTest {
     /**
      * Tests update business service not found.
      */
-    @Test(expected = IllegalArgumentException.class)
-    public void testUpdateBusinessService_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testUpdateBusinessService_notFound() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");
         businessServiceService.updateBusinessService("nonexistent", updates);
@@ -259,7 +260,7 @@ public class BusinessServiceServiceTest {
      * Tests delete business service.
      */
     @Test
-    public void testDeleteBusinessService() {
+    public void testDeleteBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "ToDelete");
         Map<String, Object> created = businessServiceService.createBusinessService(body);
@@ -273,7 +274,7 @@ public class BusinessServiceServiceTest {
      * Tests delete business service not found.
      */
     @Test
-    public void testDeleteBusinessService_notFound() {
+    public void testDeleteBusinessService_notFound() throws Exception {
         assertFalse(businessServiceService.deleteBusinessService("nonexistent"));
     }
 
@@ -283,7 +284,7 @@ public class BusinessServiceServiceTest {
      * Tests search by keyword.
      */
     @Test
-    public void testSearchByKeyword() {
+    public void testSearchByKeyword() throws Exception {
         createBs("bs-1", "OrderService", "ORDER", null, List.of(), List.of("core"));
         createBs("bs-2", "PaymentService", "PAY", null, List.of(), List.of("billing"));
         createBs("bs-3", "ShippingService", "SHIP", null, List.of(), List.of("order"));
@@ -304,7 +305,7 @@ public class BusinessServiceServiceTest {
      * Tests search by keyword empty keyword.
      */
     @Test
-    public void testSearchByKeyword_emptyKeyword() {
+    public void testSearchByKeyword_emptyKeyword() throws Exception {
         createBs("bs-1", "Svc1", "S1", null, List.of());
 
         List<Map<String, Object>> all = businessServiceService.searchByKeyword("");
