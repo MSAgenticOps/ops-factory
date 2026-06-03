@@ -86,13 +86,13 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
         sheetName: 'Host Groups',
         descriptionSheetName: '字段说明',
         fields: [
-            { name: 'name', labelKey: 'field_hostGroups_name', enLabel: 'Host Group Name', zhLabel: '主机组名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+            { name: 'name', labelKey: 'field_hostGroups_name', enLabel: 'Host Group Name', zhLabel: '环境组名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
-            { name: 'code', labelKey: 'field_hostGroups_code', enLabel: 'Host Group Code', zhLabel: '主机组代码', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+            { name: 'code', labelKey: 'field_hostGroups_code', enLabel: 'Host Group Code', zhLabel: '环境组编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }

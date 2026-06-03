@@ -297,6 +297,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostGroupNameRequired')
             case 'import.hostGroupNameTooLong':
                 return t('hostResource.importErrorHostGroupNameTooLong', { length: err.params?.length })
+            case 'import.hostGroupCodeRequired':
+                return t('hostResource.importErrorHostGroupCodeRequired')
             case 'import.hostGroupCodeTooLong':
                 return t('hostResource.importErrorHostGroupCodeTooLong', { length: err.params?.length })
             case 'import.businessServiceNameRequired':

@@ -322,21 +322,24 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.hostGroupNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
-                                if (row.code) {
-                                    const codeResult = validateAndSanitize(row.code, 'Code')
-                                    if (!codeResult.valid) {
-                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
-                                        continue
-                                    }
-                                    if (codeResult.sanitized.length > 50) {
-                                        errors.push({ row: i + 2, code: 'import.hostGroupCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
-                                        continue
-                                    }
-                                    const trimmedCode = codeResult.sanitized.trim()
-                                    if (groupCodeToId.has(trimmedCode)) {
-                                        errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'HostGroup', code: trimmedCode } })
-                                        continue
-                                    }
+                                const groupCode = row.code?.trim() || ''
+                                if (!groupCode) {
+                                    errors.push({ row: i + 2, code: 'import.hostGroupCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(groupCode, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.hostGroupCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
+                                }
+                                const trimmedCode = codeResult.sanitized.trim()
+                                if (groupCodeToId.has(trimmedCode)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'HostGroup', code: trimmedCode } })
+                                    continue
                                 }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
@@ -362,12 +365,12 @@ export function useResourceImport(deps: ImportDeps) {
                                 }
                                 const created = await deps.createGroup({
                                     name: nameResult.sanitized,
-                                    code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
+                                    code: codeResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     enabled: row.enabled ? String(row.enabled).toUpperCase() === 'TRUE' : true,
                                 })
                                 groupNameToId.set(nameResult.sanitized, created.id)
-                                if (row.code) groupCodeToId.set(validateAndSanitize(row.code, 'Code').sanitized, created.id)
+                                groupCodeToId.set(codeResult.sanitized, created.id)
                                 success++
                                 break
                             }
