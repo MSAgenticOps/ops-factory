@@ -228,6 +228,27 @@ export function useResourceImport(deps: ImportDeps) {
                                     }
                                     continue
                                 }
+                                // Validate envVariables key uniqueness (case-insensitive)
+                                const envVars = row.envVariables
+                                    ? row.envVariables.split(';').filter(Boolean).map(pair => {
+                                        const eq = pair.indexOf('=')
+                                        return { key: eq > 0 ? pair.slice(0, eq) : pair, value: eq > 0 ? pair.slice(eq + 1) : '' }
+                                    })
+                                    : undefined
+                                if (envVars && envVars.length > 0) {
+                                    const seenKeys = new Set<string>()
+                                    let hasDuplicateKey = false
+                                    for (const ev of envVars) {
+                                        const lowerKey = ev.key.toLowerCase()
+                                        if (seenKeys.has(lowerKey)) {
+                                            errors.push({ row: i + 2, code: 'import.envVarDuplicateKey', params: { key: ev.key } })
+                                            hasDuplicateKey = true
+                                            break
+                                        }
+                                        seenKeys.add(lowerKey)
+                                    }
+                                    if (hasDuplicateKey) continue
+                                }
                                 await deps.createClusterType({
                                     name: nameResult.sanitized,
                                     code: codeResult.sanitized,
@@ -236,12 +257,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     color: row.typeColor || '',
                                     mode: row.clusterMode === 'Peer' ? 'peer' : (row.clusterMode === 'Primary-Backup' ? 'primary-backup' : undefined),
                                     commandPrefix: row.commandPrefix || '',
-                                    envVariables: row.envVariables
-                                        ? row.envVariables.split(';').filter(Boolean).map(pair => {
-                                            const eq = pair.indexOf('=')
-                                            return { key: eq > 0 ? pair.slice(0, eq) : pair, value: eq > 0 ? pair.slice(eq + 1) : '' }
-                                        })
-                                        : undefined,
+                                    envVariables: envVars,
                                 })
                                 createdClusterTypeNames.add(nameResult.sanitized)
                                 createdClusterTypeCodes.add(codeResult.sanitized)

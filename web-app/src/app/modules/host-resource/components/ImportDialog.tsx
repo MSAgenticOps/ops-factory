@@ -228,6 +228,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostRoleInvalid', { value: err.params?.value })
             case 'import.customAttrDuplicateKey':
                 return t('hostResource.importErrorCustomAttrDuplicateKey', { key: err.params?.key })
+            case 'import.envVarDuplicateKey':
+                return t('hostResource.importErrorEnvVarDuplicateKey', { key: err.params?.key })
             case 'import.duplicate':
                 return t('hostResource.importErrorDuplicate', {
                     type: err.params?.type === 'Whitelist' ? t('hostResource.importType_Whitelist') :
