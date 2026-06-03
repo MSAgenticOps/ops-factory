@@ -853,7 +853,7 @@ function MessageInner({
                                         if (href?.startsWith('#cite-')) {
                                             const index = parseInt(href.replace('#cite-', ''), 10)
                                             const citation = citationMap.get(index)
-                                            if (citation) return <CitationMark citation={citation} />
+                                            if (citation) return <CitationMark citation={citation} userId={userId} />
                                             return <>{children}</>
                                         }
                                         if (href?.startsWith('#filecite-')) {
@@ -913,7 +913,7 @@ function MessageInner({
                     )}
 
                     {shouldShowCitedReferences && displayText && (
-                        <ReferenceList citations={citations} label="回答中引用的资料" variant="cited" />
+                        <ReferenceList citations={citations} label="回答中引用的资料" variant="cited" userId={userId} />
                     )}
 
                     {shouldShowCitedFileReferences && displayText && (
@@ -921,7 +921,7 @@ function MessageInner({
                     )}
 
                     {shouldShowRetrievedReferences && displayText && (
-                        <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" variant="retrieved" />
+                        <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" variant="retrieved" userId={userId} />
                     )}
 
                     {isStreaming && (

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { runtime, controlCenterHeaders } from '../../../../config/runtime'
 import { getErrorMessage } from '../../../../utils/errorMessages'
+import { useUser } from '../../../platform/providers/UserContext'
 
 export type ControlCenterAction = 'probe' | 'restart' | 'start' | 'stop'
 
@@ -15,6 +16,7 @@ export interface ServiceActionResult {
 }
 
 export function useControlCenterActions() {
+    const { userId } = useUser()
     const [pendingServiceId, setPendingServiceId] = useState<string | null>(null)
     const [pendingAction, setPendingAction] = useState<ControlCenterAction | null>(null)
 
@@ -24,7 +26,7 @@ export function useControlCenterActions() {
         try {
             const response = await fetch(`${runtime.CONTROL_CENTER_URL}/services/${serviceId}/actions/${action}`, {
                 method: 'POST',
-                headers: controlCenterHeaders(),
+                headers: controlCenterHeaders(userId),
                 signal: AbortSignal.timeout(30_000),
             })
             if (!response.ok) {
@@ -38,7 +40,7 @@ export function useControlCenterActions() {
             setPendingServiceId(null)
             setPendingAction(null)
         }
-    }, [])
+    }, [userId])
 
     return {
         runAction,

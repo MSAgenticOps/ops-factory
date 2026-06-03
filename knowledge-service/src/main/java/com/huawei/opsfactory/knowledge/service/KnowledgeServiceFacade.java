@@ -244,6 +244,7 @@ public class KnowledgeServiceFacade {
         JobRepository.JobRecord job = new JobRepository.JobRecord(Ids.newId("job"), "INGEST", sourceId, null, "RUNNING", 0, null, "Ingest started", "system", 0, 0, 0, 0, null, null, null, now, null, now, now);
         jobRepository.insert(job);
         int imported = 0;
+        List<DocumentController.SkippedFileInfo> skipped = new ArrayList<>();
         long startedAt = System.currentTimeMillis();
         putMdcIfText(LoggingKeys.SOURCE_ID, sourceId);
         putMdcIfText(LoggingKeys.JOB_ID, job.id());
@@ -253,28 +254,34 @@ public class KnowledgeServiceFacade {
                 if (file.isEmpty() || !StringUtils.hasText(file.getOriginalFilename())) {
                     continue;
                 }
-                if (processUpload(sourceId, file)) {
+                UploadResult result = processUploadWithResult(sourceId, file);
+                if (result.imported()) {
                     imported++;
+                } else if (result.skipReason() != null) {
+                    skipped.add(new DocumentController.SkippedFileInfo(
+                        file.getOriginalFilename(), result.skipReason(), result.existingFileName()));
                 }
             }
             JobRepository.JobRecord finished = new JobRepository.JobRecord(job.id(), job.jobType(), sourceId, null, "SUCCEEDED", 100, null, "Ingest completed", "system", 0, 0, 0, 0, null, null, null, now, Instant.now(), job.createdAt(), Instant.now());
             jobRepository.update(finished);
             log.info(
-                "Completed ingest sourceId={} jobId={} imported={} durationMs={}",
+                "Completed ingest sourceId={} jobId={} imported={} skipped={} durationMs={}",
                 sourceId,
                 job.id(),
                 imported,
+                skipped.size(),
                 System.currentTimeMillis() - startedAt
             );
-            return new DocumentController.IngestDocumentsResponse(job.id(), sourceId, "SUCCEEDED", imported);
+            return new DocumentController.IngestDocumentsResponse(job.id(), sourceId, "SUCCEEDED", imported, skipped);
         } catch (RuntimeException ex) {
             JobRepository.JobRecord failed = new JobRepository.JobRecord(job.id(), job.jobType(), sourceId, null, "FAILED", imported == 0 ? 0 : 100, null, ex.getMessage(), "system", 0, 0, 0, 0, null, null, ex.getMessage(), now, Instant.now(), job.createdAt(), Instant.now());
             jobRepository.update(failed);
             log.error(
-                "Failed ingest sourceId={} jobId={} imported={} durationMs={}",
+                "Failed ingest sourceId={} jobId={} imported={} skipped={} durationMs={}",
                 sourceId,
                 job.id(),
                 imported,
+                skipped.size(),
                 System.currentTimeMillis() - startedAt,
                 ex
             );
@@ -1156,14 +1163,31 @@ public class KnowledgeServiceFacade {
     }
 
     private boolean processUpload(String sourceId, MultipartFile file) {
+        return processUploadWithResult(sourceId, file).imported();
+    }
+
+    /**
+     * 文档上传操作的结果。
+     *
+     * @param imported 是否成功导入，true 表示导入成功，false 表示被跳过
+     * @param skipReason 跳过原因（导入成功时为 null），例如："DUPLICATE_CONTENT"
+     * @param existingFileName 已存在文档的名称（导入成功或无冲突时为 null）
+     */
+    private record UploadResult(boolean imported, String skipReason, String existingFileName) {
+    }
+
+    private UploadResult processUploadWithResult(String sourceId, MultipartFile file) {
         try {
             String documentId = Ids.newId("doc");
             putMdcIfText(LoggingKeys.SOURCE_ID, sourceId);
             putMdcIfText(LoggingKeys.DOCUMENT_ID, documentId);
             String sha256 = sha256(file.getInputStream());
-            if (documentRepository.findBySourceIdAndSha256(sourceId, sha256).isPresent()) {
-                log.info("Skipped duplicate upload sourceId={} documentName={} sha256={}", sourceId, file.getOriginalFilename(), sha256);
-                return false;
+            var existingDoc = documentRepository.findBySourceIdAndSha256(sourceId, sha256);
+            if (existingDoc.isPresent()) {
+                log.info(
+                    "Skipped duplicate upload sourceId={} documentName={} existingDocumentName={} sha256={}",
+                    sourceId, file.getOriginalFilename(), existingDoc.get().name(), sha256);
+                return new UploadResult(false, "DUPLICATE_CONTENT", existingDoc.get().name());
             }
             Path originalPath = storageManager.originalFilePath(sourceId, documentId, file.getOriginalFilename());
             storageManager.save(file.getInputStream(), originalPath);
@@ -1218,7 +1242,7 @@ public class KnowledgeServiceFacade {
                 insertedChunks.size(),
                 file.getSize()
             );
-            return true;
+            return new UploadResult(true, null, null);
         } catch (Exception e) {
             log.error("Failed to process upload sourceId={} documentName={}", sourceId, file.getOriginalFilename(), e);
             throw new IllegalStateException("Failed to ingest file " + file.getOriginalFilename(), e);

@@ -18,6 +18,8 @@ const IMPORT_TYPES: ImportType[] = [
     'Whitelist',
 ]
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
 interface ImportDialogProps {
     open: boolean
     onClose: () => void
@@ -104,6 +106,16 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
         setFileValidation(null)
 
         if (file && selectedType) {
+            // Check file size
+            if (file.size > MAX_FILE_SIZE) {
+                setFileValidation({
+                    valid: false,
+                    message: t('hostResource.importErrorFileTooLarge', { size: (MAX_FILE_SIZE / 1024 / 1024).toFixed(0) })
+                })
+                setSelectedFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+                return
+            }
             validateFile(file, selectedType)
         }
     }
@@ -182,6 +194,10 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorClusterNameRequired')
             case 'import.clusterNameTooLong':
                 return t('hostResource.importErrorClusterNameTooLong', { length: err.params?.length })
+            case 'import.clusterTypeRequired':
+                return t('hostResource.importErrorClusterTypeRequired')
+            case 'import.clusterGroupRequired':
+                return t('hostResource.importErrorClusterGroupRequired')
             case 'import.clusterTypeNotFound':
                 return t('hostResource.importErrorClusterTypeNotFound', { type: err.params?.type })
             case 'import.purposeTooLong':
@@ -206,6 +222,14 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostIpInvalid', { ip: err.params?.ip })
             case 'import.hostUsernameRequired':
                 return t('hostResource.importErrorHostUsernameRequired')
+            case 'import.hostAuthTypeInvalid':
+                return t('hostResource.importErrorHostAuthTypeInvalid', { value: err.params?.value })
+            case 'import.hostRoleInvalid':
+                return t('hostResource.importErrorHostRoleInvalid', { value: err.params?.value })
+            case 'import.customAttrDuplicateKey':
+                return t('hostResource.importErrorCustomAttrDuplicateKey', { key: err.params?.key })
+            case 'import.envVarDuplicateKey':
+                return t('hostResource.importErrorEnvVarDuplicateKey', { key: err.params?.key })
             case 'import.duplicate':
                 return t('hostResource.importErrorDuplicate', {
                     type: err.params?.type === 'Whitelist' ? t('hostResource.importType_Whitelist') :
@@ -235,6 +259,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 })
             case 'import.whitelistInvalidPattern':
                 return t('hostResource.importErrorWhitelistInvalidPattern', { pattern: err.params?.pattern })
+            case 'import.whitelistPatternTooLong':
+                return t('hostResource.importErrorWhitelistPatternTooLong', { length: err.params?.length })
             case 'import.invalidChars':
                 return t('hostResource.importErrorInvalidChars', { field: err.params?.field })
             case 'import.usernameInvalidChars':
@@ -265,6 +291,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessTypeNameTooLong', { length: err.params?.length })
             case 'import.businessTypeCodeTooLong':
                 return t('hostResource.importErrorBusinessTypeCodeTooLong', { length: err.params?.length })
+            case 'import.businessTypeCodeRequired':
+                return t('hostResource.importErrorBusinessTypeCodeRequired')
             case 'import.businessTypeRequired':
                 return t('hostResource.importErrorBusinessTypeRequired')
             case 'import.businessTypeNotFound':
@@ -273,6 +301,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostGroupNameRequired')
             case 'import.hostGroupNameTooLong':
                 return t('hostResource.importErrorHostGroupNameTooLong', { length: err.params?.length })
+            case 'import.hostGroupCodeRequired':
+                return t('hostResource.importErrorHostGroupCodeRequired')
             case 'import.hostGroupCodeTooLong':
                 return t('hostResource.importErrorHostGroupCodeTooLong', { length: err.params?.length })
             case 'import.businessServiceNameRequired':
@@ -281,6 +311,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessServiceNameTooLong', { length: err.params?.length })
             case 'import.businessServiceCodeTooLong':
                 return t('hostResource.importErrorBusinessServiceCodeTooLong', { length: err.params?.length })
+            case 'import.businessServiceCodeRequired':
+                return t('hostResource.importErrorBusinessServiceCodeRequired')
+            case 'import.businessServiceGroupRequired':
+                return t('hostResource.importErrorBusinessServiceGroupRequired')
+            case 'import.businessServicePriorityInvalid':
+                return t('hostResource.importErrorBusinessServicePriorityInvalid', { priority: err.params?.priority })
             case 'import.sopNameRequired':
                 return t('hostResource.importErrorSopNameRequired')
             case 'import.sopNameTooLong':
@@ -295,6 +331,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSopStepsDescriptionTooLong', { length: err.params?.length })
             case 'import.whitelistPatternRequired':
                 return t('hostResource.importErrorWhitelistPatternRequired')
+            case 'import.hostGroupEnabledInvalid':
+                return t('hostResource.importErrorHostGroupEnabledInvalid', { value: err.params?.value })
+            case 'import.sopEnabledInvalid':
+                return t('hostResource.importErrorSopEnabledInvalid', { value: err.params?.value })
+            case 'import.whitelistEnabledInvalid':
+                return t('hostResource.importErrorWhitelistEnabledInvalid', { value: err.params?.value })
             default:
                 return err.code
         }

@@ -10,6 +10,7 @@ import {
     type PageResponse,
 } from '../../../../services/finopsAPI'
 import { useScrollClass } from '../hooks/useScrollClass'
+import { useUser } from '../../../platform/providers/UserContext'
 import {
     formatNumber,
     formatDate,
@@ -33,6 +34,7 @@ export function AgentDetailDrawer({
     onSessionSelect,
 }: AgentDetailDrawerProps) {
     const { t } = useTranslation()
+    const { userId } = useUser()
     const [page, setPage] = useState(1)
     const [data, setData] = useState<PageResponse<SessionUsage> | null>(null)
     const [loading, setLoading] = useState(false)
@@ -48,7 +50,7 @@ export function AgentDetailDrawer({
             setLoading(true)
             setError(null)
             try {
-                const res = await fetchFinOpsAgentSessions(agent.agentId, page, 25)
+                const res = await fetchFinOpsAgentSessions(agent.agentId, page, 25, userId)
                 if (!cancelled) {
                     setData(res)
                 }
@@ -214,6 +216,7 @@ export function UserDetailDrawer({
     onSessionSelect,
 }: UserDetailDrawerProps) {
     const { t } = useTranslation()
+    const { userId } = useUser()
     const [page, setPage] = useState(1)
     const [data, setData] = useState<PageResponse<SessionUsage> | null>(null)
     const [loading, setLoading] = useState(false)
@@ -229,7 +232,7 @@ export function UserDetailDrawer({
             setLoading(true)
             setError(null)
             try {
-                const res = await fetchFinOpsUserSessions(user.userId, page, 25)
+                const res = await fetchFinOpsUserSessions(user.userId, page, 25, userId)
                 if (!cancelled) {
                     setData(res)
                 }

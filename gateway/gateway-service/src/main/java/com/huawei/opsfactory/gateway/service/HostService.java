@@ -5,6 +5,9 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -187,7 +190,7 @@ public class HostService {
      *
      * @param host host data map to validate
      */
-    private void validateHostRole(Map<String, Object> host) {
+    private void validateHostRole(Map<String, Object> host) throws BadRequestException {
         Object roleObj = host.get("role");
         String role = roleObj != null ? roleObj.toString() : null;
         if (role == null || role.isEmpty()) {
@@ -197,19 +200,18 @@ public class HostService {
 
         Object clusterIdObj = host.get("clusterId");
         if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
-            throw new IllegalArgumentException("Host role requires a cluster assignment.");
+            throw new BadRequestException("Host role requires a cluster assignment");
         }
 
         String clusterId = clusterIdObj.toString();
         String mode = resolveClusterMode(clusterId);
         if ("peer".equals(mode)) {
-            throw new IllegalArgumentException(
-                "Host role is not allowed in peer cluster mode. Cluster ID: " + clusterId);
+            throw new BadRequestException("Host role is not allowed in peer cluster mode");
         }
         if ("primary-backup".equals(mode)) {
             if (!"primary".equals(role) && !"backup".equals(role)) {
-                throw new IllegalArgumentException(
-                    "Invalid host role '" + role + "'. Must be 'primary' or " + "'backup' for primary-backup cluster.");
+                throw new BadRequestException(
+                    "Invalid host role. Must be 'primary' or 'backup' for primary-backup cluster");
             }
         }
     }
@@ -228,7 +230,7 @@ public class HostService {
                     return modeObj != null ? modeObj.toString() : "peer";
                 }
             }
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Unable to resolve cluster mode for missing cluster {}", clusterId);
         }
         return "peer";
@@ -251,7 +253,7 @@ public class HostService {
             if (cluster != null && cluster.get("type") != null) {
                 clusterTypeRaw = cluster.get("type").toString();
             }
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Skipping missing cluster {} while syncing host tags", clusterId);
         }
 
@@ -341,11 +343,11 @@ public class HostService {
      * @param id host identifier
      * @return host data map with credential masked
      */
-    public Map<String, Object> getHost(String id) {
+    public Map<String, Object> getHost(String id) throws NotFoundException {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
-            throw new IllegalArgumentException("Host not found: " + id);
+            throw new NotFoundException("Host not found");
         }
         host.put("credential", "***");
         return host;
@@ -357,12 +359,12 @@ public class HostService {
      * @param id host identifier
      * @return host data map with decrypted credential for internal use
      */
-    public Map<String, Object> getHostWithCredential(String id) {
+    public Map<String, Object> getHostWithCredential(String id) throws NotFoundException {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
             log.warn("Host not found when loading with credential id={}", id);
-            throw new IllegalArgumentException("Host not found: " + id);
+            throw new NotFoundException("Host not found");
         }
         // Decrypt credential for internal use
         Object credentialObj = host.get("credential");
@@ -383,11 +385,11 @@ public class HostService {
      * @param body request body containing host fields
      * @return the newly created host map with credential masked
      */
-    public Map<String, Object> createHost(Map<String, Object> body) {
+    public Map<String, Object> createHost(Map<String, Object> body) throws ConflictException, BadRequestException {
         String name = body.getOrDefault("name", "").toString();
         for (Map<String, Object> existing : listHosts(null)) {
             if (name.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
-                throw new IllegalArgumentException("Host name already exists: " + name);
+                throw new ConflictException("Host name already exists");
             }
         }
 
@@ -453,11 +455,11 @@ public class HostService {
         java.util.Set.of("name", "hostname", "ip", "port", "os", "location", "username", "authType", "business",
             "clusterId", "purpose", "tags", "description", "customAttributes", "businessIp", "role");
 
-    public Map<String, Object> updateHost(String id, Map<String, Object> body) {
+    public Map<String, Object> updateHost(String id, Map<String, Object> body) throws NotFoundException, ConflictException, BadRequestException {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
-            throw new IllegalArgumentException("Host not found: " + id);
+            throw new NotFoundException("Host not found");
         }
 
         // Check name uniqueness if name is being updated
@@ -465,7 +467,7 @@ public class HostService {
             String newName = String.valueOf(body.get("name"));
             for (Map<String, Object> existing : listHosts(null)) {
                 if (!id.equals(existing.get("id")) && newName.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
-                    throw new IllegalArgumentException("Host name already exists: " + newName);
+                    throw new ConflictException("Host name already exists");
                 }
             }
         }
@@ -661,7 +663,7 @@ public class HostService {
         Map<String, Object> host;
         try {
             host = getHostWithCredential(id);
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.warn("SSH connection test skipped hostId={} reason=host-not-found", id);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", false);

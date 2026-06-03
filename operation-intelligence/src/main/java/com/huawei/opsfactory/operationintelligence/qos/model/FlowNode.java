@@ -49,6 +49,12 @@ public class FlowNode {
 
     private Long maxCost;
 
+    private Long successCount;
+
+    private Long callCount;
+
+    private Double successPercent;
+
     /**
      * Gets the seq no.
      *
@@ -335,5 +341,59 @@ public class FlowNode {
      */
     public void setMaxCost(Long maxCost) {
         this.maxCost = maxCost;
+    }
+
+    /**
+     * Gets the success count.
+     *
+     * @return the success count
+     */
+    public Long getSuccessCount() {
+        return successCount;
+    }
+
+    /**
+     * Sets the success count.
+     *
+     * @param successCount the success count
+     */
+    public void setSuccessCount(Long successCount) {
+        this.successCount = successCount;
+    }
+
+    /**
+     * Gets the call count.
+     *
+     * @return the call count
+     */
+    public Long getCallCount() {
+        return callCount;
+    }
+
+    /**
+     * Sets the call count.
+     *
+     * @param callCount the call count
+     */
+    public void setCallCount(Long callCount) {
+        this.callCount = callCount;
+    }
+
+    /**
+     * Gets the success percent.
+     *
+     * @return the success percent
+     */
+    public Double getSuccessPercent() {
+        return successPercent;
+    }
+
+    /**
+     * Sets the success percent.
+     *
+     * @param successPercent the success percent
+     */
+    public void setSuccessPercent(Double successPercent) {
+        this.successPercent = successPercent;
     }
 }

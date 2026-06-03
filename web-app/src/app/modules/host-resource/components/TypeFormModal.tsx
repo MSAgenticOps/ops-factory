@@ -18,10 +18,11 @@ type Props<T extends BaseFormData> = {
     onSave: () => void
     onClose: () => void
     extraFields?: ReactNode
+    isEditing?: boolean
 }
 
 export default function TypeFormModal<T extends BaseFormData>({
-    title, form, setForm, saving, onSave, onClose, extraFields,
+    title, form, setForm, saving, onSave, onClose, extraFields, isEditing = false,
 }: Props<T>) {
     const { t } = useTranslation()
     const requiredStar = <span style={{ color: 'var(--color-error, #ef4444)', marginLeft: 2 }}>*</span>
@@ -45,6 +46,7 @@ export default function TypeFormModal<T extends BaseFormData>({
                             value={form.name}
                             onChange={e => update('name', e.target.value)}
                             placeholder={t('hostResource.typeName')}
+                            maxLength={100}
                         />
                     </div>
                     <div className="form-group">
@@ -54,6 +56,13 @@ export default function TypeFormModal<T extends BaseFormData>({
                             value={form.code}
                             onChange={e => update('code', e.target.value)}
                             placeholder={t('hostResource.typeCode')}
+                            maxLength={50}
+                            disabled={isEditing}
+                            style={isEditing ? {
+                                backgroundColor: 'var(--surface-background, #f1f5f9)',
+                                color: 'var(--text-secondary, #64748b)',
+                                cursor: 'not-allowed'
+                            } : undefined}
                         />
                     </div>
                     <div className="form-group">
@@ -62,6 +71,7 @@ export default function TypeFormModal<T extends BaseFormData>({
                             className="form-input"
                             value={form.description}
                             onChange={e => update('description', e.target.value)}
+                            maxLength={500}
                         />
                     </div>
                     <div className="form-group">

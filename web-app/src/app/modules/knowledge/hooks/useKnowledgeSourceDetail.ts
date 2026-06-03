@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { runtime } from '../../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import { getErrorMessage } from '../../../../utils/errorMessages'
 import type {
     KnowledgeCapabilities,
@@ -80,7 +80,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     return data as T
 }
 
-export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowledgeSourceDetailResult {
+export function useKnowledgeSourceDetail(sourceId: string | undefined, userId?: string | null): UseKnowledgeSourceDetailResult {
     const [source, setSource] = useState<KnowledgeSource | null>(null)
     const [stats, setStats] = useState<KnowledgeSourceStats | null>(null)
     const [capabilities, setCapabilities] = useState<KnowledgeCapabilities | null>(null)
@@ -113,7 +113,8 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
 
         try {
             const sourceData = await requestJson<KnowledgeSource>(
-                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`
+                `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`,
+                { headers: knowledgeHeaders(userId) }
             )
 
             const [
@@ -125,26 +126,32 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 maintenanceResult,
             ] = await Promise.allSettled([
                 requestJson<KnowledgeSourceStats>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/stats`
+                    `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/stats`,
+                    { headers: knowledgeHeaders(userId) }
                 ),
                 requestJson<KnowledgeCapabilities>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/capabilities`
+                    `${runtime.KNOWLEDGE_SERVICE_URL}/capabilities`,
+                    { headers: knowledgeHeaders(userId) }
                 ),
                 requestJson<KnowledgeDefaults>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/system/defaults`
+                    `${runtime.KNOWLEDGE_SERVICE_URL}/system/defaults`,
+                    { headers: knowledgeHeaders(userId) }
                 ),
                 sourceData.indexProfileId
                     ? requestJson<KnowledgeSourceProfileConfig>(
-                        `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile`
+                        `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile`,
+                        { headers: knowledgeHeaders(userId) }
                     )
                     : Promise.resolve(null),
                 sourceData.retrievalProfileId
                     ? requestJson<KnowledgeSourceProfileConfig>(
-                        `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile`
+                        `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile`,
+                        { headers: knowledgeHeaders(userId) }
                     )
                     : Promise.resolve(null),
                 requestJson<KnowledgeMaintenanceOverview>(
-                    `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/maintenance`
+                    `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/maintenance`,
+                    { headers: knowledgeHeaders(userId) }
                 ),
             ])
 
@@ -177,7 +184,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
         } finally {
             setIsLoading(false)
         }
-    }, [sourceId])
+    }, [sourceId, userId])
 
     useEffect(() => {
         void reload()
@@ -198,9 +205,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`,
                 {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: knowledgeHeaders(userId),
                     body: JSON.stringify(updates),
                 }
             )
@@ -219,7 +224,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 error: message,
             }
         }
-    }, [sourceId])
+    }, [sourceId, userId])
 
     const saveIndexProfile = useCallback(async (updates: { name?: string; config?: Record<string, unknown> }): Promise<SaveProfileResult> => {
         if (!source?.indexProfileId || !sourceId) {
@@ -236,9 +241,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile`,
                 {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: knowledgeHeaders(userId),
                     body: JSON.stringify(updates),
                 }
             )
@@ -256,7 +259,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 error: message,
             }
         }
-    }, [reload, source?.indexProfileId, sourceId])
+    }, [reload, source?.indexProfileId, sourceId, userId])
 
     const saveRetrievalProfile = useCallback(async (updates: { name?: string; config?: Record<string, unknown> }): Promise<SaveProfileResult> => {
         if (!source?.retrievalProfileId || !sourceId) {
@@ -273,9 +276,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile`,
                 {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: knowledgeHeaders(userId),
                     body: JSON.stringify(updates),
                 }
             )
@@ -293,7 +294,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 error: message,
             }
         }
-    }, [reload, source?.retrievalProfileId, sourceId])
+    }, [reload, source?.retrievalProfileId, sourceId, userId])
 
     const resetIndexProfile = useCallback(async (): Promise<SaveProfileResult> => {
         if (!source?.indexProfileId || !sourceId) {
@@ -310,6 +311,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/index-profile:reset`,
                 {
                     method: 'POST',
+                    headers: knowledgeHeaders(userId),
                 }
             )
             setIndexProfileDetail(detail)
@@ -326,7 +328,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 error: message,
             }
         }
-    }, [reload, source?.indexProfileId, sourceId])
+    }, [reload, source?.indexProfileId, sourceId, userId])
 
     const resetRetrievalProfile = useCallback(async (): Promise<SaveProfileResult> => {
         if (!source?.retrievalProfileId || !sourceId) {
@@ -343,6 +345,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}/config/retrieval-profile:reset`,
                 {
                     method: 'POST',
+                    headers: knowledgeHeaders(userId),
                 }
             )
             setRetrievalProfileDetail(detail)
@@ -359,7 +362,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 error: message,
             }
         }
-    }, [reload, source?.retrievalProfileId, sourceId])
+    }, [reload, source?.retrievalProfileId, sourceId, userId])
 
     const deleteSource = useCallback(async (): Promise<DeleteSourceResult> => {
         if (!sourceId) {
@@ -376,6 +379,7 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 `${runtime.KNOWLEDGE_SERVICE_URL}/sources/${sourceId}`,
                 {
                     method: 'DELETE',
+                    headers: knowledgeHeaders(userId),
                 }
             )
 
@@ -388,14 +392,15 @@ export function useKnowledgeSourceDetail(sourceId: string | undefined): UseKnowl
                 error: message,
             }
         }
-    }, [sourceId])
+    }, [sourceId, userId])
 
     const loadMaintenanceFailures = useCallback(async (jobId: string): Promise<KnowledgeMaintenanceFailure[]> => {
         const response = await requestJson<{ jobId: string; items: KnowledgeMaintenanceFailure[] }>(
-            `${runtime.KNOWLEDGE_SERVICE_URL}/jobs/${jobId}/failures`
+            `${runtime.KNOWLEDGE_SERVICE_URL}/jobs/${jobId}/failures`,
+            { headers: knowledgeHeaders(userId) }
         )
         return response.items || []
-    }, [])
+    }, [userId])
 
     return {
         source,

@@ -4,6 +4,9 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
@@ -85,7 +88,7 @@ public class HostController {
         @RequestParam(value = "groupId", required = false) String groupId,
         @RequestParam(value = "businessServiceId", required = false) String businessServiceId,
         @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
-        HttpServletRequest request) {
+        HttpServletRequest request) throws NotFoundException {
 
         // Resolve disabled context once when enabledOnly is requested
         DisabledSets disabledSets = buildDisabledSets(enabledOnly, groupId, clusterId);
@@ -134,7 +137,7 @@ public class HostController {
                 if (Boolean.FALSE.equals(cluster.get("enabled")) || disabledGroupIds.contains(cluster.get("groupId"))) {
                     return null;
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (NotFoundException e) {
                 // Cluster not found, let normal flow handle it
                 log.debug("Cluster not found for id: {}", clusterId);
                 return null;
@@ -163,7 +166,7 @@ public class HostController {
      * @return the resolved host list
      */
     private List<Map<String, Object>> resolveHosts(String businessServiceId, String clusterId, String groupId,
-        String tags) {
+        String tags) throws NotFoundException {
         if (businessServiceId != null && !businessServiceId.isEmpty()) {
             return businessServiceService.getHostsForBusinessService(businessServiceId);
         }
@@ -222,16 +225,9 @@ public class HostController {
      * @return a host by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getHost(@PathVariable("id") String id, HttpServletRequest request) {
-        Map<String, Object> host;
-        try {
-            host = hostService.getHost(id);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host not found: " + id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+    public ResponseEntity<Map<String, Object>> getHost(@PathVariable("id") String id, HttpServletRequest request)
+        throws NotFoundException {
+        Map<String, Object> host = hostService.getHost(id);
         if (host == null) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
@@ -253,19 +249,12 @@ public class HostController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createHost(@RequestBody Map<String, Object> requestBody,
-        HttpServletRequest request) {
-        try {
-            Map<String, Object> host = hostService.createHost(requestBody);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("host", host);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Invalid host request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        HttpServletRequest request) throws ConflictException, BadRequestException {
+        Map<String, Object> host = hostService.createHost(requestBody);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("host", host);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -278,27 +267,19 @@ public class HostController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateHost(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
-        try {
-            Map<String, Object> host = hostService.updateHost(id, requestBody);
-            if (host == null) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", "Host not found: " + id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            }
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("host", host);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
+        @RequestBody Map<String, Object> requestBody, HttpServletRequest request)
+        throws NotFoundException, ConflictException, BadRequestException {
+        Map<String, Object> host = hostService.updateHost(id, requestBody);
+        if (host == null) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Host not found:")
-                ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
-            body.put("error", status == HttpStatus.NOT_FOUND ? "Host not found" : "Invalid host request");
-            return ResponseEntity.status(status).body(body);
+            body.put("error", "Host not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
         }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("host", host);
+        return ResponseEntity.ok(body);
     }
 
     /**

@@ -385,7 +385,7 @@ export default function FilesPage() {
     }
 
     return (
-        <div className="page-container sidebar-top-page page-shell-wide files-page">
+        <div className={`page-container sidebar-top-page page-shell-wide files-page${previewFile ? ' preview-open' : ''}`}>
             <PageHeader title={t('files.title')} subtitle={t('files.subtitle')} />
 
             {(error || (!isConnected && connectionError)) && (

@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.SolutionTypeService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,7 +33,7 @@ import java.util.Map;
  */
 @RestController
 @RestSchema(schemaId = "solutionTypeController")
-@RequestMapping("/gateway/solution-types")
+@RequestMapping("/api/gateway/solution-types")
 public class SolutionTypeController {
     private final SolutionTypeService solutionTypeService;
 
@@ -68,19 +69,12 @@ public class SolutionTypeController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getSolutionType(@PathVariable("id") String id,
-        HttpServletRequest request) {
-        try {
-            Map<String, Object> st = solutionTypeService.getSolutionType(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("solutionType", st);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Solution type not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        HttpServletRequest request) throws NotFoundException {
+        Map<String, Object> st = solutionTypeService.getSolutionType(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("solutionType", st);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -93,18 +87,11 @@ public class SolutionTypeController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createSolutionType(@RequestBody Map<String, Object> request,
         HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> st = solutionTypeService.createSolutionType(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("solutionType", st);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Invalid solution type request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> st = solutionTypeService.createSolutionType(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("solutionType", st);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -117,19 +104,12 @@ public class SolutionTypeController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateSolutionType(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> st = solutionTypeService.updateSolutionType(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("solutionType", st);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Solution type not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
+        Map<String, Object> st = solutionTypeService.updateSolutionType(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("solutionType", st);
+        return ResponseEntity.ok(body);
     }
 
     /**
