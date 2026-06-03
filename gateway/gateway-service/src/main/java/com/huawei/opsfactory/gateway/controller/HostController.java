@@ -263,7 +263,7 @@ public class HostController {
         } catch (IllegalArgumentException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Invalid host request");
+            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid host request");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
     }
@@ -296,7 +296,11 @@ public class HostController {
             body.put("success", false);
             HttpStatus status = e.getMessage() != null && e.getMessage().startsWith("Host not found:")
                 ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
-            body.put("error", status == HttpStatus.NOT_FOUND ? "Host not found" : "Invalid host request");
+            if (status == HttpStatus.NOT_FOUND) {
+                body.put("error", "Host not found");
+            } else {
+                body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid host request");
+            }
             return ResponseEntity.status(status).body(body);
         }
     }

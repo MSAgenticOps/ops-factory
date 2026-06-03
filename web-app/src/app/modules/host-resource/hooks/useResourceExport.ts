@@ -107,6 +107,7 @@ export function useResourceExport() {
                 role: h.role === 'primary' ? 'primary' : (h.role === 'backup' ? 'backup' : ''),
                 tags: Array.isArray(h.tags) ? h.tags.join(';') : '',
                 description: h.description || '',
+                customAttributes: Array.isArray(h.customAttributes) ? h.customAttributes.map(a => `${a.key}=${a.value}`).join(';') : '',
             }))
             const hostWorkbook = generateExportXlsx('Hosts', hostData, t)
             const hostBlob = workbookToBlob(hostWorkbook)

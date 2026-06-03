@@ -229,6 +229,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
+            { name: 'customAttributes', labelKey: 'field_hosts_customAttributes', enLabel: 'Custom Attributes', zhLabel: '自定义属性', required: false, validation: { type: 'custom', description: 'validationKeyValuePairs' } },
         ],
         sampleData: [
             {
@@ -248,6 +249,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 role: 'primary',
                 tags: 'web;production',
                 description: 'Production environment web server',
+                customAttributes: 'env=production;team=ops',
             },
             {
                 name: 'DB Server 01',
@@ -266,6 +268,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 role: 'primary',
                 tags: 'database;production',
                 description: 'Production environment database server',
+                customAttributes: 'env=production;team=dba',
             },
         ],
     },

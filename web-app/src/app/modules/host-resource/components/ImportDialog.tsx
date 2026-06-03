@@ -222,6 +222,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostIpInvalid', { ip: err.params?.ip })
             case 'import.hostUsernameRequired':
                 return t('hostResource.importErrorHostUsernameRequired')
+            case 'import.hostAuthTypeInvalid':
+                return t('hostResource.importErrorHostAuthTypeInvalid', { value: err.params?.value })
+            case 'import.hostRoleInvalid':
+                return t('hostResource.importErrorHostRoleInvalid', { value: err.params?.value })
+            case 'import.customAttrDuplicateKey':
+                return t('hostResource.importErrorCustomAttrDuplicateKey', { key: err.params?.key })
             case 'import.duplicate':
                 return t('hostResource.importErrorDuplicate', {
                     type: err.params?.type === 'Whitelist' ? t('hostResource.importType_Whitelist') :
@@ -319,6 +325,10 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSopStepsDescriptionTooLong', { length: err.params?.length })
             case 'import.whitelistPatternRequired':
                 return t('hostResource.importErrorWhitelistPatternRequired')
+            case 'import.hostGroupEnabledInvalid':
+                return t('hostResource.importErrorHostGroupEnabledInvalid', { value: err.params?.value })
+            case 'import.sopEnabledInvalid':
+                return t('hostResource.importErrorSopEnabledInvalid', { value: err.params?.value })
             case 'import.whitelistEnabledInvalid':
                 return t('hostResource.importErrorWhitelistEnabledInvalid', { value: err.params?.value })
             default:

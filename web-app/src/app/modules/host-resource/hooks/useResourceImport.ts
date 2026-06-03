@@ -353,6 +353,13 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'HostGroup', name: nameResult.sanitized } })
                                     continue
                                 }
+                                if (row.enabled) {
+                                    const enabledValue = String(row.enabled).trim().toUpperCase()
+                                    if (enabledValue !== 'TRUE' && enabledValue !== 'FALSE') {
+                                        errors.push({ row: i + 2, code: 'import.hostGroupEnabledInvalid', params: { value: String(row.enabled) } })
+                                        continue
+                                    }
+                                }
                                 const created = await deps.createGroup({
                                     name: nameResult.sanitized,
                                     code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
@@ -574,7 +581,41 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
                                     continue
                                 }
+                                if (row.authType) {
+                                    const authTypeValue = String(row.authType).trim().toLowerCase()
+                                    if (authTypeValue !== 'password' && authTypeValue !== 'key') {
+                                        errors.push({ row: i + 2, code: 'import.hostAuthTypeInvalid', params: { value: String(row.authType) } })
+                                        continue
+                                    }
+                                }
                                 const roleValue = row.role as string | undefined
+                                if (roleValue) {
+                                    const roleTrimmed = String(roleValue).trim().toLowerCase()
+                                    if (roleTrimmed !== 'primary' && roleTrimmed !== 'backup') {
+                                        errors.push({ row: i + 2, code: 'import.hostRoleInvalid', params: { value: String(roleValue) } })
+                                        continue
+                                    }
+                                }
+                                const customAttributes = row.customAttributes
+                                    ? String(row.customAttributes).split(';').filter(Boolean).map(pair => {
+                                        const eq = pair.indexOf('=')
+                                        return { key: eq >= 0 ? pair.slice(0, eq).trim() : pair.trim(), value: eq >= 0 ? pair.slice(eq + 1).trim() : '' }
+                                    }).filter(a => a.key)
+                                    : undefined
+                                if (customAttributes && customAttributes.length > 0) {
+                                    const seenKeys = new Set<string>()
+                                    let hasDuplicateKey = false
+                                    for (const attr of customAttributes) {
+                                        const lowerKey = attr.key.toLowerCase()
+                                        if (seenKeys.has(lowerKey)) {
+                                            errors.push({ row: i + 2, code: 'import.customAttrDuplicateKey', params: { key: attr.key } })
+                                            hasDuplicateKey = true
+                                            break
+                                        }
+                                        seenKeys.add(lowerKey)
+                                    }
+                                    if (hasDuplicateKey) continue
+                                }
                                 const created = await deps.createHost({
                                     name: nameResult.sanitized,
                                     ip: hostIp,
@@ -592,6 +633,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
                                     tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : undefined,
+                                    customAttributes,
                                 })
                                 hostNameToId.set(row.name, created.id)
                                 success++
@@ -796,6 +838,13 @@ export function useResourceImport(deps: ImportDeps) {
                                 if (createdSopNames.has(nameResult.sanitized)) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: nameResult.sanitized } })
                                     continue
+                                }
+                                if (row.enabled) {
+                                    const enabledValue = String(row.enabled).trim().toUpperCase()
+                                    if (enabledValue !== 'TRUE' && enabledValue !== 'FALSE') {
+                                        errors.push({ row: i + 2, code: 'import.sopEnabledInvalid', params: { value: String(row.enabled) } })
+                                        continue
+                                    }
                                 }
                                 const sopData = {
                                     name: nameResult.sanitized,

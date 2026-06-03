@@ -146,7 +146,7 @@ public class HostGroupController {
         } catch (IllegalArgumentException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Invalid host group request");
+            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid host group request");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
     }
