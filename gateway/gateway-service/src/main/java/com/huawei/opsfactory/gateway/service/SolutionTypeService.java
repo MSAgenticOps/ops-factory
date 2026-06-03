@@ -13,7 +13,9 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -105,7 +107,7 @@ public class SolutionTypeService {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
-            throw new IllegalArgumentException("Solution type not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Solution type not found");
         }
         return st;
     }
@@ -146,7 +148,7 @@ public class SolutionTypeService {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
-            throw new IllegalArgumentException("Solution type not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Solution type not found");
         }
 
         if (body.containsKey("name")) {

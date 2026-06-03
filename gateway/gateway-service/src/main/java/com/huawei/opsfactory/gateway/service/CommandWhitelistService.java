@@ -13,7 +13,9 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -103,7 +105,7 @@ public class CommandWhitelistService {
             // Dedup: reject duplicate patterns
             for (Map<String, Object> existing : commands) {
                 if (newPattern.equals(existing.get("pattern"))) {
-                    throw new IllegalArgumentException("Command pattern already exists: " + newPattern);
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Command pattern already exists");
                 }
             }
         }
@@ -147,7 +149,7 @@ public class CommandWhitelistService {
         }
 
         if (!found) {
-            throw new IllegalArgumentException("Command pattern not found: " + pattern);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Command pattern not found");
         }
 
         whitelist.put("commands", commands);
@@ -167,7 +169,7 @@ public class CommandWhitelistService {
 
         boolean removed = commands.removeIf(cmd -> pattern.equals(cmd.get("pattern")));
         if (!removed) {
-            throw new IllegalArgumentException("Command pattern not found: " + pattern);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Command pattern not found");
         }
 
         whitelist.put("commands", commands);
@@ -442,10 +444,10 @@ public class CommandWhitelistService {
 
     private void validatePattern(String pattern) {
         if (pattern == null || pattern.trim().isEmpty()) {
-            throw new IllegalArgumentException("Command pattern is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Command pattern is required");
         }
         if (pattern.length() > MAX_PATTERN_LENGTH) {
-            throw new IllegalArgumentException(
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Command pattern exceeds maximum length of " + MAX_PATTERN_LENGTH + " characters");
         }
     }

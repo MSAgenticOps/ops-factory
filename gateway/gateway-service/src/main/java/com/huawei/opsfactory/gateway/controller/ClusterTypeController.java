@@ -69,18 +69,11 @@ public class ClusterTypeController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getClusterType(@PathVariable("id") String id,
         HttpServletRequest request) {
-        try {
-            Map<String, Object> ct = clusterTypeService.getClusterType(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("clusterType", ct);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Cluster type not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> ct = clusterTypeService.getClusterType(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("clusterType", ct);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -93,18 +86,11 @@ public class ClusterTypeController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createClusterType(@RequestBody Map<String, Object> request,
         HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> ct = clusterTypeService.createClusterType(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("clusterType", ct);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid cluster type request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> ct = clusterTypeService.createClusterType(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("clusterType", ct);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -118,18 +104,11 @@ public class ClusterTypeController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateClusterType(@PathVariable("id") String id,
         @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> ct = clusterTypeService.updateClusterType(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("clusterType", ct);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Cluster type not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> ct = clusterTypeService.updateClusterType(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("clusterType", ct);
+        return ResponseEntity.ok(body);
     }
 
     /**

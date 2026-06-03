@@ -15,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -188,20 +190,20 @@ public class HostRelationService {
             try {
                 businessServiceService.getBusinessService(sourceHostId);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source business service not found: " + sourceHostId, e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source business service not found", e);
             }
         } else {
             try {
                 hostService.getHost(sourceHostId);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source host not found: " + sourceHostId, e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source host not found", e);
             }
         }
         // targetHostId always validates as a host
         try {
             hostService.getHost(targetHostId);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Target host not found: " + targetHostId, e);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target host not found", e);
         }
 
         String id = UUID.randomUUID().toString();
@@ -239,7 +241,7 @@ public class HostRelationService {
         Path file = relationsDir.resolve(id + ".json");
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
-            throw new IllegalArgumentException("Host relation not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host relation not found");
         }
 
         String currentSourceType = (String) relation.getOrDefault("sourceType", "host");
@@ -253,13 +255,13 @@ public class HostRelationService {
                 try {
                     businessServiceService.getBusinessService(sourceHostId);
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source business service not found: " + sourceHostId, e);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source business service not found", e);
                 }
             } else {
                 try {
                     hostService.getHost(sourceHostId);
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source host not found: " + sourceHostId, e);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source host not found", e);
                 }
             }
             relation.put("sourceHostId", sourceHostId);
@@ -269,7 +271,7 @@ public class HostRelationService {
             try {
                 hostService.getHost(targetHostId);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Target host not found: " + targetHostId, e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target host not found", e);
             }
             relation.put("targetHostId", targetHostId);
         }

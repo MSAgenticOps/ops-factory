@@ -17,7 +17,9 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -197,19 +199,19 @@ public class HostService {
 
         Object clusterIdObj = host.get("clusterId");
         if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
-            throw new IllegalArgumentException("Host role requires a cluster assignment.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Host role requires a cluster assignment");
         }
 
         String clusterId = clusterIdObj.toString();
         String mode = resolveClusterMode(clusterId);
         if ("peer".equals(mode)) {
-            throw new IllegalArgumentException(
-                "Host role is not allowed in peer cluster mode. Cluster ID: " + clusterId);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Host role is not allowed in peer cluster mode");
         }
         if ("primary-backup".equals(mode)) {
             if (!"primary".equals(role) && !"backup".equals(role)) {
-                throw new IllegalArgumentException(
-                    "Invalid host role '" + role + "'. Must be 'primary' or " + "'backup' for primary-backup cluster.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid host role. Must be 'primary' or 'backup' for primary-backup cluster");
             }
         }
     }
@@ -228,7 +230,7 @@ public class HostService {
                     return modeObj != null ? modeObj.toString() : "peer";
                 }
             }
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | ResponseStatusException e) {
             log.debug("Unable to resolve cluster mode for missing cluster {}", clusterId);
         }
         return "peer";
@@ -251,7 +253,7 @@ public class HostService {
             if (cluster != null && cluster.get("type") != null) {
                 clusterTypeRaw = cluster.get("type").toString();
             }
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | ResponseStatusException e) {
             log.debug("Skipping missing cluster {} while syncing host tags", clusterId);
         }
 
@@ -345,7 +347,7 @@ public class HostService {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
-            throw new IllegalArgumentException("Host not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host not found");
         }
         host.put("credential", "***");
         return host;
@@ -362,7 +364,7 @@ public class HostService {
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
             log.warn("Host not found when loading with credential id={}", id);
-            throw new IllegalArgumentException("Host not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host not found");
         }
         // Decrypt credential for internal use
         Object credentialObj = host.get("credential");
@@ -387,7 +389,7 @@ public class HostService {
         String name = body.getOrDefault("name", "").toString();
         for (Map<String, Object> existing : listHosts(null)) {
             if (name.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
-                throw new IllegalArgumentException("Host name already exists: " + name);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Host name already exists");
             }
         }
 
@@ -457,7 +459,7 @@ public class HostService {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
         if (host == null) {
-            throw new IllegalArgumentException("Host not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host not found");
         }
 
         // Check name uniqueness if name is being updated
@@ -465,7 +467,7 @@ public class HostService {
             String newName = String.valueOf(body.get("name"));
             for (Map<String, Object> existing : listHosts(null)) {
                 if (!id.equals(existing.get("id")) && newName.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
-                    throw new IllegalArgumentException("Host name already exists: " + newName);
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Host name already exists");
                 }
             }
         }
@@ -661,7 +663,7 @@ public class HostService {
         Map<String, Object> host;
         try {
             host = getHostWithCredential(id);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | ResponseStatusException e) {
             log.warn("SSH connection test skipped hostId={} reason=host-not-found", id);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", false);

@@ -13,7 +13,9 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -105,7 +107,7 @@ public class HostGroupService {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);
         if (group == null) {
-            throw new IllegalArgumentException("Host group not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host group not found");
         }
         return group;
     }
@@ -204,14 +206,14 @@ public class HostGroupService {
     public Map<String, Object> createGroup(Map<String, Object> body) {
         String code = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
         if (code.isEmpty()) {
-            throw new IllegalArgumentException("环境编码不能为空");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "环境编码不能为空");
         }
 
         List<Map<String, Object>> allGroups = listGroups();
         boolean duplicate = allGroups.stream()
             .anyMatch(g -> code.equalsIgnoreCase(String.valueOf(g.get("code"))));
         if (duplicate) {
-            throw new IllegalArgumentException("环境编码已存在：" + code);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "环境编码已存在");
         }
 
         String id = UUID.randomUUID().toString();
@@ -243,13 +245,13 @@ public class HostGroupService {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);
         if (group == null) {
-            throw new IllegalArgumentException("Host group not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host group not found");
         }
 
         if (body.containsKey("code")) {
             String newCode = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
             if (newCode.isEmpty()) {
-                throw new IllegalArgumentException("环境编码不能为空");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "环境编码不能为空");
             }
 
             List<Map<String, Object>> allGroups = listGroups();
@@ -257,7 +259,7 @@ public class HostGroupService {
                 .filter(g -> !id.equals(g.get("id")))
                 .anyMatch(g -> newCode.equalsIgnoreCase(String.valueOf(g.get("code"))));
             if (duplicate) {
-                throw new IllegalArgumentException("环境编码已存在：" + newCode);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "环境编码已存在");
             }
             group.put("code", newCode);
         }
@@ -293,14 +295,14 @@ public class HostGroupService {
         for (Map<String, Object> g : allGroups) {
             String parentId = (String) g.get("parentId");
             if (id.equals(parentId)) {
-                throw new IllegalStateException("Cannot delete group with sub-groups. Remove sub-groups first.");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete group with sub-groups. Remove sub-groups first.");
             }
         }
 
         // Check for clusters
         List<Map<String, Object>> clusters = clusterService.listClusters(id, null);
         if (!clusters.isEmpty()) {
-            throw new IllegalStateException("Cannot delete group with clusters. Remove clusters first.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete group with clusters. Remove clusters first.");
         }
 
         Path file = groupsDir.resolve(id + ".json");

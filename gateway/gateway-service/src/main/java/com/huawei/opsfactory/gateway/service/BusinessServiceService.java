@@ -15,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -178,7 +180,7 @@ public class BusinessServiceService {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
-            throw new IllegalArgumentException("Business service not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Business service not found");
         }
         return bs;
     }
@@ -226,7 +228,7 @@ public class BusinessServiceService {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
-            throw new IllegalArgumentException("Business service not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Business service not found");
         }
 
         if (body.containsKey("name")) {

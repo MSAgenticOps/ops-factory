@@ -13,7 +13,9 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -103,7 +105,7 @@ public class ClusterTypeService {
         Path file = clusterTypesDir.resolve(id + ".json");
         Map<String, Object> ct = readFile(file);
         if (ct == null) {
-            throw new IllegalArgumentException("Cluster type not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cluster type not found");
         }
         return ct;
     }
@@ -148,7 +150,7 @@ public class ClusterTypeService {
         Path file = clusterTypesDir.resolve(id + ".json");
         Map<String, Object> ct = readFile(file);
         if (ct == null) {
-            throw new IllegalArgumentException("Cluster type not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cluster type not found");
         }
 
         if (body.containsKey("name")) {
@@ -175,7 +177,7 @@ public class ClusterTypeService {
         if (body.containsKey("mode")) {
             String mode = (String) body.get("mode");
             if (!"peer".equals(mode) && !"primary-backup".equals(mode)) {
-                throw new IllegalArgumentException("Invalid mode: " + mode + ". Must be 'peer' or 'primary-backup'.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid mode. Must be 'peer' or 'primary-backup'");
             }
             ct.put("mode", mode);
         }

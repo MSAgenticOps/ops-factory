@@ -13,7 +13,9 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -105,7 +107,7 @@ public class BusinessTypeService {
         Path file = businessTypesDir.resolve(id + ".json");
         Map<String, Object> bt = readFile(file);
         if (bt == null) {
-            throw new IllegalArgumentException("Business type not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Business type not found");
         }
         return bt;
     }
@@ -146,7 +148,7 @@ public class BusinessTypeService {
         Path file = businessTypesDir.resolve(id + ".json");
         Map<String, Object> bt = readFile(file);
         if (bt == null) {
-            throw new IllegalArgumentException("Business type not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Business type not found");
         }
 
         if (body.containsKey("name")) {

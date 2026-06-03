@@ -15,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -191,10 +193,10 @@ public class ClusterRelationService {
         String targetId = (String) body.get("targetId");
 
         if (sourceId == null || sourceId.isEmpty()) {
-            throw new IllegalArgumentException("sourceId is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceId is required");
         }
         if (targetId == null || targetId.isEmpty()) {
-            throw new IllegalArgumentException("targetId is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "targetId is required");
         }
 
         // Validate source
@@ -202,13 +204,13 @@ public class ClusterRelationService {
             try {
                 businessServiceService.getBusinessService(sourceId);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source business service not found: " + sourceId, e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source business service not found", e);
             }
         } else {
             try {
                 clusterService.getCluster(sourceId);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source cluster not found: " + sourceId, e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source cluster not found", e);
             }
         }
 
@@ -216,7 +218,7 @@ public class ClusterRelationService {
         try {
             clusterService.getCluster(targetId);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Target cluster not found: " + targetId, e);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target cluster not found", e);
         }
 
         String id = UUID.randomUUID().toString();
@@ -254,7 +256,7 @@ public class ClusterRelationService {
         Path file = relationsDir.resolve(id + ".json");
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
-            throw new IllegalArgumentException("Cluster relation not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cluster relation not found");
         }
 
         String currentSourceType = (String) relation.getOrDefault("sourceType", "cluster");
@@ -268,13 +270,13 @@ public class ClusterRelationService {
                 try {
                     businessServiceService.getBusinessService(sourceId);
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source business service not found: " + sourceId, e);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source business service not found", e);
                 }
             } else {
                 try {
                     clusterService.getCluster(sourceId);
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source cluster not found: " + sourceId, e);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source cluster not found", e);
                 }
             }
             relation.put("sourceId", sourceId);
@@ -284,7 +286,7 @@ public class ClusterRelationService {
             try {
                 clusterService.getCluster(targetId);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Target cluster not found: " + targetId, e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target cluster not found", e);
             }
             relation.put("targetId", targetId);
         }

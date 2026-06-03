@@ -106,7 +106,7 @@ public class GlobalExceptionHandler {
         log.warn("Request rejected with status={} reason={}", ex.getStatusCode(), ex.getReason());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", false);
-        body.put("error", ex.getReason() != null ? ex.getReason() : ex.getMessage());
+        body.put("error", ex.getReason() != null ? ex.getReason() : "Request rejected");
         if (isSseRequest(request)) {
             body.put("type", "Error");
             body.put("layer", "gateway");

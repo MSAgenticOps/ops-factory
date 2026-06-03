@@ -113,18 +113,11 @@ public class HostGroupController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getGroup(@PathVariable("id") String id, HttpServletRequest request) {
-        try {
-            Map<String, Object> group = hostGroupService.getGroup(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("group", group);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host group not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> group = hostGroupService.getGroup(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("group", group);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -137,18 +130,11 @@ public class HostGroupController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createGroup(@RequestBody Map<String, Object> request,
         HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> group = hostGroupService.createGroup(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("group", group);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid host group request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> group = hostGroupService.createGroup(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("group", group);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -162,18 +148,11 @@ public class HostGroupController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateGroup(@PathVariable("id") String id,
         @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> group = hostGroupService.updateGroup(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("group", group);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host group not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> group = hostGroupService.updateGroup(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("group", group);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -188,27 +167,20 @@ public class HostGroupController {
     public ResponseEntity<Map<String, Object>> deleteGroup(@PathVariable("id") String id,
         @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
         HttpServletRequest request) {
-        try {
-            boolean deleted;
-            if (force) {
-                deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
-            } else {
-                deleted = hostGroupService.deleteGroup(id, clusterService);
-            }
-            if (!deleted) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", "Host group not found: " + id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            }
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            return ResponseEntity.ok(body);
-        } catch (IllegalStateException e) {
+        boolean deleted;
+        if (force) {
+            deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
+        } else {
+            deleted = hostGroupService.deleteGroup(id, clusterService);
+        }
+        if (!deleted) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Host group delete conflict");
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+            body.put("error", "Host group not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
         }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        return ResponseEntity.ok(body);
     }
 }

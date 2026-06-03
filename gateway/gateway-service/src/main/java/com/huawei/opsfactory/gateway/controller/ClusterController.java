@@ -90,21 +90,14 @@ public class ClusterController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getCluster(@PathVariable("id") String id, HttpServletRequest request) {
-        try {
-            Map<String, Object> cluster = clusterService.getCluster(id);
-            // Attach hosts for this cluster
-            List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("cluster", cluster);
-            body.put("hosts", hosts);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Cluster not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> cluster = clusterService.getCluster(id);
+        // Attach hosts for this cluster
+        List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("cluster", cluster);
+        body.put("hosts", hosts);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -146,18 +139,11 @@ public class ClusterController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createCluster(@RequestBody Map<String, Object> request,
         HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> cluster = clusterService.createCluster(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("cluster", cluster);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid cluster request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> cluster = clusterService.createCluster(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("cluster", cluster);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -171,18 +157,11 @@ public class ClusterController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateCluster(@PathVariable("id") String id,
         @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> cluster = clusterService.updateCluster(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("cluster", cluster);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Cluster not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> cluster = clusterService.updateCluster(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("cluster", cluster);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -197,27 +176,20 @@ public class ClusterController {
     public ResponseEntity<Map<String, Object>> deleteCluster(@PathVariable("id") String id,
         @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
         HttpServletRequest request) {
-        try {
-            boolean deleted;
-            if (force) {
-                deleted = clusterService.forceDeleteCluster(id, hostService);
-            } else {
-                deleted = clusterService.deleteCluster(id, hostService);
-            }
-            if (!deleted) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", "Cluster not found: " + id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            }
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            return ResponseEntity.ok(body);
-        } catch (IllegalStateException e) {
+        boolean deleted;
+        if (force) {
+            deleted = clusterService.forceDeleteCluster(id, hostService);
+        } else {
+            deleted = clusterService.deleteCluster(id, hostService);
+        }
+        if (!deleted) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Cluster delete conflict");
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+            body.put("error", "Cluster not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
         }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        return ResponseEntity.ok(body);
     }
 }

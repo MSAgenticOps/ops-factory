@@ -15,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -138,7 +140,7 @@ public class ClusterService {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
-            throw new IllegalArgumentException("Cluster not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cluster not found");
         }
         return cluster;
     }
@@ -197,7 +199,7 @@ public class ClusterService {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
-            throw new IllegalArgumentException("Cluster not found: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cluster not found");
         }
 
         if (body.containsKey("name")) {
@@ -236,7 +238,7 @@ public class ClusterService {
         // Check for hosts
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
         if (!hosts.isEmpty()) {
-            throw new IllegalStateException("Cannot delete cluster with hosts. Remove hosts first.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete cluster with hosts. Remove hosts first.");
         }
 
         // Cascade delete cluster relations

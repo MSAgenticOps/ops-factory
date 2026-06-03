@@ -118,18 +118,11 @@ public class HostRelationController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createRelation(@RequestBody Map<String, Object> requestBody,
         HttpServletRequest request) {
-        try {
-            Map<String, Object> relation = hostRelationService.createRelation(requestBody);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("relation", relation);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid host relation request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> relation = hostRelationService.createRelation(requestBody);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("relation", relation);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -143,18 +136,11 @@ public class HostRelationController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateRelation(@PathVariable("id") String id,
         @RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
-        try {
-            Map<String, Object> relation = hostRelationService.updateRelation(id, requestBody);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("relation", relation);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host relation not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> relation = hostRelationService.updateRelation(id, requestBody);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("relation", relation);
+        return ResponseEntity.ok(body);
     }
 
     /**

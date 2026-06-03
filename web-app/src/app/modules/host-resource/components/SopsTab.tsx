@@ -152,6 +152,7 @@ function SopFormModal({
                             type="text"
                             value={name}
                             onChange={e => setName(e.target.value)}
+                            maxLength={100}
                             autoFocus
                         />
                     </div>
@@ -162,6 +163,7 @@ function SopFormModal({
                             type="text"
                             value={version}
                             onChange={e => setVersion(e.target.value)}
+                            maxLength={50}
                         />
                     </div>
                 </div>
@@ -207,6 +209,7 @@ function SopFormModal({
                         rows={2}
                         value={description}
                         onChange={e => setDescription(e.target.value)}
+                        maxLength={500}
                     />
                 </div>
 
@@ -242,7 +245,7 @@ function SopFormModal({
                         placeholder={t('remoteDiagnosis.sops.stepsDescriptionPlaceholder')}
                         value={stepsDescription}
                         onChange={e => setStepsDescription(e.target.value)}
-                        maxLength={2000}
+                        maxLength={1000}
                     />
                 </div>
             </section>

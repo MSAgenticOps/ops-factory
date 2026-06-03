@@ -111,18 +111,11 @@ public class ClusterRelationController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createRelation(@RequestBody Map<String, Object> requestBody,
         HttpServletRequest request) {
-        try {
-            Map<String, Object> relation = clusterRelationService.createRelation(requestBody);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("relation", relation);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", e.getMessage() != null ? e.getMessage() : "Invalid cluster relation request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> relation = clusterRelationService.createRelation(requestBody);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("relation", relation);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -136,18 +129,11 @@ public class ClusterRelationController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateRelation(@PathVariable("id") String id,
         @RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
-        try {
-            Map<String, Object> relation = clusterRelationService.updateRelation(id, requestBody);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("relation", relation);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Cluster relation not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        Map<String, Object> relation = clusterRelationService.updateRelation(id, requestBody);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("relation", relation);
+        return ResponseEntity.ok(body);
     }
 
     /**

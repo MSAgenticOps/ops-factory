@@ -166,6 +166,7 @@ function WhitelistFormModal({
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             placeholder="Describe what this command does"
+                            maxLength={500}
                         />
                     </div>
 

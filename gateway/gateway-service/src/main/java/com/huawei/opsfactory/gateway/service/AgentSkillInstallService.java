@@ -9,7 +9,9 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -75,7 +77,7 @@ public class AgentSkillInstallService {
     public Map<String, Object> install(String agentId, String requestedSkillId) {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
-            throw new IllegalArgumentException("Agent '" + agentId + "' not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not found");
         }
 
         String skillId = validateSkillId(requestedSkillId);
@@ -83,21 +85,20 @@ public class AgentSkillInstallService {
         byte[] packageBytes = skillMarketClient.downloadPackage(skillId);
         long maxPackageBytes = properties.getSkillMarket().getMaxPackageSizeMb() * 1024L * 1024L;
         if (packageBytes.length > maxPackageBytes) {
-            throw new IllegalArgumentException("Skill package exceeds gateway installation limit");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package exceeds gateway installation limit");
         }
 
         String expectedChecksum = stringValue(marketSkill, "checksum");
         String actualChecksum = "sha256:" + sha256(packageBytes);
         if (!expectedChecksum.isBlank() && !expectedChecksum.equalsIgnoreCase(actualChecksum)) {
-            throw new IllegalArgumentException("Skill package checksum does not match market metadata");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package checksum does not match market metadata");
         }
 
         try {
             Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
             Path destination = skillsDir.resolve(skillId);
             if (Files.exists(destination)) {
-                throw new SkillInstallConflictException(
-                    "Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Skill is already installed for agent");
             }
 
             Files.createDirectories(skillsDir);
@@ -106,7 +107,7 @@ public class AgentSkillInstallService {
                 extractPackage(packageBytes, tempDir);
                 Path skillMd = tempDir.resolve("SKILL.md");
                 if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
-                    throw new IllegalArgumentException("Skill package must contain a non-empty SKILL.md");
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package must contain a non-empty SKILL.md");
                 }
                 rejectSymbolicLinks(tempDir);
                 writeInstallMetadata(tempDir, skillId, actualChecksum);
@@ -153,17 +154,17 @@ public class AgentSkillInstallService {
     public Map<String, Object> uninstall(String agentId, String requestedSkillId) {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
-            throw new IllegalArgumentException("Agent '" + agentId + "' not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not found");
         }
 
         String skillId = validateSkillId(requestedSkillId);
         Path skillDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").resolve(skillId).normalize();
         Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").normalize();
         if (!skillDir.startsWith(skillsDir)) {
-            throw new IllegalArgumentException("Skill id must use lowercase letters, numbers, and hyphens");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill id must use lowercase letters, numbers, and hyphens");
         }
         if (!Files.isDirectory(skillDir)) {
-            throw new IllegalArgumentException("Skill '" + skillId + "' is not installed for agent '" + agentId + "'");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill is not installed for agent");
         }
 
         try {
@@ -204,7 +205,7 @@ public class AgentSkillInstallService {
                 }
                 Path destination = targetDir.resolve(safeName).normalize();
                 if (!destination.startsWith(targetDir)) {
-                    throw new IllegalArgumentException("Skill package contains unsafe file path");
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package contains unsafe file path");
                 }
                 Files.createDirectories(destination.getParent());
                 long written = 0;
@@ -229,15 +230,15 @@ public class AgentSkillInstallService {
 
     private String safeZipName(String rawName) {
         if (rawName == null || rawName.isBlank()) {
-            throw new IllegalArgumentException("Skill package contains an empty file name");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package contains an empty file name");
         }
         String name = rawName.replace('\\', '/');
         if (name.startsWith("/") || name.matches("^[A-Za-z]:.*")) {
-            throw new IllegalArgumentException("Skill package contains absolute file path");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package contains absolute file path");
         }
         for (String part : name.split("/")) {
             if (part.equals("..")) {
-                throw new IllegalArgumentException("Skill package contains unsafe parent path");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package contains unsafe parent path");
             }
         }
         return name;
@@ -254,11 +255,11 @@ public class AgentSkillInstallService {
 
     private String validateSkillId(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Skill id is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill id is required");
         }
         String id = value.trim().toLowerCase(Locale.ROOT);
         if (!SKILL_ID_PATTERN.matcher(id).matches()) {
-            throw new IllegalArgumentException("Skill id must use lowercase letters, numbers, and hyphens");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill id must use lowercase letters, numbers, and hyphens");
         }
         return id;
     }
@@ -285,7 +286,7 @@ public class AgentSkillInstallService {
         try (var stream = Files.walk(dir)) {
             boolean hasSymlink = stream.anyMatch(Files::isSymbolicLink);
             if (hasSymlink) {
-                throw new IllegalArgumentException("Skill package must not contain symbolic links");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill package must not contain symbolic links");
             }
         }
     }
