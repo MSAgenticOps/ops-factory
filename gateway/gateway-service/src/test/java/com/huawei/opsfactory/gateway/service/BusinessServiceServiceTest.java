@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -140,7 +141,7 @@ public class BusinessServiceServiceTest {
     /**
      * Tests get business service not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testGetBusinessService_notFound() {
         businessServiceService.getBusinessService("nonexistent");
     }
@@ -246,7 +247,7 @@ public class BusinessServiceServiceTest {
     /**
      * Tests update business service not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testUpdateBusinessService_notFound() {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");

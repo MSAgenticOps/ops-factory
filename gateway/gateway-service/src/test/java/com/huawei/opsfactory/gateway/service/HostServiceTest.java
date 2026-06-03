@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -152,7 +153,7 @@ public class HostServiceTest {
     /**
      * Tests get host not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testGetHost_notFound() {
         hostService.getHost("nonexistent");
     }
@@ -183,7 +184,7 @@ public class HostServiceTest {
     /**
      * Tests get host with credential not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testGetHostWithCredential_notFound() {
         hostService.getHostWithCredential("nonexistent");
     }
@@ -344,7 +345,7 @@ public class HostServiceTest {
     /**
      * Tests update host not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testUpdateHost_notFound() {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");

@@ -16,6 +16,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import org.springframework.web.server.ResponseStatusException;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -116,7 +118,7 @@ public class SolutionTypeServiceTest {
     /**
      * Tests get solution type not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testGetSolutionType_notFound() {
         solutionTypeService.getSolutionType("nonexistent");
     }
@@ -229,7 +231,7 @@ public class SolutionTypeServiceTest {
     /**
      * Tests update solution type not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testUpdateSolutionType_notFound() {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");

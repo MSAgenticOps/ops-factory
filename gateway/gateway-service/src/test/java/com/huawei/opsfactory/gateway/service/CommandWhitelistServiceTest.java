@@ -16,6 +16,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -168,7 +170,7 @@ public class CommandWhitelistServiceTest {
     /**
      * Tests update command not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testUpdateCommand_notFound() {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("description", "test");
@@ -211,7 +213,7 @@ public class CommandWhitelistServiceTest {
     /**
      * Tests delete command not found.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ResponseStatusException.class)
     public void testDeleteCommand_notFound() {
         whitelistService.deleteCommand("nonexistent_cmd");
     }
