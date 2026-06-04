@@ -224,6 +224,28 @@ public class SolutionTypeService {
         }
     }
 
+    /**
+     * Validates a referenced solution type, allowing the universal default.
+     *
+     * @param value referenced solution type id or {@code null}
+     * @return normalized solution type id
+     */
+    public String validateSolutionTypeReference(Object value) {
+        if (value == null) {
+            return "universal";
+        }
+        String solutionType = value.toString();
+        if ("universal".equals(solutionType)) {
+            return solutionType;
+        }
+        try {
+            getSolutionType(solutionType);
+        } catch (NotFoundException e) {
+            throw new IllegalArgumentException("Solution type not found: " + solutionType, e);
+        }
+        return solutionType;
+    }
+
     // ── File I/O Helpers ─────────────────────────────────────────────
 
     private Map<String, Object> readFile(Path file) {

@@ -134,7 +134,8 @@ public class ClusterTypeService {
         ct.put("commandPrefix", body.getOrDefault("commandPrefix", null));
         ct.put("envVariables", body.getOrDefault("envVariables", null));
         ct.put("mode", body.getOrDefault("mode", "peer"));
-        ct.put("solutionType", validateSolutionType(body.getOrDefault("solutionType", "universal")));
+        ct.put("solutionType", solutionTypeService.validateSolutionTypeReference(
+            body.getOrDefault("solutionType", "universal")));
         ct.put("createdAt", now);
         ct.put("updatedAt", now);
 
@@ -187,7 +188,7 @@ public class ClusterTypeService {
             ct.put("mode", mode);
         }
         if (body.containsKey("solutionType")) {
-            ct.put("solutionType", validateSolutionType(body.get("solutionType")));
+            ct.put("solutionType", solutionTypeService.validateSolutionTypeReference(body.get("solutionType")));
         }
 
         ct.put("updatedAt", Instant.now().toString());
@@ -218,22 +219,6 @@ public class ClusterTypeService {
     }
 
     // ── Validation ──────────────────────────────────────────────────
-
-    private Object validateSolutionType(Object value) {
-        if (value == null) {
-            return "universal";
-        }
-        String sol = value.toString();
-        if ("universal".equals(sol)) {
-            return sol;
-        }
-        try {
-            solutionTypeService.getSolutionType(sol);
-        } catch (NotFoundException e) {
-            throw new IllegalArgumentException("Solution type not found: " + sol);
-        }
-        return sol;
-    }
 
     // ── File I/O Helpers ─────────────────────────────────────────────
 

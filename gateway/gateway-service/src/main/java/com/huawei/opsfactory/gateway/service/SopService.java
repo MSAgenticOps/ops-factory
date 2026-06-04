@@ -5,8 +5,6 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.huawei.opsfactory.gateway.exception.NotFoundException;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -134,7 +132,8 @@ public class SopService {
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
         sop.put("enabled", body.getOrDefault("enabled", true));
         sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("targetSolution", validateTargetSolution(body.getOrDefault("targetSolution", "universal")));
+        sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(
+            body.getOrDefault("targetSolution", "universal")));
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeSopFile(id, sop);
@@ -177,7 +176,7 @@ public class SopService {
             sop.put("stepsDescription", body.get("stepsDescription"));
         }
         if (body.containsKey("targetSolution")) {
-            sop.put("targetSolution", validateTargetSolution(body.get("targetSolution")));
+            sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(body.get("targetSolution")));
         }
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
@@ -210,22 +209,6 @@ public class SopService {
     }
 
     // ── Validation ────────────────────────────────────────────────
-
-    private Object validateTargetSolution(Object value) {
-        if (value == null) {
-            return "universal";
-        }
-        String sol = value.toString();
-        if ("universal".equals(sol)) {
-            return sol;
-        }
-        try {
-            solutionTypeService.getSolutionType(sol);
-        } catch (NotFoundException e) {
-            throw new IllegalArgumentException("Solution type not found: " + sol);
-        }
-        return sol;
-    }
 
     // ── Name Uniqueness Validation ────────────────────────────────
 
