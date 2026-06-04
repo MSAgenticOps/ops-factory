@@ -109,7 +109,7 @@ export function useFormValidation() {
                 const keyResult = validateAndSanitize(env.key, 'envVariables.key')
                 if (!keyResult.valid) {
                     hasError = true
-                    const message = errorMessages?.['envKey'] || 'hostResource.invalidChars'
+                    const message = errorMessages?.envKey || 'hostResource.invalidChars'
                     showToast('error', message)
                     break
                 }
@@ -121,7 +121,7 @@ export function useFormValidation() {
                 const valueResult = validateEnvValue(env.value, 'envVariables.value')
                 if (!valueResult.valid) {
                     hasError = true
-                    const message = errorMessages?.['envValue'] || 'hostResource.invalidChars'
+                    const message = errorMessages?.envValue || 'hostResource.invalidChars'
                     showToast('error', message)
                     break
                 }

@@ -168,7 +168,13 @@ export default function AddMcpModal({
       showToast('success', t('mcp.configUpdatedRestarting'))
       handleClose()
     } catch (err) {
-      const nextError = err instanceof Error ? err.message : t(isEditMode ? 'mcp.updateFailed' : 'mcp.addFailed')
+      let fallbackMessage: string
+      if (isEditMode) {
+        fallbackMessage = t('mcp.updateFailed')
+      } else {
+        fallbackMessage = t('mcp.addFailed')
+      }
+      const nextError = err instanceof Error ? err.message : fallbackMessage
       setError(nextError)
       showToast('error', nextError)
     } finally {
