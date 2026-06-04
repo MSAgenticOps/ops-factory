@@ -44,13 +44,16 @@ public class ClusterTypeService {
 
     private final GatewayProperties properties;
 
+    private final SolutionTypeService solutionTypeService;
+
     private Path clusterTypesDir;
 
     /**
      * Creates the cluster type service instance.
      */
-    public ClusterTypeService(GatewayProperties properties) {
+    public ClusterTypeService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
+        this.solutionTypeService = solutionTypeService;
     }
 
     /**
@@ -131,7 +134,7 @@ public class ClusterTypeService {
         ct.put("commandPrefix", body.getOrDefault("commandPrefix", null));
         ct.put("envVariables", body.getOrDefault("envVariables", null));
         ct.put("mode", body.getOrDefault("mode", "peer"));
-        ct.put("solutionType", body.getOrDefault("solutionType", "universal"));
+        ct.put("solutionType", validateSolutionType(body.getOrDefault("solutionType", "universal")));
         ct.put("createdAt", now);
         ct.put("updatedAt", now);
 
@@ -184,7 +187,7 @@ public class ClusterTypeService {
             ct.put("mode", mode);
         }
         if (body.containsKey("solutionType")) {
-            ct.put("solutionType", body.get("solutionType"));
+            ct.put("solutionType", validateSolutionType(body.get("solutionType")));
         }
 
         ct.put("updatedAt", Instant.now().toString());
@@ -212,6 +215,24 @@ public class ClusterTypeService {
             log.error("Failed to delete cluster-type file: {}", file, e);
             return false;
         }
+    }
+
+    // ── Validation ──────────────────────────────────────────────────
+
+    private Object validateSolutionType(Object value) {
+        if (value == null) {
+            return "universal";
+        }
+        String sol = value.toString();
+        if ("universal".equals(sol)) {
+            return sol;
+        }
+        try {
+            solutionTypeService.getSolutionType(sol);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Solution type not found: " + sol);
+        }
+        return sol;
     }
 
     // ── File I/O Helpers ─────────────────────────────────────────────

@@ -221,99 +221,18 @@ export const tools = [
 // Mermaid generation
 // ---------------------------------------------------------------------------
 
-interface SopNode {
-  id?: string
-  name: string
-  type: string
-  transitions?: { condition: string; nextNodes?: string[]; nextNodeId?: string; requireHumanConfirm?: boolean }[]
-}
-
 interface SopData {
   name?: string
-  nodes?: SopNode[]
-  mode?: string
   enabled?: boolean
   stepsDescription?: string
-  tags?: string[]
+  targetSolution?: string
   requiredTools?: string[]
   [key: string]: unknown
 }
 
-export function sopToMermaid(sop: SopData): string {
-  const nodes = sop.nodes ?? []
-  if (nodes.length === 0) {
-    return 'graph TD\n    empty["空SOP"]'
-  }
-
-  // Build name → index mapping (nextNodeId stores the target node's name)
-  const nameToIndex = new Map<string, number>()
-  nodes.forEach((n, i) => nameToIndex.set(n.name, i))
-
-  const lines: string[] = ['graph TD']
-
-  // Node declarations
-  nodes.forEach((node, i) => {
-    const label = node.name.replace(/"/g, "'")
-    if (node.type === 'start') {
-      lines.push(`    N${i}(["${label}"])`)
-    } else if (node.type === 'browser') {
-      lines.push(`    N${i}{{"${label}"}}`)
-    } else if (node.type === 'end') {
-      lines.push(`    N${i}((("${label}")))`)
-    } else {
-      lines.push(`    N${i}["${label}"]`)
-    }
-  })
-
-  // Edges with conditions
-  nodes.forEach((node, i) => {
-    for (const t of node.transitions ?? []) {
-      // nextNodes is an array of target node names
-      const targets = t.nextNodes ?? (t.nextNodeId ? [t.nextNodeId] : [])
-      for (const targetName of targets) {
-        const targetIdx = nameToIndex.get(targetName)
-        if (targetIdx !== undefined) {
-          const cond = (t.condition || '').replace(/"/g, "'")
-          const suffix = t.requireHumanConfirm ? ' (需确认)' : ''
-          lines.push(`    N${i} -->|"${cond}${suffix}"| N${targetIdx}`)
-        }
-      }
-    }
-  })
-
-  // Style start nodes (indigo), browser nodes (amber), and human-confirm nodes (green)
-  nodes.forEach((node, i) => {
-    if (node.type === 'start') {
-      lines.push(`    style N${i} fill:#e0e7ff,stroke:#6366f1,stroke-width:2px`)
-    } else if (node.type === 'browser') {
-      lines.push(`    style N${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`)
-    } else if (node.type === 'end') {
-      lines.push(`    style N${i} fill:#fee2e2,stroke:#dc2626,stroke-width:2px`)
-    }
-  })
-
-  return lines.join('\n')
-}
-
 interface ContentItem {
-  type: 'text' | 'resource'
+  type: 'text'
   text?: string
-  resource?: {
-    uri: string
-    mimeType: string
-    text: string
-  }
-}
-
-export function buildMermaidResource(mermaidCode: string, title: string): ContentItem {
-  return {
-    type: 'resource',
-    resource: {
-      uri: `ui://sop-executor/mermaid/${encodeURIComponent(title)}`,
-      mimeType: 'text/html',
-      text: `<div class="mermaid">\n${mermaidCode}\n</div>`,
-    },
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -336,7 +255,7 @@ function pickEach(arr: Record<string, unknown>[], keys: string[]): Record<string
 
 const HOST_LIST_KEYS     = ['id', 'name', 'businessIp', 'clusterId', 'tags', 'purpose']
 const HOST_NODE_KEYS     = ['id', 'name', 'businessIp', 'clusterType', 'clusterName']
-const SOP_LIST_KEYS      = ['id', 'name', 'targetSolution', 'enabled']
+const SOP_LIST_KEYS      = ['id', 'name', 'targetSolution', 'triggerCondition', 'enabled']
 const CT_LIST_KEYS       = ['id', 'name', 'code', 'description', 'knowledge']
 const SYSTEM_LIST_KEYS   = ['id', 'name', 'code']
 const VALID_SCOPE_REASONS = new Set(['explicit_scope', 'health_root_alarm'])

@@ -40,6 +40,8 @@ public class SopService {
 
     private final GatewayProperties properties;
 
+    private final SolutionTypeService solutionTypeService;
+
     private Path gatewayRoot;
 
     private Path sopsDir;
@@ -47,8 +49,9 @@ public class SopService {
     /**
      * Creates the sop service instance.
      */
-    public SopService(GatewayProperties properties) {
+    public SopService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
+        this.solutionTypeService = solutionTypeService;
     }
 
     /**
@@ -130,7 +133,7 @@ public class SopService {
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
         sop.put("enabled", body.getOrDefault("enabled", true));
         sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("targetSolution", body.getOrDefault("targetSolution", "universal"));
+        sop.put("targetSolution", validateTargetSolution(body.getOrDefault("targetSolution", "universal")));
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeSopFile(id, sop);
@@ -173,7 +176,7 @@ public class SopService {
             sop.put("stepsDescription", body.get("stepsDescription"));
         }
         if (body.containsKey("targetSolution")) {
-            sop.put("targetSolution", body.get("targetSolution"));
+            sop.put("targetSolution", validateTargetSolution(body.get("targetSolution")));
         }
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
@@ -203,6 +206,24 @@ public class SopService {
             log.error("Failed to delete SOP file: {}", file, e);
             return false;
         }
+    }
+
+    // ── Validation ────────────────────────────────────────────────
+
+    private Object validateTargetSolution(Object value) {
+        if (value == null) {
+            return "universal";
+        }
+        String sol = value.toString();
+        if ("universal".equals(sol)) {
+            return sol;
+        }
+        try {
+            solutionTypeService.getSolutionType(sol);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Solution type not found: " + sol);
+        }
+        return sol;
     }
 
     // ── Name Uniqueness Validation ────────────────────────────────

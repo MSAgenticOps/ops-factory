@@ -56,6 +56,9 @@ public class SopControllerTest {
     private SopService sopService;
 
     @MockBean
+    private com.huawei.opsfactory.gateway.service.SolutionTypeService solutionTypeService;
+
+    @MockBean
     private com.huawei.opsfactory.gateway.process.PrewarmService prewarmService;
 
     // ── listSops ─────────────────────────────────────────────────
