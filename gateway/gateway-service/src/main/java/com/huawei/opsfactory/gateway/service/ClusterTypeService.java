@@ -229,7 +229,7 @@ public class ClusterTypeService {
         }
         try {
             solutionTypeService.getSolutionType(sol);
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             throw new IllegalArgumentException("Solution type not found: " + sol);
         }
         return sol;

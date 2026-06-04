@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -220,7 +221,7 @@ public class SopService {
         }
         try {
             solutionTypeService.getSolutionType(sol);
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             throw new IllegalArgumentException("Solution type not found: " + sol);
         }
         return sol;
