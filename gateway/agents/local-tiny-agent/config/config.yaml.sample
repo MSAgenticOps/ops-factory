@@ -1,14 +1,16 @@
-GOOSE_PROVIDER: custom_opsagentllm
-GOOSE_MODEL: kimi-k2-turbo-preview
+GOOSE_PROVIDER: custom_ollama_local
+GOOSE_MODEL: qwen3.5:9b
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
-GOOSE_CONTEXT_LIMIT: '196000'
-GOOSE_MAX_TOKENS: '4096'
-GOOSE_TEMPERATURE: '0.2'
+GOOSE_CONTEXT_LIMIT: '32768'
+GOOSE_MAX_TOKENS: '1024'
+GOOSE_TEMPERATURE: '0.1'
 GOOSE_CONTEXT_STRATEGY: summarize
-GOOSE_AUTO_COMPACT_THRESHOLD: '0.8'
-GOOSE_MAX_TURNS: '50'
+GOOSE_AUTO_COMPACT_THRESHOLD: '0.55'
+GOOSE_MAX_TURNS: '8'
+CONTEXT_FILE_NAMES:
+  - .local-tiny-context
 extensions:
   extensionmanager:
     enabled: false
@@ -19,7 +21,7 @@ extensions:
     bundled: true
     available_tools: []
   todo:
-    enabled: true
+    enabled: false
     type: platform
     name: todo
     description: Enable a todo list for goose so it can keep track of what it is doing
@@ -36,7 +38,7 @@ extensions:
     bundled: true
     available_tools: []
   computercontroller:
-    enabled: true
+    enabled: false
     type: builtin
     name: computercontroller
     description: General computer control tools that don't require you to be a developer or engineer.
@@ -45,7 +47,7 @@ extensions:
     bundled: true
     available_tools: []
   autovisualiser:
-    enabled: true
+    enabled: false
     type: builtin
     name: autovisualiser
     description: Data visualization and UI generation tools
@@ -54,7 +56,7 @@ extensions:
     bundled: true
     available_tools: []
   memory:
-    enabled: true
+    enabled: false
     type: builtin
     name: memory
     description: Teach goose your preferences as you go.
@@ -87,7 +89,7 @@ extensions:
     bundled: true
     available_tools: []
   summon:
-    enabled: true
+    enabled: false
     type: platform
     name: summon
     description: Load knowledge and delegate tasks to subagents
@@ -101,6 +103,24 @@ extensions:
     description: Inject custom context into every turn via GOOSE_MOIM_MESSAGE_TEXT and GOOSE_MOIM_MESSAGE_FILE environment variables
     display_name: Top Of Mind
     bundled: true
+    available_tools: []
+  local-tiny-tools:
+    enabled: true
+    type: stdio
+    name: local-tiny-tools
+    description: Local Tiny Agent tools for fetching allowed local URLs and running whitelisted local commands
+    cmd: config/mcp/local-tiny-tools/.venv/bin/python
+    args:
+    - config/mcp/local-tiny-tools/server.py
+    envs:
+      LOCAL_TINY_ALLOWED_HOSTS: localhost,127.0.0.1
+      LOCAL_TINY_COMMAND_TIMEOUT_MS: '5000'
+      LOCAL_TINY_MAX_OUTPUT_BYTES: '65536'
+      LOCAL_TINY_FETCH_TIMEOUT_MS: '8000'
+      LOCAL_TINY_FETCH_MAX_BYTES: '65536'
+    env_keys: []
+    timeout: 30
+    bundled: null
     available_tools: []
   analyze:
     enabled: false
@@ -127,7 +147,7 @@ extensions:
     bundled: true
     available_tools: []
   skills:
-    enabled: true
+    enabled: false
     type: platform
     name: skills
     description: Discover and provide skill instructions from filesystem and builtins

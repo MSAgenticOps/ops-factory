@@ -3,7 +3,7 @@ GOOSE_MODEL: kimi-k2-turbo-preview
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
-GOOSE_CONTEXT_LIMIT: '196000'
+GOOSE_CONTEXT_LIMIT: '32768'
 GOOSE_MAX_TOKENS: '4096'
 GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
@@ -36,7 +36,7 @@ extensions:
     bundled: true
     available_tools: []
   computercontroller:
-    enabled: true
+    enabled: false
     type: builtin
     name: computercontroller
     description: General computer control tools that don't require you to be a developer or engineer.
@@ -45,7 +45,7 @@ extensions:
     bundled: true
     available_tools: []
   autovisualiser:
-    enabled: true
+    enabled: false
     type: builtin
     name: autovisualiser
     description: Data visualization and UI generation tools
@@ -54,7 +54,7 @@ extensions:
     bundled: true
     available_tools: []
   memory:
-    enabled: true
+    enabled: false
     type: builtin
     name: memory
     description: Teach goose your preferences as you go.
@@ -78,6 +78,42 @@ extensions:
     display_name: Chat Recall
     bundled: true
     available_tools: []
+  feishu-doc:
+    enabled: true
+    type: stdio
+    name: feishu-doc
+    description: Feishu OpenAPI MCP server for KB search and read
+    cmd: npx
+    args:
+    - -y
+    - '@larksuiteoapi/lark-mcp'
+    - mcp
+    - --mode
+    - stdio
+    - --domain
+    - https://open.feishu.cn
+    - --token-mode
+    - user_access_token
+    - --tools
+    - wiki.v1.node.search,docs.v1.content.get
+    - --language
+    - zh
+    envs: {}
+    env_keys:
+    - APP_ID
+    - APP_SECRET
+    - USER_ACCESS_TOKEN
+    timeout: 300
+    bundled: null
+    available_tools: []
+  tom:
+    enabled: false
+    type: platform
+    name: tom
+    description: Inject custom context into every turn via GOOSE_MOIM_MESSAGE_TEXT and GOOSE_MOIM_MESSAGE_FILE environment variables
+    display_name: Top Of Mind
+    bundled: true
+    available_tools: []
   apps:
     enabled: false
     type: platform
@@ -87,19 +123,11 @@ extensions:
     bundled: true
     available_tools: []
   summon:
-    enabled: true
+    enabled: false
     type: platform
     name: summon
     description: Load knowledge and delegate tasks to subagents
     display_name: Summon
-    bundled: true
-    available_tools: []
-  tom:
-    enabled: false
-    type: platform
-    name: tom
-    description: Inject custom context into every turn via GOOSE_MOIM_MESSAGE_TEXT and GOOSE_MOIM_MESSAGE_FILE environment variables
-    display_name: Top Of Mind
     bundled: true
     available_tools: []
   analyze:
@@ -110,12 +138,12 @@ extensions:
     display_name: Analyze
     bundled: true
     available_tools: []
-  summarize:
-    enabled: false
+  skills:
+    enabled: true
     type: platform
-    name: summarize
-    description: Load files/directories and get an LLM summary in a single call
-    display_name: Summarize
+    name: skills
+    description: Discover and provide skill instructions from filesystem and builtins
+    display_name: Skills
     bundled: true
     available_tools: []
   orchestrator:
@@ -126,11 +154,11 @@ extensions:
     display_name: Orchestrator
     bundled: true
     available_tools: []
-  skills:
-    enabled: true
+  summarize:
+    enabled: false
     type: platform
-    name: skills
-    description: Discover and provide skill instructions from filesystem and builtins
-    display_name: Skills
+    name: summarize
+    description: Load files/directories and get an LLM summary in a single call
+    display_name: Summarize
     bundled: true
     available_tools: []
