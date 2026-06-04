@@ -117,10 +117,9 @@ public class GlobalExceptionHandlerTest {
         Map<String, Object> body = response.getBody();
         assertNotNull("Response body should not be null", body);
         assertFalse((Boolean) body.get("success"));
-        // When no reason, falls back to getMessage()
+        // When no reason, falls back to neutral "Request rejected"
         String error = (String) body.get("error");
-        // getMessage() returns something like "500 INTERNAL_SERVER_ERROR"
-        assertEquals(ex.getMessage(), error);
+        assertEquals("Request rejected", error);
     }
 
     /**

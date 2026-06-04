@@ -163,6 +163,9 @@ public class CallChainStatistics {
         // Calculate node-level cost statistics
         calculateNodeCostStatistics(node, logs);
 
+        // Calculate node-level success statistics
+        calculateNodeSuccessStatistics(node, logs);
+
         return node;
     }
 
@@ -277,6 +280,22 @@ public class CallChainStatistics {
             node.setAvgCost((long) costStats.getAverage());
             node.setMinCost(costStats.getMin());
             node.setMaxCost(costStats.getMax());
+        }
+    }
+
+    /**
+     * Calculate node-level success statistics.
+     *
+     * @param node the flow node
+     * @param logs the trace logs
+     */
+    private void calculateNodeSuccessStatistics(FlowNode node, List<TraceLogRecord> logs) {
+        long totalCalls = logs.size();
+        long successCalls = logs.stream().filter(parser::isSuccess).count();
+        node.setCallCount(totalCalls);
+        node.setSuccessCount(successCalls);
+        if (totalCalls > 0) {
+            node.setSuccessPercent(successCalls * 100.0 / totalCalls);
         }
     }
 
@@ -503,6 +522,19 @@ public class CallChainStatistics {
         // Merge clusterId and clusterTypeId (comma-separated strings)
         merged.setClusterId(mergeClusterIdsFromNodes(serviceNodes));
         merged.setClusterTypeId(mergeClusterTypeIdsFromNodes(serviceNodes));
+
+        // Merge success statistics
+        long totalCalls = serviceNodes.stream()
+            .mapToLong(n -> n.getCallCount() != null ? n.getCallCount() : 0)
+            .sum();
+        long totalSuccess = serviceNodes.stream()
+            .mapToLong(n -> n.getSuccessCount() != null ? n.getSuccessCount() : 0)
+            .sum();
+        merged.setCallCount(totalCalls);
+        merged.setSuccessCount(totalSuccess);
+        if (totalCalls > 0) {
+            merged.setSuccessPercent(totalSuccess * 100.0 / totalCalls);
+        }
 
         return merged;
     }

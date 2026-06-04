@@ -246,6 +246,14 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostIpInvalid', { ip: err.params?.ip })
             case 'import.hostUsernameRequired':
                 return t('hostResource.importErrorHostUsernameRequired')
+            case 'import.hostAuthTypeInvalid':
+                return t('hostResource.importErrorHostAuthTypeInvalid', { value: err.params?.value })
+            case 'import.hostRoleInvalid':
+                return t('hostResource.importErrorHostRoleInvalid', { value: err.params?.value })
+            case 'import.customAttrDuplicateKey':
+                return t('hostResource.importErrorCustomAttrDuplicateKey', { key: err.params?.key })
+            case 'import.envVarDuplicateKey':
+                return t('hostResource.importErrorEnvVarDuplicateKey', { key: err.params?.key })
             case 'import.duplicate':
                 return t('hostResource.importErrorDuplicate', {
                     type: translateImportType(err.params?.type, t),
@@ -258,6 +266,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 })
             case 'import.whitelistInvalidPattern':
                 return t('hostResource.importErrorWhitelistInvalidPattern', { pattern: err.params?.pattern })
+            case 'import.whitelistPatternTooLong':
+                return t('hostResource.importErrorWhitelistPatternTooLong', { length: err.params?.length })
             case 'import.invalidChars':
                 return t('hostResource.importErrorInvalidChars', { field: err.params?.field })
             case 'import.usernameInvalidChars':
@@ -288,6 +298,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessTypeNameTooLong', { length: err.params?.length })
             case 'import.businessTypeCodeTooLong':
                 return t('hostResource.importErrorBusinessTypeCodeTooLong', { length: err.params?.length })
+            case 'import.businessTypeCodeRequired':
+                return t('hostResource.importErrorBusinessTypeCodeRequired')
             case 'import.businessTypeRequired':
                 return t('hostResource.importErrorBusinessTypeRequired')
             case 'import.businessTypeNotFound':
@@ -296,6 +308,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostGroupNameRequired')
             case 'import.hostGroupNameTooLong':
                 return t('hostResource.importErrorHostGroupNameTooLong', { length: err.params?.length })
+            case 'import.hostGroupCodeRequired':
+                return t('hostResource.importErrorHostGroupCodeRequired')
             case 'import.hostGroupCodeTooLong':
                 return t('hostResource.importErrorHostGroupCodeTooLong', { length: err.params?.length })
             case 'import.businessServiceNameRequired':
@@ -304,6 +318,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessServiceNameTooLong', { length: err.params?.length })
             case 'import.businessServiceCodeTooLong':
                 return t('hostResource.importErrorBusinessServiceCodeTooLong', { length: err.params?.length })
+            case 'import.businessServiceCodeRequired':
+                return t('hostResource.importErrorBusinessServiceCodeRequired')
+            case 'import.businessServiceGroupRequired':
+                return t('hostResource.importErrorBusinessServiceGroupRequired')
+            case 'import.businessServicePriorityInvalid':
+                return t('hostResource.importErrorBusinessServicePriorityInvalid', { priority: err.params?.priority })
             case 'import.sopNameRequired':
                 return t('hostResource.importErrorSopNameRequired')
             case 'import.sopNameTooLong':
@@ -318,6 +338,12 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSopStepsDescriptionTooLong', { length: err.params?.length })
             case 'import.whitelistPatternRequired':
                 return t('hostResource.importErrorWhitelistPatternRequired')
+            case 'import.hostGroupEnabledInvalid':
+                return t('hostResource.importErrorHostGroupEnabledInvalid', { value: err.params?.value })
+            case 'import.sopEnabledInvalid':
+                return t('hostResource.importErrorSopEnabledInvalid', { value: err.params?.value })
+            case 'import.whitelistEnabledInvalid':
+                return t('hostResource.importErrorWhitelistEnabledInvalid', { value: err.params?.value })
             default:
                 return err.code
         }

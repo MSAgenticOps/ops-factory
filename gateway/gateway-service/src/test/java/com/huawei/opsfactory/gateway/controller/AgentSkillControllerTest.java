@@ -14,7 +14,6 @@ import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.AgentSkillInstallService;
-import com.huawei.opsfactory.gateway.service.SkillInstallConflictException;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,9 +22,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -104,7 +105,7 @@ public class AgentSkillControllerTest {
     @Test
     public void installSkill_conflict() throws Exception {
         Mockito.when(installService.install("agent1", "log-analysis"))
-            .thenThrow(new SkillInstallConflictException("Skill already installed"));
+            .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Skill already installed"));
 
         mockMvc
             .perform(post("/api/gateway/agents/agent1/skills/install").header("x-secret-key", "test")
