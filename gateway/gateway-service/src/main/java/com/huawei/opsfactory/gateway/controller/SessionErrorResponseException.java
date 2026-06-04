@@ -16,7 +16,10 @@ import java.util.Map;
  * @since 2026-05-27
  */
 public class SessionErrorResponseException extends ResponseStatusException {
-    private final Map<String, Object> body;
+
+    private static final long serialVersionUID = 1L;
+
+    private final transient Map<String, Object> body;
 
     /**
      * Creates a session error response exception.

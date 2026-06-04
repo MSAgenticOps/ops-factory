@@ -12,6 +12,8 @@ package com.huawei.opsfactory.gateway.exception;
  */
 public class ConflictException extends Exception {
 
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates a conflict exception with the given message.
      *
