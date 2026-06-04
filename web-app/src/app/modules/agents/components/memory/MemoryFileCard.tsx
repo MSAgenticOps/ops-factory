@@ -136,7 +136,6 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
 
     const handleSave = async () => {
         if (editContent.length > MAX_CONTENT_CHARS) {
-            alert(t('memory.contentTooLong', { max: MAX_CONTENT_CHARS.toLocaleString() }))
             return
         }
         setIsSaving(true)
