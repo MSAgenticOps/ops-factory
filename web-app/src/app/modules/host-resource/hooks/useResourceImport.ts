@@ -46,6 +46,7 @@ interface ImportDeps {
     fetchBusinessServices: () => Promise<void>
     fetchGraph: (clusterId?: string, groupId?: string) => Promise<void>
     fetchWhitelist: () => Promise<void>
+    fetchSops: () => Promise<void>
 
     groups: HostGroup[]
     clusters: Cluster[]
@@ -976,6 +977,7 @@ export function useResourceImport(deps: ImportDeps) {
                         deps.fetchBusinessServices(),
                         deps.fetchGraph(),
                         deps.fetchWhitelist(),
+                        deps.fetchSops(),
                     ])
                 } catch {}
 

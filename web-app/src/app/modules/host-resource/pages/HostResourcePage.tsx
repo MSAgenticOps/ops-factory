@@ -93,13 +93,21 @@ export default function HostResourcePage() {
     const clusterTypesHook = useClusterTypes()
     const businessTypesHook = useBusinessTypes()
     const solutionTypesHook = useSolutionTypes()
-    const { commands: whitelistCommands, addCommand: addWhitelistCommand, fetchWhitelist: fetchWhitelistCommands } = useCommandWhitelist()
+    const {
+        commands: whitelistCommands,
+        isLoading: whitelistLoading,
+        error: whitelistError,
+        addCommand: addWhitelistCommand,
+        fetchWhitelist: fetchWhitelistCommands,
+        updateCommand: updateWhitelistCommand,
+        deleteCommand: deleteWhitelistCommand,
+    } = useCommandWhitelist()
     const sopsHook = useSops()
 
     // Export / Import hooks
     const { exporting, exportAllAsZip } = useResourceExport()
     const { importing, progress, importXlsx } = useResourceImport({
-        fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands,
+        fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands, fetchSops: sopsHook.fetchSops,
         groups, clusters, allHosts, businessServices, relations: hostRelations,
         clusterTypes: clusterTypesHook.clusterTypes,
         businessTypes: businessTypesHook.businessTypes,
@@ -929,9 +937,30 @@ export default function HostResourcePage() {
                 />
             )}
 
-            {activeTab === 'sop-management' && <SopsTab solutionTypes={solutionTypesHook.solutionTypes} />}
+            {activeTab === 'sop-management' && (
+                <SopsTab
+                    solutionTypes={solutionTypesHook.solutionTypes}
+                    sops={sopsHook.sops}
+                    isLoading={sopsHook.isLoading}
+                    error={sopsHook.error}
+                    fetchSops={sopsHook.fetchSops}
+                    createSop={sopsHook.createSop}
+                    updateSop={sopsHook.updateSop}
+                    deleteSop={sopsHook.deleteSop}
+                />
+            )}
 
-            {activeTab === 'whitelist' && <WhitelistTab />}
+            {activeTab === 'whitelist' && (
+                <WhitelistTab
+                    commands={whitelistCommands}
+                    isLoading={whitelistLoading}
+                    error={whitelistError}
+                    fetchCommands={fetchWhitelistCommands}
+                    createCommand={addWhitelistCommand}
+                    updateCommand={updateWhitelistCommand}
+                    deleteCommand={deleteWhitelistCommand}
+                />
+            )}
 
             {/* Create/Edit Modal */}
             {showModal && (

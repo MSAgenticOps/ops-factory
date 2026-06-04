@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSops } from '../hooks/useSops'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
-import { useUser } from '../../../platform/providers/UserContext'
-import { runtime, gatewayHeaders } from '../../../../config/runtime'
 import DetailDialog from '../../../platform/ui/primitives/DetailDialog'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
@@ -366,12 +363,21 @@ function SopExpandableRow({ sop, solutionTypes, onEdit, onDelete, onToggleEnable
 // Sops Tab
 // ---------------------------------------------------------------------------
 
-export function SopsTab({ solutionTypes }: { solutionTypes: SolutionType[] }) {
+type Props = {
+    solutionTypes: SolutionType[]
+    sops: Sop[]
+    isLoading: boolean
+    error: string | null
+    fetchSops: () => Promise<void>
+    createSop: (data: SopCreateRequest) => Promise<unknown>
+    updateSop: (id: string, data: Partial<Sop>) => Promise<unknown>
+    deleteSop: (id: string) => Promise<unknown>
+}
+
+export function SopsTab({ solutionTypes, sops, isLoading, error, fetchSops, createSop, updateSop, deleteSop }: Props) {
     const { t } = useTranslation()
-    const { sops, isLoading, error, fetchSops, createSop, updateSop, deleteSop } = useSops()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
-    const { userId } = useUser()
 
     const PAGE_SIZE = 10
     const [currentPage, setCurrentPage] = useState(1)
@@ -386,18 +392,21 @@ export function SopsTab({ solutionTypes }: { solutionTypes: SolutionType[] }) {
 
     const handleSaveSop = useCallback(
         async (data: SopCreateRequest) => {
-            if (editingSop) {
-                await updateSop(editingSop.id, data)
-                showToast('success', t('remoteDiagnosis.sops.editSuccess', { name: data.name }))
-            } else {
-                await createSop(data)
-                showToast('success', t('remoteDiagnosis.sops.addSuccess', { name: data.name }))
+            try {
+                if (editingSop) {
+                    await updateSop(editingSop.id, data)
+                    showToast('success', t('remoteDiagnosis.sops.editSuccess', { name: data.name }))
+                } else {
+                    await createSop(data)
+                    showToast('success', t('remoteDiagnosis.sops.addSuccess', { name: data.name }))
+                }
+                setShowAddModal(false)
+                setEditingSop(null)
+            } catch (err) {
+                showToast('error', err instanceof Error ? err.message : 'Failed')
             }
-            setShowAddModal(false)
-            setEditingSop(null)
-            await fetchSops()
         },
-        [editingSop, updateSop, createSop, fetchSops, showToast, t],
+        [editingSop, updateSop, createSop, showToast, t],
     )
 
     const handleDelete = useCallback(
@@ -409,43 +418,29 @@ export function SopsTab({ solutionTypes }: { solutionTypes: SolutionType[] }) {
                 confirmLabel: t('common.delete'),
             })
             if (!confirmed) return
-            deleteSop(sop.id)
-                .then(() => {
-                    showToast('success', t('remoteDiagnosis.sops.deleteSuccess', { name: sop.name }))
-                    fetchSops()
-                })
-                .catch((err: unknown) => {
-                    showToast('error', err instanceof Error ? err.message : 'Delete failed')
-                })
+            try {
+                await deleteSop(sop.id)
+                showToast('success', t('remoteDiagnosis.sops.deleteSuccess', { name: sop.name }))
+            } catch (err) {
+                showToast('error', err instanceof Error ? err.message : 'Delete failed')
+            }
         },
-        [deleteSop, fetchSops, showToast, t],
+        [deleteSop, showToast, t],
     )
 
     const handleToggleEnabled = useCallback(
         async (sop: Sop, enabled: boolean) => {
             try {
-                const res = await fetch(`${runtime.GATEWAY_URL}/sops/${sop.id}`, {
-                    method: 'PUT',
-                    headers: gatewayHeaders(userId),
-                    body: JSON.stringify({ enabled }),
-                    signal: AbortSignal.timeout(10000),
-                })
-                if (!res.ok) {
-                    const text = await res.text()
-                    let msg = text
-                    try { msg = JSON.parse(text).error || text } catch { /* use raw */ }
-                    throw new Error(msg)
-                }
+                await updateSop(sop.id, { enabled })
                 showToast('success', t('remoteDiagnosis.sops.toggleSuccess', {
                     name: sop.name.trim(),
                     status: enabled ? t('remoteDiagnosis.sops.sopEnabled') : t('remoteDiagnosis.sops.sopDisabled'),
                 }))
-                await fetchSops()
             } catch (err) {
                 showToast('error', err instanceof Error ? err.message : 'Update failed')
             }
         },
-        [userId, fetchSops, showToast, t],
+        [updateSop, showToast, t],
     )
 
     const filteredSops = useMemo(() => {
