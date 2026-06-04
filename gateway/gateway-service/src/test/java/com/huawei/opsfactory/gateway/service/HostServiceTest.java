@@ -229,10 +229,11 @@ public class HostServiceTest {
     public void testCreateHost_defaultValues() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalHost");
+        body.put("ip", "10.0.0.1");
 
         Map<String, Object> result = hostService.createHost(body);
 
-        assertEquals("", result.get("ip"));
+        assertEquals("10.0.0.1", result.get("ip"));
         assertEquals(22, result.get("port"));
         assertEquals("", result.get("username"));
         assertEquals("password", result.get("authType"));
@@ -248,6 +249,8 @@ public class HostServiceTest {
     public void testCreateHost_encryptedCredentialStored() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "EncHost");
+        body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "plainTextPassword");
 
         Map<String, Object> result = hostService.createHost(body);
@@ -269,6 +272,7 @@ public class HostServiceTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "pass");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -289,6 +293,8 @@ public class HostServiceTest {
     public void testUpdateHost_updateCredential() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "oldPassword");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -311,6 +317,7 @@ public class HostServiceTest {
     public void testUpdateHost_updateTags() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
         body.put("tags", List.of("OLD"));
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -361,6 +368,8 @@ public class HostServiceTest {
         // Create host with a known password
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "originalSecretPassword");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -387,6 +396,7 @@ public class HostServiceTest {
     public void testUpdateHost_updatedAtChanges() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
         hostService.createHost(body);
         String id = getFirstHostId();
 
@@ -472,16 +482,15 @@ public class HostServiceTest {
     }
 
     /**
-     * Tests empty IP is allowed (optional field).
+     * Tests empty IP is rejected (required field).
      */
-    @Test
-    public void testCreateHost_emptyIpAllowed() throws Exception {
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateHost_emptyIpRejected() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "NoIpHost");
         body.put("ip", "");
 
-        Map<String, Object> result = hostService.createHost(body);
-        assertEquals("", result.get("ip"));
+        hostService.createHost(body);
     }
 
     // ── deleteHost ─────────────────────────────────────────────────
@@ -581,6 +590,7 @@ public class HostServiceTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "KeyHost");
         body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("authType", "key");
         body.put("credential", "-----BEGIN RSA PRIVATE KEY-----\nfakekey\n-----END RSA PRIVATE KEY-----");
 

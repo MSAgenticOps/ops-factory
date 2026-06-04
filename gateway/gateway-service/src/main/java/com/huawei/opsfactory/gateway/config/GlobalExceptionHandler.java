@@ -146,6 +146,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles illegal-argument exceptions and returns 400 with a clear error message.
+     *
+     * @param ex illegal argument exception
+     * @param request HTTP request
+     * @param response HTTP response
+     * @return 400 response with error details
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex,
+        HttpServletRequest request, HttpServletResponse response) {
+        log.warn("Bad request: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", ex.getMessage());
+        if (isSseRequest(request)) {
+            body.put("type", "Error");
+            body.put("layer", "gateway");
+            body.put("severity", "error");
+            writeSseErrorResponse(response, HttpStatus.BAD_REQUEST, body);
+            return null;
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
      * Handles bad-request exceptions and returns 400 with a clear error message.
      *
      * @param ex bad request exception

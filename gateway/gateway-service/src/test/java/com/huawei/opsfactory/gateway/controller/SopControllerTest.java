@@ -116,7 +116,7 @@ public class SopControllerTest {
         when(sopService.getSop("nonexistent")).thenThrow(new IllegalArgumentException("SOP not found: nonexistent"));
 
         mockMvc.perform(get("/api/gateway/sops/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
-            .andExpect(status().is5xxServerError());
+            .andExpect(status().isBadRequest());
     }
 
     // ── createSop ────────────────────────────────────────────────

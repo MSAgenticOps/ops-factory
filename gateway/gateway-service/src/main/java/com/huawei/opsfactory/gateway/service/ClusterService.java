@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
@@ -168,17 +169,54 @@ public class ClusterService {
      *
      * @param body field map for the new cluster
      * @return the created cluster map with generated id and timestamps
+     * @throws ConflictException if name already exists in the group
      */
-    public Map<String, Object> createCluster(Map<String, Object> body) {
+    public Map<String, Object> createCluster(Map<String, Object> body) throws ConflictException {
+        String name = ValidationUtils.requireNonBlank(body, "name", "Cluster name is required");
+        ValidationUtils.requireNoXssChars(name, "Cluster name");
+        ValidationUtils.requireMaxLength(name, 100, "Cluster name");
+
+        String type = ValidationUtils.requireNonBlank(body, "type", "Cluster type is required");
+        ValidationUtils.requireNoXssChars(type, "Cluster type");
+        ValidationUtils.requireMaxLength(type, 100, "Cluster type");
+
+        String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+
+        List<Map<String, Object>> allClusters = listClusters(null, null);
+        boolean nameDuplicate = allClusters.stream()
+            .filter(c -> groupId.equals(c.get("groupId")))
+            .anyMatch(c -> name.equalsIgnoreCase(String.valueOf(c.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Cluster name already exists in this group");
+        }
+
+        Object purposeObj = body.get("purpose");
+        if (purposeObj != null) {
+            String purpose = purposeObj.toString().trim();
+            if (!purpose.isEmpty()) {
+                ValidationUtils.requireNoXssChars(purpose, "Cluster purpose");
+                ValidationUtils.requireMaxLength(purpose, 200, "Cluster purpose");
+            }
+        }
+
+        Object descObj = body.get("description");
+        if (descObj != null) {
+            String description = descObj.toString().trim();
+            if (!description.isEmpty()) {
+                ValidationUtils.requireNoXssChars(description, "Cluster description");
+                ValidationUtils.requireMaxLength(description, 500, "Cluster description");
+            }
+        }
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> cluster = new LinkedHashMap<>();
         cluster.put("id", id);
-        cluster.put("name", body.getOrDefault("name", ""));
-        cluster.put("type", body.getOrDefault("type", ""));
+        cluster.put("name", name);
+        cluster.put("type", type);
         cluster.put("purpose", body.getOrDefault("purpose", ""));
-        cluster.put("groupId", body.getOrDefault("groupId", null));
+        cluster.put("groupId", groupId);
         cluster.put("description", body.getOrDefault("description", ""));
         cluster.put("enabled", body.getOrDefault("enabled", true));
         cluster.put("createdAt", now);
@@ -195,8 +233,10 @@ public class ClusterService {
      * @param id cluster identifier
      * @param body field map with updated values
      * @return the updated cluster map
+     * @throws NotFoundException if cluster not found
+     * @throws ConflictException if name already exists in the group
      */
-    public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException {
+    public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
@@ -204,18 +244,51 @@ public class ClusterService {
         }
 
         if (body.containsKey("name")) {
-            cluster.put("name", body.get("name"));
+            String newName = ValidationUtils.requireNonBlank(body, "name", "Cluster name is required");
+            ValidationUtils.requireNoXssChars(newName, "Cluster name");
+            ValidationUtils.requireMaxLength(newName, 100, "Cluster name");
+
+            Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : cluster.get("groupId");
+            String groupId = groupIdObj != null ? groupIdObj.toString() : "";
+            List<Map<String, Object>> allClusters = listClusters(null, null);
+            boolean nameDuplicate = allClusters.stream()
+                .filter(c -> !id.equals(c.get("id")) && groupId.equals(c.get("groupId")))
+                .anyMatch(c -> newName.equalsIgnoreCase(String.valueOf(c.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Cluster name already exists in this group");
+            }
+            cluster.put("name", newName);
         }
         if (body.containsKey("type")) {
-            cluster.put("type", body.get("type"));
-        }
-        if (body.containsKey("purpose")) {
-            cluster.put("purpose", body.get("purpose"));
+            String newType = ValidationUtils.requireNonBlank(body, "type", "Cluster type is required");
+            ValidationUtils.requireNoXssChars(newType, "Cluster type");
+            ValidationUtils.requireMaxLength(newType, 100, "Cluster type");
+            cluster.put("type", newType);
         }
         if (body.containsKey("groupId")) {
-            cluster.put("groupId", body.get("groupId"));
+            String newGroupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+            cluster.put("groupId", newGroupId);
+        }
+        if (body.containsKey("purpose")) {
+            Object purposeObj = body.get("purpose");
+            if (purposeObj != null) {
+                String purpose = purposeObj.toString().trim();
+                if (!purpose.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(purpose, "Cluster purpose");
+                    ValidationUtils.requireMaxLength(purpose, 200, "Cluster purpose");
+                }
+            }
+            cluster.put("purpose", body.get("purpose"));
         }
         if (body.containsKey("description")) {
+            Object descObj = body.get("description");
+            if (descObj != null) {
+                String description = descObj.toString().trim();
+                if (!description.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(description, "Cluster description");
+                    ValidationUtils.requireMaxLength(description, 500, "Cluster description");
+                }
+            }
             cluster.put("description", body.get("description"));
         }
         if (body.containsKey("enabled")) {

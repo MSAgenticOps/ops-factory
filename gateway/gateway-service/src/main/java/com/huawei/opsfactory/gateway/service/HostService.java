@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
@@ -428,13 +429,92 @@ public class HostService {
      *
      * @param body request body containing host fields
      * @return the newly created host map with credential masked
+     * @throws ConflictException if name or IP already exists
+     * @throws BadRequestException if validation fails
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> createHost(Map<String, Object> body) throws ConflictException, BadRequestException {
-        String name = body.getOrDefault("name", "").toString();
+        String name = ValidationUtils.requireNonBlank(body, "name", "Host name is required");
+        ValidationUtils.requireNoXssChars(name, "Host name");
+        ValidationUtils.requireMaxLength(name, 100, "Host name");
         for (Map<String, Object> existing : listHosts(null)) {
             if (name.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
                 throw new ConflictException("Host name already exists");
             }
+        }
+
+        String ip = ValidationUtils.requireNonBlank(body, "ip", "Host IP is required");
+
+        Object hostnameObj = body.get("hostname");
+        if (hostnameObj != null) {
+            String hostname = hostnameObj.toString().trim();
+            if (!hostname.isEmpty()) {
+                ValidationUtils.requireNoXssChars(hostname, "Hostname");
+                ValidationUtils.requireMaxLength(hostname, 255, "Hostname");
+            }
+        }
+
+        Object osObj = body.get("os");
+        if (osObj != null) {
+            String os = osObj.toString().trim();
+            if (!os.isEmpty()) {
+                ValidationUtils.requireNoXssChars(os, "OS");
+            }
+        }
+
+        Object locationObj = body.get("location");
+        if (locationObj != null) {
+            String location = locationObj.toString().trim();
+            if (!location.isEmpty()) {
+                ValidationUtils.requireNoXssChars(location, "Location");
+            }
+        }
+
+        Object purposeObj = body.get("purpose");
+        if (purposeObj != null) {
+            String purpose = purposeObj.toString().trim();
+            if (!purpose.isEmpty()) {
+                ValidationUtils.requireNoXssChars(purpose, "Purpose");
+            }
+        }
+
+        Object businessObj = body.get("business");
+        if (businessObj != null) {
+            String business = businessObj.toString().trim();
+            if (!business.isEmpty()) {
+                ValidationUtils.requireNoXssChars(business, "Business");
+            }
+        }
+
+        Object descObj = body.get("description");
+        if (descObj != null) {
+            String description = descObj.toString().trim();
+            if (!description.isEmpty()) {
+                ValidationUtils.requireNoXssChars(description, "Description");
+                ValidationUtils.requireMaxLength(description, 500, "Description");
+            }
+        }
+
+        Object usernameObj = body.get("username");
+        Object credentialObj = body.get("credential");
+        String username = usernameObj != null ? usernameObj.toString().trim() : "";
+        String credential = credentialObj != null ? credentialObj.toString() : "";
+        boolean hasUsername = !username.isEmpty();
+        boolean hasCredential = !credential.isEmpty();
+        if (hasUsername != hasCredential) {
+            throw new BadRequestException("Username and credential must be provided together");
+        }
+        if (hasUsername) {
+            ValidationUtils.requireAsciiOnly(username, "Username");
+        }
+        if (hasCredential) {
+            ValidationUtils.requireAsciiOnly(credential, "Credential");
+        }
+
+        Object customAttrsObj = body.get("customAttributes");
+        if (customAttrsObj instanceof List<?>) {
+            List<Map<String, Object>> customAttributes = (List<Map<String, Object>>) customAttrsObj;
+            ValidationUtils.requireUniqueKeys(customAttributes, "key", "Custom attribute keys must be unique");
         }
 
         String id = UUID.randomUUID().toString();
@@ -442,9 +522,9 @@ public class HostService {
 
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("id", id);
-        host.put("name", body.getOrDefault("name", ""));
+        host.put("name", name);
         host.put("hostname", body.getOrDefault("hostname", null));
-        host.put("ip", body.getOrDefault("ip", ""));
+        host.put("ip", ip);
         host.put("businessIp", body.getOrDefault("businessIp", null));
         host.put("port", body.getOrDefault("port", 22));
         host.put("os", body.getOrDefault("os", null));
@@ -462,7 +542,6 @@ public class HostService {
         host.put("updatedAt", now);
 
         // Encrypt credential
-        Object credentialObj = body.get("credential");
         String rawCredential = credentialObj != null ? credentialObj.toString() : "";
         try {
             host.put("credential", encrypt(rawCredential));
@@ -472,6 +551,26 @@ public class HostService {
         }
 
         validateHostIpFields(host);
+
+        Object clusterIdObj = body.get("clusterId");
+        if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
+            String clusterId = clusterIdObj.toString();
+            try {
+                Map<String, Object> cluster = clusterService.getCluster(clusterId);
+                String hostGroupId = (String) cluster.get("groupId");
+                if (hostGroupId != null && !hostGroupId.isEmpty()) {
+                    List<Map<String, Object>> hostsInGroup = listHostsByGroup(hostGroupId, clusterService);
+                    boolean ipDuplicate = hostsInGroup.stream()
+                        .anyMatch(h -> ip.equals(h.get("ip")) || ip.equals(h.get("businessIp")));
+                    if (ipDuplicate) {
+                        throw new ConflictException("IP address already exists in this group");
+                    }
+                }
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Invalid cluster ID");
+            }
+        }
+
         syncClusterTypeToTags(host);
         validateHostRole(host);
         writeHostFile(id, host);
@@ -495,11 +594,15 @@ public class HostService {
      * @param id host identifier
      * @param body request body containing updated host fields
      * @return the updated host map with credential masked
+     * @throws NotFoundException if host not found
+     * @throws ConflictException if name or IP already exists
+     * @throws BadRequestException if validation fails
      */
     private static final java.util.Set<String> MUTABLE_FIELDS =
         java.util.Set.of("name", "hostname", "ip", "port", "os", "location", "username", "authType", "business",
             "clusterId", "purpose", "tags", "description", "customAttributes", "businessIp", "role");
 
+    @SuppressWarnings("unchecked")
     public Map<String, Object> updateHost(String id, Map<String, Object> body) throws NotFoundException, ConflictException, BadRequestException {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
@@ -509,11 +612,91 @@ public class HostService {
 
         // Check name uniqueness if name is being updated
         if (body.containsKey("name")) {
-            String newName = String.valueOf(body.get("name"));
+            String newName = ValidationUtils.requireNonBlank(body, "name", "Host name is required");
+            ValidationUtils.requireNoXssChars(newName, "Host name");
+            ValidationUtils.requireMaxLength(newName, 100, "Host name");
             for (Map<String, Object> existing : listHosts(null)) {
                 if (!id.equals(existing.get("id")) && newName.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
                     throw new ConflictException("Host name already exists");
                 }
+            }
+            host.put("name", newName);
+        }
+
+        // hostname validation
+        if (body.containsKey("hostname")) {
+            Object hostnameObj = body.get("hostname");
+            if (hostnameObj != null) {
+                String hostname = hostnameObj.toString().trim();
+                if (!hostname.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(hostname, "Hostname");
+                    ValidationUtils.requireMaxLength(hostname, 255, "Hostname");
+                }
+            }
+        }
+
+        // os validation
+        if (body.containsKey("os")) {
+            Object osObj = body.get("os");
+            if (osObj != null) {
+                String os = osObj.toString().trim();
+                if (!os.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(os, "OS");
+                }
+            }
+        }
+
+        // location validation
+        if (body.containsKey("location")) {
+            Object locationObj = body.get("location");
+            if (locationObj != null) {
+                String location = locationObj.toString().trim();
+                if (!location.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(location, "Location");
+                }
+            }
+        }
+
+        // purpose validation
+        if (body.containsKey("purpose")) {
+            Object purposeObj = body.get("purpose");
+            if (purposeObj != null) {
+                String purpose = purposeObj.toString().trim();
+                if (!purpose.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(purpose, "Purpose");
+                }
+            }
+        }
+
+        // business validation
+        if (body.containsKey("business")) {
+            Object businessObj = body.get("business");
+            if (businessObj != null) {
+                String business = businessObj.toString().trim();
+                if (!business.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(business, "Business");
+                }
+            }
+        }
+
+        // description validation
+        if (body.containsKey("description")) {
+            Object descObj = body.get("description");
+            if (descObj != null) {
+                String description = descObj.toString().trim();
+                if (!description.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(description, "Description");
+                    ValidationUtils.requireMaxLength(description, 500, "Description");
+                }
+            }
+        }
+
+        // customAttributes key uniqueness
+        if (body.containsKey("customAttributes")) {
+            Object customAttrsObj = body.get("customAttributes");
+            if (customAttrsObj instanceof List<?>) {
+                List<Map<String, Object>> customAttributes = (List<Map<String, Object>>) customAttrsObj;
+                ValidationUtils.requireUniqueKeys(customAttributes, "key", "Custom attribute keys must be unique");
             }
         }
 
@@ -539,6 +722,55 @@ public class HostService {
         }
 
         validateHostIpFields(host);
+
+        // IP duplicate check within same group
+        Object ipObj = host.get("ip");
+        if (ipObj != null && !ipObj.toString().isEmpty()) {
+            String ip = ipObj.toString().trim();
+            Object clusterIdObj = host.get("clusterId");
+            if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
+                String clusterId = clusterIdObj.toString();
+                try {
+                    Map<String, Object> cluster = clusterService.getCluster(clusterId);
+                    String hostGroupId = (String) cluster.get("groupId");
+                    if (hostGroupId != null && !hostGroupId.isEmpty()) {
+                        List<Map<String, Object>> hostsInGroup = listHostsByGroup(hostGroupId, clusterService);
+                        boolean ipDuplicate = hostsInGroup.stream()
+                            .filter(h -> !id.equals(h.get("id")))
+                            .anyMatch(h -> ip.equals(h.get("ip")) || ip.equals(h.get("businessIp")));
+                        if (ipDuplicate) {
+                            throw new ConflictException("IP address already exists in this group");
+                        }
+                    }
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Invalid cluster ID");
+                }
+            }
+        }
+
+        // username / credential consistency and ASCII
+        if (body.containsKey("username") || body.containsKey("credential")) {
+            Object usernameObj = body.containsKey("username") ? body.get("username") : host.get("username");
+            Object credentialObj = body.containsKey("credential") ? body.get("credential") : host.get("credential");
+            String username = usernameObj != null ? usernameObj.toString().trim() : "";
+            String credential = credentialObj != null ? credentialObj.toString() : "";
+            boolean credentialIsSentinel = "***".equals(credential);
+            String credentialForCheck = credentialIsSentinel
+                ? (host.get("credential") != null ? host.get("credential").toString() : "")
+                : credential;
+            boolean hasUsername = !username.isEmpty();
+            boolean hasCredential = !credentialForCheck.isEmpty();
+            if (hasUsername != hasCredential) {
+                throw new BadRequestException("Username and credential must be provided together");
+            }
+            if (hasUsername) {
+                ValidationUtils.requireAsciiOnly(username, "Username");
+            }
+            if (body.containsKey("credential") && !credentialIsSentinel && hasCredential) {
+                ValidationUtils.requireAsciiOnly(credential, "Credential");
+            }
+        }
+
         host.put("updatedAt", Instant.now().toString());
         syncClusterTypeToTags(host);
         validateHostRole(host);

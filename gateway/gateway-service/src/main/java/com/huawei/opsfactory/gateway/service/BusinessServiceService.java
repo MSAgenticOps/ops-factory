@@ -4,8 +4,10 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -189,24 +191,57 @@ public class BusinessServiceService {
      * Creates a new business service from the provided field map.
      *
      * @param body request body
-     * @return the result
+     * @return the created business service map
+     * @throws ConflictException if name already exists in the group
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> createBusinessService(Map<String, Object> body) {
+    public Map<String, Object> createBusinessService(Map<String, Object> body) throws ConflictException {
+        String name = ValidationUtils.requireNonBlank(body, "name", "Business service name is required");
+        ValidationUtils.requireNoXssChars(name, "Business service name");
+        ValidationUtils.requireMaxLength(name, 100, "Business service name");
+
+        String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+        String businessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
+
+        List<Map<String, Object>> servicesInGroup = listBusinessServices(groupId, null);
+        boolean nameDuplicate = servicesInGroup.stream()
+            .anyMatch(s -> name.equalsIgnoreCase(String.valueOf(s.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Business service name already exists in this group");
+        }
+
+        Object codeObj = body.get("code");
+        if (codeObj != null) {
+            String code = codeObj.toString().trim();
+            if (!code.isEmpty()) {
+                ValidationUtils.requireNoXssChars(code, "Business service code");
+                ValidationUtils.requireMaxLength(code, 50, "Business service code");
+            }
+        }
+
+        Object descObj = body.get("description");
+        if (descObj != null) {
+            String description = descObj.toString().trim();
+            if (!description.isEmpty()) {
+                ValidationUtils.requireNoXssChars(description, "Description");
+                ValidationUtils.requireMaxLength(description, 500, "Description");
+            }
+        }
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> bs = new LinkedHashMap<>();
         bs.put("id", id);
-        bs.put("name", body.getOrDefault("name", ""));
+        bs.put("name", name);
         bs.put("code", body.getOrDefault("code", ""));
-        bs.put("groupId", body.getOrDefault("groupId", null));
+        bs.put("groupId", groupId);
         bs.put("description", body.getOrDefault("description", ""));
         bs.put("hostIds", body.getOrDefault("hostIds", new ArrayList<String>()));
         bs.put("tags", body.getOrDefault("tags", new ArrayList<String>()));
         bs.put("priority", body.getOrDefault("priority", ""));
         bs.put("contactInfo", body.getOrDefault("contactInfo", ""));
-        bs.put("businessTypeId", body.getOrDefault("businessTypeId", null));
+        bs.put("businessTypeId", businessTypeId);
         bs.put("enabled", body.getOrDefault("enabled", true));
         bs.put("createdAt", now);
         bs.put("updatedAt", now);
@@ -219,12 +254,14 @@ public class BusinessServiceService {
     /**
      * Updates an existing business service with the provided field map.
      *
-     * @param id an existing business service with the provided field map
-     * @param body an existing business service with the provided field map
-     * @return the result
+     * @param id business service identifier
+     * @param body request body containing updated fields
+     * @return the updated business service map
+     * @throws NotFoundException if business service not found
+     * @throws ConflictException if name already exists in the group
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) throws NotFoundException {
+    public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
@@ -232,15 +269,45 @@ public class BusinessServiceService {
         }
 
         if (body.containsKey("name")) {
-            bs.put("name", body.get("name"));
+            String newName = ValidationUtils.requireNonBlank(body, "name", "Business service name is required");
+            ValidationUtils.requireNoXssChars(newName, "Business service name");
+            ValidationUtils.requireMaxLength(newName, 100, "Business service name");
+
+            Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : bs.get("groupId");
+            String groupId = groupIdObj != null ? groupIdObj.toString() : "";
+            List<Map<String, Object>> servicesInGroup = listBusinessServices(groupId, null);
+            boolean nameDuplicate = servicesInGroup.stream()
+                .filter(s -> !id.equals(s.get("id")))
+                .anyMatch(s -> newName.equalsIgnoreCase(String.valueOf(s.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Business service name already exists in this group");
+            }
+            bs.put("name", newName);
         }
         if (body.containsKey("code")) {
+            Object codeObj = body.get("code");
+            if (codeObj != null) {
+                String code = codeObj.toString().trim();
+                if (!code.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(code, "Business service code");
+                    ValidationUtils.requireMaxLength(code, 50, "Business service code");
+                }
+            }
             bs.put("code", body.get("code"));
         }
         if (body.containsKey("groupId")) {
-            bs.put("groupId", body.get("groupId"));
+            String newGroupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+            bs.put("groupId", newGroupId);
         }
         if (body.containsKey("description")) {
+            Object descObj = body.get("description");
+            if (descObj != null) {
+                String description = descObj.toString().trim();
+                if (!description.isEmpty()) {
+                    ValidationUtils.requireNoXssChars(description, "Description");
+                    ValidationUtils.requireMaxLength(description, 500, "Description");
+                }
+            }
             bs.put("description", body.get("description"));
         }
         if (body.containsKey("hostIds")) {
@@ -256,7 +323,8 @@ public class BusinessServiceService {
             bs.put("contactInfo", body.get("contactInfo"));
         }
         if (body.containsKey("businessTypeId")) {
-            bs.put("businessTypeId", body.get("businessTypeId"));
+            String newBusinessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
+            bs.put("businessTypeId", newBusinessTypeId);
         }
         if (body.containsKey("enabled")) {
             bs.put("enabled", body.get("enabled"));
@@ -533,8 +601,12 @@ public class BusinessServiceService {
             body.put("tags", List.of(business));
             body.put("priority", "");
 
-            Map<String, Object> createdBs = createBusinessService(body);
-            created.add(createdBs);
+            try {
+                Map<String, Object> createdBs = createBusinessService(body);
+                created.add(createdBs);
+            } catch (ConflictException e) {
+                log.warn("Skipping business service creation during migration: {}", e.getMessage());
+            }
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
