@@ -111,7 +111,7 @@ public class QueryCallChainRequest {
     /**
      * Sets the mode.
      *
-     * @param mod the mode (method or service)
+     * @param mode the mode (method or service)
      */
     public void setMode(String mode) {
         this.mode = mode;

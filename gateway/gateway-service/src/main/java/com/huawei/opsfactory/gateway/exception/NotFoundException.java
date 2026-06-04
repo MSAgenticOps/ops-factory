@@ -12,6 +12,8 @@ package com.huawei.opsfactory.gateway.exception;
  */
 public class NotFoundException extends Exception {
 
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates a not-found exception with the given message.
      *

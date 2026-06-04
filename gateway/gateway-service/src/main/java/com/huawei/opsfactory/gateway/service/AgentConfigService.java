@@ -1188,7 +1188,7 @@ public class AgentConfigService {
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
-        return new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(options));
+        return new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(options), options);
     }
 
     /**
