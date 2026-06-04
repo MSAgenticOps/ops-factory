@@ -389,62 +389,53 @@ public class SessionBridgeService {
     @SuppressWarnings("unchecked")
     private String extractFinalAssistantText(List<Map<String, Object>> events, String sessionId) {
         StringBuilder output = new StringBuilder();
-
         for (Map<String, Object> event : events) {
-            Object typeObj = event.get("type");
-            String type = typeObj != null ? String.valueOf(typeObj) : "";
-
-            if ("Error".equals(type)) {
-                Object error = event.get("error");
-                throw new IllegalStateException(error != null ? String.valueOf(error) : "Unknown reply error");
-            }
-
-            if (!"Message".equals(type)) {
+            ensureNoErrorEvent(event);
+            Map<?, ?> message = extractVisibleAssistantMessage(event);
+            if (message == null) {
                 continue;
             }
-
-            Object rawMessage = event.get("message");
-            if (!(rawMessage instanceof Map<?, ?> message)) {
-                continue;
-            }
-
-            Object role = message.get("role");
-            if (!"assistant".equals(role)) {
-                continue;
-            }
-
-            Object rawMetadata = message.get("metadata");
-            if (rawMetadata instanceof Map<?, ?> metadata) {
-                Object userVisible = metadata.get("userVisible");
-                if (Boolean.FALSE.equals(userVisible)) {
-                    continue;
-                }
-            }
-
-            Object rawContent = message.get("content");
-            if (!(rawContent instanceof List<?> contentItems)) {
-                continue;
-            }
-
-            for (Object item : contentItems) {
-                if (!(item instanceof Map<?, ?> content)) {
-                    continue;
-                }
-                if (!"text".equals(content.get("type"))) {
-                    continue;
-                }
-                Object textPart = content.get("text");
-                if (textPart != null) {
-                    output.append(textPart);
-                }
-            }
+            appendTextContent(output, message.get("content"));
         }
-
         String reply = output.toString().trim();
         if (reply.isBlank()) {
             log.warn("No assistant text extracted for session {}", sessionId);
         }
         return reply;
+    }
+
+    private void ensureNoErrorEvent(Map<String, Object> event) {
+        String type = String.valueOf(event.getOrDefault("type", ""));
+        if ("Error".equals(type)) {
+            Object error = event.get("error");
+            throw new IllegalStateException(error != null ? String.valueOf(error) : "Unknown reply error");
+        }
+    }
+
+    private Map<?, ?> extractVisibleAssistantMessage(Map<String, Object> event) {
+        if (!"Message".equals(String.valueOf(event.getOrDefault("type", "")))) {
+            return null;
+        }
+        Object rawMessage = event.get("message");
+        if (!(rawMessage instanceof Map<?, ?> message) || !"assistant".equals(message.get("role"))) {
+            return null;
+        }
+        Object rawMetadata = message.get("metadata");
+        if (rawMetadata instanceof Map<?, ?> metadata && Boolean.FALSE.equals(metadata.get("userVisible"))) {
+            return null;
+        }
+        return message;
+    }
+
+    private void appendTextContent(StringBuilder output, Object rawContent) {
+        if (!(rawContent instanceof List<?> contentItems)) {
+            return;
+        }
+        for (Object item : contentItems) {
+            if (item instanceof Map<?, ?> content && "text".equals(content.get("type")) && content.get("text") != null) {
+                output.append(content.get("text"));
+            }
+        }
     }
 
     private String extractSessionId(String startResponse) {

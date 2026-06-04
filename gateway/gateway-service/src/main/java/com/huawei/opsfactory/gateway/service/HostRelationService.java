@@ -469,68 +469,64 @@ public class HostRelationService {
      * @return 1-hop neighbors (upstream + downstream) for a given host
      */
     public Map<String, Object> getNeighbors(String hostId) {
-        // 1. Validate host exists
         Map<String, Object> host = hostService.getHost(hostId);
-
-        // 2. Query all relations involving this host
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
-
-        // 3. Build cluster lookup table
-        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
-        for (Map<String, Object> c : clusterService.listClusters(null, null)) {
-            clusterMap.put((String) c.get("id"), c);
-        }
-
-        // 4. Build current host node
+        Map<String, Map<String, Object>> clusterMap = buildClusterLookup();
         Map<String, Object> hostNode = buildHostNode(host, clusterMap);
-
-        // 5. Iterate relations, collect upstream and downstream neighbors
         List<Map<String, Object>> upstream = new ArrayList<>();
         List<Map<String, Object>> downstream = new ArrayList<>();
-
         for (Map<String, Object> rel : relations) {
-            String sourceId = (String) rel.get("sourceHostId");
-            String targetId = (String) rel.get("targetHostId");
-            String direction;
-            String neighborId;
-
-            if (hostId.equals(sourceId)) {
-                // Current host is source → neighbor is downstream
-                direction = "outgoing";
-                neighborId = targetId;
-            } else {
-                // Current host is target → neighbor is upstream
-                direction = "incoming";
-                neighborId = sourceId;
-            }
-
-            try {
-                Map<String, Object> neighborHost = hostService.getHost(neighborId);
-                Map<String, Object> neighborNode = buildHostNode(neighborHost, clusterMap);
-
-                Map<String, Object> entry = new LinkedHashMap<>();
-                entry.put("host", neighborNode);
-                entry.put("direction", direction);
-                entry.put("relationId", rel.get("id"));
-                entry.put("relationDescription", rel.get("description"));
-
-                if ("incoming".equals(direction)) {
-                    upstream.add(entry);
-                } else {
-                    downstream.add(entry);
-                }
-            } catch (IllegalArgumentException e) {
-                log.debug("Skipping missing neighbor host {} while building host relation topology", neighborId);
-            }
+            appendNeighborEntry(hostId, rel, clusterMap, upstream, downstream);
         }
-
-        // 6. Assemble result
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("host", hostNode);
         result.put("upstream", upstream);
         result.put("downstream", downstream);
         result.put("totalNeighbors", upstream.size() + downstream.size());
         return result;
+    }
+
+    private Map<String, Map<String, Object>> buildClusterLookup() {
+        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
+        for (Map<String, Object> cluster : clusterService.listClusters(null, null)) {
+            clusterMap.put((String) cluster.get("id"), cluster);
+        }
+        return clusterMap;
+    }
+
+    private void appendNeighborEntry(String hostId, Map<String, Object> relation, Map<String, Map<String, Object>> clusterMap,
+        List<Map<String, Object>> upstream, List<Map<String, Object>> downstream) {
+        NeighborDirection neighbor = resolveNeighborDirection(hostId, relation);
+        try {
+            Map<String, Object> neighborHost = hostService.getHost(neighbor.neighborId());
+            Map<String, Object> entry = buildNeighborEntry(neighborHost, clusterMap, relation, neighbor.direction());
+            if ("incoming".equals(neighbor.direction())) {
+                upstream.add(entry);
+            } else {
+                downstream.add(entry);
+            }
+        } catch (IllegalArgumentException e) {
+            log.debug("Skipping missing neighbor host {} while building host relation topology", neighbor.neighborId());
+        }
+    }
+
+    private NeighborDirection resolveNeighborDirection(String hostId, Map<String, Object> relation) {
+        String sourceId = (String) relation.get("sourceHostId");
+        String targetId = (String) relation.get("targetHostId");
+        if (hostId.equals(sourceId)) {
+            return new NeighborDirection("outgoing", targetId);
+        }
+        return new NeighborDirection("incoming", sourceId);
+    }
+
+    private Map<String, Object> buildNeighborEntry(Map<String, Object> neighborHost,
+        Map<String, Map<String, Object>> clusterMap, Map<String, Object> relation, String direction) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("host", buildHostNode(neighborHost, clusterMap));
+        entry.put("direction", direction);
+        entry.put("relationId", relation.get("id"));
+        entry.put("relationDescription", relation.get("description"));
+        return entry;
     }
 
     private Map<String, Object> buildHostNode(Map<String, Object> h, Map<String, Map<String, Object>> clusterMap) {
@@ -547,6 +543,9 @@ public class HostRelationService {
         node.put("groupId", cluster != null ? cluster.get("groupId") : null);
         node.put("tags", h.get("tags"));
         return node;
+    }
+
+    private record NeighborDirection(String direction, String neighborId) {
     }
 
     // ── File I/O Helpers ─────────────────────────────────────────────

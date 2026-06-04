@@ -163,18 +163,39 @@ public class InternalRuntimeSourceController {
         result.put("collectionIntervalSec", 30);
         result.put("maxSlots", 120);
         result.put("returnedSlots", snapshots.size());
+        result.put("current", buildCurrentMetrics(snapshots));
+        result.put("aggregate", buildAggregateMetrics(snapshots));
+        result.put("series", buildSeries(snapshots));
+        result.put("agentMetrics", metricsBuffer.getAgentStats());
+        return result;
+    }
 
-        if (!snapshots.isEmpty()) {
-            MetricsSnapshot latest = snapshots.get(snapshots.size() - 1);
-            Map<String, Object> current = new LinkedHashMap<>();
-            current.put("activeInstances", latest.getActiveInstances());
-            current.put("totalTokens", latest.getTotalTokens());
-            current.put("totalSessions", latest.getTotalSessions());
-            result.put("current", current);
-        } else {
-            result.put("current", Map.of());
+    private Map<String, Object> buildCurrentMetrics(List<MetricsSnapshot> snapshots) {
+        if (snapshots.isEmpty()) {
+            return Map.of();
         }
+        MetricsSnapshot latest = snapshots.get(snapshots.size() - 1);
+        Map<String, Object> current = new LinkedHashMap<>();
+        current.put("activeInstances", latest.getActiveInstances());
+        current.put("totalTokens", latest.getTotalTokens());
+        current.put("totalSessions", latest.getTotalSessions());
+        return current;
+    }
 
+    private Map<String, Object> buildAggregateMetrics(List<MetricsSnapshot> snapshots) {
+        MetricsAggregate aggregate = aggregateSnapshots(snapshots);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalRequests", aggregate.totalRequests());
+        result.put("totalErrors", aggregate.totalErrors());
+        result.put("avgLatencyMs", roundMetric(aggregate.avgLatency()));
+        result.put("avgTtftMs", roundMetric(aggregate.avgTtft()));
+        result.put("avgTokensPerSec", roundMetric(aggregate.avgTokensPerSec()));
+        result.put("p95LatencyMs", roundMetric(aggregate.maxP95Latency()));
+        result.put("p95TtftMs", roundMetric(aggregate.maxP95Ttft()));
+        return result;
+    }
+
+    private MetricsAggregate aggregateSnapshots(List<MetricsSnapshot> snapshots) {
         int totalRequests = 0;
         int totalErrors = 0;
         double weightedLatencySum = 0;
@@ -183,7 +204,6 @@ public class InternalRuntimeSourceController {
         int tokensPerSecCount = 0;
         double maxP95Latency = 0;
         double maxP95Ttft = 0;
-
         for (MetricsSnapshot snapshot : snapshots) {
             totalRequests += snapshot.getRequestCount();
             totalErrors += snapshot.getErrorCount();
@@ -193,26 +213,17 @@ public class InternalRuntimeSourceController {
                 tokensPerSecSum += snapshot.getTokensPerSec();
                 tokensPerSecCount++;
             }
-            if (snapshot.getP95LatencyMs() > maxP95Latency)
-                maxP95Latency = snapshot.getP95LatencyMs();
-            if (snapshot.getP95TtftMs() > maxP95Ttft)
-                maxP95Ttft = snapshot.getP95TtftMs();
+            maxP95Latency = Math.max(maxP95Latency, snapshot.getP95LatencyMs());
+            maxP95Ttft = Math.max(maxP95Ttft, snapshot.getP95TtftMs());
         }
-
         double avgLatency = totalRequests > 0 ? weightedLatencySum / totalRequests : 0;
         double avgTtft = totalRequests > 0 ? weightedTtftSum / totalRequests : 0;
         double avgTokensPerSec = tokensPerSecCount > 0 ? tokensPerSecSum / tokensPerSecCount : 0;
+        return new MetricsAggregate(totalRequests, totalErrors, avgLatency, avgTtft, avgTokensPerSec, maxP95Latency,
+            maxP95Ttft);
+    }
 
-        Map<String, Object> aggregate = new LinkedHashMap<>();
-        aggregate.put("totalRequests", totalRequests);
-        aggregate.put("totalErrors", totalErrors);
-        aggregate.put("avgLatencyMs", Math.round(avgLatency * 100.0) / 100.0);
-        aggregate.put("avgTtftMs", Math.round(avgTtft * 100.0) / 100.0);
-        aggregate.put("avgTokensPerSec", Math.round(avgTokensPerSec * 100.0) / 100.0);
-        aggregate.put("p95LatencyMs", Math.round(maxP95Latency * 100.0) / 100.0);
-        aggregate.put("p95TtftMs", Math.round(maxP95Ttft * 100.0) / 100.0);
-        result.put("aggregate", aggregate);
-
+    private List<Map<String, Object>> buildSeries(List<MetricsSnapshot> snapshots) {
         List<Map<String, Object>> series = new ArrayList<>();
         for (MetricsSnapshot snapshot : snapshots) {
             Map<String, Object> point = new LinkedHashMap<>();
@@ -220,17 +231,23 @@ public class InternalRuntimeSourceController {
             point.put("instances", snapshot.getActiveInstances());
             point.put("tokens", snapshot.getTotalTokens());
             point.put("requests", snapshot.getRequestCount());
-            point.put("avgLatency", Math.round(snapshot.getAvgLatencyMs() * 100.0) / 100.0);
-            point.put("avgTtft", Math.round(snapshot.getAvgTtftMs() * 100.0) / 100.0);
-            point.put("p95Latency", Math.round(snapshot.getP95LatencyMs() * 100.0) / 100.0);
-            point.put("p95Ttft", Math.round(snapshot.getP95TtftMs() * 100.0) / 100.0);
+            point.put("avgLatency", roundMetric(snapshot.getAvgLatencyMs()));
+            point.put("avgTtft", roundMetric(snapshot.getAvgTtftMs()));
+            point.put("p95Latency", roundMetric(snapshot.getP95LatencyMs()));
+            point.put("p95Ttft", roundMetric(snapshot.getP95TtftMs()));
             point.put("bytes", snapshot.getTotalBytes());
             point.put("errors", snapshot.getErrorCount());
-            point.put("tokensPerSec", Math.round(snapshot.getTokensPerSec() * 100.0) / 100.0);
+            point.put("tokensPerSec", roundMetric(snapshot.getTokensPerSec()));
             series.add(point);
         }
-        result.put("series", series);
-        result.put("agentMetrics", metricsBuffer.getAgentStats());
-        return result;
+        return series;
+    }
+
+    private double roundMetric(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private record MetricsAggregate(int totalRequests, int totalErrors, double avgLatency, double avgTtft,
+        double avgTokensPerSec, double maxP95Latency, double maxP95Ttft) {
     }
 }

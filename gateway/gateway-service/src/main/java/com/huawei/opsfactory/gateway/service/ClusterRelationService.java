@@ -189,57 +189,15 @@ public class ClusterRelationService {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
         String sourceId = (String) body.get("sourceId");
         String targetId = (String) body.get("targetId");
-
-        if (sourceId == null || sourceId.isEmpty()) {
-            throw new IllegalArgumentException("sourceId is required");
-        }
-        if (targetId == null || targetId.isEmpty()) {
-            throw new IllegalArgumentException("targetId is required");
-        }
-
-        // Validate source
-        if ("business-service".equals(sourceType)) {
-            try {
-                businessServiceService.getBusinessService(sourceId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source business service not found: " + sourceId, e);
-            }
-        } else {
-            try {
-                clusterService.getCluster(sourceId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source cluster not found: " + sourceId, e);
-            }
-        }
-
-        // Validate target (always a cluster)
-        try {
-            clusterService.getCluster(targetId);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Target cluster not found: " + targetId, e);
-        }
-
-        String id = UUID.randomUUID().toString();
-        String now = Instant.now().toString();
-
-        Map<String, Object> relation = new LinkedHashMap<>();
-        relation.put("id", id);
-        relation.put("sourceType", sourceType);
-        relation.put("sourceId", sourceId);
-        relation.put("targetId", targetId);
-        relation.put("description", body.getOrDefault("description", ""));
-        relation.put("createdAt", now);
-        relation.put("updatedAt", now);
-
+        validateRelationBody(sourceId, targetId);
+        validateRelationSource(sourceType, sourceId);
+        validateRelationTarget(targetId);
+        Map<String, Object> relation = buildRelationEntity(body, sourceType, sourceId, targetId);
+        String id = (String) relation.get("id");
         writeEntityFile(id, relation);
         log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId,
             targetId);
-
-        // Sync hostIds on the business service
-        if ("business-service".equals(sourceType) && businessServiceService != null) {
-            businessServiceService.syncHostIdsFromClusterRelations(sourceId);
-        }
-
+        syncBusinessServiceIfNeeded(sourceType, sourceId);
         return relation;
     }
 
@@ -555,62 +513,10 @@ public class ClusterRelationService {
 
     private List<Map<String, Object>> buildGraphNodes(Map<String, Map<String, Object>> clusterMap,
         Map<String, Map<String, Object>> hostNodes, Map<String, Map<String, Object>> bsNodes) {
-
         List<Map<String, Object>> nodes = new ArrayList<>();
-        for (Map<String, Object> c : clusterMap.values()) {
-            String cId = (String) c.get("id");
-            String typeName = c.get("type") != null ? c.get("type").toString() : "";
-            List<Map<String, Object>> clusterHosts = hostService.listHostsByCluster(cId);
-            String mode = resolveClusterTypeMode(typeName);
-
-            Map<String, Object> node = new LinkedHashMap<>();
-            node.put("id", cId);
-            node.put("name", c.get("name"));
-            node.put("type", typeName);
-            node.put("mode", mode);
-            node.put("groupId", c.get("groupId"));
-            node.put("hostCount", clusterHosts.size());
-            node.put("nodeType", "cluster");
-            nodes.add(node);
-
-            for (Map<String, Object> h : clusterHosts) {
-                hostNodes.putIfAbsent((String) h.get("id"), h);
-            }
-        }
-
-        for (Map<String, Object> h : hostNodes.values()) {
-            String hClusterId = h.get("clusterId") != null ? h.get("clusterId").toString() : null;
-            String hClusterType = null;
-            if (hClusterId != null) {
-                Map<String, Object> parentCluster = clusterMap.get(hClusterId);
-                if (parentCluster != null && parentCluster.get("type") != null) {
-                    hClusterType = parentCluster.get("type").toString();
-                }
-            }
-            Map<String, Object> node = new LinkedHashMap<>();
-            node.put("id", h.get("id"));
-            node.put("name", h.get("name"));
-            node.put("ip", h.get("ip"));
-            node.put("clusterId", hClusterId);
-            node.put("role", h.get("role"));
-            node.put("clusterType", hClusterType);
-            node.put("groupId", h.get("groupId") != null ? h.get("groupId") : null);
-            node.put("hostCount", 0);
-            node.put("nodeType", "host");
-            nodes.add(node);
-        }
-
-        for (Map<String, Object> bs : bsNodes.values()) {
-            Map<String, Object> node = new LinkedHashMap<>();
-            node.put("id", bs.get("id"));
-            node.put("name", bs.get("name"));
-            node.put("type", "");
-            node.put("groupId", bs.get("groupId"));
-            node.put("hostCount", 0);
-            node.put("nodeType", "business-service");
-            nodes.add(node);
-        }
-
+        nodes.addAll(buildClusterGraphNodes(clusterMap, hostNodes));
+        nodes.addAll(buildHostGraphNodes(clusterMap, hostNodes));
+        nodes.addAll(buildBusinessServiceNodes(bsNodes));
         return nodes;
     }
 
@@ -643,15 +549,10 @@ public class ClusterRelationService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getClusterNeighbors(String clusterId) {
-        // Validate cluster exists
         Map<String, Object> cluster = clusterService.getCluster(clusterId);
         String typeName = cluster.get("type") != null ? cluster.get("type").toString() : "";
         String mode = resolveClusterTypeMode(typeName);
-
-        List<Map<String, Object>> hosts = hostService.listHostsByCluster(clusterId);
-        // For primary-backup mode, filter to primary hosts only
-        List<Map<String, Object>> activeHosts = "primary-backup".equals(mode) ? filterPrimaryHosts(hosts) : hosts;
-
+        List<Map<String, Object>> activeHosts = loadActiveHostsByClusterMode(clusterId, mode);
         List<Map<String, Object>> allRelations = listRelations(null);
         List<Map<String, Object>> upstream = new ArrayList<>();
         List<Map<String, Object>> downstream = new ArrayList<>();
@@ -667,47 +568,152 @@ public class ClusterRelationService {
             }
 
             if (clusterId.equals(sourceId)) {
-                // Current cluster is source -> downstream
-                try {
-                    Map<String, Object> targetCluster = clusterService.getCluster(targetId);
-                    String tn = targetCluster.get("type") != null ? targetCluster.get("type").toString() : "";
-                    String tm = resolveClusterTypeMode(tn);
-                    List<Map<String, Object>> targetHosts = hostService.listHostsByCluster(targetId);
-                    List<Map<String, Object>> activeTargetHosts =
-                        "primary-backup".equals(tm) ? filterPrimaryHosts(targetHosts) : targetHosts;
-
-                    Map<String, Object> entry = new LinkedHashMap<>();
-                    entry.put("cluster", buildClusterNode(targetCluster, tm, activeTargetHosts.size()));
-                    entry.put("hosts", buildHostNodes(activeTargetHosts));
-                    entry.put("direction", "outgoing");
-                    entry.put("description", rel.get("description"));
-                    downstream.add(entry);
-                } catch (IllegalArgumentException e) {
-                    log.debug("Skipping missing downstream cluster {}", targetId);
-                }
+                appendNeighborEntry(downstream, targetId, "outgoing", rel.get("description"), "downstream");
             }
             if (clusterId.equals(targetId)) {
-                // Current cluster is target -> upstream
-                try {
-                    Map<String, Object> sourceCluster = clusterService.getCluster(sourceId);
-                    String sn = sourceCluster.get("type") != null ? sourceCluster.get("type").toString() : "";
-                    String sm = resolveClusterTypeMode(sn);
-                    List<Map<String, Object>> sourceHosts = hostService.listHostsByCluster(sourceId);
-                    List<Map<String, Object>> activeSourceHosts =
-                        "primary-backup".equals(sm) ? filterPrimaryHosts(sourceHosts) : sourceHosts;
-
-                    Map<String, Object> entry = new LinkedHashMap<>();
-                    entry.put("cluster", buildClusterNode(sourceCluster, sm, activeSourceHosts.size()));
-                    entry.put("hosts", buildHostNodes(activeSourceHosts));
-                    entry.put("direction", "incoming");
-                    entry.put("description", rel.get("description"));
-                    upstream.add(entry);
-                } catch (IllegalArgumentException e) {
-                    log.debug("Skipping missing upstream cluster {}", sourceId);
-                }
+                appendNeighborEntry(upstream, sourceId, "incoming", rel.get("description"), "upstream");
             }
         }
+        return buildNeighborPayload(cluster, mode, activeHosts, upstream, downstream);
+    }
 
+    private void validateRelationBody(String sourceId, String targetId) {
+        if (sourceId == null || sourceId.isEmpty()) {
+            throw new IllegalArgumentException("sourceId is required");
+        }
+        if (targetId == null || targetId.isEmpty()) {
+            throw new IllegalArgumentException("targetId is required");
+        }
+    }
+
+    private void validateRelationSource(String sourceType, String sourceId) {
+        try {
+            if ("business-service".equals(sourceType)) {
+                businessServiceService.getBusinessService(sourceId);
+                return;
+            }
+            clusterService.getCluster(sourceId);
+        } catch (IllegalArgumentException e) {
+            String message = "business-service".equals(sourceType) ? "Source business service not found: "
+                : "Source cluster not found: ";
+            throw new IllegalArgumentException(message + sourceId, e);
+        }
+    }
+
+    private void validateRelationTarget(String targetId) {
+        try {
+            clusterService.getCluster(targetId);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Target cluster not found: " + targetId, e);
+        }
+    }
+
+    private Map<String, Object> buildRelationEntity(Map<String, Object> body, String sourceType, String sourceId,
+        String targetId) {
+        String now = Instant.now().toString();
+        Map<String, Object> relation = new LinkedHashMap<>();
+        relation.put("id", UUID.randomUUID().toString());
+        relation.put("sourceType", sourceType);
+        relation.put("sourceId", sourceId);
+        relation.put("targetId", targetId);
+        relation.put("description", body.getOrDefault("description", ""));
+        relation.put("createdAt", now);
+        relation.put("updatedAt", now);
+        return relation;
+    }
+
+    private void syncBusinessServiceIfNeeded(String sourceType, String sourceId) {
+        if ("business-service".equals(sourceType) && businessServiceService != null) {
+            businessServiceService.syncHostIdsFromClusterRelations(sourceId);
+        }
+    }
+
+    private List<Map<String, Object>> buildClusterGraphNodes(Map<String, Map<String, Object>> clusterMap,
+        Map<String, Map<String, Object>> hostNodes) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        for (Map<String, Object> cluster : clusterMap.values()) {
+            String clusterId = (String) cluster.get("id");
+            String typeName = cluster.get("type") != null ? cluster.get("type").toString() : "";
+            List<Map<String, Object>> clusterHosts = hostService.listHostsByCluster(clusterId);
+            nodes.add(buildClusterNode(cluster, resolveClusterTypeMode(typeName), clusterHosts.size()));
+            mergeClusterHostsIntoHostNodes(hostNodes, clusterHosts);
+        }
+        return nodes;
+    }
+
+    private void mergeClusterHostsIntoHostNodes(Map<String, Map<String, Object>> hostNodes, List<Map<String, Object>> clusterHosts) {
+        for (Map<String, Object> host : clusterHosts) {
+            hostNodes.putIfAbsent((String) host.get("id"), host);
+        }
+    }
+
+    private List<Map<String, Object>> buildHostGraphNodes(Map<String, Map<String, Object>> clusterMap,
+        Map<String, Map<String, Object>> hostNodes) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        for (Map<String, Object> host : hostNodes.values()) {
+            nodes.add(buildHostGraphNode(clusterMap, host));
+        }
+        return nodes;
+    }
+
+    private Map<String, Object> buildHostGraphNode(Map<String, Map<String, Object>> clusterMap, Map<String, Object> host) {
+        String clusterId = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
+        Map<String, Object> parentCluster = clusterId != null ? clusterMap.get(clusterId) : null;
+        String clusterType = parentCluster != null && parentCluster.get("type") != null ? parentCluster.get("type").toString()
+            : null;
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", host.get("id"));
+        node.put("name", host.get("name"));
+        node.put("ip", host.get("ip"));
+        node.put("clusterId", clusterId);
+        node.put("role", host.get("role"));
+        node.put("clusterType", clusterType);
+        node.put("groupId", host.get("groupId") != null ? host.get("groupId") : null);
+        node.put("hostCount", 0);
+        node.put("nodeType", "host");
+        return node;
+    }
+
+    private List<Map<String, Object>> buildBusinessServiceNodes(Map<String, Map<String, Object>> bsNodes) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        for (Map<String, Object> bs : bsNodes.values()) {
+            Map<String, Object> node = new LinkedHashMap<>();
+            node.put("id", bs.get("id"));
+            node.put("name", bs.get("name"));
+            node.put("type", "");
+            node.put("groupId", bs.get("groupId"));
+            node.put("hostCount", 0);
+            node.put("nodeType", "business-service");
+            nodes.add(node);
+        }
+        return nodes;
+    }
+
+    private List<Map<String, Object>> loadActiveHostsByClusterMode(String clusterId, String mode) {
+        List<Map<String, Object>> hosts = hostService.listHostsByCluster(clusterId);
+        return "primary-backup".equals(mode) ? filterPrimaryHosts(hosts) : hosts;
+    }
+
+    private void appendNeighborEntry(List<Map<String, Object>> target, String relatedClusterId, String direction,
+        Object description, String label) {
+        try {
+            Map<String, Object> cluster = clusterService.getCluster(relatedClusterId);
+            String typeName = cluster.get("type") != null ? cluster.get("type").toString() : "";
+            String mode = resolveClusterTypeMode(typeName);
+            List<Map<String, Object>> activeHosts = loadActiveHostsByClusterMode(relatedClusterId, mode);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("cluster", buildClusterNode(cluster, mode, activeHosts.size()));
+            entry.put("hosts", buildHostNodes(activeHosts));
+            entry.put("direction", direction);
+            entry.put("description", description);
+            target.add(entry);
+        } catch (IllegalArgumentException e) {
+            log.debug("Skipping missing {} cluster {}", label, relatedClusterId);
+        }
+    }
+
+    private Map<String, Object> buildNeighborPayload(Map<String, Object> cluster, String mode,
+        List<Map<String, Object>> activeHosts, List<Map<String, Object>> upstream, List<Map<String, Object>> downstream) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("cluster", buildClusterNode(cluster, mode, activeHosts.size()));
         result.put("upstream", upstream);

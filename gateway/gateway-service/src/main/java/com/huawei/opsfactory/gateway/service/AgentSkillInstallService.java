@@ -81,48 +81,72 @@ public class AgentSkillInstallService {
         String skillId = validateSkillId(requestedSkillId);
         Map<String, Object> marketSkill = skillMarketClient.getSkill(skillId);
         byte[] packageBytes = skillMarketClient.downloadPackage(skillId);
+        String expectedChecksum = stringValue(marketSkill, "checksum");
+        String actualChecksum = "sha256:" + sha256(packageBytes);
+        validateDownloadedSkillPackage(packageBytes, expectedChecksum, actualChecksum);
+        installSkillPackage(agentId, skillId, packageBytes, actualChecksum);
+        agentConfigService.invalidateCache(agentId);
+        Map<String, Object> skill = buildInstalledSkillMetadata(skillId, marketSkill, actualChecksum);
+        log.info("Installed skill id={} agentId={} checksum={}", skillId, agentId, actualChecksum);
+        return Map.of("success", true, "skill", skill, "restartRequired", true);
+    }
+
+    private void validateDownloadedSkillPackage(byte[] packageBytes, String expectedChecksum, String actualChecksum) {
         long maxPackageBytes = properties.getSkillMarket().getMaxPackageSizeMb() * 1024L * 1024L;
         if (packageBytes.length > maxPackageBytes) {
             throw new IllegalArgumentException("Skill package exceeds gateway installation limit");
         }
-
-        String expectedChecksum = stringValue(marketSkill, "checksum");
-        String actualChecksum = "sha256:" + sha256(packageBytes);
         if (!expectedChecksum.isBlank() && !expectedChecksum.equalsIgnoreCase(actualChecksum)) {
             throw new IllegalArgumentException("Skill package checksum does not match market metadata");
         }
+    }
 
+    private void installSkillPackage(String agentId, String skillId, byte[] packageBytes, String actualChecksum) {
         try {
             Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
-            Path destination = skillsDir.resolve(skillId);
-            if (Files.exists(destination)) {
-                throw new SkillInstallConflictException(
-                    "Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
-            }
-
-            Files.createDirectories(skillsDir);
+            Path destination = resolveSkillDestination(agentId, skillId, skillsDir);
             Path tempDir = Files.createTempDirectory(skillsDir, skillId + "-install-");
-            try {
-                extractPackage(packageBytes, tempDir);
-                Path skillMd = tempDir.resolve("SKILL.md");
-                if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
-                    throw new IllegalArgumentException("Skill package must contain a non-empty SKILL.md");
-                }
-                rejectSymbolicLinks(tempDir);
-                writeInstallMetadata(tempDir, skillId, actualChecksum);
-                Files.move(tempDir, destination, StandardCopyOption.ATOMIC_MOVE);
-            } catch (RuntimeException e) {
-                safeDelete(tempDir);
-                throw e;
-            } catch (IOException e) {
-                safeDelete(tempDir);
-                throw new IllegalStateException("Failed to install skill '" + skillId + "'", e);
-            }
+            installExtractedSkill(skillId, packageBytes, actualChecksum, destination, tempDir);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to install skill '" + skillId + "' for agent: " + agentId, e);
         }
+    }
 
-        agentConfigService.invalidateCache(agentId);
+    private Path resolveSkillDestination(String agentId, String skillId, Path skillsDir) throws IOException {
+        Path destination = skillsDir.resolve(skillId);
+        if (Files.exists(destination)) {
+            throw new SkillInstallConflictException("Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
+        }
+        Files.createDirectories(skillsDir);
+        return destination;
+    }
+
+    private void installExtractedSkill(String skillId, byte[] packageBytes, String actualChecksum, Path destination,
+        Path tempDir) throws IOException {
+        try {
+            extractPackage(packageBytes, tempDir);
+            validateExtractedSkill(tempDir);
+            writeInstallMetadata(tempDir, skillId, actualChecksum);
+            Files.move(tempDir, destination, StandardCopyOption.ATOMIC_MOVE);
+        } catch (RuntimeException e) {
+            safeDelete(tempDir);
+            throw e;
+        } catch (IOException e) {
+            safeDelete(tempDir);
+            throw new IllegalStateException("Failed to install skill '" + skillId + "'", e);
+        }
+    }
+
+    private void validateExtractedSkill(Path tempDir) throws IOException {
+        Path skillMd = tempDir.resolve("SKILL.md");
+        if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
+            throw new IllegalArgumentException("Skill package must contain a non-empty SKILL.md");
+        }
+        rejectSymbolicLinks(tempDir);
+    }
+
+    private Map<String, Object> buildInstalledSkillMetadata(String skillId, Map<String, Object> marketSkill,
+        String actualChecksum) {
         Map<String, Object> skill = new LinkedHashMap<>();
         skill.put("id", skillId);
         skill.put("name", stringValue(marketSkill, "name"));
@@ -130,9 +154,7 @@ public class AgentSkillInstallService {
         skill.put("path", "skills/" + skillId);
         skill.put("source", "skill-market");
         skill.put("checksum", actualChecksum);
-
-        log.info("Installed skill id={} agentId={} checksum={}", skillId, agentId, actualChecksum);
-        return Map.of("success", true, "skill", skill, "restartRequired", true);
+        return skill;
     }
 
     private void safeDelete(Path path) {
