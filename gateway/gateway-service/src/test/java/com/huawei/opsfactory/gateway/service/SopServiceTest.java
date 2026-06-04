@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
@@ -16,6 +17,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -51,7 +53,12 @@ public class SopServiceTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
 
-        sopService = new SopService(properties);
+        SolutionTypeService solutionTypeService = Mockito.mock(SolutionTypeService.class);
+        when(solutionTypeService.listSolutionTypes()).thenReturn(List.of(
+            Map.of("code", "crm-commerce", "name", "CRM Commerce"),
+            Map.of("code", "cbs-billing", "name", "CBS Billing")
+        ));
+        sopService = new SopService(properties, solutionTypeService);
         sopService.init();
 
         sopsDir = Path.of(tempFolder.getRoot().getAbsolutePath())
