@@ -1123,7 +1123,12 @@ public class OperationIntelligenceProperties {
         }
     }
 
-    /** Knowledge graph configuration. */
+    /**
+     * Knowledge graph configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     public static class KnowledgeGraph {
         private boolean enabled = true;
 

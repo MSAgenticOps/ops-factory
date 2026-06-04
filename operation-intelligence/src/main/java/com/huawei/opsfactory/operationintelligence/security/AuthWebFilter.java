@@ -88,9 +88,9 @@ public class AuthWebFilter implements Filter {
      *
      * @param request the HTTP request
      * @param response the HTTP response
-     * @param chain chain
-     * @throws IOException ServletException
-     * @throws ServletException ServletException
+     * @param chain the filter chain
+     * @throws IOException if an I/O error occurs during filtering
+     * @throws ServletException if a servlet error occurs during filtering
      */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)

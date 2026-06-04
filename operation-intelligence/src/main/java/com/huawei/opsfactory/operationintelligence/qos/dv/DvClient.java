@@ -25,7 +25,6 @@ import org.springframework.web.client.RestClient;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -260,12 +259,26 @@ public class DvClient {
 
     // --- 11.8 通用重试机制 ---
 
+    /**
+     * Sleeps for the specified delay before retrying.
+     *
+     * @param delayMs the delay in milliseconds
+     * @throws InterruptedException if the sleep is interrupted
+     */
     void sleepBeforeRetry(long delayMs) throws InterruptedException {
         Thread.sleep(delayMs);
     }
 
     // --- 内部工具方法 ---
 
+    /**
+     * Executes an action with retry logic.
+     *
+     * @param <T> the return type
+     * @param action the action to execute
+     * @param operationName the operation name for logging
+     * @return the result of the action
+     */
     <T> T executeWithRetry(Supplier<T> action, String operationName) {
         int retryCount = 0;
         Exception lastException = null;
@@ -369,6 +382,12 @@ public class DvClient {
         return body;
     }
 
+    /**
+     * Parses performance data result from response string.
+     *
+     * @param response the response string
+     * @return the list of performance data results
+     */
     List<PerformanceDataResult> parsePerformanceResult(String response) {
         List<PerformanceDataResult> results = new ArrayList<>();
         if (response == null)
@@ -420,6 +439,12 @@ public class DvClient {
         return vals;
     }
 
+    /**
+     * Parses alarm info list from response string.
+     *
+     * @param response the response string
+     * @return the list of alarm info
+     */
     List<AlarmInfo> parseAlarms(String response) {
         List<AlarmInfo> alarms = new ArrayList<>();
         if (response == null)
@@ -448,6 +473,12 @@ public class DvClient {
         return alarms;
     }
 
+    /**
+     * Parses MO children from response string.
+     *
+     * @param response the response string
+     * @return the list of child text values
+     */
     List<String> parseChildren(String response) {
         List<String> children = new ArrayList<>();
         if (response == null)

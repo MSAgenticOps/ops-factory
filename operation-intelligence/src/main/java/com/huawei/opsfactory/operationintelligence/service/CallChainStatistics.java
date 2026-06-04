@@ -33,12 +33,6 @@ import java.util.stream.Collectors;
  * @since 2026-05-14
  */
 @Component
-/**
- * Call Chain Statistics.
- *
- * @author x00000000
- * @since 2026-05-27
- */
 public class CallChainStatistics {
 
     private static final Logger log = LoggerFactory.getLogger(CallChainStatistics.class);

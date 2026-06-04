@@ -32,7 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-/** Integration tests for KnowledgeGraph REST API endpoints. */
+/**
+ * Integration tests for KnowledgeGraph REST API endpoints.
+ *
+ * @author x00000000
+ * @since 2026-05-20
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 class KnowledgeGraphControllerTest {
