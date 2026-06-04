@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
@@ -399,6 +400,88 @@ public class HostServiceTest {
 
         String updatedAt = (String) hostService.getHost(id).get("updatedAt");
         assertNotNull(updatedAt);
+    }
+
+    // ── IP Validation ──────────────────────────────────────────────
+
+    /**
+     * Tests create host with valid IPv4 address.
+     */
+    @Test
+    public void testCreateHost_validIpv4() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Ipv4Host");
+        body.put("ip", "192.168.1.1");
+
+        Map<String, Object> result = hostService.createHost(body);
+        assertEquals("192.168.1.1", result.get("ip"));
+    }
+
+    /**
+     * Tests create host with valid IPv6 address.
+     */
+    @Test
+    public void testCreateHost_validIpv6() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Ipv6Host");
+        body.put("ip", "fe80::1");
+
+        Map<String, Object> result = hostService.createHost(body);
+        assertEquals("fe80::1", result.get("ip"));
+    }
+
+    /**
+     * Tests create host with invalid IP address.
+     */
+    @Test(expected = BadRequestException.class)
+    public void testCreateHost_invalidIp() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "BadIpHost");
+        body.put("ip", "256.1.1.1");
+
+        hostService.createHost(body);
+    }
+
+    /**
+     * Tests create host with invalid business IP.
+     */
+    @Test(expected = BadRequestException.class)
+    public void testCreateHost_invalidBusinessIp() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "BadBizIpHost");
+        body.put("ip", "10.0.0.1");
+        body.put("businessIp", "abc.def");
+
+        hostService.createHost(body);
+    }
+
+    /**
+     * Tests update host with invalid IP address.
+     */
+    @Test(expected = BadRequestException.class)
+    public void testUpdateHost_invalidIp() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
+        hostService.createHost(body);
+        String id = getFirstHostId();
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("ip", "999.999.999.999");
+        hostService.updateHost(id, updates);
+    }
+
+    /**
+     * Tests empty IP is allowed (optional field).
+     */
+    @Test
+    public void testCreateHost_emptyIpAllowed() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "NoIpHost");
+        body.put("ip", "");
+
+        Map<String, Object> result = hostService.createHost(body);
+        assertEquals("", result.get("ip"));
     }
 
     // ── deleteHost ─────────────────────────────────────────────────

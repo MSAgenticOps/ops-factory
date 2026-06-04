@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -61,6 +62,12 @@ public class HostService {
     private static final int GCM_TAG_LENGTH = 128;
 
     private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
+
+    private static final Pattern IPV4_PATTERN = Pattern.compile(
+        "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
+
+    private static final Pattern IPV6_PATTERN = Pattern.compile(
+        "^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4})?:)?((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?))(\\/\\d{1,3})?$");
 
     private final GatewayProperties properties;
 
@@ -212,6 +219,43 @@ public class HostService {
             if (!"primary".equals(role) && !"backup".equals(role)) {
                 throw new BadRequestException(
                     "Invalid host role. Must be 'primary' or 'backup' for primary-backup cluster");
+            }
+        }
+    }
+
+    /**
+     * Validates that the given string is a valid IPv4 or IPv6 address.
+     *
+     * @param ip the IP address to validate
+     * @return true if valid
+     */
+    private boolean isValidIp(String ip) {
+        if (ip == null || ip.isBlank()) {
+            return false;
+        }
+        String trimmed = ip.trim();
+        return IPV4_PATTERN.matcher(trimmed).matches() || IPV6_PATTERN.matcher(trimmed).matches();
+    }
+
+    /**
+     * Validates the ip and businessIp fields in the given host body.
+     *
+     * @param body the host data map to validate
+     * @throws BadRequestException if any IP field is invalid
+     */
+    private void validateHostIpFields(Map<String, Object> body) throws BadRequestException {
+        Object ipObj = body.get("ip");
+        if (ipObj != null && !ipObj.toString().isBlank()) {
+            String ip = ipObj.toString().trim();
+            if (!isValidIp(ip)) {
+                throw new BadRequestException("Invalid IP address: " + ip);
+            }
+        }
+        Object businessIpObj = body.get("businessIp");
+        if (businessIpObj != null && !businessIpObj.toString().isBlank()) {
+            String businessIp = businessIpObj.toString().trim();
+            if (!isValidIp(businessIp)) {
+                throw new BadRequestException("Invalid business IP address: " + businessIp);
             }
         }
     }
@@ -427,6 +471,7 @@ public class HostService {
             throw new IllegalStateException("Failed to encrypt credential", e);
         }
 
+        validateHostIpFields(host);
         syncClusterTypeToTags(host);
         validateHostRole(host);
         writeHostFile(id, host);
@@ -493,6 +538,7 @@ public class HostService {
             }
         }
 
+        validateHostIpFields(host);
         host.put("updatedAt", Instant.now().toString());
         syncClusterTypeToTags(host);
         validateHostRole(host);
