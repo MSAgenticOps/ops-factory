@@ -41,9 +41,9 @@ public class SolutionTypeServiceTest {
     private Path solutionTypesDir;
 
     /**
-     * Sets the up.
+     * Initializes the service and data directory before each test.
      *
-     * @throws IOException if the operation fails
+     * @throws IOException if the temporary directory cannot be created
      */
     @Before
     public void setUp() throws IOException {
@@ -156,15 +156,150 @@ public class SolutionTypeServiceTest {
     public void testCreateSolutionType_defaultValues() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalSolution");
+        body.put("code", "MIN");
 
         Map<String, Object> result = solutionTypeService.createSolutionType(body);
 
         assertNotNull(result.get("id"));
         assertEquals("MinimalSolution", result.get("name"));
-        assertEquals("", result.get("code"));
+        assertEquals("MIN", result.get("code"));
         assertEquals("", result.get("description"));
         assertEquals("#8b5cf6", result.get("color"));
         assertEquals("", result.get("knowledge"));
+    }
+
+    /**
+     * Tests create solution type with invalid color falls back to default.
+     */
+    @Test
+    public void testCreateSolutionType_invalidColorFallback() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "ColorTest");
+        body.put("code", "COL");
+        body.put("color", "not-a-color");
+
+        Map<String, Object> result = solutionTypeService.createSolutionType(body);
+        assertEquals("#8b5cf6", result.get("color"));
+    }
+
+    // ── createSolutionType validation ───────────────────────────────
+
+    /**
+     * Tests create solution type name blank.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_nameBlank() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "   ");
+        body.put("code", "CODE");
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type name too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_nameTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "a".repeat(101));
+        body.put("code", "CODE");
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type name contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_nameXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Test<script>");
+        body.put("code", "CODE");
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type code blank.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_codeBlank() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "   ");
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type code too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_codeTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "a".repeat(51));
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type code contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_codeXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "code<script>");
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type duplicate code.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_duplicateCode() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "First");
+        body.put("code", "DUP");
+        solutionTypeService.createSolutionType(body);
+
+        Map<String, Object> body2 = new LinkedHashMap<>();
+        body2.put("name", "Second");
+        body2.put("code", "DUP");
+        solutionTypeService.createSolutionType(body2);
+    }
+
+    /**
+     * Tests create solution type description too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_descriptionTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("description", "a".repeat(501));
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type description contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_descriptionXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("description", "<script>alert(1)</script>");
+        solutionTypeService.createSolutionType(body);
+    }
+
+    /**
+     * Tests create solution type knowledge contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateSolutionType_knowledgeXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("knowledge", "<script>");
+        solutionTypeService.createSolutionType(body);
     }
 
     // ── updateSolutionType ─────────────────────────────────────────
@@ -176,6 +311,7 @@ public class SolutionTypeServiceTest {
     public void testUpdateSolutionType_success() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
+        body.put("code", "ORIG");
         body.put("description", "orig desc");
         Map<String, Object> created = solutionTypeService.createSolutionType(body);
         String id = (String) created.get("id");
@@ -217,6 +353,7 @@ public class SolutionTypeServiceTest {
     public void testUpdateSolutionType_color() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "ST");
+        body.put("code", "ST");
         body.put("color", "#ff0000");
         Map<String, Object> created = solutionTypeService.createSolutionType(body);
         String id = (String) created.get("id");
@@ -236,6 +373,252 @@ public class SolutionTypeServiceTest {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");
         solutionTypeService.updateSolutionType("nonexistent", updates);
+    }
+
+    // ── updateSolutionType validation ───────────────────────────────
+
+    /**
+     * Tests update solution type name blank.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_nameBlank() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("name", "   ");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type name too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_nameTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("name", "a".repeat(101));
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type name contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_nameXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("name", "<script>");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type code blank.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_codeBlank() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("code", "   ");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type code too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_codeTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("code", "a".repeat(51));
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type code contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_codeXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("code", "<script>");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type duplicate code.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_duplicateCode() throws Exception {
+        Map<String, Object> body1 = new LinkedHashMap<>();
+        body1.put("name", "First");
+        body1.put("code", "FIRST");
+        solutionTypeService.createSolutionType(body1);
+
+        Map<String, Object> body2 = new LinkedHashMap<>();
+        body2.put("name", "Second");
+        body2.put("code", "SECOND");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body2);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("code", "FIRST");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type description too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_descriptionTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("description", "a".repeat(501));
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type description contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_descriptionXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("description", "<script>alert(1)</script>");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type knowledge contains xss.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateSolutionType_knowledgeXss() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("knowledge", "<script>");
+        solutionTypeService.updateSolutionType(id, updates);
+    }
+
+    /**
+     * Tests update solution type invalid color falls back to default.
+     */
+    @Test
+    public void testUpdateSolutionType_invalidColorFallback() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "ST");
+        body.put("code", "ST");
+        body.put("color", "#ff0000");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("color", "invalid");
+
+        Map<String, Object> result = solutionTypeService.updateSolutionType(id, updates);
+        assertEquals("#8b5cf6", result.get("color"));
+    }
+
+    // ── boundary values ────────────────────────────────────────────
+
+    /**
+     * Tests update solution type same code allowed.
+     */
+    @Test
+    public void testUpdateSolutionType_sameCodeAllowed() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = solutionTypeService.createSolutionType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("code", "ORIG");
+
+        Map<String, Object> result = solutionTypeService.updateSolutionType(id, updates);
+        assertEquals("ORIG", result.get("code"));
+    }
+
+    /**
+     * Tests create solution type name at max length.
+     */
+    @Test
+    public void testCreateSolutionType_nameAtMaxLength() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "a".repeat(100));
+        body.put("code", "CODE");
+
+        Map<String, Object> result = solutionTypeService.createSolutionType(body);
+        assertEquals("a".repeat(100), result.get("name"));
+    }
+
+    /**
+     * Tests create solution type code at max length.
+     */
+    @Test
+    public void testCreateSolutionType_codeAtMaxLength() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "a".repeat(50));
+
+        Map<String, Object> result = solutionTypeService.createSolutionType(body);
+        assertEquals("a".repeat(50), result.get("code"));
+    }
+
+    /**
+     * Tests create solution type description at max length.
+     */
+    @Test
+    public void testCreateSolutionType_descriptionAtMaxLength() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("description", "a".repeat(500));
+
+        Map<String, Object> result = solutionTypeService.createSolutionType(body);
+        assertEquals("a".repeat(500), result.get("description"));
     }
 
     // ── deleteSolutionType ─────────────────────────────────────────
@@ -277,6 +660,14 @@ public class SolutionTypeServiceTest {
 
     // ── Helpers ──────────────────────────────────────────────────
 
+    /**
+     * Creates a solution type directly in the data directory (bypassing the service).
+     * Used to set up pre-existing data for list/get/delete tests.
+     *
+     * @param id the entity identifier used as filename
+     * @param name the solution type name
+     * @param description the solution type description
+     */
     private void createSolutionType(String id, String name, String description) {
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);

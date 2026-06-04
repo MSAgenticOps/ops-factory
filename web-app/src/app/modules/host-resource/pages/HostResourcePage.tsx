@@ -116,6 +116,7 @@ export default function HostResourcePage() {
         createBusinessService, createRelation,
         createClusterType: clusterTypesHook.createClusterType,
         createBusinessType: businessTypesHook.createBusinessType,
+        createSolutionType: solutionTypesHook.createSolutionType,
         createSop: sopsHook.createSop,
         addWhitelistCommand,
     })
@@ -620,10 +621,11 @@ export default function HostResourcePage() {
             businessServices,
             clusterTypes: clusterTypesHook.clusterTypes,
             businessTypes: businessTypesHook.businessTypes,
+            solutionTypes: solutionTypesHook.solutionTypes,
             whitelistCommands,
             sops: sopsHook.sops,
         }, t)
-    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops, t])
+    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, solutionTypesHook.solutionTypes, whitelistCommands, sopsHook.sops, t])
 
     const openCreateModal = useCallback(() => {
         setEditingItem(null)

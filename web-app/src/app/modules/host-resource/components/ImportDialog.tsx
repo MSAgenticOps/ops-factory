@@ -9,6 +9,7 @@ import { validateSheetStructure, type SheetValidationError } from '../../../../u
 const IMPORT_TYPES: ImportType[] = [
     'ClusterTypes',
     'BusinessTypes',
+    'SolutionTypes',
     'HostGroups',
     'Clusters',
     'Hosts',
@@ -28,6 +29,8 @@ export function translateImportType(type: string | undefined, t: (key: string) =
         case 'ClusterTypes': return t('hostResource.importType_ClusterTypes')
         case 'BusinessType':
         case 'BusinessTypes': return t('hostResource.importType_BusinessTypes')
+        case 'SolutionType':
+        case 'SolutionTypes': return t('hostResource.importType_SolutionTypes')
         case 'HostGroup':
         case 'HostGroups': return t('hostResource.importType_HostGroups')
         case 'Cluster':
@@ -304,6 +307,14 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessTypeRequired')
             case 'import.businessTypeNotFound':
                 return t('hostResource.importErrorBusinessTypeNotFound', { type: err.params?.type })
+            case 'import.solutionTypeNameRequired':
+                return t('hostResource.importErrorSolutionTypeNameRequired')
+            case 'import.solutionTypeNameTooLong':
+                return t('hostResource.importErrorSolutionTypeNameTooLong', { length: err.params?.length })
+            case 'import.solutionTypeCodeRequired':
+                return t('hostResource.importErrorSolutionTypeCodeRequired')
+            case 'import.solutionTypeCodeTooLong':
+                return t('hostResource.importErrorSolutionTypeCodeTooLong', { length: err.params?.length })
             case 'import.hostGroupNameRequired':
                 return t('hostResource.importErrorHostGroupNameRequired')
             case 'import.hostGroupNameTooLong':

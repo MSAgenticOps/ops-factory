@@ -6,6 +6,7 @@ import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
+import { validateAndSanitize } from '../../../../utils/inputValidation'
 import type { SolutionType } from '../../../../types/host'
 
 type Props = {
@@ -62,6 +63,32 @@ export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUp
 
     const handleSave = useCallback(async () => {
         if (!form.name.trim()) return
+
+        // XSS + length validation (consistent with import flow)
+        const nameResult = validateAndSanitize(form.name, 'Name')
+        if (!nameResult.valid) {
+            showToast('error', t('hostResource.invalidChars'))
+            return
+        }
+        if (nameResult.sanitized.length > 100) {
+            showToast('error', t('hostResource.importErrorSolutionTypeNameTooLong', { length: String(nameResult.sanitized.length) }))
+            return
+        }
+
+        const codeResult = validateAndSanitize(form.code, 'Code')
+        if (!codeResult.valid) {
+            showToast('error', t('hostResource.invalidChars'))
+            return
+        }
+        if (codeResult.sanitized.length > 50) {
+            showToast('error', t('hostResource.importErrorSolutionTypeCodeTooLong', { length: String(codeResult.sanitized.length) }))
+            return
+        }
+
+        if (form.description && form.description.length > 500) {
+            showToast('error', t('hostResource.importErrorDescriptionTooLong', { length: String(form.description.length) }))
+            return
+        }
 
         // Check for duplicate name
         const duplicateName = solutionTypes.find(st => st.name === form.name && st.id !== editing?.id)

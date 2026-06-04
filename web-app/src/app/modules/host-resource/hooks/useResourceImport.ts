@@ -12,6 +12,7 @@ import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 export type ImportType =
     | 'ClusterTypes'
     | 'BusinessTypes'
+    | 'SolutionTypes'
     | 'HostGroups'
     | 'Clusters'
     | 'Hosts'
@@ -65,6 +66,7 @@ interface ImportDeps {
     createRelation: (body: Partial<HostRelation>) => Promise<unknown>
     createClusterType: (body: Partial<ClusterType>) => Promise<unknown>
     createBusinessType: (body: Partial<BusinessType>) => Promise<unknown>
+    createSolutionType: (body: Partial<SolutionType>) => Promise<unknown>
     createSop: (body: SopCreateRequest) => Promise<unknown>
     addWhitelistCommand: (cmd: WhitelistCommand) => Promise<boolean>
 }
@@ -172,6 +174,8 @@ export function useResourceImport(deps: ImportDeps) {
                 const createdClusterTypeCodes = new Set(deps.clusterTypes.map(ct => ct.code || ''))
                 const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
                 const createdBusinessTypeCodes = new Set(deps.businessTypes.map(bt => bt.code || ''))
+                const createdSolutionTypeNames = new Set(deps.solutionTypes.map(st => st.name))
+                const createdSolutionTypeCodes = new Set(deps.solutionTypes.map(st => st.code || ''))
                 const solutionTypeCodeSet = new Set(deps.solutionTypes.map(st => st.code))
                 const createdSopNames = new Set<string>()
                 const createdPatterns = new Set<string>()
@@ -326,6 +330,64 @@ export function useResourceImport(deps: ImportDeps) {
                                 })
                                 createdBusinessTypeNames.add(nameResult.sanitized)
                                 createdBusinessTypeCodes.add(codeResult.sanitized)
+                                success++
+                                break
+                            }
+
+                            case 'SolutionTypes': {
+                                const stName = row.name?.trim() || ''
+                                if (!stName) {
+                                    errors.push({ row: i + 2, code: 'import.solutionTypeNameRequired' })
+                                    continue
+                                }
+                                const nameResult = validateAndSanitize(stName, 'Name')
+                                if (!nameResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Name' } })
+                                    continue
+                                }
+                                if (nameResult.sanitized.length > 100) {
+                                    errors.push({ row: i + 2, code: 'import.solutionTypeNameTooLong', params: { length: String(nameResult.sanitized.length) } })
+                                    continue
+                                }
+                                const stCode = row.code?.trim() || ''
+                                if (!stCode) {
+                                    errors.push({ row: i + 2, code: 'import.solutionTypeCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(stCode, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.solutionTypeCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
+                                }
+                                if (row.description) {
+                                    const description = row.description?.trim() || ''
+                                    if (description.length > 500) {
+                                        errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(description.length) } })
+                                        continue
+                                    }
+                                }
+                                if (createdSolutionTypeNames.has(nameResult.sanitized) || createdSolutionTypeCodes.has(codeResult.sanitized)) {
+                                    // Determine if it's a name or code duplicate
+                                    if (createdSolutionTypeCodes.has(codeResult.sanitized) && !createdSolutionTypeNames.has(nameResult.sanitized)) {
+                                        errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'SolutionType', code: codeResult.sanitized } })
+                                    } else {
+                                        errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SolutionType', name: nameResult.sanitized } })
+                                    }
+                                    continue
+                                }
+                                await deps.createSolutionType({
+                                    name: nameResult.sanitized,
+                                    code: codeResult.sanitized,
+                                    description: row.description ? row.description.trim() : '',
+                                    color: row.typeColor || '',
+                                    knowledge: row.knowledge || '',
+                                })
+                                createdSolutionTypeNames.add(nameResult.sanitized)
+                                createdSolutionTypeCodes.add(codeResult.sanitized)
                                 success++
                                 break
                             }

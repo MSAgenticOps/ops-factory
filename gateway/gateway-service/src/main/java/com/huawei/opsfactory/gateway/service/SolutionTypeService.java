@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
@@ -71,9 +72,9 @@ public class SolutionTypeService {
     // ── CRUD Operations ──────────────────────────────────────────────
 
     /**
-     * Lists all solution types.
+     * Lists all solution types persisted in the data directory.
      *
-     * @return the result
+     * @return a list of all solution type maps; empty list if the directory does not exist or is empty
      */
     public List<Map<String, Object>> listSolutionTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -100,7 +101,7 @@ public class SolutionTypeService {
      * Gets a solution type by its ID.
      *
      * @param id entity identifier
-     * @return a solution type by its ID
+     * @return the solution type map
      * @throws NotFoundException if the solution type is not found
      */
     public Map<String, Object> getSolutionType(String id) throws NotFoundException {
@@ -114,23 +115,44 @@ public class SolutionTypeService {
 
     /**
      * Creates a new solution type from the provided field map.
+     * Validates all fields (name, code, description, color, knowledge) before persistence.
      *
-     * @param body request body
-     * @return the result
+     * @param body request body containing solution type fields
+     * @return the created solution type map including generated id and timestamps
+     * @throws IllegalArgumentException if validation fails or the code already exists
      */
     public Map<String, Object> createSolutionType(Map<String, Object> body) {
-        String code = body.getOrDefault("code", "").toString();
+        String name = ValidationUtils.requireNonBlank(body, "name", "Solution type name is required");
+        ValidationUtils.requireMaxLength(name, 100, "Solution type name");
+        ValidationUtils.requireNoXssChars(name, "Solution type name");
+
+        String code = ValidationUtils.requireNonBlank(body, "code", "Solution type code is required");
+        ValidationUtils.requireMaxLength(code, 50, "Solution type code");
+        ValidationUtils.requireNoXssChars(code, "Solution type code");
         validateSolutionTypeCodeUnique(code, null);
+
+        String description = body.getOrDefault("description", "").toString();
+        ValidationUtils.requireMaxLength(description, 500, "Description");
+        ValidationUtils.requireNoXssChars(description, "Description");
+
+        String knowledge = body.getOrDefault("knowledge", "").toString();
+        ValidationUtils.requireNoXssChars(knowledge, "Knowledge");
+
+        String color = body.getOrDefault("color", "#8b5cf6").toString();
+        if (!color.matches("^#[0-9A-Fa-f]{6}$")) {
+            color = "#8b5cf6";
+        }
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);
-        st.put("name", body.getOrDefault("name", ""));
-        st.put("code", body.getOrDefault("code", ""));
-        st.put("description", body.getOrDefault("description", ""));
-        st.put("color", body.getOrDefault("color", "#8b5cf6"));
-        st.put("knowledge", body.getOrDefault("knowledge", ""));
+        st.put("name", name);
+        st.put("code", code);
+        st.put("description", description);
+        st.put("color", color);
+        st.put("knowledge", knowledge);
         st.put("createdAt", now);
         st.put("updatedAt", now);
 
@@ -141,11 +163,13 @@ public class SolutionTypeService {
 
     /**
      * Updates an existing solution type with the provided field map.
+     * Only fields present in the body are updated; each field is validated before being applied.
      *
      * @param id entity identifier
      * @param body updated fields
-     * @return the result
+     * @return the updated solution type map
      * @throws NotFoundException if the solution type is not found
+     * @throws IllegalArgumentException if field validation fails or the new code already exists
      */
     public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -155,21 +179,37 @@ public class SolutionTypeService {
         }
 
         if (body.containsKey("name")) {
-            st.put("name", body.get("name"));
+            String newName = body.get("name").toString().trim();
+            ValidationUtils.requireNonBlank(Map.of("name", newName), "name", "Solution type name is required");
+            ValidationUtils.requireMaxLength(newName, 100, "Solution type name");
+            ValidationUtils.requireNoXssChars(newName, "Solution type name");
+            st.put("name", newName);
         }
         if (body.containsKey("code")) {
-            String newCode = body.get("code").toString();
+            String newCode = body.get("code").toString().trim();
+            ValidationUtils.requireNonBlank(Map.of("code", newCode), "code", "Solution type code is required");
+            ValidationUtils.requireMaxLength(newCode, 50, "Solution type code");
+            ValidationUtils.requireNoXssChars(newCode, "Solution type code");
             validateSolutionTypeCodeUnique(newCode, id);
             st.put("code", newCode);
         }
         if (body.containsKey("description")) {
-            st.put("description", body.get("description"));
+            String newDescription = body.get("description").toString();
+            ValidationUtils.requireMaxLength(newDescription, 500, "Description");
+            ValidationUtils.requireNoXssChars(newDescription, "Description");
+            st.put("description", newDescription);
         }
         if (body.containsKey("color")) {
-            st.put("color", body.get("color"));
+            String newColor = body.get("color").toString();
+            if (!newColor.matches("^#[0-9A-Fa-f]{6}$")) {
+                newColor = "#8b5cf6";
+            }
+            st.put("color", newColor);
         }
         if (body.containsKey("knowledge")) {
-            st.put("knowledge", body.get("knowledge"));
+            String newKnowledge = body.get("knowledge").toString();
+            ValidationUtils.requireNoXssChars(newKnowledge, "Knowledge");
+            st.put("knowledge", newKnowledge);
         }
 
         st.put("updatedAt", Instant.now().toString());
@@ -182,7 +222,7 @@ public class SolutionTypeService {
      * Deletes a solution type by its ID.
      *
      * @param id entity identifier
-     * @return the result
+     * @return true if the file was deleted, false if it did not exist
      */
     public boolean deleteSolutionType(String id) {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -231,7 +271,7 @@ public class SolutionTypeService {
      */
     private void validateSolutionTypeCodeUnique(String code, String excludeId) {
         if (code == null || code.isBlank()) {
-            return;
+            throw new IllegalArgumentException("Solution type code is required");
         }
         List<Map<String, Object>> existing = listSolutionTypes();
         for (Map<String, Object> st : existing) {
