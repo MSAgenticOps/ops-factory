@@ -1662,12 +1662,15 @@ function UploadDocumentsModal({
                                         {skippedFiles.map(file => (
                                             <div key={file.fileName} className="knowledge-upload-skipped-item">
                                                 <span className="knowledge-upload-skipped-reason">
-                                                    {file.reason === 'DUPLICATE_CONTENT' && file.existingFileName
-                                                        ? t('knowledge.skipReasonDuplicateWithExisting', { uploaded: file.fileName, existing: file.existingFileName })
-                                                        : file.reason === 'DUPLICATE_CONTENT'
-                                                            ? `${file.fileName} - ${t('knowledge.skipReasonDuplicateContent')}`
-                                                            : t('knowledge.skipReasonUnknown', { reason: file.reason })
-                                                    }
+                                                    {(() => {
+                                                        if (file.reason === 'DUPLICATE_CONTENT' && file.existingFileName) {
+                                                            return t('knowledge.skipReasonDuplicateWithExisting', { uploaded: file.fileName, existing: file.existingFileName })
+                                                        }
+                                                        if (file.reason === 'DUPLICATE_CONTENT') {
+                                                            return `${file.fileName} - ${t('knowledge.skipReasonDuplicateContent')}`
+                                                        }
+                                                        return t('knowledge.skipReasonUnknown', { reason: file.reason })
+                                                    })()}
                                                 </span>
                                             </div>
                                         ))}
