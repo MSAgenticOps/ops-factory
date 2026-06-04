@@ -103,6 +103,7 @@ export default function HostResourcePage() {
         groups, clusters, allHosts, businessServices, relations: hostRelations,
         clusterTypes: clusterTypesHook.clusterTypes,
         businessTypes: businessTypesHook.businessTypes,
+        solutionTypes: solutionTypesHook.solutionTypes,
         createGroup, updateGroup, createCluster, createHost,
         createBusinessService, createRelation,
         createClusterType: clusterTypesHook.createClusterType,

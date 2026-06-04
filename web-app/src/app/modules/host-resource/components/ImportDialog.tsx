@@ -336,6 +336,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSopTriggerConditionTooLong', { length: err.params?.length })
             case 'import.sopStepsDescriptionTooLong':
                 return t('hostResource.importErrorSopStepsDescriptionTooLong', { length: err.params?.length })
+            case 'import.sopTargetSolutionNotFound':
+                return t('hostResource.importErrorSopTargetSolutionNotFound', { solution: err.params?.solution })
             case 'import.whitelistPatternRequired':
                 return t('hostResource.importErrorWhitelistPatternRequired')
             case 'import.hostGroupEnabledInvalid':

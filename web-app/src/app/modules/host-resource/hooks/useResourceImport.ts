@@ -5,7 +5,7 @@ import { validateSheetStructure } from '../../../../utils/xlsxValidator'
 import { isValidIp } from '../../../../utils/ip-validation'
 import { validateAndSanitize } from '../../../../utils/inputValidation'
 import { IMPORT_METADATA } from '../../../../utils/importExportMetadata'
-import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation } from '../../../../types/host'
+import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation, SolutionType } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
@@ -54,6 +54,7 @@ interface ImportDeps {
     relations: HostRelation[]
     clusterTypes: ClusterType[]
     businessTypes: BusinessType[]
+    solutionTypes: SolutionType[]
 
     createGroup: (body: Partial<HostGroup>) => Promise<HostGroup>
     updateGroup: (id: string, body: Partial<HostGroup>) => Promise<HostGroup>
@@ -170,6 +171,7 @@ export function useResourceImport(deps: ImportDeps) {
                 const createdClusterTypeCodes = new Set(deps.clusterTypes.map(ct => ct.code || ''))
                 const createdBusinessTypeNames = new Set(deps.businessTypes.map(bt => bt.name))
                 const createdBusinessTypeCodes = new Set(deps.businessTypes.map(bt => bt.code || ''))
+                const solutionTypeCodeSet = new Set(deps.solutionTypes.map(st => st.code))
                 const createdSopNames = new Set<string>()
                 const createdPatterns = new Set<string>()
 
@@ -869,6 +871,13 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
+                                let targetSolutionValue = row.targetSolution?.trim() || 'universal'
+                                if (targetSolutionValue !== 'universal') {
+                                    if (!solutionTypeCodeSet.has(targetSolutionValue)) {
+                                        errors.push({ row: i + 2, code: 'import.sopTargetSolutionNotFound', params: { solution: targetSolutionValue } })
+                                        continue
+                                    }
+                                }
                                 const sopData = {
                                     name: nameResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
@@ -876,7 +885,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     triggerCondition: row.triggerCondition ? validateAndSanitize(row.triggerCondition, 'TriggerCondition').sanitized : '',
                                     enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
                                     stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
-                                    targetSolution: row.targetSolution || 'universal',
+                                    targetSolution: targetSolutionValue,
                                 }
                                 console.log('[Import SOPs] Creating SOP:', JSON.stringify(sopData, null, 2))
                                 await deps.createSop(sopData)

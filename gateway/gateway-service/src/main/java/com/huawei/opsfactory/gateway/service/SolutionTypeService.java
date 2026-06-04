@@ -5,7 +5,6 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -102,6 +101,7 @@ public class SolutionTypeService {
      *
      * @param id entity identifier
      * @return a solution type by its ID
+     * @throws NotFoundException if the solution type is not found
      */
     public Map<String, Object> getSolutionType(String id) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -119,6 +119,8 @@ public class SolutionTypeService {
      * @return the result
      */
     public Map<String, Object> createSolutionType(Map<String, Object> body) {
+        String code = body.getOrDefault("code", "").toString();
+        validateSolutionTypeCodeUnique(code, null);
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
@@ -143,6 +145,7 @@ public class SolutionTypeService {
      * @param id entity identifier
      * @param body updated fields
      * @return the result
+     * @throws NotFoundException if the solution type is not found
      */
     public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -155,7 +158,9 @@ public class SolutionTypeService {
             st.put("name", body.get("name"));
         }
         if (body.containsKey("code")) {
-            st.put("code", body.get("code"));
+            String newCode = body.get("code").toString();
+            validateSolutionTypeCodeUnique(newCode, id);
+            st.put("code", newCode);
         }
         if (body.containsKey("description")) {
             st.put("description", body.get("description"));
@@ -196,6 +201,12 @@ public class SolutionTypeService {
 
     // ── File I/O Helpers ─────────────────────────────────────────────
 
+    /**
+     * Reads a solution type from the given JSON file.
+     *
+     * @param file the JSON file path
+     * @return the parsed solution type, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -209,6 +220,36 @@ public class SolutionTypeService {
         }
     }
 
+    // ── Code Uniqueness Validation ──────────────────────────────────
+
+    /**
+     * Validates that the solution type code is unique among existing solution types.
+     *
+     * @param code the solution type code to validate
+     * @param excludeId the ID of the solution type to exclude from the check (for updates)
+     * @throws IllegalArgumentException if the code already exists
+     */
+    private void validateSolutionTypeCodeUnique(String code, String excludeId) {
+        if (code == null || code.isBlank()) {
+            return;
+        }
+        List<Map<String, Object>> existing = listSolutionTypes();
+        for (Map<String, Object> st : existing) {
+            String existingCode = st.get("code") != null ? st.get("code").toString() : "";
+            String existingId = st.get("id") != null ? st.get("id").toString() : "";
+            if (code.equalsIgnoreCase(existingCode) && !existingId.equals(excludeId)) {
+                throw new IllegalArgumentException("Solution type code already exists: " + code);
+            }
+        }
+    }
+
+    /**
+     * Writes a solution type entity to a JSON file.
+     *
+     * @param id the entity identifier used as the filename
+     * @param entity the solution type data to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeEntityFile(String id, Map<String, Object> entity) {
         try {
             Files.createDirectories(solutionTypesDir);

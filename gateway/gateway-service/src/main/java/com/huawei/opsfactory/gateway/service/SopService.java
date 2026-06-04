@@ -40,15 +40,21 @@ public class SopService {
 
     private final GatewayProperties properties;
 
+    private final SolutionTypeService solutionTypeService;
+
     private Path gatewayRoot;
 
     private Path sopsDir;
 
     /**
      * Creates the sop service instance.
+     *
+     * @param properties gateway properties
+     * @param solutionTypeService the solution type service for validation
      */
-    public SopService(GatewayProperties properties) {
+    public SopService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
+        this.solutionTypeService = solutionTypeService;
     }
 
     /**
@@ -120,6 +126,9 @@ public class SopService {
     public Map<String, Object> createSop(Map<String, Object> body) {
         String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
         validateSopNameUnique(name, null);
+        String targetSolution = body.getOrDefault("targetSolution", "universal") != null
+                ? body.getOrDefault("targetSolution", "universal").toString() : "universal";
+        validateTargetSolution(targetSolution);
         String id = UUID.randomUUID().toString();
 
         Map<String, Object> sop = new LinkedHashMap<>();
@@ -130,7 +139,7 @@ public class SopService {
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
         sop.put("enabled", body.getOrDefault("enabled", true));
         sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("targetSolution", body.getOrDefault("targetSolution", "universal"));
+        sop.put("targetSolution", targetSolution);
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeSopFile(id, sop);
@@ -141,8 +150,8 @@ public class SopService {
     /**
      * Updates an existing SOP document with the provided field map.
      *
-     * @param id an existing SOP document with the provided field map
-     * @param body an existing SOP document with the provided field map
+     * @param id entity identifier
+     * @param body updated fields
      * @return the result
      */
     public Map<String, Object> updateSop(String id, Map<String, Object> body) {
@@ -173,7 +182,9 @@ public class SopService {
             sop.put("stepsDescription", body.get("stepsDescription"));
         }
         if (body.containsKey("targetSolution")) {
-            sop.put("targetSolution", body.get("targetSolution"));
+            String newTargetSolution = body.get("targetSolution").toString();
+            validateTargetSolution(newTargetSolution);
+            sop.put("targetSolution", newTargetSolution);
         }
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
@@ -205,8 +216,38 @@ public class SopService {
         }
     }
 
-    // ── Name Uniqueness Validation ────────────────────────────────
+    /**
+     * Validates that the target solution code exists among defined solution types.
+     * The value "universal" is always considered valid.
+     *
+     * @param targetSolution the target solution code to validate
+     * @throws IllegalArgumentException if the solution code is not found
+     */
+    private void validateTargetSolution(String targetSolution) {
+        if (targetSolution == null || targetSolution.isBlank() || "universal".equalsIgnoreCase(targetSolution)) {
+            return;
+        }
+        List<Map<String, Object>> types = solutionTypeService.listSolutionTypes();
+        boolean found = false;
+        for (Map<String, Object> st : types) {
+            String code = st.get("code") != null ? st.get("code").toString() : "";
+            if (targetSolution.equalsIgnoreCase(code)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            throw new IllegalArgumentException("Target solution not found: " + targetSolution);
+        }
+    }
 
+    /**
+     * Validates that the SOP name is unique among existing SOP documents.
+     *
+     * @param name the SOP name to validate
+     * @param excludeId the ID of the SOP to exclude from the check (for updates)
+     * @throws IllegalArgumentException if the name already exists
+     */
     private void validateSopNameUnique(String name, String excludeId) {
         if (name == null || name.isBlank()) {
             return;
@@ -221,12 +262,13 @@ public class SopService {
         }
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
     /**
      * Resolve the JSON file path for a given SOP id.
      * Tries direct filename first ({id}.json), then scans all files
      * to match by the internal "id" field (e.g. sub-nslb-{uuid}.json).
+     *
+     * @param id entity identifier
+     * @return the resolved file path
      */
     private Path resolveSopFile(String id) {
         // Fast path: direct filename match
@@ -254,6 +296,12 @@ public class SopService {
         return direct;
     }
 
+    /**
+     * Reads an SOP document from the given JSON file.
+     *
+     * @param file the JSON file path
+     * @return the parsed SOP document, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readSopFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -273,6 +321,13 @@ public class SopService {
         }
     }
 
+    /**
+     * Writes an SOP document to a JSON file.
+     *
+     * @param id the entity identifier used as the filename
+     * @param sop the SOP data to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeSopFile(String id, Map<String, Object> sop) {
         try {
             Files.createDirectories(sopsDir);

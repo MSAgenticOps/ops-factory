@@ -62,6 +62,21 @@ export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUp
 
     const handleSave = useCallback(async () => {
         if (!form.name.trim()) return
+
+        // Check for duplicate name
+        const duplicateName = solutionTypes.find(st => st.name === form.name && st.id !== editing?.id)
+        if (duplicateName) {
+            showToast('error', t('hostResource.duplicateName', { name: form.name }))
+            return
+        }
+
+        // Check for duplicate code
+        const duplicateCode = solutionTypes.find(st => st.code === form.code && st.id !== editing?.id)
+        if (duplicateCode) {
+            showToast('error', t('hostResource.duplicateCode', { code: form.code }))
+            return
+        }
+
         setSaving(true)
         try {
             if (editing) {
@@ -75,7 +90,7 @@ export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUp
         } finally {
             setSaving(false)
         }
-    }, [editing, form, onCreate, onUpdate, showToast])
+    }, [editing, form, onCreate, onUpdate, showToast, solutionTypes, t])
 
     const handleDelete = useCallback(async (item: SolutionType) => {
         const confirmed = await requestConfirm({
