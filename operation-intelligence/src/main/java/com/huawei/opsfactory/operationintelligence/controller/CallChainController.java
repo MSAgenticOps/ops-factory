@@ -100,6 +100,8 @@ public class CallChainController {
     /**
      * Validate time range.
      *
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
      * @return ResponseStatusException if validation fails, null otherwise
      */
     private ResponseStatusException validateTimeRange(long startTime, long endTime) {

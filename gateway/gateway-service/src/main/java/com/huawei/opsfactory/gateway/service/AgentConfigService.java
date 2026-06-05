@@ -64,9 +64,9 @@ public class AgentConfigService {
 
     private static final Pattern PROVIDER_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
 
-    private static final List<String> MODEL_CONFIG_KEYS =
-        List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_MODE", "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS",
-            "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY", "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
+    private static final List<String> MODEL_CONFIG_KEYS = List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_FAST_MODEL",
+        "GOOSE_MODE", "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS", "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY",
+        "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
 
     private final GatewayProperties properties;
 
@@ -769,6 +769,23 @@ public class AgentConfigService {
     }
 
     /**
+     * Returns the shared agent-level seed directory for default scheduled tasks. Holds a
+     * {@code seed.json} manifest ({@code [{id, cron, recipe}]}) plus the goose-native recipe YAML
+     * files it references; copied into a user's runtime once on first instance spawn (see
+     * {@link #ensureSchedulesSeeded(String, String)}).
+     *
+     * @param agentId agent instance identifier
+     * @return path to the shared seed-schedules directory
+     */
+    private Path getSeedSchedulesDir(String agentId) {
+        return getAgentConfigDir(agentId).resolve("seed-schedules");
+    }
+
+    private Path getSchedulesSeededMarker(String userId, String agentId) {
+        return getUserAgentDir(userId, agentId).resolve("data").resolve(".schedules-seeded");
+    }
+
+    /**
      * Seeds a user's memory from the shared agent seed exactly once, the first time that user's
      * memory is touched (by either an instance spawn or the memory tab). Idempotency is tracked by a
      * one-time {@code data/.memory-seeded} marker, NOT by emptiness — so a user who deliberately
@@ -802,8 +819,8 @@ public class AgentConfigService {
                             } catch (FileAlreadyExistsException concurrent) {
                                 // A concurrent seeder (spawn vs. memory tab) created it first; the
                                 // file is present, so treat this as already done and keep going.
-                                log.debug("Memory seed {} already created concurrently for {}:{}",
-                                    seed.getFileName(), agentId, userId);
+                                log.debug("Memory seed {} already created concurrently for {}:{}", seed.getFileName(),
+                                    agentId, userId);
                             }
                         }
                     }
@@ -820,6 +837,143 @@ public class AgentConfigService {
             // Non-fatal: a failed seed must not block memory reads/writes or instance startup.
             log.warn("Failed to seed memory for {}:{}: {}", agentId, userId, e.getMessage());
         }
+    }
+
+    /**
+     * Seeds an agent's default scheduled tasks into a user's runtime exactly once, the first time that
+     * user's instance spawns. Mirrors {@link #ensureMemorySeeded(String, String)}: idempotency is tracked
+     * by a one-time {@code data/.schedules-seeded} marker, NOT by emptiness — so a user who pauses or
+     * deletes a seeded task in the Scheduler tab never has it resurrected. Schedules are per-user state;
+     * this is a uniform rule for every agent, but only agents that ship a {@code seed-schedules/seed.json}
+     * actually get tasks (today only FO Copilot: ticket-watch-loop + memory-maintenance).
+     *
+     * <p>Each seed entry copies its recipe YAML to {@code data/scheduled_recipes/<id>.yaml} (only when
+     * absent, so a user-edited recipe is never clobbered) and appends a job to {@code data/schedule.json}
+     * (only when no job with that id exists, so existing user/goosed schedules are preserved). Seeding runs
+     * before goosed launches, so it registers the tasks with its in-process cron on startup. Non-fatal: a
+     * failed seed must not block instance startup.
+     *
+     * @param userId user identifier
+     * @param agentId agent instance identifier
+     */
+    public void ensureSchedulesSeeded(String userId, String agentId) {
+        Path marker = getSchedulesSeededMarker(userId, agentId);
+        if (Files.exists(marker)) {
+            return;
+        }
+        Path seedManifest = getSeedSchedulesDir(agentId).resolve("seed.json");
+        try {
+            if (Files.isRegularFile(seedManifest)) {
+                seedSchedulesFromManifest(userId, agentId, seedManifest);
+            }
+            // Mark done only after seeding completes without error, so an interrupted seed retries;
+            // written regardless of whether the agent ships any seed so a seedless agent is marked once.
+            Files.createDirectories(marker.getParent());
+            Files.writeString(marker, "", StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            // Non-fatal: a failed seed (e.g. unparseable manifest) must not block instance startup.
+            log.warn("Failed to seed schedules for {}:{}: {}", agentId, userId, e.getMessage());
+        }
+    }
+
+    private void seedSchedulesFromManifest(String userId, String agentId, Path seedManifest) throws IOException {
+        Path seedDir = seedManifest.getParent();
+        Path dataDir = getUserAgentDir(userId, agentId).resolve("data");
+        Path recipesDir = dataDir.resolve("scheduled_recipes");
+        Path scheduleJson = dataDir.resolve("schedule.json");
+
+        List<Map<String, String>> seeds = OBJECT_MAPPER.readValue(
+            Files.readString(seedManifest, StandardCharsets.UTF_8), new TypeReference<List<Map<String, String>>>() { });
+        List<Map<String, Object>> jobs = readScheduledJobs(scheduleJson);
+
+        Files.createDirectories(recipesDir);
+        int added = 0;
+        for (Map<String, String> seed : seeds) {
+            String id = seed.get("id");
+            String cron = seed.get("cron");
+            String recipeFile = seed.get("recipe");
+            if (isBlank(id) || isBlank(cron) || isBlank(recipeFile) || !isPathSafe(id) || !isPathSafe(recipeFile)) {
+                log.warn("Skipping malformed schedule seed {} for {}:{}", seed, agentId, userId);
+                continue;
+            }
+            Path recipeDest = recipesDir.resolve(id + ".yaml");
+            // Skip registering a job whose recipe could not be placed — otherwise schedule.json would
+            // carry a source pointing at a file goosed will never find, baking in a dead task.
+            if (!ensureSeedRecipe(seedDir.resolve(recipeFile), recipeDest, id, agentId, userId)) {
+                continue;
+            }
+            if (jobs.stream().noneMatch(job -> id.equals(job.get("id")))) {
+                jobs.add(newScheduledJob(id, recipeDest.toAbsolutePath().normalize().toString(), cron));
+                added++;
+            }
+        }
+        if (added > 0) {
+            Files.writeString(scheduleJson, OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(jobs),
+                StandardCharsets.UTF_8);
+            log.info("Seeded {} scheduled task(s) for {}:{} into {}", added, agentId, userId, scheduleJson);
+        }
+    }
+
+    /**
+     * Copies a seed recipe to its per-user destination when absent, and reports whether a usable recipe now
+     * exists there. Returns {@code false} (and warns) when the seed names a recipe file that is missing, so
+     * the caller skips registering a schedule whose {@code source} would dangle. A pre-existing dest (a
+     * user-edited recipe) is kept verbatim and counts as present.
+     */
+    private boolean ensureSeedRecipe(Path src, Path dest, String id, String agentId, String userId)
+        throws IOException {
+        if (Files.exists(dest)) {
+            return true;
+        }
+        if (!Files.isRegularFile(src)) {
+            log.warn("Schedule seed {} references missing recipe {} for {}:{}; skipping",
+                id, src.getFileName(), agentId, userId);
+            return false;
+        }
+        try {
+            Files.copy(src, dest);
+        } catch (FileAlreadyExistsException concurrent) {
+            log.debug("Schedule recipe {} already created concurrently for {}:{}", id, agentId, userId);
+        }
+        return true;
+    }
+
+    private List<Map<String, Object>> readScheduledJobs(Path scheduleJson) throws IOException {
+        if (Files.notExists(scheduleJson)) {
+            return new ArrayList<>();
+        }
+        String content = Files.readString(scheduleJson, StandardCharsets.UTF_8);
+        if (content.isBlank()) {
+            return new ArrayList<>();
+        }
+        return OBJECT_MAPPER.readValue(content, new TypeReference<List<Map<String, Object>>>() { });
+    }
+
+    private Map<String, Object> newScheduledJob(String id, String source, String cron) {
+        Map<String, Object> job = new LinkedHashMap<>();
+        job.put("id", id);
+        job.put("source", source);
+        job.put("cron", cron);
+        job.put("last_run", null);
+        job.put("currently_running", false);
+        job.put("paused", false);
+        job.put("current_session_id", null);
+        job.put("process_start_time", null);
+        return job;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    /**
+     * Rejects a seed id / recipe filename that could escape {@code data/scheduled_recipes/} when resolved.
+     * Seeds are checked-in config, but this keeps a typo'd or hand-edited {@code seed.json} from writing a
+     * recipe — or a schedule {@code source} — outside the per-user data dir (cf. {@link #ensureMemorySeeded}
+     * which strips directories via {@code getFileName()}).
+     */
+    private static boolean isPathSafe(String name) {
+        return name.indexOf('/') < 0 && name.indexOf('\\') < 0 && !name.contains("..");
     }
 
     /**
@@ -902,8 +1056,7 @@ public class AgentConfigService {
      * @param content text content to write; must not exceed 100KB
      */
     public void writeMemoryFile(String userId, String agentId, String category, String content) {
-        if (content != null
-            && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+        if (content != null && content.getBytes(StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = seededMemoryDir(userId, agentId);
@@ -1188,7 +1341,7 @@ public class AgentConfigService {
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
-        return new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(options));
+        return new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(options), options);
     }
 
     /**

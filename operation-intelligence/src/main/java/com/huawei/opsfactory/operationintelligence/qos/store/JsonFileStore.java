@@ -71,6 +71,12 @@ public class JsonFileStore<T> {
         this.retentionMs = retentionMs;
     }
 
+    /**
+     * Parses timestamp from file name.
+     *
+     * @param fileName the file name
+     * @return the timestamp in milliseconds
+     */
     static long parseTimestampFromName(String fileName) {
         // basename_yyyyMMddHHmmss.json
         int lastUnderscore = fileName.lastIndexOf('_');

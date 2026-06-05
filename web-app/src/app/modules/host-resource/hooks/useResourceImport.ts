@@ -228,20 +228,40 @@ export function useResourceImport(deps: ImportDeps) {
                                     }
                                     continue
                                 }
+                                // Validate envVariables key uniqueness (case-insensitive)
+                                const envVars = row.envVariables
+                                    ? row.envVariables.split(';').filter(Boolean).map(pair => {
+                                        const eq = pair.indexOf('=')
+                                        return { key: eq > 0 ? pair.slice(0, eq) : pair, value: eq > 0 ? pair.slice(eq + 1) : '' }
+                                    })
+                                    : undefined
+                                if (envVars && envVars.length > 0) {
+                                    const seenKeys = new Set<string>()
+                                    let hasDuplicateKey = false
+                                    for (const ev of envVars) {
+                                        const lowerKey = ev.key.toLowerCase()
+                                        if (seenKeys.has(lowerKey)) {
+                                            errors.push({ row: i + 2, code: 'import.envVarDuplicateKey', params: { key: ev.key } })
+                                            hasDuplicateKey = true
+                                            break
+                                        }
+                                        seenKeys.add(lowerKey)
+                                    }
+                                    if (hasDuplicateKey) continue
+                                }
                                 await deps.createClusterType({
                                     name: nameResult.sanitized,
                                     code: codeResult.sanitized,
                                     description: row.description ? row.description.trim() : '',
                                     knowledge: row.knowledge || '',
                                     color: row.typeColor || '',
-                                    mode: row.clusterMode === 'Peer' ? 'peer' : (row.clusterMode === 'Primary-Backup' ? 'primary-backup' : undefined),
+                                    mode: (() => {
+                                        if (row.clusterMode === 'Peer') return 'peer'
+                                        if (row.clusterMode === 'Primary-Backup') return 'primary-backup'
+                                        return undefined
+                                    })(),
                                     commandPrefix: row.commandPrefix || '',
-                                    envVariables: row.envVariables
-                                        ? row.envVariables.split(';').filter(Boolean).map(pair => {
-                                            const eq = pair.indexOf('=')
-                                            return { key: eq > 0 ? pair.slice(0, eq) : pair, value: eq > 0 ? pair.slice(eq + 1) : '' }
-                                        })
-                                        : undefined,
+                                    envVariables: envVars,
                                 })
                                 createdClusterTypeNames.add(nameResult.sanitized)
                                 createdClusterTypeCodes.add(codeResult.sanitized)
@@ -322,21 +342,24 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.hostGroupNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
-                                if (row.code) {
-                                    const codeResult = validateAndSanitize(row.code, 'Code')
-                                    if (!codeResult.valid) {
-                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
-                                        continue
-                                    }
-                                    if (codeResult.sanitized.length > 50) {
-                                        errors.push({ row: i + 2, code: 'import.hostGroupCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
-                                        continue
-                                    }
-                                    const trimmedCode = codeResult.sanitized.trim()
-                                    if (groupCodeToId.has(trimmedCode)) {
-                                        errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'HostGroup', code: trimmedCode } })
-                                        continue
-                                    }
+                                const groupCode = row.code?.trim() || ''
+                                if (!groupCode) {
+                                    errors.push({ row: i + 2, code: 'import.hostGroupCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(groupCode, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.hostGroupCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
+                                }
+                                const trimmedCode = codeResult.sanitized.trim()
+                                if (groupCodeToId.has(trimmedCode)) {
+                                    errors.push({ row: i + 2, code: 'import.duplicateCode', params: { type: 'HostGroup', code: trimmedCode } })
+                                    continue
                                 }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
@@ -353,14 +376,21 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'HostGroup', name: nameResult.sanitized } })
                                     continue
                                 }
+                                if (row.enabled) {
+                                    const enabledValue = String(row.enabled).trim().toUpperCase()
+                                    if (enabledValue !== 'TRUE' && enabledValue !== 'FALSE') {
+                                        errors.push({ row: i + 2, code: 'import.hostGroupEnabledInvalid', params: { value: String(row.enabled) } })
+                                        continue
+                                    }
+                                }
                                 const created = await deps.createGroup({
                                     name: nameResult.sanitized,
-                                    code: row.code ? validateAndSanitize(row.code, 'Code').sanitized : undefined,
+                                    code: codeResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     enabled: row.enabled ? String(row.enabled).toUpperCase() === 'TRUE' : true,
                                 })
                                 groupNameToId.set(nameResult.sanitized, created.id)
-                                if (row.code) groupCodeToId.set(validateAndSanitize(row.code, 'Code').sanitized, created.id)
+                                groupCodeToId.set(codeResult.sanitized, created.id)
                                 success++
                                 break
                             }
@@ -574,7 +604,41 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
                                     continue
                                 }
+                                if (row.authType) {
+                                    const authTypeValue = String(row.authType).trim().toLowerCase()
+                                    if (authTypeValue !== 'password' && authTypeValue !== 'key') {
+                                        errors.push({ row: i + 2, code: 'import.hostAuthTypeInvalid', params: { value: String(row.authType) } })
+                                        continue
+                                    }
+                                }
                                 const roleValue = row.role as string | undefined
+                                if (roleValue) {
+                                    const roleTrimmed = String(roleValue).trim().toLowerCase()
+                                    if (roleTrimmed !== 'primary' && roleTrimmed !== 'backup') {
+                                        errors.push({ row: i + 2, code: 'import.hostRoleInvalid', params: { value: String(roleValue) } })
+                                        continue
+                                    }
+                                }
+                                const customAttributes = row.customAttributes
+                                    ? String(row.customAttributes).split(';').filter(Boolean).map(pair => {
+                                        const eq = pair.indexOf('=')
+                                        return { key: eq >= 0 ? pair.slice(0, eq).trim() : pair.trim(), value: eq >= 0 ? pair.slice(eq + 1).trim() : '' }
+                                    }).filter(a => a.key)
+                                    : undefined
+                                if (customAttributes && customAttributes.length > 0) {
+                                    const seenKeys = new Set<string>()
+                                    let hasDuplicateKey = false
+                                    for (const attr of customAttributes) {
+                                        const lowerKey = attr.key.toLowerCase()
+                                        if (seenKeys.has(lowerKey)) {
+                                            errors.push({ row: i + 2, code: 'import.customAttrDuplicateKey', params: { key: attr.key } })
+                                            hasDuplicateKey = true
+                                            break
+                                        }
+                                        seenKeys.add(lowerKey)
+                                    }
+                                    if (hasDuplicateKey) continue
+                                }
                                 const created = await deps.createHost({
                                     name: nameResult.sanitized,
                                     ip: hostIp,
@@ -592,6 +656,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
                                     tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : undefined,
+                                    customAttributes,
                                 })
                                 hostNameToId.set(row.name, created.id)
                                 success++
@@ -613,16 +678,19 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.businessServiceNameTooLong', params: { length: String(nameResult.sanitized.length) } })
                                     continue
                                 }
-                                if (row.code) {
-                                    const codeResult = validateAndSanitize(row.code, 'Code')
-                                    if (!codeResult.valid) {
-                                        errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
-                                        continue
-                                    }
-                                    if (codeResult.sanitized.length > 50) {
-                                        errors.push({ row: i + 2, code: 'import.businessServiceCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
-                                        continue
-                                    }
+                                const codeValue = row.code?.trim() || ''
+                                if (!codeValue) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceCodeRequired' })
+                                    continue
+                                }
+                                const codeResult = validateAndSanitize(codeValue, 'Code')
+                                if (!codeResult.valid) {
+                                    errors.push({ row: i + 2, code: 'import.invalidChars', params: { field: 'Code' } })
+                                    continue
+                                }
+                                if (codeResult.sanitized.length > 50) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceCodeTooLong', params: { length: String(codeResult.sanitized.length) } })
+                                    continue
                                 }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
@@ -639,9 +707,20 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'BusinessService', name: nameResult.sanitized } })
                                     continue
                                 }
+                                if (!row.group?.trim()) {
+                                    errors.push({ row: i + 2, code: 'import.businessServiceGroupRequired' })
+                                    continue
+                                }
                                 const groupId = row.group
                                     ? (groupNameToId.get(row.group) || groupCodeToId.get(row.group))
                                     : undefined
+                                if (row.priority?.trim()) {
+                                    const validPriorities = ['P0', 'P1', 'P2', 'P3']
+                                    if (!validPriorities.includes(row.priority.trim())) {
+                                        errors.push({ row: i + 2, code: 'import.businessServicePriorityInvalid', params: { priority: row.priority } })
+                                        continue
+                                    }
+                                }
                                 const businessType = row.businessType?.trim() || ''
                                 if (!businessType) {
                                     errors.push({ row: i + 2, code: 'import.businessTypeRequired' })
@@ -728,7 +807,6 @@ export function useResourceImport(deps: ImportDeps) {
                             }
 
                             case 'SOPs': {
-                                console.log('[Import SOPs] Row data:', JSON.stringify(row, null, 2))
                                 const sopName = row.name?.trim() || ''
                                 if (!sopName) {
                                     errors.push({ row: i + 2, code: 'import.sopNameRequired' })
@@ -783,6 +861,13 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'SOP', name: nameResult.sanitized } })
                                     continue
                                 }
+                                if (row.enabled) {
+                                    const enabledValue = String(row.enabled).trim().toUpperCase()
+                                    if (enabledValue !== 'TRUE' && enabledValue !== 'FALSE') {
+                                        errors.push({ row: i + 2, code: 'import.sopEnabledInvalid', params: { value: String(row.enabled) } })
+                                        continue
+                                    }
+                                }
                                 const sopData = {
                                     name: nameResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
@@ -792,7 +877,6 @@ export function useResourceImport(deps: ImportDeps) {
                                     stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
                                     targetSolution: row.targetSolution || 'universal',
                                 }
-                                console.log('[Import SOPs] Creating SOP:', JSON.stringify(sopData, null, 2))
                                 await deps.createSop(sopData)
                                 createdSopNames.add(nameResult.sanitized)
                                 success++
@@ -813,6 +897,10 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
                                     continue
                                 }
+                                if (pattern.length > 500) {
+                                    errors.push({ row: i + 2, code: 'import.whitelistPatternTooLong', params: { length: String(pattern.length) } })
+                                    continue
+                                }
                                 if (row.description) {
                                     const descResult = validateAndSanitize(row.description, 'Description')
                                     if (!descResult.valid) {
@@ -824,10 +912,15 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
+                                const enabledValue = row.enabled ? String(row.enabled).trim().toUpperCase() : ''
+                                if (enabledValue && enabledValue !== 'TRUE' && enabledValue !== 'FALSE') {
+                                    errors.push({ row: i + 2, code: 'import.whitelistEnabledInvalid', params: { value: String(row.enabled) } })
+                                    continue
+                                }
                                 await deps.addWhitelistCommand({
                                     pattern: pattern,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
-                                    enabled: row.enabled ? String(row.enabled).toUpperCase() !== 'FALSE' : true,
+                                    enabled: enabledValue !== 'FALSE',
                                 })
                                 createdPatterns.add(pattern)
                                 success++

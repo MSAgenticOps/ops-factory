@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
@@ -243,7 +244,7 @@ public class HostGroupControllerTest {
     @Test
     public void testUpdateGroup_notFound() throws Exception {
         when(hostGroupService.updateGroup(eq("nonexistent"), any()))
-            .thenThrow(new IllegalArgumentException("Host group not found: nonexistent"));
+            .thenThrow(new NotFoundException("Host group not found"));
 
         mockMvc.perform(put("/api/gateway/host-groups/nonexistent").header("x-secret-key", "test")
             .header("x-user-id", "admin")

@@ -2524,7 +2524,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                     </label>
                 </div>
 
-                {activeGraphTab === 'ontology' ? (
+                {activeGraphTab === 'ontology' && (
                     <div className="kg-tab-page">
                         <div className="kg-tab-actions kg-ontology-actions">
                             <Button
@@ -2565,7 +2565,8 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                             <pre className="kg-export-preview">{exportPackage?.schemaDsl || t('common.noResults')}</pre>
                         </SectionCard>
                     </div>
-                ) : activeGraphTab === 'entities' ? (
+                )}
+                {activeGraphTab === 'entities' && (
                     <div className="kg-tab-page">
                         <div className="kg-entity-control-panel">
                             <div className="kg-entity-query-row kg-entity-query-row-primary">
@@ -2823,7 +2824,8 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                             </div>
                         </SectionCard>
                     </div>
-                ) : (
+                )}
+                {activeGraphTab !== 'ontology' && activeGraphTab !== 'entities' && (
                     <div className="kg-tab-page">
                         <div className="kg-entity-control-panel kg-entity-management-control-panel">
                             <div className="kg-entity-query-row">

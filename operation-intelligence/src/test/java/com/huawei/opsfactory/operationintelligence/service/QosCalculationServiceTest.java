@@ -14,6 +14,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Qos Calculation Service Test.
+ *
+ * @author x00000000
+ * @since 2026-05-11
+ */
 class QosCalculationServiceTest {
 
     private final QosCalculationService service = new QosCalculationService();

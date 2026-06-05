@@ -93,6 +93,7 @@ public class InMemoryGraphStore {
     /**
      * Gets a snapshot for the environment.
      *
+     * @param ontologyId the ontologyId
      * @param envCode the envCode
      * @return the result
      */
@@ -163,6 +164,7 @@ public class InMemoryGraphStore {
     /**
      * Gets an entity.
      *
+     * @param ontologyId the ontologyId
      * @param envCode the envCode
      * @param entityId the entityId
      * @return the result
@@ -183,6 +185,7 @@ public class InMemoryGraphStore {
     /**
      * Queries a subgraph.
      *
+     * @param ontologyId the ontologyId
      * @param envCode the envCode
      * @param entityId the entityId
      * @param maxHops the maxHops
@@ -330,6 +333,7 @@ public class InMemoryGraphStore {
     /**
      * Finds the shortest relation path between two entities.
      *
+     * @param ontologyId the ontologyId
      * @param envCode the envCode
      * @param fromEntityId the fromEntityId
      * @param toEntityId the toEntityId

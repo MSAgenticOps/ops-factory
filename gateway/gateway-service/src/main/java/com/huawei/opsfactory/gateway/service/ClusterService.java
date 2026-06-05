@@ -5,6 +5,9 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -134,11 +137,11 @@ public class ClusterService {
      * @param id cluster identifier
      * @return cluster data map
      */
-    public Map<String, Object> getCluster(String id) {
+    public Map<String, Object> getCluster(String id) throws NotFoundException {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
-            throw new IllegalArgumentException("Cluster not found: " + id);
+            throw new NotFoundException("Cluster not found");
         }
         return cluster;
     }
@@ -193,11 +196,11 @@ public class ClusterService {
      * @param body field map with updated values
      * @return the updated cluster map
      */
-    public Map<String, Object> updateCluster(String id, Map<String, Object> body) {
+    public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
-            throw new IllegalArgumentException("Cluster not found: " + id);
+            throw new NotFoundException("Cluster not found");
         }
 
         if (body.containsKey("name")) {
@@ -232,11 +235,11 @@ public class ClusterService {
      * @param hostService used to check for hosts in this cluster
      * @return true if deleted
      */
-    public boolean deleteCluster(String id, HostService hostService) {
+    public boolean deleteCluster(String id, HostService hostService) throws ConflictException {
         // Check for hosts
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
         if (!hosts.isEmpty()) {
-            throw new IllegalStateException("Cannot delete cluster with hosts. Remove hosts first.");
+            throw new ConflictException("Cannot delete cluster with hosts. Remove hosts first.");
         }
 
         // Cascade delete cluster relations

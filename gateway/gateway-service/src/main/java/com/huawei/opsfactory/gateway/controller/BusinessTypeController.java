@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.BusinessTypeService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,19 +69,12 @@ public class BusinessTypeController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getBusinessType(@PathVariable("id") String id,
-        HttpServletRequest request) {
-        try {
-            Map<String, Object> bt = businessTypeService.getBusinessType(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessType", bt);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Business type not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        HttpServletRequest request) throws NotFoundException {
+        Map<String, Object> bt = businessTypeService.getBusinessType(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessType", bt);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -93,18 +87,11 @@ public class BusinessTypeController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createBusinessType(@RequestBody Map<String, Object> request,
         HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> bt = businessTypeService.createBusinessType(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessType", bt);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Invalid business type request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> bt = businessTypeService.createBusinessType(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessType", bt);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -117,19 +104,12 @@ public class BusinessTypeController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateBusinessType(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> bt = businessTypeService.updateBusinessType(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessType", bt);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Business type not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
+        Map<String, Object> bt = businessTypeService.updateBusinessType(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessType", bt);
+        return ResponseEntity.ok(body);
     }
 
     /**

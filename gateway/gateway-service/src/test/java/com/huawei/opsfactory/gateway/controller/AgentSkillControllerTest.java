@@ -10,11 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.AgentSkillInstallService;
-import com.huawei.opsfactory.gateway.service.SkillInstallConflictException;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,7 +104,7 @@ public class AgentSkillControllerTest {
     @Test
     public void installSkill_conflict() throws Exception {
         Mockito.when(installService.install("agent1", "log-analysis"))
-            .thenThrow(new SkillInstallConflictException("Skill already installed"));
+            .thenThrow(new ConflictException("Skill already installed"));
 
         mockMvc
             .perform(post("/api/gateway/agents/agent1/skills/install").header("x-secret-key", "test")

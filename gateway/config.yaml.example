@@ -112,6 +112,10 @@ logging:
     reactor: WARN
     io.netty: WARN
 
+# Resident instances are exempt from idle reaping so their goosed in-process cron keeps firing.
+# Required for FO Copilot's proactive scheduled tasks (ticket-watch-loop every 30 min, memory-maintenance
+# daily): an idle-reaped instance stops triggering them. Keep the FO lead's (fo-copilot, <userId>) resident
+# — the wildcard "*" below already covers it for admin.
 residentInstances:
   enabled: true
   entries:

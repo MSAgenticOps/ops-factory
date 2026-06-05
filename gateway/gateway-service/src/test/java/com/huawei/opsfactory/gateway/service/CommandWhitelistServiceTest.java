@@ -16,6 +16,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,7 +56,7 @@ public class CommandWhitelistServiceTest {
      * Tests init creates default whitelist.
      */
     @Test
-    public void testInit_createsDefaultWhitelist() {
+    public void testInit_createsDefaultWhitelist() throws Exception {
         // init() is called in setUp()
         Map<String, Object> whitelist = whitelistService.getWhitelist();
         assertNotNull(whitelist);
@@ -85,7 +87,7 @@ public class CommandWhitelistServiceTest {
      * Tests get whitelist returns structure.
      */
     @Test
-    public void testGetWhitelist_returnsStructure() {
+    public void testGetWhitelist_returnsStructure() throws Exception {
         Map<String, Object> whitelist = whitelistService.getWhitelist();
         assertTrue(whitelist.containsKey("commands"));
     }
@@ -96,7 +98,7 @@ public class CommandWhitelistServiceTest {
      * Tests add command success.
      */
     @Test
-    public void testAddCommand_success() {
+    public void testAddCommand_success() throws Exception {
         Map<String, Object> cmd = new LinkedHashMap<>();
         cmd.put("pattern", "iostat2");
         cmd.put("description", "查看IO统计");
@@ -115,7 +117,7 @@ public class CommandWhitelistServiceTest {
      * Tests add command multiple.
      */
     @Test
-    public void testAddCommand_multiple() {
+    public void testAddCommand_multiple() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "cmd1", "enabled", true));
         whitelistService.addCommand(Map.of("pattern", "cmd2", "enabled", true));
 
@@ -132,7 +134,7 @@ public class CommandWhitelistServiceTest {
      * Tests update command success.
      */
     @Test
-    public void testUpdateCommand_success() {
+    public void testUpdateCommand_success() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("description", "updated description");
         updates.put("enabled", false);
@@ -152,7 +154,7 @@ public class CommandWhitelistServiceTest {
      * Tests update command preserves pattern.
      */
     @Test
-    public void testUpdateCommand_preservesPattern() {
+    public void testUpdateCommand_preservesPattern() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("description", "new desc");
 
@@ -168,8 +170,8 @@ public class CommandWhitelistServiceTest {
     /**
      * Tests update command not found.
      */
-    @Test(expected = IllegalArgumentException.class)
-    public void testUpdateCommand_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testUpdateCommand_notFound() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("description", "test");
         whitelistService.updateCommand("nonexistent_cmd", updates);
@@ -181,7 +183,7 @@ public class CommandWhitelistServiceTest {
      * Tests delete command success.
      */
     @Test
-    public void testDeleteCommand_success() {
+    public void testDeleteCommand_success() throws Exception {
         whitelistService.deleteCommand("ps");
 
         Map<String, Object> whitelist = whitelistService.getWhitelist();
@@ -195,7 +197,7 @@ public class CommandWhitelistServiceTest {
      * Tests delete command reduces count.
      */
     @Test
-    public void testDeleteCommand_reducesCount() {
+    public void testDeleteCommand_reducesCount() throws Exception {
         Map<String, Object> before = whitelistService.getWhitelist();
         @SuppressWarnings("unchecked")
         int countBefore = ((List<Map<String, Object>>) before.get("commands")).size();
@@ -211,8 +213,8 @@ public class CommandWhitelistServiceTest {
     /**
      * Tests delete command not found.
      */
-    @Test(expected = IllegalArgumentException.class)
-    public void testDeleteCommand_notFound() {
+    @Test(expected = NotFoundException.class)
+    public void testDeleteCommand_notFound() throws Exception {
         whitelistService.deleteCommand("nonexistent_cmd");
     }
 
@@ -222,7 +224,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command all allowed.
      */
     @Test
-    public void testValidateCommand_allAllowed() {
+    public void testValidateCommand_allAllowed() throws Exception {
         List<String> rejected = whitelistService.validateCommand("ps -ef");
         assertTrue(rejected.isEmpty());
     }
@@ -231,7 +233,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command pipe allowed.
      */
     @Test
-    public void testValidateCommand_pipeAllowed() {
+    public void testValidateCommand_pipeAllowed() throws Exception {
         List<String> rejected = whitelistService.validateCommand("ps -ef|grep java|grep -v grep");
         assertTrue(rejected.isEmpty());
     }
@@ -240,7 +242,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command semicolon allowed.
      */
     @Test
-    public void testValidateCommand_semicolonAllowed() {
+    public void testValidateCommand_semicolonAllowed() throws Exception {
         List<String> rejected = whitelistService.validateCommand("cd /home;tail -n 50 log.txt");
         assertTrue(rejected.isEmpty());
     }
@@ -249,7 +251,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command rejected command.
      */
     @Test
-    public void testValidateCommand_rejectedCommand() {
+    public void testValidateCommand_rejectedCommand() throws Exception {
         List<String> rejected = whitelistService.validateCommand("rm -rf /");
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
@@ -259,7 +261,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command mixed allowed and rejected.
      */
     @Test
-    public void testValidateCommand_mixedAllowedAndRejected() {
+    public void testValidateCommand_mixedAllowedAndRejected() throws Exception {
         List<String> rejected = whitelistService.validateCommand("ps -ef|reboot");
         assertEquals(1, rejected.size());
         assertEquals("reboot", rejected.get(0));
@@ -269,7 +271,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command disabled command.
      */
     @Test
-    public void testValidateCommand_disabledCommand() {
+    public void testValidateCommand_disabledCommand() throws Exception {
         // Disable 'ps' first
         whitelistService.updateCommand("ps", Map.of("enabled", false));
 
@@ -282,7 +284,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command empty string.
      */
     @Test
-    public void testValidateCommand_emptyString() {
+    public void testValidateCommand_emptyString() throws Exception {
         List<String> rejected = whitelistService.validateCommand("");
         assertTrue(rejected.isEmpty());
     }
@@ -291,7 +293,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command complex pipe.
      */
     @Test
-    public void testValidateCommand_complexPipe() {
+    public void testValidateCommand_complexPipe() throws Exception {
         List<String> rejected =
             whitelistService.validateCommand("cd /home/rcpa/logs/stat;tail -n 50 pool.log|grep -v timeout");
         assertTrue(rejected.isEmpty());
@@ -301,7 +303,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command multiple rejected.
      */
     @Test
-    public void testValidateCommand_multipleRejected() {
+    public void testValidateCommand_multipleRejected() throws Exception {
         List<String> rejected = whitelistService.validateCommand("rm -rf /;reboot;shutdown now");
         assertEquals(3, rejected.size());
         assertTrue(rejected.contains("rm"));
@@ -315,7 +317,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command pipe inside single quotes.
      */
     @Test
-    public void testValidateCommand_pipeInsideSingleQuotes() {
+    public void testValidateCommand_pipeInsideSingleQuotes() throws Exception {
         List<String> rejected = whitelistService
             .validateCommand("tail -100 /var/log/syslog | grep -E 'ERROR|WARN|Exception|Timeout' | tail -30");
         assertTrue(rejected.isEmpty());
@@ -325,7 +327,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command pipe inside double quotes.
      */
     @Test
-    public void testValidateCommand_pipeInsideDoubleQuotes() {
+    public void testValidateCommand_pipeInsideDoubleQuotes() throws Exception {
         List<String> rejected = whitelistService.validateCommand("grep \"ERROR|WARN\" /var/log/syslog | tail -20");
         assertTrue(rejected.isEmpty());
     }
@@ -334,7 +336,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command escaped pipe.
      */
     @Test
-    public void testValidateCommand_escapedPipe() {
+    public void testValidateCommand_escapedPipe() throws Exception {
         List<String> rejected = whitelistService.validateCommand("grep 'a\\|b' /var/log/syslog | tail -20");
         assertTrue(rejected.isEmpty());
     }
@@ -343,7 +345,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command mixed quotes and pipes.
      */
     @Test
-    public void testValidateCommand_mixedQuotesAndPipes() {
+    public void testValidateCommand_mixedQuotesAndPipes() throws Exception {
         List<String> rejected = whitelistService.validateCommand("grep -E 'ERROR|WARN' /var/log/syslog | rm -rf /");
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
@@ -355,7 +357,7 @@ public class CommandWhitelistServiceTest {
      * Tests get risk level pipe inside quotes.
      */
     @Test
-    public void testGetRiskLevel_pipeInsideQuotes() {
+    public void testGetRiskLevel_pipeInsideQuotes() throws Exception {
         String risk = whitelistService.getRiskLevel("tail -100 /var/log/syslog | grep -E 'ERROR|WARN' | tail -30");
         assertEquals("low", risk);
     }
@@ -366,7 +368,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command logical or.
      */
     @Test
-    public void testValidateCommand_logicalOr() {
+    public void testValidateCommand_logicalOr() throws Exception {
         List<String> rejected = whitelistService.validateCommand("ps -ef || echo \"failed\"");
         assertTrue(rejected.isEmpty());
     }
@@ -375,7 +377,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command logical and.
      */
     @Test
-    public void testValidateCommand_logicalAnd() {
+    public void testValidateCommand_logicalAnd() throws Exception {
         List<String> rejected = whitelistService.validateCommand("cd /home && ls -la");
         assertTrue(rejected.isEmpty());
     }
@@ -384,7 +386,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command logical or with rejected.
      */
     @Test
-    public void testValidateCommand_logicalOrWithRejected() {
+    public void testValidateCommand_logicalOrWithRejected() throws Exception {
         List<String> rejected = whitelistService.validateCommand("ps -ef || rm -rf /");
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
@@ -394,7 +396,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command logical and with rejected.
      */
     @Test
-    public void testValidateCommand_logicalAndWithRejected() {
+    public void testValidateCommand_logicalAndWithRejected() throws Exception {
         List<String> rejected = whitelistService.validateCommand("cd /home && rm -rf /");
         assertEquals(1, rejected.size());
         assertEquals("rm", rejected.get(0));
@@ -404,7 +406,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command or or not split as two pipes.
      */
     @Test
-    public void testValidateCommand_orOrNotSplitAsTwoPipes() {
+    public void testValidateCommand_orOrNotSplitAsTwoPipes() throws Exception {
         // || should split into exactly 2 parts, not 3
         List<String> rejected = whitelistService.validateCommand("ps -ef || echo done");
         // If || were split as two |, echo would be in a separate segment but gmstat/echo both pass
@@ -418,7 +420,7 @@ public class CommandWhitelistServiceTest {
      * Tests validate command echo in default.
      */
     @Test
-    public void testValidateCommand_echoInDefault() {
+    public void testValidateCommand_echoInDefault() throws Exception {
         List<String> rejected = whitelistService.validateCommand("echo hello");
         assertTrue(rejected.isEmpty());
     }
@@ -429,7 +431,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode simple with absolute path.
      */
     @Test
-    public void testPrefixMode_simpleWithAbsolutePath() {
+    public void testPrefixMode_simpleWithAbsolutePath() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("/home/nslb");
         assertTrue(rejected.isEmpty());
@@ -439,7 +441,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode simple with absolute path and args.
      */
     @Test
-    public void testPrefixMode_simpleWithAbsolutePathAndArgs() {
+    public void testPrefixMode_simpleWithAbsolutePathAndArgs() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("/home/nslb list -v");
         assertTrue(rejected.isEmpty());
@@ -449,7 +451,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode simple with relative path.
      */
     @Test
-    public void testPrefixMode_simpleWithRelativePath() {
+    public void testPrefixMode_simpleWithRelativePath() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("./nslb collect");
         assertTrue(rejected.isEmpty());
@@ -459,7 +461,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode exact match.
      */
     @Test
-    public void testPrefixMode_exactMatch() {
+    public void testPrefixMode_exactMatch() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("nslb list");
         assertTrue(rejected.isEmpty());
@@ -469,7 +471,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode with extra args.
      */
     @Test
-    public void testPrefixMode_withExtraArgs() {
+    public void testPrefixMode_withExtraArgs() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("nslb list -v");
         assertTrue(rejected.isEmpty());
@@ -479,7 +481,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode different args rejected.
      */
     @Test
-    public void testPrefixMode_differentArgs_rejected() {
+    public void testPrefixMode_differentArgs_rejected() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("nslb collect");
         assertEquals(1, rejected.size());
@@ -490,7 +492,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode word boundary rejected.
      */
     @Test
-    public void testPrefixMode_wordBoundary_rejected() {
+    public void testPrefixMode_wordBoundary_rejected() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("nslb listx");
         assertEquals(1, rejected.size());
@@ -501,7 +503,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode with path.
      */
     @Test
-    public void testPrefixMode_withPath() {
+    public void testPrefixMode_withPath() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("/home/nslb list");
         assertTrue(rejected.isEmpty());
@@ -511,7 +513,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode with path different args rejected.
      */
     @Test
-    public void testPrefixMode_withPathDifferentArgs_rejected() {
+    public void testPrefixMode_withPathDifferentArgs_rejected() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         List<String> rejected = whitelistService.validateCommand("/home/nslb collect");
         assertEquals(1, rejected.size());
@@ -522,7 +524,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode simple and prefix coexist.
      */
     @Test
-    public void testPrefixMode_simpleAndPrefixCoexist() {
+    public void testPrefixMode_simpleAndPrefixCoexist() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "medium"));
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         // nslb collect matches the simple pattern "nslb"
@@ -534,7 +536,7 @@ public class CommandWhitelistServiceTest {
      * Tests prefix mode only prefix no simple.
      */
     @Test
-    public void testPrefixMode_onlyPrefix_noSimple() {
+    public void testPrefixMode_onlyPrefix_noSimple() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         // nslb collect does NOT match prefix pattern "nslb list"
         List<String> rejected = whitelistService.validateCommand("nslb collect");
@@ -547,7 +549,7 @@ public class CommandWhitelistServiceTest {
      * Tests get risk level prefix mode low.
      */
     @Test
-    public void testGetRiskLevel_prefixModeLow() {
+    public void testGetRiskLevel_prefixModeLow() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         assertEquals("low", whitelistService.getRiskLevel("nslb list"));
     }
@@ -556,7 +558,7 @@ public class CommandWhitelistServiceTest {
      * Tests get risk level prefix mode no match.
      */
     @Test
-    public void testGetRiskLevel_prefixModeNoMatch() {
+    public void testGetRiskLevel_prefixModeNoMatch() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         assertEquals("high", whitelistService.getRiskLevel("nslb collect"));
     }
@@ -565,7 +567,7 @@ public class CommandWhitelistServiceTest {
      * Tests get risk level longer pattern wins.
      */
     @Test
-    public void testGetRiskLevel_longerPatternWins() {
+    public void testGetRiskLevel_longerPatternWins() throws Exception {
         // When both "nslb"(medium) and "nslb list"(low) match, the longer pattern wins → low
         whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "medium"));
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
@@ -576,7 +578,7 @@ public class CommandWhitelistServiceTest {
      * Tests get risk level prefix mode with path.
      */
     @Test
-    public void testGetRiskLevel_prefixModeWithPath() {
+    public void testGetRiskLevel_prefixModeWithPath() throws Exception {
         whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
         assertEquals("low", whitelistService.getRiskLevel("/home/nslb list"));
     }

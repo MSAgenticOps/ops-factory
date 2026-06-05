@@ -258,7 +258,8 @@ public class KnowledgeServiceFacade {
                 if (result.imported()) {
                     imported++;
                 } else if (result.skipReason() != null) {
-                    skipped.add(new DocumentController.SkippedFileInfo(file.getOriginalFilename(), result.skipReason(), result.existingFileName()));
+                    skipped.add(new DocumentController.SkippedFileInfo(
+                        file.getOriginalFilename(), result.skipReason(), result.existingFileName()));
                 }
             }
             JobRepository.JobRecord finished = new JobRepository.JobRecord(job.id(), job.jobType(), sourceId, null, "SUCCEEDED", 100, null, "Ingest completed", "system", 0, 0, 0, 0, null, null, null, now, Instant.now(), job.createdAt(), Instant.now());
@@ -1183,7 +1184,9 @@ public class KnowledgeServiceFacade {
             String sha256 = sha256(file.getInputStream());
             var existingDoc = documentRepository.findBySourceIdAndSha256(sourceId, sha256);
             if (existingDoc.isPresent()) {
-                log.info("Skipped duplicate upload sourceId={} documentName={} existingDocumentName={} sha256={}", sourceId, file.getOriginalFilename(), existingDoc.get().name(), sha256);
+                log.info(
+                    "Skipped duplicate upload sourceId={} documentName={} existingDocumentName={} sha256={}",
+                    sourceId, file.getOriginalFilename(), existingDoc.get().name(), sha256);
                 return new UploadResult(false, "DUPLICATE_CONTENT", existingDoc.get().name());
             }
             Path originalPath = storageManager.originalFilePath(sourceId, documentId, file.getOriginalFilename());

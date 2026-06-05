@@ -637,11 +637,11 @@ export default function ResourceFormModal({
                                 <>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.groupName')}{requiredStar}</label>
-                                        <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} />
+                                        <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} maxLength={100} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.groupCode')}{requiredStar}</label>
-                                        <input className="form-input" value={groupCode} onChange={e => setGroupCode(e.target.value)} placeholder={t('hostResource.groupCodePlaceholder', { defaultValue: '' })} />
+                                        <input className="form-input" value={groupCode} onChange={e => setGroupCode(e.target.value)} placeholder={t('hostResource.groupCodePlaceholder', { defaultValue: '' })} maxLength={50} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.parentGroup')}</label>
@@ -654,7 +654,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={groupDescription} onChange={e => setGroupDescription(e.target.value)} />
+                                        <input className="form-input" value={groupDescription} onChange={e => setGroupDescription(e.target.value)} maxLength={500} />
                                     </div>
                                     {editingItem?.type === 'group' && (
                                         <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -678,7 +678,7 @@ export default function ResourceFormModal({
                                 <>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.clusterName')}{requiredStar}</label>
-                                        <input className="form-input" value={clusterName} onChange={e => setClusterName(e.target.value)} />
+                                        <input className="form-input" value={clusterName} onChange={e => setClusterName(e.target.value)} maxLength={100} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.clusterType')}{requiredStar}</label>
@@ -713,7 +713,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.purpose')}</label>
-                                        <input className="form-input" value={clusterPurpose} onChange={e => setClusterPurpose(e.target.value)} />
+                                        <input className="form-input" value={clusterPurpose} onChange={e => setClusterPurpose(e.target.value)} maxLength={200} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.parentGroup')}{requiredStar}</label>
@@ -726,7 +726,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={clusterDescription} onChange={e => setClusterDescription(e.target.value)} />
+                                        <input className="form-input" value={clusterDescription} onChange={e => setClusterDescription(e.target.value)} maxLength={500} />
                                     </div>
                                     {/* ── Contained Hosts (read-only, driven by host cluster assignment) ── */}
                                     {editingItem?.type === 'cluster' && (
@@ -791,7 +791,7 @@ export default function ResourceFormModal({
                                                                     style={{ flex: 1, fontSize: '0.75rem' }}
                                                                 />
                                                                 <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} />
+                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} maxLength={500} />
                                                                 <button className="btn btn-primary btn-sm" style={{ padding: '1px 6px' }}
                                                                     onClick={handleSaveRelationEdit}>✓</button>
                                                                 <button className="btn btn-secondary btn-sm" style={{ padding: '1px 6px' }}
@@ -829,7 +829,7 @@ export default function ResourceFormModal({
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
                                                             placeholder={t('hostResource.relationDesc')}
-                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
+                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} maxLength={500} />
                                                         <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
                                                             disabled={newRelTargetIds.length === 0}
                                                             onClick={() => handleAddClusterRelation('cluster', editingItem.data.id)}>+</button>
@@ -875,7 +875,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.bsName')}{requiredStar}</label>
-                                        <input className="form-input" value={bsName} onChange={e => setBsName(e.target.value)} />
+                                        <input className="form-input" value={bsName} onChange={e => setBsName(e.target.value)} maxLength={100} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.bsPriority')}</label>
@@ -902,7 +902,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={bsDescription} onChange={e => setBsDescription(e.target.value)} />
+                                        <input className="form-input" value={bsDescription} onChange={e => setBsDescription(e.target.value)} maxLength={500} />
                                     </div>
                                     {/* ── Topology Relations (edit mode only) ── */}
                                     {editingItem?.type === 'business-service' && (
@@ -932,7 +932,7 @@ export default function ResourceFormModal({
                                                                     style={{ flex: 1, fontSize: '0.75rem' }}
                                                                 />
                                                                 <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} />
+                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} maxLength={500} />
                                                                 <button className="btn btn-primary btn-sm" style={{ padding: '1px 6px' }}
                                                                     onClick={handleSaveRelationEdit}>✓</button>
                                                                 <button className="btn btn-secondary btn-sm" style={{ padding: '1px 6px' }}
@@ -969,7 +969,7 @@ export default function ResourceFormModal({
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
                                                             placeholder={t('hostResource.relationDesc')}
-                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
+                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} maxLength={500} />
                                                         <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
                                                             disabled={newRelTargetIds.length === 0}
                                                             onClick={() => handleAddClusterRelation('business-service', editingItem.data.id)}>+</button>
@@ -987,11 +987,11 @@ export default function ResourceFormModal({
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.hostName')}{requiredStar}</label>
-                                            <input className="form-input" value={hostName} onChange={e => setHostName(e.target.value)} />
+                                            <input className="form-input" value={hostName} onChange={e => setHostName(e.target.value)} maxLength={100} />
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.hostname')}</label>
-                                            <input className="form-input" value={hostname} onChange={e => setHostname(e.target.value)} />
+                                            <input className="form-input" value={hostname} onChange={e => setHostname(e.target.value)} maxLength={255} />
                                         </div>
                                     </div>
                                     <div className="hr-form-row">
@@ -1097,7 +1097,7 @@ export default function ResourceFormModal({
 
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={hostDescription} onChange={e => setHostDescription(e.target.value)} />
+                                        <input className="form-input" value={hostDescription} onChange={e => setHostDescription(e.target.value)} maxLength={500} />
                                     </div>
 
                                     <CustomAttributeEditor attributes={hostCustomAttributes} onChange={setHostCustomAttributes} />

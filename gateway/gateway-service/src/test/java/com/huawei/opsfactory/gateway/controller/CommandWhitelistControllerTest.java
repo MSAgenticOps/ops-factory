@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
@@ -132,7 +133,7 @@ public class CommandWhitelistControllerTest {
      */
     @Test
     public void testUpdateCommand_notFound() throws Exception {
-        doThrow(new IllegalArgumentException("Command pattern not found: unknown")).when(commandWhitelistService)
+        doThrow(new NotFoundException("Command pattern not found")).when(commandWhitelistService)
             .updateCommand(eq("unknown"), any());
 
         mockMvc
@@ -165,7 +166,7 @@ public class CommandWhitelistControllerTest {
      */
     @Test
     public void testDeleteCommand_notFound() throws Exception {
-        doThrow(new IllegalArgumentException("Command pattern not found: unknown")).when(commandWhitelistService)
+        doThrow(new NotFoundException("Command pattern not found")).when(commandWhitelistService)
             .deleteCommand("unknown");
 
         mockMvc

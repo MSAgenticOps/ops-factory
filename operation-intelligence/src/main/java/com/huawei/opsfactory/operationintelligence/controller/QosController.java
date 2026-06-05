@@ -46,6 +46,12 @@ public class QosController {
         this.qosService = qosService;
     }
 
+    /**
+     * Converts an object to a long value.
+     *
+     * @param val the value to convert
+     * @return the long value
+     */
     static long toLong(Object val) {
         if (val instanceof Number)
             return ((Number) val).longValue();
@@ -59,6 +65,12 @@ public class QosController {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid numeric value: " + val);
     }
 
+    /**
+     * Converts an object to an int value.
+     *
+     * @param val the value to convert
+     * @return the int value
+     */
     static int toInt(Object val) {
         if (val instanceof Number)
             return ((Number) val).intValue();

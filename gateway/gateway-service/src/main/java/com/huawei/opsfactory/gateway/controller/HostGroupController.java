@@ -4,6 +4,9 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
@@ -112,19 +115,13 @@ public class HostGroupController {
      * @return a host group by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getGroup(@PathVariable("id") String id, HttpServletRequest request) {
-        try {
-            Map<String, Object> group = hostGroupService.getGroup(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("group", group);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host group not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+    public ResponseEntity<Map<String, Object>> getGroup(@PathVariable("id") String id, HttpServletRequest request)
+        throws NotFoundException {
+        Map<String, Object> group = hostGroupService.getGroup(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("group", group);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -136,19 +133,12 @@ public class HostGroupController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createGroup(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> group = hostGroupService.createGroup(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("group", group);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Invalid host group request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        HttpServletRequest httpRequest) throws BadRequestException, ConflictException {
+        Map<String, Object> group = hostGroupService.createGroup(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("group", group);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -161,19 +151,13 @@ public class HostGroupController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateGroup(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> group = hostGroupService.updateGroup(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("group", group);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host group not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest)
+        throws NotFoundException, BadRequestException, ConflictException {
+        Map<String, Object> group = hostGroupService.updateGroup(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("group", group);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -187,28 +171,21 @@ public class HostGroupController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deleteGroup(@PathVariable("id") String id,
         @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
-        HttpServletRequest request) {
-        try {
-            boolean deleted;
-            if (force) {
-                deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
-            } else {
-                deleted = hostGroupService.deleteGroup(id, clusterService);
-            }
-            if (!deleted) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("success", false);
-                body.put("error", "Host group not found: " + id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-            }
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            return ResponseEntity.ok(body);
-        } catch (IllegalStateException e) {
+        HttpServletRequest request) throws ConflictException {
+        boolean deleted;
+        if (force) {
+            deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
+        } else {
+            deleted = hostGroupService.deleteGroup(id, clusterService);
+        }
+        if (!deleted) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Host group delete conflict");
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+            body.put("error", "Host group not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
         }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        return ResponseEntity.ok(body);
     }
 }

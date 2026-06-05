@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
@@ -116,7 +117,7 @@ public class BusinessServiceControllerTest {
     @Test
     public void testGetBusinessService_notFound() throws Exception {
         when(businessServiceService.getBusinessService("nonexistent"))
-            .thenThrow(new IllegalArgumentException("Business service not found: nonexistent"));
+            .thenThrow(new NotFoundException("Business service not found"));
 
         mockMvc
             .perform(get("/api/gateway/business-services/nonexistent").header("x-secret-key", "test")
@@ -262,7 +263,7 @@ public class BusinessServiceControllerTest {
     @Test
     public void testUpdateBusinessService_notFound() throws Exception {
         when(businessServiceService.updateBusinessService(eq("nonexistent"), any()))
-            .thenThrow(new IllegalArgumentException("Business service not found: nonexistent"));
+            .thenThrow(new NotFoundException("Business service not found"));
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Updated");

@@ -20,6 +20,12 @@ import {
     SplitBar,
 } from './SharedComponents'
 
+function getSessionFilterLabel(filter: 'all' | 'user' | 'scheduled', t: (key: string) => string): string {
+    if (filter === 'all') return t('finops.drawer.roles.all')
+    if (filter === 'scheduled') return t('finops.sessionTypes.scheduled')
+    return t('finops.sessionTypes.user')
+}
+
 interface AgentDetailDrawerProps {
     agent: AgentUsage
     locale: string
@@ -141,7 +147,7 @@ export function AgentDetailDrawer({
                                 className={`finops-role-filter-all finops-role-filter-compact ${sessionFilter === filter ? 'active' : ''}`}
                                 onClick={() => setSessionFilter(filter)}
                             >
-                                <span>{filter === 'all' ? t('finops.drawer.roles.all') : (filter === 'scheduled' ? t('finops.sessionTypes.scheduled') : t('finops.sessionTypes.user'))}</span>
+                                <span>{getSessionFilterLabel(filter, t)}</span>
                             </button>
                         ))}
                     </section>
@@ -313,7 +319,7 @@ export function UserDetailDrawer({
                                 className={`finops-role-filter-all finops-role-filter-compact ${sessionFilter === filter ? 'active' : ''}`}
                                 onClick={() => setSessionFilter(filter)}
                             >
-                                <span>{filter === 'all' ? t('finops.drawer.roles.all') : (filter === 'scheduled' ? t('finops.sessionTypes.scheduled') : t('finops.sessionTypes.user'))}</span>
+                                <span>{getSessionFilterLabel(filter, t)}</span>
                             </button>
                         ))}
                     </section>
