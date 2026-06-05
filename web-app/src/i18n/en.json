@@ -856,6 +856,8 @@
     "resetIndexProfileSuccess": "Restored the system default index profile for this knowledge base",
     "resetRetrievalProfileSuccess": "Restored the system default retrieval profile for this knowledge base",
     "configInvalidNumber": "Enter valid numeric values",
+    "configNegativeNotAllowed": "Parameter values must not be negative",
+    "profileNameReservedPrefix": "'system-default-' is reserved for system default profiles. Please use a different name for custom profiles.",
     "configColumnParameter": "Parameter",
     "configColumnValue": "Current Value",
     "configColumnDetails": "Details",

@@ -47,11 +47,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * The KnowledgeServiceFacade.
+ * Facade service for knowledge management, coordinating sources, documents,
+ * chunks, profiles, search/retrieval, and job operations.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
-
 @Service
 public class KnowledgeServiceFacade {
 
@@ -82,6 +83,27 @@ public class KnowledgeServiceFacade {
     private final KnowledgeLoggingProperties knowledgeLoggingProperties;
     private final ThreadPoolTaskExecutor taskExecutor;
 
+    /**
+     * Constructs a new {@code KnowledgeServiceFacade} with all required dependencies.
+     *
+     * @param sourceRepository the source repository
+     * @param documentRepository the document repository
+     * @param chunkRepository the chunk repository
+     * @param jobRepository the job repository
+     * @param maintenanceJobFailureRepository the maintenance job failure repository
+     * @param profileRepository the profile repository
+     * @param bindingRepository the binding repository
+     * @param storageManager the storage manager
+     * @param conversionService the conversion service
+     * @param chunkingService the chunking service
+     * @param searchService the search service
+     * @param embeddingService the embedding service
+     * @param lexicalIndexService the lexical index service
+     * @param vectorIndexService the vector index service
+     * @param profileBootstrapService the profile bootstrap service
+     * @param knowledgeLoggingProperties the knowledge logging properties
+     * @param taskExecutor the task executor
+     */
     public KnowledgeServiceFacade(
         SourceRepository sourceRepository,
         DocumentRepository documentRepository,
@@ -120,11 +142,23 @@ public class KnowledgeServiceFacade {
         this.taskExecutor = taskExecutor;
     }
 
+    /**
+     * Lists all knowledge sources with pagination.
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of source summaries
+     */
     public PageResponse<SourceController.SourceResponse> listSources(int page, int pageSize) {
         List<SourceController.SourceResponse> items = sourceRepository.findAll().stream().map(this::toSourceResponse).toList();
         return page(items, page, pageSize);
     }
 
+    /**
+     * Creates a new knowledge source with default index and retrieval profiles.
+     * @param request the create source request containing name and description
+     * @return the created source response
+     * @throws IllegalArgumentException if bound profiles are not found
+     */
     @Transactional
     public SourceController.SourceResponse createSource(SourceController.CreateSourceRequest request) {
         Instant now = Instant.now();
@@ -143,11 +177,25 @@ public class KnowledgeServiceFacade {
         return toSourceResponse(record);
     }
 
+    /**
+     * Retrieves a single knowledge source by its identifier.
+     * @param sourceId the source identifier
+     * @return the source response
+     * @throws IllegalArgumentException if the source is not found
+     */
     public SourceController.SourceResponse getSource(String sourceId) {
         return sourceRepository.findById(sourceId).map(this::toSourceResponse)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
     }
 
+    /**
+     * Updates an existing knowledge source.
+     * @param sourceId the source identifier
+     * @param request the update request containing optional name, description, status, and profile bindings
+     * @return the updated source response
+     * @throws IllegalArgumentException if the source or bound profiles are not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public SourceController.SourceResponse updateSource(String sourceId, SourceController.UpdateSourceRequest request) {
         SourceRepository.SourceRecord existing = sourceRepository.findById(sourceId)
@@ -189,6 +237,13 @@ public class KnowledgeServiceFacade {
         return toSourceResponse(updated);
     }
 
+    /**
+     * Deletes a knowledge source and all its associated data.
+     * @param sourceId the source identifier
+     * @return the deletion response
+     * @throws IllegalArgumentException if the source is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public SourceController.DeleteSourceResponse deleteSource(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
@@ -212,6 +267,11 @@ public class KnowledgeServiceFacade {
         return new SourceController.DeleteSourceResponse(sourceId, true);
     }
 
+    /**
+     * Retrieves statistics for a knowledge source.
+     * @param sourceId the source identifier
+     * @return the source statistics response
+     */
     public SourceController.SourceStatsResponse sourceStats(String sourceId) {
         long documentCount = documentRepository.findBySourceId(sourceId).size();
         long indexedCount = documentRepository.findBySourceId(sourceId).stream().filter(d -> "INDEXED".equals(d.status())).count();
@@ -230,12 +290,28 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Lists documents with optional source filtering and pagination.
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @param sourceId optional source identifier to filter by; null to list all documents
+     * @return a paginated response of document summaries
+     */
     public PageResponse<DocumentController.DocumentSummary> listDocuments(int page, int pageSize, String sourceId) {
         List<DocumentRepository.DocumentRecord> docs = sourceId == null ? documentRepository.findAll() : documentRepository.findBySourceId(sourceId);
         List<DocumentController.DocumentSummary> items = docs.stream().map(this::toDocumentSummary).toList();
         return page(items, page, pageSize);
     }
 
+    /**
+     * Ingests files into a knowledge source, converting and chunking them.
+     * @param sourceId the source identifier
+     * @param files the files to ingest
+     * @return the ingest response containing job id, imported count, and skipped files
+     * @throws IllegalArgumentException if the source is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     * @throws RuntimeException if ingestion fails
+     */
     public DocumentController.IngestDocumentsResponse ingest(String sourceId, MultipartFile[] files) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
@@ -292,11 +368,25 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Retrieves a single document by its identifier.
+     * @param documentId the document identifier
+     * @return the document detail
+     * @throws IllegalArgumentException if the document is not found
+     */
     public DocumentController.DocumentDetail getDocument(String documentId) {
         return documentRepository.findById(documentId).map(this::toDocumentDetail)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
     }
 
+    /**
+     * Updates an existing document's metadata.
+     * @param documentId the document identifier
+     * @param request the update request containing optional title, description, and tags
+     * @return the update response
+     * @throws IllegalArgumentException if the document is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public DocumentController.DocumentUpdateResponse updateDocument(String documentId, DocumentController.UpdateDocumentRequest request) {
         DocumentRepository.DocumentRecord existing = documentRepository.findById(documentId)
@@ -315,6 +405,13 @@ public class KnowledgeServiceFacade {
         return new DocumentController.DocumentUpdateResponse(documentId, true, updated.updatedAt());
     }
 
+    /**
+     * Deletes a document and all its associated chunks and artifacts.
+     * @param documentId the document identifier
+     * @return the deletion response
+     * @throws IllegalArgumentException if the document is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public DocumentController.DeleteDocumentResponse deleteDocument(String documentId) {
         DocumentRepository.DocumentRecord existing = documentRepository.findById(documentId)
@@ -329,11 +426,24 @@ public class KnowledgeServiceFacade {
         return new DocumentController.DeleteDocumentResponse(documentId, true);
     }
 
+    /**
+     * Lists chunks for a specific document with pagination.
+     * @param documentId the document identifier
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of chunk summaries
+     */
     public PageResponse<ChunkController.ChunkSummary> listDocumentChunks(String documentId, int page, int pageSize) {
         List<ChunkController.ChunkSummary> items = chunkRepository.findByDocumentId(documentId).stream().map(this::toChunkSummary).toList();
         return page(items, page, pageSize);
     }
 
+    /**
+     * Generates a preview of a document's markdown content.
+     * @param documentId the document identifier
+     * @return the document preview response containing title and markdown text
+     * @throws IllegalArgumentException if the document is not found
+     */
     public DocumentController.DocumentPreviewResponse previewDocument(String documentId) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
@@ -345,6 +455,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Checks whether a document has generated artifact files.
+     * @param documentId the document identifier
+     * @return the artifacts response indicating whether markdown artifact exists
+     * @throws IllegalArgumentException if the document is not found
+     */
     public DocumentController.DocumentArtifactsResponse getArtifacts(String documentId) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
@@ -355,12 +471,25 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Reads a named artifact file for a document.
+     * @param documentId the document identifier
+     * @param name the artifact file name
+     * @return the artifact content as a string
+     * @throws IllegalArgumentException if the document is not found
+     */
     public String readArtifact(String documentId, String name) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
         return storageManager.readString(storageManager.artifactDir(document.sourceId(), document.id()).resolve(name));
     }
 
+    /**
+     * Retrieves the original uploaded file for a document.
+     * @param documentId the document identifier
+     * @return the original document response containing filename, content type, and bytes
+     * @throws IllegalArgumentException if the document is not found
+     */
     public DocumentController.OriginalDocumentResponse originalDocument(String documentId) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
@@ -373,6 +502,14 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Creates a simple completed job record for a document operation.
+     * @param documentId the document identifier
+     * @param jobType the job type string
+     * @return the job creation response
+     * @throws IllegalArgumentException if the document is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     public DocumentController.JobCreationResponse simpleDocumentJob(String documentId, String jobType) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
@@ -384,6 +521,12 @@ public class KnowledgeServiceFacade {
         return new DocumentController.JobCreationResponse(job.id(), documentId, jobType, job.status());
     }
 
+    /**
+     * Retrieves statistics for a single document.
+     * @param documentId the document identifier
+     * @return the document statistics response
+     * @throws IllegalArgumentException if the document is not found
+     */
     public DocumentController.DocumentStatsResponse documentStats(String documentId) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
@@ -397,6 +540,14 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Lists chunks with optional source or document filtering and pagination.
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @param sourceId optional source identifier to filter by
+     * @param documentId optional document identifier to filter by
+     * @return a paginated response of chunk summaries
+     */
     public PageResponse<ChunkController.ChunkSummary> listChunks(int page, int pageSize, String sourceId, String documentId) {
         List<ChunkRepository.ChunkRecord> chunks;
         if (documentId != null) {
@@ -410,11 +561,25 @@ public class KnowledgeServiceFacade {
         return page(items, page, pageSize);
     }
 
+    /**
+     * Retrieves a single chunk by its identifier.
+     * @param chunkId the chunk identifier
+     * @return the chunk detail
+     * @throws IllegalArgumentException if the chunk is not found
+     */
     public ChunkController.ChunkDetail getChunk(String chunkId) {
         return chunkRepository.findById(chunkId).map(this::toChunkDetail)
             .orElseThrow(() -> new IllegalArgumentException("Chunk not found: " + chunkId));
     }
 
+    /**
+     * Creates a new chunk for a document and indexes it.
+     * @param documentId the document identifier
+     * @param request the create chunk request
+     * @return the chunk mutation response
+     * @throws IllegalArgumentException if the document is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public ChunkController.ChunkMutationResponse createChunk(String documentId, ChunkController.CreateChunkRequest request) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
@@ -436,6 +601,14 @@ public class KnowledgeServiceFacade {
         return new ChunkController.ChunkMutationResponse(record.id(), documentId, true, true, record.editStatus(), record.updatedAt());
     }
 
+    /**
+     * Updates an existing chunk's content and re-indexes it.
+     * @param chunkId the chunk identifier
+     * @param request the update chunk request
+     * @return the chunk mutation response
+     * @throws IllegalArgumentException if the chunk is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public ChunkController.ChunkMutationResponse updateChunk(String chunkId, ChunkController.UpdateChunkRequest request) {
         ChunkRepository.ChunkRecord existing = chunkRepository.findById(chunkId)
@@ -469,6 +642,14 @@ public class KnowledgeServiceFacade {
         return new ChunkController.ChunkMutationResponse(chunkId, existing.documentId(), true, true, updated.editStatus(), updated.updatedAt());
     }
 
+    /**
+     * Updates the keywords of a chunk and re-indexes it.
+     * @param chunkId the chunk identifier
+     * @param keywords the new keywords list
+     * @return the chunk keywords response
+     * @throws IllegalArgumentException if the chunk is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public ChunkController.ChunkKeywordsResponse updateChunkKeywords(String chunkId, List<String> keywords) {
         ChunkRepository.ChunkRecord existing = chunkRepository.findById(chunkId)
@@ -489,6 +670,13 @@ public class KnowledgeServiceFacade {
         return new ChunkController.ChunkKeywordsResponse(chunkId, keywords, true, true, updated.updatedAt());
     }
 
+    /**
+     * Deletes a chunk and removes it from indexes.
+     * @param chunkId the chunk identifier
+     * @return the deletion response
+     * @throws IllegalArgumentException if the chunk is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public ChunkController.DeleteChunkResponse deleteChunk(String chunkId) {
         ChunkRepository.ChunkRecord existing = chunkRepository.findById(chunkId)
@@ -501,6 +689,14 @@ public class KnowledgeServiceFacade {
         return new ChunkController.DeleteChunkResponse(chunkId, true);
     }
 
+    /**
+     * Reorders chunks within a document by updating their ordinals.
+     * @param documentId the document identifier
+     * @param items the reorder items containing chunk id and new ordinal
+     * @return the reorder response
+     * @throws IllegalArgumentException if the document or a chunk is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public ChunkController.ReorderChunksResponse reorderChunks(String documentId, List<ChunkController.ReorderItem> items) {
         DocumentRepository.DocumentRecord document = documentRepository.findById(documentId)
@@ -519,6 +715,13 @@ public class KnowledgeServiceFacade {
         return new ChunkController.ReorderChunksResponse(documentId, true, true, items.size());
     }
 
+    /**
+     * Re-indexes a single chunk, recalculating embeddings and updating indexes.
+     * @param chunkId the chunk identifier
+     * @return the reindex response
+     * @throws IllegalArgumentException if the chunk is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     public ChunkController.ChunkReindexResponse reindexChunk(String chunkId) {
         ChunkRepository.ChunkRecord chunk = chunkRepository.findById(chunkId)
             .orElseThrow(() -> new IllegalArgumentException("Chunk not found: " + chunkId));
@@ -530,6 +733,13 @@ public class KnowledgeServiceFacade {
         return new ChunkController.ChunkReindexResponse(chunkId, true, Instant.now());
     }
 
+    /**
+     * Performs a search across knowledge sources using the configured retrieval profile.
+     * @param request the search request containing query, source ids, and optional overrides
+     * @return the search response with ranked hits
+     * @throws IllegalArgumentException if a referenced source is not found
+     * @throws ApiConflictException if a referenced source is in maintenance or error state
+     */
     public RetrievalController.SearchResponse search(RetrievalController.SearchRequest request) {
         long startedAt = System.currentTimeMillis();
         ensureSourcesReadable(resolveReferencedSourceIds(request.sourceIds(), request.documentIds()));
@@ -551,6 +761,13 @@ public class KnowledgeServiceFacade {
         return new RetrievalController.SearchResponse(request.query(), hits, hits.size());
     }
 
+    /**
+     * Compares search results across multiple retrieval modes for the same query.
+     * @param request the compare search request containing query, sources, and modes to compare
+     * @return the compare search response with results per mode
+     * @throws IllegalArgumentException if a referenced source is not found
+     * @throws ApiConflictException if a referenced source is in maintenance or error state
+     */
     public RetrievalController.CompareSearchResponse compare(RetrievalController.CompareSearchRequest request) {
         long startedAt = System.currentTimeMillis();
         ensureSourcesReadable(resolveReferencedSourceIds(request.sourceIds(), request.documentIds()));
@@ -587,6 +804,16 @@ public class KnowledgeServiceFacade {
         return response;
     }
 
+    /**
+     * Fetches a chunk by id with optional neighbor context.
+     * @param chunkId the chunk identifier
+     * @param includeNeighbors whether to include adjacent chunks
+     * @param neighborWindow the number of adjacent chunks to include on each side
+     * @return the fetch response with chunk content and optional neighbors
+     * @throws IllegalArgumentException if the chunk is not found
+     * @throws IllegalStateException if neighborWindow is out of range
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     public RetrievalController.FetchResponse fetch(String chunkId, boolean includeNeighbors, int neighborWindow) {
         if (neighborWindow <= 0 || neighborWindow > profileBootstrapService.properties().getFetch().getMaxNeighborWindow()) {
             throw new IllegalStateException("Invalid neighborWindow: " + neighborWindow);
@@ -611,6 +838,13 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Retrieves evidence chunks for a query across specified sources.
+     * @param request the retrieve request containing query and source ids
+     * @return the retrieve response with evidence list
+     * @throws IllegalArgumentException if a referenced source is not found
+     * @throws ApiConflictException if a referenced source is in maintenance or error state
+     */
     public RetrievalController.RetrieveResponse retrieve(RetrievalController.RetrieveRequest request) {
         long startedAt = System.currentTimeMillis();
         ensureSourcesReadable(resolveReferencedSourceIds(request.sourceIds(), List.of()));
@@ -634,6 +868,13 @@ public class KnowledgeServiceFacade {
         return new RetrievalController.RetrieveResponse(request.query(), evidences);
     }
 
+    /**
+     * Explains the scoring breakdown for a chunk against a query.
+     * @param request the explain request containing chunk id and query
+     * @return the explain response with lexical, semantic, and fusion scores
+     * @throws IllegalArgumentException if the chunk is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     public RetrievalController.ExplainResponse explain(RetrievalController.ExplainRequest request) {
         long startedAt = System.currentTimeMillis();
         ChunkRepository.ChunkRecord chunk = chunkRepository.findById(request.chunkId())
@@ -658,6 +899,13 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Executes a search for a single compare mode.
+     * @param searchableChunks the candidate chunks to search within
+     * @param query the search query
+     * @param settings the retrieval settings for this mode
+     * @return the compare mode response with hits
+     */
     private RetrievalController.CompareModeResponse compareModeResponse(
         List<SearchService.SearchableChunk> searchableChunks,
         String query,
@@ -668,10 +916,20 @@ public class KnowledgeServiceFacade {
         return new RetrievalController.CompareModeResponse(hits, hits.size());
     }
 
+    /**
+     * Returns an empty compare mode response.
+     * @return an empty compare mode response with zero hits
+     */
     private RetrievalController.CompareModeResponse emptyCompareModeResponse() {
         return new RetrievalController.CompareModeResponse(List.of(), 0);
     }
 
+    /**
+     * Converts search matches to search hits with truncated snippets.
+     * @param matches the search matches
+     * @param snippetLength the maximum snippet length
+     * @return the list of search hits
+     */
     private List<RetrievalController.SearchHit> toSearchHits(List<SearchService.SearchMatch> matches, int snippetLength) {
         return matches.stream().map(match -> {
             SearchService.SearchableChunk chunk = match.chunk();
@@ -684,6 +942,13 @@ public class KnowledgeServiceFacade {
         }).toList();
     }
 
+    /**
+     * Lists all index profiles with pagination.
+     *
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of index profile summaries
+     */
     public PageResponse<ProfileController.ProfileSummary> listIndexProfiles(int page, int pageSize) {
         List<ProfileController.ProfileSummary> items = profileRepository.findAllIndex().stream()
             .map(this::toProfileSummary)
@@ -691,6 +956,13 @@ public class KnowledgeServiceFacade {
         return page(items, page, pageSize);
     }
 
+    /**
+     * Lists all retrieval profiles with pagination.
+     *
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of retrieval profile summaries
+     */
     public PageResponse<ProfileController.ProfileSummary> listRetrievalProfiles(int page, int pageSize) {
         List<ProfileController.ProfileSummary> items = profileRepository.findAllRetrieval().stream()
             .map(this::toProfileSummary)
@@ -698,8 +970,18 @@ public class KnowledgeServiceFacade {
         return page(items, page, pageSize);
     }
 
+    /**
+     * Creates a new index profile.
+     *
+     * @param request the create profile request
+     * @return the created profile detail
+     * @throws IllegalArgumentException if the profile name is invalid
+     * @throws IllegalStateException if the profile config is invalid
+     * @throws ApiConflictException if the profile name already exists
+     */
     @Transactional
     public ProfileController.ProfileDetail createIndexProfile(ProfileController.CreateProfileRequest request) {
+        validateIndexProfileConfig(request.config());
         Instant now = Instant.now();
         String profileName = request.name() != null ? request.name().trim() : null;
         ensureProfileNameAvailable(profileName, null, true);
@@ -718,6 +1000,14 @@ public class KnowledgeServiceFacade {
         return toProfileDetail(record);
     }
 
+    /**
+     * Creates a new retrieval profile.
+     *
+     * @param request the create profile request
+     * @return the created profile detail
+     * @throws IllegalArgumentException if the profile name is invalid
+     * @throws ApiConflictException if the profile name already exists
+     */
     @Transactional
     public ProfileController.ProfileDetail createRetrievalProfile(ProfileController.CreateProfileRequest request) {
         Instant now = Instant.now();
@@ -738,20 +1028,45 @@ public class KnowledgeServiceFacade {
         return toProfileDetail(record);
     }
 
+    /**
+     * Retrieves an index profile by its identifier.
+     *
+     * @param id the profile identifier
+     * @return the profile detail
+     * @throws IllegalArgumentException if the profile is not found
+     */
     public ProfileController.ProfileDetail getIndexProfile(String id) {
         ProfileRepository.ProfileRecord record = profileRepository.findIndexById(id).orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + id));
         return toProfileDetail(record);
     }
 
+    /**
+     * Retrieves a retrieval profile by its identifier.
+     *
+     * @param id the profile identifier
+     * @return the profile detail
+     * @throws IllegalArgumentException if the profile is not found
+     */
     public ProfileController.ProfileDetail getRetrievalProfile(String id) {
         ProfileRepository.ProfileRecord record = profileRepository.findRetrievalById(id).orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + id));
         return toProfileDetail(record);
     }
 
+    /**
+     * Updates an existing index profile.
+     *
+     * @param id the profile identifier
+     * @param request the update profile request
+     * @return the update response
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws ApiConflictException if the profile is read-only or name already exists
+     * @throws IllegalStateException if the profile config is invalid
+     */
     @Transactional
     public ProfileController.ProfileUpdateResponse updateIndexProfile(String id, ProfileController.UpdateProfileRequest request) {
         ProfileRepository.ProfileRecord existing = profileRepository.findIndexById(id).orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + id));
         ensureProfileMutable(existing, "index");
+        validateIndexProfileConfig(request.config());
         String profileName = request.name() != null ? request.name().trim() : existing.name();
         ensureProfileNameAvailable(profileName, id, true);
         ProfileRepository.ProfileRecord updated = new ProfileRepository.ProfileRecord(
@@ -903,6 +1218,7 @@ public class KnowledgeServiceFacade {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
         ensureSourceWritable(source);
+        validateIndexProfileConfig(request.config());
 
         ProfileRepository.ProfileRecord current = profileRepository.findIndexById(source.indexProfileId())
             .orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + source.indexProfileId()));
@@ -1411,6 +1727,36 @@ public class KnowledgeServiceFacade {
             : profileRepository.findRetrievalByName(profileName);
         if (existing.isPresent() && !existing.get().id().equals(currentProfileId)) {
             throw new ApiConflictException("PROFILE_NAME_ALREADY_EXISTS", "Profile name already exists: " + profileName);
+        }
+    }
+
+    private void validateIndexProfileConfig(Map<String, Object> config) {
+        if (config == null) {
+            return;
+        }
+        Object indexing = config.get("indexing");
+        if (!(indexing instanceof Map<?, ?>)) {
+            return;
+        }
+        Map<?, ?> indexingMap = (Map<?, ?>) indexing;
+        for (String key : new String[]{"titleBoost", "titlePathBoost", "keywordBoost", "contentBoost"}) {
+            Object value = indexingMap.get(key);
+            if (value instanceof Number && ((Number) value).doubleValue() < 0) {
+                throw new IllegalStateException(key + " must be >= 0");
+            }
+        }
+        Object bm25 = indexingMap.get("bm25");
+        if (!(bm25 instanceof Map<?, ?>)) {
+            return;
+        }
+        Map<?, ?> bm25Map = (Map<?, ?>) bm25;
+        Object k1 = bm25Map.get("k1");
+        if (k1 instanceof Number && ((Number) k1).doubleValue() < 0) {
+            throw new IllegalStateException("BM25 k1 must be >= 0");
+        }
+        Object b = bm25Map.get("b");
+        if (b instanceof Number && ((Number) b).doubleValue() < 0) {
+            throw new IllegalStateException("BM25 b must be >= 0");
         }
     }
 

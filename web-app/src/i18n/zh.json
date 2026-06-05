@@ -857,6 +857,8 @@
     "resetIndexProfileSuccess": "已将当前知识库恢复为系统默认索引 profile",
     "resetRetrievalProfileSuccess": "已将当前知识库恢复为系统默认召回 profile",
     "configInvalidNumber": "请填写有效的数字参数",
+    "configNegativeNotAllowed": "参数值不能为负数",
+    "profileNameReservedPrefix": "'system-default-' 是系统默认开头，定制参数请不要使用 system-default- 开头",
     "configColumnParameter": "参数",
     "configColumnValue": "当前值",
     "configColumnDetails": "说明",

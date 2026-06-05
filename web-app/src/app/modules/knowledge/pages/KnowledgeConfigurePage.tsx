@@ -2069,6 +2069,16 @@ export default function KnowledgeConfigure() {
             return false
         }
 
+        if ([nextTitleBoost, nextTitlePathBoost, nextKeywordBoost, nextContentBoost, nextBm25K1, nextBm25B].some(value => value < 0)) {
+            showToast('error', t('knowledge.configNegativeNotAllowed'))
+            return false
+        }
+
+        if (indexProfileName.trim().toLowerCase().startsWith('system-default-')) {
+            showToast('error', t('knowledge.profileNameReservedPrefix'))
+            return false
+        }
+
         setIsSavingIndexProfile(true)
         const result = await saveIndexProfile({
             name: indexProfileName.trim() || undefined,
@@ -2147,6 +2157,11 @@ export default function KnowledgeConfigure() {
             ))
         ) {
             showToast('error', t('knowledge.configInvalidNumber'))
+            return false
+        }
+
+        if (retrievalProfileName.trim().toLowerCase().startsWith('system-default-')) {
+            showToast('error', t('knowledge.profileNameReservedPrefix'))
             return false
         }
 
