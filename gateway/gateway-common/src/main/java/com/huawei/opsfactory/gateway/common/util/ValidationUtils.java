@@ -44,6 +44,22 @@ public final class ValidationUtils {
     }
 
     /**
+     * Validates that the given string is non-blank.
+     *
+     * @param value string to check
+     * @param fieldName field name for the error message
+     * @return trimmed string value
+     * @throws IllegalArgumentException if the string is null or blank
+     */
+    public static String requireNonBlank(String value, String fieldName) {
+        String str = value != null ? value.trim() : "";
+        if (str.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return str;
+    }
+
+    /**
      * Validates that the given string does not exceed the maximum length.
      *
      * @param value string to check
@@ -82,6 +98,40 @@ public final class ValidationUtils {
         if (value != null && !value.isEmpty() && !ASCII_ONLY_PATTERN.matcher(value).matches()) {
             throw new IllegalArgumentException(fieldName + " must contain only ASCII characters");
         }
+    }
+
+    /**
+     * Validates a string field from a request body map.
+     * Performs null-safety, non-blank check (if required), XSS check, and max-length check.
+     *
+     * @param body the request body map
+     * @param field the field name to extract
+     * @param displayName display name for error messages
+     * @param maxLength maximum allowed length (0 = no limit)
+     * @param required whether the field is required
+     * @return the validated trimmed string, or empty string if not required and missing/null
+     * @throws IllegalArgumentException if validation fails
+     */
+    public static String validateStringField(Map<String, Object> body, String field, String displayName,
+                                             int maxLength, boolean required) {
+        Object value = body.get(field);
+        if (value == null) {
+            if (required) {
+                throw new IllegalArgumentException(displayName + " is required");
+            }
+            return "";
+        }
+        String str = value.toString().trim();
+        if (required && str.isEmpty()) {
+            throw new IllegalArgumentException(displayName + " is required");
+        }
+        if (!str.isEmpty()) {
+            requireNoXssChars(str, displayName);
+            if (maxLength > 0) {
+                requireMaxLength(str, maxLength, displayName);
+            }
+        }
+        return str;
     }
 
     /**

@@ -212,13 +212,9 @@ public class HostGroupService {
      * @throws ConflictException if name or code already exists
      */
     public Map<String, Object> createGroup(Map<String, Object> body) throws BadRequestException, ConflictException {
-        String name = ValidationUtils.requireNonBlank(body, "name", "Group name is required");
-        ValidationUtils.requireNoXssChars(name, "Group name");
-        ValidationUtils.requireMaxLength(name, 100, "Group name");
+        String name = ValidationUtils.validateStringField(body, "name", "Group name", 100, true);
 
-        String code = ValidationUtils.requireNonBlank(body, "code", MSG_CODE_REQUIRED);
-        ValidationUtils.requireNoXssChars(code, "Group code");
-        ValidationUtils.requireMaxLength(code, 50, "Group code");
+        String code = ValidationUtils.validateStringField(body, "code", "Group code", 50, true);
 
         List<Map<String, Object>> allGroups = listGroups();
         boolean nameDuplicate = allGroups.stream()
@@ -233,14 +229,7 @@ public class HostGroupService {
             throw new ConflictException(MSG_CODE_EXISTS);
         }
 
-        Object descObj = body.get("description");
-        if (descObj != null) {
-            String description = descObj.toString().trim();
-            if (!description.isEmpty()) {
-                ValidationUtils.requireNoXssChars(description, "Group description");
-                ValidationUtils.requireMaxLength(description, 500, "Group description");
-            }
-        }
+        ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -279,9 +268,7 @@ public class HostGroupService {
         }
 
         if (body.containsKey("name")) {
-            String newName = ValidationUtils.requireNonBlank(body, "name", "Group name is required");
-            ValidationUtils.requireNoXssChars(newName, "Group name");
-            ValidationUtils.requireMaxLength(newName, 100, "Group name");
+            String newName = ValidationUtils.validateStringField(body, "name", "Group name", 100, true);
 
             List<Map<String, Object>> allGroups = listGroups();
             boolean nameDuplicate = allGroups.stream()
@@ -293,9 +280,7 @@ public class HostGroupService {
             group.put("name", newName);
         }
         if (body.containsKey("code")) {
-            String newCode = ValidationUtils.requireNonBlank(body, "code", MSG_CODE_REQUIRED);
-            ValidationUtils.requireNoXssChars(newCode, "Group code");
-            ValidationUtils.requireMaxLength(newCode, 50, "Group code");
+            String newCode = ValidationUtils.validateStringField(body, "code", "Group code", 50, true);
 
             List<Map<String, Object>> allGroups = listGroups();
             boolean codeDuplicate = allGroups.stream()
@@ -310,15 +295,8 @@ public class HostGroupService {
             group.put("parentId", body.get("parentId"));
         }
         if (body.containsKey("description")) {
-            Object descObj = body.get("description");
-            if (descObj != null) {
-                String description = descObj.toString().trim();
-                if (!description.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(description, "Group description");
-                    ValidationUtils.requireMaxLength(description, 500, "Group description");
-                }
-            }
-            group.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
+            group.put("description", description);
         }
         if (body.containsKey("enabled")) {
             group.put("enabled", body.get("enabled"));

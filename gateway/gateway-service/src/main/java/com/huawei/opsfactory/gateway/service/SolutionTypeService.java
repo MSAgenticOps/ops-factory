@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Manages solution type definitions persisted as JSON files under the gateway data directory.
@@ -40,6 +41,8 @@ public class SolutionTypeService {
     private static final Logger log = LoggerFactory.getLogger(SolutionTypeService.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
     private final GatewayProperties properties;
 
@@ -122,24 +125,15 @@ public class SolutionTypeService {
      * @throws IllegalArgumentException if validation fails or the code already exists
      */
     public Map<String, Object> createSolutionType(Map<String, Object> body) {
-        String name = ValidationUtils.requireNonBlank(body, "name", "Solution type name is required");
-        ValidationUtils.requireMaxLength(name, 100, "Solution type name");
-        ValidationUtils.requireNoXssChars(name, "Solution type name");
-
-        String code = ValidationUtils.requireNonBlank(body, "code", "Solution type code is required");
-        ValidationUtils.requireMaxLength(code, 50, "Solution type code");
-        ValidationUtils.requireNoXssChars(code, "Solution type code");
+        String name = ValidationUtils.validateStringField(body, "name", "Solution type name", 100, true);
+        String code = ValidationUtils.validateStringField(body, "code", "Solution type code", 50, true);
         validateNameAndCodeUnique(name, code, null);
 
-        String description = body.getOrDefault("description", "").toString();
-        ValidationUtils.requireMaxLength(description, 500, "Description");
-        ValidationUtils.requireNoXssChars(description, "Description");
-
-        String knowledge = body.getOrDefault("knowledge", "").toString();
-        ValidationUtils.requireNoXssChars(knowledge, "Knowledge");
+        String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+        String knowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 0, false);
 
         String color = body.getOrDefault("color", "#8b5cf6").toString();
-        if (!color.matches("^#[0-9A-Fa-f]{6}$")) {
+        if (!HEX_COLOR_PATTERN.matcher(color).matches()) {
             color = "#8b5cf6";
         }
 
@@ -179,37 +173,32 @@ public class SolutionTypeService {
         }
 
         if (body.containsKey("name")) {
-            String newName = body.get("name").toString().trim();
-            ValidationUtils.requireNonBlank(Map.of("name", newName), "name", "Solution type name is required");
-            ValidationUtils.requireMaxLength(newName, 100, "Solution type name");
-            ValidationUtils.requireNoXssChars(newName, "Solution type name");
+            String newName = ValidationUtils.validateStringField(body, "name", "Solution type name", 100, true);
             validateNameAndCodeUnique(newName, null, id);
             st.put("name", newName);
         }
         if (body.containsKey("code")) {
-            String newCode = body.get("code").toString().trim();
-            ValidationUtils.requireNonBlank(Map.of("code", newCode), "code", "Solution type code is required");
-            ValidationUtils.requireMaxLength(newCode, 50, "Solution type code");
-            ValidationUtils.requireNoXssChars(newCode, "Solution type code");
+            String newCode = ValidationUtils.validateStringField(body, "code", "Solution type code", 50, true);
             validateNameAndCodeUnique(null, newCode, id);
             st.put("code", newCode);
         }
         if (body.containsKey("description")) {
-            String newDescription = body.get("description").toString();
-            ValidationUtils.requireMaxLength(newDescription, 500, "Description");
-            ValidationUtils.requireNoXssChars(newDescription, "Description");
+            String newDescription = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
             st.put("description", newDescription);
         }
         if (body.containsKey("color")) {
-            String newColor = body.get("color").toString();
-            if (!newColor.matches("^#[0-9A-Fa-f]{6}$")) {
+            Object colorObj = body.get("color");
+            if (colorObj == null) {
+                throw new IllegalArgumentException("Color is required");
+            }
+            String newColor = colorObj.toString();
+            if (!HEX_COLOR_PATTERN.matcher(newColor).matches()) {
                 newColor = "#8b5cf6";
             }
             st.put("color", newColor);
         }
         if (body.containsKey("knowledge")) {
-            String newKnowledge = body.get("knowledge").toString();
-            ValidationUtils.requireNoXssChars(newKnowledge, "Knowledge");
+            String newKnowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 0, false);
             st.put("knowledge", newKnowledge);
         }
 

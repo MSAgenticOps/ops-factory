@@ -67,9 +67,6 @@ public class HostService {
     private static final Pattern IPV4_PATTERN = Pattern.compile(
         "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
 
-    private static final Pattern IPV6_PATTERN = Pattern.compile(
-        "^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4})?:)?((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?))(\\/\\d{1,3})?$");
-
     private final GatewayProperties properties;
 
     private Path gatewayRoot;
@@ -235,7 +232,17 @@ public class HostService {
             return false;
         }
         String trimmed = ip.trim();
-        return IPV4_PATTERN.matcher(trimmed).matches() || IPV6_PATTERN.matcher(trimmed).matches();
+        // IPv4: simple regex, no ReDoS risk
+        if (IPV4_PATTERN.matcher(trimmed).matches()) {
+            return true;
+        }
+        // IPv6: use JDK built-in validation to avoid ReDoS from complex regex
+        try {
+            java.net.InetAddress addr = java.net.InetAddress.getByName(trimmed);
+            return addr instanceof java.net.Inet6Address;
+        } catch (java.net.UnknownHostException e) {
+            return false;
+        }
     }
 
     /**
@@ -258,6 +265,123 @@ public class HostService {
             if (!isValidIp(businessIp)) {
                 throw new BadRequestException("Invalid business IP address: " + businessIp);
             }
+        }
+    }
+
+    /**
+     * Validates common host fields (hostname, os, location, purpose, business, description).
+     *
+     * @param body the request body map
+     */
+    private void validateHostCommonFields(Map<String, Object> body) {
+        if (body.containsKey("hostname")) {
+            ValidationUtils.validateStringField(body, "hostname", "Hostname", 255, false);
+        }
+        if (body.containsKey("os")) {
+            ValidationUtils.validateStringField(body, "os", "OS", 0, false);
+        }
+        if (body.containsKey("location")) {
+            ValidationUtils.validateStringField(body, "location", "Location", 0, false);
+        }
+        if (body.containsKey("purpose")) {
+            ValidationUtils.validateStringField(body, "purpose", "Purpose", 0, false);
+        }
+        if (body.containsKey("business")) {
+            ValidationUtils.validateStringField(body, "business", "Business", 0, false);
+        }
+        if (body.containsKey("description")) {
+            ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+        }
+    }
+
+    /**
+     * Validates username/credential consistency and ASCII constraints.
+     *
+     * @param body the request body map
+     * @param existingHost existing host data for update context; null for create
+     * @throws BadRequestException if validation fails
+     */
+    private void validateHostCredentials(Map<String, Object> body, Map<String, Object> existingHost)
+        throws BadRequestException {
+        boolean isUpdate = existingHost != null;
+        if (isUpdate && !body.containsKey("username") && !body.containsKey("credential")) {
+            return;
+        }
+
+        Object usernameObj = isUpdate && !body.containsKey("username")
+            ? existingHost.get("username") : body.get("username");
+        Object credentialObj = isUpdate && !body.containsKey("credential")
+            ? existingHost.get("credential") : body.get("credential");
+
+        String username = usernameObj != null ? usernameObj.toString().trim() : "";
+        String credential = credentialObj != null ? credentialObj.toString() : "";
+        boolean credentialIsSentinel = "***".equals(credential);
+
+        String credentialForCheck = credential;
+        if (isUpdate && credentialIsSentinel) {
+            Object existingCred = existingHost.get("credential");
+            credentialForCheck = existingCred != null ? existingCred.toString() : "";
+        }
+
+        boolean hasUsername = !username.isEmpty();
+        boolean hasCredential = !credentialForCheck.isEmpty();
+        if (hasUsername != hasCredential) {
+            throw new BadRequestException("Username and credential must be provided together");
+        }
+        if (hasUsername) {
+            ValidationUtils.requireAsciiOnly(username, "Username");
+        }
+        if ((!isUpdate || (body.containsKey("credential") && !credentialIsSentinel)) && hasCredential) {
+            ValidationUtils.requireAsciiOnly(credential, "Credential");
+        }
+    }
+
+    /**
+     * Validates customAttributes key uniqueness.
+     *
+     * @param body the request body map
+     */
+    @SuppressWarnings("unchecked")
+    private void validateHostCustomAttributes(Map<String, Object> body) {
+        if (!body.containsKey("customAttributes")) {
+            return;
+        }
+        Object customAttrsObj = body.get("customAttributes");
+        if (customAttrsObj instanceof List<?>) {
+            List<Map<String, Object>> customAttributes = (List<Map<String, Object>>) customAttrsObj;
+            ValidationUtils.requireUniqueKeys(customAttributes, "key", "Custom attribute keys must be unique");
+        }
+    }
+
+    /**
+     * Checks for IP address duplicates within the same host group.
+     *
+     * @param hostId the host identifier (null for create)
+     * @param ip the IP address to check
+     * @param clusterId the cluster identifier
+     * @throws ConflictException if a duplicate is found
+     * @throws BadRequestException if the cluster ID is invalid
+     */
+    private void checkHostIpDuplicate(String hostId, String ip, String clusterId)
+        throws ConflictException, BadRequestException {
+        if (ip == null || ip.isEmpty() || clusterId == null || clusterId.isEmpty()) {
+            return;
+        }
+        try {
+            Map<String, Object> cluster = clusterService.getCluster(clusterId);
+            String hostGroupId = (String) cluster.get("groupId");
+            if (hostGroupId == null || hostGroupId.isEmpty()) {
+                return;
+            }
+            List<Map<String, Object>> hostsInGroup = listHostsByGroup(hostGroupId, clusterService);
+            boolean ipDuplicate = hostsInGroup.stream()
+                .filter(h -> hostId == null || !hostId.equals(h.get("id")))
+                .anyMatch(h -> ip.equals(h.get("ip")) || ip.equals(h.get("businessIp")));
+            if (ipDuplicate) {
+                throw new ConflictException("IP address already exists in this group");
+            }
+        } catch (NotFoundException e) {
+            throw new BadRequestException("Invalid cluster ID");
         }
     }
 
@@ -445,77 +569,9 @@ public class HostService {
 
         String ip = ValidationUtils.requireNonBlank(body, "ip", "Host IP is required");
 
-        Object hostnameObj = body.get("hostname");
-        if (hostnameObj != null) {
-            String hostname = hostnameObj.toString().trim();
-            if (!hostname.isEmpty()) {
-                ValidationUtils.requireNoXssChars(hostname, "Hostname");
-                ValidationUtils.requireMaxLength(hostname, 255, "Hostname");
-            }
-        }
-
-        Object osObj = body.get("os");
-        if (osObj != null) {
-            String os = osObj.toString().trim();
-            if (!os.isEmpty()) {
-                ValidationUtils.requireNoXssChars(os, "OS");
-            }
-        }
-
-        Object locationObj = body.get("location");
-        if (locationObj != null) {
-            String location = locationObj.toString().trim();
-            if (!location.isEmpty()) {
-                ValidationUtils.requireNoXssChars(location, "Location");
-            }
-        }
-
-        Object purposeObj = body.get("purpose");
-        if (purposeObj != null) {
-            String purpose = purposeObj.toString().trim();
-            if (!purpose.isEmpty()) {
-                ValidationUtils.requireNoXssChars(purpose, "Purpose");
-            }
-        }
-
-        Object businessObj = body.get("business");
-        if (businessObj != null) {
-            String business = businessObj.toString().trim();
-            if (!business.isEmpty()) {
-                ValidationUtils.requireNoXssChars(business, "Business");
-            }
-        }
-
-        Object descObj = body.get("description");
-        if (descObj != null) {
-            String description = descObj.toString().trim();
-            if (!description.isEmpty()) {
-                ValidationUtils.requireNoXssChars(description, "Description");
-                ValidationUtils.requireMaxLength(description, 500, "Description");
-            }
-        }
-
-        Object usernameObj = body.get("username");
-        Object credentialObj = body.get("credential");
-        String username = usernameObj != null ? usernameObj.toString().trim() : "";
-        String credential = credentialObj != null ? credentialObj.toString() : "";
-        boolean hasUsername = !username.isEmpty();
-        boolean hasCredential = !credential.isEmpty();
-        if (hasUsername != hasCredential) {
-            throw new BadRequestException("Username and credential must be provided together");
-        }
-        if (hasUsername) {
-            ValidationUtils.requireAsciiOnly(username, "Username");
-        }
-        if (hasCredential) {
-            ValidationUtils.requireAsciiOnly(credential, "Credential");
-        }
-
-        Object customAttrsObj = body.get("customAttributes");
-        if (customAttrsObj instanceof List<?>) {
-            List<Map<String, Object>> customAttributes = (List<Map<String, Object>>) customAttrsObj;
-            ValidationUtils.requireUniqueKeys(customAttributes, "key", "Custom attribute keys must be unique");
-        }
+        validateHostCommonFields(body);
+        validateHostCredentials(body, null);
+        validateHostCustomAttributes(body);
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -542,6 +598,7 @@ public class HostService {
         host.put("updatedAt", now);
 
         // Encrypt credential
+        Object credentialObj = body.get("credential");
         String rawCredential = credentialObj != null ? credentialObj.toString() : "";
         try {
             host.put("credential", encrypt(rawCredential));
@@ -554,21 +611,7 @@ public class HostService {
 
         Object clusterIdObj = body.get("clusterId");
         if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
-            String clusterId = clusterIdObj.toString();
-            try {
-                Map<String, Object> cluster = clusterService.getCluster(clusterId);
-                String hostGroupId = (String) cluster.get("groupId");
-                if (hostGroupId != null && !hostGroupId.isEmpty()) {
-                    List<Map<String, Object>> hostsInGroup = listHostsByGroup(hostGroupId, clusterService);
-                    boolean ipDuplicate = hostsInGroup.stream()
-                        .anyMatch(h -> ip.equals(h.get("ip")) || ip.equals(h.get("businessIp")));
-                    if (ipDuplicate) {
-                        throw new ConflictException("IP address already exists in this group");
-                    }
-                }
-            } catch (NotFoundException e) {
-                throw new BadRequestException("Invalid cluster ID");
-            }
+            checkHostIpDuplicate(null, ip, clusterIdObj.toString());
         }
 
         syncClusterTypeToTags(host);
@@ -623,82 +666,9 @@ public class HostService {
             host.put("name", newName);
         }
 
-        // hostname validation
-        if (body.containsKey("hostname")) {
-            Object hostnameObj = body.get("hostname");
-            if (hostnameObj != null) {
-                String hostname = hostnameObj.toString().trim();
-                if (!hostname.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(hostname, "Hostname");
-                    ValidationUtils.requireMaxLength(hostname, 255, "Hostname");
-                }
-            }
-        }
-
-        // os validation
-        if (body.containsKey("os")) {
-            Object osObj = body.get("os");
-            if (osObj != null) {
-                String os = osObj.toString().trim();
-                if (!os.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(os, "OS");
-                }
-            }
-        }
-
-        // location validation
-        if (body.containsKey("location")) {
-            Object locationObj = body.get("location");
-            if (locationObj != null) {
-                String location = locationObj.toString().trim();
-                if (!location.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(location, "Location");
-                }
-            }
-        }
-
-        // purpose validation
-        if (body.containsKey("purpose")) {
-            Object purposeObj = body.get("purpose");
-            if (purposeObj != null) {
-                String purpose = purposeObj.toString().trim();
-                if (!purpose.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(purpose, "Purpose");
-                }
-            }
-        }
-
-        // business validation
-        if (body.containsKey("business")) {
-            Object businessObj = body.get("business");
-            if (businessObj != null) {
-                String business = businessObj.toString().trim();
-                if (!business.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(business, "Business");
-                }
-            }
-        }
-
-        // description validation
-        if (body.containsKey("description")) {
-            Object descObj = body.get("description");
-            if (descObj != null) {
-                String description = descObj.toString().trim();
-                if (!description.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(description, "Description");
-                    ValidationUtils.requireMaxLength(description, 500, "Description");
-                }
-            }
-        }
-
-        // customAttributes key uniqueness
-        if (body.containsKey("customAttributes")) {
-            Object customAttrsObj = body.get("customAttributes");
-            if (customAttrsObj instanceof List<?>) {
-                List<Map<String, Object>> customAttributes = (List<Map<String, Object>>) customAttrsObj;
-                ValidationUtils.requireUniqueKeys(customAttributes, "key", "Custom attribute keys must be unique");
-            }
-        }
+        validateHostCommonFields(body);
+        validateHostCredentials(body, host);
+        validateHostCustomAttributes(body);
 
         // Update mutable fields
         for (String field : MUTABLE_FIELDS) {
@@ -729,45 +699,7 @@ public class HostService {
             String ip = ipObj.toString().trim();
             Object clusterIdObj = host.get("clusterId");
             if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
-                String clusterId = clusterIdObj.toString();
-                try {
-                    Map<String, Object> cluster = clusterService.getCluster(clusterId);
-                    String hostGroupId = (String) cluster.get("groupId");
-                    if (hostGroupId != null && !hostGroupId.isEmpty()) {
-                        List<Map<String, Object>> hostsInGroup = listHostsByGroup(hostGroupId, clusterService);
-                        boolean ipDuplicate = hostsInGroup.stream()
-                            .filter(h -> !id.equals(h.get("id")))
-                            .anyMatch(h -> ip.equals(h.get("ip")) || ip.equals(h.get("businessIp")));
-                        if (ipDuplicate) {
-                            throw new ConflictException("IP address already exists in this group");
-                        }
-                    }
-                } catch (NotFoundException e) {
-                    throw new BadRequestException("Invalid cluster ID");
-                }
-            }
-        }
-
-        // username / credential consistency and ASCII
-        if (body.containsKey("username") || body.containsKey("credential")) {
-            Object usernameObj = body.containsKey("username") ? body.get("username") : host.get("username");
-            Object credentialObj = body.containsKey("credential") ? body.get("credential") : host.get("credential");
-            String username = usernameObj != null ? usernameObj.toString().trim() : "";
-            String credential = credentialObj != null ? credentialObj.toString() : "";
-            boolean credentialIsSentinel = "***".equals(credential);
-            String credentialForCheck = credentialIsSentinel
-                ? (host.get("credential") != null ? host.get("credential").toString() : "")
-                : credential;
-            boolean hasUsername = !username.isEmpty();
-            boolean hasCredential = !credentialForCheck.isEmpty();
-            if (hasUsername != hasCredential) {
-                throw new BadRequestException("Username and credential must be provided together");
-            }
-            if (hasUsername) {
-                ValidationUtils.requireAsciiOnly(username, "Username");
-            }
-            if (body.containsKey("credential") && !credentialIsSentinel && hasCredential) {
-                ValidationUtils.requireAsciiOnly(credential, "Credential");
+                checkHostIpDuplicate(id, ip, clusterIdObj.toString());
             }
         }
 

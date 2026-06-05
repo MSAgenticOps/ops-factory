@@ -172,13 +172,9 @@ public class ClusterService {
      * @throws ConflictException if name already exists in the group
      */
     public Map<String, Object> createCluster(Map<String, Object> body) throws ConflictException {
-        String name = ValidationUtils.requireNonBlank(body, "name", "Cluster name is required");
-        ValidationUtils.requireNoXssChars(name, "Cluster name");
-        ValidationUtils.requireMaxLength(name, 100, "Cluster name");
+        String name = ValidationUtils.validateStringField(body, "name", "Cluster name", 100, true);
 
-        String type = ValidationUtils.requireNonBlank(body, "type", "Cluster type is required");
-        ValidationUtils.requireNoXssChars(type, "Cluster type");
-        ValidationUtils.requireMaxLength(type, 100, "Cluster type");
+        String type = ValidationUtils.validateStringField(body, "type", "Cluster type", 100, true);
 
         String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
 
@@ -190,23 +186,8 @@ public class ClusterService {
             throw new ConflictException("Cluster name already exists in this group");
         }
 
-        Object purposeObj = body.get("purpose");
-        if (purposeObj != null) {
-            String purpose = purposeObj.toString().trim();
-            if (!purpose.isEmpty()) {
-                ValidationUtils.requireNoXssChars(purpose, "Cluster purpose");
-                ValidationUtils.requireMaxLength(purpose, 200, "Cluster purpose");
-            }
-        }
-
-        Object descObj = body.get("description");
-        if (descObj != null) {
-            String description = descObj.toString().trim();
-            if (!description.isEmpty()) {
-                ValidationUtils.requireNoXssChars(description, "Cluster description");
-                ValidationUtils.requireMaxLength(description, 500, "Cluster description");
-            }
-        }
+        ValidationUtils.validateStringField(body, "purpose", "Cluster purpose", 200, false);
+        ValidationUtils.validateStringField(body, "description", "Cluster description", 500, false);
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -244,9 +225,7 @@ public class ClusterService {
         }
 
         if (body.containsKey("name")) {
-            String newName = ValidationUtils.requireNonBlank(body, "name", "Cluster name is required");
-            ValidationUtils.requireNoXssChars(newName, "Cluster name");
-            ValidationUtils.requireMaxLength(newName, 100, "Cluster name");
+            String newName = ValidationUtils.validateStringField(body, "name", "Cluster name", 100, true);
 
             Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : cluster.get("groupId");
             String groupId = groupIdObj != null ? groupIdObj.toString() : "";
@@ -260,9 +239,7 @@ public class ClusterService {
             cluster.put("name", newName);
         }
         if (body.containsKey("type")) {
-            String newType = ValidationUtils.requireNonBlank(body, "type", "Cluster type is required");
-            ValidationUtils.requireNoXssChars(newType, "Cluster type");
-            ValidationUtils.requireMaxLength(newType, 100, "Cluster type");
+            String newType = ValidationUtils.validateStringField(body, "type", "Cluster type", 100, true);
             cluster.put("type", newType);
         }
         if (body.containsKey("groupId")) {
@@ -270,26 +247,12 @@ public class ClusterService {
             cluster.put("groupId", newGroupId);
         }
         if (body.containsKey("purpose")) {
-            Object purposeObj = body.get("purpose");
-            if (purposeObj != null) {
-                String purpose = purposeObj.toString().trim();
-                if (!purpose.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(purpose, "Cluster purpose");
-                    ValidationUtils.requireMaxLength(purpose, 200, "Cluster purpose");
-                }
-            }
-            cluster.put("purpose", body.get("purpose"));
+            String purpose = ValidationUtils.validateStringField(body, "purpose", "Cluster purpose", 200, false);
+            cluster.put("purpose", purpose);
         }
         if (body.containsKey("description")) {
-            Object descObj = body.get("description");
-            if (descObj != null) {
-                String description = descObj.toString().trim();
-                if (!description.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(description, "Cluster description");
-                    ValidationUtils.requireMaxLength(description, 500, "Cluster description");
-                }
-            }
-            cluster.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Cluster description", 500, false);
+            cluster.put("description", description);
         }
         if (body.containsKey("enabled")) {
             cluster.put("enabled", body.get("enabled"));

@@ -196,9 +196,7 @@ public class BusinessServiceService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> createBusinessService(Map<String, Object> body) throws ConflictException {
-        String name = ValidationUtils.requireNonBlank(body, "name", "Business service name is required");
-        ValidationUtils.requireNoXssChars(name, "Business service name");
-        ValidationUtils.requireMaxLength(name, 100, "Business service name");
+        String name = ValidationUtils.validateStringField(body, "name", "Business service name", 100, true);
 
         String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
         String businessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
@@ -210,23 +208,8 @@ public class BusinessServiceService {
             throw new ConflictException("Business service name already exists in this group");
         }
 
-        Object codeObj = body.get("code");
-        if (codeObj != null) {
-            String code = codeObj.toString().trim();
-            if (!code.isEmpty()) {
-                ValidationUtils.requireNoXssChars(code, "Business service code");
-                ValidationUtils.requireMaxLength(code, 50, "Business service code");
-            }
-        }
-
-        Object descObj = body.get("description");
-        if (descObj != null) {
-            String description = descObj.toString().trim();
-            if (!description.isEmpty()) {
-                ValidationUtils.requireNoXssChars(description, "Description");
-                ValidationUtils.requireMaxLength(description, 500, "Description");
-            }
-        }
+        ValidationUtils.validateStringField(body, "code", "Business service code", 50, false);
+        ValidationUtils.validateStringField(body, "description", "Description", 500, false);
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -269,9 +252,7 @@ public class BusinessServiceService {
         }
 
         if (body.containsKey("name")) {
-            String newName = ValidationUtils.requireNonBlank(body, "name", "Business service name is required");
-            ValidationUtils.requireNoXssChars(newName, "Business service name");
-            ValidationUtils.requireMaxLength(newName, 100, "Business service name");
+            String newName = ValidationUtils.validateStringField(body, "name", "Business service name", 100, true);
 
             Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : bs.get("groupId");
             String groupId = groupIdObj != null ? groupIdObj.toString() : "";
@@ -285,30 +266,16 @@ public class BusinessServiceService {
             bs.put("name", newName);
         }
         if (body.containsKey("code")) {
-            Object codeObj = body.get("code");
-            if (codeObj != null) {
-                String code = codeObj.toString().trim();
-                if (!code.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(code, "Business service code");
-                    ValidationUtils.requireMaxLength(code, 50, "Business service code");
-                }
-            }
-            bs.put("code", body.get("code"));
+            String code = ValidationUtils.validateStringField(body, "code", "Business service code", 50, false);
+            bs.put("code", code);
         }
         if (body.containsKey("groupId")) {
             String newGroupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
             bs.put("groupId", newGroupId);
         }
         if (body.containsKey("description")) {
-            Object descObj = body.get("description");
-            if (descObj != null) {
-                String description = descObj.toString().trim();
-                if (!description.isEmpty()) {
-                    ValidationUtils.requireNoXssChars(description, "Description");
-                    ValidationUtils.requireMaxLength(description, 500, "Description");
-                }
-            }
-            bs.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+            bs.put("description", description);
         }
         if (body.containsKey("hostIds")) {
             bs.put("hostIds", body.get("hostIds"));
