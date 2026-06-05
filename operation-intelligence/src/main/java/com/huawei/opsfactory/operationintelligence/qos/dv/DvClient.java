@@ -34,7 +34,7 @@ import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
 
 /**
- * Dv Client.
+ * DV Client for querying data from DV (DataView) downstream service.
  *
  * @author x00000000
  * @since 2026-05-11
@@ -85,6 +85,13 @@ public class DvClient {
         this.queryLimit = properties.getCallChain().getQueryLimit();
     }
 
+    /**
+     * Extract text value from JSON node by field name.
+     *
+     * @param node the JSON node
+     * @param field the field name
+     * @return the text value, or null if not present or null
+     */
     private static String textVal(JsonNode node, String field) {
         return node.has(field) && !node.get(field).isNull() ? node.get(field).asText() : null;
     }
@@ -127,6 +134,13 @@ public class DvClient {
 
     // --- 11.3.1 性能指标查询 ---
 
+    /**
+     * Internal implementation of fetching MOs.
+     *
+     * @param env the DV environment info
+     * @param dns the list of DN names
+     * @return the list of child MO names
+     */
     private List<String> doFetchMos(DvEnvironmentInfo env, List<String> dns) {
         try {
             RestClient webClient = getOrCreateRestClient(env);
@@ -172,6 +186,17 @@ public class DvClient {
 
     // --- 11.3.2 当前告警查询（scroll） ---
 
+    /**
+     * Internal implementation of fetching performance data.
+     *
+     * @param env the DV environment info
+     * @param moType the MO type
+     * @param measUnitKey the measurement unit key
+     * @param dns the list of DN names
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @return the list of performance data results
+     */
     private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, String moType, String measUnitKey,
         List<String> dns, long startTime, long endTime) {
         try {
@@ -230,6 +255,16 @@ public class DvClient {
             "fetchCurrentAlarms[" + env.getEnvCode() + "]");
     }
 
+    /**
+     * Internal implementation of fetching current alarms.
+     *
+     * @param env the DV environment info
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param severities the list of severity levels
+     * @param dns the list of DN names
+     * @return the list of alarm info
+     */
     private List<AlarmInfo> doFetchCurrentAlarms(DvEnvironmentInfo env, long startTime, long endTime,
         List<String> severities, List<String> dns) {
         try {
@@ -306,6 +341,12 @@ public class DvClient {
         throw new IllegalStateException(operationName + " failed after " + MAX_RETRIES + " retries", lastException);
     }
 
+    /**
+     * Get or create RestClient for the DV environment.
+     *
+     * @param env the DV environment info
+     * @return the RestClient instance
+     */
     private RestClient getOrCreateRestClient(DvEnvironmentInfo env) {
         return clientCache.computeIfAbsent(env.getServerUrl(), url -> {
             ClientHttpRequestFactory requestFactory;
@@ -340,6 +381,15 @@ public class DvClient {
         clientCache.clear();
     }
 
+    /**
+     * Build alarm query request body.
+     *
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param severities the list of severity levels
+     * @param dns the list of DN names
+     * @return the alarm query request body map
+     */
     private Map<String, Object> buildAlarmQuery(long startTime, long endTime, List<String> severities,
         List<String> dns) {
         List<Map<String, Object>> filters = new ArrayList<>();
@@ -518,6 +568,7 @@ public class DvClient {
      * Fetch TraceLog entries with time range splitting support.
      *
      * @param solutionType the solution type (envCode)
+     * @param solutionId the solution id (for DV must filter)
      * @param chainType the chain type (BES/API/BPM/JOB)
      * @param conditionKey the primary condition key (for backward compatibility)
      * @param conditions the list of conditions (each with conditionKey and conditionValue)
@@ -527,43 +578,55 @@ public class DvClient {
      * @param querySize the query page size
      * @return list of trace log records
      */
-    public List<TraceLogRecord> fetchTraceLogEntries(String solutionType, String chainType, String conditionKey,
-        List<Map<String, String>> conditions,
+    public List<TraceLogRecord> fetchTraceLogEntries(String solutionType, String solutionId, String chainType,
+        String conditionKey, List<Map<String, String>> conditions,
         com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig config, long startTime, long endTime,
         int querySize) {
         DvEnvironmentInfo env = getDvEnvironment(solutionType);
         if (env == null) {
             throw new IllegalArgumentException("No DV environment found for solutionType: " + solutionType);
         }
-        return executeWithRetry(() -> doFetchTraceLogEntries(env, chainType, conditionKey, conditions, config,
-            startTime, endTime, querySize), "fetchTraceLogEntries[" + env.getEnvCode() + "]");
+        return executeWithRetry(() -> doFetchTraceLogEntries(env, solutionId, chainType, conditionKey, conditions,
+            config, startTime, endTime, querySize), "fetchTraceLogEntries[" + env.getEnvCode() + "]");
     }
 
     /**
      * Fetch TraceLog by TraceID.
      *
      * @param solutionType the solution type (envCode)
+     * @param solutionId the solution id (for DV must filter)
      * @param traceId the trace ID
      * @param startTime the start time in milliseconds
      * @param endTime the end time in milliseconds
      * @param querySize the query page size
      * @return list of trace log records
      */
-    public List<TraceLogRecord> fetchByTraceId(String solutionType, String traceId, long startTime, long endTime,
-        int querySize) {
+    public List<TraceLogRecord> fetchByTraceId(String solutionType, String solutionId, String traceId, long startTime,
+        long endTime, int querySize) {
         DvEnvironmentInfo env = getDvEnvironment(solutionType);
         if (env == null) {
             throw new IllegalArgumentException("No DV environment found for solutionType: " + solutionType);
         }
-        return executeWithRetry(() -> doFetchByTraceId(env, traceId, startTime, endTime, querySize),
+        return executeWithRetry(() -> doFetchByTraceId(env, solutionId, traceId, startTime, endTime, querySize),
             "fetchByTraceId[" + env.getEnvCode() + "]");
     }
 
     /**
      * Internal implementation of fetching trace log entries.
+     *
+     * @param env the DV environment info
+     * @param solutionId the solution id (for DV must filter)
+     * @param chainType the chain type
+     * @param conditionKey the primary condition key
+     * @param conditions the list of conditions
+     * @param config the chain type configuration
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param querySize the query page size
+     * @return list of trace log records
      */
-    private List<TraceLogRecord> doFetchTraceLogEntries(DvEnvironmentInfo env, String chainType, String conditionKey,
-        List<Map<String, String>> conditions,
+    private List<TraceLogRecord> doFetchTraceLogEntries(DvEnvironmentInfo env, String solutionId, String chainType,
+        String conditionKey, List<Map<String, String>> conditions,
         com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig config, long startTime, long endTime,
         int querySize) {
         try {
@@ -572,7 +635,7 @@ public class DvClient {
 
             String url = env.getServerUrl() + "/cmp/api/logmatrix/v1/logdata/tracelog";
             Map<String, Object> body = buildTraceLogQuery(chainType, conditionKey, conditions, config,
-                env.getAgentSolutionType(), startTime, endTime, querySize);
+                env.getAgentSolutionType(), solutionId, startTime, endTime, querySize);
 
             String jsonBody = MAPPER.writeValueAsString(body);
             String response = webClient.post()
@@ -595,16 +658,24 @@ public class DvClient {
 
     /**
      * Internal implementation of fetching by trace ID.
+     *
+     * @param env the DV environment info
+     * @param solutionId the solution id (for DV must filter)
+     * @param traceId the trace ID
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param querySize the query page size
+     * @return list of trace log records
      */
-    private List<TraceLogRecord> doFetchByTraceId(DvEnvironmentInfo env, String traceId, long startTime, long endTime,
-        int querySize) {
+    private List<TraceLogRecord> doFetchByTraceId(DvEnvironmentInfo env, String solutionId, String traceId,
+        long startTime, long endTime, int querySize) {
         try {
             RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/cmp/api/logmatrix/v1/logdata/tracelog";
             Map<String, Object> body =
-                buildTraceLogQueryByTraceId(traceId, env.getAgentSolutionType(), startTime, endTime, querySize);
+                buildTraceLogQueryByTraceId(traceId, env.getAgentSolutionType(), solutionId, startTime, endTime, querySize);
 
             String jsonBody = MAPPER.writeValueAsString(body);
 
@@ -633,11 +704,22 @@ public class DvClient {
 
     /**
      * Build tracelog query request body.
+     *
+     * @param chainType the chain type
+     * @param conditionKey the primary condition key
+     * @param conditions the list of conditions
+     * @param config the chain type configuration
+     * @param agentSolutionType the agent solution type
+     * @param solutionId the solution id (for DV must filter)
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param querySize the query page size
+     * @return the query request body map
      */
     private Map<String, Object> buildTraceLogQuery(String chainType, String conditionKey,
         List<Map<String, String>> conditions,
         com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig config, String agentSolutionType,
-        long startTime, long endTime, int querySize) {
+        String solutionId, long startTime, long endTime, int querySize) {
         List<Map<String, Object>> sort = List.of(Map.of("fieldName", "Time", "order", "desc"));
 
         List<Map<String, Object>> customIndex =
@@ -649,6 +731,9 @@ public class DvClient {
 
         // TraceID prefix filter
         must.put("TraceID", chainType + "*");
+
+        // SolutionId filter
+        must.put("SolutionId", solutionId);
 
         // Build AppendInfo filter for entry logs
         // Start with seqNo=1, then append conditions based on conditionKeyOnAppendInfo config
@@ -703,9 +788,17 @@ public class DvClient {
 
     /**
      * Build tracelog query request body by TraceID.
+     *
+     * @param traceId the trace ID
+     * @param agentSolutionType the agent solution type
+     * @param solutionId the solution id (for DV must filter)
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param querySize the query page size
+     * @return the query request body map
      */
-    private Map<String, Object> buildTraceLogQueryByTraceId(String traceId, String agentSolutionType, long startTime,
-        long endTime, int querySize) {
+    private Map<String, Object> buildTraceLogQueryByTraceId(String traceId, String agentSolutionType,
+        String solutionId, long startTime, long endTime, int querySize) {
         List<Map<String, Object>> sort = List.of(Map.of("fieldName", "Time", "order", "desc"));
 
         // Use LinkedHashMap to preserve field order
@@ -720,6 +813,9 @@ public class DvClient {
 
         // Exact TraceID match
         must.put("TraceID", traceId);
+
+        // SolutionId filter
+        must.put("SolutionId", solutionId);
 
         boolCondition.put("must", must);
         fieldCondition.put("boolCondition", boolCondition);
@@ -740,6 +836,9 @@ public class DvClient {
 
     /**
      * Format timestamp to DV time format.
+     *
+     * @param timestamp the timestamp in milliseconds
+     * @return the formatted time string
      */
     private String formatTime(long timestamp) {
         java.time.Instant instant = java.time.Instant.ofEpochMilli(timestamp);
@@ -750,6 +849,9 @@ public class DvClient {
 
     /**
      * Parse tracelog API response.
+     *
+     * @param response the response string
+     * @return the list of trace log records
      */
     private List<TraceLogRecord> parseTraceLogResponse(String response) {
         List<TraceLogRecord> results = new ArrayList<>();
@@ -807,6 +909,9 @@ public class DvClient {
 
     /**
      * Parse AppendInfo into record.
+     *
+     * @param record the trace log record to populate
+     * @param appendInfo the AppendInfo string
      */
     private void parseAppendInfo(TraceLogRecord record, String appendInfo) {
         String[] parts = appendInfo.split(",");
@@ -844,6 +949,9 @@ public class DvClient {
 
     /**
      * Parse cost string to Long.
+     *
+     * @param cost the cost string
+     * @return the parsed cost value, or null if invalid
      */
     private Long parseCost(String cost) {
         if (cost == null || cost.isEmpty()) {
@@ -862,6 +970,9 @@ public class DvClient {
 
     /**
      * Return null if value is "null" string.
+     *
+     * @param value the input value
+     * @return the value, or null if the input is "null" string
      */
     private String safeValue(String value) {
         return (value != null && !value.equals("null")) ? value : null;
