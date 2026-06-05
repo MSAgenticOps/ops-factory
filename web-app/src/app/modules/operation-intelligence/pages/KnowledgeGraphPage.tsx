@@ -2161,14 +2161,14 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         }
     }
 
-    const handleSelectResourceEntity = (entity: GraphEntity) => {
+    const handleSelectResourceEntity = useCallback((entity: GraphEntity) => {
         const fullEntity = snapshot?.entities.find(item => item.id === entity.id) ?? entity
         setEntityId(fullEntity.id)
         setEntityQuery('')
         setSelectedResourceEntity(fullEntity)
-    }
+    }, [snapshot])
 
-    const handleSelectEntityGraphNode = (nodeId: string | null) => {
+    const handleSelectEntityGraphNode = useCallback((nodeId: string | null) => {
         setSelectedEntityNodeId(nodeId)
         if (!nodeId) {
             return
@@ -2189,7 +2189,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         if (graphEntity) {
             handleSelectResourceEntity(graphEntity)
         }
-    }
+    }, [entitySubgraph.nodes, expandedEntityGraphNodeIds, handleSelectResourceEntity, subgraph])
 
     const handleSelectResourceGroup = (groupId: string) => {
         setSelectedResourceTreeItem({ kind: 'group', groupId })
@@ -3192,7 +3192,7 @@ function GraphCanvas({
         }, {}))
         onSelectNode(null)
         setSelectedEdgeId(null)
-    }, [nodes, onSelectNode])
+    }, [nodes])
 
     useEffect(() => {
         const container = scrollContainerRef.current
