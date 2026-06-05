@@ -5,7 +5,6 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -126,9 +125,6 @@ public class SopService {
     public Map<String, Object> createSop(Map<String, Object> body) {
         String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
         validateSopNameUnique(name, null);
-        String targetSolution = body.getOrDefault("targetSolution", "universal") != null
-                ? body.getOrDefault("targetSolution", "universal").toString() : "universal";
-        validateTargetSolution(targetSolution);
         String id = UUID.randomUUID().toString();
 
         Map<String, Object> sop = new LinkedHashMap<>();
@@ -139,7 +135,8 @@ public class SopService {
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
         sop.put("enabled", body.getOrDefault("enabled", true));
         sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("targetSolution", targetSolution);
+        sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(
+            body.getOrDefault("targetSolution", "universal")));
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeSopFile(id, sop);
@@ -182,9 +179,7 @@ public class SopService {
             sop.put("stepsDescription", body.get("stepsDescription"));
         }
         if (body.containsKey("targetSolution")) {
-            String newTargetSolution = body.get("targetSolution").toString();
-            validateTargetSolution(newTargetSolution);
-            sop.put("targetSolution", newTargetSolution);
+            sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(body.get("targetSolution")));
         }
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
@@ -216,30 +211,9 @@ public class SopService {
         }
     }
 
-    /**
-     * Validates that the target solution code exists among defined solution types.
-     * The value "universal" is always considered valid.
-     *
-     * @param targetSolution the target solution code to validate
-     * @throws IllegalArgumentException if the solution code is not found
-     */
-    private void validateTargetSolution(String targetSolution) {
-        if (targetSolution == null || targetSolution.isBlank() || "universal".equalsIgnoreCase(targetSolution)) {
-            return;
-        }
-        List<Map<String, Object>> types = solutionTypeService.listSolutionTypes();
-        boolean found = false;
-        for (Map<String, Object> st : types) {
-            String code = st.get("code") != null ? st.get("code").toString() : "";
-            if (targetSolution.equalsIgnoreCase(code)) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            throw new IllegalArgumentException("Target solution not found: " + targetSolution);
-        }
-    }
+    // ── Validation ────────────────────────────────────────────────
+
+    // ── Name Uniqueness Validation ────────────────────────────────
 
     /**
      * Validates that the SOP name is unique among existing SOP documents.

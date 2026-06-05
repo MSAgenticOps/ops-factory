@@ -18,6 +18,8 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.SopService;
+import com.huawei.opsfactory.gateway.service.SolutionTypeService;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,7 +58,10 @@ public class SopControllerTest {
     private SopService sopService;
 
     @MockBean
-    private com.huawei.opsfactory.gateway.process.PrewarmService prewarmService;
+    private SolutionTypeService solutionTypeService;
+
+    @MockBean
+    private PrewarmService prewarmService;
 
     // ── listSops ─────────────────────────────────────────────────
 

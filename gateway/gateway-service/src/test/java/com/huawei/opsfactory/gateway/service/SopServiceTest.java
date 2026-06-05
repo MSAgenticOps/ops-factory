@@ -8,7 +8,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
@@ -17,7 +16,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -53,12 +51,7 @@ public class SopServiceTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
 
-        SolutionTypeService solutionTypeService = Mockito.mock(SolutionTypeService.class);
-        when(solutionTypeService.listSolutionTypes()).thenReturn(List.of(
-            Map.of("code", "crm-commerce", "name", "CRM Commerce"),
-            Map.of("code", "cbs-billing", "name", "CBS Billing")
-        ));
-        sopService = new SopService(properties, solutionTypeService);
+        sopService = new SopService(properties, new SolutionTypeService(properties));
         sopService.init();
 
         sopsDir = Path.of(tempFolder.getRoot().getAbsolutePath())
@@ -142,7 +135,7 @@ public class SopServiceTest {
         body.put("version", "2.0.0");
         body.put("triggerCondition", "RCPA进程异常");
         body.put("stepsDescription", "1. 检查RCPA进程状态");
-        body.put("targetSolution", "crm-commerce");
+        body.put("targetSolution", "universal");
 
         Map<String, Object> result = sopService.createSop(body);
 
@@ -152,7 +145,7 @@ public class SopServiceTest {
         assertEquals("2.0.0", result.get("version"));
         assertEquals("RCPA进程异常", result.get("triggerCondition"));
         assertEquals("1. 检查RCPA进程状态", result.get("stepsDescription"));
-        assertEquals("crm-commerce", result.get("targetSolution"));
+        assertEquals("universal", result.get("targetSolution"));
     }
 
     /**
@@ -228,11 +221,11 @@ public class SopServiceTest {
         String id = (String) created.get("id");
 
         Map<String, Object> updates = new LinkedHashMap<>();
-        updates.put("targetSolution", "cbs-billing");
+        updates.put("targetSolution", "universal");
         updates.put("stepsDescription", "Updated steps");
 
         Map<String, Object> result = sopService.updateSop(id, updates);
-        assertEquals("cbs-billing", result.get("targetSolution"));
+        assertEquals("universal", result.get("targetSolution"));
         assertEquals("Updated steps", result.get("stepsDescription"));
     }
 

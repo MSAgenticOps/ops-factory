@@ -129,7 +129,7 @@ public class SolutionTypeService {
         String code = ValidationUtils.requireNonBlank(body, "code", "Solution type code is required");
         ValidationUtils.requireMaxLength(code, 50, "Solution type code");
         ValidationUtils.requireNoXssChars(code, "Solution type code");
-        validateSolutionTypeCodeUnique(code, null);
+        validateNameAndCodeUnique(name, code, null);
 
         String description = body.getOrDefault("description", "").toString();
         ValidationUtils.requireMaxLength(description, 500, "Description");
@@ -183,6 +183,7 @@ public class SolutionTypeService {
             ValidationUtils.requireNonBlank(Map.of("name", newName), "name", "Solution type name is required");
             ValidationUtils.requireMaxLength(newName, 100, "Solution type name");
             ValidationUtils.requireNoXssChars(newName, "Solution type name");
+            validateNameAndCodeUnique(newName, null, id);
             st.put("name", newName);
         }
         if (body.containsKey("code")) {
@@ -190,7 +191,7 @@ public class SolutionTypeService {
             ValidationUtils.requireNonBlank(Map.of("code", newCode), "code", "Solution type code is required");
             ValidationUtils.requireMaxLength(newCode, 50, "Solution type code");
             ValidationUtils.requireNoXssChars(newCode, "Solution type code");
-            validateSolutionTypeCodeUnique(newCode, id);
+            validateNameAndCodeUnique(null, newCode, id);
             st.put("code", newCode);
         }
         if (body.containsKey("description")) {
@@ -239,6 +240,52 @@ public class SolutionTypeService {
         }
     }
 
+    // ── Validation ────────────────────────────────────────────────────
+
+    private void validateNameAndCodeUnique(String name, String code, String excludeId) {
+        List<Map<String, Object>> existing = listSolutionTypes();
+        for (Map<String, Object> st : existing) {
+            String existingId = st.get("id") != null ? st.get("id").toString() : "";
+            if (excludeId != null && existingId.equals(excludeId)) {
+                continue;
+            }
+            if (name != null && !name.isBlank()) {
+                String existingName = st.get("name") != null ? st.get("name").toString() : "";
+                if (name.equalsIgnoreCase(existingName)) {
+                    throw new IllegalArgumentException("Solution type name already exists: " + name);
+                }
+            }
+            if (code != null && !code.isBlank()) {
+                String existingCode = st.get("code") != null ? st.get("code").toString() : "";
+                if (code.equalsIgnoreCase(existingCode)) {
+                    throw new IllegalArgumentException("Solution type code already exists: " + code);
+                }
+            }
+        }
+    }
+
+    /**
+     * Validates a referenced solution type, allowing the universal default.
+     *
+     * @param value referenced solution type id or {@code null}
+     * @return normalized solution type id
+     */
+    public String validateSolutionTypeReference(Object value) {
+        if (value == null) {
+            return "universal";
+        }
+        String solutionType = value.toString();
+        if ("universal".equals(solutionType)) {
+            return solutionType;
+        }
+        try {
+            getSolutionType(solutionType);
+        } catch (NotFoundException e) {
+            throw new IllegalArgumentException("Solution type not found: " + solutionType, e);
+        }
+        return solutionType;
+    }
+
     // ── File I/O Helpers ─────────────────────────────────────────────
 
     /**
@@ -257,29 +304,6 @@ public class SolutionTypeService {
         } catch (IOException e) {
             log.error("Failed to read solution-type file: {}", file, e);
             return null;
-        }
-    }
-
-    // ── Code Uniqueness Validation ──────────────────────────────────
-
-    /**
-     * Validates that the solution type code is unique among existing solution types.
-     *
-     * @param code the solution type code to validate
-     * @param excludeId the ID of the solution type to exclude from the check (for updates)
-     * @throws IllegalArgumentException if the code already exists
-     */
-    private void validateSolutionTypeCodeUnique(String code, String excludeId) {
-        if (code == null || code.isBlank()) {
-            throw new IllegalArgumentException("Solution type code is required");
-        }
-        List<Map<String, Object>> existing = listSolutionTypes();
-        for (Map<String, Object> st : existing) {
-            String existingCode = st.get("code") != null ? st.get("code").toString() : "";
-            String existingId = st.get("id") != null ? st.get("id").toString() : "";
-            if (code.equalsIgnoreCase(existingCode) && !existingId.equals(excludeId)) {
-                throw new IllegalArgumentException("Solution type code already exists: " + code);
-            }
         }
     }
 

@@ -14,6 +14,7 @@ export function useSolutionTypes() {
         setLoading(true)
         try {
             const res = await fetch(apiBase(), { headers: gatewayHeaders(userId) })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data = await res.json()
             setSolutionTypes(data.solutionTypes || [])
         } catch (err) {
@@ -28,9 +29,10 @@ export function useSolutionTypes() {
     const createSolutionType = useCallback(async (body: Partial<SolutionType>) => {
         const res = await fetch(apiBase(), {
             method: 'POST',
-            headers: gatewayHeaders(userId),
+            headers: { ...gatewayHeaders(userId), 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (data.success) {
             await fetchSolutionTypes()
@@ -42,9 +44,10 @@ export function useSolutionTypes() {
     const updateSolutionType = useCallback(async (id: string, body: Partial<SolutionType>) => {
         const res = await fetch(`${apiBase()}/${id}`, {
             method: 'PUT',
-            headers: gatewayHeaders(userId),
+            headers: { ...gatewayHeaders(userId), 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (data.success) {
             await fetchSolutionTypes()
@@ -58,6 +61,7 @@ export function useSolutionTypes() {
             method: 'DELETE',
             headers: gatewayHeaders(userId),
         })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (data.success) {
             await fetchSolutionTypes()

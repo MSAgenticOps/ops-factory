@@ -44,13 +44,16 @@ public class ClusterTypeService {
 
     private final GatewayProperties properties;
 
+    private final SolutionTypeService solutionTypeService;
+
     private Path clusterTypesDir;
 
     /**
      * Creates the cluster type service instance.
      */
-    public ClusterTypeService(GatewayProperties properties) {
+    public ClusterTypeService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
+        this.solutionTypeService = solutionTypeService;
     }
 
     /**
@@ -131,7 +134,8 @@ public class ClusterTypeService {
         ct.put("commandPrefix", body.getOrDefault("commandPrefix", null));
         ct.put("envVariables", body.getOrDefault("envVariables", null));
         ct.put("mode", body.getOrDefault("mode", "peer"));
-        ct.put("solutionType", body.getOrDefault("solutionType", "universal"));
+        ct.put("solutionType", solutionTypeService.validateSolutionTypeReference(
+            body.getOrDefault("solutionType", "universal")));
         ct.put("createdAt", now);
         ct.put("updatedAt", now);
 
@@ -184,7 +188,7 @@ public class ClusterTypeService {
             ct.put("mode", mode);
         }
         if (body.containsKey("solutionType")) {
-            ct.put("solutionType", body.get("solutionType"));
+            ct.put("solutionType", solutionTypeService.validateSolutionTypeReference(body.get("solutionType")));
         }
 
         ct.put("updatedAt", Instant.now().toString());
@@ -213,6 +217,8 @@ public class ClusterTypeService {
             return false;
         }
     }
+
+    // ── Validation ──────────────────────────────────────────────────
 
     // ── File I/O Helpers ─────────────────────────────────────────────
 

@@ -462,8 +462,8 @@ public class FileService {
      * @return true if the MIME type should be displayed inline
      */
     public boolean isInline(String mimeType) {
-        return mimeType.startsWith("text/") || mimeType.startsWith("image/") || "application/json".equals(mimeType)
-            || "application/pdf".equals(mimeType);
+        return mimeType != null && (mimeType.startsWith("text/") || mimeType.startsWith("image/")
+            || "application/json".equals(mimeType) || "application/pdf".equals(mimeType));
     }
 
     // ── File capsule persistence ────────────────────────────────────────
