@@ -36,6 +36,7 @@ load_config() {
         echo -e "  OI JAR: ${OI_JAR}"
         echo -e "  CC JAR: ${CC_JAR}"
         echo -e "  KS JAR: ${KS_JAR}"
+        echo -e "  SM JAR: ${SM_JAR}"
         echo -e "  ROOT_PASSWORD: ${ROOT_PASSWORD:0:8}****"
         echo -e "  日志级别: ${LOG_LEVEL}"
         echo ""
@@ -133,6 +134,11 @@ validate_source_files() {
         KS_JAR=""
     fi
 
+    if [ ! -f "${SOURCE_DIR}${SM_JAR}" ]; then
+        print_warning "Skill Market JAR不存在: ${SOURCE_DIR}${SM_JAR}，将跳过SM部署"
+        SM_JAR=""
+    fi
+
     print_success "源文件验证通过"
 }
 
@@ -153,10 +159,11 @@ show_operations() {
     echo "  7. 部署 dv_server.py mock 服务"
     echo "  8. 部署 control-center（复制 JAR、合并配置）"
     echo "  9. 部署 knowledge-service（复制 JAR、合并配置）"
-    echo "  10. 合并 gateway config.yaml（保留环境特有的 server 设置）"
-    echo "  11. 复制 webapp"
-    echo "  12. 设置文件权限"
-    echo "  13. 重启所有服务（gateway + OI + dv_server + CC + KS + webapp）"
+    echo "  10. 部署 skill-market（复制 JAR、合并配置）"
+    echo "  11. 合并 gateway config.yaml（保留环境特有的 server 设置）"
+    echo "  12. 复制 webapp"
+    echo "  13. 设置文件权限"
+    echo "  14. 重启所有服务（gateway + OI + dv_server + CC + KS + SM + webapp）"
     echo ""
 }
 
@@ -216,16 +223,18 @@ tar zcvf "backup_${timestamp}.tar.gz" \
     --exclude='*/config.yaml.bak*' \
     --exclude='*/.bak' \
     webapp \
-    gateway/gateway/gateway-service.jar \
-    gateway/gateway/lib/ \
-    gateway/gateway/agents/ \
-    gateway/gateway/config.yaml \
+    gateway/gateway-service.jar \
+    gateway/lib/ \
+    gateway/agents/ \
+    gateway/config.yaml \
     operation-intelligence/operation-intelligence.jar \
     operation-intelligence/config.yaml \
     control-center/config.yaml \
     control-center/control-center.jar \
     knowledge-service/config.yaml \
-    knowledge-service/knowledge-service.jar
+    knowledge-service/knowledge-service.jar \
+    skill-market/config.yaml \
+    skill-market/skill-market.jar
 mv "backup_${timestamp}.tar.gz" "${BACKUP_DIR}"
 
 echo "保留最近5个备份文件..."
@@ -237,6 +246,7 @@ find "${TARGET_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f | xargs ls -t 
 find "${TARGET_OI_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
 find "${TARGET_CC_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
 find "${TARGET_KS_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
+find "${TARGET_SM_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
 
 # 3. 复制 gateway-service.jar
 echo "正在复制 ${GATEWAY_JAR}..."
@@ -382,7 +392,29 @@ if [ -n "${KS_JAR}" ] && [ -f "${SOURCE_DIR}${KS_JAR}" ]; then
     chmod 600 "${TARGET_KS_DIR}${KS_JAR}"
 fi
 
-# 10. 处理 Gateway config.yaml
+# 10. 部署 skill-market
+if [ -n "${SM_JAR}" ] && [ -f "${SOURCE_DIR}${SM_JAR}" ]; then
+    echo "正在部署 skill-market..."
+    mkdir -p "${TARGET_SM_DIR}"
+
+    # 备份旧配置
+    if [ -f "${TARGET_SM_DIR}config.yaml" ]; then
+        cp "${TARGET_SM_DIR}config.yaml" "${TARGET_SM_DIR}config.yaml.bak.${timestamp}"
+    fi
+
+    # 复制新 JAR
+    echo "yes" | cp "${SOURCE_DIR}${SM_JAR}" "${TARGET_SM_DIR}${SM_JAR}"
+
+    # 直接替换配置
+    if [ -f "${SOURCE_DIR}${SM_CONFIG_EXAMPLE}" ]; then
+        echo "yes" | cp "${SOURCE_DIR}${SM_CONFIG_EXAMPLE}" "${TARGET_SM_DIR}config.yaml"
+    fi
+
+    chown root:root "${TARGET_SM_DIR}${SM_JAR}"
+    chmod 600 "${TARGET_SM_DIR}${SM_JAR}"
+fi
+
+# 11. 处理 Gateway config.yaml
 echo "正在处理 Gateway config.yaml..."
 # 备份旧配置
 if [ -f "${TARGET_DIR}config.yaml" ]; then
@@ -425,6 +457,8 @@ echo "正在停止CC进程..."
 eval "${KILL_CC_COMMAND}" || true
 echo "正在停止KS进程..."
 eval "${KILL_KS_COMMAND}" || true
+echo "正在停止SM进程..."
+eval "${KILL_SM_COMMAND}" || true
 echo "正在停止WEBAPP进程..."
 eval "${KILL_WEBAPP_COMMAND}" || true
 pkill -9 goosed 2>/dev/null || true
@@ -466,6 +500,14 @@ if [ -f "${TARGET_KS_DIR}${KS_JAR}" ]; then
     echo "正在启动 knowledge-service 服务..."
     cd "${TARGET_KS_DIR}"
     nohup java -jar ${KS_JAR} --spring.config.location=config.yaml > ks.log 2>&1 &
+    sleep 5
+fi
+
+# 启动 skill-market 服务
+if [ -f "${TARGET_SM_DIR}${SM_JAR}" ]; then
+    echo "正在启动 skill-market 服务..."
+    cd "${TARGET_SM_DIR}"
+    nohup java -jar ${SM_JAR} --spring.config.location=config.yaml > sm.log 2>&1 &
     sleep 5
 fi
 
@@ -587,6 +629,15 @@ EOF
             ps -ef | grep "knowledge-service.jar" | grep -v grep
         else
             print_warning "Knowledge Service服务未运行，请检查日志"
+        fi
+
+        print_info "检查skill-market服务状态..."
+        if pgrep -f "skill-market.jar" > /dev/null; then
+            print_success "Skill Market服务正在运行"
+            echo "进程信息："
+            ps -ef | grep "skill-market.jar" | grep -v grep
+        else
+            print_warning "Skill Market服务未运行，请检查日志"
         fi
     else
         echo ""
