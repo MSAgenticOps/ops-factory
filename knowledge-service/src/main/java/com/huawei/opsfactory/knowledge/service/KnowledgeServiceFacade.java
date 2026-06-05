@@ -949,6 +949,13 @@ public class KnowledgeServiceFacade {
      * @param pageSize the number of items per page
      * @return a paginated response of index profile summaries
      */
+    /**
+     * Lists all index profiles with pagination.
+     *
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of index profile summaries
+     */
     public PageResponse<ProfileController.ProfileSummary> listIndexProfiles(int page, int pageSize) {
         List<ProfileController.ProfileSummary> items = profileRepository.findAllIndex().stream()
             .map(this::toProfileSummary)
@@ -963,6 +970,13 @@ public class KnowledgeServiceFacade {
      * @param pageSize the number of items per page
      * @return a paginated response of retrieval profile summaries
      */
+    /**
+     * Lists all retrieval profiles with pagination.
+     *
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of retrieval profile summaries
+     */
     public PageResponse<ProfileController.ProfileSummary> listRetrievalProfiles(int page, int pageSize) {
         List<ProfileController.ProfileSummary> items = profileRepository.findAllRetrieval().stream()
             .map(this::toProfileSummary)
@@ -970,6 +984,15 @@ public class KnowledgeServiceFacade {
         return page(items, page, pageSize);
     }
 
+    /**
+     * Creates a new index profile.
+     *
+     * @param request the create profile request
+     * @return the created profile detail
+     * @throws IllegalArgumentException if the profile name is invalid
+     * @throws IllegalStateException if the profile config is invalid
+     * @throws ApiConflictException if the profile name already exists
+     */
     /**
      * Creates a new index profile.
      *
@@ -1008,6 +1031,14 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the profile name is invalid
      * @throws ApiConflictException if the profile name already exists
      */
+    /**
+     * Creates a new retrieval profile.
+     *
+     * @param request the create profile request
+     * @return the created profile detail
+     * @throws IllegalArgumentException if the profile name is invalid
+     * @throws ApiConflictException if the profile name already exists
+     */
     @Transactional
     public ProfileController.ProfileDetail createRetrievalProfile(ProfileController.CreateProfileRequest request) {
         Instant now = Instant.now();
@@ -1035,11 +1066,25 @@ public class KnowledgeServiceFacade {
      * @return the profile detail
      * @throws IllegalArgumentException if the profile is not found
      */
+    /**
+     * Retrieves an index profile by its identifier.
+     *
+     * @param id the profile identifier
+     * @return the profile detail
+     * @throws IllegalArgumentException if the profile is not found
+     */
     public ProfileController.ProfileDetail getIndexProfile(String id) {
         ProfileRepository.ProfileRecord record = profileRepository.findIndexById(id).orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + id));
         return toProfileDetail(record);
     }
 
+    /**
+     * Retrieves a retrieval profile by its identifier.
+     *
+     * @param id the profile identifier
+     * @return the profile detail
+     * @throws IllegalArgumentException if the profile is not found
+     */
     /**
      * Retrieves a retrieval profile by its identifier.
      *
@@ -1061,6 +1106,16 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the profile is not found
      * @throws ApiConflictException if the profile is read-only or name already exists
      * @throws IllegalStateException if the profile config is invalid
+     */
+    /**
+     * Updates an existing index profile.
+     *
+     * @param id the profile identifier
+     * @param request the update profile request
+     * @return the update response
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws IllegalStateException if the profile config is invalid
+     * @throws ApiConflictException if the profile is read-only or name already exists
      */
     @Transactional
     public ProfileController.ProfileUpdateResponse updateIndexProfile(String id, ProfileController.UpdateProfileRequest request) {
@@ -1087,6 +1142,15 @@ public class KnowledgeServiceFacade {
         return new ProfileController.ProfileUpdateResponse(id, updated.name(), updated.updatedAt());
     }
 
+    /**
+     * Updates an existing retrieval profile.
+     *
+     * @param id the profile identifier
+     * @param request the update profile request
+     * @return the update response
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws ApiConflictException if the profile is read-only or name already exists
+     */
     @Transactional
     public ProfileController.ProfileUpdateResponse updateRetrievalProfile(String id, ProfileController.UpdateProfileRequest request) {
         ProfileRepository.ProfileRecord existing = profileRepository.findRetrievalById(id).orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + id));
@@ -1108,6 +1172,15 @@ public class KnowledgeServiceFacade {
         return new ProfileController.ProfileUpdateResponse(id, updated.name(), updated.updatedAt());
     }
 
+    /**
+     * Deletes an index profile by its identifier.
+     *
+     * @param id the profile identifier
+     * @return the deletion response
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws IllegalStateException if the profile is still bound to a source
+     * @throws ApiConflictException if the profile is read-only
+     */
     @Transactional
     public ProfileController.DeleteProfileResponse deleteIndexProfile(String id) {
         ensureProfileMutable(
@@ -1119,6 +1192,15 @@ public class KnowledgeServiceFacade {
         return new ProfileController.DeleteProfileResponse(id, true);
     }
 
+    /**
+     * Deletes a retrieval profile by its identifier.
+     *
+     * @param id the profile identifier
+     * @return the deletion response
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws IllegalStateException if the profile is still bound to a source
+     * @throws ApiConflictException if the profile is read-only
+     */
     @Transactional
     public ProfileController.DeleteProfileResponse deleteRetrievalProfile(String id) {
         ensureProfileMutable(
@@ -1130,6 +1212,13 @@ public class KnowledgeServiceFacade {
         return new ProfileController.DeleteProfileResponse(id, true);
     }
 
+    /**
+     * Lists all profile bindings with pagination.
+     *
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of profile bindings
+     */
     public PageResponse<ProfileController.BindingResponse> listBindings(int page, int pageSize) {
         List<ProfileController.BindingResponse> items = bindingRepository.findAll().stream()
             .map(b -> new ProfileController.BindingResponse(b.sourceId(), b.indexProfileId(), b.retrievalProfileId(), b.updatedAt()))
@@ -1137,6 +1226,14 @@ public class KnowledgeServiceFacade {
         return page(items, page, pageSize);
     }
 
+    /**
+     * Binds index and retrieval profiles to a knowledge source.
+     *
+     * @param request the binding request containing source id and profile ids
+     * @return the binding response
+     * @throws IllegalArgumentException if the source or profiles are not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public ProfileController.BindingResponse bindProfiles(ProfileController.BindingRequest request) {
         SourceRepository.SourceRecord source = sourceRepository.findById(request.sourceId())
@@ -1155,6 +1252,14 @@ public class KnowledgeServiceFacade {
         return new ProfileController.BindingResponse(request.sourceId(), request.indexProfileId(), request.retrievalProfileId(), now);
     }
 
+    /**
+     * Triggers a full rebuild of a knowledge source, re-parsing and re-indexing all documents.
+     *
+     * @param sourceId the source identifier
+     * @return the rebuild response containing job id and status
+     * @throws IllegalArgumentException if the source is not found
+     * @throws ApiConflictException if the source is already in maintenance
+     */
     @Transactional
     public SourceController.RebuildSourceResponse rebuildSource(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
@@ -1174,6 +1279,13 @@ public class KnowledgeServiceFacade {
         return new SourceController.RebuildSourceResponse(job.id(), sourceId, "RUNNING");
     }
 
+    /**
+     * Retrieves the maintenance overview for a knowledge source, including current and last completed rebuild jobs.
+     *
+     * @param sourceId the source identifier
+     * @return the maintenance overview response
+     * @throws IllegalArgumentException if the source is not found
+     */
     public SourceController.MaintenanceOverviewResponse maintenanceOverview(String sourceId) {
         sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
@@ -1192,6 +1304,15 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Partially updates the profile binding for a knowledge source.
+     *
+     * @param sourceId the source identifier
+     * @param request the patch request containing optional index and retrieval profile ids
+     * @return the updated binding response
+     * @throws IllegalArgumentException if the binding or source is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     public ProfileController.BindingResponse updateBinding(String sourceId, ProfileController.BindingPatchRequest request) {
         BindingRepository.BindingRecord existingBinding = bindingRepository.findBySourceId(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Binding not found for source: " + sourceId));
@@ -1202,6 +1323,13 @@ public class KnowledgeServiceFacade {
         ));
     }
 
+    /**
+     * Retrieves the index profile configuration for a knowledge source.
+     *
+     * @param sourceId the source identifier
+     * @return the source index profile configuration response
+     * @throws IllegalArgumentException if the source or index profile is not found
+     */
     public SourceController.SourceProfileConfigResponse getSourceIndexProfileConfig(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
@@ -1210,6 +1338,16 @@ public class KnowledgeServiceFacade {
         return toSourceProfileConfigResponse(source, profile, false);
     }
 
+    /**
+     * Updates the index profile configuration for a knowledge source, forking from default if necessary.
+     *
+     * @param sourceId the source identifier
+     * @param request the update request containing optional name and config overrides
+     * @return the updated source index profile configuration response
+     * @throws IllegalArgumentException if the source or index profile is not found
+     * @throws IllegalStateException if the profile config is invalid
+     * @throws ApiConflictException if the source is in maintenance or error state, or profile name already exists
+     */
     @Transactional
     public SourceController.SourceProfileConfigResponse putSourceIndexProfileConfig(
         String sourceId,
@@ -1274,6 +1412,15 @@ public class KnowledgeServiceFacade {
         return toSourceProfileConfigResponse(updatedSource, updated, createdFromDefault);
     }
 
+    /**
+     * Resets the index profile configuration for a knowledge source to the system default.
+     *
+     * @param sourceId the source identifier
+     * @return the reset source index profile configuration response
+     * @throws IllegalArgumentException if the source or index profile is not found
+     * @throws IllegalStateException if the system default index profile is unavailable
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public SourceController.SourceProfileConfigResponse resetSourceIndexProfileConfig(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
@@ -1307,6 +1454,13 @@ public class KnowledgeServiceFacade {
         return toSourceProfileConfigResponse(updatedSource, defaultProfile, false);
     }
 
+    /**
+     * Retrieves the retrieval profile configuration for a knowledge source.
+     *
+     * @param sourceId the source identifier
+     * @return the source retrieval profile configuration response
+     * @throws IllegalArgumentException if the source or retrieval profile is not found
+     */
     public SourceController.SourceProfileConfigResponse getSourceRetrievalProfileConfig(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
@@ -1315,6 +1469,15 @@ public class KnowledgeServiceFacade {
         return toSourceProfileConfigResponse(source, profile, false);
     }
 
+    /**
+     * Updates the retrieval profile configuration for a knowledge source, forking from default if necessary.
+     *
+     * @param sourceId the source identifier
+     * @param request the update request containing optional name and config overrides
+     * @return the updated source retrieval profile configuration response
+     * @throws IllegalArgumentException if the source or retrieval profile is not found
+     * @throws ApiConflictException if the source is in maintenance or error state, or profile name already exists
+     */
     @Transactional
     public SourceController.SourceProfileConfigResponse putSourceRetrievalProfileConfig(
         String sourceId,
@@ -1378,6 +1541,15 @@ public class KnowledgeServiceFacade {
         return toSourceProfileConfigResponse(updatedSource, updated, createdFromDefault);
     }
 
+    /**
+     * Resets a source's retrieval profile configuration to the system default.
+     *
+     * @param sourceId the source identifier
+     * @return the source profile config response with the default retrieval profile
+     * @throws IllegalArgumentException if the source or profile is not found
+     * @throws IllegalStateException if the system default retrieval profile is unavailable
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     @Transactional
     public SourceController.SourceProfileConfigResponse resetSourceRetrievalProfileConfig(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
@@ -1411,16 +1583,37 @@ public class KnowledgeServiceFacade {
         return toSourceProfileConfigResponse(updatedSource, defaultProfile, false);
     }
 
+    /**
+     * Retrieves a single job by its identifier.
+     *
+     * @param jobId the job identifier
+     * @return the job response
+     * @throws IllegalArgumentException if the job is not found
+     */
     public JobController.JobResponse getJob(String jobId) {
         return jobRepository.findById(jobId).map(this::toJobResponse)
             .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
     }
 
+    /**
+     * Lists all jobs with pagination.
+     *
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return a paginated response of job summaries
+     */
     public PageResponse<JobController.JobResponse> listJobs(int page, int pageSize) {
         List<JobController.JobResponse> items = jobRepository.findAll().stream().map(this::toJobResponse).toList();
         return page(items, page, pageSize);
     }
 
+    /**
+     * Cancels a running job by updating its status to cancelled.
+     *
+     * @param jobId the job identifier
+     * @return the job cancel response
+     * @throws IllegalArgumentException if the job is not found
+     */
     @Transactional
     public JobController.JobCancelResponse cancelJob(String jobId) {
         JobRepository.JobRecord existing = jobRepository.findById(jobId).orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
@@ -1430,6 +1623,14 @@ public class KnowledgeServiceFacade {
         return new JobController.JobCancelResponse(jobId, true, "CANCELLED", updated.updatedAt());
     }
 
+    /**
+     * Retries a failed job by creating a new succeeded job record.
+     *
+     * @param jobId the job identifier of the failed job to retry
+     * @return the job retry response with the new job id
+     * @throws IllegalArgumentException if the job is not found
+     * @throws IllegalStateException if the job is not in failed status
+     */
     @Transactional
     public JobController.JobRetryResponse retryJob(String jobId) {
         JobRepository.JobRecord existing = jobRepository.findById(jobId).orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
@@ -1443,11 +1644,25 @@ public class KnowledgeServiceFacade {
         return new JobController.JobRetryResponse(retry.id(), jobId, retry.status());
     }
 
+    /**
+     * Retrieves the logs for a specific job.
+     *
+     * @param jobId the job identifier
+     * @return the job logs response
+     * @throws IllegalArgumentException if the job is not found
+     */
     public JobController.JobLogsResponse logs(String jobId) {
         JobController.JobResponse job = getJob(jobId);
         return new JobController.JobLogsResponse(jobId, List.of(new JobController.JobLogEntry(job.updatedAt(), "INFO", job.message())));
     }
 
+    /**
+     * Retrieves the failure details for a specific job.
+     *
+     * @param jobId the job identifier
+     * @return the job failures response with a list of failure entries
+     * @throws IllegalArgumentException if the job is not found
+     */
     public JobController.JobFailuresResponse jobFailures(String jobId) {
         jobRepository.findById(jobId).orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
         return new JobController.JobFailuresResponse(
@@ -1465,6 +1680,11 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Retrieves the overall statistics for the knowledge service.
+     *
+     * @return the overview stats response containing source, document, chunk, and job counts
+     */
     public com.huawei.opsfactory.knowledge.api.stats.StatsController.OverviewStatsResponse overviewStats() {
         return new com.huawei.opsfactory.knowledge.api.stats.StatsController.OverviewStatsResponse(
             sourceRepository.findAll().size(),
@@ -1478,6 +1698,15 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Processes a file upload for a source, returning whether it was imported.
+     *
+     * @param sourceId the source identifier
+     * @param file the multipart file to upload
+     * @return true if the file was imported, false otherwise
+     * @throws IllegalStateException if the upload processing fails
+     * @throws RuntimeException if an unexpected error occurs during processing
+     */
     private boolean processUpload(String sourceId, MultipartFile file) {
         return processUploadWithResult(sourceId, file).imported();
     }
@@ -1492,6 +1721,15 @@ public class KnowledgeServiceFacade {
     private record UploadResult(boolean imported, String skipReason, String existingFileName) {
     }
 
+    /**
+     * Processes a file upload for a source, returning a detailed result.
+     *
+     * @param sourceId the source identifier
+     * @param file the multipart file to upload
+     * @return the upload result indicating import status, skip reason, and existing file name
+     * @throws IllegalStateException if the upload processing fails or content type is unsupported
+     * @throws RuntimeException if an unexpected error occurs during processing
+     */
     private UploadResult processUploadWithResult(String sourceId, MultipartFile file) {
         try {
             String documentId = Ids.newId("doc");
@@ -1568,6 +1806,13 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Checks whether the given content types are allowed for upload.
+     *
+     * @param requestContentType the content type from the request
+     * @param detectedContentType the content type detected by Tika
+     * @return true if either content type is allowed
+     */
     private boolean isAllowedContentType(String requestContentType, String detectedContentType) {
         Set<String> allowed = profileBootstrapService.allowedContentTypes().stream()
             .map(KnowledgeServiceFacade::normalizeContentType)
@@ -1576,6 +1821,14 @@ public class KnowledgeServiceFacade {
             || allowed.contains(normalizeContentType(detectedContentType));
     }
 
+    /**
+     * Resolves the persisted content type from request, detected, and file name hints.
+     *
+     * @param requestContentType the content type from the upload request
+     * @param detectedContentType the content type detected by Tika
+     * @param fileName the original file name
+     * @return the resolved content type to persist
+     */
     static String resolvePersistedContentType(String requestContentType, String detectedContentType, String fileName) {
         String normalizedRequest = normalizeContentType(requestContentType);
         String normalizedDetected = normalizeContentType(detectedContentType);
@@ -1592,6 +1845,12 @@ public class KnowledgeServiceFacade {
         return normalizedRequest;
     }
 
+    /**
+     * Normalizes a content type string by trimming, removing parameters, and lower-casing.
+     *
+     * @param contentType the raw content type string
+     * @return the normalized content type
+     */
     private static String normalizeContentType(String contentType) {
         if (!StringUtils.hasText(contentType)) {
             return "";
@@ -1603,22 +1862,48 @@ public class KnowledgeServiceFacade {
             .toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Checks whether the given file name has a .chm extension.
+     *
+     * @param fileName the file name to check
+     * @return true if the file name ends with .chm
+     */
     private static boolean isChmFileName(String fileName) {
         return StringUtils.hasText(fileName) && fileName.toLowerCase(Locale.ROOT).endsWith(".chm");
     }
 
+    /**
+     * Validates that an index profile with the given id exists.
+     *
+     * @param profileId the profile identifier
+     * @throws IllegalArgumentException if the profile does not exist
+     */
     private void validateIndexProfileExists(String profileId) {
         if (profileId != null && profileRepository.findIndexById(profileId).isEmpty()) {
             throw new IllegalArgumentException("Index profile not found: " + profileId);
         }
     }
 
+    /**
+     * Validates that a retrieval profile with the given id exists.
+     *
+     * @param profileId the profile identifier
+     * @throws IllegalArgumentException if the profile does not exist
+     */
     private void validateRetrievalProfileExists(String profileId) {
         if (profileId != null && profileRepository.findRetrievalById(profileId).isEmpty()) {
             throw new IllegalArgumentException("Retrieval profile not found: " + profileId);
         }
     }
 
+    /**
+     * Validates that an index profile can be bound to the given source.
+     *
+     * @param profileId the index profile identifier
+     * @param sourceId the source identifier
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws ApiConflictException if the profile cannot be bound to the source
+     */
     private void validateIndexProfileBindableToSource(String profileId, String sourceId) {
         validateIndexProfileExists(profileId);
         if (profileId == null) {
@@ -1629,6 +1914,14 @@ public class KnowledgeServiceFacade {
         ensureProfileBindableToSource(profile, sourceId, "index");
     }
 
+    /**
+     * Validates that a retrieval profile can be bound to the given source.
+     *
+     * @param profileId the retrieval profile identifier
+     * @param sourceId the source identifier
+     * @throws IllegalArgumentException if the profile is not found
+     * @throws ApiConflictException if the profile cannot be bound to the source
+     */
     private void validateRetrievalProfileBindableToSource(String profileId, String sourceId) {
         validateRetrievalProfileExists(profileId);
         if (profileId == null) {
@@ -1639,6 +1932,14 @@ public class KnowledgeServiceFacade {
         ensureProfileBindableToSource(profile, sourceId, "retrieval");
     }
 
+    /**
+     * Ensures the given profile can be bound to the specified source.
+     *
+     * @param profile the profile record
+     * @param sourceId the source identifier
+     * @param profileType the profile type (index or retrieval)
+     * @throws ApiConflictException if the profile is not bindable
+     */
     private void ensureProfileBindableToSource(ProfileRepository.ProfileRecord profile, String sourceId, String profileType) {
         if (profile.readonly()) {
             return;
@@ -1652,6 +1953,13 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Ensures the given profile is mutable (not read-only).
+     *
+     * @param profile the profile record
+     * @param profileType the profile type (index or retrieval)
+     * @throws ApiConflictException if the profile is read-only
+     */
     private void ensureProfileMutable(ProfileRepository.ProfileRecord profile, String profileType) {
         if (profile.readonly()) {
             throw new ApiConflictException(
@@ -1661,6 +1969,20 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Ensures the specified profile is not currently bound to any source.
+     *
+     * @param profileId the profile identifier
+     * @param indexProfile true if the profile is an index profile, false if retrieval
+     * @throws IllegalStateException if the profile is still bound to a source
+     */
+    /**
+     * Ensures the given profile is not currently bound to any source.
+     *
+     * @param profileId the profile identifier
+     * @param indexProfile true for index profile, false for retrieval profile
+     * @throws IllegalStateException if the profile is still bound to a source
+     */
     private void ensureProfileNotBound(String profileId, boolean indexProfile) {
         boolean inUse = bindingRepository.findAll().stream().anyMatch(binding ->
             indexProfile ? profileId.equals(binding.indexProfileId()) : profileId.equals(binding.retrievalProfileId())
@@ -1670,6 +1992,22 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Deletes a source-owned profile if it is present and eligible for deletion.
+     *
+     * @param profile the profile record to potentially delete
+     * @param indexProfile true if the profile is an index profile, false if retrieval
+     * @param sourceId the source identifier that owns the profile
+     * @param defaultProfileId the default profile identifier that should not be deleted
+     */
+    /**
+     * Deletes a source-owned profile if it is not the default and not read-only.
+     *
+     * @param profile the profile record
+     * @param indexProfile true for index profile, false for retrieval profile
+     * @param sourceId the source identifier
+     * @param defaultProfileId the default profile identifier
+     */
     private void deleteOwnedProfileIfPresent(
         ProfileRepository.ProfileRecord profile,
         boolean indexProfile,
@@ -1689,6 +2027,22 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Determines whether a profile should be forked for a specific source.
+     *
+     * @param profile the profile record to evaluate
+     * @param sourceId the source identifier requesting the profile
+     * @param defaultProfileId the system default profile identifier
+     * @return true if the profile should be forked, false otherwise
+     */
+    /**
+     * Determines whether a profile should be forked (copied) for a specific source.
+     *
+     * @param profile the profile record
+     * @param sourceId the source identifier
+     * @param defaultProfileId the default profile identifier
+     * @return true if the profile should be forked for the source
+     */
     private boolean shouldForkProfileForSource(ProfileRepository.ProfileRecord profile, String sourceId, String defaultProfileId) {
         if (profile.readonly()) {
             return true;
@@ -1699,6 +2053,26 @@ public class KnowledgeServiceFacade {
         return !sourceId.equals(profile.ownerSourceId());
     }
 
+    /**
+     * Resolves the name for a source-owned profile based on the request and fallback.
+     *
+     * @param source the source record that owns the profile
+     * @param profileType the type of profile (e.g., "index" or "retrieval")
+     * @param requestedName the name requested by the caller, may be null
+     * @param fallbackName the fallback name to use if no valid request name is provided
+     * @param forNewSourceOwnedProfile true if this is for a newly created source-owned profile
+     * @return the resolved profile name
+     */
+    /**
+     * Generates a name for a source-owned profile.
+     *
+     * @param source the source record
+     * @param profileType the profile type (index or retrieval)
+     * @param requestedName the requested name, may be null
+     * @param fallbackName the fallback name, may be null
+     * @param forNewSourceOwnedProfile true if creating a new source-owned profile
+     * @return the resolved profile name
+     */
     private String sourceOwnedProfileName(
         SourceRepository.SourceRecord source,
         String profileType,
@@ -1718,6 +2092,22 @@ public class KnowledgeServiceFacade {
         return source.id() + "-" + profileType + "-profile";
     }
 
+    /**
+     * Ensures the specified profile name is available for use.
+     *
+     * @param profileName the profile name to check
+     * @param currentProfileId the identifier of the current profile being updated, may be null
+     * @param indexProfile true if checking an index profile, false if retrieval
+     * @throws ApiConflictException if the profile name is already in use by another profile
+     */
+    /**
+     * Ensures the given profile name is available (not already in use by another profile).
+     *
+     * @param profileName the profile name to check
+     * @param currentProfileId the current profile identifier (excluded from check), may be null
+     * @param indexProfile true for index profile, false for retrieval profile
+     * @throws ApiConflictException if the name is already taken
+     */
     private void ensureProfileNameAvailable(String profileName, String currentProfileId, boolean indexProfile) {
         if (profileName == null || profileName.isBlank()) {
             return;
@@ -1730,6 +2120,18 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Validates the configuration map for an index profile.
+     *
+     * @param config the index profile configuration map
+     * @throws IllegalStateException if any configuration value is invalid
+     */
+    /**
+     * Validates the index profile configuration values.
+     *
+     * @param config the profile configuration map
+     * @throws IllegalStateException if any config value is invalid
+     */
     private void validateIndexProfileConfig(Map<String, Object> config) {
         if (config == null) {
             return;
@@ -1760,6 +2162,16 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Creates a copy of the source record with updated profile bindings.
+     *
+     * @param source the source record
+     * @param indexProfileId the new index profile identifier
+     * @param retrievalProfileId the new retrieval profile identifier
+     * @param rebuildRequired whether rebuild is required
+     * @param now the current timestamp
+     * @return the updated source record
+     */
     private SourceRepository.SourceRecord withBoundProfiles(
         SourceRepository.SourceRecord source,
         String indexProfileId,
@@ -1785,6 +2197,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Refreshes the chunk statistics for a document after chunk changes.
+     *
+     * @param documentId the document identifier
+     * @throws IllegalArgumentException if the document is not found
+     */
     private void refreshDocumentChunkStats(String documentId) {
         DocumentRepository.DocumentRecord existing = documentRepository.findById(documentId)
             .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
@@ -1797,6 +2215,13 @@ public class KnowledgeServiceFacade {
         ));
     }
 
+    /**
+     * Computes the SHA-256 hash of an input stream.
+     *
+     * @param inputStream the input stream to hash
+     * @return the hex-encoded SHA-256 digest
+     * @throws IllegalStateException if hashing fails
+     */
     private String sha256(InputStream inputStream) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -1811,6 +2236,13 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Computes the SHA-256 hash of a string value.
+     *
+     * @param value the string to hash
+     * @return the hex-encoded SHA-256 digest
+     * @throws IllegalStateException if hashing fails
+     */
     private String hash(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -1820,6 +2252,14 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Filters chunks by source ids, document ids, and content type filters.
+     *
+     * @param sourceIds optional source identifiers to filter by
+     * @param documentIds optional document identifiers to filter by
+     * @param filters optional search filters including content types
+     * @return the filtered list of searchable chunks
+     */
     private List<SearchService.SearchableChunk> filterChunks(
         List<String> sourceIds,
         List<String> documentIds,
@@ -1841,6 +2281,12 @@ public class KnowledgeServiceFacade {
             .toList();
     }
 
+    /**
+     * Converts a chunk record to a searchable chunk.
+     *
+     * @param record the chunk record
+     * @return the searchable chunk
+     */
     private SearchService.SearchableChunk toSearchableChunk(ChunkRepository.ChunkRecord record) {
         return new SearchService.SearchableChunk(
             record.id(), record.documentId(), record.sourceId(), record.title(), record.titlePath(),
@@ -1849,12 +2295,25 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Ensures the source with the given id is writable (not in maintenance or error state).
+     *
+     * @param sourceId the source identifier
+     * @throws IllegalArgumentException if the source is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     private void ensureSourceWritable(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
         ensureSourceWritable(source);
     }
 
+    /**
+     * Ensures the given source record is writable (not in maintenance or error state).
+     *
+     * @param source the source record
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     private void ensureSourceWritable(SourceRepository.SourceRecord source) {
         if ("MAINTENANCE".equals(source.runtimeStatus())) {
             throw new ApiConflictException("SOURCE_IN_MAINTENANCE", "当前知识库正在重建，暂不可执行该操作");
@@ -1864,6 +2323,13 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Ensures the source with the given id is readable (not in maintenance or error state).
+     *
+     * @param sourceId the source identifier
+     * @throws IllegalArgumentException if the source is not found
+     * @throws ApiConflictException if the source is in maintenance or error state
+     */
     private void ensureSourceReadable(String sourceId) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
@@ -1875,12 +2341,26 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Ensures all sources in the given set are readable.
+     *
+     * @param sourceIds the set of source identifiers
+     * @throws IllegalArgumentException if a source is not found
+     * @throws ApiConflictException if a source is in maintenance or error state
+     */
     private void ensureSourcesReadable(Set<String> sourceIds) {
         for (String sourceId : sourceIds) {
             ensureSourceReadable(sourceId);
         }
     }
 
+    /**
+     * Resolves the set of source ids referenced by the given source and document ids.
+     *
+     * @param sourceIds optional source identifiers
+     * @param documentIds optional document identifiers
+     * @return the resolved set of source identifiers
+     */
     private Set<String> resolveReferencedSourceIds(List<String> sourceIds, List<String> documentIds) {
         LinkedHashSet<String> resolved = new LinkedHashSet<>();
         if (sourceIds != null) {
@@ -1897,6 +2377,18 @@ public class KnowledgeServiceFacade {
         return resolved;
     }
 
+    /**
+     * Creates a copy of the source record with updated runtime state.
+     *
+     * @param source the source record
+     * @param runtimeStatus the runtime status
+     * @param runtimeMessage the runtime message
+     * @param currentJobId the current job identifier
+     * @param lastJobError the last job error message
+     * @param rebuildRequired whether rebuild is required
+     * @param updatedAt the updated timestamp
+     * @return the source record with updated runtime state
+     */
     private SourceRepository.SourceRecord withRuntimeState(
         SourceRepository.SourceRecord source,
         String runtimeStatus,
@@ -1913,6 +2405,11 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Marks all sources bound to the given index profile as requiring a rebuild.
+     *
+     * @param profileId the index profile identifier
+     */
     private void markSourcesRebuildRequiredByIndexProfile(String profileId) {
         Instant now = Instant.now();
         bindingRepository.findAll().stream()
@@ -1931,6 +2428,12 @@ public class KnowledgeServiceFacade {
             )));
     }
 
+    /**
+     * Executes the source rebuild job, re-parsing and re-indexing all documents.
+     *
+     * @param jobId the job identifier
+     * @param sourceId the source identifier
+     */
     private void runSourceRebuild(String jobId, String sourceId) {
         Instant startedAt = Instant.now();
         putMdcIfText(LoggingKeys.JOB_ID, jobId);
@@ -2058,6 +2561,12 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Rebuilds a single document from its original upload, re-parsing, chunking, and indexing.
+     *
+     * @param document the document record
+     * @param stageCallback callback to report current rebuild stage
+     */
     private void rebuildDocumentFromOriginal(DocumentRepository.DocumentRecord document, java.util.function.Consumer<String> stageCallback) {
         Path originalPath = storageManager.originalFilePath(document.sourceId(), document.id(), document.originalFilename());
         stageCallback.accept("PARSING");
@@ -2102,22 +2611,46 @@ public class KnowledgeServiceFacade {
         }
     }
 
+    /**
+     * Puts a value into MDC if the value has text.
+     *
+     * @param key the MDC key
+     * @param value the MDC value
+     */
     private void putMdcIfText(String key, String value) {
         if (StringUtils.hasText(value)) {
             MDC.put(key, value);
         }
     }
 
+    /**
+     * Removes a value from MDC if the value is null or has text.
+     *
+     * @param key the MDC key
+     * @param value the MDC value to check
+     */
     private void removeMdcIfText(String key, String value) {
         if (value == null || StringUtils.hasText(value)) {
             MDC.remove(key);
         }
     }
 
+    /**
+     * Counts the number of items in a list, returning 0 for null.
+     *
+     * @param items the list of items
+     * @return the item count, or 0 if null
+     */
     private int countItems(List<?> items) {
         return items == null ? 0 : items.size();
     }
 
+    /**
+     * Describes a query string for logging, optionally redacting the full text.
+     *
+     * @param query the raw query string
+     * @return the described query for logging
+     */
     private String describeQuery(String query) {
         String normalized = query == null ? "" : query.trim().replaceAll("\\s+", " ");
         if (normalized.isBlank()) {
@@ -2129,6 +2662,24 @@ public class KnowledgeServiceFacade {
         return "len=" + normalized.length() + ",hash=" + hash(normalized).substring(0, 12);
     }
 
+    /**
+     * Updates the rebuild job record with current progress and status.
+     *
+     * @param jobId the job identifier
+     * @param sourceId the source identifier
+     * @param status the job status
+     * @param stage the current stage
+     * @param message the status message
+     * @param totalDocuments the total number of documents
+     * @param processedDocuments the number of processed documents
+     * @param successDocuments the number of successfully processed documents
+     * @param failedDocuments the number of failed documents
+     * @param currentDocumentId the current document identifier
+     * @param currentDocumentName the current document name
+     * @param errorSummary the error summary
+     * @param startedAt the start timestamp
+     * @param finishedAt the finish timestamp
+     */
     private void updateRebuildJob(
         String jobId,
         String sourceId,
@@ -2173,6 +2724,12 @@ public class KnowledgeServiceFacade {
         ));
     }
 
+    /**
+     * Returns a human-readable message for a rebuild stage.
+     *
+     * @param stage the stage name
+     * @return the stage message
+     */
     private String stageMessage(String stage) {
         return switch (stage) {
         case "CLEANING" -> "Cleaning existing chunks and indexes";
@@ -2184,6 +2741,12 @@ public class KnowledgeServiceFacade {
         };
     }
 
+    /**
+     * Summarizes an exception by extracting the root cause message.
+     *
+     * @param ex the exception
+     * @return the summarized error message
+     */
     private String summarizeError(Exception ex) {
         Throwable current = ex;
         while (current.getCause() != null) {
@@ -2192,6 +2755,12 @@ public class KnowledgeServiceFacade {
         return StringUtils.hasText(current.getMessage()) ? current.getMessage() : ex.getClass().getSimpleName();
     }
 
+    /**
+     * Maps an exception to an error code based on its message content.
+     *
+     * @param ex the exception
+     * @return the error code string
+     */
     private String errorCodeFromException(Exception ex) {
         String message = summarizeError(ex).toLowerCase(Locale.ROOT);
         if (message.contains("parse") || message.contains("convert")) {
@@ -2209,6 +2778,12 @@ public class KnowledgeServiceFacade {
         return "REBUILD_DOCUMENT_FAILED";
     }
 
+    /**
+     * Converts a profile record to a profile summary.
+     *
+     * @param profile the profile record
+     * @return the profile summary
+     */
     private ProfileController.ProfileSummary toProfileSummary(ProfileRepository.ProfileRecord profile) {
         return new ProfileController.ProfileSummary(
             profile.id(),
@@ -2223,6 +2798,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a profile record to a profile detail.
+     *
+     * @param profile the profile record
+     * @return the profile detail
+     */
     private ProfileController.ProfileDetail toProfileDetail(ProfileRepository.ProfileRecord profile) {
         return new ProfileController.ProfileDetail(
             profile.id(),
@@ -2237,6 +2818,14 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a source and profile record to a source profile config response.
+     *
+     * @param source the source record
+     * @param profile the profile record
+     * @param createdFromDefault true if the profile was created from the default
+     * @return the source profile config response
+     */
     private SourceController.SourceProfileConfigResponse toSourceProfileConfigResponse(
         SourceRepository.SourceRecord source,
         ProfileRepository.ProfileRecord profile,
@@ -2258,10 +2847,22 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Determines the scope of a profile (system or source-owned).
+     *
+     * @param profile the profile record
+     * @return "system" or "source"
+     */
     private String profileScope(ProfileRepository.ProfileRecord profile) {
         return profile.ownerSourceId() == null || profile.ownerSourceId().isBlank() ? "system" : "source";
     }
 
+    /**
+     * Converts a source record to a source response.
+     *
+     * @param source the source record
+     * @return the source response
+     */
     private SourceController.SourceResponse toSourceResponse(SourceRepository.SourceRecord source) {
         return new SourceController.SourceResponse(
             source.id(), source.name(), source.description(), source.status(), source.storageMode(),
@@ -2270,6 +2871,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a document record to a document summary.
+     *
+     * @param document the document record
+     * @return the document summary
+     */
     private DocumentController.DocumentSummary toDocumentSummary(DocumentRepository.DocumentRecord document) {
         return new DocumentController.DocumentSummary(
             document.id(), document.sourceId(), document.name(), document.contentType(), document.title(), document.status(),
@@ -2278,6 +2885,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a document record to a document detail.
+     *
+     * @param document the document record
+     * @return the document detail
+     */
     private DocumentController.DocumentDetail toDocumentDetail(DocumentRepository.DocumentRecord document) {
         return new DocumentController.DocumentDetail(
             document.id(), document.sourceId(), document.name(), document.originalFilename(), document.title(), document.description(),
@@ -2287,6 +2900,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a chunk record to a chunk summary with a truncated snippet.
+     *
+     * @param chunk the chunk record
+     * @return the chunk summary
+     */
     private ChunkController.ChunkSummary toChunkSummary(ChunkRepository.ChunkRecord chunk) {
         String snippet = chunk.text().length() > 180 ? chunk.text().substring(0, 180) : chunk.text();
         return new ChunkController.ChunkSummary(
@@ -2295,6 +2914,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a chunk record to a chunk detail.
+     *
+     * @param chunk the chunk record
+     * @return the chunk detail
+     */
     private ChunkController.ChunkDetail toChunkDetail(ChunkRepository.ChunkRecord chunk) {
         return new ChunkController.ChunkDetail(
             chunk.id(), chunk.documentId(), chunk.sourceId(), chunk.ordinal(), chunk.title(), chunk.titlePath(), chunk.keywords(),
@@ -2303,6 +2928,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a job record to a job response.
+     *
+     * @param job the job record
+     * @return the job response
+     */
     private JobController.JobResponse toJobResponse(JobRepository.JobRecord job) {
         return new JobController.JobResponse(
             job.id(), job.jobType(), job.sourceId(), job.documentId(), job.status(), job.progress(), job.stage(), job.message(),
@@ -2312,6 +2943,12 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Converts a job record to a maintenance job summary.
+     *
+     * @param job the job record, may be null
+     * @return the maintenance job summary, or null if input is null
+     */
     private SourceController.MaintenanceJobSummary toMaintenanceJobSummary(JobRepository.JobRecord job) {
         if (job == null) {
             return null;
@@ -2336,6 +2973,13 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Merges two maps, with patch values overriding base values.
+     *
+     * @param base the base map
+     * @param patch the patch map
+     * @return the merged map
+     */
     private Map<String, Object> mergeMaps(Map<String, Object> base, Map<String, Object> patch) {
         if (patch == null || patch.isEmpty()) {
             return base;
@@ -2345,6 +2989,15 @@ public class KnowledgeServiceFacade {
         return merged;
     }
 
+    /**
+     * Resolves retrieval settings by merging profile config, request overrides, and defaults.
+     *
+     * @param retrievalProfileId the retrieval profile identifier
+     * @param requestTopK the requested topK value, may be null
+     * @param override the search override, may be null
+     * @return the resolved retrieval settings
+     * @throws IllegalStateException if topK is invalid
+     */
     private ResolvedRetrievalSettings resolveRetrievalSettings(
         String retrievalProfileId,
         Integer requestTopK,
@@ -2396,6 +3049,13 @@ public class KnowledgeServiceFacade {
         );
     }
 
+    /**
+     * Resolves the retrieval profile id to use for a search.
+     *
+     * @param explicitRetrievalProfileId the explicitly provided profile id, may be null
+     * @param sourceIds the source identifiers
+     * @return the resolved retrieval profile id
+     */
     private String resolveSearchRetrievalProfileId(String explicitRetrievalProfileId, List<String> sourceIds) {
         if (explicitRetrievalProfileId != null && !explicitRetrievalProfileId.isBlank()) {
             return explicitRetrievalProfileId;
@@ -2408,6 +3068,12 @@ public class KnowledgeServiceFacade {
         return profileBootstrapService.defaultRetrievalProfileId();
     }
 
+    /**
+     * Normalizes compare modes to a list of valid mode names.
+     *
+     * @param modes the requested modes, may be null
+     * @return the normalized list of compare modes
+     */
     private List<String> normalizeCompareModes(List<String> modes) {
         List<String> normalized = modes == null
             ? List.of()
@@ -2424,6 +3090,14 @@ public class KnowledgeServiceFacade {
         return List.of("hybrid", "semantic", "lexical");
     }
 
+    /**
+     * Extracts an integer value from a nested map structure.
+     *
+     * @param root the root map
+     * @param parentKey the parent key
+     * @param key the nested key
+     * @return the integer value if present and numeric
+     */
     private Optional<Integer> nestedInt(Map<String, Object> root, String parentKey, String key) {
         Object value = nestedValue(root, parentKey, key);
         if (value instanceof Number number) {
@@ -2432,6 +3106,14 @@ public class KnowledgeServiceFacade {
         return Optional.empty();
     }
 
+    /**
+     * Extracts a double value from a nested map structure.
+     *
+     * @param root the root map
+     * @param parentKey the parent key
+     * @param key the nested key
+     * @return the double value if present and numeric
+     */
     private Optional<Double> nestedDouble(Map<String, Object> root, String parentKey, String key) {
         Object value = nestedValue(root, parentKey, key);
         if (value instanceof Number number) {
@@ -2440,6 +3122,13 @@ public class KnowledgeServiceFacade {
         return Optional.empty();
     }
 
+    /**
+     * Resolves the score threshold for the given retrieval mode from profile config.
+     *
+     * @param mode the retrieval mode
+     * @param profileConfig the profile configuration map
+     * @return the score threshold, or null if not applicable
+     */
     private Double resolveProfileScoreThreshold(String mode, Map<String, Object> profileConfig) {
         Optional<Double> legacyThreshold = nestedDouble(profileConfig, "retrieval", "scoreThreshold");
         return switch ((mode == null ? "hybrid" : mode).toLowerCase(Locale.ROOT)) {
@@ -2449,15 +3138,37 @@ public class KnowledgeServiceFacade {
         };
     }
 
+    /**
+     * Checks whether the given retrieval mode supports score thresholds.
+     *
+     * @param mode the retrieval mode
+     * @return true if the mode supports thresholds
+     */
     private boolean supportsThresholdForMode(String mode) {
         return "semantic".equalsIgnoreCase(mode) || "lexical".equalsIgnoreCase(mode);
     }
 
+    /**
+     * Extracts a non-blank string value from a nested map structure.
+     *
+     * @param root the root map
+     * @param parentKey the parent key
+     * @param key the nested key
+     * @return the string value if present and non-blank, null otherwise
+     */
     private String nestedString(Map<String, Object> root, String parentKey, String key) {
         Object value = nestedValue(root, parentKey, key);
         return value instanceof String string && StringUtils.hasText(string) ? string : null;
     }
 
+    /**
+     * Extracts a value from a nested map structure.
+     *
+     * @param root the root map
+     * @param parentKey the parent key
+     * @param key the nested key
+     * @return the nested value, or null if not found
+     */
     @SuppressWarnings("unchecked")
     private Object nestedValue(Map<String, Object> root, String parentKey, String key) {
         if (root == null || root.isEmpty()) {
@@ -2470,6 +3181,12 @@ public class KnowledgeServiceFacade {
         return ((Map<String, Object>) nestedMap).get(key);
     }
 
+    /**
+     * Returns the first non-blank string from the given values.
+     *
+     * @param values the values to check
+     * @return the first non-blank value, or null if none
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (StringUtils.hasText(value)) {
@@ -2479,10 +3196,24 @@ public class KnowledgeServiceFacade {
         return null;
     }
 
+    /**
+     * Clamps a double value to the range [0, 1].
+     *
+     * @param value the value to clamp
+     * @return the clamped value
+     */
     private double clamp(double value) {
         return Math.max(0, Math.min(1, value));
     }
 
+    /**
+     * Paginates a list of items.
+     *
+     * @param items the full list of items
+     * @param page the page number (1-based)
+     * @param pageSize the number of items per page
+     * @return the paginated response
+     */
     private <T> PageResponse<T> page(List<T> items, int page, int pageSize) {
         int safePage = Math.max(page, 1);
         int safePageSize = Math.max(pageSize, 1);
@@ -2491,6 +3222,9 @@ public class KnowledgeServiceFacade {
         return new PageResponse<>(items.subList(from, to), safePage, safePageSize, items.size());
     }
 
+    /**
+     * Resolved retrieval settings combining profile config, overrides, and defaults.
+     */
     private record ResolvedRetrievalSettings(
         String mode,
         int lexicalTopK,
@@ -2500,6 +3234,11 @@ public class KnowledgeServiceFacade {
         Double scoreThreshold,
         int snippetLength
     ) {
+        /**
+         * Converts these resolved settings to search options.
+         *
+         * @return the search options
+         */
         private SearchService.SearchOptions toSearchOptions() {
             return new SearchService.SearchOptions(
                 mode,
@@ -2511,6 +3250,14 @@ public class KnowledgeServiceFacade {
             );
         }
 
+        /**
+         * Returns a copy of these settings with the given mode and topK values.
+         *
+         * @param nextMode the new mode
+         * @param nextFinalTopK the new final topK
+         * @param nextScoreThreshold the new score threshold, may be null
+         * @return the updated retrieval settings
+         */
         private ResolvedRetrievalSettings withMode(String nextMode, int nextFinalTopK, Double nextScoreThreshold) {
             return new ResolvedRetrievalSettings(
                 nextMode,
