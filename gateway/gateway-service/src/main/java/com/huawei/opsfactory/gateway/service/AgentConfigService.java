@@ -64,9 +64,9 @@ public class AgentConfigService {
 
     private static final Pattern PROVIDER_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
 
-    private static final List<String> MODEL_CONFIG_KEYS =
-        List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_MODE", "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS",
-            "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY", "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
+    private static final List<String> MODEL_CONFIG_KEYS = List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_FAST_MODEL",
+        "GOOSE_MODE", "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS", "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY",
+        "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
 
     private final GatewayProperties properties;
 
@@ -802,8 +802,8 @@ public class AgentConfigService {
                             } catch (FileAlreadyExistsException concurrent) {
                                 // A concurrent seeder (spawn vs. memory tab) created it first; the
                                 // file is present, so treat this as already done and keep going.
-                                log.debug("Memory seed {} already created concurrently for {}:{}",
-                                    seed.getFileName(), agentId, userId);
+                                log.debug("Memory seed {} already created concurrently for {}:{}", seed.getFileName(),
+                                    agentId, userId);
                             }
                         }
                     }
@@ -902,8 +902,7 @@ public class AgentConfigService {
      * @param content text content to write; must not exceed 100KB
      */
     public void writeMemoryFile(String userId, String agentId, String category, String content) {
-        if (content != null
-            && content.getBytes(StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+        if (content != null && content.getBytes(StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = seededMemoryDir(userId, agentId);

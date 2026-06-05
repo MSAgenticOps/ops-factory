@@ -113,6 +113,13 @@ public class FileController {
 
             String filename = resource.getFilename();
             String mimeType = fileService.getMimeType(filename != null ? filename : "");
+            if (mimeType == null || mimeType.isBlank()) {
+                mimeType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            }
+            // Append charset=utf-8 for text MIME types so the browser decodes correctly
+            if (isUtf8TextMimeType(mimeType)) {
+                mimeType = mimeType + "; charset=utf-8";
+            }
             String disposition = (!download && fileService.isInline(mimeType)) ? "inline" : "attachment";
 
             byte[] content;
@@ -222,7 +229,7 @@ public class FileController {
         try {
             Files.createDirectories(uploadsDir);
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create upload dir");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create upload dir", e);
         }
 
         String safeName = System.currentTimeMillis() + "_" + PathSanitizer.sanitizeFilename(originalName);
@@ -258,6 +265,11 @@ public class FileController {
         }
         return fileService.resolveFileScanRoot(workingDir, rootId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown file root: " + rootId));
+    }
+
+    private boolean isUtf8TextMimeType(String mimeType) {
+        return mimeType != null && (mimeType.startsWith("text/") || "application/json".equals(mimeType)
+            || "application/xml".equals(mimeType) || "text/yaml".equals(mimeType));
     }
 
     private record FileUpdateRequest(String content) {

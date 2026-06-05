@@ -122,6 +122,10 @@ public class SolutionTypeService {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
+        String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
+        String code = body.getOrDefault("code", "") != null ? body.getOrDefault("code", "").toString() : "";
+        validateNameAndCodeUnique(name, code, null);
+
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);
         st.put("name", body.getOrDefault("name", ""));
@@ -152,9 +156,11 @@ public class SolutionTypeService {
         }
 
         if (body.containsKey("name")) {
+            validateNameAndCodeUnique(body.get("name") != null ? body.get("name").toString() : "", null, id);
             st.put("name", body.get("name"));
         }
         if (body.containsKey("code")) {
+            validateNameAndCodeUnique(null, body.get("code") != null ? body.get("code").toString() : "", id);
             st.put("code", body.get("code"));
         }
         if (body.containsKey("description")) {
@@ -192,6 +198,52 @@ public class SolutionTypeService {
             log.error("Failed to delete solution-type file: {}", file, e);
             return false;
         }
+    }
+
+    // ── Validation ────────────────────────────────────────────────────
+
+    private void validateNameAndCodeUnique(String name, String code, String excludeId) {
+        List<Map<String, Object>> existing = listSolutionTypes();
+        for (Map<String, Object> st : existing) {
+            String existingId = st.get("id") != null ? st.get("id").toString() : "";
+            if (excludeId != null && existingId.equals(excludeId)) {
+                continue;
+            }
+            if (name != null && !name.isBlank()) {
+                String existingName = st.get("name") != null ? st.get("name").toString() : "";
+                if (name.equalsIgnoreCase(existingName)) {
+                    throw new IllegalArgumentException("Solution type name already exists: " + name);
+                }
+            }
+            if (code != null && !code.isBlank()) {
+                String existingCode = st.get("code") != null ? st.get("code").toString() : "";
+                if (code.equalsIgnoreCase(existingCode)) {
+                    throw new IllegalArgumentException("Solution type code already exists: " + code);
+                }
+            }
+        }
+    }
+
+    /**
+     * Validates a referenced solution type, allowing the universal default.
+     *
+     * @param value referenced solution type id or {@code null}
+     * @return normalized solution type id
+     */
+    public String validateSolutionTypeReference(Object value) {
+        if (value == null) {
+            return "universal";
+        }
+        String solutionType = value.toString();
+        if ("universal".equals(solutionType)) {
+            return solutionType;
+        }
+        try {
+            getSolutionType(solutionType);
+        } catch (NotFoundException e) {
+            throw new IllegalArgumentException("Solution type not found: " + solutionType, e);
+        }
+        return solutionType;
     }
 
     // ── File I/O Helpers ─────────────────────────────────────────────
