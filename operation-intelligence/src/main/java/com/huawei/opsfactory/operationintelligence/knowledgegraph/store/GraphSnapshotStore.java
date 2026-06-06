@@ -96,6 +96,7 @@ public class GraphSnapshotStore {
     /**
      * Loads latest snapshot for one environment.
      *
+     * @param ontologyId the ontologyId
      * @param envCode the envCode
      * @return the result
      */

@@ -43,7 +43,11 @@ export function useResourceExport() {
                 description: ct.description || '',
                 typeColor: ct.color || '',
                 knowledge: ct.knowledge || '',
-                clusterMode: ct.mode === 'peer' ? 'Peer' : (ct.mode === 'primary-backup' ? 'Primary-Backup' : ''),
+                clusterMode: (() => {
+                    if (ct.mode === 'peer') return 'Peer'
+                    if (ct.mode === 'primary-backup') return 'Primary-Backup'
+                    return ''
+                })(),
                 commandPrefix: ct.commandPrefix || '',
                 envVariables: ct.envVariables
                     ? (ct.envVariables as EnvVariable[]).map((v: EnvVariable) => `${v.key}=${v.value}`).join(';')
@@ -104,7 +108,11 @@ export function useResourceExport() {
                 business: h.business || '',
                 cluster: h.clusterId ? (clusterMap.get(h.clusterId)?.name ?? '') : '',
                 purpose: h.purpose || '',
-                role: h.role === 'primary' ? 'primary' : (h.role === 'backup' ? 'backup' : ''),
+                role: (() => {
+                    if (h.role === 'primary') return 'primary'
+                    if (h.role === 'backup') return 'backup'
+                    return ''
+                })(),
                 tags: Array.isArray(h.tags) ? h.tags.join(';') : '',
                 description: h.description || '',
                 customAttributes: Array.isArray(h.customAttributes) ? h.customAttributes.map(a => `${a.key}=${a.value}`).join(';') : '',

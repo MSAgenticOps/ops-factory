@@ -12,6 +12,8 @@ package com.huawei.opsfactory.gateway.exception;
  */
 public class ConflictException extends Exception {
 
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates a conflict exception with the given message.
      *
@@ -19,5 +21,15 @@ public class ConflictException extends Exception {
      */
     public ConflictException(String message) {
         super(message);
+    }
+
+    /**
+     * Creates a conflict exception with the given message and cause.
+     *
+     * @param message detail message
+     * @param cause   the cause
+     */
+    public ConflictException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

@@ -25,6 +25,11 @@ public class CustomErrorAttributes extends DefaultErrorAttributes {
 
     private final Environment environment;
 
+    /**
+     * Constructs a CustomErrorAttributes.
+     *
+     * @param environment the Spring environment
+     */
     public CustomErrorAttributes(Environment environment) {
         this.environment = environment;
     }

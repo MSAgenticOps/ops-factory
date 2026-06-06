@@ -5,7 +5,6 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -40,6 +39,8 @@ public class SopService {
 
     private final GatewayProperties properties;
 
+    private final SolutionTypeService solutionTypeService;
+
     private Path gatewayRoot;
 
     private Path sopsDir;
@@ -47,8 +48,9 @@ public class SopService {
     /**
      * Creates the sop service instance.
      */
-    public SopService(GatewayProperties properties) {
+    public SopService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
+        this.solutionTypeService = solutionTypeService;
     }
 
     /**
@@ -130,7 +132,8 @@ public class SopService {
         sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
         sop.put("enabled", body.getOrDefault("enabled", true));
         sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("targetSolution", body.getOrDefault("targetSolution", "universal"));
+        sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(
+            body.getOrDefault("targetSolution", "universal")));
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeSopFile(id, sop);
@@ -173,7 +176,7 @@ public class SopService {
             sop.put("stepsDescription", body.get("stepsDescription"));
         }
         if (body.containsKey("targetSolution")) {
-            sop.put("targetSolution", body.get("targetSolution"));
+            sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(body.get("targetSolution")));
         }
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
@@ -204,6 +207,8 @@ public class SopService {
             return false;
         }
     }
+
+    // ── Validation ────────────────────────────────────────────────
 
     // ── Name Uniqueness Validation ────────────────────────────────
 

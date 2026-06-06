@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.service.ClusterService;
@@ -27,11 +28,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -139,7 +138,7 @@ public class HostControllerTest {
      */
     @Test
     public void testGetHost_notFound() throws Exception {
-        when(hostService.getHost("nonexistent")).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Host not found"));
+        when(hostService.getHost("nonexistent")).thenThrow(new NotFoundException("Host not found"));
 
         mockMvc.perform(get("/api/gateway/hosts/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isNotFound());
@@ -213,7 +212,7 @@ public class HostControllerTest {
     @Test
     public void testUpdateHost_notFound() throws Exception {
         when(hostService.updateHost(eq("nonexistent"), any()))
-            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Host not found"));
+            .thenThrow(new NotFoundException("Host not found"));
 
         mockMvc.perform(put("/api/gateway/hosts/nonexistent").header("x-secret-key", "test")
             .header("x-user-id", "admin")

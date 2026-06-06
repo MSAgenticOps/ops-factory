@@ -1,0 +1,14 @@
+version: 1.0.0
+title: Memory maintenance
+description: 'Daily memory maintenance: health-check and trim the dynamic memory.'
+instructions: |
+  This is a daily memory maintenance run (memory-maintenance), fired by a scheduled task.
+  Run the memory-maintenance skill workflow:
+  1. Review all dynamic memory (global scope) and judge each entry "keep / edit / delete".
+  2. Delete lapsed entries against current ticket reality (agreements on closed tickets, expired maintenance
+     windows, escalations that already got a decision). To verify, point-query the ticket with ticket.get —
+     never a full-table scan.
+  3. Merge duplicates and condense overlong entries. Keep the human-preset team policy (SLA ruler / ops
+     preferences); when in doubt, lean toward keeping and flagging.
+  4. Report what changed and why.
+  This task only maintains memory — it never touches ticket state and pushes to no IM channel.

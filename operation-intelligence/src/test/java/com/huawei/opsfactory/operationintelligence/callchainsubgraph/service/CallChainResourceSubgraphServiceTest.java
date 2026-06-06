@@ -27,6 +27,9 @@ import java.util.Map;
 
 /**
  * Unit tests for {@link CallChainResourceSubgraphService}.
+ *
+ * @author x00000000
+ * @since 2026-05-28
  */
 class CallChainResourceSubgraphServiceTest {
     @Test

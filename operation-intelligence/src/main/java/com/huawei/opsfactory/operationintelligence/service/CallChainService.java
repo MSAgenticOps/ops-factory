@@ -86,6 +86,7 @@ public class CallChainService {
      * @param conditions the list of conditions (each containing conditionKey and conditionValue)
      * @param startTime the start time in milliseconds
      * @param endTime the end time in milliseconds
+     * @param mode the query mode (method or service)
      * @return the call chain tree
      */
     public CallChainTree queryCallChain(String solutionType, List<Map<String, String>> conditions, long startTime,

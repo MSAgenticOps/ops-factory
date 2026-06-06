@@ -196,6 +196,9 @@ export function validateField(
                 return validation.customValidator(trimmedValue, rowNumber)
             }
             break
+
+        default:
+            break
     }
 
     return { valid: true }

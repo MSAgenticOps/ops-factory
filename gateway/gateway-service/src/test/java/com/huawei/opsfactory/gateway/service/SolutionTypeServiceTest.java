@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
@@ -121,6 +122,38 @@ public class SolutionTypeServiceTest {
     @Test(expected = NotFoundException.class)
     public void testGetSolutionType_notFound() throws Exception {
         solutionTypeService.getSolutionType("nonexistent");
+    }
+
+    /**
+     * Tests validate solution type reference returns universal for null.
+     */
+    @Test
+    public void testValidateSolutionTypeReference_null_returnsUniversal() {
+        assertEquals("universal", solutionTypeService.validateSolutionTypeReference(null));
+    }
+
+    /**
+     * Tests validate solution type reference returns existing id.
+     */
+    @Test
+    public void testValidateSolutionTypeReference_existing_returnsId() {
+        createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
+        assertEquals("st-1", solutionTypeService.validateSolutionTypeReference("st-1"));
+    }
+
+    /**
+     * Tests validate solution type reference keeps original cause.
+     */
+    @Test
+    public void testValidateSolutionTypeReference_missing_preservesCause() {
+        try {
+            solutionTypeService.validateSolutionTypeReference("missing");
+            fail("Expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("Solution type not found: missing", e.getMessage());
+            assertNotNull(e.getCause());
+            assertTrue(e.getCause() instanceof NotFoundException);
+        }
     }
 
     // ── createSolutionType ─────────────────────────────────────────

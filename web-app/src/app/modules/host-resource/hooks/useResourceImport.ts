@@ -255,7 +255,11 @@ export function useResourceImport(deps: ImportDeps) {
                                     description: row.description ? row.description.trim() : '',
                                     knowledge: row.knowledge || '',
                                     color: row.typeColor || '',
-                                    mode: row.clusterMode === 'Peer' ? 'peer' : (row.clusterMode === 'Primary-Backup' ? 'primary-backup' : undefined),
+                                    mode: (() => {
+                                        if (row.clusterMode === 'Peer') return 'peer'
+                                        if (row.clusterMode === 'Primary-Backup') return 'primary-backup'
+                                        return undefined
+                                    })(),
                                     commandPrefix: row.commandPrefix || '',
                                     envVariables: envVars,
                                 })
@@ -803,7 +807,6 @@ export function useResourceImport(deps: ImportDeps) {
                             }
 
                             case 'SOPs': {
-                                console.log('[Import SOPs] Row data:', JSON.stringify(row, null, 2))
                                 const sopName = row.name?.trim() || ''
                                 if (!sopName) {
                                     errors.push({ row: i + 2, code: 'import.sopNameRequired' })
@@ -874,7 +877,6 @@ export function useResourceImport(deps: ImportDeps) {
                                     stepsDescription: row.stepsDescription ? validateAndSanitize(row.stepsDescription, 'StepsDescription').sanitized : '',
                                     targetSolution: row.targetSolution || 'universal',
                                 }
-                                console.log('[Import SOPs] Creating SOP:', JSON.stringify(sopData, null, 2))
                                 await deps.createSop(sopData)
                                 createdSopNames.add(nameResult.sanitized)
                                 success++

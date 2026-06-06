@@ -243,7 +243,8 @@ public class HostGroupService {
      * @param body an existing host group with the provided field map
      * @return the result
      */
-    public Map<String, Object> updateGroup(String id, Map<String, Object> body) throws NotFoundException, BadRequestException, ConflictException {
+    public Map<String, Object> updateGroup(String id, Map<String, Object> body)
+        throws NotFoundException, BadRequestException, ConflictException {
         Path file = groupsDir.resolve(id + ".json");
         Map<String, Object> group = readFile(file);
         if (group == null) {

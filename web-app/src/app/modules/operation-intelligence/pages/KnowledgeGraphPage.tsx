@@ -2161,14 +2161,14 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         }
     }
 
-    const handleSelectResourceEntity = (entity: GraphEntity) => {
+    const handleSelectResourceEntity = useCallback((entity: GraphEntity) => {
         const fullEntity = snapshot?.entities.find(item => item.id === entity.id) ?? entity
         setEntityId(fullEntity.id)
         setEntityQuery('')
         setSelectedResourceEntity(fullEntity)
-    }
+    }, [snapshot])
 
-    const handleSelectEntityGraphNode = (nodeId: string | null) => {
+    const handleSelectEntityGraphNode = useCallback((nodeId: string | null) => {
         setSelectedEntityNodeId(nodeId)
         if (!nodeId) {
             return
@@ -2189,7 +2189,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         if (graphEntity) {
             handleSelectResourceEntity(graphEntity)
         }
-    }
+    }, [entitySubgraph.nodes, expandedEntityGraphNodeIds, handleSelectResourceEntity, subgraph])
 
     const handleSelectResourceGroup = (groupId: string) => {
         setSelectedResourceTreeItem({ kind: 'group', groupId })
@@ -2524,7 +2524,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                     </label>
                 </div>
 
-                {activeGraphTab === 'ontology' ? (
+                {activeGraphTab === 'ontology' && (
                     <div className="kg-tab-page">
                         <div className="kg-tab-actions kg-ontology-actions">
                             <Button
@@ -2565,7 +2565,8 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                             <pre className="kg-export-preview">{exportPackage?.schemaDsl || t('common.noResults')}</pre>
                         </SectionCard>
                     </div>
-                ) : activeGraphTab === 'entities' ? (
+                )}
+                {activeGraphTab === 'entities' && (
                     <div className="kg-tab-page">
                         <div className="kg-entity-control-panel">
                             <div className="kg-entity-query-row kg-entity-query-row-primary">
@@ -2823,7 +2824,8 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                             </div>
                         </SectionCard>
                     </div>
-                ) : (
+                )}
+                {activeGraphTab !== 'ontology' && activeGraphTab !== 'entities' && (
                     <div className="kg-tab-page">
                         <div className="kg-entity-control-panel kg-entity-management-control-panel">
                             <div className="kg-entity-query-row">
@@ -3192,7 +3194,7 @@ function GraphCanvas({
         }, {}))
         onSelectNode(null)
         setSelectedEdgeId(null)
-    }, [nodes, onSelectNode])
+    }, [nodes])
 
     useEffect(() => {
         const container = scrollContainerRef.current

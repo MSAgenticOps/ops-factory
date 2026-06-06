@@ -39,7 +39,10 @@ export async function fetchSkillDetail(skillId: string, userId?: string | null):
     return response.json() as Promise<SkillMarketDetail>
 }
 
-export async function createSkill(payload: { id: string; name: string; description: string; instructions: string }, userId?: string | null): Promise<SkillMarketMutationResponse> {
+export async function createSkill(
+    payload: { id: string; name: string; description: string; instructions: string },
+    userId?: string | null,
+): Promise<SkillMarketMutationResponse> {
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills`, {
         method: 'POST',
         headers: skillMarketHeaders(userId),
@@ -49,7 +52,11 @@ export async function createSkill(payload: { id: string; name: string; descripti
     return response.json() as Promise<SkillMarketMutationResponse>
 }
 
-export async function updateSkill(skillId: string, payload: { name: string; description: string; instructions: string }, userId?: string | null): Promise<SkillMarketMutationResponse> {
+export async function updateSkill(
+    skillId: string,
+    payload: { name: string; description: string; instructions: string },
+    userId?: string | null,
+): Promise<SkillMarketMutationResponse> {
     const response = await fetch(`${runtime.SKILL_MARKET_SERVICE_URL}/skills/${encodeURIComponent(skillId)}`, {
         method: 'PUT',
         headers: skillMarketHeaders(userId),
@@ -67,7 +74,11 @@ export async function deleteSkill(skillId: string, userId?: string | null): Prom
     if (!response.ok) throw new Error(await response.text())
 }
 
-export async function importSkill(file: File, userId?: string | null, id?: string): Promise<SkillMarketMutationResponse> {
+export async function importSkill(
+    file: File,
+    userId?: string | null,
+    id?: string,
+): Promise<SkillMarketMutationResponse> {
     const formData = new FormData()
     formData.append('file', file)
     if (id?.trim()) formData.append('id', id.trim())

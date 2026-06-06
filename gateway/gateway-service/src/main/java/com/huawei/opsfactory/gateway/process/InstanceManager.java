@@ -508,6 +508,7 @@ public class InstanceManager {
         long prepareStart = System.currentTimeMillis();
         Path runtimeRoot = runtimePreparer.prepare(agentId, userId);
         agentConfigService.ensureMemorySeeded(userId, agentId);
+        agentConfigService.ensureSchedulesSeeded(userId, agentId);
         resetStuckRunningSchedules(runtimeRoot);
         int port = portAllocator.allocate();
         long prepareMs = System.currentTimeMillis() - prepareStart;
