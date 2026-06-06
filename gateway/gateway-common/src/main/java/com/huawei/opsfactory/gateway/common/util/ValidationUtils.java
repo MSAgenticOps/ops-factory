@@ -18,6 +18,11 @@ import java.util.regex.Pattern;
  * @since 2026-06-04
  */
 public final class ValidationUtils {
+    // XSS prevention pattern: matches characters that could enable cross-site scripting
+    // < > - HTML tags
+    // " ' - Attribute injection
+    // & - HTML entities
+    // ` / - JavaScript template literals and path traversal
     private static final Pattern XSS_PATTERN = Pattern.compile("[<>\"'&`/]");
     private static final Pattern ASCII_ONLY_PATTERN = Pattern.compile("^[\\p{ASCII}]*$");
 

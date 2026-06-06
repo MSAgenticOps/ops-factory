@@ -64,6 +64,8 @@ public class HostService {
 
     private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
 
+    // IPv4 pattern with bounded quantifiers - safe from ReDoS
+    // Each octet: 0-199 ([01]?\d\d?) or 200-249 (2[0-4]\d) or 250-255 (25[0-5])
     private static final Pattern IPV4_PATTERN = Pattern.compile(
         "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
 
@@ -223,9 +225,15 @@ public class HostService {
 
     /**
      * Validates that the given string is a valid IPv4 or IPv6 address.
+     * <p>
+     * IPv4 addresses are validated using regex. IPv6 addresses are validated
+     * by first checking for the presence of colons, then using JDK's
+     * InetAddress.getByName() to perform format validation without DNS lookup
+     * (since inputs resembling IPv6 format are pre-filtered).
+     * </p>
      *
-     * @param ip the IP address to validate
-     * @return true if valid
+     * @param ip the IP address string to validate
+     * @return {@code true} if the input is a valid IPv4 or IPv6 address
      */
     private boolean isValidIp(String ip) {
         if (ip == null || ip.isBlank()) {
@@ -236,7 +244,11 @@ public class HostService {
         if (IPV4_PATTERN.matcher(trimmed).matches()) {
             return true;
         }
-        // IPv6: use JDK built-in validation to avoid ReDoS from complex regex
+        // IPv6: check format before DNS lookup to avoid SSRF-like behavior
+        // Only call getByName() if input looks like IPv6 (contains colons)
+        if (!trimmed.contains(":")) {
+            return false;
+        }
         try {
             java.net.InetAddress addr = java.net.InetAddress.getByName(trimmed);
             return addr instanceof java.net.Inet6Address;
@@ -355,12 +367,18 @@ public class HostService {
 
     /**
      * Checks for IP address duplicates within the same host group.
+     * <p>
+     * This method retrieves the cluster's host group via {@code clusterService.getCluster()},
+     * then lists all hosts in that group and checks if any existing host (excluding the
+     * current host when updating) has the same IP address in either the {@code ip} or
+     * {@code businessIp} fields.
+     * </p>
      *
-     * @param hostId the host identifier (null for create)
-     * @param ip the IP address to check
-     * @param clusterId the cluster identifier
-     * @throws ConflictException if a duplicate is found
-     * @throws BadRequestException if the cluster ID is invalid
+     * @param hostId the host identifier (null when creating a new host)
+     * @param ip the IP address to check for duplicates
+     * @param clusterId the cluster identifier used to find the associated host group
+     * @throws ConflictException if a duplicate IP address is found in the same group
+     * @throws BadRequestException if the cluster ID is invalid (cluster not found)
      */
     private void checkHostIpDuplicate(String hostId, String ip, String clusterId)
         throws ConflictException, BadRequestException {

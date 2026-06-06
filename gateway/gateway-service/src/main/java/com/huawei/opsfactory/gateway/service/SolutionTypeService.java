@@ -42,6 +42,7 @@ public class SolutionTypeService {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    // Hex color pattern: #RRGGBB format, safe with bounded quantifier {6}
     private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
     private final GatewayProperties properties;

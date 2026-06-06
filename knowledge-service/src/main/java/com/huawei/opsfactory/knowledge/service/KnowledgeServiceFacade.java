@@ -2121,12 +2121,6 @@ public class KnowledgeServiceFacade {
     }
 
     /**
-     * Validates the configuration map for an index profile.
-     *
-     * @param config the index profile configuration map
-     * @throws IllegalStateException if any configuration value is invalid
-     */
-    /**
      * Validates the index profile configuration values.
      *
      * @param config the profile configuration map
@@ -2141,12 +2135,32 @@ public class KnowledgeServiceFacade {
             return;
         }
         Map<?, ?> indexingMap = (Map<?, ?>) indexing;
+        validateBoostValues(indexingMap);
+        validateBm25Values(indexingMap);
+    }
+
+    /**
+     * Validates that all boost values in the indexing config are non-negative.
+     *
+     * @param indexingMap the indexing configuration map
+     * @throws IllegalStateException if any boost value is negative
+     */
+    private void validateBoostValues(Map<?, ?> indexingMap) {
         for (String key : new String[]{"titleBoost", "titlePathBoost", "keywordBoost", "contentBoost"}) {
             Object value = indexingMap.get(key);
             if (value instanceof Number && ((Number) value).doubleValue() < 0) {
                 throw new IllegalStateException(key + " must be >= 0");
             }
         }
+    }
+
+    /**
+     * Validates that BM25 parameters are non-negative.
+     *
+     * @param indexingMap the indexing configuration map
+     * @throws IllegalStateException if BM25 parameters are negative
+     */
+    private void validateBm25Values(Map<?, ?> indexingMap) {
         Object bm25 = indexingMap.get("bm25");
         if (!(bm25 instanceof Map<?, ?>)) {
             return;
