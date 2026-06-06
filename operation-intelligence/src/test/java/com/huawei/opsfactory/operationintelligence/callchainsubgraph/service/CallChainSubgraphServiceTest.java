@@ -79,7 +79,7 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyString(), anyList(), anyLong(), anyLong(),
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), eq("CRM-001"), anyList(), anyLong(), anyLong(),
             anyString()))
             .thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
@@ -94,6 +94,8 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphResult result = service.generate(request);
 
         assertNotNull(result.getSubgraphId());
+        assertEquals("CRM-001", result.getSolutionId());
+        assertEquals("CRM-001", result.getGraph().getMetadata().get("solutionId"));
         assertEquals(3, result.getGraph().getEntities().size());
         assertEquals(1, result.getGraph().getRelations().size());
         assertEquals(3, result.getGraph().getObservations().size());
@@ -117,7 +119,7 @@ class CallChainSubgraphServiceTest {
             .findFirst()
             .orElseThrow()
             .getValue());
-        assertNotNull(service.get(result.getSubgraphId()));
+        assertEquals("CRM-001", service.get(result.getSubgraphId()).getSolutionId());
     }
 
     @Test
@@ -127,7 +129,7 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyString(), anyList(), anyLong(), anyLong(),
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), eq("CRM-001"), anyList(), anyLong(), anyLong(),
             anyString()))
             .thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))

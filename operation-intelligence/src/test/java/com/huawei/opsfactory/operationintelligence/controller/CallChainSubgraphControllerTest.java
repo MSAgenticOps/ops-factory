@@ -90,7 +90,7 @@ class CallChainSubgraphControllerTest {
 
     @Test
     void generateAndGetSubgraph_persistsStoredSnapshot() throws Exception {
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyString(), anyList(), anyLong(), anyLong(),
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), eq("CRM-001"), anyList(), anyLong(), anyLong(),
             anyString()))
             .thenReturn(createCallChainTree());
 
@@ -110,6 +110,7 @@ class CallChainSubgraphControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.result.menuId").value("6013101010007"))
+            .andExpect(jsonPath("$.result.solutionId").value("CRM-001"))
             .andExpect(jsonPath("$.result.summary.flowCount").value(1))
             .andExpect(jsonPath("$.result.graph.entities.length()").value(3))
             .andExpect(jsonPath("$.result.graph.relations.length()").value(1))
@@ -127,7 +128,9 @@ class CallChainSubgraphControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.result.subgraphId").value(subgraphId))
+            .andExpect(jsonPath("$.result.solutionId").value("CRM-001"))
             .andExpect(jsonPath("$.result.graph.metadata.entryType").value("menuId"))
+            .andExpect(jsonPath("$.result.graph.metadata.solutionId").value("CRM-001"))
             .andExpect(jsonPath("$.result.graph.metadata.flowCount").value(1))
             .andExpect(jsonPath("$.result.graph.relations[0].type").value("belongs_to_cluster"));
 
@@ -139,7 +142,8 @@ class CallChainSubgraphControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.result.length()").value(1))
             .andExpect(jsonPath("$.result[0].subgraphId").value(subgraphId))
-            .andExpect(jsonPath("$.result[0].menuId").value("6013101010007"));
+            .andExpect(jsonPath("$.result[0].menuId").value("6013101010007"))
+            .andExpect(jsonPath("$.result[0].solutionId").value("CRM-001"));
     }
 
     @Test

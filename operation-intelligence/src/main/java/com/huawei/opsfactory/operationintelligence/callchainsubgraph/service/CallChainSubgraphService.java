@@ -113,6 +113,7 @@ public class CallChainSubgraphService {
         result.setMenuId(request.getMenuId().trim());
         result.setEnvCode(request.getEnvCode().trim());
         result.setSolutionType(request.getSolutionType().trim());
+        result.setSolutionId(request.getSolutionId().trim());
         result.setOntologyId(resolveOntologyId(request.getOntologyId()));
         result.setGeneratedAt(generatedAt.toString());
         result.setExpiresAt(generatedAt.plusMinutes(properties.getKnowledgeGraph().getCallChainSubgraphTtlMinutes())
@@ -257,6 +258,7 @@ public class CallChainSubgraphService {
         metadata.put("entryType", ENTRY_CONDITION_KEY);
         metadata.put("menuId", request.getMenuId().trim());
         metadata.put("solutionType", request.getSolutionType().trim());
+        metadata.put("solutionId", request.getSolutionId().trim());
         metadata.put("mode", queryMode);
         metadata.put("chainType", tree.getChainType());
         metadata.put("flowCount", tree.getFlows() == null ? 0 : tree.getFlows().size());
@@ -443,6 +445,7 @@ public class CallChainSubgraphService {
         item.setMenuId(result.getMenuId());
         item.setEnvCode(result.getEnvCode());
         item.setSolutionType(result.getSolutionType());
+        item.setSolutionId(result.getSolutionId());
         item.setOntologyId(resolveOntologyId(result.getOntologyId()));
         item.setGeneratedAt(result.getGeneratedAt());
         item.setExpiresAt(result.getExpiresAt());

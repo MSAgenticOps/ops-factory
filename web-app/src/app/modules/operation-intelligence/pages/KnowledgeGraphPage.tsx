@@ -1484,6 +1484,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const [entityQuery, setEntityQuery] = useState('')
     const [callChainMenuId, setCallChainMenuId] = useState('')
     const [callChainSolutionType, setCallChainSolutionType] = useState('')
+    const [callChainSolutionId, setCallChainSolutionId] = useState('')
     const [callChainTimeRange, setCallChainTimeRange] = useState<CallChainTimeRangeInput>(buildDefaultCallChainTimeRange)
     const [callChainDateTimeDraft, setCallChainDateTimeDraft] = useState<CallChainDateTimeDraft | null>(null)
     const [callChainHistoryItems, setCallChainHistoryItems] = useState<CallChainSubgraphHistoryItem[]>([])
@@ -2059,12 +2060,17 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const handleGenerateCallChainSubgraph = async () => {
         const normalizedMenuId = callChainMenuId.trim()
         const normalizedSolutionType = callChainSolutionType.trim()
+        const normalizedSolutionId = callChainSolutionId.trim()
         if (!normalizedMenuId) {
             showToast('warning', t('operationIntelligence.knowledgeGraph.callChainMenuIdRequired'))
             return
         }
         if (!normalizedSolutionType) {
             showToast('warning', t('operationIntelligence.knowledgeGraph.callChainSolutionTypeRequired'))
+            return
+        }
+        if (!normalizedSolutionId) {
+            showToast('warning', t('operationIntelligence.knowledgeGraph.callChainSolutionIdRequired'))
             return
         }
         const startTime = parseDateTimeLocalValue(callChainTimeRange.startTimeLocal)
@@ -2079,6 +2085,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                 menuId: normalizedMenuId,
                 envCode,
                 solutionType: normalizedSolutionType,
+                solutionId: normalizedSolutionId,
                 ontologyId,
                 startTime,
                 endTime,
@@ -2163,6 +2170,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
             setCallChainSubgraphResult(response.result)
             setCallChainMenuId(response.result.menuId)
             setCallChainSolutionType(response.result.solutionType)
+            setCallChainSolutionId(response.result.solutionId ?? '')
             setObservations(response.result.graph.observations ?? [])
             setSelectedEntityNodeId(null)
             setExpandedEntityGraphNodeIds(new Set())
@@ -2690,6 +2698,19 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         placeholder={t('operationIntelligence.knowledgeGraph.callChainSolutionTypePlaceholder')}
                                     />
                                 </label>
+                                <label className="kg-field kg-call-chain-solution-id-field">
+                                    <span>{t('operationIntelligence.knowledgeGraph.callChainSolutionId')}</span>
+                                    <input
+                                        value={callChainSolutionId}
+                                        onChange={event => setCallChainSolutionId(event.target.value)}
+                                        onKeyDown={event => {
+                                            if (event.key === 'Enter') {
+                                                void handleGenerateCallChainSubgraph()
+                                            }
+                                        }}
+                                        placeholder={t('operationIntelligence.knowledgeGraph.callChainSolutionIdPlaceholder')}
+                                    />
+                                </label>
                                 <label className="kg-field kg-call-chain-time-field">
                                     <span>{t('operationIntelligence.knowledgeGraph.callChainTimeRange')}</span>
                                     <button
@@ -2721,7 +2742,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         </option>
                                         {callChainHistoryItems.map(item => (
                                             <option key={item.subgraphId} value={item.subgraphId}>
-                                                {`${item.menuId} | ${formatHistoryTimestamp(item.generatedAt)} | ${item.solutionType}`}
+                                                {`${item.menuId} | ${formatHistoryTimestamp(item.generatedAt)} | ${item.solutionType} | ${item.solutionId ?? '-'}`}
                                             </option>
                                         ))}
                                     </select>
