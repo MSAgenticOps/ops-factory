@@ -81,6 +81,8 @@ gateway/channels/**/*.pid
 
 # Knowledge service runtime
 knowledge-service/config.yaml
+# OnlyOffice runtime config (real config is local; only config.yaml.example is tracked)
+onlyoffice/config.yaml
 knowledge-service/data/
 knowledge-service/data/**
 knowledge-service/logs/
