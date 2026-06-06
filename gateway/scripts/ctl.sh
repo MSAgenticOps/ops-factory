@@ -313,7 +313,9 @@ PYTHON_MIN_MINOR=10
 
 find_python_3_10_plus() {
     local cand ver major minor
-    for cand in python3.13 python3.12 python3.11 python3.10 python3; do
+    # Pinned project runtime is CPython 3.12.x; prefer it explicitly so a later-installed
+    # python3.13/3.14 on PATH can't silently rebuild venvs on a mismatched ABI.
+    for cand in python3.12 python3.13 python3.11 python3.10 python3; do
         command -v "${cand}" >/dev/null 2>&1 || continue
         ver="$("${cand}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "")"
         major="${ver%%.*}"
@@ -324,6 +326,25 @@ find_python_3_10_plus() {
         fi
     done
     return 1
+}
+
+# Pin `python3` for this script AND everything it spawns — the python MCP builds (check_python_mcp
+# shells out to bare `python3`) and the goosed runtime, whose servers launch via `cmd: python3`.
+# A stale login shell can leave a too-old `python3` first on PATH (e.g. /usr/bin/python3 3.9 after a
+# Homebrew python is removed). find_python_3_10_plus locates the right interpreter (python3.12 still
+# resolves via ~/.local/bin even then); we prepend its real bin dir so a bare `python3` resolves to
+# it. Portable: the dir is derived from the found interpreter, never hardcoded.
+ensure_python_on_path() {
+    local cmd real bindir
+    cmd="$(find_python_3_10_plus)" || {
+        log_warn "No python3 >= 3.${PYTHON_MIN_MINOR} found on PATH; python MCP servers may fail to build/run"
+        return 0
+    }
+    real="$("${cmd}" -c 'import os, sys; print(os.path.realpath(sys.executable))' 2>/dev/null)" || return 0
+    [ -n "${real}" ] || return 0
+    bindir="$(dirname "${real}")"
+    export PATH="${bindir}:${PATH}"
+    log_info "Using python3 from ${bindir} ($("${cmd}" --version 2>&1))"
 }
 
 build_python_mcp() {
@@ -456,6 +477,7 @@ do_startup() {
         stop_port "${GATEWAY_PORT}" "gateway"
     fi
 
+    ensure_python_on_path
     build_gateway
     build_knowledge_service_mcp
     build_knowledge_cli_mcp

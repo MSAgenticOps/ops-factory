@@ -116,4 +116,18 @@ public class A2AControllerDepthGuardTest {
             assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
         }
     }
+
+    /**
+     * An agent delegating to itself (target == origin) is rejected with 409 before any orchestration.
+     */
+    @Test
+    public void selfDelegationRejectedWith409() {
+        try {
+            controller.delegate("agentA", "{\"message\":\"do X\"}", request("alice", "A1"));
+            fail("expected 409");
+        } catch (ResponseStatusException e) {
+            assertEquals(HttpStatus.CONFLICT, e.getStatusCode());
+        }
+        verify(orchestration, never()).delegate(any(), any(), any(), any(), any());
+    }
 }

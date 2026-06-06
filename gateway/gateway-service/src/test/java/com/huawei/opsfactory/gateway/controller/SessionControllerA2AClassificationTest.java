@@ -62,6 +62,8 @@ public class SessionControllerA2AClassificationTest {
 
     private SessionController controller;
 
+    private ManagedInstance instB;
+
     /**
      * Builds a controller with mocked goosed-backed services and a real on-disk A2A store seeded with one live and
      * one offline (reaped) sub-session.
@@ -92,7 +94,7 @@ public class SessionControllerA2AClassificationTest {
         });
 
         // One running instance for agentB exposing a normal user session (U1) and a live a2a sub-run (B1).
-        ManagedInstance instB = mock(ManagedInstance.class);
+        instB = mock(ManagedInstance.class);
         when(instB.getUserId()).thenReturn(USER);
         when(instB.getStatus()).thenReturn(ManagedInstance.Status.RUNNING);
         when(instB.getAgentId()).thenReturn("agentB");
@@ -169,5 +171,31 @@ public class SessionControllerA2AClassificationTest {
         assertTrue(ids.contains("U1"));
         assertTrue(ids.contains("B1"));
         assertTrue(ids.contains("B2"));
+    }
+
+    /**
+     * A normal session on a DIFFERENT agent whose id collides with a recorded sub-run id (goosed session ids are
+     * per-instance, not globally unique) must NOT be mis-classified as agent_call: tagging is keyed by
+     * (agentId, sub-session id), not by id alone.
+     */
+    @Test
+    public void collidingIdOnDifferentAgentIsNotMistagged() throws Exception {
+        // agentC exposes a normal user session whose id "B1" collides with agentB's recorded sub-run B1.
+        ManagedInstance instC = mock(ManagedInstance.class);
+        when(instC.getUserId()).thenReturn(USER);
+        when(instC.getStatus()).thenReturn(ManagedInstance.Status.RUNNING);
+        when(instC.getAgentId()).thenReturn("agentC");
+        when(sessionService.getSessionsFromInstance(instC)).thenReturn(Mono.just(
+            "{\"sessions\":[{\"id\":\"B1\",\"name\":\"agentC normal\",\"created_at\":\"2026-06-05T11:00:00Z\","
+                + "\"session_type\":\"user\"}]}"));
+        when(instanceManager.getAllInstances()).thenReturn(List.of(instB, instC));
+
+        boolean agentCB1InUser = list("user").stream()
+            .anyMatch(s -> "B1".equals(s.get("id")) && "agentC".equals(s.get("agentId")));
+        assertTrue("colliding normal session on agentC must remain in the user tab", agentCB1InUser);
+
+        boolean agentCB1InAgentCall = list("agent_call").stream()
+            .anyMatch(s -> "B1".equals(s.get("id")) && "agentC".equals(s.get("agentId")));
+        assertFalse("agentC's normal session must not be classified agent_call", agentCB1InAgentCall);
     }
 }

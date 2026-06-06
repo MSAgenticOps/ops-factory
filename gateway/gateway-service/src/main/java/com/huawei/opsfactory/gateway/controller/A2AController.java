@@ -88,6 +88,13 @@ public class A2AController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "message is required");
         }
 
+        // Self-delegation guard: an agent must not delegate to itself (a degenerate cycle). Multi-hop cycles are
+        // already impossible (a recorded sub-run is refused below), but the model/MCP path can still target self.
+        if (originAgentId != null && originAgentId.equals(targetAgentId)) {
+            log.warn("[A2A] self-delegation rejected userId={} agent={}", userId, targetAgentId);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "an agent cannot delegate to itself");
+        }
+
         // Nesting guard: a caller whose own session is already a recorded A2A sub-run (on its own agent) must not
         // delegate again. Qualified by agent because per-instance session ids are not globally unique.
         if (originSessionId != null && a2aSessionStore.isAgentCallSession(userId, originAgentId, originSessionId)) {

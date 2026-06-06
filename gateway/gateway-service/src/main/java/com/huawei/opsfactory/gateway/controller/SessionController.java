@@ -321,25 +321,31 @@ public class SessionController {
         if (records.isEmpty()) {
             return;
         }
-        Set<String> recordedIds = new HashSet<>();
+        // Key by (targetAgentId, subSessionId): goosed session ids are per-instance, so the same id can appear on a
+        // different agent's normal session — matching by id alone would mis-tag that session as agent_call.
+        Set<String> recordedKeys = new HashSet<>();
         for (A2ASessionRecord r : records) {
-            recordedIds.add(r.subSessionId());
+            recordedKeys.add(a2aKey(r.targetAgentId(), r.subSessionId()));
         }
-        Set<String> liveIds = new HashSet<>();
+        Set<String> liveKeys = new HashSet<>();
         for (Map<String, Object> session : parsed) {
-            Object id = session.get("id");
-            if (id instanceof String sid) {
-                liveIds.add(sid);
-                if (recordedIds.contains(sid)) {
+            if (session.get("id") instanceof String sid && session.get("agentId") instanceof String agentId) {
+                String key = a2aKey(agentId, sid);
+                liveKeys.add(key);
+                if (recordedKeys.contains(key)) {
                     session.put(GatewayConstants.SESSION_FIELD_ORIGIN, GatewayConstants.A2A_ORIGIN);
                 }
             }
         }
         for (A2ASessionRecord r : records) {
-            if (!liveIds.contains(r.subSessionId())) {
+            if (!liveKeys.contains(a2aKey(r.targetAgentId(), r.subSessionId()))) {
                 parsed.add(synthesizeA2aSession(r));
             }
         }
+    }
+
+    private static String a2aKey(String agentId, String subSessionId) {
+        return agentId + ' ' + subSessionId;
     }
 
     private Map<String, Object> synthesizeA2aSession(A2ASessionRecord record) {

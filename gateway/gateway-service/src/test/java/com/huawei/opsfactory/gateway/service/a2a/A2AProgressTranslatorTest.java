@@ -44,7 +44,7 @@ public class A2AProgressTranslatorTest {
     public void dropsThinking() {
         A2AProgressTranslator tr = new A2AProgressTranslator("agentB", "B1");
         assertTrue(tr.progressFor(message(thinking("secret reasoning"))).isEmpty());
-        assertEquals("", tr.accumulatedText());
+        assertEquals("", tr.resultFrame().get("result"));
     }
 
     /**
@@ -73,7 +73,7 @@ public class A2AProgressTranslatorTest {
         A2AProgressTranslator tr = new A2AProgressTranslator("agentB", "B1");
         tr.progressFor(message(text("Part one. ")));
         tr.progressFor(message(text("Part two.")));
-        assertEquals("Part one. Part two.", tr.accumulatedText());
+        assertEquals("Part one. Part two.", tr.resultFrame().get("result"));
     }
 
     /**

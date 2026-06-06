@@ -146,12 +146,12 @@ public class A2AOrchestrationService {
                 }
             }, err -> {
                 log.warn("[A2A] stream error sub={}: {}", subSessionId, err.getMessage());
-                a2aSessionStore.updateStatus(userId, subSessionId, A2ASessionRecord.STATUS_ERROR);
+                a2aSessionStore.updateStatus(userId, targetAgentId, subSessionId, A2ASessionRecord.STATUS_ERROR);
                 emitter.completeWithError(err);
             }, () -> {
                 finished.set(true);
                 String status = translator.status();
-                a2aSessionStore.updateStatus(userId, subSessionId, status);
+                a2aSessionStore.updateStatus(userId, targetAgentId, subSessionId, status);
                 if (A2ASessionRecord.STATUS_TIMEOUT.equals(status) || A2ASessionRecord.STATUS_ERROR.equals(status)) {
                     // Gateway gave up (idle/total timeout or stream error) before B finished — tell B to stop too,
                     // otherwise the sub-run keeps executing on goosed after we returned a terminal frame.
@@ -167,7 +167,7 @@ public class A2AOrchestrationService {
                 // Caller disconnected before the terminal frame (goose cancelled the call_agent tool): cancel B.
                 log.info("[A2A] caller disconnected, cancelling target sub={}", subSessionId);
                 postCancel(instance, subSessionId, requestId);
-                a2aSessionStore.updateStatus(userId, subSessionId, A2ASessionRecord.STATUS_CANCELLED);
+                a2aSessionStore.updateStatus(userId, targetAgentId, subSessionId, A2ASessionRecord.STATUS_CANCELLED);
             }
         };
         emitter.onTimeout(abort);

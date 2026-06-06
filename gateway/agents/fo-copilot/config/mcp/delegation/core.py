@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any, Optional
 
@@ -38,7 +39,7 @@ def log(event: str, **fields: Any) -> None:
     try:
         payload = {"ts": round(time.time(), 3), "mcp": "delegation", "event": event, **fields}
         print(json.dumps(payload, ensure_ascii=False), file=sys.stderr, flush=True)
-    except Exception:
+    except Exception:  # noqa: BLE001 - logging is best-effort; it must never raise into the caller
         pass
 
 
@@ -134,7 +135,8 @@ def error_detail(body: str) -> Optional[str]:
 def _meta_from_ctx(ctx: Any) -> Any:
     try:
         return ctx.request_context.meta
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - meta is optional; its absence must not fail the tool call
+        log("meta_unavailable", error=str(exc))
         return None
 
 
@@ -156,7 +158,7 @@ async def delegate(ctx: Any, target: str, message: str) -> str:
         return "[delegation error] could not resolve caller identity from runtime directory"
 
     headers = build_headers(SECRET_KEY, user_id, agent_id, session_id)
-    url = f"{GATEWAY_URL}/api/gateway/agents/{target}/a2a"
+    url = f"{GATEWAY_URL}/api/gateway/agents/{urllib.parse.quote(target, safe='')}/a2a"
     log("delegate_start", target=target, user_id=user_id, agent_id=agent_id, session_id=session_id)
 
     import httpx
@@ -195,3 +197,41 @@ async def delegate(ctx: Any, target: str, message: str) -> str:
 
     log("delegate_done", target=target, result_len=len(result))
     return result
+
+
+async def list_agents() -> str:
+    """Fetches the delegatable agent roster from the gateway and formats it as an ``id (name)`` list, so the model
+    targets exact ids instead of guessing (e.g. ``supervisor`` vs the real ``supervisor-agent``).
+
+    Mirrors ``delegate``'s gateway URL + secret + self-signed-TLS handling. The agents list is registry-wide, but the
+    gateway's ``UserContextFilter`` still requires a non-empty ``x-user-id`` on this route, so we send the runtime
+    user resolved from the CWD (falling back to ``__default__`` since the list is not user-scoped). Failures are
+    returned as a ``[delegation error] ...`` string so the model can react rather than crashing the tool call."""
+    import httpx
+
+    user_id, self_agent_id = resolve_identity(os.getcwd())
+    url = f"{GATEWAY_URL}/api/gateway/agents"
+    verify = not GATEWAY_URL.startswith("https")
+    headers = {"x-secret-key": SECRET_KEY or "", "x-user-id": user_id or "__default__"}
+    log("list_agents_start", user_id=user_id)
+    try:
+        async with httpx.AsyncClient(verify=verify, timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+            response = await client.get(url, headers=headers)
+            if response.status_code >= 400:
+                body = response.text.strip()
+                log("list_agents_http_error", status=response.status_code, body=body[:200])
+                return f"[delegation error] gateway returned {response.status_code}: {error_detail(body) or body[:200]}"
+            payload = response.json()
+    except Exception as exc:  # noqa: BLE001 - surface failures as a tool error so the model can react
+        log("list_agents_failed", error=str(exc))
+        return f"[delegation error] {exc}"
+
+    agents = payload.get("agents", []) if isinstance(payload, dict) else []
+    # Exclude the calling agent itself: an agent cannot delegate to itself (the gateway rejects it), so listing it
+    # would only invite a doomed self-call.
+    entries = [a for a in agents if isinstance(a, dict) and a.get("id") and a.get("id") != self_agent_id]
+    log("list_agents_done", count=len(entries))
+    if not entries:
+        return "No delegatable agents are registered."
+    lines = "\n".join(f"- {a['id']}" + (f" ({a['name']})" if a.get("name") else "") for a in entries)
+    return "Available agents (pass the exact id as call_agent's `target`):\n" + lines

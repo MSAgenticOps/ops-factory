@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.service.a2a;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -153,7 +154,7 @@ public class A2AProgressTranslator {
      * @return the terminal payload
      */
     public Map<String, Object> resultFrame() {
-        Map<String, Object> frame = new java.util.LinkedHashMap<>();
+        Map<String, Object> frame = new LinkedHashMap<>();
         frame.put("type", TYPE_RESULT);
         frame.put("target_agent", targetAgent);
         frame.put("sub_session_id", subSessionId);
@@ -181,16 +182,9 @@ public class A2AProgressTranslator {
         return sawTerminal ? A2ASessionRecord.STATUS_COMPLETED : A2ASessionRecord.STATUS_TIMEOUT;
     }
 
-    /**
-     * @return the accumulated user-visible assistant text
-     */
-    public String accumulatedText() {
-        return result.toString().trim();
-    }
-
     private Map<String, Object> progressFrame(String kind, String label) {
         step++;
-        Map<String, Object> frame = new java.util.LinkedHashMap<>();
+        Map<String, Object> frame = new LinkedHashMap<>();
         frame.put("type", TYPE_PROGRESS);
         frame.put("target_agent", targetAgent);
         frame.put("sub_session_id", subSessionId);

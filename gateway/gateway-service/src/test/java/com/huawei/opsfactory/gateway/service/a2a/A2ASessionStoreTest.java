@@ -85,7 +85,7 @@ public class A2ASessionStoreTest {
         store.record(rec("B1", "A1", "alice", A2ASessionRecord.STATUS_RUNNING));
         store.record(rec("B1", "A1", "alice", A2ASessionRecord.STATUS_RUNNING));
         assertEquals(1, store.listForUser("alice").size());
-        store.updateStatus("alice", "B1", A2ASessionRecord.STATUS_COMPLETED);
+        store.updateStatus("alice", "agentB", "B1", A2ASessionRecord.STATUS_COMPLETED);
         assertEquals(A2ASessionRecord.STATUS_COMPLETED, store.find("alice", "B1").get().status());
         assertEquals(1, store.listForUser("alice").size());
     }
@@ -144,5 +144,30 @@ public class A2ASessionStoreTest {
     public void handlesDefaultUserUnderscores() {
         store.record(rec("B1", "A1", "__default__", A2ASessionRecord.STATUS_RUNNING));
         assertTrue(store.isAgentCallSession("__default__", "agentB", "B1"));
+    }
+
+    /**
+     * Two sub-runs that collide on sub-session id but target different agents stay distinct: neither record
+     * overwrites the other and a status update is agent-scoped (goosed session ids are per-instance, not unique).
+     */
+    @Test
+    public void distinguishesCollidingSubSessionIdsByAgent() {
+        store.record(new A2ASessionRecord("S1", "A1", "agentA", "agentB", "alice", "2026-06-05T10:00:00Z",
+            A2ASessionRecord.STATUS_RUNNING, "to B"));
+        store.record(new A2ASessionRecord("S1", "A1", "agentA", "agentC", "alice", "2026-06-05T10:00:00Z",
+            A2ASessionRecord.STATUS_RUNNING, "to C"));
+        assertEquals("colliding ids under different agents must not overwrite", 2, store.listForUser("alice").size());
+
+        store.updateStatus("alice", "agentB", "S1", A2ASessionRecord.STATUS_COMPLETED);
+        long bCompleted = store.listForUser("alice").stream()
+            .filter(r -> "agentB".equals(r.targetAgentId()) && A2ASessionRecord.STATUS_COMPLETED.equals(r.status()))
+            .count();
+        long cStillRunning = store.listForUser("alice").stream()
+            .filter(r -> "agentC".equals(r.targetAgentId()) && A2ASessionRecord.STATUS_RUNNING.equals(r.status()))
+            .count();
+        assertEquals(1, bCompleted);
+        assertEquals(1, cStillRunning);
+        assertTrue(store.isAgentCallSession("alice", "agentB", "S1"));
+        assertTrue(store.isAgentCallSession("alice", "agentC", "S1"));
     }
 }

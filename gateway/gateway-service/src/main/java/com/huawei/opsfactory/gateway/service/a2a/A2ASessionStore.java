@@ -76,7 +76,7 @@ public class A2ASessionStore {
     }
 
     /**
-     * Appends (or replaces, keyed by sub-session id) a side-record.
+     * Appends (or replaces, keyed by target agent + sub-session id) a side-record.
      *
      * @param record the record to persist
      */
@@ -84,7 +84,8 @@ public class A2ASessionStore {
         lock.lock();
         try {
             List<A2ASessionRecord> records = new ArrayList<>(readAll(record.callerUserId()));
-            records.removeIf(r -> r.subSessionId().equals(record.subSessionId()));
+            records.removeIf(r -> r.subSessionId().equals(record.subSessionId())
+                && r.targetAgentId().equals(record.targetAgentId()));
             records.add(record);
             writeAll(record.callerUserId(), records);
         } finally {
@@ -93,20 +94,22 @@ public class A2ASessionStore {
     }
 
     /**
-     * Updates the lifecycle status of an existing sub-session record (no-op if not found).
+     * Updates the lifecycle status of an existing sub-session record (no-op if not found). Matched by BOTH agent and
+     * sub-session id: goosed session ids are per-instance (not globally unique), so an id can recur across agents.
      *
      * @param userId the owning user id
+     * @param targetAgentId the delegated-to agent the sub-session ran on
      * @param subSessionId the sub-session id
      * @param status the new status (see {@link A2ASessionRecord} constants)
      */
-    public void updateStatus(String userId, String subSessionId, String status) {
+    public void updateStatus(String userId, String targetAgentId, String subSessionId, String status) {
         lock.lock();
         try {
             List<A2ASessionRecord> records = new ArrayList<>(readAll(userId));
             boolean changed = false;
             for (int i = 0; i < records.size(); i++) {
                 A2ASessionRecord r = records.get(i);
-                if (r.subSessionId().equals(subSessionId)) {
+                if (r.subSessionId().equals(subSessionId) && r.targetAgentId().equals(targetAgentId)) {
                     records.set(i, r.withStatus(status));
                     changed = true;
                     break;

@@ -622,6 +622,7 @@
     "mentionPickerNoMatches": "No matching agents.",
     "a2a": {
         "agentFallback": "agent",
+        "toolCalls_one": "{{count}} tool call",
         "toolCalls_other": "{{count}} tool calls",
         "resultNoResult": "[delegation error] no result returned",
         "resultError": "[delegated agent error] {{error}}",
