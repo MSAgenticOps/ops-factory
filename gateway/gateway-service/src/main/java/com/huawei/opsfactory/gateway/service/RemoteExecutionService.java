@@ -20,10 +20,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist
@@ -138,9 +141,28 @@ public class RemoteExecutionService {
         String credential = (String) host.get("credential");
         Session session = jsch.getSession(username, hostname, port);
         configureAuthentication(jsch, session, authType, credential);
-        session.setConfig("StrictHostKeyChecking", "no");
+        configureSshSecurity(jsch, session);
         session.connect(5000);
         return session;
+    }
+
+    private void configureSshSecurity(JSch jsch, Session session) throws JSchException {
+        Path knownHosts = Path.of(System.getProperty("user.home"), ".ssh", "known_hosts");
+        if (Files.isRegularFile(knownHosts)) {
+            jsch.setKnownHosts(knownHosts.toString());
+        } else {
+            log.warn("SSH known_hosts file not found at {}; remote execution will reject unknown host keys", knownHosts);
+        }
+
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", "yes");
+        config.put("cipher.s2c", "aes128-ctr,aes192-ctr,aes256-ctr");
+        config.put("cipher.c2s", "aes128-ctr,aes192-ctr,aes256-ctr");
+        config.put("mac.s2c", "hmac-sha2-256");
+        config.put("mac.c2s", "hmac-sha2-256");
+        config.put("compression.s2c", "none");
+        config.put("compression.c2s", "none");
+        session.setConfig(config);
     }
 
     private void configureAuthentication(JSch jsch, Session session, String authType, String credential)

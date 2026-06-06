@@ -83,7 +83,7 @@ public class SessionBridgeServiceTest {
             assertTrue(ex.getCause() instanceof IllegalStateException);
             assertEquals("boom", ex.getCause().getMessage());
             return;
-        } catch (Exception ex) {
+        } catch (IllegalAccessException ex) {
             throw new AssertionError("Unexpected exception type", ex);
         }
 
