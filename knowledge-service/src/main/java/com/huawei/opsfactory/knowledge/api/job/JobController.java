@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * The JobController.
  * @author x00000000
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
+@RestSchema(schemaId = "jobController")
 @RequestMapping("/api/knowledge/jobs")
 public class JobController {
 

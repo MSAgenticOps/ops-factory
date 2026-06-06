@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 @RestController
+@RestSchema(schemaId = "serviceController")
 @RequestMapping("/api/control-center/services")
 /**
  * Service Controller.

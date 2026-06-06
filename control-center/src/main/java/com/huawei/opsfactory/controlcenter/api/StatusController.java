@@ -10,7 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 @RestController("controlCenterStatusController")
+@RestSchema(schemaId = "statusController")
 @RequestMapping("/api/control-center")
 /**
  * Status Controller.

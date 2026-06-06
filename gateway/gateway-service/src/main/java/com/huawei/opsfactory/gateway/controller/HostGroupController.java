@@ -4,33 +4,15 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
-import com.huawei.opsfactory.gateway.exception.BadRequestException;
-import com.huawei.opsfactory.gateway.exception.ConflictException;
-import com.huawei.opsfactory.gateway.exception.NotFoundException;
+import com.huawei.opsfactory.gateway.controller.base.BaseHostGroupController;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import org.apache.servicecomb.provider.rest.common.RestSchema;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * REST controller for CRUD operations on host group definitions and the group tree.
@@ -41,151 +23,13 @@ import java.util.Set;
 @RestController
 @RestSchema(schemaId = "hostGroupController")
 @RequestMapping("/api/gateway/host-groups")
-public class HostGroupController {
-    private final HostGroupService hostGroupService;
-
-    private final ClusterService clusterService;
-
-    private final BusinessServiceService businessServiceService;
-
-    private final HostService hostService;
+public class HostGroupController extends BaseHostGroupController {
 
     /**
      * Creates the host group controller instance.
      */
     public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
         BusinessServiceService businessServiceService, HostService hostService) {
-        this.hostGroupService = hostGroupService;
-        this.clusterService = clusterService;
-        this.businessServiceService = businessServiceService;
-        this.hostService = hostService;
-    }
-
-    /**
-     * Lists host groups, optionally filtered by enabled status.
-     *
-     * @param enabledOnly enabled-only filter flag
-     * @param request server HTTP request
-     * @return the result
-     */
-    @GetMapping
-    public Map<String, Object> listGroups(
-        @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
-        HttpServletRequest request) {
-        List<Map<String, Object>> groups = hostGroupService.listGroups();
-        if (enabledOnly) {
-            Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
-            groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
-        }
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("groups", groups);
-        return result;
-    }
-
-    /**
-     * Returns the hierarchical tree of groups, clusters, and business services.
-     *
-     * @param enabledOnly returns the hierarchical tree of groups, clusters, and business services
-     * @param request server HTTP request
-     * @return the hierarchical tree of groups, clusters, and business services
-     */
-    @GetMapping("/tree")
-    public Map<String, Object> getTree(
-        @RequestParam(value = "enabledOnly", required = false, defaultValue = "false") boolean enabledOnly,
-        HttpServletRequest request) {
-        List<Map<String, Object>> groups = hostGroupService.listGroups();
-        List<Map<String, Object>> clusters = clusterService.listClusters(null, null);
-        List<Map<String, Object>> businessServices = businessServiceService.listBusinessServices(null, null);
-        if (enabledOnly) {
-            Set<String> disabledGroupIds = hostGroupService.getDisabledGroupIds(groups);
-            groups.removeIf(g -> disabledGroupIds.contains(g.get("id")));
-            clusters
-                .removeIf(c -> Boolean.FALSE.equals(c.get("enabled")) || disabledGroupIds.contains(c.get("groupId")));
-            businessServices.removeIf(
-                bs -> Boolean.FALSE.equals(bs.get("enabled")) || disabledGroupIds.contains(bs.get("groupId")));
-        }
-        return hostGroupService.getTree(groups, clusters, businessServices);
-    }
-
-    /**
-     * Gets a host group by ID.
-     *
-     * @param id entity identifier
-     * @param request server HTTP request
-     * @return a host group by ID
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getGroup(@PathVariable("id") String id, HttpServletRequest request)
-        throws NotFoundException {
-        Map<String, Object> group = hostGroupService.getGroup(id);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        body.put("group", group);
-        return ResponseEntity.ok(body);
-    }
-
-    /**
-     * Creates a new host group.
-     *
-     * @param request HTTP request body
-     * @param httpRequest server HTTP request
-     * @return the result
-     */
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> createGroup(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) throws BadRequestException, ConflictException {
-        Map<String, Object> group = hostGroupService.createGroup(request);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        body.put("group", group);
-        return ResponseEntity.status(HttpStatus.CREATED).body(body);
-    }
-
-    /**
-     * Updates a host group by ID.
-     *
-     * @param id a host group by ID
-     * @param request a host group by ID
-     * @param httpRequest server HTTP request
-     * @return the result
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateGroup(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest)
-        throws NotFoundException, BadRequestException, ConflictException {
-        Map<String, Object> group = hostGroupService.updateGroup(id, request);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        body.put("group", group);
-        return ResponseEntity.ok(body);
-    }
-
-    /**
-     * Deletes a host group by ID, optionally forcing deletion of associated resources.
-     *
-     * @param id entity identifier
-     * @param force whether to force the operation
-     * @param request server HTTP request
-     * @return the result
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteGroup(@PathVariable("id") String id,
-        @RequestParam(value = "force", required = false, defaultValue = "false") boolean force,
-        HttpServletRequest request) throws ConflictException {
-        boolean deleted;
-        if (force) {
-            deleted = hostGroupService.forceDeleteGroup(id, clusterService, hostService, businessServiceService);
-        } else {
-            deleted = hostGroupService.deleteGroup(id, clusterService);
-        }
-        if (!deleted) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Host group not found: " + id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        return ResponseEntity.ok(body);
+        super(hostGroupService, clusterService, businessServiceService, hostService);
     }
 }

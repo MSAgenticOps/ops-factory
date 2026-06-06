@@ -17,7 +17,10 @@ import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 @RestController
+@RestSchema(schemaId = "serviceFileController")
 @RequestMapping("/api/control-center/services/{id}")
 /**
  * Service File Controller.

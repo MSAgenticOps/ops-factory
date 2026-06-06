@@ -4,13 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
     http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
     <groupId>com.huawei.msz</groupId>
     <artifactId>ops-gateway-parent</artifactId>
     <version>1.5.1.1-SNAPSHOT</version>
   </parent>
+
   <artifactId>gateway-service</artifactId>
   <packaging>jar</packaging>
+
   <build>
     <finalName>gateway-service</finalName>
     <plugins>
@@ -66,12 +69,21 @@
       </plugin>
     </plugins>
   </build>
+
   <dependencies>
     <!-- Internal common module -->
     <dependency>
       <groupId>com.huawei.msz</groupId>
       <artifactId>gateway-common</artifactId>
     </dependency>
+
+      <!-- Ops Common -->
+      <dependency>
+          <groupId>com.huawei.msz</groupId>
+          <artifactId>opsfactory-common</artifactId>
+          <version>1.5.1.1-SNAPSHOT</version>
+      </dependency>
+
     <!-- ========== Spring Boot WebFlux ========== -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -83,6 +95,7 @@
         </exclusion>
       </exclusions>
     </dependency>
+
     <!-- ========== Spring Boot Servlet ========== -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -94,23 +107,27 @@
         </exclusion>
       </exclusions>
     </dependency>
+
     <!-- ========== CSE ServiceComb ========== -->
     <dependency>
       <groupId>org.apache.servicecomb</groupId>
       <artifactId>provider-springmvc</artifactId>
       <version>2.9.0</version>
     </dependency>
+
     <!-- AOP (auth interceptor, logging aspects) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-aop</artifactId>
     </dependency>
+
     <!-- JSch for SSH remote command execution -->
     <dependency>
       <groupId>com.github.mwiede</groupId>
       <artifactId>jsch</artifactId>
       <version>0.2.15</version>
     </dependency>
+
     <!-- Apache POI for Excel file processing -->
     <dependency>
       <groupId>org.apache.poi</groupId>

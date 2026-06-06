@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 @RestController
+@RestSchema(schemaId = "observabilityController")
 @RequestMapping("/api/control-center/observability")
 /**
  * Observability Controller.

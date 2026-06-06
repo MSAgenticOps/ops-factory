@@ -4,19 +4,23 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
     http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
     <groupId>com.huawei.msz</groupId>
     <artifactId>ms-om-parent</artifactId>
     <version>1.5.1.1-SNAPSHOT</version>
   </parent>
+
   <groupId>com.huawei.msz</groupId>
   <artifactId>ops-gateway-parent</artifactId>
   <version>1.5.1.1-SNAPSHOT</version>
   <packaging>pom</packaging>
+
   <modules>
     <module>gateway-common</module>
     <module>gateway-service</module>
   </modules>
+
   <properties>
     <java.version>21</java.version>
     <maven.compiler.source>21</maven.compiler.source>
@@ -31,6 +35,7 @@
     <spotless-maven-plugin.version>2.44.0</spotless-maven-plugin.version>
     <google-java-format.version>1.22.0</google-java-format.version>
   </properties>
+
   <dependencyManagement>
     <dependencies>
       <!-- Spring Boot BOM -->

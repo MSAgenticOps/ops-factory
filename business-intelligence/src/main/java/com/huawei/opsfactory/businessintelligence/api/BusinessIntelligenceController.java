@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * REST controller for business intelligence operations.
  *
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2026-05-27
  */
 @RestController
+@RestSchema(schemaId = "businessIntelligenceController")
 @RequestMapping("/api/business-intelligence")
 public class BusinessIntelligenceController {
 

@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * The DocumentController.
  * @author x00000000
@@ -33,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 
 @RestController
+@RestSchema(schemaId = "documentController")
 @RequestMapping("/api/knowledge")
 public class DocumentController {
 

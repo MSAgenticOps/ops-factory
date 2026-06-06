@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 @RestController
+@RestSchema(schemaId = "runtimeController")
 @RequestMapping("/api/control-center/runtime")
 /**
  * Runtime Controller.

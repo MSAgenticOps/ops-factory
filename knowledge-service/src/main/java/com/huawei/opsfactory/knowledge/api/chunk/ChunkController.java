@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * The ChunkController.
  * @author x00000000
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
+@RestSchema(schemaId = "chunkController")
 @RequestMapping("/api/knowledge")
 public class ChunkController {
 

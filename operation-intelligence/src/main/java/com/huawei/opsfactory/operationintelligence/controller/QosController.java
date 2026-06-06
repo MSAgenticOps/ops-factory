@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * Qos Controller.
  *
@@ -30,6 +32,7 @@ import java.util.Optional;
  * @since 2026-05-11
  */
 @RestController
+@RestSchema(schemaId = "qosController")
 @RequestMapping("/api/operation-intelligence/qos")
 public class QosController {
 
