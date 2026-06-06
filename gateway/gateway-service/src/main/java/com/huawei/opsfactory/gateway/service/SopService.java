@@ -47,6 +47,9 @@ public class SopService {
 
     /**
      * Creates the sop service instance.
+     *
+     * @param properties gateway properties
+     * @param solutionTypeService the solution type service for validation
      */
     public SopService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
@@ -144,8 +147,8 @@ public class SopService {
     /**
      * Updates an existing SOP document with the provided field map.
      *
-     * @param id an existing SOP document with the provided field map
-     * @param body an existing SOP document with the provided field map
+     * @param id entity identifier
+     * @param body updated fields
      * @return the result
      */
     public Map<String, Object> updateSop(String id, Map<String, Object> body) {
@@ -212,6 +215,13 @@ public class SopService {
 
     // ── Name Uniqueness Validation ────────────────────────────────
 
+    /**
+     * Validates that the SOP name is unique among existing SOP documents.
+     *
+     * @param name the SOP name to validate
+     * @param excludeId the ID of the SOP to exclude from the check (for updates)
+     * @throws IllegalArgumentException if the name already exists
+     */
     private void validateSopNameUnique(String name, String excludeId) {
         if (name == null || name.isBlank()) {
             return;
@@ -226,12 +236,13 @@ public class SopService {
         }
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
     /**
      * Resolve the JSON file path for a given SOP id.
      * Tries direct filename first ({id}.json), then scans all files
      * to match by the internal "id" field (e.g. sub-nslb-{uuid}.json).
+     *
+     * @param id entity identifier
+     * @return the resolved file path
      */
     private Path resolveSopFile(String id) {
         // Fast path: direct filename match
@@ -259,6 +270,12 @@ public class SopService {
         return direct;
     }
 
+    /**
+     * Reads an SOP document from the given JSON file.
+     *
+     * @param file the JSON file path
+     * @return the parsed SOP document, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readSopFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -278,6 +295,13 @@ public class SopService {
         }
     }
 
+    /**
+     * Writes an SOP document to a JSON file.
+     *
+     * @param id the entity identifier used as the filename
+     * @param sop the SOP data to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeSopFile(String id, Map<String, Object> sop) {
         try {
             Files.createDirectories(sopsDir);

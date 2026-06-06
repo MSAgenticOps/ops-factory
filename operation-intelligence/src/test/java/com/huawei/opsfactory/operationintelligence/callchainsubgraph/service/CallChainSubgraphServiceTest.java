@@ -79,7 +79,8 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyList(), anyLong(), anyLong(), anyString()))
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyString(), anyList(), anyLong(), anyLong(),
+            anyString()))
             .thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
             .thenReturn(ResourceSubgraphResult.empty());
@@ -88,6 +89,7 @@ class CallChainSubgraphServiceTest {
         request.setMenuId("6013101010007");
         request.setEnvCode("prod");
         request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
 
         CallChainSubgraphResult result = service.generate(request);
 
@@ -125,7 +127,8 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyList(), anyLong(), anyLong(), anyString()))
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyString(), anyList(), anyLong(), anyLong(),
+            anyString()))
             .thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
             .thenReturn(createBhfResourceSubgraph());
@@ -134,6 +137,7 @@ class CallChainSubgraphServiceTest {
         request.setMenuId("6013101010007");
         request.setEnvCode("prod");
         request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
 
         CallChainSubgraphResult result = service.generate(request);
 

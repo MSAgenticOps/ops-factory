@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
@@ -168,17 +169,35 @@ public class ClusterService {
      *
      * @param body field map for the new cluster
      * @return the created cluster map with generated id and timestamps
+     * @throws ConflictException if name already exists in the group
      */
-    public Map<String, Object> createCluster(Map<String, Object> body) {
+    public Map<String, Object> createCluster(Map<String, Object> body) throws ConflictException {
+        String name = ValidationUtils.validateStringField(body, "name", "Cluster name", 100, true);
+
+        String type = ValidationUtils.validateStringField(body, "type", "Cluster type", 100, true);
+
+        String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+
+        List<Map<String, Object>> allClusters = listClusters(null, null);
+        boolean nameDuplicate = allClusters.stream()
+            .filter(c -> groupId.equals(c.get("groupId")))
+            .anyMatch(c -> name.equalsIgnoreCase(String.valueOf(c.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Cluster name already exists in this group");
+        }
+
+        ValidationUtils.validateStringField(body, "purpose", "Cluster purpose", 200, false);
+        ValidationUtils.validateStringField(body, "description", "Cluster description", 500, false);
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> cluster = new LinkedHashMap<>();
         cluster.put("id", id);
-        cluster.put("name", body.getOrDefault("name", ""));
-        cluster.put("type", body.getOrDefault("type", ""));
+        cluster.put("name", name);
+        cluster.put("type", type);
         cluster.put("purpose", body.getOrDefault("purpose", ""));
-        cluster.put("groupId", body.getOrDefault("groupId", null));
+        cluster.put("groupId", groupId);
         cluster.put("description", body.getOrDefault("description", ""));
         cluster.put("enabled", body.getOrDefault("enabled", true));
         cluster.put("createdAt", now);
@@ -195,8 +214,10 @@ public class ClusterService {
      * @param id cluster identifier
      * @param body field map with updated values
      * @return the updated cluster map
+     * @throws NotFoundException if cluster not found
+     * @throws ConflictException if name already exists in the group
      */
-    public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException {
+    public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
         Path file = clustersDir.resolve(id + ".json");
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
@@ -204,19 +225,34 @@ public class ClusterService {
         }
 
         if (body.containsKey("name")) {
-            cluster.put("name", body.get("name"));
+            String newName = ValidationUtils.validateStringField(body, "name", "Cluster name", 100, true);
+
+            Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : cluster.get("groupId");
+            String groupId = groupIdObj != null ? groupIdObj.toString() : "";
+            List<Map<String, Object>> allClusters = listClusters(null, null);
+            boolean nameDuplicate = allClusters.stream()
+                .filter(c -> !id.equals(c.get("id")) && groupId.equals(c.get("groupId")))
+                .anyMatch(c -> newName.equalsIgnoreCase(String.valueOf(c.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Cluster name already exists in this group");
+            }
+            cluster.put("name", newName);
         }
         if (body.containsKey("type")) {
-            cluster.put("type", body.get("type"));
-        }
-        if (body.containsKey("purpose")) {
-            cluster.put("purpose", body.get("purpose"));
+            String newType = ValidationUtils.validateStringField(body, "type", "Cluster type", 100, true);
+            cluster.put("type", newType);
         }
         if (body.containsKey("groupId")) {
-            cluster.put("groupId", body.get("groupId"));
+            String newGroupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+            cluster.put("groupId", newGroupId);
+        }
+        if (body.containsKey("purpose")) {
+            String purpose = ValidationUtils.validateStringField(body, "purpose", "Cluster purpose", 200, false);
+            cluster.put("purpose", purpose);
         }
         if (body.containsKey("description")) {
-            cluster.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Cluster description", 500, false);
+            cluster.put("description", description);
         }
         if (body.containsKey("enabled")) {
             cluster.put("enabled", body.get("enabled"));

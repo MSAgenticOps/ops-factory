@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
@@ -228,10 +229,11 @@ public class HostServiceTest {
     public void testCreateHost_defaultValues() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalHost");
+        body.put("ip", "10.0.0.1");
 
         Map<String, Object> result = hostService.createHost(body);
 
-        assertEquals("", result.get("ip"));
+        assertEquals("10.0.0.1", result.get("ip"));
         assertEquals(22, result.get("port"));
         assertEquals("", result.get("username"));
         assertEquals("password", result.get("authType"));
@@ -247,6 +249,8 @@ public class HostServiceTest {
     public void testCreateHost_encryptedCredentialStored() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "EncHost");
+        body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "plainTextPassword");
 
         Map<String, Object> result = hostService.createHost(body);
@@ -268,6 +272,7 @@ public class HostServiceTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "pass");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -288,6 +293,8 @@ public class HostServiceTest {
     public void testUpdateHost_updateCredential() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "oldPassword");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -310,6 +317,7 @@ public class HostServiceTest {
     public void testUpdateHost_updateTags() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
         body.put("tags", List.of("OLD"));
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -360,6 +368,8 @@ public class HostServiceTest {
         // Create host with a known password
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("credential", "originalSecretPassword");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -386,6 +396,7 @@ public class HostServiceTest {
     public void testUpdateHost_updatedAtChanges() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
         hostService.createHost(body);
         String id = getFirstHostId();
 
@@ -399,6 +410,87 @@ public class HostServiceTest {
 
         String updatedAt = (String) hostService.getHost(id).get("updatedAt");
         assertNotNull(updatedAt);
+    }
+
+    // ── IP Validation ──────────────────────────────────────────────
+
+    /**
+     * Tests create host with valid IPv4 address.
+     */
+    @Test
+    public void testCreateHost_validIpv4() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Ipv4Host");
+        body.put("ip", "192.168.1.1");
+
+        Map<String, Object> result = hostService.createHost(body);
+        assertEquals("192.168.1.1", result.get("ip"));
+    }
+
+    /**
+     * Tests create host with valid IPv6 address.
+     */
+    @Test
+    public void testCreateHost_validIpv6() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Ipv6Host");
+        body.put("ip", "fe80::1");
+
+        Map<String, Object> result = hostService.createHost(body);
+        assertEquals("fe80::1", result.get("ip"));
+    }
+
+    /**
+     * Tests create host with invalid IP address.
+     */
+    @Test(expected = BadRequestException.class)
+    public void testCreateHost_invalidIp() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "BadIpHost");
+        body.put("ip", "256.1.1.1");
+
+        hostService.createHost(body);
+    }
+
+    /**
+     * Tests create host with invalid business IP.
+     */
+    @Test(expected = BadRequestException.class)
+    public void testCreateHost_invalidBusinessIp() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "BadBizIpHost");
+        body.put("ip", "10.0.0.1");
+        body.put("businessIp", "abc.def");
+
+        hostService.createHost(body);
+    }
+
+    /**
+     * Tests update host with invalid IP address.
+     */
+    @Test(expected = BadRequestException.class)
+    public void testUpdateHost_invalidIp() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Host");
+        body.put("ip", "10.0.0.1");
+        hostService.createHost(body);
+        String id = getFirstHostId();
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("ip", "999.999.999.999");
+        hostService.updateHost(id, updates);
+    }
+
+    /**
+     * Tests empty IP is rejected (required field).
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateHost_emptyIpRejected() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "NoIpHost");
+        body.put("ip", "");
+
+        hostService.createHost(body);
     }
 
     // ── deleteHost ─────────────────────────────────────────────────
@@ -498,6 +590,7 @@ public class HostServiceTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "KeyHost");
         body.put("ip", "10.0.0.1");
+        body.put("username", "root");
         body.put("authType", "key");
         body.put("credential", "-----BEGIN RSA PRIVATE KEY-----\nfakekey\n-----END RSA PRIVATE KEY-----");
 

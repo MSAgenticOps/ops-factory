@@ -82,6 +82,7 @@ public class BusinessServiceServiceTest {
         body.put("tags", List.of("core", "production"));
         body.put("priority", "high");
         body.put("contactInfo", "team-order@example.com");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> result = businessServiceService.createBusinessService(body);
 
@@ -105,13 +106,16 @@ public class BusinessServiceServiceTest {
     public void testCreateBusinessService_defaults() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalService");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> result = businessServiceService.createBusinessService(body);
 
         assertNotNull(result.get("id"));
         assertEquals("MinimalService", result.get("name"));
         assertEquals("", result.get("code"));
-        assertNull(result.get("groupId"));
+        assertEquals("group-1", result.get("groupId"));
+        assertEquals("bt-1", result.get("businessTypeId"));
         assertEquals("", result.get("description"));
         assertEquals(Collections.emptyList(), result.get("hostIds"));
         assertEquals(Collections.emptyList(), result.get("tags"));
@@ -129,6 +133,8 @@ public class BusinessServiceServiceTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "GetTest");
         body.put("code", "GT");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
@@ -207,6 +213,8 @@ public class BusinessServiceServiceTest {
         body.put("name", "Original");
         body.put("code", "ORIG");
         body.put("tags", List.of("v1"));
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
@@ -231,6 +239,8 @@ public class BusinessServiceServiceTest {
         body.put("name", "Original");
         body.put("code", "ORIG");
         body.put("description", "original desc");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
@@ -263,6 +273,8 @@ public class BusinessServiceServiceTest {
     public void testDeleteBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "ToDelete");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
 

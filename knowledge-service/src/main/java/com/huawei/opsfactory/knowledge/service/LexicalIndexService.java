@@ -57,7 +57,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * The LexicalIndexService.
+ * Manages Lucene-based lexical indexes for document chunks, including index building,
+ * searching, and BM25 similarity configuration per source.
  * @author x00000000
  * @since 2026-05-26
  */
@@ -404,10 +405,22 @@ public class LexicalIndexService {
         return value == null ? "" : value;
     }
 
+    /**
+     * Builds a BM25 similarity instance from resolved index settings.
+     * @param settings the resolved index settings containing BM25 parameters
+     * @return a BM25Similarity instance
+     */
     private BM25Similarity buildSimilarity(ResolvedIndexSettings settings) {
         return new BM25Similarity(settings.bm25K1(), settings.bm25B());
     }
 
+    /**
+     * Resolves index settings for a source by merging profile config with application defaults.
+     * Validates that BM25 k1 and b values are within legal ranges.
+     * @param sourceId the source identifier
+     * @return resolved index settings
+     * @throws IllegalArgumentException if BM25 k1 is negative/infinite/NaN or b is outside [0,1]
+     */
     private ResolvedIndexSettings resolveIndexSettings(String sourceId) {
         KnowledgeProperties.Analysis analysisDefaults = properties.getAnalysis();
         KnowledgeProperties.Indexing indexingDefaults = properties.getIndexing();
@@ -425,6 +438,19 @@ public class LexicalIndexService {
         Map<String, Object> indexing = section(profileConfig, "indexing");
         Map<String, Object> bm25 = section(indexing, "bm25");
 
+        float k1 = floatValue(bm25.get("k1"), indexingDefaults.getBm25().getK1());
+        float b = floatValue(bm25.get("b"), indexingDefaults.getBm25().getB());
+        if (k1 < 0) {
+            throw new IllegalStateException(
+                "BM25 k1 for source " + sourceId + " is invalid (" + k1
+                    + "). Must be >= 0.");
+        }
+        if (b < 0) {
+            throw new IllegalStateException(
+                "BM25 b for source " + sourceId + " is invalid (" + b
+                    + "). Must be >= 0.");
+        }
+
         return new ResolvedIndexSettings(
             stringValue(analysis.get("indexAnalyzer"), analysisDefaults.getIndexAnalyzer()),
             stringValue(analysis.get("queryAnalyzer"), analysisDefaults.getQueryAnalyzer()),
@@ -432,8 +458,8 @@ public class LexicalIndexService {
             numberValue(indexing.get("titlePathBoost"), indexingDefaults.getTitlePathBoost()),
             numberValue(indexing.get("keywordBoost"), indexingDefaults.getKeywordBoost()),
             numberValue(indexing.get("contentBoost"), indexingDefaults.getContentBoost()),
-            floatValue(bm25.get("k1"), indexingDefaults.getBm25().getK1()),
-            floatValue(bm25.get("b"), indexingDefaults.getBm25().getB())
+            k1,
+            b
         );
     }
 

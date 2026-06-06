@@ -63,6 +63,10 @@ public class CallChainController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "solutionType is required");
         }
 
+        if (request.getSolutionId() == null || request.getSolutionId().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "solutionId is required");
+        }
+
         if (request.getCondition() == null || request.getCondition().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "condition is required and must not be empty");
         }
@@ -86,8 +90,8 @@ public class CallChainController {
             return map;
         }).toList();
 
-        CallChainTree tree = callChainService.queryCallChain(request.getSolutionType(), conditions,
-            request.getStartTime(), request.getEndTime(), request.getMode());
+        CallChainTree tree = callChainService.queryCallChain(request.getSolutionType(), request.getSolutionId(),
+            conditions, request.getStartTime(), request.getEndTime(), request.getMode());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("chainType", tree.getChainType());
         response.put("conditions", tree.getConditions());

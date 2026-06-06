@@ -19,6 +19,8 @@ public class QueryCallChainRequest {
 
     private String solutionType;
 
+    private String solutionId;
+
     private List<Condition> condition;
 
     private Long startTime;
@@ -43,6 +45,24 @@ public class QueryCallChainRequest {
      */
     public void setSolutionType(String solutionType) {
         this.solutionType = solutionType;
+    }
+
+    /**
+     * Gets the solution id.
+     *
+     * @return the solution id
+     */
+    public String getSolutionId() {
+        return solutionId;
+    }
+
+    /**
+     * Sets the solution id.
+     *
+     * @param solutionId the solution id
+     */
+    public void setSolutionId(String solutionId) {
+        this.solutionId = solutionId;
     }
 
     /**
@@ -118,7 +138,7 @@ public class QueryCallChainRequest {
     }
 
     /**
-     * Condition.
+     * Condition entry for call chain query.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Condition {

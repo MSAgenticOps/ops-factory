@@ -91,6 +91,7 @@ export default function TypeFormModal<T extends BaseFormData>({
                             value={form.knowledge}
                             onChange={e => update('knowledge', e.target.value)}
                             placeholder={t('hostResource.knowledgeHint')}
+                            maxLength={2000}
                             style={{ resize: 'vertical' }}
                         />
                     </div>

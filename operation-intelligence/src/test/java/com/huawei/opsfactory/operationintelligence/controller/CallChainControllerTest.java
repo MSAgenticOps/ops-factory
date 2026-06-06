@@ -7,6 +7,7 @@ package com.huawei.opsfactory.operationintelligence.controller;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,10 +55,12 @@ class CallChainControllerTest {
         tree.setTotalCount(100L);
         tree.setFlows(List.of());
 
-        when(callChainService.queryCallChain(anyString(), anyList(), anyLong(), anyLong(), anyString())).thenReturn(tree);
+        when(callChainService.queryCallChain(anyString(), anyString(), anyList(), anyLong(), anyLong(),
+            anyString())).thenReturn(tree);
 
         QueryCallChainRequest request = new QueryCallChainRequest();
         request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
         QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
         condition.setConditionKey("menuId");
         condition.setConditionValue("604015020");
@@ -94,6 +97,7 @@ class CallChainControllerTest {
     void testQueryCallChainMissingCondition() throws Exception {
         QueryCallChainRequest request = new QueryCallChainRequest();
         request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
         request.setCondition(List.of());
         request.setStartTime(1746057600000L);
         request.setEndTime(1746058000000L);
@@ -107,6 +111,7 @@ class CallChainControllerTest {
     void testQueryCallChainInvalidTimeRange() throws Exception {
         QueryCallChainRequest request = new QueryCallChainRequest();
         request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
         QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
         condition.setConditionKey("menuId");
         condition.setConditionValue("604015020");
@@ -123,6 +128,7 @@ class CallChainControllerTest {
     void testQueryCallChainNoAuth() throws Exception {
         QueryCallChainRequest request = new QueryCallChainRequest();
         request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
         QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
         condition.setConditionKey("menuId");
         condition.setConditionValue("604015020");

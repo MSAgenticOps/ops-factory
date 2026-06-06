@@ -4,8 +4,8 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Manages solution type definitions persisted as JSON files under the gateway data directory.
@@ -40,6 +41,9 @@ public class SolutionTypeService {
     private static final Logger log = LoggerFactory.getLogger(SolutionTypeService.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    // Hex color pattern: #RRGGBB format, safe with bounded quantifier {6}
+    private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
     private final GatewayProperties properties;
 
@@ -72,9 +76,9 @@ public class SolutionTypeService {
     // ── CRUD Operations ──────────────────────────────────────────────
 
     /**
-     * Lists all solution types.
+     * Lists all solution types persisted in the data directory.
      *
-     * @return the result
+     * @return a list of all solution type maps; empty list if the directory does not exist or is empty
      */
     public List<Map<String, Object>> listSolutionTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -101,7 +105,8 @@ public class SolutionTypeService {
      * Gets a solution type by its ID.
      *
      * @param id entity identifier
-     * @return a solution type by its ID
+     * @return the solution type map
+     * @throws NotFoundException if the solution type is not found
      */
     public Map<String, Object> getSolutionType(String id) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -114,25 +119,35 @@ public class SolutionTypeService {
 
     /**
      * Creates a new solution type from the provided field map.
+     * Validates all fields (name, code, description, color, knowledge) before persistence.
      *
-     * @param body request body
-     * @return the result
+     * @param body request body containing solution type fields
+     * @return the created solution type map including generated id and timestamps
+     * @throws IllegalArgumentException if validation fails or the code already exists
      */
     public Map<String, Object> createSolutionType(Map<String, Object> body) {
+        String name = ValidationUtils.validateStringField(body, "name", "Solution type name", 100, true);
+        String code = ValidationUtils.validateStringField(body, "code", "Solution type code", 50, true);
+        validateNameAndCodeUnique(name, code, null);
+
+        String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+        String knowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 0, false);
+
+        String color = body.getOrDefault("color", "#8b5cf6").toString();
+        if (!HEX_COLOR_PATTERN.matcher(color).matches()) {
+            color = "#8b5cf6";
+        }
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
-        String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
-        String code = body.getOrDefault("code", "") != null ? body.getOrDefault("code", "").toString() : "";
-        validateNameAndCodeUnique(name, code, null);
-
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);
-        st.put("name", body.getOrDefault("name", ""));
-        st.put("code", body.getOrDefault("code", ""));
-        st.put("description", body.getOrDefault("description", ""));
-        st.put("color", body.getOrDefault("color", "#8b5cf6"));
-        st.put("knowledge", body.getOrDefault("knowledge", ""));
+        st.put("name", name);
+        st.put("code", code);
+        st.put("description", description);
+        st.put("color", color);
+        st.put("knowledge", knowledge);
         st.put("createdAt", now);
         st.put("updatedAt", now);
 
@@ -143,10 +158,13 @@ public class SolutionTypeService {
 
     /**
      * Updates an existing solution type with the provided field map.
+     * Only fields present in the body are updated; each field is validated before being applied.
      *
      * @param id entity identifier
      * @param body updated fields
-     * @return the result
+     * @return the updated solution type map
+     * @throws NotFoundException if the solution type is not found
+     * @throws IllegalArgumentException if field validation fails or the new code already exists
      */
     public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -156,21 +174,33 @@ public class SolutionTypeService {
         }
 
         if (body.containsKey("name")) {
-            validateNameAndCodeUnique(body.get("name") != null ? body.get("name").toString() : "", null, id);
-            st.put("name", body.get("name"));
+            String newName = ValidationUtils.validateStringField(body, "name", "Solution type name", 100, true);
+            validateNameAndCodeUnique(newName, null, id);
+            st.put("name", newName);
         }
         if (body.containsKey("code")) {
-            validateNameAndCodeUnique(null, body.get("code") != null ? body.get("code").toString() : "", id);
-            st.put("code", body.get("code"));
+            String newCode = ValidationUtils.validateStringField(body, "code", "Solution type code", 50, true);
+            validateNameAndCodeUnique(null, newCode, id);
+            st.put("code", newCode);
         }
         if (body.containsKey("description")) {
-            st.put("description", body.get("description"));
+            String newDescription = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+            st.put("description", newDescription);
         }
         if (body.containsKey("color")) {
-            st.put("color", body.get("color"));
+            Object colorObj = body.get("color");
+            if (colorObj == null) {
+                throw new IllegalArgumentException("Color is required");
+            }
+            String newColor = colorObj.toString();
+            if (!HEX_COLOR_PATTERN.matcher(newColor).matches()) {
+                newColor = "#8b5cf6";
+            }
+            st.put("color", newColor);
         }
         if (body.containsKey("knowledge")) {
-            st.put("knowledge", body.get("knowledge"));
+            String newKnowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 0, false);
+            st.put("knowledge", newKnowledge);
         }
 
         st.put("updatedAt", Instant.now().toString());
@@ -183,7 +213,7 @@ public class SolutionTypeService {
      * Deletes a solution type by its ID.
      *
      * @param id entity identifier
-     * @return the result
+     * @return true if the file was deleted, false if it did not exist
      */
     public boolean deleteSolutionType(String id) {
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -248,6 +278,12 @@ public class SolutionTypeService {
 
     // ── File I/O Helpers ─────────────────────────────────────────────
 
+    /**
+     * Reads a solution type from the given JSON file.
+     *
+     * @param file the JSON file path
+     * @return the parsed solution type, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -261,6 +297,13 @@ public class SolutionTypeService {
         }
     }
 
+    /**
+     * Writes a solution type entity to a JSON file.
+     *
+     * @param id the entity identifier used as the filename
+     * @param entity the solution type data to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeEntityFile(String id, Map<String, Object> entity) {
         try {
             Files.createDirectories(solutionTypesDir);

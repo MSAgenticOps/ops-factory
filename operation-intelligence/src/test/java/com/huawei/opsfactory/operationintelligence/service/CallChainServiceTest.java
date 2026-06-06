@@ -90,8 +90,8 @@ class CallChainServiceTest {
         callChain.setQuerySize(100);
         when(properties.getCallChain()).thenReturn(callChain);
         when(configStore.loadAll()).thenReturn(List.of());
-        when(dvClient.fetchTraceLogEntries(anyString(), anyString(), anyString(), anyList(), any(), anyLong(),
-            anyLong(), anyInt())).thenReturn(List.of());
+        when(dvClient.fetchTraceLogEntries(anyString(), anyString(), anyString(), anyString(), anyList(), any(),
+            anyLong(), anyLong(), anyInt())).thenReturn(List.of());
 
         CallChainTree tree = new CallChainTree();
         tree.setChainType(null);
@@ -99,8 +99,9 @@ class CallChainServiceTest {
         tree.setTotalCount(0L);
         when(chainBuilder.build(anyString(), anyString(), anyString(), anyList(), anyLong(), anyString())).thenReturn(tree);
 
-        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L, "method");
+        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit", "CRM-001",
+            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L,
+            "method");
 
         assertNotNull(result);
         assertNull(result.getChainType());
@@ -125,15 +126,15 @@ class CallChainServiceTest {
         TraceLogRecord entryLog = new TraceLogRecord();
         entryLog.setTraceId("trace-123");
         entryLog.setSeqNo("1");
-        when(dvClient.fetchTraceLogEntries(anyString(), anyString(), anyString(), anyList(), any(), anyLong(),
-            anyLong(), anyInt())).thenReturn(List.of(entryLog));
+        when(dvClient.fetchTraceLogEntries(anyString(), anyString(), anyString(), anyString(), anyList(), any(),
+            anyLong(), anyLong(), anyInt())).thenReturn(List.of(entryLog));
 
         // Mock complete trace logs for the trace ID
         TraceLogRecord fullLog = new TraceLogRecord();
         fullLog.setTraceId("trace-123");
         fullLog.setSeqNo("1");
         fullLog.setIp("10.0.0.1");
-        when(dvClient.fetchByTraceId(anyString(), eq("trace-123"), anyLong(), anyLong(), anyInt()))
+        when(dvClient.fetchByTraceId(anyString(), anyString(), eq("trace-123"), anyLong(), anyLong(), anyInt()))
             .thenReturn(List.of(fullLog));
 
         // Mock chain builder to return a new tree for debugging
@@ -145,8 +146,9 @@ class CallChainServiceTest {
             return result;
         });
 
-        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L, "method");
+        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit", "CRM-001",
+            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L,
+            "method");
 
         assertNotNull(result);
         assertEquals("BES", result.getChainType());
@@ -160,7 +162,8 @@ class CallChainServiceTest {
         when(properties.getCallChain()).thenReturn(callChain);
 
         CallChainTree result =
-            callChainService.queryCallChain("DigitalCRM.sit", List.of(), 1746057600000L, 1746662400000L, "method");
+            callChainService.queryCallChain("DigitalCRM.sit", "CRM-001", List.of(), 1746057600000L, 1746662400000L,
+                "method");
 
         assertNotNull(result);
     }
@@ -172,7 +175,8 @@ class CallChainServiceTest {
         when(properties.getCallChain()).thenReturn(callChain);
 
         CallChainTree result =
-            callChainService.queryCallChain("DigitalCRM.sit", new ArrayList<>(), 1746057600000L, 1746662400000L, "method");
+            callChainService.queryCallChain("DigitalCRM.sit", "CRM-001", new ArrayList<>(), 1746057600000L,
+                1746662400000L, "method");
 
         assertNotNull(result);
         assertNull(result.getChainType());
@@ -217,7 +221,7 @@ class CallChainServiceTest {
         when(properties.getCallChain()).thenReturn(callChain);
         when(properties.getConfigDirectory()).thenReturn(Path.of("/tmp"));
 
-        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit",
+        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit", "CRM-001",
             List.of(Map.of("conditionKey", "menuId", "conditionValue", "6013101010007")), 1746057600000L,
             1746058200000L, "TRACE");
 
