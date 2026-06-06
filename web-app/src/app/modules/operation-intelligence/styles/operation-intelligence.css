@@ -747,9 +747,10 @@
 
 .kg-entity-query-row-call-chain {
     grid-template-columns:
-        minmax(180px, 1.1fr)
+        minmax(170px, 1fr)
         minmax(140px, 0.8fr)
-        minmax(300px, 1.5fr)
+        minmax(180px, 1fr)
+        minmax(280px, 1.4fr)
         max-content;
 }
 
@@ -760,6 +761,7 @@
 .kg-entity-query-field,
 .kg-call-chain-menu-field,
 .kg-call-chain-solution-field,
+.kg-call-chain-solution-id-field,
 .kg-call-chain-time-field,
 .kg-call-chain-history-field,
 .kg-call-chain-history-inline-field {

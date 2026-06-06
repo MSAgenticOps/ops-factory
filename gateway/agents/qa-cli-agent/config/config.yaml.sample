@@ -1,13 +1,13 @@
-GOOSE_PROVIDER: custom_opsagentllm
-GOOSE_MODEL: kimi-k2-turbo-preview
+GOOSE_PROVIDER: custom_qwen3.5-27b
+GOOSE_MODEL: qwen/qwen3.5-27b
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
-GOOSE_CONTEXT_LIMIT: '196000'
+GOOSE_CONTEXT_LIMIT: '128000'
 GOOSE_MAX_TOKENS: '4096'
 GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
-GOOSE_AUTO_COMPACT_THRESHOLD: '0.8'
+GOOSE_AUTO_COMPACT_THRESHOLD: '0.7'
 GOOSE_MAX_TURNS: '50'
 extensions:
   extensionmanager:
@@ -36,7 +36,7 @@ extensions:
     bundled: true
     available_tools: []
   computercontroller:
-    enabled: true
+    enabled: false
     type: builtin
     name: computercontroller
     description: General computer control tools that don't require you to be a developer or engineer.
@@ -45,7 +45,7 @@ extensions:
     bundled: true
     available_tools: []
   autovisualiser:
-    enabled: true
+    enabled: false
     type: builtin
     name: autovisualiser
     description: Data visualization and UI generation tools
@@ -54,7 +54,7 @@ extensions:
     bundled: true
     available_tools: []
   memory:
-    enabled: true
+    enabled: false
     type: builtin
     name: memory
     description: Teach goose your preferences as you go.
@@ -87,7 +87,7 @@ extensions:
     bundled: true
     available_tools: []
   summon:
-    enabled: true
+    enabled: false
     type: platform
     name: summon
     description: Load knowledge and delegate tasks to subagents
@@ -102,6 +102,24 @@ extensions:
     display_name: Top Of Mind
     bundled: true
     available_tools: []
+  knowledge-cli:
+    enabled: true
+    type: stdio
+    name: Knowledge-Cli
+    description: File-system QA tools for a configured root directory
+    cmd: python3
+    args:
+    - config/mcp/knowledge-cli/server.py
+    envs:
+      PYTHONPATH: config/mcp/knowledge-cli/.python-deps
+    env_keys: []
+    timeout: 60
+    bundled: null
+    available_tools: []
+    x-opsfactory:
+      scope:
+        rootDir: ../../../../knowledge-service/data/artifacts/src_285c13458d3a
+        sourceId: src_285c13458d3a
   analyze:
     enabled: false
     type: platform
@@ -133,19 +151,4 @@ extensions:
     description: Discover and provide skill instructions from filesystem and builtins
     display_name: Skills
     bundled: true
-    available_tools: []
-  ticket:
-    enabled: true
-    type: stdio
-    name: ticket
-    description: Ticket operations (atomic) for FO Copilot — pull my todo, read one ticket's context, pick a candidate, create / update / comment / transition / reassign. First implementation is a file-backed mock; the real ticketing adapter swaps in behind the same tool surface.
-    cmd: config/mcp/ticket/.venv/bin/python
-    args:
-    - config/mcp/ticket/server.py
-    envs:
-      TICKET_MOCK_STORE: mcp-data/ticket-store.json
-      TICKET_MCP_LOG: mcp-data/ticket-mcp.log
-    env_keys: []
-    timeout: 30
-    bundled: null
     available_tools: []

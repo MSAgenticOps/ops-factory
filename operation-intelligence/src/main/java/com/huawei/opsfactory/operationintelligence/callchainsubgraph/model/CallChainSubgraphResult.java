@@ -24,6 +24,8 @@ public class CallChainSubgraphResult {
 
     private String solutionType;
 
+    private String solutionId;
+
     private String ontologyId;
 
     private String generatedAt;
@@ -104,6 +106,24 @@ public class CallChainSubgraphResult {
      */
     public void setSolutionType(String solutionType) {
         this.solutionType = solutionType;
+    }
+
+    /**
+     * Gets the solution id.
+     *
+     * @return the solution id
+     */
+    public String getSolutionId() {
+        return solutionId;
+    }
+
+    /**
+     * Sets the solution id.
+     *
+     * @param solutionId the solution id
+     */
+    public void setSolutionId(String solutionId) {
+        this.solutionId = solutionId;
     }
 
     /**

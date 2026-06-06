@@ -579,74 +579,27 @@ public class HostService {
         String name = ValidationUtils.requireNonBlank(body, "name", "Host name is required");
         ValidationUtils.requireNoXssChars(name, "Host name");
         ValidationUtils.requireMaxLength(name, 100, "Host name");
-        for (Map<String, Object> existing : listHosts(null)) {
-            if (name.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
-                throw new ConflictException("Host name already exists");
-            }
-        }
+        ensureUniqueHostName(name, null);
 
-        String ip = ValidationUtils.requireNonBlank(body, "ip", "Host IP is required");
-
+        ValidationUtils.requireNonBlank(body, "ip", "Host IP is required");
         validateHostCommonFields(body);
         validateHostCredentials(body, null);
         validateHostCustomAttributes(body);
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
-
-        Map<String, Object> host = new LinkedHashMap<>();
-        host.put("id", id);
-        host.put("name", name);
-        host.put("hostname", body.getOrDefault("hostname", null));
-        host.put("ip", ip);
-        host.put("businessIp", body.getOrDefault("businessIp", null));
-        host.put("port", body.getOrDefault("port", 22));
-        host.put("os", body.getOrDefault("os", null));
-        host.put("location", body.getOrDefault("location", null));
-        host.put("username", body.getOrDefault("username", ""));
-        host.put("authType", body.getOrDefault("authType", "password"));
-        host.put("business", body.getOrDefault("business", null));
-        host.put("clusterId", body.getOrDefault("clusterId", null));
-        host.put("purpose", body.getOrDefault("purpose", null));
-        host.put("tags", body.getOrDefault("tags", List.of()));
-        host.put("description", body.getOrDefault("description", ""));
-        host.put("customAttributes", body.getOrDefault("customAttributes", List.of()));
-        host.put("role", body.getOrDefault("role", null));
-        host.put("createdAt", now);
-        host.put("updatedAt", now);
-
-        // Encrypt credential
-        Object credentialObj = body.get("credential");
-        String rawCredential = credentialObj != null ? credentialObj.toString() : "";
-        try {
-            host.put("credential", encrypt(rawCredential));
-        } catch (GeneralSecurityException e) {
-            log.error("Failed to encrypt credential for new host {}", id, e);
-            throw new IllegalStateException("Failed to encrypt credential", e);
-        }
-
+        Map<String, Object> host = buildHostEntity(body, id, now);
+        host.put("credential", encryptCredential(id, body.get("credential"), true));
         validateHostIpFields(host);
 
         Object clusterIdObj = body.get("clusterId");
         if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
-            checkHostIpDuplicate(null, ip, clusterIdObj.toString());
+            checkHostIpDuplicate(null, host.get("ip").toString(), clusterIdObj.toString());
         }
 
-        syncClusterTypeToTags(host);
-        validateHostRole(host);
-        writeHostFile(id, host);
-        log.info("Created host: id={}, name={}", id, host.get("name"));
-
-        // Sync cluster→host membership relation
-        if (clusterRelationService != null) {
-            String cid = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
-            clusterRelationService.syncHostClusterRelation(id, cid);
-        }
-
-        // Return with masked credential
-        Map<String, Object> result = new LinkedHashMap<>(host);
-        result.put("credential", "***");
-        return result;
+        persistHost(id, host, "Created host: id={}, name={}", id, host.get("name"));
+        syncClusterMembership(id, host, true);
+        return maskCredential(host);
     }
 
     /**
@@ -665,53 +618,23 @@ public class HostService {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> updateHost(String id, Map<String, Object> body) throws NotFoundException, ConflictException, BadRequestException {
-        Path file = hostsDir.resolve(id + ".json");
-        Map<String, Object> host = readHostFile(file);
-        if (host == null) {
-            throw new NotFoundException("Host not found");
-        }
+        Map<String, Object> host = loadHostOrThrow(id);
 
-        // Check name uniqueness if name is being updated
         if (body.containsKey("name")) {
             String newName = ValidationUtils.requireNonBlank(body, "name", "Host name is required");
             ValidationUtils.requireNoXssChars(newName, "Host name");
             ValidationUtils.requireMaxLength(newName, 100, "Host name");
-            for (Map<String, Object> existing : listHosts(null)) {
-                if (!id.equals(existing.get("id")) && newName.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
-                    throw new ConflictException("Host name already exists");
-                }
-            }
-            host.put("name", newName);
+            ensureUniqueHostName(newName, id);
         }
 
         validateHostCommonFields(body);
         validateHostCredentials(body, host);
         validateHostCustomAttributes(body);
 
-        // Update mutable fields
-        for (String field : MUTABLE_FIELDS) {
-            if (body.containsKey(field)) {
-                host.put(field, body.get(field));
-            }
-        }
-
-        // Credential requires special handling (encryption + sentinel skip)
-        if (body.containsKey("credential")) {
-            Object credentialObj = body.get("credential");
-            String rawCredential = credentialObj != null ? credentialObj.toString() : "";
-            if (!"***".equals(rawCredential)) {
-                try {
-                    host.put("credential", encrypt(rawCredential));
-                } catch (GeneralSecurityException e) {
-                    log.error("Failed to encrypt credential for host {}", id, e);
-                    throw new IllegalStateException("Failed to encrypt credential", e);
-                }
-            }
-        }
-
+        applyMutableFields(host, body);
+        applyEncryptedCredential(host, body, id);
         validateHostIpFields(host);
 
-        // IP duplicate check within same group
         Object ipObj = host.get("ip");
         if (ipObj != null && !ipObj.toString().isEmpty()) {
             String ip = ipObj.toString().trim();
@@ -722,21 +645,9 @@ public class HostService {
         }
 
         host.put("updatedAt", Instant.now().toString());
-        syncClusterTypeToTags(host);
-        validateHostRole(host);
-        writeHostFile(id, host);
-        log.info("Updated host: id={}", id);
-
-        // Sync cluster→host membership relation if clusterId changed
-        if (body.containsKey("clusterId") && clusterRelationService != null) {
-            String cid = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
-            clusterRelationService.syncHostClusterRelation(id, cid);
-        }
-
-        // Return with masked credential
-        Map<String, Object> result = new LinkedHashMap<>(host);
-        result.put("credential", "***");
-        return result;
+        persistHost(id, host, "Updated host: id={}", id);
+        syncClusterMembership(id, host, body.containsKey("clusterId"));
+        return maskCredential(host);
     }
 
     /**
@@ -888,62 +799,167 @@ public class HostService {
      * @return connection result map containing success status, message, and latency
      */
     public Map<String, Object> testConnection(String id) {
-        Map<String, Object> host;
-        try {
-            host = getHostWithCredential(id);
-        } catch (NotFoundException e) {
-            log.warn("SSH connection test skipped hostId={} reason=host-not-found", id);
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("success", false);
-            result.put("message", "Host not found: " + id);
-            return result;
+        Map<String, Object> host = loadHostForConnectionTest(id);
+        if (host == null) {
+            return buildConnectionFailureResult(id, "Host not found: " + id, 0);
         }
-
         String hostname = (String) host.get("ip");
         int port = host.get("port") instanceof Number n ? n.intValue() : 22;
-        String username = (String) host.get("username");
         String authType = (String) host.get("authType");
-        String credential = (String) host.get("credential");
-
-        Map<String, Object> result = new LinkedHashMap<>();
         long start = System.currentTimeMillis();
         log.info("SSH connection test started hostId={} ip={} port={} authType={}", id, hostname, port, authType);
-
         Session session = null;
         try {
             JSch jsch = new JSch();
-            session = jsch.getSession(username, hostname, port);
-
-            if ("key".equals(authType)) {
-                jsch.addIdentity("test-connection", credential.getBytes(StandardCharsets.UTF_8), null, null);
-            } else {
-                session.setPassword(credential);
-            }
-
-            // WARNING: Strict host key checking is disabled for test-connection only.
-            // This is acceptable because the test is initiated by an authenticated admin
-            // and the result is not used for production data transfer.
+            session = jsch.getSession((String) host.get("username"), hostname, port);
+            configureJschAuthentication(jsch, session, authType, (String) host.get("credential"));
             session.setConfig("StrictHostKeyChecking", "no");
             session.connect(5000);
-
             long latency = System.currentTimeMillis() - start;
-            result.put("success", true);
-            result.put("message", "Connection successful");
-            result.put("latency", latency + "ms");
             log.info("SSH connection test succeeded hostId={} ip={} port={} latencyMs={}", id, hostname, port, latency);
+            return buildConnectionSuccessResult(latency);
         } catch (JSchException | RuntimeException e) {
             long latency = System.currentTimeMillis() - start;
             log.warn("SSH connection test failed hostId={} ip={} port={} latencyMs={} error={}", id, hostname, port,
                 latency, e.getMessage());
-            result.put("success", false);
-            result.put("message", "Connection failed: " + e.getMessage());
-            result.put("latency", latency + "ms");
+            return buildConnectionFailureResult(id, "Connection failed: " + e.getMessage(), latency);
         } finally {
             if (session != null && session.isConnected()) {
                 session.disconnect();
             }
         }
+    }
 
+    private void ensureUniqueHostName(String name, String excludedId) throws ConflictException {
+        for (Map<String, Object> existing : listHosts(null)) {
+            boolean sameRecord = excludedId != null && excludedId.equals(existing.get("id"));
+            if (!sameRecord && name.equalsIgnoreCase(String.valueOf(existing.get("name")))) {
+                throw new ConflictException("Host name already exists");
+            }
+        }
+    }
+
+    private Map<String, Object> buildHostEntity(Map<String, Object> body, String id, String now) {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("id", id);
+        host.put("name", body.getOrDefault("name", ""));
+        host.put("hostname", body.getOrDefault("hostname", null));
+        host.put("ip", body.getOrDefault("ip", ""));
+        host.put("businessIp", body.getOrDefault("businessIp", null));
+        host.put("port", body.getOrDefault("port", 22));
+        host.put("os", body.getOrDefault("os", null));
+        host.put("location", body.getOrDefault("location", null));
+        host.put("username", body.getOrDefault("username", ""));
+        host.put("authType", body.getOrDefault("authType", "password"));
+        host.put("business", body.getOrDefault("business", null));
+        host.put("clusterId", body.getOrDefault("clusterId", null));
+        host.put("purpose", body.getOrDefault("purpose", null));
+        host.put("tags", body.getOrDefault("tags", List.of()));
+        host.put("description", body.getOrDefault("description", ""));
+        host.put("customAttributes", body.getOrDefault("customAttributes", List.of()));
+        host.put("role", body.getOrDefault("role", null));
+        host.put("createdAt", now);
+        host.put("updatedAt", now);
+        return host;
+    }
+
+    private String encryptCredential(String id, Object credentialObj, boolean creating) {
+        String rawCredential = credentialObj != null ? credentialObj.toString() : "";
+        try {
+            return encrypt(rawCredential);
+        } catch (GeneralSecurityException e) {
+            log.error("Failed to encrypt credential for {} host {}", creating ? "new" : "existing", id, e);
+            throw new IllegalStateException("Failed to encrypt credential", e);
+        }
+    }
+
+    private void persistHost(String id, Map<String, Object> host, String logTemplate, Object... logArgs)
+        throws BadRequestException {
+        syncClusterTypeToTags(host);
+        validateHostRole(host);
+        writeHostFile(id, host);
+        log.info(logTemplate, logArgs);
+    }
+
+    private void syncClusterMembership(String id, Map<String, Object> host, boolean shouldSync) {
+        if (!shouldSync || clusterRelationService == null) {
+            return;
+        }
+        String clusterId = host.get("clusterId") != null ? host.get("clusterId").toString() : null;
+        clusterRelationService.syncHostClusterRelation(id, clusterId);
+    }
+
+    private Map<String, Object> maskCredential(Map<String, Object> host) {
+        Map<String, Object> result = new LinkedHashMap<>(host);
+        result.put("credential", "***");
+        return result;
+    }
+
+    private Map<String, Object> loadHostOrThrow(String id) throws NotFoundException {
+        Path file = hostsDir.resolve(id + ".json");
+        Map<String, Object> host = readHostFile(file);
+        if (host == null) {
+            throw new NotFoundException("Host not found");
+        }
+        return host;
+    }
+
+    private void ensureUpdatedNameUnique(String id, Map<String, Object> body) throws ConflictException {
+        if (body.containsKey("name")) {
+            ensureUniqueHostName(String.valueOf(body.get("name")), id);
+        }
+    }
+
+    private void applyMutableFields(Map<String, Object> host, Map<String, Object> body) {
+        for (String field : MUTABLE_FIELDS) {
+            if (body.containsKey(field)) {
+                host.put(field, body.get(field));
+            }
+        }
+    }
+
+    private void applyEncryptedCredential(Map<String, Object> host, Map<String, Object> body, String id) {
+        if (!body.containsKey("credential")) {
+            return;
+        }
+        Object credentialObj = body.get("credential");
+        String rawCredential = credentialObj != null ? credentialObj.toString() : "";
+        if (!"***".equals(rawCredential)) {
+            host.put("credential", encryptCredential(id, credentialObj, false));
+        }
+    }
+
+    private Map<String, Object> loadHostForConnectionTest(String id) {
+        try {
+            return getHostWithCredential(id);
+        } catch (NotFoundException e) {
+            log.warn("SSH connection test skipped hostId={} reason=host-not-found", id);
+            return null;
+        }
+    }
+
+    private void configureJschAuthentication(JSch jsch, Session session, String authType, String credential)
+        throws JSchException {
+        if ("key".equals(authType)) {
+            jsch.addIdentity("test-connection", credential.getBytes(StandardCharsets.UTF_8), null, null);
+            return;
+        }
+        session.setPassword(credential);
+    }
+
+    private Map<String, Object> buildConnectionSuccessResult(long latency) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("message", "Connection successful");
+        result.put("latency", latency + "ms");
+        return result;
+    }
+
+    private Map<String, Object> buildConnectionFailureResult(String id, String message, long latency) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", false);
+        result.put("message", message);
+        result.put("latency", latency + "ms");
         return result;
     }
 

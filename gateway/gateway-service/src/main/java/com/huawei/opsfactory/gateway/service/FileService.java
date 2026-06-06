@@ -483,56 +483,76 @@ public class FileService {
      * @return list of new or changed file entries
      */
     public List<Map<String, String>> diffFiles(List<Map<String, Object>> before, List<Map<String, Object>> after) {
-        Set<String> allowedExtensions = new HashSet<>();
-        List<String> configuredAllowed = gatewayProperties.getFileCapsules() != null
-            ? gatewayProperties.getFileCapsules().getAllowedExtensions() : null;
-        if (configuredAllowed != null) {
-            for (String ext : configuredAllowed) {
-                if (ext == null) {
-                    continue;
-                }
-                String normalized = ext.trim().toLowerCase(Locale.ROOT);
-                if (!normalized.isEmpty()) {
-                    allowedExtensions.add(normalized);
-                }
-            }
-        }
+        Set<String> allowedExtensions = resolveAllowedExtensions();
         if (allowedExtensions.isEmpty()) {
             return List.of();
         }
 
-        Map<String, Map<String, Object>> beforeMap = new HashMap<>();
-        for (Map<String, Object> f : before) {
-            beforeMap.put(fileIdentity(f), f);
-        }
-
+        Map<String, Map<String, Object>> beforeMap = indexFilesByIdentity(before);
         List<Map<String, String>> changed = new ArrayList<>();
-        for (Map<String, Object> f : after) {
-            String path = (String) f.get("path");
-            if (isInternalRuntimeArtifact(path)) {
-                continue;
-            }
-            String ext = (String) f.get("type");
-            String normalizedExt = ext != null ? ext.toLowerCase(Locale.ROOT) : "";
-            if (!allowedExtensions.contains(normalizedExt)) {
-                continue;
-            }
-            Map<String, Object> prev = beforeMap.get(fileIdentity(f));
-            boolean isNew = prev == null;
-            boolean isUpdated = prev != null
-                && (!prev.get("modifiedAt").equals(f.get("modifiedAt")) || !prev.get("size").equals(f.get("size")));
-            if (isNew || isUpdated) {
-                String name = (String) f.get("name");
-                Map<String, String> entry = new LinkedHashMap<>();
-                entry.put("path", path);
-                entry.put("name", name);
-                entry.put("ext", ext != null ? ext : "");
-                entry.put("rootId", String.valueOf(f.getOrDefault("rootId", "workingDir")));
-                entry.put("displayPath", String.valueOf(f.getOrDefault("displayPath", path)));
-                changed.add(entry);
+        for (Map<String, Object> file : after) {
+            if (isCapsuleRelevantChange(file, beforeMap, allowedExtensions)) {
+                changed.add(toChangedFileEntry(file));
             }
         }
         return changed;
+    }
+
+    private Set<String> resolveAllowedExtensions() {
+        Set<String> allowedExtensions = new HashSet<>();
+        List<String> configuredAllowed = gatewayProperties.getFileCapsules() != null
+            ? gatewayProperties.getFileCapsules().getAllowedExtensions() : null;
+        if (configuredAllowed == null) {
+            return allowedExtensions;
+        }
+        for (String ext : configuredAllowed) {
+            if (ext == null) {
+                continue;
+            }
+            String normalized = ext.trim().toLowerCase(Locale.ROOT);
+            if (!normalized.isEmpty()) {
+                allowedExtensions.add(normalized);
+            }
+        }
+        return allowedExtensions;
+    }
+
+    private Map<String, Map<String, Object>> indexFilesByIdentity(List<Map<String, Object>> files) {
+        Map<String, Map<String, Object>> indexed = new HashMap<>();
+        for (Map<String, Object> file : files) {
+            indexed.put(fileIdentity(file), file);
+        }
+        return indexed;
+    }
+
+    private boolean isCapsuleRelevantChange(Map<String, Object> file, Map<String, Map<String, Object>> beforeMap,
+        Set<String> allowedExtensions) {
+        String path = (String) file.get("path");
+        if (isInternalRuntimeArtifact(path)) {
+            return false;
+        }
+        String ext = (String) file.get("type");
+        String normalizedExt = ext != null ? ext.toLowerCase(Locale.ROOT) : "";
+        if (!allowedExtensions.contains(normalizedExt)) {
+            return false;
+        }
+        Map<String, Object> previous = beforeMap.get(fileIdentity(file));
+        if (previous == null) {
+            return true;
+        }
+        return !previous.get("modifiedAt").equals(file.get("modifiedAt")) || !previous.get("size").equals(file.get("size"));
+    }
+
+    private Map<String, String> toChangedFileEntry(Map<String, Object> file) {
+        String path = (String) file.get("path");
+        String ext = (String) file.get("type");
+        Map<String, String> entry = new LinkedHashMap<>();
+        entry.put("path", path);
+        entry.put("name", (String) file.get("name"));
+        entry.put("ext", ext != null ? ext : "");
+        entry.put("rootId", String.valueOf(file.getOrDefault("rootId", "workingDir")));
+        entry.put("displayPath", String.valueOf(file.getOrDefault("displayPath", path)));
+        return entry;
     }
 
     private String fileIdentity(Map<String, Object> file) {

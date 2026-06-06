@@ -3,7 +3,7 @@ GOOSE_MODEL: kimi-k2-turbo-preview
 GOOSE_MODE: auto
 GOOSE_DISABLE_KEYRING: '1'
 GOOSE_TELEMETRY_ENABLED: false
-GOOSE_CONTEXT_LIMIT: '196000'
+GOOSE_CONTEXT_LIMIT: '65536'
 GOOSE_MAX_TOKENS: '4096'
 GOOSE_TEMPERATURE: '0.2'
 GOOSE_CONTEXT_STRATEGY: summarize
@@ -45,7 +45,7 @@ extensions:
     bundled: true
     available_tools: []
   autovisualiser:
-    enabled: true
+    enabled: false
     type: builtin
     name: autovisualiser
     description: Data visualization and UI generation tools
@@ -110,13 +110,71 @@ extensions:
     display_name: Analyze
     bundled: true
     available_tools: []
-  summarize:
+  sop-executor:
+    enabled: true
+    type: stdio
+    name: sop-executor
+    description: SOP workflow executor - list/run SOPs, query hosts, execute remote commands
+    cmd: node
+    args:
+    - config/mcp/sop-executor/dist/index.js
+    envs:
+      GATEWAY_URL: http://127.0.0.1:3000
+      OUTPUT_DIR: .
+      GATEWAY_SECRET_KEY: test
+    env_keys: []
+    timeout: 300
+    bundled: null
+    available_tools: []
+  browser-use:
     enabled: false
-    type: platform
-    name: summarize
-    description: Load files/directories and get an LLM summary in a single call
-    display_name: Summarize
-    bundled: true
+    type: stdio
+    name: browser-use
+    description: Browser automation via browser-use official MCP - navigate, click, type, extract, screenshot, tabs and more
+    cmd: python
+    args:
+    - -m
+    - browser_use.mcp.server
+    envs: {}
+    env_keys: []
+    timeout: 120
+    bundled: null
+    available_tools: []
+  system-health-analysis:
+    enabled: true
+    type: stdio
+    name: system-health-analysis
+    description: QoS system health analysis MCP - query health score, alarms, topology, and sub-topology
+    cmd: python
+    args:
+    - config/mcp/system-health-analysis/server.py
+    envs:
+      QOS_BASE_URL: http://127.0.0.1:18080
+      QOS_USERNAME: mock_user
+      QOS_PASSWORD: mock_password
+      GATEWAY_API_PASSWORD: mock_password
+      QOS_VERIFY_TLS: 'false'
+      OUTPUT_DIR: .
+    env_keys:
+    - QOS_BASE_URL
+    - QOS_USERNAME
+    - QOS_PASSWORD
+    - GATEWAY_API_PASSWORD
+    timeout: 60
+    bundled: null
+    available_tools: []
+  current-time:
+    enabled: true
+    type: stdio
+    name: current-time
+    description: Current time MCP - returns the current local time in YYYY-MM-DD HH:MM:SS format
+    cmd: python
+    args:
+    - config/mcp/current-time/server.py
+    envs: {}
+    env_keys: []
+    timeout: 10
+    bundled: null
     available_tools: []
   orchestrator:
     enabled: false
@@ -126,26 +184,19 @@ extensions:
     display_name: Orchestrator
     bundled: true
     available_tools: []
+  summarize:
+    enabled: false
+    type: platform
+    name: summarize
+    description: Load files/directories and get an LLM summary in a single call
+    display_name: Summarize
+    bundled: true
+    available_tools: []
   skills:
-    enabled: true
+    enabled: false
     type: platform
     name: skills
     description: Discover and provide skill instructions from filesystem and builtins
     display_name: Skills
     bundled: true
-    available_tools: []
-  ticket:
-    enabled: true
-    type: stdio
-    name: ticket
-    description: Ticket operations (atomic) for FO Copilot — pull my todo, read one ticket's context, pick a candidate, create / update / comment / transition / reassign. First implementation is a file-backed mock; the real ticketing adapter swaps in behind the same tool surface.
-    cmd: config/mcp/ticket/.venv/bin/python
-    args:
-    - config/mcp/ticket/server.py
-    envs:
-      TICKET_MOCK_STORE: mcp-data/ticket-store.json
-      TICKET_MCP_LOG: mcp-data/ticket-mcp.log
-    env_keys: []
-    timeout: 30
-    bundled: null
     available_tools: []

@@ -65,55 +65,68 @@ public class InstanceWatchdog {
         int maxRestarts = properties.getIdle().getMaxRestartAttempts();
         long baseDelay = properties.getIdle().getRestartBaseDelayMs();
         long now = System.currentTimeMillis();
-
-        // Snapshot to avoid ConcurrentModificationException during stopInstance
         List<ManagedInstance> snapshot = new ArrayList<>(instanceManager.getAllInstances());
-
         for (ManagedInstance instance : snapshot) {
-            if (instance.getStatus() != ManagedInstance.Status.RUNNING) {
+            if (!shouldCheckInstance(instance)) {
                 continue;
             }
-
-            if (instance.getProcess() != null && ProcessUtil.isAlive(instance.getProcess())) {
-                continue;
-            }
-
-            // Process is dead
-            int exitCode = -1;
-            try {
-                if (instance.getProcess() != null) {
-                    exitCode = instance.getProcess().exitValue();
-                }
-            } catch (IllegalThreadStateException e) {
-                // Should not happen since isAlive() returned false
-            }
-
-            String agentId = instance.getAgentId();
-            String userId = instance.getUserId();
-            int restartCount = instance.getRestartCount();
-
-            log.warn("Watchdog detected dead instance {}:{} (port={}, pid={}, exit={})", agentId, userId,
-                instance.getPort(), instance.getPid(), exitCode);
-            instanceManager.stopInstance(instance);
-
-            // Respawn with backoff
-            if (restartCount >= maxRestarts) {
-                log.error("Instance {}:{} exceeded max restart attempts ({}), not respawning. "
-                    + "Will retry on next user request.", agentId, userId, maxRestarts);
-                continue;
-            }
-
-            long backoffMs = Math.min(baseDelay * (1L << Math.min(restartCount, 20)), 300_000L);
-            long elapsed = now - instance.getLastRestartTime();
-            if (instance.getLastRestartTime() > 0 && elapsed < backoffMs) {
-                log.info("Instance {}:{} backing off ({}ms remaining before retry #{})", agentId, userId,
-                    backoffMs - elapsed, restartCount + 1);
-                continue;
-            }
-
-            log.info("Watchdog respawning instance {}:{} (attempt #{})", agentId, userId, restartCount + 1);
-            instanceManager.respawnAsync(agentId, userId, restartCount + 1);
+            handleDeadInstance(instance, maxRestarts, baseDelay, now);
         }
+    }
+
+    private boolean shouldCheckInstance(ManagedInstance instance) {
+        if (instance.getStatus() != ManagedInstance.Status.RUNNING) {
+            return false;
+        }
+        return instance.getProcess() == null || !ProcessUtil.isAlive(instance.getProcess());
+    }
+
+    private void handleDeadInstance(ManagedInstance instance, int maxRestarts, long baseDelay, long now) {
+        int exitCode = resolveExitCode(instance);
+        String agentId = instance.getAgentId();
+        String userId = instance.getUserId();
+        int restartCount = instance.getRestartCount();
+
+        log.warn("Watchdog detected dead instance {}:{} (port={}, pid={}, exit={})", agentId, userId, instance.getPort(),
+            instance.getPid(), exitCode);
+        instanceManager.stopInstance(instance);
+        if (!canRespawn(agentId, userId, restartCount, maxRestarts)) {
+            return;
+        }
+        if (isBackingOff(instance, baseDelay, now, agentId, userId, restartCount)) {
+            return;
+        }
+        log.info("Watchdog respawning instance {}:{} (attempt #{})", agentId, userId, restartCount + 1);
+        instanceManager.respawnAsync(agentId, userId, restartCount + 1);
+    }
+
+    private int resolveExitCode(ManagedInstance instance) {
+        try {
+            return instance.getProcess() != null ? instance.getProcess().exitValue() : -1;
+        } catch (IllegalThreadStateException e) {
+            return -1;
+        }
+    }
+
+    private boolean canRespawn(String agentId, String userId, int restartCount, int maxRestarts) {
+        if (restartCount < maxRestarts) {
+            return true;
+        }
+        log.error("Instance {}:{} exceeded max restart attempts ({}), not respawning. Will retry on next user request.",
+            agentId, userId, maxRestarts);
+        return false;
+    }
+
+    private boolean isBackingOff(ManagedInstance instance, long baseDelay, long now, String agentId, String userId,
+        int restartCount) {
+        long backoffMs = Math.min(baseDelay * (1L << Math.min(restartCount, 20)), 300_000L);
+        long elapsed = now - instance.getLastRestartTime();
+        if (instance.getLastRestartTime() <= 0 || elapsed >= backoffMs) {
+            return false;
+        }
+        log.info("Instance {}:{} backing off ({}ms remaining before retry #{})", agentId, userId, backoffMs - elapsed,
+            restartCount + 1);
+        return true;
     }
 
     /**

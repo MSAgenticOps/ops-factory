@@ -142,12 +142,16 @@ public class HostGroupService {
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
         List<Map<String, Object>> businessServices) {
-        Map<String, String> groupNameMap = new LinkedHashMap<>();
-        for (Map<String, Object> g : groups) {
-            groupNameMap.put((String) g.get("id"), (String) g.get("name"));
-        }
+        Map<String, Map<String, Object>> groupNodeMap = buildGroupNodeMap(groups);
+        attachClusters(groupNodeMap, clusters);
+        attachBusinessServices(groupNodeMap, businessServices);
+        List<Map<String, Object>> tree = buildGroupHierarchy(groupNodeMap);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("tree", tree);
+        return result;
+    }
 
-        // Build group nodes with children
+    private Map<String, Map<String, Object>> buildGroupNodeMap(List<Map<String, Object>> groups) {
         Map<String, Map<String, Object>> groupNodeMap = new LinkedHashMap<>();
         for (Map<String, Object> group : groups) {
             Map<String, Object> node = new LinkedHashMap<>(group);
@@ -156,51 +160,44 @@ public class HostGroupService {
             node.put("businessServices", new ArrayList<Map<String, Object>>());
             groupNodeMap.put((String) group.get("id"), node);
         }
+        return groupNodeMap;
+    }
 
-        // Attach clusters to their groups
+    private void attachClusters(Map<String, Map<String, Object>> groupNodeMap, List<Map<String, Object>> clusters) {
         for (Map<String, Object> cluster : clusters) {
-            String groupId = (String) cluster.get("groupId");
-            if (groupId != null && groupNodeMap.containsKey(groupId)) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> clusterList =
-                    (List<Map<String, Object>>) groupNodeMap.get(groupId).get("clusters");
-                clusterList.add(cluster);
-            }
+            appendGroupedItem(groupNodeMap, (String) cluster.get("groupId"), "clusters", cluster);
         }
+    }
 
-        // Attach business services to their groups
+    private void attachBusinessServices(Map<String, Map<String, Object>> groupNodeMap,
+        List<Map<String, Object>> businessServices) {
         for (Map<String, Object> bs : businessServices) {
-            String groupId = (String) bs.get("groupId");
-            if (groupId != null && groupNodeMap.containsKey(groupId)) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> bsList =
-                    (List<Map<String, Object>>) groupNodeMap.get(groupId).get("businessServices");
-                bsList.add(bs);
-            }
+            appendGroupedItem(groupNodeMap, (String) bs.get("groupId"), "businessServices", bs);
         }
+    }
 
-        // Build hierarchy: top-level groups first, then nest sub-groups
+    @SuppressWarnings("unchecked")
+    private void appendGroupedItem(Map<String, Map<String, Object>> groupNodeMap, String groupId, String key,
+        Map<String, Object> item) {
+        if (groupId == null || !groupNodeMap.containsKey(groupId)) {
+            return;
+        }
+        ((List<Map<String, Object>>) groupNodeMap.get(groupId).get(key)).add(item);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> buildGroupHierarchy(Map<String, Map<String, Object>> groupNodeMap) {
         List<Map<String, Object>> tree = new ArrayList<>();
         for (Map<String, Object> node : groupNodeMap.values()) {
             String parentId = (String) node.get("parentId");
-            if (parentId == null) {
+            Map<String, Object> parent = parentId != null ? groupNodeMap.get(parentId) : null;
+            if (parent == null) {
                 tree.add(node);
             } else {
-                Map<String, Object> parent = groupNodeMap.get(parentId);
-                if (parent != null) {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> children = (List<Map<String, Object>>) parent.get("children");
-                    children.add(node);
-                } else {
-                    // Orphan sub-group: add to top level
-                    tree.add(node);
-                }
+                ((List<Map<String, Object>>) parent.get("children")).add(node);
             }
         }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("tree", tree);
-        return result;
+        return tree;
     }
 
     /**

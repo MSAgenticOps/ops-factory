@@ -562,66 +562,90 @@ public class GoosedProxy {
         log.info("[GOOSED-PROXY] sse-connect port={} path={} agentId={} userId={} sessionId={} lastEventId={}", port,
             path, agentId, userId, sessionId, lastEventId);
 
-        WebClient.RequestHeadersSpec<?> spec = webClient.get()
-            .uri(target)
-            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
-            .accept(MediaType.TEXT_EVENT_STREAM);
-        if (lastEventId != null && !lastEventId.isBlank()) {
-            spec = spec.header("Last-Event-ID", lastEventId);
-        }
-
-        // 关键修复：在 exchangeToMono 回调内完成所有响应体操作，确保生命周期正确
-        SseEmitter emitter = spec.exchangeToMono(upstream -> {
-            if (upstream.statusCode().isError()) {
-                log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}", port,
-                    path, upstream.statusCode().value(), agentId, sessionId);
-                return upstream.bodyToMono(String.class)
-                    .defaultIfEmpty("")
-                    .flatMap(errorBody -> Mono.error(toUpstreamResponseException(
-                        upstream.statusCode().value(),
-                        upstream.headers().asHttpHeaders(),
-                        errorBody)));
-            }
-
-            log.info("[GOOSED-PROXY] sse-connected port={} path={} status={} agentId={} sessionId={}", port, path,
-                upstream.statusCode(), agentId, sessionId);
-
-            SseEmitter em = createSseEmitter();
-
-            // 在同一回调内消费响应体并立即订阅，防止响应体被释放
-            Flux<DataBuffer> eventStream = upstream.bodyToFlux(DataBuffer.class)
-                .onErrorResume(err -> Flux.just(DefaultDataBufferFactory.sharedInstance
-                    .wrap(gatewayEventStreamError(err, agentId, userId, sessionId)
-                        .getBytes(StandardCharsets.UTF_8))));
-
-            transformSessionEventFrames(eventStream, beforeTerminalEventFactory)
-                .doOnSubscribe(s -> log.info("[GOOSED-PROXY] sse-subscribed agentId={} sessionId={}", agentId, sessionId))
-                .doOnComplete(() -> {
-                    log.info("[GOOSED-PROXY] sse-complete agentId={} sessionId={}", agentId, sessionId);
-                    em.complete();
-                })
-                .doOnError(err -> {
-                    log.warn("[GOOSED-PROXY] sse-error agentId={} sessionId={} error={}", agentId, sessionId,
-                        err.getMessage());
-                    em.completeWithError(err);
-                })
-                .subscribe(frame -> {
-                    try {
-                        sendSseFrame(em, frame);
-                    } catch (IOException e) {
-                        log.warn("[GOOSED-PROXY] sse-send-error agentId={} sessionId={}", agentId, sessionId);
-                        em.completeWithError(e);
-                    }
-                }, em::completeWithError, em::complete);
-
-            return Mono.just(em);
-        })
-        .block(Duration.ofSeconds(10));
+        WebClient.RequestHeadersSpec<?> spec = applyLastEventId(buildEventStreamRequest(target, secretKey), lastEventId);
+        SseEmitter emitter = spec.exchangeToMono(
+            upstream -> handleUpstreamSseResponse(upstream, port, path, agentId, userId, sessionId,
+                beforeTerminalEventFactory)).block(Duration.ofSeconds(10));
 
         if (emitter == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent event stream unavailable");
         }
         return emitter;
+    }
+
+    private WebClient.RequestHeadersSpec<?> buildEventStreamRequest(String target, String secretKey) {
+        return webClient.get()
+            .uri(target)
+            .header(GatewayConstants.HEADER_SECRET_KEY, secretKey)
+            .accept(MediaType.TEXT_EVENT_STREAM);
+    }
+
+    private WebClient.RequestHeadersSpec<?> applyLastEventId(WebClient.RequestHeadersSpec<?> spec, String lastEventId) {
+        if (lastEventId == null || lastEventId.isBlank()) {
+            return spec;
+        }
+        return spec.header("Last-Event-ID", lastEventId);
+    }
+
+    private Mono<SseEmitter> handleUpstreamSseResponse(org.springframework.web.reactive.function.client.ClientResponse upstream,
+        int port, String path, String agentId, String userId, String sessionId,
+        Function<String, Mono<String>> beforeTerminalEventFactory) {
+        if (upstream.statusCode().isError()) {
+            return handleUpstreamSseError(upstream, port, path, agentId, sessionId);
+        }
+
+        log.info("[GOOSED-PROXY] sse-connected port={} path={} status={} agentId={} sessionId={}", port, path,
+            upstream.statusCode(), agentId, sessionId);
+        SseEmitter emitter = createSseEmitter();
+        subscribeEventStream(emitter, upstream, agentId, userId, sessionId, beforeTerminalEventFactory);
+        return Mono.just(emitter);
+    }
+
+    private Mono<SseEmitter> handleUpstreamSseError(
+        org.springframework.web.reactive.function.client.ClientResponse upstream, int port, String path, String agentId,
+        String sessionId) {
+        log.warn("[GOOSED-PROXY] sse-upstream-error port={} path={} status={} agentId={} sessionId={}", port, path,
+            upstream.statusCode().value(), agentId, sessionId);
+        return upstream.bodyToMono(String.class)
+            .defaultIfEmpty("")
+            .flatMap(errorBody -> Mono.error(toUpstreamResponseException(
+                upstream.statusCode().value(),
+                upstream.headers().asHttpHeaders(),
+                errorBody)));
+    }
+
+    private void subscribeEventStream(SseEmitter emitter,
+        org.springframework.web.reactive.function.client.ClientResponse upstream, String agentId, String userId,
+        String sessionId, Function<String, Mono<String>> beforeTerminalEventFactory) {
+        Flux<DataBuffer> eventStream = upstream.bodyToFlux(DataBuffer.class)
+            .onErrorResume(err -> Flux.just(DefaultDataBufferFactory.sharedInstance
+                .wrap(gatewayEventStreamError(err, agentId, userId, sessionId).getBytes(StandardCharsets.UTF_8))));
+
+        transformSessionEventFrames(eventStream, beforeTerminalEventFactory)
+            .doOnSubscribe(s -> log.info("[GOOSED-PROXY] sse-subscribed agentId={} sessionId={}", agentId, sessionId))
+            .doOnComplete(() -> completeEmitter(emitter, agentId, sessionId))
+            .doOnError(err -> completeEmitterWithError(emitter, agentId, sessionId, err))
+            .subscribe(frame -> forwardSseFrame(emitter, frame, agentId, sessionId), emitter::completeWithError,
+                emitter::complete);
+    }
+
+    private void completeEmitter(SseEmitter emitter, String agentId, String sessionId) {
+        log.info("[GOOSED-PROXY] sse-complete agentId={} sessionId={}", agentId, sessionId);
+        emitter.complete();
+    }
+
+    private void completeEmitterWithError(SseEmitter emitter, String agentId, String sessionId, Throwable err) {
+        log.warn("[GOOSED-PROXY] sse-error agentId={} sessionId={} error={}", agentId, sessionId, err.getMessage());
+        emitter.completeWithError(err);
+    }
+
+    private void forwardSseFrame(SseEmitter emitter, String frame, String agentId, String sessionId) {
+        try {
+            sendSseFrame(emitter, frame);
+        } catch (IOException e) {
+            log.warn("[GOOSED-PROXY] sse-send-error agentId={} sessionId={}", agentId, sessionId);
+            emitter.completeWithError(e);
+        }
     }
 
     private SseEmitter createSseEmitter() {
@@ -636,9 +660,7 @@ public class GoosedProxy {
     }
 
     private void sendSseFrame(SseEmitter emitter, String frame) throws IOException {
-        String normalizedFrame = frame
-            .replaceAll("(\\r?\\n){2}$", "")
-            .replace("\r\n", "\n");
+        String normalizedFrame = normalizeSseFrame(frame);
         if (normalizedFrame.isBlank()) {
             return;
         }
@@ -646,50 +668,61 @@ public class GoosedProxy {
         SseEmitter.SseEventBuilder builder = SseEmitter.event();
         boolean hasFields = false;
         for (String line : normalizedFrame.split("\n")) {
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (line.startsWith(":")) {
-                builder.comment(line.substring(1).trim());
-                hasFields = true;
-                continue;
-            }
-
-            int separatorIndex = line.indexOf(':');
-            String field = separatorIndex >= 0 ? line.substring(0, separatorIndex) : line;
-            String value = separatorIndex >= 0 ? line.substring(separatorIndex + 1) : "";
-            if (value.startsWith(" ")) {
-                value = value.substring(1);
-            }
-
-            switch (field) {
-                case "data":
-                    builder.data(value);
-                    hasFields = true;
-                    break;
-                case "event":
-                    builder.name(value);
-                    hasFields = true;
-                    break;
-                case "id":
-                    builder.id(value);
-                    hasFields = true;
-                    break;
-                case "retry":
-                    try {
-                        builder.reconnectTime(Long.parseLong(value));
-                        hasFields = true;
-                    } catch (NumberFormatException ignored) {
-                        // Ignore invalid retry hints from upstream frames.
-                    }
-                    break;
-                default:
-                    break;
-            }
+            hasFields = applySseField(builder, line) || hasFields;
         }
 
         if (hasFields) {
             emitter.send(builder);
+        }
+    }
+
+    private String normalizeSseFrame(String frame) {
+        return frame.replaceAll("(\\r?\\n){2}$", "").replace("\r\n", "\n");
+    }
+
+    private boolean applySseField(SseEmitter.SseEventBuilder builder, String line) {
+        if (line.isEmpty()) {
+            return false;
+        }
+        if (line.startsWith(":")) {
+            builder.comment(line.substring(1).trim());
+            return true;
+        }
+
+        int separatorIndex = line.indexOf(':');
+        String field = separatorIndex >= 0 ? line.substring(0, separatorIndex) : line;
+        String value = separatorIndex >= 0 ? line.substring(separatorIndex + 1) : "";
+        if (value.startsWith(" ")) {
+            value = value.substring(1);
+        }
+        return applyNamedSseField(builder, field, value);
+    }
+
+    private boolean applyNamedSseField(SseEmitter.SseEventBuilder builder, String field, String value) {
+        return switch (field) {
+            case "data" -> {
+                builder.data(value);
+                yield true;
+            }
+            case "event" -> {
+                builder.name(value);
+                yield true;
+            }
+            case "id" -> {
+                builder.id(value);
+                yield true;
+            }
+            case "retry" -> parseRetryField(builder, value);
+            default -> false;
+        };
+    }
+
+    private boolean parseRetryField(SseEmitter.SseEventBuilder builder, String value) {
+        try {
+            builder.reconnectTime(Long.parseLong(value));
+            return true;
+        } catch (NumberFormatException ignored) {
+            return false;
         }
     }
 
