@@ -18,6 +18,7 @@ gateway/agents/*/config/secrets.yaml
 # Real per-agent runtime config is environment-specific and stays local; only *.sample templates are tracked.
 gateway/agents/*/config/config.yaml
 gateway/agents/*/config/custom_providers/*.json
+!gateway/agents/*/config/custom_providers/*.sample.json
 .codex/
 
 # Node

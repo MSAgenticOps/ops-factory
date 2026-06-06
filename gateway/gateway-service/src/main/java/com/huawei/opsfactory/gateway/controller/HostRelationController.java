@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -173,62 +174,67 @@ public class HostRelationController {
     private void enrichWithBusinessServices(Map<String, Object> graph, String groupId, String clusterId) {
         List<Map<String, Object>> nodes = (List<Map<String, Object>>) graph.get("nodes");
         List<Map<String, Object>> edges = (List<Map<String, Object>>) graph.get("edges");
+        Set<String> hostNodeIds = collectHostNodeIds(nodes);
+        List<Map<String, Object>> bsList = businessServiceService.listBusinessServices(null, null);
+        int addedBs = 0;
+        for (Map<String, Object> bs : bsList) {
+            if (!hasHostOverlap(bs, hostNodeIds)) {
+                continue;
+            }
+            String bsId = (String) bs.get("id");
+            nodes.add(buildBusinessServiceNode(bs));
+            edges.addAll(buildBusinessServiceEdges(bsId, hostNodeIds));
+            addedBs++;
+        }
+        log.info("enrichWithBusinessServices: added {} BS nodes to graph", addedBs);
+    }
 
-        // Collect existing host node IDs
+    private Set<String> collectHostNodeIds(List<Map<String, Object>> nodes) {
         Set<String> hostNodeIds = new HashSet<>();
         for (Map<String, Object> node : nodes) {
             hostNodeIds.add((String) node.get("id"));
         }
+        return hostNodeIds;
+    }
 
-        // Fetch all business services, then filter by overlap with current graph hosts.
-        // We cannot use listBusinessServices(groupId) because the groupId param may be
-        // a province-level (parent) group while BS records store the direct child groupId.
-        List<Map<String, Object>> bsList = businessServiceService.listBusinessServices(null, null);
-
-        int addedBs = 0;
-        for (Map<String, Object> bs : bsList) {
-            String bsId = (String) bs.get("id");
-            // Only include BS whose entry hosts overlap with current graph hosts
-            List<String> bsHostIds = (List<String>) bs.getOrDefault("hostIds", Collections.emptyList());
-            boolean hasOverlap = false;
-            for (String hid : bsHostIds) {
-                if (hostNodeIds.contains(hid)) {
-                    hasOverlap = true;
-                    break;
-                }
+    @SuppressWarnings("unchecked")
+    private boolean hasHostOverlap(Map<String, Object> businessService, Set<String> hostNodeIds) {
+        List<String> bsHostIds = (List<String>) businessService.getOrDefault("hostIds", Collections.emptyList());
+        for (String hostId : bsHostIds) {
+            if (hostNodeIds.contains(hostId)) {
+                return true;
             }
-            if (!hasOverlap) {
-                continue;
-            }
-
-            // Add BS node
-            Map<String, Object> bsNode = new LinkedHashMap<>();
-            bsNode.put("id", bsId);
-            bsNode.put("name", bs.get("name"));
-            bsNode.put("ip", null);
-            bsNode.put("clusterType", null);
-            bsNode.put("clusterName", null);
-            bsNode.put("purpose", null);
-            bsNode.put("groupId", bs.get("groupId"));
-            bsNode.put("nodeType", "business-service");
-            nodes.add(bsNode);
-
-            // Add edges from BS to each entry host that exists in the graph, using actual relation descriptions
-            List<Map<String, Object>> bsRelations =
-                hostRelationService.listRelations(null, null, null, "business-service", bsId);
-            for (Map<String, Object> rel : bsRelations) {
-                String targetId = (String) rel.get("targetHostId");
-                if (targetId != null && hostNodeIds.contains(targetId)) {
-                    Map<String, Object> edge = new LinkedHashMap<>();
-                    edge.put("source", bsId);
-                    edge.put("target", targetId);
-                    edge.put("description", rel.getOrDefault("description", ""));
-                    edge.put("type", "business-entry");
-                    edges.add(edge);
-                }
-            }
-            addedBs++;
         }
-        log.info("enrichWithBusinessServices: added {} BS nodes to graph", addedBs);
+        return false;
+    }
+
+    private Map<String, Object> buildBusinessServiceNode(Map<String, Object> bs) {
+        Map<String, Object> bsNode = new LinkedHashMap<>();
+        bsNode.put("id", bs.get("id"));
+        bsNode.put("name", bs.get("name"));
+        bsNode.put("ip", null);
+        bsNode.put("clusterType", null);
+        bsNode.put("clusterName", null);
+        bsNode.put("purpose", null);
+        bsNode.put("groupId", bs.get("groupId"));
+        bsNode.put("nodeType", "business-service");
+        return bsNode;
+    }
+
+    private List<Map<String, Object>> buildBusinessServiceEdges(String bsId, Set<String> hostNodeIds) {
+        List<Map<String, Object>> edges = new ArrayList<>();
+        List<Map<String, Object>> relations = hostRelationService.listRelations(null, null, null, "business-service", bsId);
+        for (Map<String, Object> rel : relations) {
+            String targetId = (String) rel.get("targetHostId");
+            if (targetId != null && hostNodeIds.contains(targetId)) {
+                Map<String, Object> edge = new LinkedHashMap<>();
+                edge.put("source", bsId);
+                edge.put("target", targetId);
+                edge.put("description", rel.getOrDefault("description", ""));
+                edge.put("type", "business-entry");
+                edges.add(edge);
+            }
+        }
+        return edges;
     }
 }

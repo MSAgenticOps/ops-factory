@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
@@ -141,12 +142,16 @@ public class HostGroupService {
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
         List<Map<String, Object>> businessServices) {
-        Map<String, String> groupNameMap = new LinkedHashMap<>();
-        for (Map<String, Object> g : groups) {
-            groupNameMap.put((String) g.get("id"), (String) g.get("name"));
-        }
+        Map<String, Map<String, Object>> groupNodeMap = buildGroupNodeMap(groups);
+        attachClusters(groupNodeMap, clusters);
+        attachBusinessServices(groupNodeMap, businessServices);
+        List<Map<String, Object>> tree = buildGroupHierarchy(groupNodeMap);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("tree", tree);
+        return result;
+    }
 
-        // Build group nodes with children
+    private Map<String, Map<String, Object>> buildGroupNodeMap(List<Map<String, Object>> groups) {
         Map<String, Map<String, Object>> groupNodeMap = new LinkedHashMap<>();
         for (Map<String, Object> group : groups) {
             Map<String, Object> node = new LinkedHashMap<>(group);
@@ -155,78 +160,80 @@ public class HostGroupService {
             node.put("businessServices", new ArrayList<Map<String, Object>>());
             groupNodeMap.put((String) group.get("id"), node);
         }
+        return groupNodeMap;
+    }
 
-        // Attach clusters to their groups
+    private void attachClusters(Map<String, Map<String, Object>> groupNodeMap, List<Map<String, Object>> clusters) {
         for (Map<String, Object> cluster : clusters) {
-            String groupId = (String) cluster.get("groupId");
-            if (groupId != null && groupNodeMap.containsKey(groupId)) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> clusterList =
-                    (List<Map<String, Object>>) groupNodeMap.get(groupId).get("clusters");
-                clusterList.add(cluster);
-            }
+            appendGroupedItem(groupNodeMap, (String) cluster.get("groupId"), "clusters", cluster);
         }
+    }
 
-        // Attach business services to their groups
+    private void attachBusinessServices(Map<String, Map<String, Object>> groupNodeMap,
+        List<Map<String, Object>> businessServices) {
         for (Map<String, Object> bs : businessServices) {
-            String groupId = (String) bs.get("groupId");
-            if (groupId != null && groupNodeMap.containsKey(groupId)) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> bsList =
-                    (List<Map<String, Object>>) groupNodeMap.get(groupId).get("businessServices");
-                bsList.add(bs);
-            }
+            appendGroupedItem(groupNodeMap, (String) bs.get("groupId"), "businessServices", bs);
         }
+    }
 
-        // Build hierarchy: top-level groups first, then nest sub-groups
+    @SuppressWarnings("unchecked")
+    private void appendGroupedItem(Map<String, Map<String, Object>> groupNodeMap, String groupId, String key,
+        Map<String, Object> item) {
+        if (groupId == null || !groupNodeMap.containsKey(groupId)) {
+            return;
+        }
+        ((List<Map<String, Object>>) groupNodeMap.get(groupId).get(key)).add(item);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> buildGroupHierarchy(Map<String, Map<String, Object>> groupNodeMap) {
         List<Map<String, Object>> tree = new ArrayList<>();
         for (Map<String, Object> node : groupNodeMap.values()) {
             String parentId = (String) node.get("parentId");
-            if (parentId == null) {
+            Map<String, Object> parent = parentId != null ? groupNodeMap.get(parentId) : null;
+            if (parent == null) {
                 tree.add(node);
             } else {
-                Map<String, Object> parent = groupNodeMap.get(parentId);
-                if (parent != null) {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> children = (List<Map<String, Object>>) parent.get("children");
-                    children.add(node);
-                } else {
-                    // Orphan sub-group: add to top level
-                    tree.add(node);
-                }
+                ((List<Map<String, Object>>) parent.get("children")).add(node);
             }
         }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("tree", tree);
-        return result;
+        return tree;
     }
 
     /**
      * Creates a new host group from the provided field map.
      *
      * @param body request body
-     * @return the result
+     * @return the created host group map
+     * @throws BadRequestException if required fields are missing or validation fails
+     * @throws ConflictException if name or code already exists
      */
     public Map<String, Object> createGroup(Map<String, Object> body) throws BadRequestException, ConflictException {
-        String code = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
-        if (code.isEmpty()) {
-            throw new BadRequestException(MSG_CODE_REQUIRED);
-        }
+        String name = ValidationUtils.validateStringField(body, "name", "Group name", 100, true);
+
+        String code = ValidationUtils.validateStringField(body, "code", "Group code", 50, true);
 
         List<Map<String, Object>> allGroups = listGroups();
-        boolean duplicate = allGroups.stream()
+        boolean nameDuplicate = allGroups.stream()
+            .anyMatch(g -> name.equalsIgnoreCase(String.valueOf(g.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Group name already exists");
+        }
+
+        boolean codeDuplicate = allGroups.stream()
             .anyMatch(g -> code.equalsIgnoreCase(String.valueOf(g.get("code"))));
-        if (duplicate) {
+        if (codeDuplicate) {
             throw new ConflictException(MSG_CODE_EXISTS);
         }
+
+        ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> group = new LinkedHashMap<>();
         group.put("id", id);
-        group.put("name", body.getOrDefault("name", ""));
+        group.put("name", name);
         group.put("parentId", body.get("parentId"));
         group.put("description", body.getOrDefault("description", ""));
         group.put("code", code);
@@ -242,9 +249,12 @@ public class HostGroupService {
     /**
      * Updates an existing host group with the provided field map.
      *
-     * @param id an existing host group with the provided field map
-     * @param body an existing host group with the provided field map
-     * @return the result
+     * @param id host group identifier
+     * @param body request body containing updated fields
+     * @return the updated host group map
+     * @throws NotFoundException if host group not found
+     * @throws BadRequestException if validation fails
+     * @throws ConflictException if name or code already exists
      */
     public Map<String, Object> updateGroup(String id, Map<String, Object> body)
         throws NotFoundException, BadRequestException, ConflictException {
@@ -254,29 +264,36 @@ public class HostGroupService {
             throw new NotFoundException("Host group not found");
         }
 
-        if (body.containsKey("code")) {
-            String newCode = body.get("code") != null ? String.valueOf(body.get("code")).trim() : "";
-            if (newCode.isEmpty()) {
-                throw new BadRequestException(MSG_CODE_REQUIRED);
-            }
+        if (body.containsKey("name")) {
+            String newName = ValidationUtils.validateStringField(body, "name", "Group name", 100, true);
 
             List<Map<String, Object>> allGroups = listGroups();
-            boolean duplicate = allGroups.stream()
+            boolean nameDuplicate = allGroups.stream()
+                .filter(g -> !id.equals(g.get("id")))
+                .anyMatch(g -> newName.equalsIgnoreCase(String.valueOf(g.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Group name already exists");
+            }
+            group.put("name", newName);
+        }
+        if (body.containsKey("code")) {
+            String newCode = ValidationUtils.validateStringField(body, "code", "Group code", 50, true);
+
+            List<Map<String, Object>> allGroups = listGroups();
+            boolean codeDuplicate = allGroups.stream()
                 .filter(g -> !id.equals(g.get("id")))
                 .anyMatch(g -> newCode.equalsIgnoreCase(String.valueOf(g.get("code"))));
-            if (duplicate) {
+            if (codeDuplicate) {
                 throw new ConflictException(MSG_CODE_EXISTS);
             }
             group.put("code", newCode);
-        }
-        if (body.containsKey("name")) {
-            group.put("name", body.get("name"));
         }
         if (body.containsKey("parentId")) {
             group.put("parentId", body.get("parentId"));
         }
         if (body.containsKey("description")) {
-            group.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
+            group.put("description", description);
         }
         if (body.containsKey("enabled")) {
             group.put("enabled", body.get("enabled"));

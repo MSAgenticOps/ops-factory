@@ -17,6 +17,8 @@ public class CallChainSubgraphRequest {
 
     private String solutionType;
 
+    private String solutionId;
+
     private String mode;
 
     private String ontologyId;
@@ -77,6 +79,24 @@ public class CallChainSubgraphRequest {
      */
     public void setSolutionType(String solutionType) {
         this.solutionType = solutionType;
+    }
+
+    /**
+     * Gets the solution id.
+     *
+     * @return the result
+     */
+    public String getSolutionId() {
+        return solutionId;
+    }
+
+    /**
+     * Sets the solution id.
+     *
+     * @param solutionId the solutionId
+     */
+    public void setSolutionId(String solutionId) {
+        this.solutionId = solutionId;
     }
 
     /**

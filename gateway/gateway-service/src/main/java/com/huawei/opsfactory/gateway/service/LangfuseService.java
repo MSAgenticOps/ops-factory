@@ -161,87 +161,135 @@ public class LangfuseService {
     private Map<String, Object> doBuildOverview(String tracesJson, String obsJson) throws JsonProcessingException {
         JsonNode tracesRoot = MAPPER.readTree(tracesJson);
         JsonNode obsRoot = MAPPER.readTree(obsJson);
+        JsonNode traces = normalizeApiArray(tracesRoot);
+        JsonNode obs = normalizeApiArray(obsRoot);
+        OverviewAccumulator accumulator = new OverviewAccumulator(traces.size(), obs.size());
+        aggregateTraceMetrics(traces, accumulator);
+        aggregateObservationMetrics(obs, accumulator);
+        return buildOverviewPayload(accumulator);
+    }
 
-        // Langfuse API wraps results in "data" array
-        JsonNode traces = tracesRoot.has("data") ? tracesRoot.get("data") : tracesRoot;
-        JsonNode obs = obsRoot.has("data") ? obsRoot.get("data") : obsRoot;
+    private JsonNode normalizeApiArray(JsonNode root) {
+        JsonNode data = root.has("data") ? root.get("data") : root;
+        return data.isArray() ? data : MAPPER.createArrayNode();
+    }
 
-        if (!traces.isArray())
-            traces = MAPPER.createArrayNode();
-        if (!obs.isArray())
-            obs = MAPPER.createArrayNode();
-
-        int totalTraces = traces.size();
-        int totalObservations = obs.size();
-        double totalCost = 0;
-        double sumLatency = 0;
-        int errorCount = 0;
-        List<Double> latencies = new ArrayList<>();
-        // date -> [traces, observations]
-        TreeMap<String, int[]> dailyMap = new TreeMap<>();
-
-        for (JsonNode t : traces) {
-            double latency = t.path("latency").asDouble(0);
-            latencies.add(latency);
-            sumLatency += latency;
-            totalCost += t.path("totalCost").asDouble(0);
-
-            // Check error: Langfuse uses "level" field or "status"
-            String level = t.path("level").asText("");
-            if ("ERROR".equalsIgnoreCase(level)) {
-                errorCount++;
+    private void aggregateTraceMetrics(JsonNode traces, OverviewAccumulator accumulator) {
+        for (JsonNode trace : traces) {
+            double latency = trace.path("latency").asDouble(0);
+            accumulator.latencies().add(latency);
+            accumulator.addLatency(latency);
+            accumulator.addCost(trace.path("totalCost").asDouble(0));
+            if ("ERROR".equalsIgnoreCase(trace.path("level").asText(""))) {
+                accumulator.incrementErrorCount();
             }
-
-            // Daily aggregation by trace timestamp
-            String ts = t.path("timestamp").asText("");
-            if (!ts.isEmpty()) {
-                try {
-                    String date = OffsetDateTime.parse(ts).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-                    dailyMap.computeIfAbsent(date, k -> new int[] {0, 0})[0]++;
-                } catch (DateTimeParseException e) {
-                    // skip unparseable timestamps
-                }
-            }
+            incrementDailyCount(accumulator.dailyMap(), trace.path("timestamp").asText(""), 0);
         }
+    }
 
-        for (JsonNode o : obs) {
-            totalCost += o.path("totalCost").asDouble(0);
-            String ts = o.path("startTime").asText("");
-            if (!ts.isEmpty()) {
-                try {
-                    String date = OffsetDateTime.parse(ts).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-                    dailyMap.computeIfAbsent(date, k -> new int[] {0, 0})[1]++;
-                } catch (DateTimeParseException e) {
-                    // skip unparseable timestamps
-                }
-            }
+    private void aggregateObservationMetrics(JsonNode observations, OverviewAccumulator accumulator) {
+        for (JsonNode observation : observations) {
+            accumulator.addCost(observation.path("totalCost").asDouble(0));
+            incrementDailyCount(accumulator.dailyMap(), observation.path("startTime").asText(""), 1);
         }
+    }
 
-        double avgLatency = totalTraces > 0 ? sumLatency / totalTraces : 0;
+    private void incrementDailyCount(TreeMap<String, int[]> dailyMap, String timestamp, int index) {
+        if (timestamp.isEmpty()) {
+            return;
+        }
+        try {
+            String date = OffsetDateTime.parse(timestamp).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            dailyMap.computeIfAbsent(date, key -> new int[] {0, 0})[index]++;
+        } catch (DateTimeParseException e) {
+            // skip unparseable timestamps
+        }
+    }
 
-        double p95Latency = computeP95(latencies);
+    private Map<String, Object> buildOverviewPayload(OverviewAccumulator accumulator) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalTraces", accumulator.totalTraces());
+        result.put("totalObservations", accumulator.totalObservations());
+        result.put("totalCost", accumulator.totalCost());
+        result.put("avgLatency", accumulator.averageLatency());
+        result.put("p95Latency", computeP95(accumulator.latencies()));
+        result.put("errorCount", accumulator.errorCount());
+        result.put("daily", buildDailyOverview(accumulator.dailyMap()));
+        return result;
+    }
 
-        // Build daily array
+    private List<Map<String, Object>> buildDailyOverview(TreeMap<String, int[]> dailyMap) {
         List<Map<String, Object>> daily = new ArrayList<>();
         for (var entry : dailyMap.entrySet()) {
             Map<String, Object> day = new LinkedHashMap<>();
             day.put("date", entry.getKey());
             day.put("traces", entry.getValue()[0]);
             day.put("observations", entry.getValue()[1]);
-            // per-day cost not easily available from trace-level data
             day.put("cost", 0);
             daily.add(day);
         }
+        return daily;
+    }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("totalTraces", totalTraces);
-        result.put("totalObservations", totalObservations);
-        result.put("totalCost", totalCost);
-        result.put("avgLatency", avgLatency);
-        result.put("p95Latency", p95Latency);
-        result.put("errorCount", errorCount);
-        result.put("daily", daily);
-        return result;
+    private static final class OverviewAccumulator {
+        private final int totalTraces;
+
+        private final int totalObservations;
+
+        private final List<Double> latencies = new ArrayList<>();
+
+        private final TreeMap<String, int[]> dailyMap = new TreeMap<>();
+
+        private double totalCost;
+
+        private double sumLatency;
+
+        private int errorCount;
+
+        private OverviewAccumulator(int totalTraces, int totalObservations) {
+            this.totalTraces = totalTraces;
+            this.totalObservations = totalObservations;
+        }
+
+        private void addCost(double cost) {
+            totalCost += cost;
+        }
+
+        private void addLatency(double latency) {
+            sumLatency += latency;
+        }
+
+        private void incrementErrorCount() {
+            errorCount++;
+        }
+
+        private int totalTraces() {
+            return totalTraces;
+        }
+
+        private int totalObservations() {
+            return totalObservations;
+        }
+
+        private double totalCost() {
+            return totalCost;
+        }
+
+        private int errorCount() {
+            return errorCount;
+        }
+
+        private List<Double> latencies() {
+            return latencies;
+        }
+
+        private TreeMap<String, int[]> dailyMap() {
+            return dailyMap;
+        }
+
+        private double averageLatency() {
+            return totalTraces > 0 ? sumLatency / totalTraces : 0;
+        }
     }
 
     /**

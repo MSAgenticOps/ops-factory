@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { createZip } from '../../../../utils/zipHelper'
 import { generateExportXlsx } from '../../../../utils/xlsxHelper'
 import * as XLSX from 'xlsx'
-import type { HostGroup, Cluster, Host, BusinessService, HostRelation, ClusterType, BusinessType } from '../../../../types/host'
+import type { HostGroup, Cluster, Host, BusinessService, HostRelation, ClusterType, BusinessType, SolutionType } from '../../../../types/host'
 import type { Sop } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
@@ -19,6 +19,7 @@ export function useResourceExport() {
         businessServices: BusinessService[]
         clusterTypes: ClusterType[]
         businessTypes: BusinessType[]
+        solutionTypes: SolutionType[]
         whitelistCommands: WhitelistCommand[]
         sops: Sop[]
     }, t: (key: string) => string) => {
@@ -26,7 +27,7 @@ export function useResourceExport() {
         try {
             const {
                 groups, clusters, allHosts, hostRelations,
-                businessServices, clusterTypes, businessTypes,
+                businessServices, clusterTypes, businessTypes, solutionTypes,
                 whitelistCommands, sops,
             } = params
 
@@ -69,7 +70,19 @@ export function useResourceExport() {
             const btBlob = workbookToBlob(btWorkbook)
             files.push({ name: 'business_types.xlsx', data: btBlob })
 
-            // 3. Host Groups XLSX
+            // 3. Solution Types XLSX
+            const stData = solutionTypes.map(st => ({
+                name: st.name,
+                code: st.code,
+                description: st.description || '',
+                typeColor: st.color || '',
+                knowledge: st.knowledge || '',
+            }))
+            const stWorkbook = generateExportXlsx('SolutionTypes', stData, t)
+            const stBlob = workbookToBlob(stWorkbook)
+            files.push({ name: 'solution_types.xlsx', data: stBlob })
+
+            // 4. Host Groups XLSX
             const groupData = groups.map(g => ({
                 name: g.name,
                 code: g.code || '',

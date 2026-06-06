@@ -36,6 +36,7 @@ export interface ResourceImportMetadata {
 export type ImportType =
     | 'ClusterTypes'
     | 'BusinessTypes'
+    | 'SolutionTypes'
     | 'HostGroups'
     | 'Clusters'
     | 'Hosts'

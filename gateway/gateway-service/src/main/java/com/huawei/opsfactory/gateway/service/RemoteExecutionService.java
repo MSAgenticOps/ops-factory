@@ -20,10 +20,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist
@@ -79,90 +82,132 @@ public class RemoteExecutionService {
      * @return result map with hostIp, username, hostName, exitCode, output, error, duration
      */
     public Map<String, Object> execute(String hostId, String command, int timeoutSeconds) {
-        // Step 1: Get host with decrypted credential
-        Map<String, Object> host = resolveHost(hostId);
-        if (host == null) {
+        HostConnection connection = resolveExecutionContext(hostId);
+        if (connection == null) {
             return buildResult(new ExecutionContext(hostId, "", "", ""), -1, "", "Host not found: " + hostId, 0L);
         }
 
-        String hostName = (String) host.getOrDefault("name", "");
-        String hostname = (String) host.get("ip");
-        int port = host.get("port") instanceof Number n ? n.intValue() : 22;
-        String username = (String) host.get("username");
-        String authType = (String) host.get("authType");
-        String credential = (String) host.get("credential");
-        ExecutionContext ctx = new ExecutionContext(hostId, hostname, username, hostName);
-
-        // Step 2: Resolve command prefix and environment variables from cluster type
-        EnvResolution envResolution = resolveClusterEnv(hostId, host);
-        String commandPrefix = envResolution.commandPrefix;
-        Map<String, String> envVars = envResolution.envVars;
-
-        // Step 3: Build effective command (substitution, validation, prefix)
-        CommandResolution cmdResolution = buildEffectiveCommand(ctx, command, commandPrefix, envVars);
+        CommandResolution cmdResolution = resolveEffectiveCommand(connection.context, hostId, command, connection.host);
         if (cmdResolution.result != null) {
             return cmdResolution.result;
         }
-        String effectiveCommand = cmdResolution.effectiveCommand;
 
-        // Step 4: Execute via SSH
         Session session = null;
         ChannelExec channel = null;
         long startTime = System.currentTimeMillis();
 
         try {
             JSch jsch = new JSch();
-            session = jsch.getSession(username, hostname, port);
-
-            if ("key".equals(authType)) {
-                jsch.addIdentity("remote-exec", credential.getBytes(StandardCharsets.UTF_8), null, null);
-            } else {
-                session.setPassword(credential);
-            }
-
-            // WARNING: Strict host key checking is disabled for remote execution in
-            // development/testing environments. For production, configure a known_hosts file.
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect(5000);
-
-            channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("bash -l -c " + singleQuote(effectiveCommand));
-
-            try (InputStream in = channel.getInputStream(); InputStream err = channel.getExtInputStream()) {
-
-                ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
-                ByteArrayOutputStream errorBuffer = new ByteArrayOutputStream();
-
-                channel.connect();
-
-                readStreamsUntilDone(channel, in, err, outputBuffer, errorBuffer, timeoutSeconds, hostId);
-
-                int exitCode = channel.getExitStatus();
-                long duration = System.currentTimeMillis() - startTime;
-                String output = outputBuffer.toString(StandardCharsets.UTF_8);
-                String errorOutput = errorBuffer.toString(StandardCharsets.UTF_8);
-
-                Map<String, Object> result = buildResult(ctx, exitCode, output, errorOutput, duration);
-                result.put("command", command);
-                result.put("effectiveCommand", effectiveCommand);
-                return result;
-            }
+            session = openSshSession(jsch, connection.host);
+            channel = openExecChannel(session, cmdResolution.effectiveCommand);
+            return executeAndCapture(connection.context, channel, hostId, command, cmdResolution.effectiveCommand,
+                timeoutSeconds, startTime);
         } catch (JSchException | IOException e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());
-            return buildResult(ctx, -1, "", "SSH execution failed: " + e.getMessage(), duration);
+            return buildResult(connection.context, -1, "", "SSH execution failed: " + e.getMessage(), duration);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             long duration = System.currentTimeMillis() - startTime;
             log.warn("SSH execution interrupted for host {}", hostId);
-            return buildResult(ctx, -1, "", "SSH execution interrupted", duration);
+            return buildResult(connection.context, -1, "", "SSH execution interrupted", duration);
         } finally {
-            if (channel != null) {
-                channel.disconnect();
-            }
-            if (session != null) {
-                session.disconnect();
-            }
+            disconnectQuietly(channel, session);
+        }
+    }
+
+    private HostConnection resolveExecutionContext(String hostId) {
+        Map<String, Object> host = resolveHost(hostId);
+        if (host == null) {
+            return null;
+        }
+        String hostName = (String) host.getOrDefault("name", "");
+        String hostname = (String) host.get("ip");
+        String username = (String) host.get("username");
+        return new HostConnection(host, new ExecutionContext(hostId, hostname, username, hostName));
+    }
+
+    private CommandResolution resolveEffectiveCommand(ExecutionContext ctx, String hostId, String command,
+        Map<String, Object> host) {
+        EnvResolution envResolution = resolveClusterEnv(hostId, host);
+        return buildEffectiveCommand(ctx, command, envResolution.commandPrefix, envResolution.envVars);
+    }
+
+    private Session openSshSession(JSch jsch, Map<String, Object> host) throws JSchException {
+        String hostname = (String) host.get("ip");
+        int port = host.get("port") instanceof Number n ? n.intValue() : 22;
+        String username = (String) host.get("username");
+        String authType = (String) host.get("authType");
+        String credential = (String) host.get("credential");
+        Session session = jsch.getSession(username, hostname, port);
+        configureAuthentication(jsch, session, authType, credential);
+        configureSshSecurity(jsch, session);
+        session.connect(5000);
+        return session;
+    }
+
+    private void configureSshSecurity(JSch jsch, Session session) throws JSchException {
+        Path knownHosts = Path.of(System.getProperty("user.home"), ".ssh", "known_hosts");
+        if (Files.isRegularFile(knownHosts)) {
+            jsch.setKnownHosts(knownHosts.toString());
+        } else {
+            log.warn("SSH known_hosts file not found at {}; remote execution will reject unknown host keys", knownHosts);
+        }
+
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", "yes");
+        config.put("cipher.s2c", "aes128-ctr,aes192-ctr,aes256-ctr");
+        config.put("cipher.c2s", "aes128-ctr,aes192-ctr,aes256-ctr");
+        config.put("mac.s2c", "hmac-sha2-256");
+        config.put("mac.c2s", "hmac-sha2-256");
+        config.put("compression.s2c", "none");
+        config.put("compression.c2s", "none");
+        session.setConfig(config);
+    }
+
+    private void configureAuthentication(JSch jsch, Session session, String authType, String credential)
+        throws JSchException {
+        if ("key".equals(authType)) {
+            jsch.addIdentity("remote-exec", credential.getBytes(StandardCharsets.UTF_8), null, null);
+            return;
+        }
+        session.setPassword(credential);
+    }
+
+    private ChannelExec openExecChannel(Session session, String effectiveCommand) throws JSchException {
+        ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        channel.setCommand("bash -l -c " + singleQuote(effectiveCommand));
+        return channel;
+    }
+
+    private Map<String, Object> executeAndCapture(ExecutionContext ctx, ChannelExec channel, String hostId, String command,
+        String effectiveCommand, int timeoutSeconds, long startTime) throws IOException, InterruptedException, JSchException {
+        try (InputStream in = channel.getInputStream(); InputStream err = channel.getExtInputStream()) {
+            ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
+            ByteArrayOutputStream errorBuffer = new ByteArrayOutputStream();
+            channel.connect();
+            readStreamsUntilDone(channel, in, err, outputBuffer, errorBuffer, timeoutSeconds, hostId);
+            return buildExecutionResult(ctx, channel, outputBuffer, errorBuffer, command, effectiveCommand,
+                System.currentTimeMillis() - startTime);
+        }
+    }
+
+    private Map<String, Object> buildExecutionResult(ExecutionContext ctx, ChannelExec channel,
+        ByteArrayOutputStream outputBuffer, ByteArrayOutputStream errorBuffer, String command, String effectiveCommand,
+        long duration) {
+        Map<String, Object> result = buildResult(ctx, channel.getExitStatus(), outputBuffer.toString(StandardCharsets.UTF_8),
+            errorBuffer.toString(StandardCharsets.UTF_8), duration);
+        result.put("command", command);
+        result.put("effectiveCommand", effectiveCommand);
+        return result;
+    }
+
+    private void disconnectQuietly(ChannelExec channel, Session session) {
+        if (channel != null) {
+            channel.disconnect();
+        }
+        if (session != null) {
+            session.disconnect();
         }
     }
 
@@ -370,6 +415,17 @@ public class RemoteExecutionService {
             this.hostname = hostname;
             this.username = username;
             this.hostName = hostName;
+        }
+    }
+
+    private static final class HostConnection {
+        final Map<String, Object> host;
+
+        final ExecutionContext context;
+
+        HostConnection(Map<String, Object> host, ExecutionContext context) {
+            this.host = host;
+            this.context = context;
         }
     }
 

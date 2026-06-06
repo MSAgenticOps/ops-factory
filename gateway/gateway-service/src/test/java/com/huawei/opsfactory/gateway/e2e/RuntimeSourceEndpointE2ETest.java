@@ -11,6 +11,7 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.monitoring.MetricsSnapshot;
 
 import org.junit.Test;
+import org.springframework.test.web.reactive.server.WebTestClient.BodyContentSpec;
 
 import java.util.Collections;
 import java.util.List;
@@ -146,60 +147,13 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void metrics_admin_returnsMetricsData() {
-        MetricsSnapshot s = new MetricsSnapshot();
-        s.setTimestamp(1000L);
-        s.setActiveInstances(2);
-        s.setTotalTokens(5000);
-        s.setTotalSessions(3);
-        s.setRequestCount(4);
-        s.setAvgLatencyMs(2500.0);
-        s.setAvgTtftMs(800.0);
-        s.setP95LatencyMs(4000.0);
-        s.setP95TtftMs(1500.0);
-        s.setTotalBytes(15000);
-        s.setErrorCount(1);
+        MetricsSnapshot snapshot = sampleMetricsSnapshot();
+        stubMetricsSnapshot(snapshot);
 
-        when(metricsBuffer.getSnapshots(120)).thenReturn(List.of(s));
-        when(metricsBuffer.getAgentStats()).thenReturn(Collections.emptyMap());
-
-        webClient.get()
-            .uri("/api/gateway/runtime-source/metrics")
-            .header(HEADER_SECRET_KEY, SECRET_KEY)
-            .header(HEADER_USER_ID, "admin")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectBody()
-            .jsonPath("$.collectionIntervalSec")
-            .isEqualTo(30)
-            .jsonPath("$.maxSlots")
-            .isEqualTo(120)
-            .jsonPath("$.returnedSlots")
-            .isEqualTo(1)
-            .jsonPath("$.current.activeInstances")
-            .isEqualTo(2)
-            .jsonPath("$.current.totalTokens")
-            .isEqualTo(5000)
-            .jsonPath("$.current.totalSessions")
-            .isEqualTo(3)
-            .jsonPath("$.aggregate.totalRequests")
-            .isEqualTo(4)
-            .jsonPath("$.aggregate.totalErrors")
-            .isEqualTo(1)
-            .jsonPath("$.aggregate.avgLatencyMs")
-            .isEqualTo(2500.0)
-            .jsonPath("$.aggregate.avgTtftMs")
-            .isEqualTo(800.0)
-            .jsonPath("$.series.length()")
-            .isEqualTo(1)
-            .jsonPath("$.series[0].t")
-            .isEqualTo(1000)
-            .jsonPath("$.series[0].instances")
-            .isEqualTo(2)
-            .jsonPath("$.series[0].requests")
-            .isEqualTo(4)
-            .jsonPath("$.series[0].errors")
-            .isEqualTo(1);
+        BodyContentSpec body = performMetricsRequest("admin");
+        assertMetricsOverview(body);
+        assertMetricsSeriesRow(body, snapshot.getTimestamp(), snapshot.getActiveInstances(), snapshot.getRequestCount(),
+            snapshot.getErrorCount());
     }
 
     /**
@@ -225,5 +179,73 @@ public class RuntimeSourceEndpointE2ETest extends BaseE2ETest {
     @Test
     public void metrics_unauthenticated_returns401() {
         webClient.get().uri("/api/gateway/runtime-source/metrics").exchange().expectStatus().isUnauthorized();
+    }
+
+    private MetricsSnapshot sampleMetricsSnapshot() {
+        MetricsSnapshot snapshot = new MetricsSnapshot();
+        snapshot.setTimestamp(1000L);
+        snapshot.setActiveInstances(2);
+        snapshot.setTotalTokens(5000);
+        snapshot.setTotalSessions(3);
+        snapshot.setRequestCount(4);
+        snapshot.setAvgLatencyMs(2500.0);
+        snapshot.setAvgTtftMs(800.0);
+        snapshot.setP95LatencyMs(4000.0);
+        snapshot.setP95TtftMs(1500.0);
+        snapshot.setTotalBytes(15000);
+        snapshot.setErrorCount(1);
+        return snapshot;
+    }
+
+    private void stubMetricsSnapshot(MetricsSnapshot snapshot) {
+        when(metricsBuffer.getSnapshots(120)).thenReturn(List.of(snapshot));
+        when(metricsBuffer.getAgentStats()).thenReturn(Collections.emptyMap());
+    }
+
+    private BodyContentSpec performMetricsRequest(String userId) {
+        return webClient.get()
+            .uri("/api/gateway/runtime-source/metrics")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, userId)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody();
+    }
+
+    private void assertMetricsOverview(BodyContentSpec body) {
+        body.jsonPath("$.collectionIntervalSec")
+            .isEqualTo(30)
+            .jsonPath("$.maxSlots")
+            .isEqualTo(120)
+            .jsonPath("$.returnedSlots")
+            .isEqualTo(1)
+            .jsonPath("$.current.activeInstances")
+            .isEqualTo(2)
+            .jsonPath("$.current.totalTokens")
+            .isEqualTo(5000)
+            .jsonPath("$.current.totalSessions")
+            .isEqualTo(3)
+            .jsonPath("$.aggregate.totalRequests")
+            .isEqualTo(4)
+            .jsonPath("$.aggregate.totalErrors")
+            .isEqualTo(1)
+            .jsonPath("$.aggregate.avgLatencyMs")
+            .isEqualTo(2500.0)
+            .jsonPath("$.aggregate.avgTtftMs")
+            .isEqualTo(800.0)
+            .jsonPath("$.series.length()")
+            .isEqualTo(1);
+    }
+
+    private void assertMetricsSeriesRow(BodyContentSpec body, long timestamp, int instances, int requests, int errors) {
+        body.jsonPath("$.series[0].t")
+            .isEqualTo(timestamp)
+            .jsonPath("$.series[0].instances")
+            .isEqualTo(instances)
+            .jsonPath("$.series[0].requests")
+            .isEqualTo(requests)
+            .jsonPath("$.series[0].errors")
+            .isEqualTo(errors);
     }
 }

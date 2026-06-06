@@ -4,8 +4,10 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -189,24 +191,40 @@ public class BusinessServiceService {
      * Creates a new business service from the provided field map.
      *
      * @param body request body
-     * @return the result
+     * @return the created business service map
+     * @throws ConflictException if name already exists in the group
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> createBusinessService(Map<String, Object> body) {
+    public Map<String, Object> createBusinessService(Map<String, Object> body) throws ConflictException {
+        String name = ValidationUtils.validateStringField(body, "name", "Business service name", 100, true);
+
+        String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+        String businessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
+
+        List<Map<String, Object>> servicesInGroup = listBusinessServices(groupId, null);
+        boolean nameDuplicate = servicesInGroup.stream()
+            .anyMatch(s -> name.equalsIgnoreCase(String.valueOf(s.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Business service name already exists in this group");
+        }
+
+        ValidationUtils.validateStringField(body, "code", "Business service code", 50, false);
+        ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> bs = new LinkedHashMap<>();
         bs.put("id", id);
-        bs.put("name", body.getOrDefault("name", ""));
+        bs.put("name", name);
         bs.put("code", body.getOrDefault("code", ""));
-        bs.put("groupId", body.getOrDefault("groupId", null));
+        bs.put("groupId", groupId);
         bs.put("description", body.getOrDefault("description", ""));
         bs.put("hostIds", body.getOrDefault("hostIds", new ArrayList<String>()));
         bs.put("tags", body.getOrDefault("tags", new ArrayList<String>()));
         bs.put("priority", body.getOrDefault("priority", ""));
         bs.put("contactInfo", body.getOrDefault("contactInfo", ""));
-        bs.put("businessTypeId", body.getOrDefault("businessTypeId", null));
+        bs.put("businessTypeId", businessTypeId);
         bs.put("enabled", body.getOrDefault("enabled", true));
         bs.put("createdAt", now);
         bs.put("updatedAt", now);
@@ -219,12 +237,14 @@ public class BusinessServiceService {
     /**
      * Updates an existing business service with the provided field map.
      *
-     * @param id an existing business service with the provided field map
-     * @param body an existing business service with the provided field map
-     * @return the result
+     * @param id business service identifier
+     * @param body request body containing updated fields
+     * @return the updated business service map
+     * @throws NotFoundException if business service not found
+     * @throws ConflictException if name already exists in the group
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) throws NotFoundException {
+    public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
         Path file = businessServicesDir.resolve(id + ".json");
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
@@ -232,16 +252,30 @@ public class BusinessServiceService {
         }
 
         if (body.containsKey("name")) {
-            bs.put("name", body.get("name"));
+            String newName = ValidationUtils.validateStringField(body, "name", "Business service name", 100, true);
+
+            Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : bs.get("groupId");
+            String groupId = groupIdObj != null ? groupIdObj.toString() : "";
+            List<Map<String, Object>> servicesInGroup = listBusinessServices(groupId, null);
+            boolean nameDuplicate = servicesInGroup.stream()
+                .filter(s -> !id.equals(s.get("id")))
+                .anyMatch(s -> newName.equalsIgnoreCase(String.valueOf(s.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Business service name already exists in this group");
+            }
+            bs.put("name", newName);
         }
         if (body.containsKey("code")) {
-            bs.put("code", body.get("code"));
+            String code = ValidationUtils.validateStringField(body, "code", "Business service code", 50, false);
+            bs.put("code", code);
         }
         if (body.containsKey("groupId")) {
-            bs.put("groupId", body.get("groupId"));
+            String newGroupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+            bs.put("groupId", newGroupId);
         }
         if (body.containsKey("description")) {
-            bs.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+            bs.put("description", description);
         }
         if (body.containsKey("hostIds")) {
             bs.put("hostIds", body.get("hostIds"));
@@ -256,7 +290,8 @@ public class BusinessServiceService {
             bs.put("contactInfo", body.get("contactInfo"));
         }
         if (body.containsKey("businessTypeId")) {
-            bs.put("businessTypeId", body.get("businessTypeId"));
+            String newBusinessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
+            bs.put("businessTypeId", newBusinessTypeId);
         }
         if (body.containsKey("enabled")) {
             bs.put("enabled", body.get("enabled"));
@@ -361,102 +396,16 @@ public class BusinessServiceService {
     public Map<String, Object> getTopologyForBusinessService(String id) throws NotFoundException {
         Map<String, Object> bs = getBusinessService(id);
         List<String> entryHostIdsList = (List<String>) bs.getOrDefault("hostIds", new ArrayList<>());
-
-        // 1. Get entry hosts directly
-        Map<String, Map<String, Object>> hostMap = new LinkedHashMap<>();
-        Map<String, Boolean> entryHostIds = new LinkedHashMap<>();
-
-        for (String hid : entryHostIdsList) {
-            try {
-                Map<String, Object> h = hostService.getHost(hid);
-                hostMap.put(hid, h);
-                entryHostIds.put(hid, true);
-            } catch (NotFoundException e) {
-                log.warn("Entry host {} not found for business service {}", hid, id);
-            }
-        }
-
-        // 2. BFS along outgoing relations for up to 5 hops
-        int maxHops = 5;
-        LinkedHashSet<String> frontier = new LinkedHashSet<>(entryHostIds.keySet());
         List<Map<String, Object>> allRelations = listAllRelations();
+        Map<String, Map<String, Object>> hostMap = loadEntryHosts(id, entryHostIdsList);
+        LinkedHashSet<String> entryHostIds = new LinkedHashSet<>(hostMap.keySet());
+        expandDownstreamHosts(id, hostMap, entryHostIds, allRelations);
 
-        for (int hop = 0; hop < maxHops && !frontier.isEmpty(); hop++) {
-            LinkedHashSet<String> nextFrontier = new LinkedHashSet<>();
-            for (Map<String, Object> rel : allRelations) {
-                String sourceId = (String) rel.get("sourceHostId");
-                String targetId = (String) rel.get("targetHostId");
-                if (frontier.contains(sourceId) && !hostMap.containsKey(targetId)) {
-                    try {
-                        Map<String, Object> th = hostService.getHost(targetId);
-                        hostMap.put(targetId, th);
-                        nextFrontier.add(targetId);
-                    } catch (NotFoundException e) {
-                        log.debug("Skipping missing downstream host {} for business service {}", targetId, id);
-                    }
-                }
-            }
-            frontier = nextFrontier;
-        }
-
-        // 3. Collect all edges between discovered hosts
-        List<Map<String, Object>> edges = new ArrayList<>();
-        for (Map<String, Object> rel : allRelations) {
-            String sourceId = (String) rel.get("sourceHostId");
-            String targetId = (String) rel.get("targetHostId");
-            if (hostMap.containsKey(sourceId) && hostMap.containsKey(targetId)) {
-                Map<String, Object> edge = new LinkedHashMap<>();
-                edge.put("source", sourceId);
-                edge.put("target", targetId);
-                edge.put("description", rel.get("description"));
-                edges.add(edge);
-            }
-        }
-
-        // 4. Build cluster lookup
-        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
-        for (Map<String, Object> c : clusterService.listClusters(null, null)) {
-            clusterMap.put((String) c.get("id"), c);
-        }
-
-        // 5. Build nodes with isEntry flag
-        List<Map<String, Object>> nodes = new ArrayList<>();
-        for (Map.Entry<String, Map<String, Object>> entry : hostMap.entrySet()) {
-            Map<String, Object> node = buildHostNode(entry.getValue(), clusterMap);
-            node.put("isEntry", entryHostIds.containsKey(entry.getKey()));
-            nodes.add(node);
-        }
-
-        // 6. Add BS node as topology root and BS→entry host edges
-        Map<String, Object> bsNode = new LinkedHashMap<>();
-        bsNode.put("id", bs.get("id"));
-        bsNode.put("name", bs.get("name"));
-        bsNode.put("ip", null);
-        bsNode.put("clusterType", null);
-        bsNode.put("clusterName", null);
-        bsNode.put("purpose", null);
-        bsNode.put("groupId", bs.get("groupId"));
-        bsNode.put("nodeType", "business-service");
-        nodes.add(0, bsNode);
-
-        List<Map<String, Object>> bsRelations =
-            hostRelationService.listRelations(null, null, null, "business-service", id);
-        for (Map<String, Object> rel : bsRelations) {
-            String targetId = (String) rel.get("targetHostId");
-            if (targetId != null && hostMap.containsKey(targetId)) {
-                Map<String, Object> bsEdge = new LinkedHashMap<>();
-                bsEdge.put("source", bs.get("id"));
-                bsEdge.put("target", targetId);
-                bsEdge.put("description", rel.getOrDefault("description", ""));
-                bsEdge.put("type", "business-entry");
-                edges.add(0, bsEdge);
-            }
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("nodes", nodes);
-        result.put("edges", edges);
-        return result;
+        List<Map<String, Object>> edges = collectDiscoveredEdges(hostMap, allRelations);
+        Map<String, Map<String, Object>> clusterMap = buildClusterLookup();
+        List<Map<String, Object>> nodes = buildTopologyNodes(bs, hostMap, clusterMap, entryHostIds);
+        prependBusinessServiceEdges(id, bs, hostMap, edges);
+        return buildTopologyResult(nodes, edges);
     }
 
     /**
@@ -468,78 +417,23 @@ public class BusinessServiceService {
     public Map<String, Object> migrateFromBusinessField() {
         List<Map<String, Object>> allHosts = hostService.listHosts(new String[0]);
         List<Map<String, Object>> allClusters = clusterService.listClusters(null, null);
-
-        // Build cluster -> groupId map
-        Map<String, String> clusterGroupMap = new LinkedHashMap<>();
-        for (Map<String, Object> c : allClusters) {
-            String cid = (String) c.get("id");
-            String gid = (String) c.get("groupId");
-            if (cid != null && gid != null) {
-                clusterGroupMap.put(cid, gid);
-            }
-        }
-
-        // Group hosts by (businessName, groupId)
-        Map<String, List<Map<String, Object>>> grouped = new LinkedHashMap<>();
-        for (Map<String, Object> host : allHosts) {
-            String business = (String) host.get("business");
-            if (business == null || business.trim().isEmpty()) {
-                continue;
-            }
-            String clusterId = (String) host.get("clusterId");
-            String groupId = clusterId != null ? clusterGroupMap.get(clusterId) : null;
-            String key = business + "@" + (groupId != null ? groupId : "unknown");
-
-            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(host);
-        }
-
+        Map<String, String> clusterGroupMap = buildClusterGroupMap(allClusters);
+        Map<String, List<Map<String, Object>>> grouped = groupHostsByBusinessAndGroup(allHosts, clusterGroupMap);
         List<Map<String, Object>> created = new ArrayList<>();
         for (Map.Entry<String, List<Map<String, Object>>> entry : grouped.entrySet()) {
             List<Map<String, Object>> hosts = entry.getValue();
             String business = (String) hosts.get(0).get("business");
-
-            // Collect unique hostIds
-            LinkedHashSet<String> hostIds = new LinkedHashSet<>();
-            String groupId = null;
-            for (Map<String, Object> h : hosts) {
-                String hid = (String) h.get("id");
-                if (hid != null) {
-                    hostIds.add(hid);
-                }
-                String cid = (String) h.get("clusterId");
-                if (cid != null && groupId == null) {
-                    groupId = clusterGroupMap.get(cid);
-                }
-            }
-
-            // Check if a business service with same name+groupId already exists
-            boolean exists = false;
-            for (Map<String, Object> existing : listBusinessServices(groupId, null)) {
-                if (business.equals(existing.get("name"))) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (exists) {
+            MigrationCandidate candidate = buildMigrationCandidate(hosts, clusterGroupMap);
+            if (businessServiceExists(business, candidate.groupId())) {
                 continue;
             }
-
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("name", business);
-            body.put("code", "");
-            body.put("groupId", groupId);
-            body.put("description", business);
-            body.put("hostIds", new ArrayList<>(hostIds));
-            body.put("tags", List.of(business));
-            body.put("priority", "");
-
-            Map<String, Object> createdBs = createBusinessService(body);
-            created.add(createdBs);
+            try {
+                created.add(createBusinessService(buildMigrationBody(business, candidate)));
+            } catch (ConflictException e) {
+                log.warn("Skipping business service creation during migration: {}", e.getMessage());
+            }
         }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("migrated", created.size());
-        result.put("businessServices", created);
+        Map<String, Object> result = buildMigrationResult(created);
         log.info("Migration complete: created {} business services", created.size());
         return result;
     }
@@ -652,6 +546,209 @@ public class BusinessServiceService {
     }
 
     // ── Internal helpers ─────────────────────────────────────────────
+
+    private Map<String, Map<String, Object>> loadEntryHosts(String businessServiceId, List<String> entryHostIdsList) {
+        Map<String, Map<String, Object>> hostMap = new LinkedHashMap<>();
+        for (String hostId : entryHostIdsList) {
+            try {
+                hostMap.put(hostId, hostService.getHost(hostId));
+            } catch (NotFoundException e) {
+                log.warn("Entry host {} not found for business service {}", hostId, businessServiceId);
+            }
+        }
+        return hostMap;
+    }
+
+    private void expandDownstreamHosts(String businessServiceId, Map<String, Map<String, Object>> hostMap,
+        LinkedHashSet<String> entryHostIds, List<Map<String, Object>> allRelations) {
+        LinkedHashSet<String> frontier = new LinkedHashSet<>(entryHostIds);
+        for (int hop = 0; hop < 5 && !frontier.isEmpty(); hop++) {
+            frontier = collectNextFrontier(businessServiceId, hostMap, frontier, allRelations);
+        }
+    }
+
+    private LinkedHashSet<String> collectNextFrontier(String businessServiceId, Map<String, Map<String, Object>> hostMap,
+        LinkedHashSet<String> frontier, List<Map<String, Object>> allRelations) {
+        LinkedHashSet<String> nextFrontier = new LinkedHashSet<>();
+        for (Map<String, Object> rel : allRelations) {
+            String sourceId = (String) rel.get("sourceHostId");
+            String targetId = (String) rel.get("targetHostId");
+            if (!frontier.contains(sourceId) || hostMap.containsKey(targetId)) {
+                continue;
+            }
+            try {
+                hostMap.put(targetId, hostService.getHost(targetId));
+                nextFrontier.add(targetId);
+            } catch (NotFoundException e) {
+                log.debug("Skipping missing downstream host {} for business service {}", targetId, businessServiceId);
+            }
+        }
+        return nextFrontier;
+    }
+
+    private List<Map<String, Object>> collectDiscoveredEdges(Map<String, Map<String, Object>> hostMap,
+        List<Map<String, Object>> allRelations) {
+        List<Map<String, Object>> edges = new ArrayList<>();
+        for (Map<String, Object> rel : allRelations) {
+            String sourceId = (String) rel.get("sourceHostId");
+            String targetId = (String) rel.get("targetHostId");
+            if (hostMap.containsKey(sourceId) && hostMap.containsKey(targetId)) {
+                edges.add(buildHostEdge(sourceId, targetId, rel.get("description")));
+            }
+        }
+        return edges;
+    }
+
+    private Map<String, Object> buildHostEdge(String sourceId, String targetId, Object description) {
+        Map<String, Object> edge = new LinkedHashMap<>();
+        edge.put("source", sourceId);
+        edge.put("target", targetId);
+        edge.put("description", description);
+        return edge;
+    }
+
+    private Map<String, Map<String, Object>> buildClusterLookup() {
+        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
+        for (Map<String, Object> cluster : clusterService.listClusters(null, null)) {
+            clusterMap.put((String) cluster.get("id"), cluster);
+        }
+        return clusterMap;
+    }
+
+    private List<Map<String, Object>> buildTopologyNodes(Map<String, Object> bs, Map<String, Map<String, Object>> hostMap,
+        Map<String, Map<String, Object>> clusterMap, LinkedHashSet<String> entryHostIds) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        nodes.add(buildBusinessServiceNode(bs));
+        for (Map.Entry<String, Map<String, Object>> entry : hostMap.entrySet()) {
+            Map<String, Object> node = buildHostNode(entry.getValue(), clusterMap);
+            node.put("isEntry", entryHostIds.contains(entry.getKey()));
+            nodes.add(node);
+        }
+        return nodes;
+    }
+
+    private Map<String, Object> buildBusinessServiceNode(Map<String, Object> bs) {
+        Map<String, Object> bsNode = new LinkedHashMap<>();
+        bsNode.put("id", bs.get("id"));
+        bsNode.put("name", bs.get("name"));
+        bsNode.put("ip", null);
+        bsNode.put("clusterType", null);
+        bsNode.put("clusterName", null);
+        bsNode.put("purpose", null);
+        bsNode.put("groupId", bs.get("groupId"));
+        bsNode.put("nodeType", "business-service");
+        return bsNode;
+    }
+
+    private void prependBusinessServiceEdges(String businessServiceId, Map<String, Object> bs,
+        Map<String, Map<String, Object>> hostMap, List<Map<String, Object>> edges) {
+        List<Map<String, Object>> bsRelations =
+            hostRelationService.listRelations(null, null, null, "business-service", businessServiceId);
+        for (Map<String, Object> rel : bsRelations) {
+            String targetId = (String) rel.get("targetHostId");
+            if (targetId != null && hostMap.containsKey(targetId)) {
+                edges.add(0, buildBusinessEntryEdge(bs, targetId, rel));
+            }
+        }
+    }
+
+    private Map<String, Object> buildBusinessEntryEdge(Map<String, Object> bs, String targetId, Map<String, Object> rel) {
+        Map<String, Object> edge = new LinkedHashMap<>();
+        edge.put("source", bs.get("id"));
+        edge.put("target", targetId);
+        edge.put("description", rel.getOrDefault("description", ""));
+        edge.put("type", "business-entry");
+        return edge;
+    }
+
+    private Map<String, Object> buildTopologyResult(List<Map<String, Object>> nodes, List<Map<String, Object>> edges) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("nodes", nodes);
+        result.put("edges", edges);
+        return result;
+    }
+
+    private Map<String, String> buildClusterGroupMap(List<Map<String, Object>> allClusters) {
+        Map<String, String> clusterGroupMap = new LinkedHashMap<>();
+        for (Map<String, Object> cluster : allClusters) {
+            String clusterId = (String) cluster.get("id");
+            String groupId = (String) cluster.get("groupId");
+            if (clusterId != null && groupId != null) {
+                clusterGroupMap.put(clusterId, groupId);
+            }
+        }
+        return clusterGroupMap;
+    }
+
+    private Map<String, List<Map<String, Object>>> groupHostsByBusinessAndGroup(List<Map<String, Object>> allHosts,
+        Map<String, String> clusterGroupMap) {
+        Map<String, List<Map<String, Object>>> grouped = new LinkedHashMap<>();
+        for (Map<String, Object> host : allHosts) {
+            String business = (String) host.get("business");
+            if (business == null || business.trim().isEmpty()) {
+                continue;
+            }
+            String groupId = resolveHostGroupId(host, clusterGroupMap);
+            String key = business + "@" + (groupId != null ? groupId : "unknown");
+            grouped.computeIfAbsent(key, ignored -> new ArrayList<>()).add(host);
+        }
+        return grouped;
+    }
+
+    private String resolveHostGroupId(Map<String, Object> host, Map<String, String> clusterGroupMap) {
+        String clusterId = (String) host.get("clusterId");
+        return clusterId != null ? clusterGroupMap.get(clusterId) : null;
+    }
+
+    private MigrationCandidate buildMigrationCandidate(List<Map<String, Object>> hosts, Map<String, String> clusterGroupMap) {
+        LinkedHashSet<String> hostIds = new LinkedHashSet<>();
+        String groupId = null;
+        for (Map<String, Object> host : hosts) {
+            addHostId(hostIds, host);
+            if (groupId == null) {
+                groupId = resolveHostGroupId(host, clusterGroupMap);
+            }
+        }
+        return new MigrationCandidate(groupId, new ArrayList<>(hostIds));
+    }
+
+    private void addHostId(LinkedHashSet<String> hostIds, Map<String, Object> host) {
+        String hostId = (String) host.get("id");
+        if (hostId != null) {
+            hostIds.add(hostId);
+        }
+    }
+
+    private boolean businessServiceExists(String business, String groupId) {
+        for (Map<String, Object> existing : listBusinessServices(groupId, null)) {
+            if (business.equals(existing.get("name"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<String, Object> buildMigrationBody(String business, MigrationCandidate candidate) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", business);
+        body.put("code", "");
+        body.put("groupId", candidate.groupId());
+        body.put("description", business);
+        body.put("hostIds", candidate.hostIds());
+        body.put("tags", List.of(business));
+        body.put("priority", "");
+        return body;
+    }
+
+    private Map<String, Object> buildMigrationResult(List<Map<String, Object>> created) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("migrated", created.size());
+        result.put("businessServices", created);
+        return result;
+    }
+
+    private record MigrationCandidate(String groupId, List<String> hostIds) {
+    }
 
     private List<Map<String, Object>> listAllRelations() {
         List<Map<String, Object>> relations = new ArrayList<>();

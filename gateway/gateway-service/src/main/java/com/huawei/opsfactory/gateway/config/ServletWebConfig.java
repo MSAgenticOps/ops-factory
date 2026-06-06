@@ -49,58 +49,68 @@ public class ServletWebConfig {
     @Bean("gatewayCorsFilter")
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public Filter corsFilter() {
-        CorsConfiguration config = new CorsConfiguration();
         String configured = properties.getCorsOrigin();
+        CorsConfiguration config = buildCorsConfiguration(configured);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return buildGatewayCorsFilter(source, configured);
+    }
 
+    private CorsConfiguration buildCorsConfiguration(String configured) {
+        CorsConfiguration config = new CorsConfiguration();
         if (configured == null || configured.isBlank() || "*".equals(configured.trim())) {
             config.addAllowedOriginPattern("*");
         } else {
-            List<String> allowedOrigins =
-                Arrays.stream(configured.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
-            config.setAllowedOrigins(allowedOrigins);
+            config.setAllowedOrigins(Arrays.stream(configured.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
         }
-
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(
             Arrays.asList("x-secret-key", "x-user-id", "x-request-id", "content-type", "authorization",
                 "x-a2a-origin", "x-a2a-origin-session"));
         config.setExposedHeaders(Arrays.asList("*"));
         config.setMaxAge(3600L);
+        return config;
+    }
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
+    private Filter buildGatewayCorsFilter(UrlBasedCorsConfigurationSource source, String configured) {
         return new CorsFilter(source) {
             @Override
             protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                 FilterChain filterChain) throws ServletException, IOException {
                 String requestOrigin = request.getHeader(HttpHeaders.ORIGIN);
                 String allowOrigin = resolveAllowOrigin(configured, requestOrigin);
-
-                if (allowOrigin != null) {
-                    response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, allowOrigin);
-                    response.setHeader(HttpHeaders.VARY, HttpHeaders.ORIGIN);
-                }
-
-                response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, OPTIONS");
-                response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
-                    "x-secret-key, x-user-id, x-request-id, content-type, authorization, x-a2a-origin, "
-                        + "x-a2a-origin-session");
-                response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "*");
-                response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
-
-                if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-                    if (requestOrigin != null && allowOrigin == null) {
-                        response.setStatus(HttpStatus.FORBIDDEN.value());
-                        return;
-                    }
-                    response.setStatus(HttpStatus.NO_CONTENT.value());
+                applyCorsHeaders(response, allowOrigin);
+                if (handleOptionsRequest(request, response, requestOrigin, allowOrigin)) {
                     return;
                 }
-
                 filterChain.doFilter(request, response);
             }
         };
+    }
+
+    private void applyCorsHeaders(HttpServletResponse response, String allowOrigin) {
+        if (allowOrigin != null) {
+            response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, allowOrigin);
+            response.setHeader(HttpHeaders.VARY, HttpHeaders.ORIGIN);
+        }
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, OPTIONS");
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+            "x-secret-key, x-user-id, x-request-id, content-type, authorization, x-a2a-origin, x-a2a-origin-session");
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "*");
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
+    }
+
+    private boolean handleOptionsRequest(HttpServletRequest request, HttpServletResponse response, String requestOrigin,
+        String allowOrigin) {
+        if (!"OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        if (requestOrigin != null && allowOrigin == null) {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            return true;
+        }
+        response.setStatus(HttpStatus.NO_CONTENT.value());
+        return true;
     }
 
     private String resolveAllowOrigin(String configured, String requestOrigin) {

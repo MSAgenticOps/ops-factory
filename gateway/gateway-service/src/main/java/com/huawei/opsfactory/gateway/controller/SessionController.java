@@ -121,20 +121,8 @@ public class SessionController {
         if (userId == null) {
             return "{\"success\":false,\"error\":\"User ID is required\"}";
         }
-        String requestId = (String) request.getAttribute(RequestContextFilter.REQUEST_ID_ATTR);
         long requestStart = System.currentTimeMillis();
-        // Inject working_dir into the request body (override any client-supplied value)
-        String workingDir = agentConfigService.getUserAgentDir(userId, agentId).toAbsolutePath().normalize().toString();
-        String modifiedBody;
-        try {
-            java.util.Map<String, Object> bodyMap =
-                MAPPER.readValue(body, new TypeReference<java.util.Map<String, Object>>() {});
-            bodyMap.put("working_dir", workingDir);
-            modifiedBody = MAPPER.writeValueAsString(bodyMap);
-        } catch (JsonProcessingException e) {
-            modifiedBody = "{\"working_dir\":\"" + workingDir.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}";
-        }
-        String finalBody = modifiedBody;
+        String finalBody = injectWorkingDir(agentId, userId, body);
         boolean resident = agentConfigService.isResidentInstance(agentId, userId);
         log.info("[SESSION-START] begin agentId={} userId={} resident={} bodyLen={}", agentId, userId, resident,
             body.length());
@@ -142,29 +130,45 @@ public class SessionController {
         long afterInstanceMs = System.currentTimeMillis() - requestStart;
         log.info("[SESSION-START] instance resolved agentId={} userId={} resident={} port={} pid={} resolveMs={}",
             agentId, userId, resident, instance.getPort(), instance.getPid(), afterInstanceMs);
-        long startCallStart = System.currentTimeMillis();
-        String startResponse = goosedProxy
-            .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/start", finalBody, 120, instance.getSecretKey())
-            .block();
-        long startCallMs = System.currentTimeMillis() - startCallStart;
-        // Follow goosed canonical flow: start → resume(load_model_and_extensions=true)
-        // Extensions must be loaded before the session is returned to the client.
-        // This matches Node.js legacy and Goose Desktop behavior.
-        String sessionId = extractSessionId(startResponse);
-        String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";
+        StartSessionResult start = startGoosedSession(instance, finalBody);
+        String sessionId = extractSessionId(start.startResponse());
         log.info("[SESSION-START] goosed start complete agentId={} userId={} sessionId={} port={} startCallMs={}",
-            agentId, userId, sessionId, instance.getPort(), startCallMs);
-        long resumeStart = System.currentTimeMillis();
-        String resumeResult = goosedProxy
-            .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120, instance.getSecretKey())
-            .block();
-        long resumeMs = System.currentTimeMillis() - resumeStart;
+            agentId, userId, sessionId, instance.getPort(), start.startCallMs());
+        long resumeMs = resumeSessionExtensions(instance, sessionId);
         instance.markSessionResumed(sessionId);
         log.info(
             "[SESSION-START] session ready agentId={} userId={} sessionId={} resident={} port={} resumeMs={} totalMs={}",
             agentId, userId, sessionId, resident, instance.getPort(), resumeMs,
             System.currentTimeMillis() - requestStart);
-        return startResponse;
+        return start.startResponse();
+    }
+
+    private String injectWorkingDir(String agentId, String userId, String body) {
+        String workingDir = agentConfigService.getUserAgentDir(userId, agentId).toAbsolutePath().normalize().toString();
+        try {
+            java.util.Map<String, Object> bodyMap =
+                MAPPER.readValue(body, new TypeReference<java.util.Map<String, Object>>() {});
+            bodyMap.put("working_dir", workingDir);
+            return MAPPER.writeValueAsString(bodyMap);
+        } catch (JsonProcessingException e) {
+            return "{\"working_dir\":\"" + workingDir.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}";
+        }
+    }
+
+    private StartSessionResult startGoosedSession(ManagedInstance instance, String body) {
+        long startCallStart = System.currentTimeMillis();
+        String startResponse = goosedProxy
+            .fetchJson(instance.getPort(), HttpMethod.POST, "/agent/start", body, 120, instance.getSecretKey())
+            .block();
+        return new StartSessionResult(startResponse, System.currentTimeMillis() - startCallStart);
+    }
+
+    private long resumeSessionExtensions(ManagedInstance instance, String sessionId) {
+        String resumeBody = "{\"session_id\":\"" + sessionId + "\",\"load_model_and_extensions\":true}";
+        long resumeStart = System.currentTimeMillis();
+        goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120,
+            instance.getSecretKey()).block();
+        return System.currentTimeMillis() - resumeStart;
     }
 
     private String extractSessionId(String startResponse) {
@@ -175,6 +179,9 @@ public class SessionController {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse session ID from start response", e);
         }
+    }
+
+    private record StartSessionResult(String startResponse, long startCallMs) {
     }
 
     /**

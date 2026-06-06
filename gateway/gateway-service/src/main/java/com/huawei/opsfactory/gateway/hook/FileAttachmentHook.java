@@ -59,48 +59,11 @@ public class FileAttachmentHook implements RequestHook {
     @Override
     public Mono<HookContext> process(HookContext ctx) {
         try {
-            JsonNode root = objectMapper.readTree(ctx.getBody());
-            JsonNode userMessage = root.path("user_message");
-            if (userMessage.isMissingNode()) {
+            JsonNode content = parseContentItems(ctx.getBody());
+            if (content == null) {
                 return Mono.just(ctx);
             }
-
-            JsonNode content = userMessage.path("content");
-            if (!content.isArray()) {
-                return Mono.just(ctx);
-            }
-
-            // Find text content and extract file paths
-            Path usersDir = agentConfigService.getUsersDir();
-            String usersDirStr = usersDir.toAbsolutePath().normalize().toString();
-
-            // Pattern to match paths within the users directory
-            Pattern pathPattern = Pattern.compile(Pattern.quote(usersDirStr) + "[/\\\\][^\\s\"']+");
-
-            for (JsonNode item : content) {
-                if (!"text".equals(item.path("type").asText())) {
-                    continue;
-                }
-                String text = item.path("text").asText("");
-                List<String> paths = extractPaths(pathPattern, text);
-
-                for (String filePath : paths) {
-                    Path resolved = Path.of(filePath).toAbsolutePath().normalize();
-                    // Security: path must be within users/{userId}/agents
-                    Path userAgentsDir = usersDir.resolve(ctx.getUserId()).resolve("agents");
-                    if (!resolved.startsWith(userAgentsDir.toAbsolutePath().normalize())) {
-                        log.warn("Path escapes user directory: {}", filePath);
-                        return Mono.error(new ResponseStatusException(HttpStatus.FORBIDDEN,
-                            "Access denied: file path outside user directory"));
-                    }
-                    if (!Files.exists(resolved)) {
-                        log.warn("Referenced file does not exist: {}", filePath);
-                        return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Referenced file not found: " + resolved.getFileName()));
-                    }
-                }
-            }
-
+            validateReferencedPaths(ctx, content);
             return Mono.just(ctx);
         } catch (ResponseStatusException e) {
             return Mono.error(e);
@@ -108,6 +71,56 @@ public class FileAttachmentHook implements RequestHook {
             log.error("Error in FileAttachmentHook", e);
             return Mono.just(ctx);
         }
+    }
+
+    private JsonNode parseContentItems(String body) throws JsonProcessingException {
+        JsonNode userMessage = objectMapper.readTree(body).path("user_message");
+        if (userMessage.isMissingNode()) {
+            return null;
+        }
+        JsonNode content = userMessage.path("content");
+        return content.isArray() ? content : null;
+    }
+
+    private void validateReferencedPaths(HookContext ctx, JsonNode content) {
+        Path usersDir = agentConfigService.getUsersDir();
+        Pattern pathPattern = buildUsersPathPattern(usersDir);
+        Path userAgentsDir = buildUserAgentsDir(usersDir, ctx.getUserId());
+        for (JsonNode item : content) {
+            validateTextItemPaths(item, pathPattern, userAgentsDir);
+        }
+    }
+
+    private Pattern buildUsersPathPattern(Path usersDir) {
+        String usersDirStr = usersDir.toAbsolutePath().normalize().toString();
+        return Pattern.compile(Pattern.quote(usersDirStr) + "[/\\\\][^\\s\"']+");
+    }
+
+    private Path buildUserAgentsDir(Path usersDir, String userId) {
+        return usersDir.resolve(userId).resolve("agents").toAbsolutePath().normalize();
+    }
+
+    private void validateTextItemPaths(JsonNode item, Pattern pathPattern, Path userAgentsDir) {
+        if (!"text".equals(item.path("type").asText())) {
+            return;
+        }
+        for (String filePath : extractPaths(pathPattern, item.path("text").asText(""))) {
+            validateReferencedPath(filePath, userAgentsDir);
+        }
+    }
+
+    private void validateReferencedPath(String filePath, Path userAgentsDir) {
+        Path resolved = Path.of(filePath).toAbsolutePath().normalize();
+        if (!resolved.startsWith(userAgentsDir)) {
+            log.warn("Path escapes user directory: {}", filePath);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: file path outside user directory");
+        }
+        if (Files.exists(resolved)) {
+            return;
+        }
+        log.warn("Referenced file does not exist: {}", filePath);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+            "Referenced file not found: " + resolved.getFileName());
     }
 
     private List<String> extractPaths(Pattern pattern, String text) {
