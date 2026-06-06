@@ -202,6 +202,10 @@ public class UsageSnapshotService {
         return records;
     }
 
+    SessionUsageRecord readSessionRow(ResultSet rs, UserAgent userAgent) throws SQLException {
+        return readSessionRow(rs, userAgent, Map.of());
+    }
+
     private SessionUsageRecord readSessionRow(ResultSet rs, UserAgent userAgent, Map<String, MessageStats> messageStats)
         throws SQLException {
         String sessionId = rs.getString("id");
@@ -408,7 +412,7 @@ public class UsageSnapshotService {
     private record DbReadResult(List<SessionUsageRecord> sessions, List<SessionMessageRecord> messages) {
     }
 
-    private record UserAgent(String userId, String agentId) {
+    record UserAgent(String userId, String agentId) {
     }
 
     private record MessageStats(

@@ -116,11 +116,11 @@ public class FileController {
             if (mimeType == null || mimeType.isBlank()) {
                 mimeType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
             }
+            String disposition = (!download && fileService.isInline(mimeType)) ? "inline" : "attachment";
             // Append charset=utf-8 for text MIME types so the browser decodes correctly
             if (isUtf8TextMimeType(mimeType)) {
                 mimeType = mimeType + "; charset=utf-8";
             }
-            String disposition = (!download && fileService.isInline(mimeType)) ? "inline" : "attachment";
 
             byte[] content;
             try (InputStream is = resource.getInputStream()) {
