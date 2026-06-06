@@ -81,6 +81,42 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             },
         ],
     },
+    SolutionTypes: {
+        resourceType: 'SolutionTypes',
+        sheetName: 'Solution Types',
+        descriptionSheetName: '字段说明',
+        fields: [
+            { name: 'name', labelKey: 'field_solutionTypes_name', enLabel: 'Solution Type Name', zhLabel: '解决方案类型名称', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 100) return { valid: false, error: 'Exceeds maximum length of 100' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 100 } } },
+            { name: 'code', labelKey: 'field_solutionTypes_code', enLabel: 'Solution Type Code', zhLabel: '解决方案类型编码', required: true, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 50) return { valid: false, error: 'Exceeds maximum length of 50' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 50 } } },
+            { name: 'description', labelKey: 'field_solutionTypes_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
+            { name: 'typeColor', labelKey: 'field_solutionTypes_typeColor', enLabel: 'Color', zhLabel: '标识颜色', required: false, validation: { type: 'string' } },
+            { name: 'knowledge', labelKey: 'field_solutionTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'string' } },
+        ],
+        sampleData: [
+            {
+                name: 'CRM System',
+                code: 'crm',
+                description: 'Customer relationship management solution',
+                typeColor: '#8b5cf6',
+                knowledge: 'crm-best-practices',
+            },
+        ],
+    },
     HostGroups: {
         resourceType: 'HostGroups',
         sheetName: 'Host Groups',

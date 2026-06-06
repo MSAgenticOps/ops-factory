@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -652,6 +653,131 @@ class KnowledgeGraphControllerTest {
     }
 
     @Test
+    void updateEntity_persistsPropertyChangesToDiskSnapshotFile() throws IOException {
+        importResourceOntologyAndSnapshot();
+
+        String originalHostIp = "192.168.200.42";
+        String updatedHostIp = "10.10.10.99";
+
+        // Update entity property
+        webTestClient.put()
+            .uri("/api/operation-intelligence/graph/entities/host-192-168-200-42")
+            .header("x-secret-key", SECRET_KEY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of("ontologyId", "huawei-mo-resource-v1", "envCode", "prod", "entity",
+                Map.of("id", "host-192-168-200-42", "type", "Host", "properties",
+                    Map.of("hostIp", updatedHostIp))))
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.properties.hostIp")
+            .isEqualTo(updatedHostIp);
+
+        // Verify in-memory state reflects the update
+        webTestClient.get()
+            .uri("/api/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+            .header("x-secret-key", SECRET_KEY)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.properties.hostIp")
+            .isEqualTo(updatedHostIp);
+
+        // Verify snapshot file on disk contains the updated value
+        Path snapshotDir = DATA_ROOT.resolve("knowledge-graph").resolve("huawei-mo-resource-v1").resolve("prod");
+        try (Stream<Path> paths = Files.list(snapshotDir)) {
+            List<Path> snapshotFiles = paths
+                .filter(p -> p.getFileName().toString().startsWith("snapshot_") && p.getFileName().toString().endsWith(".json"))
+                .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                .toList();
+            Assertions.assertFalse(snapshotFiles.isEmpty(), "Expected at least one snapshot file");
+
+            Path latestSnapshot = snapshotFiles.get(snapshotFiles.size() - 1);
+            String content = Files.readString(latestSnapshot, StandardCharsets.UTF_8);
+            Assertions.assertTrue(content.contains(updatedHostIp),
+                "Latest snapshot file must contain updated hostIp=" + updatedHostIp + ", but content does not");
+            Assertions.assertFalse(content.contains(originalHostIp) && content.contains("host-192-168-200-42"),
+                "Latest snapshot file must NOT contain original hostIp in the updated entity");
+        }
+
+        // Simulate service restart: reload from disk
+        knowledgeGraphService.init();
+        webTestClient.get()
+            .uri("/api/operation-intelligence/graph/entities/host-192-168-200-42?envCode=prod&ontologyId=huawei-mo-resource-v1")
+            .header("x-secret-key", SECRET_KEY)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.properties.hostIp")
+            .isEqualTo(updatedHostIp);
+    }
+
+    @Test
+    void updateEntity_withLargeTopology_persistsUpdatedPropertyToDisk() throws IOException {
+        importBesbbit1Topology();
+
+        String updatedHostIp = "7.197.64.1";
+
+        Map<String, Object> k8sProperties = new LinkedHashMap<>();
+        k8sProperties.put("instanceId", "NE=PbCYZ9nLTnOpjlBHBPsNEg");
+        k8sProperties.put("instanceName", "besbbit1_10-master");
+        k8sProperties.put("ip", "7.197.64.10");
+        k8sProperties.put("role", "master");
+        k8sProperties.put("status", "Running");
+        k8sProperties.put("version", "V600R001C51");
+        k8sProperties.put("hostIp", updatedHostIp);
+        k8sProperties.put("os", "EulerOS 2.9");
+        k8sProperties.put("authUsername", "root");
+        k8sProperties.put("authMethod", "password");
+        k8sProperties.put("sshIp", "7.197.64.10");
+        k8sProperties.put("sshPort", 22);
+
+        webTestClient.put()
+            .uri("/api/operation-intelligence/graph/entities/k8sinst-besbbit1-10-master")
+            .header("x-secret-key", SECRET_KEY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of("ontologyId", "besbbit1_10-topology-v1", "envCode", "prod", "entity",
+                Map.of("id", "k8sinst-besbbit1-10-master", "type", "K8sInstance",
+                    "properties", k8sProperties)))
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.properties.hostIp")
+            .isEqualTo(updatedHostIp);
+
+        // Verify snapshot file on disk
+        Path snapshotDir = DATA_ROOT.resolve("knowledge-graph").resolve("besbbit1_10-topology-v1").resolve("prod");
+        try (Stream<Path> paths = Files.list(snapshotDir)) {
+            List<Path> snapshotFiles = paths
+                .filter(p -> p.getFileName().toString().startsWith("snapshot_") && p.getFileName().toString().endsWith(".json"))
+                .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                .toList();
+            Assertions.assertFalse(snapshotFiles.isEmpty(), "Expected at least one snapshot file");
+
+            Path latestSnapshot = snapshotFiles.get(snapshotFiles.size() - 1);
+            String content = Files.readString(latestSnapshot, StandardCharsets.UTF_8);
+            Assertions.assertTrue(content.contains(updatedHostIp),
+                "Latest snapshot file must contain updated hostIp=" + updatedHostIp);
+        }
+
+        // Simulate restart
+        knowledgeGraphService.init();
+        webTestClient.get()
+            .uri("/api/operation-intelligence/graph/entities/k8sinst-besbbit1-10-master?envCode=prod&ontologyId=besbbit1_10-topology-v1")
+            .header("x-secret-key", SECRET_KEY)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.result.properties.hostIp")
+            .isEqualTo(updatedHostIp);
+    }
+
+    @Test
     void deleteEntity_removesEntityFromLatestSnapshot() {
         importResourceOntologyAndSnapshot();
 
@@ -816,6 +942,43 @@ class KnowledgeGraphControllerTest {
             .exchange()
             .expectStatus()
             .isOk();
+    }
+
+    private void importBesbbit1Topology() throws IOException {
+        // Register ontology matching the besbbit1_10 topology
+        webTestClient.post()
+            .uri("/api/operation-intelligence/graph/ontologies")
+            .header("x-secret-key", SECRET_KEY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of("ontologyId", "besbbit1_10-topology-v1", "name", "besbbit1_10 Topology", "version", "1.0",
+                "sourceSystem", "test", "entityTypes",
+                List.of(entityType("K8sCluster", List.of("clusterId", "clusterName")),
+                    entityType("K8sInstance", List.of("instanceId", "instanceName")),
+                    entityType("WorkerNode", List.of("nodeId", "hostIp")),
+                    entityType("Pod", List.of("podName", "podIp")),
+                    entityType("MicroService", List.of("serviceName")),
+                    entityType("MiddlewareCluster", List.of("clusterName")),
+                    entityType("ApplicationServiceCluster", List.of("clusterName"))),
+                "relationTypes",
+                List.of(relationType("contains", "infrastructure", List.of("*"), List.of("*")),
+                    relationType("runs_on", "deployment", List.of("*"), List.of("*")))))
+            .exchange()
+            .expectStatus()
+            .isOk();
+
+        String body = new ClassPathResource("knowledgegraph/besbbit1_10-topology-import.json")
+            .getContentAsString(StandardCharsets.UTF_8);
+        webTestClient.post()
+            .uri("/api/operation-intelligence/graph/admin/import")
+            .header("x-secret-key", SECRET_KEY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(body)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.success")
+            .isEqualTo(true);
     }
 
     private Map<String, Object> entityType(String type, List<String> requiredProperties) {

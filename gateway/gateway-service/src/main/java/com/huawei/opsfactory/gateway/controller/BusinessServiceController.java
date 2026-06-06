@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 
@@ -139,11 +140,12 @@ public class BusinessServiceController {
      *
      * @param request request body containing business service fields
      * @param httpRequest current HTTP request
-     * @return ResponseEntity with created business service or 400
+     * @return ResponseEntity with created business service
+     * @throws ConflictException if validation fails (e.g., duplicate name)
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createBusinessService(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) {
+        HttpServletRequest httpRequest) throws ConflictException {
         Map<String, Object> bs = businessServiceService.createBusinessService(request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -157,11 +159,13 @@ public class BusinessServiceController {
      * @param id business service identifier
      * @param request request body containing updated fields
      * @param httpRequest current HTTP request
-     * @return ResponseEntity with updated business service or 404
+     * @return ResponseEntity with updated business service
+     * @throws NotFoundException if business service not found
+     * @throws ConflictException if validation fails (e.g., duplicate name)
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateBusinessService(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException, ConflictException {
         Map<String, Object> bs = businessServiceService.updateBusinessService(id, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

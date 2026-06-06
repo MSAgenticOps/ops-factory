@@ -92,13 +92,15 @@ public class CallChainSubgraphService {
         requireText(request.getMenuId(), "menuId");
         requireText(request.getEnvCode(), "envCode");
         requireText(request.getSolutionType(), "solutionType");
+        requireText(request.getSolutionId(), "solutionId");
         String queryMode = resolveQueryMode(request.getMode());
         TimeRange timeRange = resolveTimeRange(request.getStartTime(), request.getEndTime());
         List<Map<String, String>> conditions = List.of(Map.of(
             "conditionKey", ENTRY_CONDITION_KEY,
             "conditionValue", request.getMenuId().trim()));
         CallChainTree callChainTree = callChainService.queryCallChain(
-            request.getSolutionType().trim(), conditions, timeRange.startTime(), timeRange.endTime(), queryMode);
+            request.getSolutionType().trim(), request.getSolutionId().trim(), conditions, timeRange.startTime(),
+            timeRange.endTime(), queryMode);
         OffsetDateTime generatedAt = OffsetDateTime.now();
         String subgraphId = "cc-subgraph-" + UUID.randomUUID().toString().replace("-", "");
         GraphSnapshot callChainGraph = buildGraphSnapshot(request, callChainTree, subgraphId, generatedAt, queryMode);
@@ -111,6 +113,7 @@ public class CallChainSubgraphService {
         result.setMenuId(request.getMenuId().trim());
         result.setEnvCode(request.getEnvCode().trim());
         result.setSolutionType(request.getSolutionType().trim());
+        result.setSolutionId(request.getSolutionId().trim());
         result.setOntologyId(resolveOntologyId(request.getOntologyId()));
         result.setGeneratedAt(generatedAt.toString());
         result.setExpiresAt(generatedAt.plusMinutes(properties.getKnowledgeGraph().getCallChainSubgraphTtlMinutes())
@@ -152,6 +155,16 @@ public class CallChainSubgraphService {
             .toList();
     }
 
+    /**
+     * Build graph snapshot from call chain tree.
+     *
+     * @param request the subgraph request
+     * @param tree the call chain tree
+     * @param subgraphId the subgraph id
+     * @param generatedAt the generation timestamp
+     * @param queryMode the query mode
+     * @return the graph snapshot
+     */
     private GraphSnapshot buildGraphSnapshot(CallChainSubgraphRequest request, CallChainTree tree, String subgraphId,
         OffsetDateTime generatedAt, String queryMode) {
         Map<String, GraphEntity> entitiesById = new LinkedHashMap<>();
@@ -177,6 +190,12 @@ public class CallChainSubgraphService {
         return snapshot;
     }
 
+    /**
+     * Add business entry entity to the graph.
+     *
+     * @param request the subgraph request
+     * @param entitiesById the entity map
+     */
     private void addBusinessEntryEntity(CallChainSubgraphRequest request, Map<String, GraphEntity> entitiesById) {
         String menuId = request.getMenuId().trim();
         String businessEntityId = businessEntityId(menuId);
@@ -186,6 +205,14 @@ public class CallChainSubgraphService {
             "envCode", request.getEnvCode().trim())));
     }
 
+    /**
+     * Build flow entities and relations from a call flow.
+     *
+     * @param flow the call flow
+     * @param entitiesById the entity map
+     * @param relationsById the relation map
+     * @param serviceObservations the service observation accumulator map
+     */
     private void buildFlowEntities(CallFlow flow, Map<String, GraphEntity> entitiesById,
         Map<String, GraphRelation> relationsById, Map<String, ServiceObservationAccumulator> serviceObservations) {
         if (flow == null || flow.getNodes() == null || flow.getNodes().isEmpty()) {
@@ -214,6 +241,15 @@ public class CallChainSubgraphService {
         }
     }
 
+    /**
+     * Build metadata for the graph snapshot.
+     *
+     * @param request the subgraph request
+     * @param tree the call chain tree
+     * @param subgraphId the subgraph id
+     * @param queryMode the query mode
+     * @return the metadata map
+     */
     private Map<String, Object> buildMetadata(CallChainSubgraphRequest request, CallChainTree tree, String subgraphId,
         String queryMode) {
         Map<String, Object> metadata = new LinkedHashMap<>();
@@ -222,6 +258,7 @@ public class CallChainSubgraphService {
         metadata.put("entryType", ENTRY_CONDITION_KEY);
         metadata.put("menuId", request.getMenuId().trim());
         metadata.put("solutionType", request.getSolutionType().trim());
+        metadata.put("solutionId", request.getSolutionId().trim());
         metadata.put("mode", queryMode);
         metadata.put("chainType", tree.getChainType());
         metadata.put("flowCount", tree.getFlows() == null ? 0 : tree.getFlows().size());
@@ -230,6 +267,14 @@ public class CallChainSubgraphService {
         return metadata;
     }
 
+    /**
+     * Build summary statistics for the subgraph result.
+     *
+     * @param tree the call chain tree
+     * @param graph the graph snapshot
+     * @param matchResult the resource match result
+     * @return the summary map
+     */
     private Map<String, Object> buildSummary(CallChainTree tree, GraphSnapshot graph,
         CallChainResourceSubgraphService.MatchResult matchResult) {
         Set<String> microserviceIds = graph.getEntities().stream()
@@ -256,6 +301,15 @@ public class CallChainSubgraphService {
         return summary;
     }
 
+    /**
+     * Merge call chain graph and resource graph into a single snapshot.
+     *
+     * @param callChainGraph the call chain graph snapshot
+     * @param resourceGraph the resource graph snapshot
+     * @param subgraphId the subgraph id
+     * @param generatedAt the generation timestamp
+     * @return the merged graph snapshot
+     */
     private GraphSnapshot mergeSnapshots(GraphSnapshot callChainGraph, GraphSnapshot resourceGraph, String subgraphId,
         OffsetDateTime generatedAt) {
         Map<String, String> clusterEntityMapping = resolveClusterEntityMapping(callChainGraph, resourceGraph);
@@ -291,6 +345,13 @@ public class CallChainSubgraphService {
         return merged;
     }
 
+    /**
+     * Resolves a mapping from call-chain cluster entity IDs to resource cluster entity IDs.
+     *
+     * @param callChainGraph the call chain graph snapshot
+     * @param resourceGraph the resource graph snapshot
+     * @return the cluster entity ID mapping
+     */
     private Map<String, String> resolveClusterEntityMapping(GraphSnapshot callChainGraph, GraphSnapshot resourceGraph) {
         Map<String, String> resourceClusterIds = new LinkedHashMap<>();
         resourceGraph.getEntities().stream()
@@ -317,6 +378,13 @@ public class CallChainSubgraphService {
         return mapping;
     }
 
+    /**
+     * Remaps a relation's endpoints using the cluster entity mapping.
+     *
+     * @param relation the relation to remap
+     * @param clusterEntityMapping the cluster entity ID mapping
+     * @return the remapped relation, or the original if no remapping occurred
+     */
     private GraphRelation remapClusterRelation(GraphRelation relation, Map<String, String> clusterEntityMapping) {
         if (clusterEntityMapping.isEmpty()) {
             return relation;
@@ -335,6 +403,12 @@ public class CallChainSubgraphService {
         return remapped;
     }
 
+    /**
+     * Checks whether the given entity is a resource cluster entity.
+     *
+     * @param entity the graph entity
+     * @return true if the entity is a resource cluster entity
+     */
     private boolean isResourceClusterEntity(GraphEntity entity) {
         String type = entity.getType();
         return "ApplicationServiceCluster".equals(type)
@@ -342,6 +416,12 @@ public class CallChainSubgraphService {
             || "K8sCluster".equals(type);
     }
 
+    /**
+     * Reads the cluster ID from the entity properties.
+     *
+     * @param entity the graph entity
+     * @return the cluster ID, or null if not present or blank
+     */
     private String readClusterId(GraphEntity entity) {
         if (entity.getProperties() == null) {
             return null;
@@ -353,12 +433,19 @@ public class CallChainSubgraphService {
         return null;
     }
 
+    /**
+     * Converts a subgraph result to a history item.
+     *
+     * @param result the subgraph result
+     * @return the history item
+     */
     private CallChainSubgraphHistoryItem toHistoryItem(CallChainSubgraphResult result) {
         CallChainSubgraphHistoryItem item = new CallChainSubgraphHistoryItem();
         item.setSubgraphId(result.getSubgraphId());
         item.setMenuId(result.getMenuId());
         item.setEnvCode(result.getEnvCode());
         item.setSolutionType(result.getSolutionType());
+        item.setSolutionId(result.getSolutionId());
         item.setOntologyId(resolveOntologyId(result.getOntologyId()));
         item.setGeneratedAt(result.getGeneratedAt());
         item.setExpiresAt(result.getExpiresAt());
@@ -366,6 +453,12 @@ public class CallChainSubgraphService {
         return item;
     }
 
+    /**
+     * Counts resource entities in the graph (non-business, non-service, non-cluster).
+     *
+     * @param graph the graph snapshot
+     * @return the number of resource entities
+     */
     private long countResourceEntities(GraphSnapshot graph) {
         return graph.getEntities().stream()
             .filter(entity -> !BUSINESS_ENTITY_TYPE.equals(entity.getType()))
@@ -374,6 +467,12 @@ public class CallChainSubgraphService {
             .count();
     }
 
+    /**
+     * Counts resource relations in the graph (relations involving non-call-chain entities).
+     *
+     * @param graph the graph snapshot
+     * @return the number of resource relations
+     */
     private long countResourceRelations(GraphSnapshot graph) {
         Set<String> callChainEntityIds = graph.getEntities().stream()
             .filter(entity -> BUSINESS_ENTITY_TYPE.equals(entity.getType())
@@ -387,6 +486,14 @@ public class CallChainSubgraphService {
             .count();
     }
 
+    /**
+     * Builds graph observations from accumulated service observation data.
+     *
+     * @param generatedAt the generation timestamp
+     * @param serviceObservations the accumulated service observations mapped by entity ID
+     * @param entitiesById the entity map
+     * @return the list of graph observations
+     */
     private List<GraphObservation> buildObservations(OffsetDateTime generatedAt,
         Map<String, ServiceObservationAccumulator> serviceObservations, Map<String, GraphEntity> entitiesById) {
         List<GraphObservation> observations = new ArrayList<>();
@@ -437,6 +544,17 @@ public class CallChainSubgraphService {
         return observations;
     }
 
+    /**
+     * Creates a graph observation.
+     *
+     * @param observationId the observation ID
+     * @param entityId the entity ID
+     * @param generatedAt the generation timestamp
+     * @param name the observation name
+     * @param value the observation value
+     * @param baseProperties the base properties
+     * @return the graph observation
+     */
     private GraphObservation createObservation(String observationId, String entityId, OffsetDateTime generatedAt,
         String name, long value, Map<String, Object> baseProperties) {
         GraphObservation observation = new GraphObservation();
@@ -452,6 +570,15 @@ public class CallChainSubgraphService {
         return observation;
     }
 
+    /**
+     * Creates a microservice entity from a flow node.
+     *
+     * @param node the flow node
+     * @param serviceEntityId the service entity ID
+     * @param clusterId the cluster ID
+     * @param flowId the flow ID
+     * @return the microservice graph entity
+     */
     private GraphEntity createMicroserviceEntity(FlowNode node, String serviceEntityId, String clusterId,
         String flowId) {
         String serviceName = node.getServiceName().trim();
@@ -465,6 +592,13 @@ public class CallChainSubgraphService {
         return createEntity(serviceEntityId, MICROSERVICE_ENTITY_TYPE, serviceName, shortDisplayName, properties);
     }
 
+    /**
+     * Creates a cluster entity.
+     *
+     * @param clusterId the cluster ID
+     * @param clusterEntityId the cluster entity ID
+     * @return the cluster graph entity
+     */
     private GraphEntity createClusterEntity(String clusterId, String clusterEntityId) {
         String displayName = shortClusterName(clusterId);
         Map<String, Object> properties = new LinkedHashMap<>();
@@ -473,6 +607,16 @@ public class CallChainSubgraphService {
         return createEntity(clusterEntityId, CLUSTER_ENTITY_TYPE, clusterId, displayName, properties);
     }
 
+    /**
+     * Creates a graph entity.
+     *
+     * @param entityId the entity ID
+     * @param type the entity type
+     * @param name the entity name
+     * @param displayName the display name
+     * @param properties the entity properties
+     * @return the graph entity
+     */
     private GraphEntity createEntity(String entityId, String type, String name, String displayName,
         Map<String, Object> properties) {
         GraphEntity entity = new GraphEntity();
@@ -485,6 +629,14 @@ public class CallChainSubgraphService {
         return entity;
     }
 
+    /**
+     * Creates a flow relation between two entities.
+     *
+     * @param from the source entity ID
+     * @param to the target entity ID
+     * @param flow the call flow
+     * @return the flow relation
+     */
     private GraphRelation createFlowRelation(String from, String to, CallFlow flow) {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("flowId", flow.getFlowId());
@@ -494,11 +646,28 @@ public class CallChainSubgraphService {
         return createRelation("cc-rel-" + sanitizeSegment(from + "-" + to), CALLS_RELATION_TYPE, from, to, properties);
     }
 
+    /**
+     * Creates a cluster relation between a service and a cluster.
+     *
+     * @param serviceEntityId the service entity ID
+     * @param clusterEntityId the cluster entity ID
+     * @return the cluster relation
+     */
     private GraphRelation createClusterRelation(String serviceEntityId, String clusterEntityId) {
         return createRelation("cc-rel-" + sanitizeSegment(serviceEntityId + "-" + clusterEntityId),
             BELONGS_TO_CLUSTER_RELATION_TYPE, serviceEntityId, clusterEntityId, Map.of());
     }
 
+    /**
+     * Creates a graph relation.
+     *
+     * @param relationId the relation ID
+     * @param type the relation type
+     * @param from the source entity ID
+     * @param to the target entity ID
+     * @param properties the relation properties
+     * @return the graph relation
+     */
     private GraphRelation createRelation(String relationId, String type, String from, String to,
         Map<String, Object> properties) {
         GraphRelation relation = new GraphRelation();
@@ -510,10 +679,22 @@ public class CallChainSubgraphService {
         return relation;
     }
 
+    /**
+     * Puts an entity into the map if not already present.
+     *
+     * @param entitiesById the entity map
+     * @param entity the entity to put
+     */
     private void putEntity(Map<String, GraphEntity> entitiesById, GraphEntity entity) {
         entitiesById.putIfAbsent(entity.getId(), entity);
     }
 
+    /**
+     * Puts a relation into the map, merging properties if already present.
+     *
+     * @param relationsById the relation map
+     * @param relation the relation to put
+     */
     private void putRelation(Map<String, GraphRelation> relationsById, GraphRelation relation) {
         GraphRelation existing = relationsById.get(relation.getId());
         if (existing == null) {
@@ -525,6 +706,13 @@ public class CallChainSubgraphService {
         existing.setProperties(mergedProperties);
     }
 
+    /**
+     * Resolves and validates the query time range.
+     *
+     * @param startTime the requested start time in milliseconds, or null
+     * @param endTime the requested end time in milliseconds, or null
+     * @return the resolved time range
+     */
     private TimeRange resolveTimeRange(Long startTime, Long endTime) {
         long configuredMaxRange = properties.getCallChain().getMaxTimeRangeMs();
         long resolvedEndTime = endTime == null ? System.currentTimeMillis() : endTime;
@@ -538,6 +726,12 @@ public class CallChainSubgraphService {
         return new TimeRange(resolvedStartTime, resolvedEndTime);
     }
 
+    /**
+     * Resolves the cluster ID from a flow node.
+     *
+     * @param node the flow node
+     * @return the cluster ID, or null if not present or blank
+     */
     private String resolveClusterId(FlowNode node) {
         if (node.getClusterId() != null && !node.getClusterId().isBlank()) {
             return node.getClusterId().trim();
@@ -545,12 +739,24 @@ public class CallChainSubgraphService {
         return null;
     }
 
+    /**
+     * Resolves the ontology ID, falling back to the default if not provided.
+     *
+     * @param ontologyId the requested ontology ID, or null/blank
+     * @return the resolved ontology ID
+     */
     private String resolveOntologyId(String ontologyId) {
         return ontologyId == null || ontologyId.isBlank()
             ? GraphSchemaRegistry.DEFAULT_ONTOLOGY_ID
             : ontologyId.trim();
     }
 
+    /**
+     * Resolves the query mode, falling back to the configured default if not provided.
+     *
+     * @param queryMode the requested query mode, or null/blank
+     * @return the resolved query mode
+     */
     private String resolveQueryMode(String queryMode) {
         String resolvedMode = queryMode == null || queryMode.isBlank()
             ? properties.getCallChain().getQueryMode()
@@ -561,24 +767,55 @@ public class CallChainSubgraphService {
         return resolvedMode.trim();
     }
 
+    /**
+     * Builds the business entity ID for a menu ID.
+     *
+     * @param menuId the menu ID
+     * @return the business entity ID
+     */
     private String businessEntityId(String menuId) {
         return "cc-biz-" + sanitizeSegment(menuId);
     }
 
+    /**
+     * Builds the service entity ID from a service name and cluster ID.
+     *
+     * @param serviceName the service name
+     * @param clusterId the cluster ID, or null
+     * @return the service entity ID
+     */
     private String serviceEntityId(String serviceName, String clusterId) {
         String clusterKey = clusterId == null ? "no-cluster" : clusterId;
         return "cc-svc-" + sanitizeSegment(serviceName) + "-" + sanitizeSegment(clusterKey);
     }
 
+    /**
+     * Builds the cluster entity ID from a cluster ID.
+     *
+     * @param clusterId the cluster ID
+     * @return the cluster entity ID
+     */
     private String clusterEntityId(String clusterId) {
         return "cc-cluster-" + sanitizeSegment(clusterId);
     }
 
+    /**
+     * Extracts the short name from a fully qualified name.
+     *
+     * @param value the fully qualified name
+     * @return the short name
+     */
     private String shortName(String value) {
         int separatorIndex = Math.max(value.lastIndexOf('.'), value.lastIndexOf('/'));
         return separatorIndex >= 0 && separatorIndex < value.length() - 1 ? value.substring(separatorIndex + 1) : value;
     }
 
+    /**
+     * Extracts the short cluster name from a cluster ID.
+     *
+     * @param clusterId the cluster ID
+     * @return the short cluster name
+     */
     private String shortClusterName(String clusterId) {
         int separatorIndex = clusterId.lastIndexOf('_');
         return separatorIndex >= 0 && separatorIndex < clusterId.length() - 1
@@ -586,27 +823,51 @@ public class CallChainSubgraphService {
             : clusterId;
     }
 
+    /**
+     * Sanitizes a string segment for use in an ID by replacing unsafe characters.
+     *
+     * @param value the raw segment value
+     * @return the sanitized segment
+     */
     private String sanitizeSegment(String value) {
         String sanitized = UNSAFE_CHARS.matcher(value == null ? "" : value.trim()).replaceAll("-");
         sanitized = sanitized.replaceAll("-{2,}", "-").replaceAll("^-|-$", "");
         return sanitized.isBlank() ? "na" : sanitized.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Ensures the knowledge graph feature is enabled.
+     */
     private void ensureEnabled() {
         if (!properties.getKnowledgeGraph().isEnabled()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Knowledge graph is disabled");
         }
     }
 
+    /**
+     * Requires that a text value is non-null and non-blank.
+     *
+     * @param value the text value
+     * @param fieldName the field name for error messaging
+     */
     private void requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
         }
     }
 
+    /**
+     * Represents a validated time range for call chain queries.
+     *
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     */
     private record TimeRange(long startTime, long endTime) {
     }
 
+    /**
+     * Accumulates observation data for a service across multiple flow nodes.
+     */
     private static final class ServiceObservationAccumulator {
         private final String serviceName;
 
@@ -624,12 +885,25 @@ public class CallChainSubgraphService {
 
         private int occurrenceCount;
 
+        /**
+         * Constructs a ServiceObservationAccumulator.
+         *
+         * @param serviceName the service name
+         * @param entityId the entity ID
+         * @param clusterId the cluster ID
+         */
         private ServiceObservationAccumulator(String serviceName, String entityId, String clusterId) {
             this.serviceName = serviceName;
             this.entityId = entityId;
             this.clusterId = clusterId;
         }
 
+        /**
+         * Accumulates data from a flow node.
+         *
+         * @param flowId the flow ID
+         * @param node the flow node
+         */
         private void accumulate(String flowId, FlowNode node) {
             if (flowId != null && !flowId.isBlank()) {
                 flowIds.add(flowId);

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
 import { useToast } from '../../../platform/providers/ToastContext'
 import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
@@ -229,17 +228,18 @@ function ToggleSwitch({
 // Whitelist Tab (content only, no page wrapper)
 // ---------------------------------------------------------------------------
 
-export function WhitelistTab() {
+type Props = {
+    commands: WhitelistCommand[]
+    isLoading: boolean
+    error: string | null
+    fetchCommands: () => Promise<void>
+    createCommand: (cmd: WhitelistCommand) => Promise<boolean>
+    updateCommand: (pattern: string, updates: Partial<WhitelistCommand>) => Promise<boolean>
+    deleteCommand: (pattern: string) => Promise<boolean>
+}
+
+export function WhitelistTab({ commands, isLoading, error, fetchCommands, createCommand, updateCommand, deleteCommand }: Props) {
     const { t } = useTranslation()
-    const {
-        commands,
-        isLoading,
-        error,
-        fetchWhitelist: fetchCommands,
-        addCommand: createCommand,
-        updateCommand,
-        deleteCommand,
-    } = useCommandWhitelist()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
 
