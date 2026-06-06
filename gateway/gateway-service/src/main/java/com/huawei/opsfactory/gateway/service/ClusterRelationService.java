@@ -633,7 +633,7 @@ public class ClusterRelationService {
             try {
                 businessServiceService.syncHostIdsFromClusterRelations(sourceId);
             } catch (NotFoundException e) {
-                log.debug("Business service not found during sync after cluster relation change: {}", sourceId);
+                log.warn("Business service not found during sync after cluster relation change: {}", sourceId);
             }
         }
     }
