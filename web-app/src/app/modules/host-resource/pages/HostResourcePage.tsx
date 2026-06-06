@@ -93,20 +93,30 @@ export default function HostResourcePage() {
     const clusterTypesHook = useClusterTypes()
     const businessTypesHook = useBusinessTypes()
     const solutionTypesHook = useSolutionTypes()
-    const { commands: whitelistCommands, addCommand: addWhitelistCommand, fetchWhitelist: fetchWhitelistCommands } = useCommandWhitelist()
+    const {
+        commands: whitelistCommands,
+        isLoading: whitelistLoading,
+        error: whitelistError,
+        addCommand: addWhitelistCommand,
+        fetchWhitelist: fetchWhitelistCommands,
+        updateCommand: updateWhitelistCommand,
+        deleteCommand: deleteWhitelistCommand,
+    } = useCommandWhitelist()
     const sopsHook = useSops()
 
     // Export / Import hooks
     const { exporting, exportAllAsZip } = useResourceExport()
     const { importing, progress, importXlsx } = useResourceImport({
-        fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands,
+        fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands, fetchSops: sopsHook.fetchSops,
         groups, clusters, allHosts, businessServices, relations: hostRelations,
         clusterTypes: clusterTypesHook.clusterTypes,
         businessTypes: businessTypesHook.businessTypes,
+        solutionTypes: solutionTypesHook.solutionTypes,
         createGroup, updateGroup, createCluster, createHost,
         createBusinessService, createRelation,
         createClusterType: clusterTypesHook.createClusterType,
         createBusinessType: businessTypesHook.createBusinessType,
+        createSolutionType: solutionTypesHook.createSolutionType,
         createSop: sopsHook.createSop,
         addWhitelistCommand,
     })
@@ -611,10 +621,11 @@ export default function HostResourcePage() {
             businessServices,
             clusterTypes: clusterTypesHook.clusterTypes,
             businessTypes: businessTypesHook.businessTypes,
+            solutionTypes: solutionTypesHook.solutionTypes,
             whitelistCommands,
             sops: sopsHook.sops,
         }, t)
-    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, whitelistCommands, sopsHook.sops, t])
+    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, solutionTypesHook.solutionTypes, whitelistCommands, sopsHook.sops, t])
 
     const openCreateModal = useCallback(() => {
         setEditingItem(null)
@@ -928,9 +939,30 @@ export default function HostResourcePage() {
                 />
             )}
 
-            {activeTab === 'sop-management' && <SopsTab solutionTypes={solutionTypesHook.solutionTypes} />}
+            {activeTab === 'sop-management' && (
+                <SopsTab
+                    solutionTypes={solutionTypesHook.solutionTypes}
+                    sops={sopsHook.sops}
+                    isLoading={sopsHook.isLoading}
+                    error={sopsHook.error}
+                    fetchSops={sopsHook.fetchSops}
+                    createSop={sopsHook.createSop}
+                    updateSop={sopsHook.updateSop}
+                    deleteSop={sopsHook.deleteSop}
+                />
+            )}
 
-            {activeTab === 'whitelist' && <WhitelistTab />}
+            {activeTab === 'whitelist' && (
+                <WhitelistTab
+                    commands={whitelistCommands}
+                    isLoading={whitelistLoading}
+                    error={whitelistError}
+                    fetchCommands={fetchWhitelistCommands}
+                    createCommand={addWhitelistCommand}
+                    updateCommand={updateWhitelistCommand}
+                    deleteCommand={deleteWhitelistCommand}
+                />
+            )}
 
             {/* Create/Edit Modal */}
             {showModal && (

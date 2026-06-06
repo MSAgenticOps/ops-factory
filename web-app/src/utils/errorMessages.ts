@@ -33,6 +33,12 @@ export function getErrorMessage(error: unknown): string {
         if (status === 401 || status === 403) return i18n.t('errors.unauthorized')
         if (status === 404) return i18n.t('errors.notFound')
         if (status >= 500) return i18n.t('errors.serverError')
+        if (status === 400) {
+            const bodyMessage = message.replace(/^HTTP \d{3}: /, '')
+            if (bodyMessage && bodyMessage !== 'Bad Request') {
+                return bodyMessage
+            }
+        }
         return i18n.t('errors.requestFailed', { status })
     }
 

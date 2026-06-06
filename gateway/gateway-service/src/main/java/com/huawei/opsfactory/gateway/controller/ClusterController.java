@@ -135,13 +135,14 @@ public class ClusterController {
     /**
      * Creates a new cluster.
      *
-     * @param request HTTP request
-     * @param exchange server web exchange
-     * @return the result
+     * @param request HTTP request body containing cluster fields
+     * @param httpRequest current HTTP request
+     * @return response entity with created cluster
+     * @throws ConflictException if validation fails (e.g., duplicate name)
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createCluster(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) {
+        HttpServletRequest httpRequest) throws ConflictException {
         Map<String, Object> cluster = clusterService.createCluster(request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -152,14 +153,16 @@ public class ClusterController {
     /**
      * Updates a cluster by ID.
      *
-     * @param id a cluster by ID
-     * @param request a cluster by ID
-     * @param exchange a cluster by ID
-     * @return the result
+     * @param id cluster identifier
+     * @param request request body containing updated fields
+     * @param httpRequest current HTTP request
+     * @return response entity with updated cluster
+     * @throws NotFoundException if cluster not found
+     * @throws ConflictException if validation fails (e.g., duplicate name)
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateCluster(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException, ConflictException {
         Map<String, Object> cluster = clusterService.updateCluster(id, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

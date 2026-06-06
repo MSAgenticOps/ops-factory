@@ -29,10 +29,12 @@ set "FILES[7]=C:\zhulin\ops-factory\operation-intelligence\target\operation-inte
 set "FILES[8]=C:\zhulin\ops-factory\operation-intelligence\scripts\dv_server.py"
 set "FILES[9]=C:\zhulin\ops-factory\control-center\target\control-center.jar"
 set "FILES[10]=C:\zhulin\ops-factory\knowledge-service\target\knowledge-service.jar"
+set "FILES[11]=C:\zhulin\ops-factory\skill-market\target\skill-market.jar"
 
 set "OI_CONFIG_SRC=C:\zhulin\ops-factory\operation-intelligence\config.yaml.example"
 set "CC_CONFIG_SRC=C:\zhulin\ops-factory\control-center\config.yaml.example"
 set "KS_CONFIG_SRC=C:\zhulin\ops-factory\knowledge-service\config.yaml.example"
+set "SM_CONFIG_SRC=C:\zhulin\ops-factory\skill-market\config.yaml.example"
 
 echo Configuration:
 echo   User: %USER%
@@ -174,7 +176,7 @@ echo.
 echo [Step 3] Uploading files...
 echo.
 
-for /L %%i in (0,1,10) do (
+for /L %%i in (0,1,11) do (
     set "CURRENT_FILE=!FILES[%%i]!"
     if exist "!CURRENT_FILE!" (
         set /a FILE_COUNT+=1
@@ -229,6 +231,15 @@ if !SUCCESS_COUNT! gtr 0 (
             echo   KS config uploaded as ks-config.yaml.example: SUCCESS
         ) else (
             echo   KS config upload: FAILED
+        )
+    )
+    echo Uploading SM config as sm-config.yaml.example...
+    if exist "%SM_CONFIG_SRC%" (
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%SM_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%sm-config.yaml.example
+        if !errorlevel! equ 0 (
+            echo   SM config uploaded as sm-config.yaml.example: SUCCESS
+        ) else (
+            echo   SM config upload: FAILED
         )
     )
     echo Attempting to execute remote script: /home/paas/gateway/handle_ops_app.sh

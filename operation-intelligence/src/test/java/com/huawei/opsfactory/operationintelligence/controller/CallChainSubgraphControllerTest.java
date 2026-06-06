@@ -90,13 +90,15 @@ class CallChainSubgraphControllerTest {
 
     @Test
     void generateAndGetSubgraph_persistsStoredSnapshot() throws Exception {
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyList(), anyLong(), anyLong(), anyString()))
+        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), anyString(), anyList(), anyLong(), anyLong(),
+            anyString()))
             .thenReturn(createCallChainTree());
 
         Map<String, Object> request = Map.of(
             "menuId", "6013101010007",
             "envCode", "prod",
             "solutionType", "DigitalCRM.sit",
+            "solutionId", "CRM-001",
             "ontologyId", "b2b-callchain-v1",
             "startTime", 1746057600000L,
             "endTime", 1746058200000L);
