@@ -115,6 +115,7 @@ export interface CallChainSubgraphRequest {
   menuId: string
   envCode: string
   solutionType: string
+  solutionId: string
   mode?: string
   ontologyId?: string
   startTime?: number
@@ -141,6 +142,7 @@ export interface CallChainSubgraphResult {
   menuId: string
   envCode: string
   solutionType: string
+  solutionId?: string
   ontologyId?: string
   generatedAt: string
   expiresAt: string
@@ -153,6 +155,7 @@ export interface CallChainSubgraphHistoryItem {
   menuId: string
   envCode: string
   solutionType: string
+  solutionId?: string
   ontologyId?: string
   generatedAt: string
   expiresAt: string
