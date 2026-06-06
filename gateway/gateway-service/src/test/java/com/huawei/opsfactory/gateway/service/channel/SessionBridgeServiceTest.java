@@ -19,6 +19,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -88,5 +89,42 @@ public class SessionBridgeServiceTest {
         }
 
         throw new AssertionError("Expected extractFinalAssistantText to throw");
+    }
+
+    /**
+     * Verifies error events without details use the fallback error message.
+     */
+    @Test
+    public void extractFinalAssistantText_throwsFallbackForErrorWithoutMessage() {
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "Error");
+        event.put("error", null);
+
+        try {
+            extractFinalAssistantText.invoke(service, List.of(event), "session-1");
+        } catch (InvocationTargetException ex) {
+            assertTrue(ex.getCause() instanceof IllegalStateException);
+            assertEquals("Unknown reply error", ex.getCause().getMessage());
+            return;
+        } catch (IllegalAccessException ex) {
+            throw new AssertionError("Unexpected exception type", ex);
+        }
+
+        throw new AssertionError("Expected extractFinalAssistantText to throw");
+    }
+
+    /**
+     * Verifies visible assistant messages with empty content return an empty reply.
+     *
+     * @throws Exception if invocation fails
+     */
+    @Test
+    public void extractFinalAssistantText_returnsEmptyReplyForEmptyAssistantContent() throws Exception {
+        List<Map<String, Object>> events = List.of(Map.of("type", "Message", "message",
+            Map.of("role", "assistant", "metadata", Map.of("userVisible", true), "content", List.of())));
+
+        String reply = (String) extractFinalAssistantText.invoke(service, events, "session-1");
+
+        assertEquals("", reply);
     }
 }
