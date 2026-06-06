@@ -74,6 +74,7 @@ const MIN_GRAPH_ZOOM = 0.5
 const MAX_GRAPH_ZOOM = 1.6
 const GRAPH_ZOOM_STEP = 0.1
 const ENTITY_MANAGEMENT_PAGE_SIZE = 6
+const ENTITY_AUTH_METHOD_OPTIONS = ['password', 'key'] as const
 const NODE_STYLE_COLORS = [
     '#3b82f6',
     '#14b8a6',
@@ -491,16 +492,27 @@ function formatPropertyName(name: string): string {
         .trim()
 }
 
-function formatPropertyValue(value: unknown): string {
+function isSensitiveEntityPropertyKey(key: string): boolean {
+    return key.trim().toLowerCase() === 'credential'
+}
+
+function isAuthMethodEntityPropertyKey(key: string): boolean {
+    return key.trim().toLowerCase() === 'authmethod'
+}
+
+function formatPropertyValue(value: unknown, key?: string): string {
     if (value == null || value === '') {
         return '-'
     }
+    if (key && isSensitiveEntityPropertyKey(key)) {
+        return '******'
+    }
     if (Array.isArray(value)) {
-        return value.map(formatPropertyValue).join(', ')
+        return value.map(item => formatPropertyValue(item)).join(', ')
     }
     if (typeof value === 'object') {
         return Object.entries(value as Record<string, unknown>)
-            .map(([key, item]) => `${formatPropertyName(key)}: ${formatPropertyValue(item)}`)
+            .map(([itemKey, item]) => `${formatPropertyName(itemKey)}: ${formatPropertyValue(item, itemKey)}`)
             .join('; ')
     }
     if (typeof value === 'boolean') {
@@ -543,13 +555,13 @@ function getEntityCardSummary(entity: GraphEntity, t: (key: string) => string): 
 
 function getEntityCardMetrics(entity: GraphEntity, t: (key: string) => string): ResourceCardMetric[] {
     const metrics: ResourceCardMetric[] = []
-    const addMetric = (label: string, value: unknown) => {
+    const addMetric = (label: string, value: unknown, key?: string) => {
         if (value === undefined || value === null || value === '') {
             return
         }
         metrics.push({
             label,
-            value: formatPropertyValue(value),
+            value: formatPropertyValue(value, key),
         })
     }
     addMetric(t('operationIntelligence.knowledgeGraph.id'), entity.id)
@@ -560,7 +572,10 @@ function getEntityCardMetrics(entity: GraphEntity, t: (key: string) => string): 
         if ((key === 'id') || (key === 'status')) {
             return
         }
-        addMetric(formatPropertyName(key), value)
+        metrics.push({
+            label: formatPropertyName(key),
+            value: formatPropertyValue(value, key),
+        })
     })
     return metrics.slice(0, 3)
 }
@@ -638,7 +653,7 @@ function buildEntityEditableFields(
         ...entityTypeDefinition?.requiredProperties ?? [],
         ...entityTypeDefinition?.optionalProperties ?? [],
         ...Object.keys(entity.properties ?? {}),
-    ]))
+    ])).filter(propertyName => propertyName.trim().toLowerCase() !== 'status')
     const requiredPropertySet = new Set(entityTypeDefinition?.requiredProperties ?? [])
     return [
         {
@@ -3114,6 +3129,23 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                                         <option value="true">true</option>
                                                         <option value="false">false</option>
                                                     </select>
+                                                ) : isAuthMethodEntityPropertyKey(field.key) ? (
+                                                    <select
+                                                        value={String(draftValue ?? '')}
+                                                        onChange={event => {
+                                                            handleEntityDraftValueChange(
+                                                                editableFieldId(field.section, field.key),
+                                                                event.target.value,
+                                                            )
+                                                        }}
+                                                    >
+                                                        <option value="">{t('operationIntelligence.knowledgeGraph.authMethodUnset')}</option>
+                                                        {ENTITY_AUTH_METHOD_OPTIONS.map(option => (
+                                                            <option key={option} value={option}>
+                                                                {t(`operationIntelligence.knowledgeGraph.authMethod_${option}`)}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 ) : field.kind === 'json' ? (
                                                     <textarea
                                                         value={String(draftValue ?? '')}
@@ -3127,7 +3159,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                                     />
                                                 ) : (
                                                     <input
-                                                        type={field.kind === 'number' ? 'number' : 'text'}
+                                                        type={isSensitiveEntityPropertyKey(field.key) ? 'password' : field.kind === 'number' ? 'number' : 'text'}
                                                         value={String(draftValue ?? '')}
                                                         onChange={event => {
                                                             handleEntityDraftValueChange(
@@ -3551,7 +3583,7 @@ function GraphCanvas({
                                 {selectedNodeProperties.map(([key, value]) => (
                                     <div key={key} className="kg-property-row">
                                         <span>{formatPropertyName(key)}</span>
-                                        <em>{formatPropertyValue(value)}</em>
+                                        <em>{formatPropertyValue(value, key)}</em>
                                     </div>
                                 ))}
                             </div>
