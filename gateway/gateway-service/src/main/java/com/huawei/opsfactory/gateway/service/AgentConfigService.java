@@ -188,40 +188,52 @@ public class AgentConfigService {
 
         List<String> configuredAgentIds = registry.stream().map(AgentRegistryEntry::id).toList();
         for (Object entryObj : entries) {
-            if (!(entryObj instanceof Map<?, ?> rawEntry)) {
+            ResidentEntry residentEntry = parseResidentEntry(entryObj);
+            if (residentEntry == null) {
                 continue;
             }
-            Map<String, Object> entry = (Map<String, Object>) rawEntry;
-            String userId = YamlLoader.getString(entry, "userId", "").trim();
-            if (userId.isEmpty()) {
-                log.warn("Skipping residentInstances entry with blank userId");
+            if (residentEntry.agentIds().contains("*")) {
+                addResidentTargets(residentEntry.userId(), configuredAgentIds);
                 continue;
             }
-            Object agentIdsObj = entry.get("agentIds");
-            if (!(agentIdsObj instanceof List<?> rawAgentIds) || rawAgentIds.isEmpty()) {
-                log.warn("Skipping residentInstances entry for user {} without agentIds", userId);
-                continue;
-            }
-
-            List<String> agentIds = rawAgentIds.stream()
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .map(String::trim)
-                .filter(id -> !id.isEmpty())
-                .toList();
-            if (agentIds.contains("*")) {
-                addResidentTargets(userId, configuredAgentIds);
-                continue;
-            }
-            List<String> validAgentIds = agentIds.stream().filter(agentId -> {
-                boolean exists = configuredAgentIds.contains(agentId);
-                if (!exists) {
-                    log.warn("Skipping unknown resident agent {} for user {}", agentId, userId);
-                }
-                return exists;
-            }).toList();
-            addResidentTargets(userId, validAgentIds);
+            addResidentTargets(residentEntry.userId(), filterValidResidentAgentIds(residentEntry.userId(),
+                residentEntry.agentIds(), configuredAgentIds));
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private ResidentEntry parseResidentEntry(Object entryObj) {
+        if (!(entryObj instanceof Map<?, ?> rawEntry)) {
+            return null;
+        }
+        Map<String, Object> entry = (Map<String, Object>) rawEntry;
+        String userId = YamlLoader.getString(entry, "userId", "").trim();
+        if (userId.isEmpty()) {
+            log.warn("Skipping residentInstances entry with blank userId");
+            return null;
+        }
+        Object agentIdsObj = entry.get("agentIds");
+        if (!(agentIdsObj instanceof List<?> rawAgentIds) || rawAgentIds.isEmpty()) {
+            log.warn("Skipping residentInstances entry for user {} without agentIds", userId);
+            return null;
+        }
+        List<String> agentIds = rawAgentIds.stream()
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
+            .map(String::trim)
+            .filter(id -> !id.isEmpty())
+            .toList();
+        return new ResidentEntry(userId, agentIds);
+    }
+
+    private List<String> filterValidResidentAgentIds(String userId, List<String> agentIds, List<String> configuredAgentIds) {
+        return agentIds.stream().filter(agentId -> {
+            boolean exists = configuredAgentIds.contains(agentId);
+            if (!exists) {
+                log.warn("Skipping unknown resident agent {} for user {}", agentId, userId);
+            }
+            return exists;
+        }).toList();
     }
 
     private void addResidentTargets(String userId, List<String> agentIds) {
@@ -1352,60 +1364,68 @@ public class AgentConfigService {
      * @return map containing id, name, provider, and model of the created agent
      */
     public Map<String, Object> createAgent(String id, String name) {
-        // Validate ID format
-        if (!id.matches("^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$") || id.length() < 2) {
-            throw new IllegalArgumentException(
-                "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only "
-                    + "(no leading/trailing hyphens)");
-        }
-
-        // Check duplicate ID
-        if (findAgent(id) != null) {
-            throw new IllegalArgumentException("Agent with ID '" + id + "' already exists");
-        }
-
-        // Check duplicate name
-        for (AgentRegistryEntry entry : registry) {
-            if (entry.name().equals(name)) {
-                throw new IllegalArgumentException("Agent with name '" + name + "' already exists");
-            }
-        }
-
+        validateNewAgentId(id);
+        ensureAgentNameUnique(name);
         try {
-            // Create directory structure
             Path agentDir = getAgentsDir().resolve(id);
             Path configDir = agentDir.resolve("config");
-            Files.createDirectories(configDir.resolve("skills"));
-
-            // Copy config template from universal-agent or use defaults
-            Path templateConfig = getAgentsDir().resolve("universal-agent").resolve("config").resolve("config.yaml");
-            Path targetConfig = configDir.resolve("config.yaml");
-            if (Files.exists(templateConfig)) {
-                Files.copy(templateConfig, targetConfig);
-            } else {
-                Files.writeString(targetConfig, "GOOSE_PROVIDER: openai\nGOOSE_MODEL: gpt-4o\n");
-            }
-
-            // Write empty secrets.yaml
-            Files.writeString(configDir.resolve("secrets.yaml"), "");
-
-            // Write AGENTS.md
-            Files.writeString(agentDir.resolve("AGENTS.md"), "# " + name + "\n");
-
-            // Update config.yaml on disk
+            Path targetConfig = createAgentDirectoryStructure(agentDir, configDir);
+            seedAgentFiles(agentDir, configDir, name, targetConfig);
             updateAgentsYaml(id, name, false);
-
-            // Update in-memory registry and invalidate cache
-            registry.add(new AgentRegistryEntry(id, name));
-            invalidateCache(id);
-
-            // Read provider/model from created config
+            registerCreatedAgent(id, name);
             Map<String, Object> config = YamlLoader.load(targetConfig);
             return Map.of("id", id, "name", name, "provider", config.getOrDefault("GOOSE_PROVIDER", ""), "model",
                 config.getOrDefault("GOOSE_MODEL", ""));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to create agent: " + id, e);
         }
+    }
+
+    private void validateNewAgentId(String id) {
+        if (!id.matches("^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$") || id.length() < 2) {
+            throw new IllegalArgumentException(
+                "Agent ID must be at least 2 chars, lowercase letters, numbers, and hyphens only "
+                    + "(no leading/trailing hyphens)");
+        }
+        if (findAgent(id) != null) {
+            throw new IllegalArgumentException("Agent with ID '" + id + "' already exists");
+        }
+    }
+
+    private void ensureAgentNameUnique(String name) {
+        for (AgentRegistryEntry entry : registry) {
+            if (entry.name().equals(name)) {
+                throw new IllegalArgumentException("Agent with name '" + name + "' already exists");
+            }
+        }
+    }
+
+    private Path createAgentDirectoryStructure(Path agentDir, Path configDir) throws IOException {
+        Files.createDirectories(configDir.resolve("skills"));
+        return configDir.resolve("config.yaml");
+    }
+
+    private void seedAgentFiles(Path agentDir, Path configDir, String name, Path targetConfig) throws IOException {
+        copyOrSeedDefaultConfig(targetConfig);
+        Files.writeString(configDir.resolve("secrets.yaml"), "");
+        Files.writeString(agentDir.resolve("AGENTS.md"), "# " + name + "\n");
+    }
+
+    private void copyOrSeedDefaultConfig(Path targetConfig) throws IOException {
+        Path templateConfig = getAgentsDir().resolve("universal-agent").resolve("config").resolve("config.yaml");
+        if (Files.exists(templateConfig)) {
+            Files.copy(templateConfig, targetConfig);
+            return;
+        }
+        Files.writeString(targetConfig, "GOOSE_PROVIDER: openai\nGOOSE_MODEL: gpt-4o\n");
+    }
+
+    private void registerCreatedAgent(String id, String name) {
+        registry.add(new AgentRegistryEntry(id, name));
+        invalidateCache(id);
+    }
+
+    private record ResidentEntry(String userId, List<String> agentIds) {
     }
 
     /**

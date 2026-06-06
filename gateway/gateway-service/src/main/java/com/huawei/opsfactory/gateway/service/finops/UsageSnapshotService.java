@@ -193,47 +193,65 @@ public class UsageSnapshotService {
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
-                String sessionId = rs.getString("id");
-                if (sessionId == null || sessionId.isBlank()) {
-                    continue;
+                SessionUsageRecord record = readSessionRow(rs, userAgent, messageStats);
+                if (record != null) {
+                    records.add(record);
                 }
-                String recipeJson = rs.getString("recipe_json");
-                String modelConfigJson = rs.getString("model_config_json");
-                Map<String, Object> recipe = parseMap(recipeJson);
-                Map<String, Object> modelConfig = parseMap(modelConfigJson);
-                MessageStats stats = messageStats.getOrDefault(sessionId, MessageStats.EMPTY);
-                String name = rs.getString("name");
-                records.add(new SessionUsageRecord(
-                    sessionId,
-                    userAgent.userId(),
-                    userAgent.agentId(),
-                    name,
-                    normalizeSessionType(rs.getString("session_type"), rs.getString("schedule_id")),
-                    rs.getString("working_dir"),
-                    timeParser.parseInstant(rs.getObject("created_at")),
-                    timeParser.parseInstant(rs.getObject("updated_at")),
-                    longValue(rs.getObject("total_tokens")),
-                    longValue(rs.getObject("input_tokens")),
-                    longValue(rs.getObject("output_tokens")),
-                    longValue(rs.getObject("accumulated_total_tokens")),
-                    longValue(rs.getObject("accumulated_input_tokens")),
-                    longValue(rs.getObject("accumulated_output_tokens")),
-                    rs.getString("schedule_id"),
-                    blankToUnknown(rs.getString("provider_name")),
-                    extractModelName(modelConfig),
-                    rs.getString("goose_mode"),
-                    rs.getString("thread_id"),
-                    stats.messageCount(),
-                    stats.userMessageCount(),
-                    stats.assistantMessageCount(),
-                    stats.toolResponseCount(),
-                    buildLabel(name, recipe, stats.firstUserText()),
-                    modelConfig,
-                    recipe
-                ));
             }
         }
         return records;
+    }
+
+    private SessionUsageRecord readSessionRow(ResultSet rs, UserAgent userAgent, Map<String, MessageStats> messageStats)
+        throws SQLException {
+        String sessionId = rs.getString("id");
+        if (sessionId == null || sessionId.isBlank()) {
+            return null;
+        }
+        Map<String, Object> recipe = parseSessionRecipe(rs);
+        Map<String, Object> modelConfig = parseSessionModelConfig(rs);
+        MessageStats stats = messageStats.getOrDefault(sessionId, MessageStats.EMPTY);
+        return toSessionUsageRecord(rs, userAgent, sessionId, recipe, modelConfig, stats);
+    }
+
+    private Map<String, Object> parseSessionRecipe(ResultSet rs) throws SQLException {
+        return parseMap(rs.getString("recipe_json"));
+    }
+
+    private Map<String, Object> parseSessionModelConfig(ResultSet rs) throws SQLException {
+        return parseMap(rs.getString("model_config_json"));
+    }
+
+    private SessionUsageRecord toSessionUsageRecord(ResultSet rs, UserAgent userAgent, String sessionId,
+        Map<String, Object> recipe, Map<String, Object> modelConfig, MessageStats stats) throws SQLException {
+        String name = rs.getString("name");
+        return new SessionUsageRecord(
+            sessionId,
+            userAgent.userId(),
+            userAgent.agentId(),
+            name,
+            normalizeSessionType(rs.getString("session_type"), rs.getString("schedule_id")),
+            rs.getString("working_dir"),
+            timeParser.parseInstant(rs.getObject("created_at")),
+            timeParser.parseInstant(rs.getObject("updated_at")),
+            longValue(rs.getObject("total_tokens")),
+            longValue(rs.getObject("input_tokens")),
+            longValue(rs.getObject("output_tokens")),
+            longValue(rs.getObject("accumulated_total_tokens")),
+            longValue(rs.getObject("accumulated_input_tokens")),
+            longValue(rs.getObject("accumulated_output_tokens")),
+            rs.getString("schedule_id"),
+            blankToUnknown(rs.getString("provider_name")),
+            extractModelName(modelConfig),
+            rs.getString("goose_mode"),
+            rs.getString("thread_id"),
+            stats.messageCount(),
+            stats.userMessageCount(),
+            stats.assistantMessageCount(),
+            stats.toolResponseCount(),
+            buildLabel(name, recipe, stats.firstUserText()),
+            modelConfig,
+            recipe);
     }
 
     private List<SessionMessageRecord> readMessages(Connection connection, UserAgent userAgent) throws SQLException {

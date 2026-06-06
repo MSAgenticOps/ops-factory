@@ -65,7 +65,7 @@ component_name() {
         onlyoffice) echo "OnlyOffice" ;;
         langfuse) echo "Langfuse" ;;
         gateway) echo "Gateway" ;;
-        knowledge) echo "Knowledge" ;;
+        knowledge|knowledge-service) echo "Knowledge" ;;
         business-intelligence) echo "Business Intelligence" ;;
         skill-market) echo "Skill Market" ;;
         exporter) echo "Exporter" ;;
@@ -84,7 +84,7 @@ is_optional_component() {
 }
 
 # === Component validation ===
-VALID_COMPONENTS="onlyoffice langfuse gateway knowledge business-intelligence skill-market operation-intelligence finops exporter control-center webapp"
+VALID_COMPONENTS="onlyoffice langfuse gateway knowledge knowledge-service business-intelligence skill-market operation-intelligence finops exporter control-center webapp"
 
 validate_component() {
     local comp="$1"
@@ -116,7 +116,9 @@ startup_one() {
             "${CTL_LANGFUSE}" startup "$@"
             ;;
         gateway)    "${CTL_GATEWAY}" startup "$@" ;;
-        knowledge)  "${CTL_KNOWLEDGE}" startup "$@" ;;
+        knowledge|knowledge-service)
+            "${CTL_KNOWLEDGE}" startup "$@"
+            ;;
         business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" startup "$@" ;;
         skill-market) "${CTL_SKILL_MARKET}" startup "$@" ;;
         operation-intelligence)
@@ -169,7 +171,7 @@ shutdown_one() {
         onlyoffice) "${CTL_ONLYOFFICE}" shutdown ;;
         langfuse)   "${CTL_LANGFUSE}" shutdown ;;
         gateway)    "${CTL_GATEWAY}" shutdown ;;
-        knowledge)  "${CTL_KNOWLEDGE}" shutdown ;;
+        knowledge|knowledge-service) "${CTL_KNOWLEDGE}" shutdown ;;
         business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" shutdown ;;
         skill-market) "${CTL_SKILL_MARKET}" shutdown ;;
         operation-intelligence) "${CTL_OPERATION_INTELLIGENCE}" shutdown ;;
@@ -191,7 +193,7 @@ status_one() {
                 "${CTL_LANGFUSE}" status || return 1
             fi ;;
         gateway)  "${CTL_GATEWAY}" status  || return 1 ;;
-        knowledge) "${CTL_KNOWLEDGE}" status || return 1 ;;
+        knowledge|knowledge-service) "${CTL_KNOWLEDGE}" status || return 1 ;;
         business-intelligence)
             "${CTL_BUSINESS_INTELLIGENCE}" status || return 1 ;;
         skill-market)

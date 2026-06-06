@@ -461,101 +461,115 @@ public class InstanceManager {
         ReentrantLock lock = spawnLocks.computeIfAbsent(key, k -> new ReentrantLock());
         lock.lock();
         try {
-            // Double-check after acquiring lock
-            ManagedInstance existing = instances.get(key);
-            if (existing != null && existing.getStatus() == ManagedInstance.Status.RUNNING) {
-                existing.touch();
-                log.info("[INSTANCE] concurrent spawn reused existing instance {}:{} port={} pid={} totalMs={}",
-                    agentId, userId, existing.getPort(), existing.getPid(), System.currentTimeMillis() - spawnStart);
+            ManagedInstance existing = reuseExistingInstanceIfRunning(key, agentId, userId, spawnStart);
+            if (existing != null) {
                 return existing;
             }
 
-            // Check instance limits
-            int maxPerUser = properties.getLimits().getMaxInstancesPerUser();
-            int maxGlobal = properties.getLimits().getMaxInstancesGlobal();
-            long userCount = instances.values()
-                .stream()
-                .filter(i -> i.getUserId().equals(userId) && i.getStatus() == ManagedInstance.Status.RUNNING)
-                .count();
-            if (userCount >= maxPerUser) {
-                throw new IllegalStateException("Per-user instance limit reached (" + maxPerUser + ")");
-            }
-            if (instances.size() >= maxGlobal) {
-                throw new IllegalStateException("Global instance limit reached (" + maxGlobal + ")");
-            }
-
-            long prepareStart = System.currentTimeMillis();
-            Path runtimeRoot = runtimePreparer.prepare(agentId, userId);
-            // Seed per-user memory before goosed launches so the new session loads the agent's
-            // preset memory. Idempotent (one-time marker), shared with the memory tab's seed path.
-            agentConfigService.ensureMemorySeeded(userId, agentId);
-            // Seed the agent's default scheduled tasks (e.g. fo-copilot ticket-watch-loop +
-            // memory-maintenance) before launch so goosed registers them with its in-process cron on
-            // startup. Idempotent (one-time marker), so the user's later pauses/deletes in the
-            // Scheduler tab stick. Only fires the cron reliably for resident instances.
-            agentConfigService.ensureSchedulesSeeded(userId, agentId);
-            resetStuckRunningSchedules(runtimeRoot);
-            int port = portAllocator.allocate();
-            long prepareMs = System.currentTimeMillis() - prepareStart;
-
-            log.info("Preparing to spawn goosed for {}:{} on port {}, runtimeRoot={}, goosedBin={}", agentId, userId,
-                port, runtimeRoot, properties.getGoosedBin());
-
-            Map<String, String> env = buildEnvironment(agentId, userId, port, runtimeRoot);
-            String instanceSecret = env.get("GOOSE_SERVER__SECRET_KEY");
-
-            ProcessBuilder pb = new ProcessBuilder(properties.getGoosedBin(), "agent");
-            pb.directory(new File(runtimeRoot.toString()));
-            pb.environment().putAll(env);
-            pb.redirectErrorStream(true);
-
-            long processStart = System.currentTimeMillis();
-            log.info("Spawning goosed for {}:{} on port {}, command: {} agent, TLS={}", agentId, userId, port,
-                properties.getGoosedBin(), env.get("GOOSE_TLS"));
-            Process process = pb.start();
-            long pid = ProcessUtil.getPid(process);
-            long processStartMs = System.currentTimeMillis() - processStart;
-            log.info("goosed process started for {}:{} on port {} with pid={}, GOOSE_TLS env={}", agentId, userId, port,
-                pid, env.get("GOOSE_TLS"));
-
-            // Drain stdout/stderr to prevent pipe buffer full → goosed write() blocks → tokio deadlock.
-            // goosed's tracing subscriber writes every log to both file and stderr; if the pipe buffer
-            // (~64KB) fills up, the write() syscall blocks a tokio worker thread, freezing the runtime.
-            Thread.ofPlatform().daemon(true).name("goosed-drain-" + agentId + "-" + userId).start(() -> {
-                try (var in = process.getInputStream()) {
-                    byte[] buf = new byte[8192];
-                    long totalBytes = 0;
-                    int bytesRead;
-                    while ((bytesRead = in.read(buf)) != -1) {
-                        totalBytes += bytesRead;
-                    }
-                    log.debug("Drain thread for {}:{} finished, total bytes drained: {}", agentId, userId, totalBytes);
-                } catch (java.io.IOException e) {
-                    log.debug("Drain thread for {}:{} ended with IOException: {}", agentId, userId, e.getMessage());
-                }
-            });
-
-            ManagedInstance instance = new ManagedInstance(agentId, userId, port, pid, process, instanceSecret);
-            instances.put(key, instance);
-
-            long readyStart = System.currentTimeMillis();
-            log.debug("Starting health check for {}:{} on port {} (pid={}), URL: {}", agentId, userId, port, pid,
-                goosedBaseUrl(port) + "/status");
-            waitForReady(port, process);
-            long readyMs = System.currentTimeMillis() - readyStart;
-            instance.setStatus(ManagedInstance.Status.RUNNING);
-            log.info("Instance {}:{} ready on port {} (pid={})", agentId, userId, port, pid);
-            log.info(
-                "[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} "
-                    + "totalMs={}",
-                agentId, userId, port, pid, prepareMs, processStartMs, readyMs,
-                System.currentTimeMillis() - spawnStart);
-            return instance;
+            enforceInstanceLimits(userId);
+            SpawnPreparation preparation = prepareRuntimeForSpawn(agentId, userId);
+            SpawnedProcess spawned = startGoosedProcess(agentId, userId, preparation);
+            startDrainThread(agentId, userId, spawned.process());
+            return registerAndWaitReady(key, agentId, userId, spawnStart, preparation, spawned);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to spawn instance for " + agentId + ":" + userId, e);
         } finally {
             lock.unlock();
         }
+    }
+
+    private ManagedInstance reuseExistingInstanceIfRunning(String key, String agentId, String userId, long spawnStart) {
+        ManagedInstance existing = instances.get(key);
+        if (existing == null || existing.getStatus() != ManagedInstance.Status.RUNNING) {
+            return null;
+        }
+        existing.touch();
+        log.info("[INSTANCE] concurrent spawn reused existing instance {}:{} port={} pid={} totalMs={}", agentId, userId,
+            existing.getPort(), existing.getPid(), System.currentTimeMillis() - spawnStart);
+        return existing;
+    }
+
+    private void enforceInstanceLimits(String userId) {
+        int maxPerUser = properties.getLimits().getMaxInstancesPerUser();
+        int maxGlobal = properties.getLimits().getMaxInstancesGlobal();
+        long userCount = instances.values()
+            .stream()
+            .filter(i -> i.getUserId().equals(userId) && i.getStatus() == ManagedInstance.Status.RUNNING)
+            .count();
+        if (userCount >= maxPerUser) {
+            throw new IllegalStateException("Per-user instance limit reached (" + maxPerUser + ")");
+        }
+        if (instances.size() >= maxGlobal) {
+            throw new IllegalStateException("Global instance limit reached (" + maxGlobal + ")");
+        }
+    }
+
+    private SpawnPreparation prepareRuntimeForSpawn(String agentId, String userId) {
+        long prepareStart = System.currentTimeMillis();
+        Path runtimeRoot = runtimePreparer.prepare(agentId, userId);
+        agentConfigService.ensureMemorySeeded(userId, agentId);
+        agentConfigService.ensureSchedulesSeeded(userId, agentId);
+        resetStuckRunningSchedules(runtimeRoot);
+        int port = portAllocator.allocate();
+        long prepareMs = System.currentTimeMillis() - prepareStart;
+
+        log.info("Preparing to spawn goosed for {}:{} on port {}, runtimeRoot={}, goosedBin={}", agentId, userId, port,
+            runtimeRoot, properties.getGoosedBin());
+        Map<String, String> env = buildEnvironment(agentId, userId, port, runtimeRoot);
+        return new SpawnPreparation(runtimeRoot, port, env, env.get("GOOSE_SERVER__SECRET_KEY"), prepareMs);
+    }
+
+    private SpawnedProcess startGoosedProcess(String agentId, String userId, SpawnPreparation preparation)
+        throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(properties.getGoosedBin(), "agent");
+        pb.directory(new File(preparation.runtimeRoot().toString()));
+        pb.environment().putAll(preparation.env());
+        pb.redirectErrorStream(true);
+
+        long processStart = System.currentTimeMillis();
+        log.info("Spawning goosed for {}:{} on port {}, command: {} agent, TLS={}", agentId, userId, preparation.port(),
+            properties.getGoosedBin(), preparation.env().get("GOOSE_TLS"));
+        Process process = pb.start();
+        long pid = ProcessUtil.getPid(process);
+        long processStartMs = System.currentTimeMillis() - processStart;
+        log.info("goosed process started for {}:{} on port {} with pid={}, GOOSE_TLS env={}", agentId, userId,
+            preparation.port(), pid, preparation.env().get("GOOSE_TLS"));
+        return new SpawnedProcess(process, pid, processStartMs, preparation.instanceSecret());
+    }
+
+    private void startDrainThread(String agentId, String userId, Process process) {
+        Thread.ofPlatform().daemon(true).name("goosed-drain-" + agentId + "-" + userId).start(() -> {
+            try (var in = process.getInputStream()) {
+                byte[] buf = new byte[8192];
+                long totalBytes = 0;
+                int bytesRead;
+                while ((bytesRead = in.read(buf)) != -1) {
+                    totalBytes += bytesRead;
+                }
+                log.debug("Drain thread for {}:{} finished, total bytes drained: {}", agentId, userId, totalBytes);
+            } catch (java.io.IOException e) {
+                log.debug("Drain thread for {}:{} ended with IOException: {}", agentId, userId, e.getMessage());
+            }
+        });
+    }
+
+    private ManagedInstance registerAndWaitReady(String key, String agentId, String userId, long spawnStart,
+        SpawnPreparation preparation, SpawnedProcess spawned) {
+        ManagedInstance instance = new ManagedInstance(agentId, userId, preparation.port(), spawned.pid(), spawned.process(),
+            spawned.instanceSecret());
+        instances.put(key, instance);
+
+        long readyStart = System.currentTimeMillis();
+        log.debug("Starting health check for {}:{} on port {} (pid={}), URL: {}", agentId, userId, preparation.port(),
+            spawned.pid(), goosedBaseUrl(preparation.port()) + "/status");
+        waitForReady(preparation.port(), spawned.process());
+        long readyMs = System.currentTimeMillis() - readyStart;
+        instance.setStatus(ManagedInstance.Status.RUNNING);
+        log.info("Instance {}:{} ready on port {} (pid={})", agentId, userId, preparation.port(), spawned.pid());
+        log.info("[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} totalMs={}",
+            agentId, userId, preparation.port(), spawned.pid(), preparation.prepareMs(), spawned.processStartMs(),
+            readyMs, System.currentTimeMillis() - spawnStart);
+        return instance;
     }
 
     /**
@@ -608,73 +622,71 @@ public class InstanceManager {
      */
     private Map<String, String> buildEnvironment(String agentId, String userId, int port, Path runtimeRoot) {
         Map<String, String> env = new HashMap<>();
-
-        // Load agent config.yaml and secrets.yaml as env vars
         Map<String, Object> agentConfig = agentConfigService.loadAgentConfigYaml(agentId);
         Map<String, Object> agentSecrets = agentConfigService.loadAgentSecretsYaml(agentId);
-        for (var entry : agentConfig.entrySet()) {
-            if (entry.getValue() instanceof String || entry.getValue() instanceof Number
-                || entry.getValue() instanceof Boolean) {
-                env.put(entry.getKey(), entry.getValue().toString());
-            }
-        }
-        for (var entry : agentSecrets.entrySet()) {
-            if (entry.getValue() instanceof String || entry.getValue() instanceof Number
-                || entry.getValue() instanceof Boolean) {
-                env.put(entry.getKey(), entry.getValue().toString());
-            }
-        }
+        applyScalarEnv(env, agentConfig);
+        applyScalarEnv(env, agentSecrets);
+        applyGooseCoreEnv(env, agentId, userId, port, runtimeRoot);
+        applyGatewayCallbackEnv(env);
+        applyGatewayApiPassword(env);
+        return env;
+    }
 
-        // Core goosed env
+    private void applyScalarEnv(Map<String, String> env, Map<String, Object> values) {
+        for (var entry : values.entrySet()) {
+            if (entry.getValue() instanceof String || entry.getValue() instanceof Number
+                || entry.getValue() instanceof Boolean) {
+                env.put(entry.getKey(), entry.getValue().toString());
+            }
+        }
+    }
+
+    private void applyGooseCoreEnv(Map<String, String> env, String agentId, String userId, int port, Path runtimeRoot) {
         env.put("GOOSE_PORT", String.valueOf(port));
         env.put("GOOSE_HOST", "127.0.0.1");
-        // Per-instance random secret key (32 bytes hex)
+        env.put("GOOSE_SERVER__SECRET_KEY", generateInstanceSecret());
+        env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
+        env.put("GOOSE_DISABLE_KEYRING", "1");
+        env.put("HOME", runtimeRoot.resolve("home").toString());
+        env.put("USERPROFILE", runtimeRoot.resolve("home").toString());
+
+        Path xdgConfigHome = agentConfigService.getGooseConfigHomeDir(userId, agentId).toAbsolutePath().normalize();
+        env.put("XDG_CONFIG_HOME", xdgConfigHome.toString());
+        log.info("buildEnvironment: XDG_CONFIG_HOME={} (per-user memory) for {}:{}", xdgConfigHome, agentId, userId);
+
+        boolean gooseTlsValue = properties.isGooseTls();
+        env.put("GOOSE_TLS", String.valueOf(gooseTlsValue));
+        log.info("buildEnvironment: properties.isGooseTls()={}, setting GOOSE_TLS={} for {}:{}", gooseTlsValue,
+            gooseTlsValue, agentId, userId);
+
+        env.put("RUST_LOG", "info,goose=debug,goosed=debug,rmcp=debug");
+        env.put("GOOSE_DEBUG", "1");
+        log.debug("goosed env for {}:{}: RUST_LOG={}, GOOSE_DEBUG=1, GOOSE_PORT={}, GOOSE_TLS={}", agentId, userId,
+            env.get("RUST_LOG"), port, env.get("GOOSE_TLS"));
+    }
+
+    private String generateInstanceSecret() {
         byte[] secretBytes = new byte[32];
         SECURE_RANDOM.nextBytes(secretBytes);
         StringBuilder hexSecret = new StringBuilder(64);
         for (byte b : secretBytes) {
             hexSecret.append(String.format(Locale.ROOT, "%02x", b));
         }
-        env.put("GOOSE_SERVER__SECRET_KEY", hexSecret.toString());
-        env.put("GOOSE_PATH_ROOT", runtimeRoot.toString());
-        env.put("GOOSE_DISABLE_KEYRING", "1");
-        env.put("HOME", runtimeRoot.resolve("home").toString());
-        env.put("USERPROFILE", runtimeRoot.resolve("home").toString());
-        // Memory is per-user state (not an agent capability): point XDG_CONFIG_HOME at this
-        // instance's per-user config home so goose loads/writes memory under
-        // <configHome>/goose/memory (sibling of data/schedule.json), isolated per user. The path is
-        // owned by AgentConfigService so this reader and the memory-tab reader cannot drift.
-        // In this deployment XDG_CONFIG_HOME is effectively memory-only — config.yaml/prompts/skills/
-        // provider all resolve via GOOSE_PATH_ROOT, so redirecting it touches nothing else.
-        Path xdgConfigHome = agentConfigService.getGooseConfigHomeDir(userId, agentId).toAbsolutePath().normalize();
-        env.put("XDG_CONFIG_HOME", xdgConfigHome.toString());
-        log.info("buildEnvironment: XDG_CONFIG_HOME={} (per-user memory) for {}:{}", xdgConfigHome, agentId, userId);
-        boolean gooseTlsValue = properties.isGooseTls();
-        env.put("GOOSE_TLS", String.valueOf(gooseTlsValue));
-        log.info("buildEnvironment: properties.isGooseTls()={}, setting GOOSE_TLS={} for {}:{}", gooseTlsValue,
-            gooseTlsValue, agentId, userId);
+        return hexSecret.toString();
+    }
 
-        // Enable debug logging for goose internals, but keep rustls/hyper at info
-        // to avoid tracing_log deadlock in TLS handshake (rustls debug logs go through
-        // tracing_log bridge which can deadlock the tokio runtime)
-        env.put("RUST_LOG", "info,goose=debug,goosed=debug,rmcp=debug");
-        env.put("GOOSE_DEBUG", "1");
-        log.debug("goosed env for {}:{}: RUST_LOG={}, GOOSE_DEBUG=1, GOOSE_PORT={}, GOOSE_TLS={}", agentId, userId,
-            env.get("RUST_LOG"), port, env.get("GOOSE_TLS"));
-
-        // Gateway self-URL for MCP extensions that call back to the gateway
+    private void applyGatewayCallbackEnv(Map<String, String> env) {
         String gatewayScheme = serverSslEnabled ? "https" : "http";
         env.put("GATEWAY_URL", gatewayScheme + "://127.0.0.1:" + serverPort);
         if (serverSslEnabled) {
             env.put("NODE_TLS_REJECT_UNAUTHORIZED", "0");
         }
+    }
 
-        // Gateway API password for goosed process
+    private void applyGatewayApiPassword(Map<String, String> env) {
         if (gatewayApiPassword != null && !gatewayApiPassword.isEmpty()) {
             env.put("GATEWAY_API_PASSWORD", gatewayApiPassword);
         }
-
-        return env;
     }
 
     /**
@@ -770,6 +782,13 @@ public class InstanceManager {
      */
     public Collection<ManagedInstance> getAllInstances() {
         return instances.values();
+    }
+
+    private record SpawnPreparation(Path runtimeRoot, int port, Map<String, String> env, String instanceSecret,
+        long prepareMs) {
+    }
+
+    private record SpawnedProcess(Process process, long pid, long processStartMs, String instanceSecret) {
     }
 
     /**

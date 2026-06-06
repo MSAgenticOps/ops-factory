@@ -746,55 +746,77 @@ public class ReplyController {
         }
         try {
             JsonNode root = MAPPER.readTree(json);
-            JsonNode sessionNode = root.get("session");
-            if (sessionNode == null || sessionNode.isNull()) {
-                log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} noSessionNode jsonLen={}", agentId,
-                    userId, sessionId, json != null ? json.length() : 0);
+            JsonNode conversation = extractConversationNode(root, agentId, userId, sessionId, json);
+            if (conversation == null) {
                 return;
             }
-            JsonNode conv = sessionNode.get("conversation");
-            if (conv == null || !conv.isArray()) {
-                log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} noConversation jsonLen={}", agentId,
-                    userId, sessionId, json != null ? json.length() : 0);
-                return;
-            }
-
-            int total = conv.size();
-            int limit = Math.min(total, 30);
-            List<String> head = new ArrayList<>(limit);
-            int createdCount = 0;
-            int inversionCount = 0;
-            String prevRole = null;
-
-            for (int i = 0; i < total; i++) {
-                JsonNode m = conv.get(i);
-                String role = m.hasNonNull("role") ? m.get("role").asText() : "";
-
-                if (prevRole != null && "assistant".equals(prevRole) && "user".equals(role)) {
-                    inversionCount++;
-                }
-                if ("user".equals(role) || "assistant".equals(role)) {
-                    prevRole = prevRole == null ? role : prevRole;
-                }
-                prevRole = role;
-
-                if (hasCreatedTimestamp(m)) {
-                    createdCount++;
-                }
-
-                if (i < limit) {
-                    head.add(buildDigestEntry(i, m, role));
-                }
-            }
-
-            log.debug(
-                "[CHAT-ORDER] resume agentId={} userId={} sessionId={} total={} createdCount={} "
-                    + "inversionCount={} head={}",
-                agentId, userId, sessionId, total, createdCount, inversionCount, head);
+            ConversationDigest digest = buildConversationDigest(conversation);
+            logConversationDigest(agentId, userId, sessionId, digest);
         } catch (JsonProcessingException e) {
             log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} parseFailed err={}", agentId, userId,
                 sessionId, e.getMessage());
         }
+    }
+
+    private JsonNode extractConversationNode(JsonNode root, String agentId, String userId, String sessionId, String json) {
+        JsonNode sessionNode = root.get("session");
+        if (sessionNode == null || sessionNode.isNull()) {
+            log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} noSessionNode jsonLen={}", agentId, userId,
+                sessionId, json != null ? json.length() : 0);
+            return null;
+        }
+        JsonNode conversation = sessionNode.get("conversation");
+        if (conversation == null || !conversation.isArray()) {
+            log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} noConversation jsonLen={}", agentId, userId,
+                sessionId, json != null ? json.length() : 0);
+            return null;
+        }
+        return conversation;
+    }
+
+    private ConversationDigest buildConversationDigest(JsonNode conversation) {
+        int total = conversation.size();
+        int limit = Math.min(total, 30);
+        List<String> head = new ArrayList<>(limit);
+        int createdCount = 0;
+        int inversionCount = 0;
+        String prevRole = null;
+
+        for (int i = 0; i < total; i++) {
+            JsonNode message = conversation.get(i);
+            String role = resolveRole(message);
+            if (isRoleInversion(prevRole, role)) {
+                inversionCount++;
+            }
+            prevRole = updatePreviousRole(prevRole, role);
+            if (hasCreatedTimestamp(message)) {
+                createdCount++;
+            }
+            if (i < limit) {
+                head.add(buildDigestEntry(i, message, role));
+            }
+        }
+        return new ConversationDigest(total, createdCount, inversionCount, head);
+    }
+
+    private String resolveRole(JsonNode message) {
+        return message.hasNonNull("role") ? message.get("role").asText() : "";
+    }
+
+    private boolean isRoleInversion(String prevRole, String role) {
+        return prevRole != null && "assistant".equals(prevRole) && "user".equals(role);
+    }
+
+    private String updatePreviousRole(String prevRole, String role) {
+        if ("user".equals(role) || "assistant".equals(role)) {
+            prevRole = prevRole == null ? role : prevRole;
+        }
+        return role;
+    }
+
+    private void logConversationDigest(String agentId, String userId, String sessionId, ConversationDigest digest) {
+        log.debug("[CHAT-ORDER] resume agentId={} userId={} sessionId={} total={} createdCount={} inversionCount={} head={}",
+            agentId, userId, sessionId, digest.total(), digest.createdCount(), digest.inversionCount(), digest.head());
     }
 
     private static boolean hasCreatedTimestamp(JsonNode message) {
@@ -815,6 +837,9 @@ public class ReplyController {
         String id = message.hasNonNull("id") ? message.get("id").asText() : "";
         String createdRaw = resolveCreatedRaw(message);
         return index + ":" + role + ":" + id + ":" + createdRaw;
+    }
+
+    private record ConversationDigest(int total, int createdCount, int inversionCount, List<String> head) {
     }
 
     private static String resolveCreatedRaw(JsonNode message) {

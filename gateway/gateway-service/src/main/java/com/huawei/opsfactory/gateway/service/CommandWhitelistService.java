@@ -349,49 +349,78 @@ public class CommandWhitelistService {
         boolean inDouble = false;
         for (int i = 0; i < command.length(); i++) {
             char c = command.charAt(i);
-            if (c == '\\' && !inSingle && i + 1 < command.length()) {
-                current.append(c).append(command.charAt(++i));
+            if (isEscaped(c, inSingle, i, command.length())) {
+                appendEscaped(current, command, i);
+                i++;
                 continue;
             }
-            if (c == '\'' && !inDouble) {
+            if (isSingleQuote(c, inDouble)) {
                 inSingle = !inSingle;
                 current.append(c);
                 continue;
             }
-            if (c == '"' && !inSingle) {
+            if (isDoubleQuote(c, inSingle)) {
                 inDouble = !inDouble;
                 current.append(c);
                 continue;
             }
-            if (!inSingle && !inDouble) {
-                // Handle || (logical OR)
-                if (c == '|' && i + 1 < command.length() && command.charAt(i + 1) == '|') {
-                    parts.add(current.toString());
-                    current.setLength(0);
-                    // skip second |
-                    i++;
-                    continue;
-                }
-                // Handle && (logical AND)
-                if (c == '&' && i + 1 < command.length() && command.charAt(i + 1) == '&') {
-                    parts.add(current.toString());
-                    current.setLength(0);
-                    // skip second &
-                    i++;
-                    continue;
-                }
-                // Handle | (pipe) and ; (semicolon)
-                if (c == '|' || c == ';') {
-                    parts.add(current.toString());
-                    current.setLength(0);
-                    continue;
-                }
+            int skipCount = splitOnDelimiter(parts, current, command, i, c, inSingle, inDouble);
+            if (skipCount >= 0) {
+                i += skipCount;
+                continue;
             }
             current.append(c);
         }
-        if (current.length() > 0)
-            parts.add(current.toString());
+        flushCurrentPart(parts, current);
         return parts;
+    }
+
+    private boolean isEscaped(char c, boolean inSingle, int index, int length) {
+        return c == '\\' && !inSingle && index + 1 < length;
+    }
+
+    private void appendEscaped(StringBuilder current, String command, int index) {
+        current.append(command.charAt(index)).append(command.charAt(index + 1));
+    }
+
+    private boolean isSingleQuote(char c, boolean inDouble) {
+        return c == '\'' && !inDouble;
+    }
+
+    private boolean isDoubleQuote(char c, boolean inSingle) {
+        return c == '"' && !inSingle;
+    }
+
+    private int splitOnDelimiter(List<String> parts, StringBuilder current, String command, int index, char c,
+        boolean inSingle, boolean inDouble) {
+        if (inSingle || inDouble) {
+            return -1;
+        }
+        if (isDoubleDelimiter(command, index, c, '|')) {
+            flushCurrentPart(parts, current);
+            return 1;
+        }
+        if (isDoubleDelimiter(command, index, c, '&')) {
+            flushCurrentPart(parts, current);
+            return 1;
+        }
+        if (c == '|' || c == ';') {
+            flushCurrentPart(parts, current);
+            return 0;
+        }
+        return -1;
+    }
+
+    private boolean isDoubleDelimiter(String command, int index, char c, char expected) {
+        return c == expected && index + 1 < command.length() && command.charAt(index + 1) == expected;
+    }
+
+    private void flushCurrentPart(List<String> parts, StringBuilder current) {
+        if (current.length() == 0) {
+            return;
+        }
+        parts.add(current.toString());
+        current.setLength(0);
     }
 
     // ── Default Initialization ───────────────────────────────────────

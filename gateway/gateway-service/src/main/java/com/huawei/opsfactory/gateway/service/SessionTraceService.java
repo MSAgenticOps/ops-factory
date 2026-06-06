@@ -159,61 +159,73 @@ public class SessionTraceService implements DisposableBean {
 
     private void collect(TraceJob job) {
         try {
-            Files.createDirectories(job.jobDir);
-            if (!Files.isRegularFile(scriptPath)) {
-                throw new IllegalStateException("trace script not found: " + scriptPath);
-            }
-
-            Path stdout = job.jobDir.resolve("collector.stdout.log");
-            Path stderr = job.jobDir.resolve("collector.stderr.log");
-            List<String> command = List.of("bash", scriptPath.toString(), "--session", job.sessionId, "--user",
-                job.userId, "--agent", job.agentId, "--root", repoRoot.toString(), "--gateway-root",
-                gatewayRoot.toString(), "--out-dir", job.outDir.toString());
-
-            ProcessBuilder pb = new ProcessBuilder(command).directory(repoRoot.toFile())
-                .redirectOutput(stdout.toFile())
-                .redirectError(stderr.toFile());
-
+            TraceExecution execution = prepareTraceCollection(job);
             log.info("[SESSION-TRACE] start jobId={} userId={} agentId={} sessionId={}", job.jobId, job.userId,
                 job.agentId, job.sessionId);
-            Process process = pb.start();
-            boolean finished =
-                process.waitFor(COLLECTION_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                throw new IllegalStateException("trace collection timed out");
-            }
-            int exit = process.exitValue();
-            if (exit != 0) {
-                throw new IllegalStateException("trace collection failed with exit code " + exit);
-            }
-
-            Path generatedArchive = Path.of(job.outDir.toString() + ".tar.gz");
-            if (!Files.isRegularFile(generatedArchive)) {
-                throw new IllegalStateException("trace archive was not created");
-            }
-            String fileName =
-                "session-trace-" + job.userId + "-" + job.agentId + "-" + job.sessionId + "-" + job.jobId + ".tar.gz";
-            Path archive = job.jobDir.resolve(fileName).normalize();
-            Files.move(generatedArchive, archive, StandardCopyOption.REPLACE_EXISTING);
-            job.archivePath = archive.normalize();
-            job.fileName = fileName;
-            job.status = TraceStatus.SUCCEEDED;
-            job.message = "trace collection complete";
-            log.info("[SESSION-TRACE] succeeded jobId={} archive={}", job.jobId, archive);
+            runCollectorProcess(job, execution);
+            finalizeArchive(job);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            job.status = TraceStatus.FAILED;
-            job.message = "trace collection interrupted";
-            log.warn("[SESSION-TRACE] interrupted jobId={}", job.jobId);
+            markTraceFailure(job, "trace collection interrupted", true);
         } catch (IOException | IllegalStateException e) {
-            job.status = TraceStatus.FAILED;
-            job.message = e.getMessage() == null ? "trace collection failed" : e.getMessage();
-            log.warn("[SESSION-TRACE] failed jobId={} error={}", job.jobId, job.message);
+            markTraceFailure(job, e.getMessage() == null ? "trace collection failed" : e.getMessage(), false);
         } finally {
             job.completedAt = Instant.now();
             runningBySession.remove(job.sessionKey, job.jobId);
         }
+    }
+
+    private TraceExecution prepareTraceCollection(TraceJob job) throws IOException {
+        Files.createDirectories(job.jobDir);
+        if (!Files.isRegularFile(scriptPath)) {
+            throw new IllegalStateException("trace script not found: " + scriptPath);
+        }
+        Path stdout = job.jobDir.resolve("collector.stdout.log");
+        Path stderr = job.jobDir.resolve("collector.stderr.log");
+        List<String> command = List.of("bash", scriptPath.toString(), "--session", job.sessionId, "--user", job.userId,
+            "--agent", job.agentId, "--root", repoRoot.toString(), "--gateway-root", gatewayRoot.toString(), "--out-dir",
+            job.outDir.toString());
+        ProcessBuilder pb = new ProcessBuilder(command).directory(repoRoot.toFile()).redirectOutput(stdout.toFile())
+            .redirectError(stderr.toFile());
+        return new TraceExecution(pb);
+    }
+
+    private void runCollectorProcess(TraceJob job, TraceExecution execution) throws IOException, InterruptedException {
+        Process process = execution.processBuilder().start();
+        boolean finished = process.waitFor(COLLECTION_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+        if (!finished) {
+            process.destroyForcibly();
+            throw new IllegalStateException("trace collection timed out");
+        }
+        if (process.exitValue() != 0) {
+            throw new IllegalStateException("trace collection failed with exit code " + process.exitValue());
+        }
+    }
+
+    private void finalizeArchive(TraceJob job) throws IOException {
+        Path generatedArchive = Path.of(job.outDir.toString() + ".tar.gz");
+        if (!Files.isRegularFile(generatedArchive)) {
+            throw new IllegalStateException("trace archive was not created");
+        }
+        String fileName =
+            "session-trace-" + job.userId + "-" + job.agentId + "-" + job.sessionId + "-" + job.jobId + ".tar.gz";
+        Path archive = job.jobDir.resolve(fileName).normalize();
+        Files.move(generatedArchive, archive, StandardCopyOption.REPLACE_EXISTING);
+        job.archivePath = archive.normalize();
+        job.fileName = fileName;
+        job.status = TraceStatus.SUCCEEDED;
+        job.message = "trace collection complete";
+        log.info("[SESSION-TRACE] succeeded jobId={} archive={}", job.jobId, archive);
+    }
+
+    private void markTraceFailure(TraceJob job, String message, boolean interrupted) {
+        job.status = TraceStatus.FAILED;
+        job.message = message;
+        if (interrupted) {
+            log.warn("[SESSION-TRACE] interrupted jobId={}", job.jobId);
+            return;
+        }
+        log.warn("[SESSION-TRACE] failed jobId={} error={}", job.jobId, job.message);
     }
 
     /**
@@ -234,6 +246,9 @@ public class SessionTraceService implements DisposableBean {
             .map(job -> job.jobId)
             .toList()
             .forEach(this::deleteJob);
+    }
+
+    private record TraceExecution(ProcessBuilder processBuilder) {
     }
 
     private void cleanupExpiredTraceDirectories() {
