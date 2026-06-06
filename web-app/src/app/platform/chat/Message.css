@@ -372,12 +372,12 @@
 }
 
 .process-step-tool .process-step-content {
-    padding-top: 8px;
+    padding-top: 4px;
 }
 
 .process-step-node {
     position: absolute;
-    top: 8px;
+    top: 10px;
     left: 50%;
     width: 9px;
     height: 9px;
@@ -495,6 +495,8 @@
 
 .process-step-tool .tool-call-name {
     font-size: 0.96rem;
+    font-weight: 600;
+    color: var(--text-body, #3a4452);
 }
 
 .process-step-tool .tool-call-indicator {
