@@ -29,6 +29,11 @@ public class HostMachineController extends BaseHostController {
 
     /**
      * Creates the host controller instance.
+     *
+     * @param hostService the host service
+     * @param clusterService the cluster service
+     * @param businessServiceService the business service service
+     * @param hostGroupService the host group service
      */
     public HostMachineController(HostService hostService, ClusterService clusterService,
         BusinessServiceService businessServiceService, HostGroupService hostGroupService) {

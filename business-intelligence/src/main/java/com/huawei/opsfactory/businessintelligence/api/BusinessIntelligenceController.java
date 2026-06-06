@@ -40,6 +40,12 @@ public class BusinessIntelligenceController {
     private final BusinessIntelligenceService businessIntelligenceService;
     private final BusinessIntelligenceMetricsService metricsService;
 
+    /**
+     * Creates the business intelligence controller instance.
+     *
+     * @param businessIntelligenceService the business intelligence service
+     * @param metricsService the metrics service
+     */
     public BusinessIntelligenceController(BusinessIntelligenceService businessIntelligenceService,
                                            BusinessIntelligenceMetricsService metricsService) {
         this.businessIntelligenceService = businessIntelligenceService;

@@ -35,8 +35,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * REST controller for managing host-to-host relation edges and graph queries.
+ *
  * @deprecated Use {@link ClusterRelationController} instead. Host-level relations are replaced by cluster-level
  *             relations.
+ * @author x00000000
+ * @since 2026-05-09
  */
 @Deprecated
 
@@ -52,6 +56,9 @@ public class HostRelationController {
 
     /**
      * Creates the host relation controller instance.
+     *
+     * @param hostRelationService the host relation service
+     * @param businessServiceService the business service service
      */
     public HostRelationController(HostRelationService hostRelationService,
         BusinessServiceService businessServiceService) {

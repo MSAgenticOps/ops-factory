@@ -33,6 +33,11 @@ public class ChunkController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the chunk controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public ChunkController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

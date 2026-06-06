@@ -25,6 +25,11 @@ public class SystemController {
 
     private final KnowledgeProperties properties;
 
+    /**
+     * Creates the system controller instance.
+     *
+     * @param properties the knowledge properties
+     */
     public SystemController(KnowledgeProperties properties) {
         this.properties = properties;
     }

@@ -30,6 +30,11 @@ public class JobController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the job controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public JobController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

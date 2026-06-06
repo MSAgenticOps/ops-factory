@@ -24,6 +24,11 @@ public class StatsController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the stats controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public StatsController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

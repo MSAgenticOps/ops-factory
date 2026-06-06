@@ -28,6 +28,10 @@ public class ClusterMachineController extends BaseClusterController {
 
     /**
      * Creates the cluster controller instance.
+     *
+     * @param clusterService the cluster service
+     * @param hostService the host service
+     * @param hostGroupService the host group service
      */
     public ClusterMachineController(ClusterService clusterService, HostService hostService,
         HostGroupService hostGroupService) {

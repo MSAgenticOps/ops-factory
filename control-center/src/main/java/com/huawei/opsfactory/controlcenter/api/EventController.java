@@ -13,19 +13,24 @@ import java.util.Map;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
 
-@RestController
-@RestSchema(schemaId = "eventController")
-@RequestMapping("/api/control-center/events")
 /**
  * Event Controller.
  *
  * @author x00000000
  * @since 2026-05-27
  */
+@RestController
+@RestSchema(schemaId = "eventController")
+@RequestMapping("/api/control-center/events")
 public class EventController {
 
     private final EventStoreService eventStoreService;
 
+    /**
+     * Creates the event controller instance.
+     *
+     * @param eventStoreService the event store service
+     */
     public EventController(EventStoreService eventStoreService) {
         this.eventStoreService = eventStoreService;
     }

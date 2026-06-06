@@ -27,6 +27,9 @@ public abstract class BaseRemoteExecController {
 
     /**
      * Creates the base remote exec controller instance.
+     *
+     * @param remoteExecutionService the remote execution service
+     * @param commandWhitelistService the command whitelist service
      */
     public BaseRemoteExecController(RemoteExecutionService remoteExecutionService,
         CommandWhitelistService commandWhitelistService) {

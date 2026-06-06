@@ -39,6 +39,11 @@ public class SourceController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the source controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public SourceController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

@@ -41,6 +41,11 @@ public class DocumentController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the document controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public DocumentController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

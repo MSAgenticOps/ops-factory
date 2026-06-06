@@ -51,6 +51,11 @@ public abstract class BaseHostController {
 
     /**
      * Creates the base host controller instance.
+     *
+     * @param hostService the host service
+     * @param clusterService the cluster service
+     * @param businessServiceService the business service service
+     * @param hostGroupService the host group service
      */
     public BaseHostController(HostService hostService, ClusterService clusterService,
         BusinessServiceService businessServiceService, HostGroupService hostGroupService) {

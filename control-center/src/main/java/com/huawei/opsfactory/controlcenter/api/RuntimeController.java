@@ -13,19 +13,24 @@ import java.util.Map;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
 
-@RestController
-@RestSchema(schemaId = "runtimeController")
-@RequestMapping("/api/control-center/runtime")
 /**
  * Runtime Controller.
  *
  * @author x00000000
  * @since 2026-05-27
  */
+@RestController
+@RestSchema(schemaId = "runtimeController")
+@RequestMapping("/api/control-center/runtime")
 public class RuntimeController {
 
     private final GatewayRuntimeSourceClient gatewayRuntimeSourceClient;
 
+    /**
+     * Creates the runtime controller instance.
+     *
+     * @param gatewayRuntimeSourceClient the gateway runtime source client
+     */
     public RuntimeController(GatewayRuntimeSourceClient gatewayRuntimeSourceClient) {
         this.gatewayRuntimeSourceClient = gatewayRuntimeSourceClient;
     }

@@ -27,6 +27,11 @@ public class HostGroupController extends BaseHostGroupController {
 
     /**
      * Creates the host group controller instance.
+     *
+     * @param hostGroupService the host group service
+     * @param clusterService the cluster service
+     * @param businessServiceService the business service service
+     * @param hostService the host service
      */
     public HostGroupController(HostGroupService hostGroupService, ClusterService clusterService,
         BusinessServiceService businessServiceService, HostService hostService) {

@@ -33,6 +33,11 @@ public class ProfileController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the profile controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public ProfileController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

@@ -15,19 +15,24 @@ import java.util.Map;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
 
-@RestController
-@RestSchema(schemaId = "observabilityController")
-@RequestMapping("/api/control-center/observability")
 /**
  * Observability Controller.
  *
  * @author x00000000
  * @since 2026-05-27
  */
+@RestController
+@RestSchema(schemaId = "observabilityController")
+@RequestMapping("/api/control-center/observability")
 public class ObservabilityController {
 
     private final ObservabilityService observabilityService;
 
+    /**
+     * Creates the observability controller instance.
+     *
+     * @param observabilityService the observability service
+     */
     public ObservabilityController(ObservabilityService observabilityService) {
         this.observabilityService = observabilityService;
     }

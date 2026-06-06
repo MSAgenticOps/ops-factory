@@ -25,6 +25,9 @@ public class RemoteExecController extends BaseRemoteExecController {
 
     /**
      * Creates the remote exec controller instance.
+     *
+     * @param remoteExecutionService the remote execution service
+     * @param commandWhitelistService the command whitelist service
      */
     public RemoteExecController(RemoteExecutionService remoteExecutionService,
         CommandWhitelistService commandWhitelistService) {
