@@ -114,7 +114,8 @@ extensions:
       PYTHONPATH: config/mcp/control-center/.python-deps
       CONTROL_CENTER_URL: http://127.0.0.1:8094
       CONTROL_CENTER_SECRET_KEY: change-me
-    env_keys: []
+    env_keys:
+    - CONTROL_CENTER_SECRET_KEY
     timeout: 60
     bundled: null
     available_tools: []

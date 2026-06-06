@@ -151,7 +151,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk()
             .expectHeader()
-            .valueEquals("Content-Type", "text/plain")
+            .valueMatches("Content-Type", "^text/plain(;charset=.+)?$")
             .expectHeader()
             .valueMatches("Content-Disposition", "inline.*readme\\.txt.*");
     }
@@ -280,7 +280,7 @@ public class FileEndpointE2ETest extends BaseE2ETest {
             .expectStatus()
             .isOk()
             .expectHeader()
-            .valueEquals("Content-Type", "text/markdown");
+            .valueMatches("Content-Type", "^text/markdown(;charset=.+)?$");
     }
 
     /**

@@ -1081,6 +1081,8 @@ public class GatewayProperties {
 
         private int maxTimeout = 120;
 
+        private boolean strictHostKeyChecking;
+
         /**
          * Gets the default timeout.
          *
@@ -1115,6 +1117,24 @@ public class GatewayProperties {
          */
         public void setMaxTimeout(int maxTimeout) {
             this.maxTimeout = maxTimeout;
+        }
+
+        /**
+         * Gets whether SSH host key checking is strict for remote execution.
+         *
+         * @return whether SSH host key checking is strict
+         */
+        public boolean isStrictHostKeyChecking() {
+            return strictHostKeyChecking;
+        }
+
+        /**
+         * Sets whether SSH host key checking is strict for remote execution.
+         *
+         * @param strictHostKeyChecking whether SSH host key checking is strict
+         */
+        public void setStrictHostKeyChecking(boolean strictHostKeyChecking) {
+            this.strictHostKeyChecking = strictHostKeyChecking;
         }
     }
 

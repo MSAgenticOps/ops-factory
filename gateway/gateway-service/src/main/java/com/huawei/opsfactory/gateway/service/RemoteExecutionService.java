@@ -100,8 +100,9 @@ public class RemoteExecutionService {
             JSch jsch = new JSch();
             session = openSshSession(jsch, connection.host);
             channel = openExecChannel(session, cmdResolution.effectiveCommand);
-            return executeAndCapture(connection.context, channel, hostId, command, cmdResolution.effectiveCommand,
-                timeoutSeconds, startTime);
+            ExecutionCaptureRequest captureRequest = new ExecutionCaptureRequest(connection.context, hostId, command,
+                cmdResolution.effectiveCommand, timeoutSeconds, startTime);
+            return executeAndCapture(channel, captureRequest);
         } catch (JSchException | IOException e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());
@@ -147,15 +148,19 @@ public class RemoteExecutionService {
     }
 
     private void configureSshSecurity(JSch jsch, Session session) throws JSchException {
-        Path knownHosts = Path.of(System.getProperty("user.home"), ".ssh", "known_hosts");
-        if (Files.isRegularFile(knownHosts)) {
-            jsch.setKnownHosts(knownHosts.toString());
-        } else {
-            log.warn("SSH known_hosts file not found at {}; remote execution will reject unknown host keys", knownHosts);
+        boolean strictHostKeyChecking = properties.getRemoteExecution().isStrictHostKeyChecking();
+        if (strictHostKeyChecking) {
+            Path knownHosts = Path.of(System.getProperty("user.home"), ".ssh", "known_hosts");
+            if (Files.isRegularFile(knownHosts)) {
+                jsch.setKnownHosts(knownHosts.toString());
+            } else {
+                log.warn("SSH known_hosts file not found at {}; remote execution will reject unknown host keys",
+                    knownHosts);
+            }
         }
 
         Properties config = new Properties();
-        config.put("StrictHostKeyChecking", "yes");
+        config.put("StrictHostKeyChecking", strictHostKeyChecking ? "yes" : "no");
         config.put("cipher.s2c", "aes128-ctr,aes192-ctr,aes256-ctr");
         config.put("cipher.c2s", "aes128-ctr,aes192-ctr,aes256-ctr");
         config.put("mac.s2c", "hmac-sha2-256");
@@ -180,15 +185,16 @@ public class RemoteExecutionService {
         return channel;
     }
 
-    private Map<String, Object> executeAndCapture(ExecutionContext ctx, ChannelExec channel, String hostId, String command,
-        String effectiveCommand, int timeoutSeconds, long startTime) throws IOException, InterruptedException, JSchException {
+    private Map<String, Object> executeAndCapture(ChannelExec channel, ExecutionCaptureRequest request)
+        throws IOException, InterruptedException, JSchException {
         try (InputStream in = channel.getInputStream(); InputStream err = channel.getExtInputStream()) {
             ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
             ByteArrayOutputStream errorBuffer = new ByteArrayOutputStream();
             channel.connect();
-            readStreamsUntilDone(channel, in, err, outputBuffer, errorBuffer, timeoutSeconds, hostId);
-            return buildExecutionResult(ctx, channel, outputBuffer, errorBuffer, command, effectiveCommand,
-                System.currentTimeMillis() - startTime);
+            readStreamsUntilDone(channel, in, err, outputBuffer, errorBuffer, request.timeoutSeconds(),
+                request.hostId());
+            return buildExecutionResult(request.context(), channel, outputBuffer, errorBuffer, request.command(),
+                request.effectiveCommand(), System.currentTimeMillis() - request.startTime());
         }
     }
 
@@ -416,6 +422,15 @@ public class RemoteExecutionService {
             this.username = username;
             this.hostName = hostName;
         }
+    }
+
+    private record ExecutionCaptureRequest(
+        ExecutionContext context,
+        String hostId,
+        String command,
+        String effectiveCommand,
+        int timeoutSeconds,
+        long startTime) {
     }
 
     private static final class HostConnection {

@@ -15,9 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.lang.reflect.Method;
 import java.sql.ResultSet;
-import java.util.Map;
 
 /**
  * Focused tests for UsageSnapshotService session parsing helpers.
@@ -25,19 +23,13 @@ import java.util.Map;
 public class UsageSnapshotServiceTest {
     private UsageSnapshotService usageSnapshotService;
 
-    private Method readSessionRow;
-
     /**
      * Sets up the test fixture.
      *
-     * @throws Exception if reflection setup fails
      */
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         usageSnapshotService = new UsageSnapshotService(mock(AgentConfigService.class), new ObjectMapper());
-        readSessionRow = UsageSnapshotService.class.getDeclaredMethod("readSessionRow", ResultSet.class,
-            Class.forName("com.huawei.opsfactory.gateway.service.finops.UsageSnapshotService$UserAgent"), Map.class);
-        readSessionRow.setAccessible(true);
     }
 
     /**
@@ -67,9 +59,8 @@ public class UsageSnapshotServiceTest {
         when(rs.getString("goose_mode")).thenReturn("standard");
         when(rs.getString("thread_id")).thenReturn("thread-1");
 
-        Object userAgent = buildUserAgent("alice", "agent-a");
-        SessionUsageRecord session =
-            (SessionUsageRecord) readSessionRow.invoke(usageSnapshotService, rs, userAgent, Map.of());
+        UsageSnapshotService.UserAgent userAgent = new UsageSnapshotService.UserAgent("alice", "agent-a");
+        SessionUsageRecord session = usageSnapshotService.readSessionRow(rs, userAgent);
 
         assertEquals("session-1", session.id());
         assertEquals("alice", session.userId());
@@ -89,15 +80,8 @@ public class UsageSnapshotServiceTest {
         ResultSet rs = mock(ResultSet.class);
         when(rs.getString("id")).thenReturn(" ");
 
-        Object result = readSessionRow.invoke(usageSnapshotService, rs, buildUserAgent("alice", "agent-a"), Map.of());
+        Object result = usageSnapshotService.readSessionRow(rs, new UsageSnapshotService.UserAgent("alice", "agent-a"));
 
         assertEquals(null, result);
-    }
-
-    private Object buildUserAgent(String userId, String agentId) throws Exception {
-        Class<?> type = Class.forName("com.huawei.opsfactory.gateway.service.finops.UsageSnapshotService$UserAgent");
-        var constructor = type.getDeclaredConstructor(String.class, String.class);
-        constructor.setAccessible(true);
-        return constructor.newInstance(userId, agentId);
     }
 }
