@@ -15,6 +15,7 @@ import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphRel
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.GraphSchemaRegistry;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallFlow;
 import com.huawei.opsfactory.operationintelligence.qos.model.FlowNode;
 import com.huawei.opsfactory.operationintelligence.service.CallChainService;
@@ -95,12 +96,17 @@ public class CallChainSubgraphService {
         requireText(request.getSolutionId(), "solutionId");
         String queryMode = resolveQueryMode(request.getMode());
         TimeRange timeRange = resolveTimeRange(request.getStartTime(), request.getEndTime());
-        List<Map<String, String>> conditions = List.of(Map.of(
-            "conditionKey", ENTRY_CONDITION_KEY,
-            "conditionValue", request.getMenuId().trim()));
-        CallChainTree callChainTree = callChainService.queryCallChain(
-            request.getSolutionType().trim(), request.getSolutionId().trim(), conditions, timeRange.startTime(),
-            timeRange.endTime(), queryMode);
+        QueryCallChainRequest queryRequest = new QueryCallChainRequest();
+        queryRequest.setSolutionType(request.getSolutionType().trim());
+        queryRequest.setSolutionId(request.getSolutionId().trim());
+        QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
+        condition.setConditionKey(ENTRY_CONDITION_KEY);
+        condition.setConditionValue(request.getMenuId().trim());
+        queryRequest.setCondition(List.of(condition));
+        queryRequest.setStartTime(timeRange.startTime());
+        queryRequest.setEndTime(timeRange.endTime());
+        queryRequest.setMode(queryMode);
+        CallChainTree callChainTree = callChainService.queryCallChain(queryRequest);
         OffsetDateTime generatedAt = OffsetDateTime.now();
         String subgraphId = "cc-subgraph-" + UUID.randomUUID().toString().replace("-", "");
         GraphSnapshot callChainGraph = buildGraphSnapshot(request, callChainTree, subgraphId, generatedAt, queryMode);

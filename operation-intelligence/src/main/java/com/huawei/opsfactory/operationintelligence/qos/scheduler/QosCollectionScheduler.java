@@ -9,6 +9,7 @@ import com.huawei.opsfactory.operationintelligence.qos.dv.DvClient;
 import com.huawei.opsfactory.operationintelligence.qos.dv.DvEnvironmentInfo;
 import com.huawei.opsfactory.operationintelligence.qos.model.AlarmDetailData;
 import com.huawei.opsfactory.operationintelligence.qos.model.AlarmInfo;
+import com.huawei.opsfactory.operationintelligence.qos.model.AlarmQueryRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.AlarmWeight;
 import com.huawei.opsfactory.operationintelligence.qos.model.DnCluster;
 import com.huawei.opsfactory.operationintelligence.qos.model.DnElement;
@@ -16,6 +17,7 @@ import com.huawei.opsfactory.operationintelligence.qos.model.DnRegistry;
 import com.huawei.opsfactory.operationintelligence.qos.model.IndicatorDetailData;
 import com.huawei.opsfactory.operationintelligence.qos.model.IndicatorNormalizeData;
 import com.huawei.opsfactory.operationintelligence.qos.model.IndicatorRawData;
+import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceDataQueryRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceDataResult;
 import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceIndicatorScope;
 import com.huawei.opsfactory.operationintelligence.qos.model.ProductConfigRule;
@@ -214,8 +216,13 @@ public class QosCollectionScheduler {
         for (DnElement element : elements) {
             List<String> dns = buildDns(batch.envInfo, element);
             for (PerformanceIndicatorScope scope : batch.envScopes) {
-                List<PerformanceDataResult> perfData = dvClient.fetchPerformanceData(batch.envInfo, scope.getMoType(),
-                    scope.getMeasUnitKey(), dns, batch.startTime, batch.endTime);
+                PerformanceDataQueryRequest request = new PerformanceDataQueryRequest();
+                request.setMoType(scope.getMoType());
+                request.setMeasUnitKey(scope.getMeasUnitKey());
+                request.setDns(dns);
+                request.setStartTime(batch.startTime);
+                request.setEndTime(batch.endTime);
+                List<PerformanceDataResult> perfData = dvClient.fetchPerformanceData(batch.envInfo, request);
                 if (perfData == null || perfData.isEmpty()) {
                     continue;
                 }
@@ -284,7 +291,12 @@ public class QosCollectionScheduler {
             List<DnElement> elements = cluster.getElements() != null ? cluster.getElements() : List.of();
             for (DnElement element : elements) {
                 List<String> alarmDns = buildDns(envInfo, element);
-                List<AlarmInfo> alarms = dvClient.fetchCurrentAlarms(envInfo, startTime, endTime, null, alarmDns);
+                AlarmQueryRequest request = new AlarmQueryRequest();
+                request.setStartTime(startTime);
+                request.setEndTime(endTime);
+                request.setSeverities(null);
+                request.setDns(alarmDns);
+                List<AlarmInfo> alarms = dvClient.fetchCurrentAlarms(envInfo, request);
                 if (alarms != null) {
                     allAlarms.addAll(alarms);
                 }
