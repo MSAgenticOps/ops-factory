@@ -597,7 +597,7 @@ public class HostService {
             checkHostIpDuplicate(null, host.get("ip").toString(), clusterIdObj.toString());
         }
 
-        persistHost(id, host, "Created host: id={}, name={}", id, host.get("name"));
+        persistHost(id, host, "Created host: id={}, name={}", new Object[] {id, host.get("name")});
         syncClusterMembership(id, host, true);
         return maskCredential(host);
     }
@@ -645,7 +645,7 @@ public class HostService {
         }
 
         host.put("updatedAt", Instant.now().toString());
-        persistHost(id, host, "Updated host: id={}", id);
+        persistHost(id, host, "Updated host: id={}", new Object[] {id});
         syncClusterMembership(id, host, body.containsKey("clusterId"));
         return maskCredential(host);
     }
@@ -873,7 +873,7 @@ public class HostService {
         }
     }
 
-    private void persistHost(String id, Map<String, Object> host, String logTemplate, Object... logArgs)
+    private void persistHost(String id, Map<String, Object> host, String logTemplate, Object[] logArgs)
         throws BadRequestException {
         syncClusterTypeToTags(host);
         validateHostRole(host);

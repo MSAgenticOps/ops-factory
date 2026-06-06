@@ -18,9 +18,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @SpringBootApplication
 @ComponentScan(basePackages = {
     "com.huawei.opsfactory.gateway",
-    "com.huawei.opsfactory.common",
-    "com.huawei.opsfactory.common.aop",
-    "com.huawei.opsfactory.common.exception"
+    "com.huawei.opsfactory.common"
 })
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 public class GatewayApplication {

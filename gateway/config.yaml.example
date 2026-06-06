@@ -103,6 +103,7 @@ gateway:
   remote-execution:
     default-timeout: 30
     max-timeout: 120
+    strict-host-key-checking: false
 
 logging:
   level:

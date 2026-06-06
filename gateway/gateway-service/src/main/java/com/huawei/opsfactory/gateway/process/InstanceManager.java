@@ -458,10 +458,11 @@ public class InstanceManager {
     private ManagedInstance doSpawn(String agentId, String userId) {
         String key = ManagedInstance.buildKey(agentId, userId);
         long spawnStart = System.currentTimeMillis();
+        SpawnContext spawnContext = new SpawnContext(key, agentId, userId, spawnStart);
         ReentrantLock lock = spawnLocks.computeIfAbsent(key, k -> new ReentrantLock());
         lock.lock();
         try {
-            ManagedInstance existing = reuseExistingInstanceIfRunning(key, agentId, userId, spawnStart);
+            ManagedInstance existing = reuseExistingInstanceIfRunning(spawnContext);
             if (existing != null) {
                 return existing;
             }
@@ -470,7 +471,7 @@ public class InstanceManager {
             SpawnPreparation preparation = prepareRuntimeForSpawn(agentId, userId);
             SpawnedProcess spawned = startGoosedProcess(agentId, userId, preparation);
             startDrainThread(agentId, userId, spawned.process());
-            return registerAndWaitReady(key, agentId, userId, spawnStart, preparation, spawned);
+            return registerAndWaitReady(spawnContext, preparation, spawned);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to spawn instance for " + agentId + ":" + userId, e);
         } finally {
@@ -478,14 +479,15 @@ public class InstanceManager {
         }
     }
 
-    private ManagedInstance reuseExistingInstanceIfRunning(String key, String agentId, String userId, long spawnStart) {
-        ManagedInstance existing = instances.get(key);
+    private ManagedInstance reuseExistingInstanceIfRunning(SpawnContext context) {
+        ManagedInstance existing = instances.get(context.key());
         if (existing == null || existing.getStatus() != ManagedInstance.Status.RUNNING) {
             return null;
         }
         existing.touch();
-        log.info("[INSTANCE] concurrent spawn reused existing instance {}:{} port={} pid={} totalMs={}", agentId, userId,
-            existing.getPort(), existing.getPid(), System.currentTimeMillis() - spawnStart);
+        log.info("[INSTANCE] concurrent spawn reused existing instance {}:{} port={} pid={} totalMs={}",
+            context.agentId(), context.userId(), existing.getPort(), existing.getPid(),
+            System.currentTimeMillis() - context.spawnStart());
         return existing;
     }
 
@@ -553,22 +555,23 @@ public class InstanceManager {
         });
     }
 
-    private ManagedInstance registerAndWaitReady(String key, String agentId, String userId, long spawnStart,
-        SpawnPreparation preparation, SpawnedProcess spawned) {
-        ManagedInstance instance = new ManagedInstance(agentId, userId, preparation.port(), spawned.pid(), spawned.process(),
-            spawned.instanceSecret());
-        instances.put(key, instance);
+    private ManagedInstance registerAndWaitReady(SpawnContext context, SpawnPreparation preparation,
+        SpawnedProcess spawned) {
+        ManagedInstance instance = new ManagedInstance(context.agentId(), context.userId(), preparation.port(),
+            spawned.pid(), spawned.process(), spawned.instanceSecret());
+        instances.put(context.key(), instance);
 
         long readyStart = System.currentTimeMillis();
-        log.debug("Starting health check for {}:{} on port {} (pid={}), URL: {}", agentId, userId, preparation.port(),
-            spawned.pid(), goosedBaseUrl(preparation.port()) + "/status");
+        log.debug("Starting health check for {}:{} on port {} (pid={}), URL: {}", context.agentId(),
+            context.userId(), preparation.port(), spawned.pid(), goosedBaseUrl(preparation.port()) + "/status");
         waitForReady(preparation.port(), spawned.process());
         long readyMs = System.currentTimeMillis() - readyStart;
         instance.setStatus(ManagedInstance.Status.RUNNING);
-        log.info("Instance {}:{} ready on port {} (pid={})", agentId, userId, preparation.port(), spawned.pid());
+        log.info("Instance {}:{} ready on port {} (pid={})", context.agentId(), context.userId(), preparation.port(),
+            spawned.pid());
         log.info("[INSTANCE] spawn ready {}:{} port={} pid={} prepareMs={} processStartMs={} waitReadyMs={} totalMs={}",
-            agentId, userId, preparation.port(), spawned.pid(), preparation.prepareMs(), spawned.processStartMs(),
-            readyMs, System.currentTimeMillis() - spawnStart);
+            context.agentId(), context.userId(), preparation.port(), spawned.pid(), preparation.prepareMs(),
+            spawned.processStartMs(), readyMs, System.currentTimeMillis() - context.spawnStart());
         return instance;
     }
 
@@ -879,5 +882,8 @@ public class InstanceManager {
                 .onErrorResume(error -> Mono.empty())
                 .block();
         }
+    }
+
+    private record SpawnContext(String key, String agentId, String userId, long spawnStart) {
     }
 }
