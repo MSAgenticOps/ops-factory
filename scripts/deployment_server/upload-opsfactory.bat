@@ -26,10 +26,18 @@ set "FILES[4]=C:\zhulin\ops-factory\web-app\dist.zip"
 set "FILES[5]=C:\zhulin\goose\agents.zip"
 set "FILES[6]=C:\zhulin\ops-factory\gateway\config.yaml.example"
 set "FILES[7]=C:\zhulin\ops-factory\operation-intelligence\target\operation-intelligence.jar"
-set "FILES[8]=C:\zhulin\ops-factory\operation-intelligence\scripts\dv_server.py"
-set "FILES[9]=C:\zhulin\ops-factory\control-center\target\control-center.jar"
-set "FILES[10]=C:\zhulin\ops-factory\knowledge-service\target\knowledge-service.jar"
-set "FILES[11]=C:\zhulin\ops-factory\skill-market\target\skill-market.jar"
+set "FILES[8]=C:\zhulin\ops-factory\operation-intelligence\target\oi-lib.zip"
+set "FILES[9]=C:\zhulin\ops-factory\operation-intelligence\scripts\dv_server.py"
+set "FILES[10]=C:\zhulin\ops-factory\control-center\target\control-center.jar"
+set "FILES[11]=C:\zhulin\ops-factory\control-center\target\cc-lib.zip"
+set "FILES[12]=C:\zhulin\ops-factory\knowledge-service\target\knowledge-service.jar"
+set "FILES[13]=C:\zhulin\ops-factory\knowledge-service\target\ks-lib.zip"
+set "FILES[14]=C:\zhulin\ops-factory\skill-market\target\skill-market.jar"
+set "FILES[15]=C:\zhulin\ops-factory\skill-market\target\sm-lib.zip"
+set "FILES[16]=C:\zhulin\ops-factory\business-intelligence\target\business-intelligence.jar"
+set "FILES[17]=C:\zhulin\ops-factory\business-intelligence\target\bi-lib.zip"
+set "FILES[18]=C:\zhulin\ops-factory\finops\target\finops.jar"
+set "FILES[19]=C:\zhulin\ops-factory\finops\target\finops-lib.zip"
 
 set "OI_CONFIG_SRC=C:\zhulin\ops-factory\operation-intelligence\config.yaml.example"
 set "CC_CONFIG_SRC=C:\zhulin\ops-factory\control-center\config.yaml.example"
@@ -130,6 +138,150 @@ if exist "%AGENTS_ZIP%" (
 
 echo.
 echo ============================================
+echo Step 0d: 压缩operation-intelligence lib目录
+echo ============================================
+set "OI_LIB_SRC=C:\zhulin\ops-factory\operation-intelligence\target\lib"
+set "OI_LIB_ZIP=C:\zhulin\ops-factory\operation-intelligence\target\oi-lib.zip"
+
+if exist "%OI_LIB_ZIP%" (
+    echo 删除旧的压缩文件: %OI_LIB_ZIP%
+    del "%OI_LIB_ZIP%"
+)
+
+if exist "%OI_LIB_SRC%" (
+    powershell -Command "Compress-Archive -Path '%OI_LIB_SRC%\*' -DestinationPath '%OI_LIB_ZIP%' -Force"
+    if exist "%OI_LIB_ZIP%" (
+        echo ✓ OI lib目录压缩成功: %OI_LIB_ZIP%
+        for %%F in ("%OI_LIB_ZIP%") do echo 文件大小: %%~zF 字节
+    ) else (
+        echo ✗ OI lib目录压缩失败: %OI_LIB_ZIP%
+    )
+) else (
+    echo 警告: OI lib目录不存在，跳过压缩: %OI_LIB_SRC%
+)
+
+echo.
+echo ============================================
+echo Step 0e: 压缩control-center lib目录
+echo ============================================
+set "CC_LIB_SRC=C:\zhulin\ops-factory\control-center\target\lib"
+set "CC_LIB_ZIP=C:\zhulin\ops-factory\control-center\target\cc-lib.zip"
+
+if exist "%CC_LIB_ZIP%" (
+    echo 删除旧的压缩文件: %CC_LIB_ZIP%
+    del "%CC_LIB_ZIP%"
+)
+
+if exist "%CC_LIB_SRC%" (
+    powershell -Command "Compress-Archive -Path '%CC_LIB_SRC%\*' -DestinationPath '%CC_LIB_ZIP%' -Force"
+    if exist "%CC_LIB_ZIP%" (
+        echo ✓ CC lib目录压缩成功: %CC_LIB_ZIP%
+        for %%F in ("%CC_LIB_ZIP%") do echo 文件大小: %%~zF 字节
+    ) else (
+        echo ✗ CC lib目录压缩失败: %CC_LIB_ZIP%
+    )
+) else (
+    echo 警告: CC lib目录不存在，跳过压缩: %CC_LIB_SRC%
+)
+
+echo.
+echo ============================================
+echo Step 0f: 压缩knowledge-service lib目录
+echo ============================================
+set "KS_LIB_SRC=C:\zhulin\ops-factory\knowledge-service\target\lib"
+set "KS_LIB_ZIP=C:\zhulin\ops-factory\knowledge-service\target\ks-lib.zip"
+
+if exist "%KS_LIB_ZIP%" (
+    echo 删除旧的压缩文件: %KS_LIB_ZIP%
+    del "%KS_LIB_ZIP%"
+)
+
+if exist "%KS_LIB_SRC%" (
+    powershell -Command "Compress-Archive -Path '%KS_LIB_SRC%\*' -DestinationPath '%KS_LIB_ZIP%' -Force"
+    if exist "%KS_LIB_ZIP%" (
+        echo ✓ KS lib目录压缩成功: %KS_LIB_ZIP%
+        for %%F in ("%KS_LIB_ZIP%") do echo 文件大小: %%~zF 字节
+    ) else (
+        echo ✗ KS lib目录压缩失败: %KS_LIB_ZIP%
+    )
+) else (
+    echo 警告: KS lib目录不存在，跳过压缩: %KS_LIB_SRC%
+)
+
+echo.
+echo ============================================
+echo Step 0g: 压缩skill-market lib目录
+echo ============================================
+set "SM_LIB_SRC=C:\zhulin\ops-factory\skill-market\target\lib"
+set "SM_LIB_ZIP=C:\zhulin\ops-factory\skill-market\target\sm-lib.zip"
+
+if exist "%SM_LIB_ZIP%" (
+    echo 删除旧的压缩文件: %SM_LIB_ZIP%
+    del "%SM_LIB_ZIP%"
+)
+
+if exist "%SM_LIB_SRC%" (
+    powershell -Command "Compress-Archive -Path '%SM_LIB_SRC%\*' -DestinationPath '%SM_LIB_ZIP%' -Force"
+    if exist "%SM_LIB_ZIP%" (
+        echo ✓ SM lib目录压缩成功: %SM_LIB_ZIP%
+        for %%F in ("%SM_LIB_ZIP%") do echo 文件大小: %%~zF 字节
+    ) else (
+        echo ✗ SM lib目录压缩失败: %SM_LIB_ZIP%
+    )
+) else (
+    echo 警告: SM lib目录不存在，跳过压缩: %SM_LIB_SRC%
+)
+
+echo.
+echo ============================================
+echo Step 0h: 压缩business-intelligence lib目录
+echo ============================================
+set "BI_LIB_SRC=C:\zhulin\ops-factory\business-intelligence\target\lib"
+set "BI_LIB_ZIP=C:\zhulin\ops-factory\business-intelligence\target\bi-lib.zip"
+
+if exist "%BI_LIB_ZIP%" (
+    echo 删除旧的压缩文件: %BI_LIB_ZIP%
+    del "%BI_LIB_ZIP%"
+)
+
+if exist "%BI_LIB_SRC%" (
+    powershell -Command "Compress-Archive -Path '%BI_LIB_SRC%\*' -DestinationPath '%BI_LIB_ZIP%' -Force"
+    if exist "%BI_LIB_ZIP%" (
+        echo ✓ BI lib目录压缩成功: %BI_LIB_ZIP%
+        for %%F in ("%BI_LIB_ZIP%") do echo 文件大小: %%~zF 字节
+    ) else (
+        echo ✗ BI lib目录压缩失败: %BI_LIB_ZIP%
+    )
+) else (
+    echo 警告: BI lib目录不存在，跳过压缩: %BI_LIB_SRC%
+)
+
+echo.
+echo ============================================
+echo Step 0i: 压缩finops lib目录
+echo ============================================
+set "FINOPS_LIB_SRC=C:\zhulin\ops-factory\finops\target\lib"
+set "FINOPS_LIB_ZIP=C:\zhulin\ops-factory\finops\target\finops-lib.zip"
+
+if exist "%FINOPS_LIB_ZIP%" (
+    echo 删除旧的压缩文件: %FINOPS_LIB_ZIP%
+    del "%FINOPS_LIB_ZIP%"
+)
+
+if exist "%FINOPS_LIB_SRC%" (
+    powershell -Command "Compress-Archive -Path '%FINOPS_LIB_SRC%\*' -DestinationPath '%FINOPS_LIB_ZIP%' -Force"
+    if exist "%FINOPS_LIB_ZIP%" (
+        echo ✓ FinOps lib目录压缩成功: %FINOPS_LIB_ZIP%
+        for %%F in ("%FINOPS_LIB_ZIP%") do echo 文件大小: %%~zF 字节
+    ) else (
+        echo ✗ FinOps lib目录压缩失败: %FINOPS_LIB_ZIP%
+    )
+) else (
+    echo 警告: FinOps lib目录不存在，跳过压缩: %FINOPS_LIB_SRC%
+)
+
+echo.
+echo ============================================
 echo.
 
 set FILE_COUNT=0
@@ -176,7 +328,7 @@ echo.
 echo [Step 3] Uploading files...
 echo.
 
-for /L %%i in (0,1,11) do (
+for /L %%i in (0,1,19) do (
     set "CURRENT_FILE=!FILES[%%i]!"
     if exist "!CURRENT_FILE!" (
         set /a FILE_COUNT+=1

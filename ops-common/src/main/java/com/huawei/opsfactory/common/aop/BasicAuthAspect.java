@@ -6,7 +6,6 @@ package com.huawei.opsfactory.common.aop;
 
 import com.huawei.opsfactory.common.exception.ApiCallException;
 import com.huawei.opsfactory.common.exception.AuthException;
-import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.servicecomb.swagger.invocation.context.ContextUtils;
@@ -20,6 +19,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -37,17 +40,6 @@ import java.util.Base64;
 @PropertySource(value = "classpath:ops-common-default.properties", ignoreResourceNotFound = true)
 public class BasicAuthAspect {
     private static final Logger logger = LoggerFactory.getLogger(BasicAuthAspect.class);
-
-    private final HttpServletRequest request;
-
-    /**
-     * Constructor for BasicAuthAspect.
-     *
-     * @param request the HTTP request
-     */
-    public BasicAuthAspect(HttpServletRequest request) {
-        this.request = request;
-    }
 
     @Value("${common.aop.machine.username}")
     private String configUserName;
@@ -67,7 +59,9 @@ public class BasicAuthAspect {
      */
     @Around("@annotation(com.huawei.opsfactory.common.aop.BasicAuth) || @within(com.huawei.opsfactory.common.aop.BasicAuth)")
     public Object basicAuth(ProceedingJoinPoint pjp) throws Throwable {
+        logger.info("BasicAuthAspect triggered for method: {}", pjp.getSignature().getName());
         String authHeader;
+        HttpServletRequest request = getCurrentRequest();
 
         // 从请求头中获取Authorization
         try {
@@ -125,5 +119,18 @@ public class BasicAuthAspect {
         // 认证失败
         logger.warn("Authentication failed: invalid credentials");
         throw new AuthException("Authentication failed");
+    }
+
+    /**
+     * Gets the current HTTP request from Spring context.
+     *
+     * @return the HTTP request
+     */
+    private HttpServletRequest getCurrentRequest() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            return attributes.getRequest();
+        }
+        throw new AuthException("No HTTP request found in current context");
     }
 }
