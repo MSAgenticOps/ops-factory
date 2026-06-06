@@ -301,6 +301,14 @@ build_supervisor_control_center_mcp() {
         "${SERVICE_DIR}/agents/supervisor-agent/config/mcp/control-center/server.py"
 }
 
+# `delegation` (A2A) MCP server — fo-copilot only. Uses a self-contained .venv (like the ticket MCP) so the python
+# that runs it always matches the python that built its deps, independent of goosed's PATH (which may resolve
+# `python3` to an old system python that is too old for `mcp`).
+build_delegation_mcp() {
+    build_python_mcp "Delegation" \
+        "${SERVICE_DIR}/agents/fo-copilot/config/mcp/delegation"
+}
+
 PYTHON_MIN_MINOR=10
 
 find_python_3_10_plus() {
@@ -453,6 +461,7 @@ do_startup() {
     build_knowledge_cli_mcp
     build_supervisor_control_center_mcp
     build_local_tiny_tools_mcp
+    build_delegation_mcp
 
     local jar="${SERVICE_DIR}/gateway-service/target/gateway-service.jar"
     local lib_dir="${SERVICE_DIR}/gateway-service/target/lib"

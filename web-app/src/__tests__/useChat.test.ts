@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
+import '../i18n' // initializes the react-i18next default instance so useChat's useTranslation() resolves
 import { ChatState, pushMessage, useChat } from '../app/platform/chat/useChat'
-import type { GoosedClient, SessionSSEEvent, TokenState } from '@goosed/sdk'
+import type { GoosedClient, SessionSSEEvent, TokenState, A2AFrame } from '@goosed/sdk'
 import type { ChatMessage } from '../types/message'
 
 /**
@@ -623,6 +624,138 @@ describe('useChat — session event state machine', () => {
 
         await waitFor(() => {
             expect(result.current.chatState).toBe(ChatState.Idle)
+        })
+    })
+})
+
+describe('useChat — deterministic @mention delegation', () => {
+    const agents = [{ id: 'qa-agent' }, { id: 'supervisor-agent' }]
+
+    function delay() {
+        return new Promise(resolve => setTimeout(resolve, 0))
+    }
+
+    /** A client whose `delegateAgent` is scripted; the goosed reply path and event bus are inert (delegation bypasses them). */
+    function createDelegationClient(
+        delegateAgent: (target: string, message: string, opts?: { signal?: AbortSignal }) => AsyncGenerator<A2AFrame>,
+        onReply?: () => void,
+    ): GoosedClient {
+        return {
+            submitSessionReply: async (_: string, req: { request_id: string }) => {
+                onReply?.()
+                return { request_id: req.request_id }
+            },
+            subscribeSessionEvents: async function*(_: string, opts: { signal?: AbortSignal } = {}) {
+                // Idle: the deterministic path drives the turn via delegateAgent, not the goosed event bus.
+                while (!opts.signal?.aborted) await delay()
+            },
+            delegateAgent,
+            cancelSessionReply: async () => undefined,
+            getSession: async () => ({ conversation: [] }),
+        } as unknown as GoosedClient
+    }
+
+    function render(client: GoosedClient) {
+        return renderHook(() => useChat({ sessionId: 'session-1', client, agents }))
+    }
+
+    function hasToolCard(messages: ChatMessage[]): boolean {
+        return messages.some(message => message.content.some(content =>
+            content.type === 'toolRequest'
+            && (content as { toolCall?: { value?: { name?: string } } }).toolCall?.value?.name === 'delegation__call_agent'))
+    }
+
+    function hasResultText(messages: ChatMessage[], text: string): boolean {
+        return messages.some(message => message.content.some(content =>
+            content.type === 'text' && (content as { text?: string }).text === text))
+    }
+
+    it('delegates deterministically on @mention and renders the agent result', async () => {
+        const calls: Array<{ target: string; message: string }> = []
+        const { result } = render(createDelegationClient(async function*(target, message) {
+            calls.push({ target, message })
+            yield { type: 'a2a_progress', target_agent: target, label: 'P', step: 1, tool_calls: 0 }
+            yield { type: 'a2a_result', target_agent: target, status: 'completed', result: 'PONG', tool_calls: 1 }
+        }))
+
+        act(() => { result.current.sendMessage('@qa-agent ping') })
+
+        await waitFor(() => {
+            expect(calls).toEqual([{ target: 'qa-agent', message: 'ping' }])
+            expect(result.current.chatState).toBe(ChatState.Idle)
+        })
+        expect(hasToolCard(result.current.messages)).toBe(true)
+        expect(hasResultText(result.current.messages, 'PONG')).toBe(true)
+        expect(Object.values(result.current.a2aProgress).some(progress => progress.targetAgent === 'qa-agent')).toBe(true)
+    })
+
+    it('delegates to a different agent on each turn (multi-turn)', async () => {
+        const targets: string[] = []
+        const { result } = render(createDelegationClient(async function*(target) {
+            targets.push(target)
+            yield { type: 'a2a_result', target_agent: target, status: 'completed', result: `done:${target}` }
+        }))
+
+        act(() => { result.current.sendMessage('@qa-agent first') })
+        await waitFor(() => expect(result.current.chatState).toBe(ChatState.Idle))
+
+        act(() => { result.current.sendMessage('@supervisor-agent second') })
+        await waitFor(() => {
+            expect(targets).toEqual(['qa-agent', 'supervisor-agent'])
+            expect(hasResultText(result.current.messages, 'done:supervisor-agent')).toBe(true)
+        })
+    })
+
+    it('runs sequential delegations for multiple @mentions in one turn', async () => {
+        const targets: string[] = []
+        const { result } = render(createDelegationClient(async function*(target) {
+            targets.push(target)
+            yield { type: 'a2a_result', target_agent: target, status: 'completed', result: `r:${target}` }
+        }))
+
+        act(() => { result.current.sendMessage('@qa-agent @supervisor-agent compare results') })
+
+        await waitFor(() => {
+            expect(targets).toEqual(['qa-agent', 'supervisor-agent'])
+            expect(result.current.chatState).toBe(ChatState.Idle)
+        })
+    })
+
+    it('routes a non-@mention message through the normal reply path (no delegation)', async () => {
+        let delegated = 0
+        let replied = false
+        const { result } = render(createDelegationClient(async function*() { delegated++ }, () => { replied = true }))
+
+        act(() => { result.current.sendMessage('just a normal message') })
+
+        await waitFor(() => expect(replied).toBe(true))
+        expect(delegated).toBe(0)
+    })
+
+    it('cancels an in-flight delegation via stopMessage', async () => {
+        const { result } = render(createDelegationClient(async function*(target, _message, opts) {
+            yield { type: 'a2a_progress', target_agent: target, label: 'working', step: 1 }
+            while (!opts?.signal?.aborted) await delay()
+            throw new DOMException('aborted', 'AbortError')
+        }))
+
+        act(() => { result.current.sendMessage('@qa-agent long task') })
+        await waitFor(() => expect(result.current.chatState).toBe(ChatState.Streaming))
+
+        await act(async () => { await result.current.stopMessage() })
+        await waitFor(() => expect(result.current.chatState).toBe(ChatState.Cancelled))
+    })
+
+    it('surfaces a delegation failure as a session error', async () => {
+        const { result } = render(createDelegationClient(async function*() {
+            throw new Error('A2A delegation failed (500)')
+        }))
+
+        act(() => { result.current.sendMessage('@qa-agent boom') })
+
+        await waitFor(() => {
+            expect(result.current.sessionError).not.toBeNull()
+            expect(result.current.chatState).toBe(ChatState.Errored)
         })
     })
 })

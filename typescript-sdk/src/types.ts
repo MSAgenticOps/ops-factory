@@ -211,6 +211,40 @@ export interface SessionSSEEvent {
     eventId?: string;
 }
 
+/**
+ * A2A (agent-to-agent) delegation SSE frames, emitted by the gateway `POST /agents/{target}/a2a` endpoint.
+ * Mirrors the backend `A2AProgressTranslator` frame shapes. Used by the deterministic `@mention` delegation path.
+ */
+export interface A2AProgressFrame {
+    type: 'a2a_progress';
+    target_agent?: string;
+    sub_session_id?: string;
+    kind?: string;
+    label?: string;
+    step?: number;
+    tool_calls?: number;
+}
+
+export interface A2AResultFrame {
+    type: 'a2a_result';
+    target_agent?: string;
+    sub_session_id?: string;
+    /** `completed` | `error` | `timeout` */
+    status?: string;
+    result?: string;
+    error?: string;
+    step?: number;
+    tool_calls?: number;
+}
+
+export type A2AFrame = A2AProgressFrame | A2AResultFrame;
+
+export interface DelegateAgentOptions {
+    /** The initiating agent's current session id, sent as `x-a2a-origin-session` (drives the gateway nesting guard). */
+    originSessionId?: string;
+    signal?: AbortSignal;
+}
+
 export type SessionErrorLayer = 'frontend' | 'gateway' | 'goosed' | 'provider' | 'tool' | 'mcp' | 'policy';
 
 export type SessionErrorSeverity = 'info' | 'warning' | 'error' | 'fatal';

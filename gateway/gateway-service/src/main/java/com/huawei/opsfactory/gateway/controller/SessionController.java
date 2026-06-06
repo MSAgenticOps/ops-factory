@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
 import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
@@ -13,6 +14,8 @@ import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
 import com.huawei.opsfactory.gateway.service.SessionCacheService;
 import com.huawei.opsfactory.gateway.service.SessionService;
+import com.huawei.opsfactory.gateway.service.a2a.A2ASessionRecord;
+import com.huawei.opsfactory.gateway.service.a2a.A2ASessionStore;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -48,10 +51,12 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * REST controller for session lifecycle: start, list, get, rename, delete, and cleanup.
@@ -78,6 +83,8 @@ public class SessionController {
 
     private final SessionCacheService sessionCacheService;
 
+    private final A2ASessionStore a2aSessionStore;
+
     /**
      * Creates the session controller instance.
      *
@@ -86,14 +93,17 @@ public class SessionController {
      * @param goosedProxy HTTP proxy for forwarding requests to goosed processes
      * @param agentConfigService agent configuration and directory resolver
      * @param sessionCacheService in-memory session list cache
+     * @param a2aSessionStore A2A sub-session side-record store (agent_call classification + offline listing)
      */
     public SessionController(InstanceManager instanceManager, SessionService sessionService, GoosedProxy goosedProxy,
-        AgentConfigService agentConfigService, SessionCacheService sessionCacheService) {
+        AgentConfigService agentConfigService, SessionCacheService sessionCacheService,
+        A2ASessionStore a2aSessionStore) {
         this.instanceManager = instanceManager;
         this.sessionService = sessionService;
         this.goosedProxy = goosedProxy;
         this.agentConfigService = agentConfigService;
         this.sessionCacheService = sessionCacheService;
+        this.a2aSessionStore = a2aSessionStore;
     }
 
     /**
@@ -214,6 +224,9 @@ public class SessionController {
                 }
             }
         }
+        // Tag live A2A sub-sessions with origin=a2a and merge in offline (idle-reaped) sub-sessions from the
+        // side-record so the "Agent 调用" history stays complete even when the target instance is gone.
+        tagAndMergeA2aSessions(userId, parsed);
         // Parse all sessions and sort
         parsed.sort((a, b) -> {
             String ta = a.getOrDefault("created_at", "") instanceof String s ? s : "";
@@ -278,13 +291,65 @@ public class SessionController {
     private boolean matchesType(Map<String, Object> session, String type) {
         String sessionType = session.getOrDefault("session_type", "user") instanceof String s ? s : "user";
         String scheduleId = session.get("schedule_id") instanceof String s && !s.isBlank() ? s : null;
+        boolean agentCall = GatewayConstants.A2A_ORIGIN.equals(session.get(GatewayConstants.SESSION_FIELD_ORIGIN));
         if ("user".equals(type)) {
-            return "user".equals(sessionType) && scheduleId == null;
+            // A2A sub-sessions are goose-side "user" type; exclude them from the default user list (own tab).
+            return "user".equals(sessionType) && scheduleId == null && !agentCall;
         }
         if ("scheduled".equals(type)) {
             return scheduleId != null || "scheduled".equals(sessionType);
         }
+        if (GatewayConstants.SESSION_TYPE_AGENT_CALL.equals(type)) {
+            return agentCall;
+        }
         return true;
+    }
+
+    /**
+     * Tags live sessions that are recorded A2A sub-runs with {@code origin=a2a}, and appends synthetic entries for
+     * recorded sub-runs whose target instance is no longer running (idle-reaped) so the agent_call history is complete.
+     */
+    private void tagAndMergeA2aSessions(String userId, List<Map<String, Object>> parsed) {
+        List<A2ASessionRecord> records = a2aSessionStore.listForUser(userId);
+        if (records.isEmpty()) {
+            return;
+        }
+        Set<String> recordedIds = new HashSet<>();
+        for (A2ASessionRecord r : records) {
+            recordedIds.add(r.subSessionId());
+        }
+        Set<String> liveIds = new HashSet<>();
+        for (Map<String, Object> session : parsed) {
+            Object id = session.get("id");
+            if (id instanceof String sid) {
+                liveIds.add(sid);
+                if (recordedIds.contains(sid)) {
+                    session.put(GatewayConstants.SESSION_FIELD_ORIGIN, GatewayConstants.A2A_ORIGIN);
+                }
+            }
+        }
+        for (A2ASessionRecord r : records) {
+            if (!liveIds.contains(r.subSessionId())) {
+                parsed.add(synthesizeA2aSession(r));
+            }
+        }
+    }
+
+    private Map<String, Object> synthesizeA2aSession(A2ASessionRecord record) {
+        Map<String, Object> session = new LinkedHashMap<>();
+        session.put("id", record.subSessionId());
+        String name = record.title() != null && !record.title().isBlank() ? record.title()
+            : "→ " + record.targetAgentId();
+        session.put("name", name);
+        session.put("created_at", record.createdAt());
+        session.put("updated_at", record.createdAt());
+        session.put("agentId", record.targetAgentId());
+        session.put("session_type", "user");
+        session.put(GatewayConstants.SESSION_FIELD_ORIGIN, GatewayConstants.A2A_ORIGIN);
+        session.put("a2a_parent_session_id", record.parentSessionId());
+        session.put("a2a_origin_agent_id", record.originAgentId());
+        session.put("a2a_status", record.status());
+        return session;
     }
 
     /**

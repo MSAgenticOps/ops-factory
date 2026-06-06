@@ -16,6 +16,8 @@ import type {
     SessionCancelRequest,
     SessionEventsOptions,
     SessionSSEEvent,
+    A2AFrame,
+    DelegateAgentOptions,
     SessionErrorContext,
     SessionErrorEnvelope,
     SessionErrorLayer,
@@ -577,7 +579,12 @@ export class GoosedClient {
 
     // === Chat APIs ===
 
-    private async *parseSseResponse(response: Response): AsyncGenerator<SessionSSEEvent> {
+    /**
+     * Low-level SSE reader: yields one `{ data, id }` record per event (blank-line delimited), `data` being the joined
+     * `data:` lines. Shared by the typed session event stream (`parseSseResponse`) and A2A delegation frames
+     * (`delegateAgent`) so the wire parsing lives in one place.
+     */
+    private async *sseDataLines(response: Response): AsyncGenerator<{ data: string; id?: string }> {
         const reader = response.body?.getReader();
         if (!reader) {
             throw new GoosedException('No response body');
@@ -588,10 +595,9 @@ export class GoosedClient {
         let dataLines: string[] = [];
         let eventId: string | undefined;
 
-        const flushEvent = function *(): Generator<SessionSSEEvent> {
+        const flush = function *(): Generator<{ data: string; id?: string }> {
             if (dataLines.length === 0) return;
-            const event = JSON.parse(dataLines.join('\n')) as SSEEvent;
-            yield { event, eventId };
+            yield { data: dataLines.join('\n'), id: eventId };
             dataLines = [];
             eventId = undefined;
         };
@@ -607,7 +613,7 @@ export class GoosedClient {
             for (const line of lines) {
                 const trimmed = line.replace(/\r$/, '');
                 if (trimmed === '') {
-                    yield* flushEvent();
+                    yield* flush();
                     continue;
                 }
                 if (trimmed.startsWith(':')) {
@@ -632,7 +638,13 @@ export class GoosedClient {
             }
         }
 
-        yield* flushEvent();
+        yield* flush();
+    }
+
+    private async *parseSseResponse(response: Response): AsyncGenerator<SessionSSEEvent> {
+        for await (const { data, id } of this.sseDataLines(response)) {
+            yield { event: JSON.parse(data) as SSEEvent, eventId: id };
+        }
     }
 
     async submitSessionReply(
@@ -696,6 +708,70 @@ export class GoosedClient {
 
         for await (const item of this.parseSseResponse(response)) {
             yield item;
+        }
+    }
+
+    /**
+     * Deterministic A2A delegation. Opens the gateway `POST /agents/{target}/a2a` SSE stream and yields each frame
+     * (`a2a_progress` updates, then the terminal `a2a_result`). This is the system-initiated delegation path: it does
+     * NOT depend on the initiating agent's model choosing to call a tool, which is the whole point. Aborting
+     * `options.signal` closes the stream; the gateway observes the caller disconnect and cancels the sub-run.
+     *
+     * @param targetAgentId the agent to delegate to (the `@<agentId>` target)
+     * @param message the task to relay (the user's text with the `@<agentId>` marker removed)
+     * @param options origin session id (for the nesting guard) and an optional abort signal
+     */
+    async *delegateAgent(
+        targetAgentId: string,
+        message: string,
+        options: DelegateAgentOptions = {}
+    ): AsyncGenerator<A2AFrame> {
+        // baseUrl is `.../api/gateway/agents/{originAgentId}`; swap the trailing agent segment to reach the target.
+        const gatewayBase = this.baseUrl.replace(/\/agents\/[^/]+$/, '');
+        const originAgentId = this.baseUrl.match(/\/agents\/([^/]+)$/)?.[1];
+        const url = `${gatewayBase}/agents/${encodeURIComponent(targetAgentId)}/a2a`;
+
+        const headers: Record<string, string> = {
+            ...this.headers(),
+            'Accept': 'text/event-stream',
+        };
+        if (originAgentId) {
+            headers['x-a2a-origin'] = decodeURIComponent(originAgentId);
+        }
+        if (options.originSessionId) {
+            headers['x-a2a-origin-session'] = options.originSessionId;
+        }
+
+        let response: Response;
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ message }),
+                signal: options.signal,
+            });
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                throw err;
+            }
+            throw new GoosedConnectionError(
+                `A2A delegation request failed: ${err instanceof Error ? err.message : String(err)}`
+            );
+        }
+
+        if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            throw new GoosedServerError(`A2A delegation failed (${response.status}): ${body.slice(0, 300)}`, response.status);
+        }
+
+        for await (const { data } of this.sseDataLines(response)) {
+            let frame: A2AFrame;
+            try {
+                frame = JSON.parse(data) as A2AFrame;
+            } catch {
+                continue;
+            }
+            yield frame;
         }
     }
 

@@ -20,7 +20,7 @@ import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
 import { useHistorySessions } from '../hooks/useHistorySessions'
 
-type HistoryFilter = 'user' | 'scheduled' | 'all'
+type HistoryFilter = 'user' | 'scheduled' | 'agent_call' | 'all'
 
 type TraceJobStatus = 'running' | 'succeeded' | 'failed'
 
@@ -32,7 +32,7 @@ interface TraceJobResponse {
 }
 
 function parseHistoryFilter(raw: string | null): HistoryFilter {
-    if (raw === 'scheduled' || raw === 'all' || raw === 'user') return raw
+    if (raw === 'scheduled' || raw === 'agent_call' || raw === 'all' || raw === 'user') return raw
     return 'user'
 }
 
@@ -384,6 +384,9 @@ export default function HistoryPage() {
                                     </button>
                                     <button type="button" className={`seg-filter-btn ${historyFilter === 'scheduled' ? 'active' : ''}`} onClick={() => setHistoryFilter('scheduled')}>
                                         {t('history.filterScheduled')}
+                                    </button>
+                                    <button type="button" className={`seg-filter-btn ${historyFilter === 'agent_call' ? 'active' : ''}`} onClick={() => setHistoryFilter('agent_call')}>
+                                        {t('history.filterAgentCall')}
                                     </button>
                                     <button type="button" className={`seg-filter-btn ${historyFilter === 'all' ? 'active' : ''}`} onClick={() => setHistoryFilter('all')}>
                                         {t('history.filterAll')}
