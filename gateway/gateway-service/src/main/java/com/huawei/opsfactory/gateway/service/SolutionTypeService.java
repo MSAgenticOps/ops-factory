@@ -5,6 +5,8 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -101,11 +103,11 @@ public class SolutionTypeService {
      * @param id entity identifier
      * @return a solution type by its ID
      */
-    public Map<String, Object> getSolutionType(String id) {
+    public Map<String, Object> getSolutionType(String id) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
-            throw new IllegalArgumentException("Solution type not found: " + id);
+            throw new NotFoundException("Solution type not found");
         }
         return st;
     }
@@ -142,11 +144,11 @@ public class SolutionTypeService {
      * @param body updated fields
      * @return the result
      */
-    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) {
+    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
-            throw new IllegalArgumentException("Solution type not found: " + id);
+            throw new NotFoundException("Solution type not found");
         }
 
         if (body.containsKey("name")) {

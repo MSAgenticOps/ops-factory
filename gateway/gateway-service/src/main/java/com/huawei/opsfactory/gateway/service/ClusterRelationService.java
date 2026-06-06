@@ -5,6 +5,8 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -185,7 +187,7 @@ public class ClusterRelationService {
      * @param body request body
      * @return the result
      */
-    public Map<String, Object> createRelation(Map<String, Object> body) {
+    public Map<String, Object> createRelation(Map<String, Object> body) throws BadRequestException, NotFoundException {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
         String sourceId = (String) body.get("sourceId");
         String targetId = (String) body.get("targetId");
@@ -208,11 +210,11 @@ public class ClusterRelationService {
      * @param body an existing cluster relation with the provided field map
      * @return the result
      */
-    public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
+    public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
         Path file = relationsDir.resolve(id + ".json");
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
-            throw new IllegalArgumentException("Cluster relation not found: " + id);
+            throw new NotFoundException("Cluster relation not found");
         }
 
         String currentSourceType = (String) relation.getOrDefault("sourceType", "cluster");
@@ -225,14 +227,14 @@ public class ClusterRelationService {
             if ("business-service".equals(currentSourceType)) {
                 try {
                     businessServiceService.getBusinessService(sourceId);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source business service not found: " + sourceId, e);
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Source business service not found", e);
                 }
             } else {
                 try {
                     clusterService.getCluster(sourceId);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source cluster not found: " + sourceId, e);
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Source cluster not found", e);
                 }
             }
             relation.put("sourceId", sourceId);
@@ -241,8 +243,8 @@ public class ClusterRelationService {
             String targetId = (String) body.get("targetId");
             try {
                 clusterService.getCluster(targetId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Target cluster not found: " + targetId, e);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Target cluster not found", e);
             }
             relation.put("targetId", targetId);
         }
@@ -277,7 +279,11 @@ public class ClusterRelationService {
                 log.info("Deleted cluster relation: id={}", id);
 
                 if ("business-service".equals(sourceType) && sourceId != null && businessServiceService != null) {
-                    businessServiceService.syncHostIdsFromClusterRelations(sourceId);
+                    try {
+                        businessServiceService.syncHostIdsFromClusterRelations(sourceId);
+                    } catch (NotFoundException e) {
+                        log.debug("Business service not found during sync after relation delete: {}", sourceId);
+                    }
                 }
                 return true;
             }
@@ -484,7 +490,7 @@ public class ClusterRelationService {
         }
         try {
             clusterMap.put(clusterId, clusterService.getCluster(clusterId));
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Skipping missing cluster {} while building topology", clusterId);
         }
     }
@@ -495,7 +501,7 @@ public class ClusterRelationService {
         }
         try {
             bsNodes.put(sourceId, businessServiceService.getBusinessService(sourceId));
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Skipping missing business service {} while building topology", sourceId);
         }
     }
@@ -506,7 +512,7 @@ public class ClusterRelationService {
         }
         try {
             hostNodes.put(hostId, hostService.getHost(hostId));
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Skipping missing host {} while building topology", hostId);
         }
     }
@@ -548,7 +554,7 @@ public class ClusterRelationService {
      * @return 1-hop neighbors (upstream + downstream) for a given cluster
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getClusterNeighbors(String clusterId) {
+    public Map<String, Object> getClusterNeighbors(String clusterId) throws NotFoundException {
         Map<String, Object> cluster = clusterService.getCluster(clusterId);
         String typeName = cluster.get("type") != null ? cluster.get("type").toString() : "";
         String mode = resolveClusterTypeMode(typeName);
@@ -577,34 +583,34 @@ public class ClusterRelationService {
         return buildNeighborPayload(cluster, mode, activeHosts, upstream, downstream);
     }
 
-    private void validateRelationBody(String sourceId, String targetId) {
+    private void validateRelationBody(String sourceId, String targetId) throws BadRequestException {
         if (sourceId == null || sourceId.isEmpty()) {
-            throw new IllegalArgumentException("sourceId is required");
+            throw new BadRequestException("sourceId is required");
         }
         if (targetId == null || targetId.isEmpty()) {
-            throw new IllegalArgumentException("targetId is required");
+            throw new BadRequestException("targetId is required");
         }
     }
 
-    private void validateRelationSource(String sourceType, String sourceId) {
+    private void validateRelationSource(String sourceType, String sourceId) throws BadRequestException {
         try {
             if ("business-service".equals(sourceType)) {
                 businessServiceService.getBusinessService(sourceId);
                 return;
             }
             clusterService.getCluster(sourceId);
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             String message = "business-service".equals(sourceType) ? "Source business service not found: "
                 : "Source cluster not found: ";
-            throw new IllegalArgumentException(message + sourceId, e);
+            throw new BadRequestException(message + sourceId, e);
         }
     }
 
-    private void validateRelationTarget(String targetId) {
+    private void validateRelationTarget(String targetId) throws BadRequestException {
         try {
             clusterService.getCluster(targetId);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Target cluster not found: " + targetId, e);
+        } catch (NotFoundException e) {
+            throw new BadRequestException("Target cluster not found: " + targetId, e);
         }
     }
 
@@ -624,7 +630,11 @@ public class ClusterRelationService {
 
     private void syncBusinessServiceIfNeeded(String sourceType, String sourceId) {
         if ("business-service".equals(sourceType) && businessServiceService != null) {
-            businessServiceService.syncHostIdsFromClusterRelations(sourceId);
+            try {
+                businessServiceService.syncHostIdsFromClusterRelations(sourceId);
+            } catch (NotFoundException e) {
+                log.debug("Business service not found during sync after cluster relation change: {}", sourceId);
+            }
         }
     }
 
@@ -707,7 +717,7 @@ public class ClusterRelationService {
             entry.put("direction", direction);
             entry.put("description", description);
             target.add(entry);
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Skipping missing {} cluster {}", label, relatedClusterId);
         }
     }
@@ -730,7 +740,7 @@ public class ClusterRelationService {
      *         list
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getHostNeighborsByCluster(String hostId) {
+    public Map<String, Object> getHostNeighborsByCluster(String hostId) throws NotFoundException {
         // 1. Resolve host -> clusterId
         Map<String, Object> host = hostService.getHost(hostId);
         Object clusterIdObj = host.get("clusterId");
@@ -869,7 +879,7 @@ public class ClusterRelationService {
                 Map<String, Object> cluster = clusterService.getCluster(clusterId);
                 node.put("clusterType", cluster.get("type"));
                 node.put("clusterName", cluster.get("name"));
-            } catch (IllegalArgumentException e) {
+            } catch (NotFoundException e) {
                 node.put("clusterType", null);
                 node.put("clusterName", null);
             }
@@ -889,7 +899,7 @@ public class ClusterRelationService {
             Map<String, Object> cluster = clusterService.getCluster(clusterId);
             Object gid = cluster.get("groupId");
             return gid != null ? gid.toString() : null;
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             return null;
         }
     }

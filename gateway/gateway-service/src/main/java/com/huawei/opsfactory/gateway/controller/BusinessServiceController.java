@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,19 +80,12 @@ public class BusinessServiceController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getBusinessService(@PathVariable("id") String id,
-        HttpServletRequest request) {
-        try {
-            Map<String, Object> bs = businessServiceService.getBusinessService(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessService", bs);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Business service not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        HttpServletRequest request) throws NotFoundException {
+        Map<String, Object> bs = businessServiceService.getBusinessService(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessService", bs);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -102,19 +96,13 @@ public class BusinessServiceController {
      * @return ResponseEntity containing the resolved business service or 404
      */
     @GetMapping("/{id}/resolved")
-    public ResponseEntity<Map<String, Object>> getResolved(@PathVariable("id") String id, HttpServletRequest request) {
-        try {
-            Map<String, Object> resolved = businessServiceService.getWithResolvedHosts(id);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessService", resolved);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Business service not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+    public ResponseEntity<Map<String, Object>> getResolved(@PathVariable("id") String id, HttpServletRequest request)
+        throws NotFoundException {
+        Map<String, Object> resolved = businessServiceService.getWithResolvedHosts(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessService", resolved);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -125,7 +113,8 @@ public class BusinessServiceController {
      * @return a map with "hosts" list
      */
     @GetMapping("/{id}/hosts")
-    public Map<String, Object> getHosts(@PathVariable("id") String id, HttpServletRequest request) {
+    public Map<String, Object> getHosts(@PathVariable("id") String id, HttpServletRequest request)
+        throws NotFoundException {
         List<Map<String, Object>> hosts = businessServiceService.getHostsForBusinessService(id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("hosts", hosts);
@@ -140,7 +129,8 @@ public class BusinessServiceController {
      * @return a map with topology data
      */
     @GetMapping("/{id}/topology")
-    public Map<String, Object> getTopology(@PathVariable("id") String id, HttpServletRequest request) {
+    public Map<String, Object> getTopology(@PathVariable("id") String id, HttpServletRequest request)
+        throws NotFoundException {
         return businessServiceService.getTopologyForBusinessService(id);
     }
 
@@ -154,18 +144,11 @@ public class BusinessServiceController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createBusinessService(@RequestBody Map<String, Object> request,
         HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> bs = businessServiceService.createBusinessService(request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessService", bs);
-            return ResponseEntity.status(HttpStatus.CREATED).body(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Invalid business service request");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
+        Map<String, Object> bs = businessServiceService.createBusinessService(request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessService", bs);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /**
@@ -178,19 +161,12 @@ public class BusinessServiceController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateBusinessService(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
-        try {
-            Map<String, Object> bs = businessServiceService.updateBusinessService(id, request);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", true);
-            body.put("businessService", bs);
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("error", "Business service not found");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
-        }
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
+        Map<String, Object> bs = businessServiceService.updateBusinessService(id, request);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("businessService", bs);
+        return ResponseEntity.ok(body);
     }
 
     /**

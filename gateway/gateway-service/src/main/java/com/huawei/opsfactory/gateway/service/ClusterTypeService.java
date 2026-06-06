@@ -11,6 +11,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.annotation.PostConstruct;
 
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -99,11 +102,11 @@ public class ClusterTypeService {
      * @param id entity identifier
      * @return a cluster type by its ID
      */
-    public Map<String, Object> getClusterType(String id) {
+    public Map<String, Object> getClusterType(String id) throws NotFoundException {
         Path file = clusterTypesDir.resolve(id + ".json");
         Map<String, Object> ct = readFile(file);
         if (ct == null) {
-            throw new IllegalArgumentException("Cluster type not found: " + id);
+            throw new NotFoundException("Cluster type not found");
         }
         return ct;
     }
@@ -144,11 +147,12 @@ public class ClusterTypeService {
      * @param body an existing cluster type with the provided field map
      * @return the result
      */
-    public Map<String, Object> updateClusterType(String id, Map<String, Object> body) {
+    public Map<String, Object> updateClusterType(String id, Map<String, Object> body)
+            throws NotFoundException, BadRequestException {
         Path file = clusterTypesDir.resolve(id + ".json");
         Map<String, Object> ct = readFile(file);
         if (ct == null) {
-            throw new IllegalArgumentException("Cluster type not found: " + id);
+            throw new NotFoundException("Cluster type not found");
         }
 
         if (body.containsKey("name")) {
@@ -175,7 +179,7 @@ public class ClusterTypeService {
         if (body.containsKey("mode")) {
             String mode = (String) body.get("mode");
             if (!"peer".equals(mode) && !"primary-backup".equals(mode)) {
-                throw new IllegalArgumentException("Invalid mode: " + mode + ". Must be 'peer' or 'primary-backup'.");
+                throw new BadRequestException("Invalid mode. Must be 'peer' or 'primary-backup'");
             }
             ct.put("mode", mode);
         }

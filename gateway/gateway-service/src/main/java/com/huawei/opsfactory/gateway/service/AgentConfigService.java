@@ -915,7 +915,7 @@ public class AgentConfigService {
      */
     public void writeMemoryFile(String userId, String agentId, String category, String content) {
         if (content != null
-            && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
+            && content.getBytes(StandardCharsets.UTF_8).length > MAX_MEMORY_CONTENT_SIZE) {
             throw new IllegalArgumentException("Memory file content exceeds maximum size of 100KB");
         }
         Path memoryDir = seededMemoryDir(userId, agentId);

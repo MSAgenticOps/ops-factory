@@ -9,13 +9,14 @@ import { ModelConfigSection } from '../components/model'
 import { SkillMarketDrawer, SkillSection } from '../components/skill'
 import { PromptsSection } from '../components/prompt'
 import { MemorySection } from '../components/memory'
+import SchedulesPanel from '../../../platform/scheduler/SchedulesPanel'
 import PageBackLink from '../../../platform/ui/primitives/PageBackLink'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import type { AgentModelConfig, CreateProviderRequest, UpdateProviderRequest } from '../../../../types/agentConfig'
 import type { SkillEntry } from '../../../../types/skill'
 import '../styles/agents.css'
 
-type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory'
+type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory' | 'schedules'
 
 export default function AgentConfigure() {
     const { t } = useTranslation()
@@ -140,14 +141,31 @@ export default function AgentConfigure() {
         )
     }
 
-    const tabs: { key: ConfigTab; label: string }[] = [
+    // Agent-scoped tabs (apply to everyone) and user-scoped tabs (only affect the current user,
+    // e.g. memory). They are split by a divider in the tab bar — mirroring how the sidebar separates
+    // nav groups — so scope reads at a glance without inventing new per-tab chrome.
+    const agentTabs: { key: ConfigTab; label: string }[] = [
         { key: 'basic', label: t('configTabs.basic') },
         { key: 'model', label: t('configTabs.model') },
         { key: 'prompts', label: t('configTabs.prompts') },
         { key: 'mcp', label: t('configTabs.mcp') },
         { key: 'skills', label: t('configTabs.skills') },
-        { key: 'memory', label: t('configTabs.memory') },
     ]
+    const mineTabs: { key: ConfigTab; label: string }[] = [
+        { key: 'memory', label: t('configTabs.memory') },
+        { key: 'schedules', label: t('configTabs.schedules') },
+    ]
+
+    const renderTab = (tab: { key: ConfigTab; label: string }) => (
+        <button
+            key={tab.key}
+            type="button"
+            className={`config-tab ${activeTab === tab.key ? 'config-tab-active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+        >
+            {tab.label}
+        </button>
+    )
 
     return (
         <div className={`agent-configure-workspace ${isSkillMarketOpen ? 'agent-configure-workspace-with-drawer' : ''}`}>
@@ -163,18 +181,11 @@ export default function AgentConfigure() {
                         </div>
                     </div>
 
-                    {/* Tab Navigation */}
+                    {/* Tab Navigation — agent-scoped tabs, a divider, then user-scoped tabs (memory) */}
                     <div className="config-tabs">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.key}
-                                type="button"
-                                className={`config-tab ${activeTab === tab.key ? 'config-tab-active' : ''}`}
-                                onClick={() => setActiveTab(tab.key)}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
+                        {agentTabs.map(renderTab)}
+                        <span className="config-tab-divider" aria-hidden="true" />
+                        {mineTabs.map(renderTab)}
                     </div>
 
                     {/* Tab Content */}
@@ -223,6 +234,12 @@ export default function AgentConfigure() {
                         {activeTab === 'memory' && (
                             <section className="agent-configure-section">
                                 <MemorySection agentId={agentId || null} />
+                            </section>
+                        )}
+
+                        {activeTab === 'schedules' && agentId && (
+                            <section className="agent-configure-section">
+                                <SchedulesPanel agentId={agentId} embedded />
                             </section>
                         )}
                     </div>

@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
@@ -194,7 +195,7 @@ public class RemoteExecutionService {
     private Map<String, Object> resolveHost(String hostId) {
         try {
             return hostService.getHostWithCredential(hostId);
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             return null;
         }
     }
@@ -237,7 +238,7 @@ public class RemoteExecutionService {
                     break;
                 }
             }
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             log.debug("Could not resolve cluster type for host {}: {}", hostId, e.getMessage());
         }
         return new EnvResolution(commandPrefix, envVars);
