@@ -11,6 +11,7 @@ import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.common.util.YamlLoader;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveStorage;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -978,13 +979,13 @@ public class AgentConfigService {
      * @param deliver delivery channel value from the seed manifest (e.g. {@code im})
      */
     private void seedDeliverMarker(String userId, String agentId, String scheduleId, String deliver) {
-        Path deliveryFile = getUserAgentDir(userId, agentId)
-            .resolve(ProactiveDeliveryMarkers.DIR).resolve(ProactiveDeliveryMarkers.DELIVERY_FILE);
+        Path deliveryFile = ProactiveStorage.deliveryMarkersFileIn(getUserAgentDir(userId, agentId));
         try {
             ProactiveDeliveryMarkers.setDeliver(deliveryFile, scheduleId, deliver);
+            log.info("Seeded deliver={} marker for schedule {} ({}:{})", deliver, scheduleId, agentId, userId);
         } catch (IOException e) {
-            log.warn("Failed to seed deliver marker for schedule {} ({}:{}): {}", scheduleId, agentId, userId,
-                e.getMessage());
+            log.warn("Failed to seed deliver marker for schedule {} ({}:{}); it will not auto-deliver to IM: {}",
+                scheduleId, agentId, userId, e.getMessage());
         }
     }
 

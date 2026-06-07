@@ -47,7 +47,7 @@ public class ProactiveDeliveryMarkerService {
     public void setDeliver(String userId, String agentId, String scheduleId, String deliver) {
         try {
             ProactiveDeliveryMarkers.setDeliver(storage.deliveryMarkersFile(userId, agentId), scheduleId, deliver);
-            log.info("Marked schedule deliver=im scheduleId={} for {}:{}", scheduleId, agentId, userId);
+            log.info("Marked schedule deliver={} scheduleId={} for {}:{}", deliver, scheduleId, agentId, userId);
         } catch (IOException | IllegalArgumentException e) {
             log.warn("Failed to persist deliver marker scheduleId={} for {}:{}: {}", scheduleId, agentId, userId,
                 e.getMessage());

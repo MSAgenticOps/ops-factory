@@ -40,19 +40,23 @@ public final class ProactiveFollowups {
     }
 
     /**
-     * Appends a record, then compacts by age and caps to {@link #MAX_RECORDS}.
+     * Appends a record, then compacts: records older than {@link #MAX_AGE_DAYS} are dropped and the file is capped
+     * to the most recent {@link #MAX_RECORDS}. This rewrites the whole file atomically; concurrent appends to the
+     * same file are serialized on a per-path monitor so none are lost.
      *
      * @param recordsFile path to the per-user {@code records.jsonl}
      * @param record record to append
      * @throws IOException if the file cannot be read or written
      */
     public static void append(Path recordsFile, ProactiveFollowupRecord record) throws IOException {
-        List<ProactiveFollowupRecord> kept = compactByAge(read(recordsFile));
-        kept.add(record);
-        if (kept.size() > MAX_RECORDS) {
-            kept = new ArrayList<>(kept.subList(kept.size() - MAX_RECORDS, kept.size()));
+        synchronized (ProactiveFiles.lockFor(recordsFile)) {
+            List<ProactiveFollowupRecord> kept = compactByAge(read(recordsFile));
+            kept.add(record);
+            if (kept.size() > MAX_RECORDS) {
+                kept = new ArrayList<>(kept.subList(kept.size() - MAX_RECORDS, kept.size()));
+            }
+            write(recordsFile, kept);
         }
-        write(recordsFile, kept);
     }
 
     /**
@@ -143,11 +147,10 @@ public final class ProactiveFollowups {
     }
 
     private static void write(Path recordsFile, List<ProactiveFollowupRecord> records) throws IOException {
-        Files.createDirectories(recordsFile.getParent());
         StringBuilder sb = new StringBuilder();
         for (ProactiveFollowupRecord r : records) {
             sb.append(MAPPER.writeValueAsString(r)).append('\n');
         }
-        Files.writeString(recordsFile, sb.toString(), StandardCharsets.UTF_8);
+        ProactiveFiles.atomicWrite(recordsFile, sb.toString());
     }
 }

@@ -70,12 +70,14 @@ public final class ProactiveDeliveryMarkers {
      * @throws IOException if the file cannot be written
      */
     public static void setDeliver(Path deliveryFile, String scheduleId, String deliver) throws IOException {
-        Map<String, Map<String, Object>> markers = read(deliveryFile);
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put(FIELD_DELIVER, deliver);
-        entry.put(FIELD_UPDATED_AT, Instant.now().toString());
-        markers.put(scheduleId, entry);
-        write(deliveryFile, markers);
+        synchronized (ProactiveFiles.lockFor(deliveryFile)) {
+            Map<String, Map<String, Object>> markers = read(deliveryFile);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put(FIELD_DELIVER, deliver);
+            entry.put(FIELD_UPDATED_AT, Instant.now().toString());
+            markers.put(scheduleId, entry);
+            write(deliveryFile, markers);
+        }
     }
 
     /**
@@ -86,9 +88,11 @@ public final class ProactiveDeliveryMarkers {
      * @throws IOException if the file cannot be rewritten
      */
     public static void remove(Path deliveryFile, String scheduleId) throws IOException {
-        Map<String, Map<String, Object>> markers = read(deliveryFile);
-        if (markers.remove(scheduleId) != null) {
-            write(deliveryFile, markers);
+        synchronized (ProactiveFiles.lockFor(deliveryFile)) {
+            Map<String, Map<String, Object>> markers = read(deliveryFile);
+            if (markers.remove(scheduleId) != null) {
+                write(deliveryFile, markers);
+            }
         }
     }
 
@@ -104,9 +108,7 @@ public final class ProactiveDeliveryMarkers {
     }
 
     private static void write(Path deliveryFile, Map<String, Map<String, Object>> markers) throws IOException {
-        Files.createDirectories(deliveryFile.getParent());
-        Files.writeString(deliveryFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(markers),
-            StandardCharsets.UTF_8);
+        ProactiveFiles.atomicWrite(deliveryFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(markers));
     }
 
     private static String asString(Object value) {

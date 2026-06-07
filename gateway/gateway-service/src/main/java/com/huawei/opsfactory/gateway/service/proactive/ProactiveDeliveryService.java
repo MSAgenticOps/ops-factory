@@ -16,6 +16,8 @@ import com.huawei.opsfactory.gateway.service.channel.model.ChannelSummary;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import reactor.core.scheduler.Schedulers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -30,12 +32,14 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Polls completed scheduled goosed runs and, for schedules opted into IM delivery, pushes the run's final report
@@ -58,7 +62,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProactiveDeliveryService {
     private static final Logger log = LoggerFactory.getLogger(ProactiveDeliveryService.class);
 
-    private static final int GOOSED_TIMEOUT_SEC = 20;
+    private static final int MAX_PROCESSED_SESSIONS = 10_000;
 
     private final InstanceManager instanceManager;
 
@@ -74,8 +78,20 @@ public class ProactiveDeliveryService {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    /** Sessions already handled this process lifetime (delivered or permanently skipped); avoids re-evaluation. */
-    private final Set<String> processedSessions = ConcurrentHashMap.newKeySet();
+    /** Guards against overlapping scans when a poll outlives the fixed delay. */
+    private final AtomicBoolean scanning = new AtomicBoolean(false);
+
+    /**
+     * Session ids handled this process lifetime (delivered or permanently skipped), to avoid re-evaluation. Bounded
+     * and FIFO-evicted so it cannot grow without limit; durable idempotency for delivered runs is records.jsonl.
+     */
+    private final Set<String> processedSessions = Collections.synchronizedSet(Collections.newSetFromMap(
+        new LinkedHashMap<>(256, 0.75f, false) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                return size() > MAX_PROCESSED_SESSIONS;
+            }
+        }));
 
     private final boolean enabled;
 
@@ -113,10 +129,27 @@ public class ProactiveDeliveryService {
      */
     @Scheduled(initialDelayString = "${gateway.proactive-delivery.poll-interval-ms:30000}",
         fixedDelayString = "${gateway.proactive-delivery.poll-interval-ms:30000}")
-    public void pollAndDeliver() {
-        if (!enabled) {
+    public void scheduledPoll() {
+        if (!enabled || !scanning.compareAndSet(false, true)) {
+            // Disabled, or a previous scan is still running — skip this tick to avoid overlap.
             return;
         }
+        // The scan makes blocking goosed calls; run it off the shared scheduler thread so it never starves the other
+        // @Scheduled tasks (channel pumps, idle watchdog).
+        Schedulers.boundedElastic().schedule(() -> {
+            try {
+                pollAndDeliver();
+            } finally {
+                scanning.set(false);
+            }
+        });
+    }
+
+    /**
+     * Scans all running instances for completed scheduled runs and delivers eligible ones. Package-private and
+     * synchronous so it is directly unit-testable; production invocation is via {@link #scheduledPoll()}.
+     */
+    void pollAndDeliver() {
         for (ManagedInstance instance : instanceManager.getAllInstances()) {
             if (instance.getStatus() != ManagedInstance.Status.RUNNING) {
                 continue;
@@ -162,7 +195,8 @@ public class ProactiveDeliveryService {
             processedSessions.add(sessionId);
             return;
         }
-        if (!ProactiveDeliveryMarkers.DELIVER_IM.equals(markerService.getDeliver(userId, agentId, scheduleId))) {
+        if (!ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(markerService.getDeliver(userId, agentId,
+            scheduleId))) {
             // Not opted into IM delivery — Inbox留底 only.
             processedSessions.add(sessionId);
             return;
@@ -258,7 +292,7 @@ public class ProactiveDeliveryService {
 
     private Set<String> fetchRunningSessionIds(ManagedInstance instance) {
         Map<String, Object> parsed = fetchJsonObject(instance, "/schedule/list");
-        Set<String> running = ConcurrentHashMap.newKeySet();
+        Set<String> running = new HashSet<>();
         for (Map<String, Object> job : asObjectList(parsed == null ? null : parsed.get("jobs"))) {
             if (Boolean.TRUE.equals(job.get("currently_running"))) {
                 String current = asString(job.get("current_session_id"));
@@ -275,12 +309,8 @@ public class ProactiveDeliveryService {
         if (session == null) {
             return null;
         }
-        Object conversation = session.get("conversation");
-        if (conversation == null) {
-            conversation = session.get("messages");
-        }
         String lastVisibleText = null;
-        for (Map<String, Object> message : asObjectList(conversation)) {
+        for (Map<String, Object> message : extractMessages(session)) {
             if (!"assistant".equals(message.get("role")) || isHidden(message.get("metadata"))) {
                 continue;
             }
@@ -290,6 +320,19 @@ public class ProactiveDeliveryService {
             }
         }
         return lastVisibleText == null ? null : lastVisibleText.trim();
+    }
+
+    private List<Map<String, Object>> extractMessages(Map<String, Object> session) {
+        // goosed's Session.conversation may serialize either as a bare message array or as an object wrapping a
+        // "messages" array; also tolerate a top-level "messages" field. Handle all three shapes defensively.
+        Object conversation = session.get("conversation");
+        if (conversation instanceof Map<?, ?> wrapped) {
+            return asObjectList(wrapped.get("messages"));
+        }
+        if (conversation instanceof List<?>) {
+            return asObjectList(conversation);
+        }
+        return asObjectList(session.get("messages"));
     }
 
     private boolean isHidden(Object metadata) {

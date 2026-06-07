@@ -29,6 +29,8 @@ import java.util.List;
 public class ProactiveContextInjector {
     private static final DateTimeFormatter ABSOLUTE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private static final int MAX_SUMMARY_CHARS = 500;
+
     private final ProactiveFollowupService followupService;
 
     private final int injectLimit;
@@ -101,7 +103,11 @@ public class ProactiveContextInjector {
     }
 
     private String oneLine(String value) {
-        return value == null ? "" : value.replace('\n', ' ').trim();
+        if (value == null) {
+            return "";
+        }
+        String flattened = value.replace('\n', ' ').trim();
+        return flattened.length() > MAX_SUMMARY_CHARS ? flattened.substring(0, MAX_SUMMARY_CHARS) + "…" : flattened;
     }
 
     private String nullToEmpty(String value) {

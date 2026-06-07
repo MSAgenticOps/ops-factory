@@ -37,7 +37,6 @@ interface ScheduleDraftMap {
         [scheduleId: string]: {
             name: string
             instruction: string
-            deliverToIm?: boolean
         }
     }
 }
@@ -273,7 +272,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             name: draft?.name || job.id,
             instruction: draft?.instruction || '',
             cron: job.cron,
-            deliverToIm: draft?.deliverToIm ?? false,
+            // Source the toggle from the gateway-annotated marker (authoritative), not the session-only draft.
+            deliverToIm: job.deliver === 'im',
         })
         setShowModal(true)
         await loadRuns(job)
@@ -325,7 +325,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 const settingsUnchanged = !!existingDraft
                     && existingDraft.name === form.name.trim()
                     && existingDraft.instruction === form.instruction.trim()
-                    && (existingDraft.deliverToIm ?? false) === form.deliverToIm
+                    && (editingJob.deliver === 'im') === form.deliverToIm
                 if (scheduleId === editingJob.id && settingsUnchanged) {
                     // Pure cron change: update in place so the existing schedule is never deleted.
                     await targetClient.updateSchedule(scheduleId, form.cron.trim())
@@ -355,7 +355,6 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                     [scheduleId]: {
                         name: form.name.trim(),
                         instruction: form.instruction.trim(),
-                        deliverToIm: form.deliverToIm,
                     },
                 },
             }

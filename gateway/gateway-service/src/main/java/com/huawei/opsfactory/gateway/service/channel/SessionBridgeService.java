@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,8 @@ public class SessionBridgeService {
     private final WebClient webClient;
 
     /**
-     * Creates the session bridge service instance.
+     * Creates the session bridge service instance. {@code contextInjector} augments inbound IM replies with recent
+     * proactive follow-up context (PR8) before they reach the agent.
      */
     public SessionBridgeService(ChannelConfigService channelConfigService, ChannelBindingService channelBindingService,
         InstanceManager instanceManager, GoosedProxy goosedProxy, AgentConfigService agentConfigService,
@@ -208,11 +210,14 @@ public class SessionBridgeService {
                 String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
                     ? channel.ownerUserId() : binding.ownerUserId();
                 // PR8: prepend recent proactive follow-ups so the agent can act on a terse IM reply (e.g. "关吧");
-                // the agent sees the augmented text, the IM surface still shows the user's original message.
+                // the agent sees the augmented text, the IM surface still shows the user's original message. The
+                // follow-up lookup is a blocking file read, so run it on boundedElastic — never on a reactive thread.
                 String targetKey = ChannelTargetKey.of(channel.type(), channelId, accountId, conversationId, threadId);
-                String agentVisibleText = contextInjector.augment(effectiveOwnerUserId, binding.agentId(), targetKey,
-                    text.trim());
-                return sendTextToSession(binding.agentId(), effectiveOwnerUserId, binding.sessionId(), agentVisibleText)
+                return Mono.fromCallable(() -> contextInjector.augment(effectiveOwnerUserId, binding.agentId(),
+                        targetKey, text.trim()))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(agentVisibleText -> sendTextToSession(binding.agentId(), effectiveOwnerUserId,
+                        binding.sessionId(), agentVisibleText)
                     .onErrorResume(WebClientResponseException.class, error -> {
                         if (error.getStatusCode().value() != 404) {
                             return Mono.error(error);
@@ -244,7 +249,7 @@ public class SessionBridgeService {
                         return new ChannelReplyResult(channelId, binding.accountId(), binding.peerId(),
                             binding.conversationId(), binding.threadId(), binding.conversationType(),
                             effectiveOwnerUserId, binding.agentId(), binding.sessionId(), replyText);
-                    });
+                    }));
             });
     }
 

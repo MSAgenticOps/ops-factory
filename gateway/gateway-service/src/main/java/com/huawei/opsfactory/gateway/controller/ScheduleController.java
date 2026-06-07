@@ -14,10 +14,13 @@ import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -35,6 +38,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 /**
  * REST controller for scheduled job management through goosed.
@@ -46,7 +50,13 @@ import java.nio.charset.StandardCharsets;
 @RestSchema(schemaId = "scheduleController")
 @RequestMapping("/api/gateway/agents/{agentId}/schedule")
 public class ScheduleController {
+    private static final Logger log = LoggerFactory.getLogger(ScheduleController.class);
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final int MAX_SCHEDULE_ID_LENGTH = 200;
+
+    private static final Pattern SAFE_SCHEDULE_ID = Pattern.compile("^[A-Za-z0-9._-]+$");
 
     private final InstanceManager instanceManager;
 
@@ -99,7 +109,12 @@ public class ScheduleController {
      */
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> listSchedules(@PathVariable("agentId") String agentId, HttpServletRequest request) {
-        return jsonProxy(agentId, request, HttpMethod.GET, "/schedule/list", null);
+        ResponseEntity<String> response = jsonProxy(agentId, request, HttpMethod.GET, "/schedule/list", null);
+        // Annotate each job with its Gateway-side deliver marker so the UI can show the real "deliver to IM" state
+        // (the marker lives on the gateway, not in goosed's schedule list).
+        String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+            .body(annotateDeliverMarkers(agentId, userId, response.getBody()));
     }
 
     /**
@@ -232,14 +247,46 @@ public class ScheduleController {
     }
 
     private void reconcileDeliverMarker(String agentId, HttpServletRequest request, String scheduleId, String deliver) {
+        boolean wantsImDelivery = ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(deliver);
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
-        if (userId == null || scheduleId == null) {
+        if (userId == null || !isValidScheduleId(scheduleId)) {
+            if (wantsImDelivery) {
+                log.warn("deliver=im requested but schedule id missing/invalid; IM delivery NOT set for agent {}",
+                    agentId);
+            }
             return;
         }
-        if (ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(deliver)) {
+        if (wantsImDelivery) {
             deliveryMarkerService.setDeliver(userId, agentId, scheduleId, ProactiveDeliveryMarkers.DELIVER_IM);
         } else {
             deliveryMarkerService.remove(userId, agentId, scheduleId);
+        }
+    }
+
+    private boolean isValidScheduleId(String scheduleId) {
+        return scheduleId != null && scheduleId.length() <= MAX_SCHEDULE_ID_LENGTH
+            && SAFE_SCHEDULE_ID.matcher(scheduleId).matches();
+    }
+
+    private String annotateDeliverMarkers(String agentId, String userId, String listJson) {
+        if (userId == null || listJson == null || listJson.isBlank()) {
+            return listJson;
+        }
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(listJson);
+            JsonNode jobs = root.get("jobs");
+            if (jobs != null && jobs.isArray()) {
+                for (JsonNode job : jobs) {
+                    JsonNode id = job.get("id");
+                    if (job instanceof ObjectNode jobObj && id != null && id.isTextual()) {
+                        jobObj.put("deliver", deliveryMarkerService.getDeliver(userId, agentId, id.asText()));
+                    }
+                }
+            }
+            return OBJECT_MAPPER.writeValueAsString(root);
+        } catch (JsonProcessingException e) {
+            // Unexpected goosed response shape — pass it through unchanged rather than failing the list.
+            return listJson;
         }
     }
 

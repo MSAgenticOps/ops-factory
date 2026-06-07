@@ -116,6 +116,20 @@ public class ProactiveDeliveryServiceTest {
     }
 
     @Test
+    public void deliversWhenConversationIsWrappedObject() throws Exception {
+        markImAndBindOneWhatsApp();
+        // goosed may wrap the message list as conversation:{messages:[...]} instead of a bare array.
+        when(goosedProxy.fetchJson(eq(PORT), eq("/sessions/" + SESSION), eq(SECRET))).thenReturn(Mono.just(
+            "{\"conversation\":{\"messages\":[{\"role\":\"assistant\",\"content\":[{\"type\":\"text\","
+                + "\"text\":\"wrapped report\"}],\"metadata\":{\"userVisible\":true}}]}}"));
+
+        service.pollAndDeliver();
+
+        assertEquals(1, outboxFileCount());
+        verify(followupService).append(eq(USER), eq(AGENT), argThat(r -> r.summary().contains("wrapped report")));
+    }
+
+    @Test
     public void notMarkedForIm_skips() throws Exception {
         when(markerService.getDeliver(USER, AGENT, SCHEDULE)).thenReturn(null);
 

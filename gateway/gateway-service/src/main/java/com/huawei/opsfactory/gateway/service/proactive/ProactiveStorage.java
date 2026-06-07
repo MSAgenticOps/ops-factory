@@ -75,8 +75,20 @@ public class ProactiveStorage {
         return proactiveDir(userId, agentId).resolve(RECORDS_FILE);
     }
 
+    /**
+     * Resolves the delivery-marker file under an already-resolved per-user agent directory, so callers that hold
+     * the agent dir (e.g. schedule seeding) reuse this single file-layout definition rather than re-joining it.
+     *
+     * @param userAgentDir the {@code users/<userId>/agents/<agentId>} directory
+     * @return the delivery-marker file path
+     */
+    public static Path deliveryMarkersFileIn(Path userAgentDir) {
+        return userAgentDir.resolve(ProactiveDeliveryMarkers.DIR).resolve(ProactiveDeliveryMarkers.DELIVERY_FILE);
+    }
+
     private String requireSafe(String segment, String name) {
-        if (segment == null || !SAFE_SEGMENT.matcher(segment).matches()) {
+        if (segment == null || !SAFE_SEGMENT.matcher(segment).matches() || ".".equals(segment)
+            || "..".equals(segment)) {
             throw new IllegalArgumentException(name + " contains unsafe path characters");
         }
         return segment;
