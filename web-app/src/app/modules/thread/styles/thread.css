@@ -1,0 +1,182 @@
+.thread-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.thread-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.thread-breadcrumb-label {
+    color: var(--color-text-secondary, #64748b);
+    font-size: 13px;
+}
+
+.thread-breadcrumb-sep {
+    color: var(--color-text-secondary, #94a3b8);
+}
+
+.thread-title {
+    font-weight: 600;
+}
+
+.thread-switcher {
+    padding: 4px 10px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 8px;
+    background: var(--color-surface, #ffffff);
+    color: inherit;
+}
+
+.thread-rail-toggle {
+    margin-left: auto;
+    padding: 4px 12px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 8px;
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text-secondary, #64748b);
+    cursor: pointer;
+}
+
+.thread-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.thread-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.thread-conversation {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.thread-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.thread-conversation-error {
+    padding: 8px 16px;
+    color: var(--color-danger, #dc2626);
+    font-size: 13px;
+}
+
+.thread-rail {
+    width: 340px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--color-border, #e5e7eb);
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.thread-timeline-title {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.thread-timeline-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.thread-card {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 10px;
+    background: var(--color-surface, #ffffff);
+    cursor: pointer;
+}
+
+.thread-card:hover {
+    border-color: var(--color-primary, #6366f1);
+}
+
+.thread-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.thread-card-schedule {
+    font-weight: 600;
+}
+
+.thread-card-preview {
+    margin-top: 4px;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-timeline-empty,
+.thread-main-empty {
+    color: var(--color-text-secondary, #64748b);
+    font-size: 13px;
+    padding: 16px 4px;
+}
+
+.thread-page-empty {
+    align-items: center;
+    justify-content: center;
+}
+
+.thread-empty-card {
+    margin: auto;
+    text-align: center;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.thread-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.thread-modal-footer button {
+    padding: 4px 12px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 8px;
+    background: var(--color-surface, #ffffff);
+    cursor: pointer;
+}
+
+.thread-modal-footer button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.thread-modal-pos {
+    font-size: 12px;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.thread-modal-spacer {
+    flex: 1;
+}

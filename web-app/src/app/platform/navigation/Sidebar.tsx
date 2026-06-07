@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../providers/GoosedContext'
 import { useInbox } from '../providers/InboxContext'
+import { useThreadUnread } from '../providers/ThreadUnreadContext'
 import { useToast } from '../providers/ToastContext'
 import { useUser } from '../providers/UserContext'
 import { useSidebar } from '../providers/SidebarContext'
@@ -11,6 +12,12 @@ import { buildNavigation } from '../NavigationBuilder'
 import { buildNewChatState } from '../chat/chatRouteState'
 import { renderIcon } from '../icons'
 import type { SidebarItemModel } from '../module-types'
+
+function badgeCountForSource(badge: SidebarItemModel['badge'], inboxUnread: number, threadUnread: number): number {
+    if (badge === 'inboxUnread') return inboxUnread
+    if (badge === 'threadUnread') return threadUnread
+    return 0
+}
 import { SidebarShell } from '../SidebarShell'
 import { useEnabledModules, useModuleContext } from '../useEnabledModules'
 
@@ -19,6 +26,7 @@ export default function Sidebar() {
     const { agents } = useGoosed()
     const { showToast } = useToast()
     const { unreadCount } = useInbox()
+    const { unreadCount: threadUnreadCount } = useThreadUnread()
     const { userId } = useUser()
     const { isCollapsed, toggleSidebar } = useSidebar()
     const moduleContext = useModuleContext()
@@ -56,7 +64,7 @@ export default function Sidebar() {
     const renderNavItem = (item: SidebarItemModel) => {
         const title = t(item.titleKey)
         const icon = renderIcon(item.icon)
-        const badgeCount = item.badge === 'inboxUnread' ? unreadCount : 0
+        const badgeCount = badgeCountForSource(item.badge, unreadCount, threadUnreadCount)
 
         if (item.type === 'action') {
             return (

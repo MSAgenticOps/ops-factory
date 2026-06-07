@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Sidebar from './app/platform/navigation/Sidebar'
 import { PreviewProvider, usePreview } from './app/platform/providers/PreviewContext'
 import { InboxProvider } from './app/platform/providers/InboxContext'
+import { ThreadUnreadProvider } from './app/platform/providers/ThreadUnreadContext'
 import { SidebarProvider, useSidebar } from './app/platform/providers/SidebarContext'
 import { RightPanelProvider, useRightPanel } from './app/platform/providers/RightPanelContext'
 import { isEmbedMode } from './utils/urlParams'
@@ -50,11 +51,13 @@ export default function App() {
             <Route path="/*" element={
                 <SidebarProvider>
                     <InboxProvider>
-                        <PreviewProvider>
-                            <RightPanelProvider>
-                                <AppContent />
-                            </RightPanelProvider>
-                        </PreviewProvider>
+                        <ThreadUnreadProvider>
+                            <PreviewProvider>
+                                <RightPanelProvider>
+                                    <AppContent />
+                                </RightPanelProvider>
+                            </PreviewProvider>
+                        </ThreadUnreadProvider>
                     </InboxProvider>
                 </SidebarProvider>
             } />

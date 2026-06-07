@@ -70,6 +70,7 @@
     "newChat": "新建对话",
     "history": "历史记录",
     "inbox": "收件箱",
+    "thread": "会话",
     "agents": "智能体",
     "skillMarket": "技能市场",
     "channels": "渠道",
@@ -1295,6 +1296,22 @@
     "noMatchSessions": "没有匹配“{{term}}”的未读会话。",
     "dismiss": "忽略",
     "summaryUnavailable": "暂无可展示的任务说明。"
+  },
+  "thread": {
+    "title": "会话",
+    "switcherLabel": "切换会话",
+    "loading": "正在加载会话…",
+    "noThreads": "还没有绑定的 IM 会话。绑定一个渠道后即可开始会话。",
+    "noConversation": "还没有对话。当该联系人向助理发消息后,对话会显示在这里。",
+    "replyPlaceholder": "回复…",
+    "resumeError": "加载该对话失败:{{error}}",
+    "pushesTitle": "主动推送",
+    "noPushes": "还没有投递到该会话的主动推送。",
+    "hidePushes": "隐藏推送",
+    "showPushes": "显示推送",
+    "prev": "上一条",
+    "next": "下一条",
+    "gotoSession": "前往会话"
   },
   "scheduler": {
     "title": "定时任务",

@@ -70,6 +70,15 @@ function FilesIcon() {
     )
 }
 
+function ThreadIcon() {
+    return (
+        <IconFrame strokeWidth={1.85}>
+            <path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H8l-3 3v-3H6a2 2 0 0 1-2-2z" />
+            <path d="M8 8.4h6M8 10.4h3.5" />
+        </IconFrame>
+    )
+}
+
 function ChannelsIcon() {
     return (
         <IconFrame strokeWidth={1.85}>
@@ -227,6 +236,7 @@ const ICONS: Record<IconKey, () => ReactNode> = {
     plus: PlusIcon,
     history: HistoryIcon,
     inbox: InboxIcon,
+    thread: ThreadIcon,
     files: FilesIcon,
     channels: ChannelsIcon,
     diagnosis: WorkflowIcon,
