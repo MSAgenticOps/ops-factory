@@ -98,8 +98,8 @@ public class ProactiveDeliveryServiceTest {
         when(goosedProxy.fetchJson(eq(PORT), eq("/schedule/list"), eq(SECRET))).thenReturn(
             Mono.just("{\"jobs\":[{\"id\":\"" + SCHEDULE + "\",\"currently_running\":false}]}"));
         when(goosedProxy.fetchJson(eq(PORT), eq("/sessions/" + SESSION), eq(SECRET))).thenReturn(Mono.just(
-            "{\"conversation\":[{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"INC-1 建议关单\"}],"
-                + "\"metadata\":{\"userVisible\":true}}]}"));
+            "{\"conversation\":[{\"role\":\"assistant\",\"metadata\":{\"userVisible\":true},"
+                + "\"content\":[{\"type\":\"text\",\"text\":\"INC-1 建议关单\"}]}]}"));
 
         when(runtimeStorageService.outboxPendingDirectory(any(ChannelDetail.class))).thenReturn(outboxDir);
     }
