@@ -13,6 +13,11 @@ gateway:
     timeout-minutes: 15
     check-interval-ms: 60000
 
+  proactive-delivery:
+    enabled: true
+    poll-interval-ms: 30000
+    max-age-minutes: 60
+
   upload:
     max-file-size-mb: 50
     max-image-size-mb: 20
