@@ -1348,7 +1348,7 @@
     "currentScheduleId": "Current schedule ID: {{id}}",
     "cron": "Cron",
     "cronHint": "Supports 5 or 6 fields. Example: 0 0 9 * * * (every day at 09:00).",
-    "deliverToIm": "Deliver report to my IM (WeChat / WhatsApp)",
+    "deliverToIm": "Push the report to my bound IM channels",
     "deliverToImHint": "When this task runs, also push its report to your bound IM channels. The run is always kept in Inbox regardless.",
     "saving": "Saving...",
     "create": "Create",
