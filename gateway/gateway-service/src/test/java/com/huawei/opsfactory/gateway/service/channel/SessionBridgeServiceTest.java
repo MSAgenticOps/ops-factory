@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveContextInjector;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -41,7 +42,8 @@ public class SessionBridgeServiceTest {
         GoosedProxy goosedProxy = mock(GoosedProxy.class);
         when(goosedProxy.getWebClient()).thenReturn(WebClient.builder().build());
         service = new SessionBridgeService(mock(ChannelConfigService.class), mock(ChannelBindingService.class),
-            mock(InstanceManager.class), goosedProxy, mock(AgentConfigService.class));
+            mock(InstanceManager.class), goosedProxy, mock(AgentConfigService.class),
+            mock(ProactiveContextInjector.class));
         extractFinalAssistantText =
             SessionBridgeService.class.getDeclaredMethod("extractFinalAssistantText", List.class, String.class);
         extractFinalAssistantText.setAccessible(true);

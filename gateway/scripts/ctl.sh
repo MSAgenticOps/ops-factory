@@ -561,6 +561,7 @@ do_startup() {
     add_java_opt_from_env PROACTIVE_DELIVERY_ENABLED gateway.proactive-delivery.enabled
     add_java_opt_from_env PROACTIVE_DELIVERY_POLL_INTERVAL gateway.proactive-delivery.poll-interval-ms
     add_java_opt_from_env PROACTIVE_DELIVERY_MAX_AGE_MINUTES gateway.proactive-delivery.max-age-minutes
+    add_java_opt_from_env PROACTIVE_DELIVERY_FOLLOWUP_INJECT_LIMIT gateway.proactive-delivery.followup-inject-limit
     add_java_opt_from_env SSE_FIRST_BYTE_TIMEOUT gateway.sse.first-byte-timeout-sec
     add_java_opt_from_env SSE_IDLE_TIMEOUT gateway.sse.idle-timeout-sec
     add_java_opt_from_env SSE_MAX_DURATION gateway.sse.max-duration-sec

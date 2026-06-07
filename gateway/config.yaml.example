@@ -33,6 +33,7 @@ gateway:
     enabled: true                       # env override: PROACTIVE_DELIVERY_ENABLED
     poll-interval-ms: 30000             # env override: PROACTIVE_DELIVERY_POLL_INTERVAL — scan cadence for completed runs
     max-age-minutes: 60                 # env override: PROACTIVE_DELIVERY_MAX_AGE_MINUTES — ignore runs older than this
+    followup-inject-limit: 10           # env override: PROACTIVE_DELIVERY_FOLLOWUP_INJECT_LIMIT — recent follow-ups injected into an IM reply
 
   sse:
     first-byte-timeout-sec: 120         # env override: SSE_FIRST_BYTE_TIMEOUT

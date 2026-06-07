@@ -17,6 +17,7 @@ gateway:
     enabled: true
     poll-interval-ms: 30000
     max-age-minutes: 60
+    followup-inject-limit: 10
 
   upload:
     max-file-size-mb: 50
