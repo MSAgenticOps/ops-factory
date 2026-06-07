@@ -177,7 +177,13 @@ public class ProactiveDeliveryService {
     private void processSession(ManagedInstance instance, Map<String, Object> session, Set<String> runningSessionIds) {
         String sessionId = asString(session.get("id"));
         String scheduleId = asString(session.get("schedule_id"));
-        if (sessionId == null || scheduleId == null || processedSessions.contains(sessionId)) {
+        if (sessionId == null || scheduleId == null) {
+            return;
+        }
+        // goosed session ids are per-instance and can collide across users, so dedupe by (agent,user) + session id —
+        // never by session id alone, or one user's run would wrongly suppress another user's same-id run.
+        String dedupeKey = instance.getKey() + "::" + sessionId;
+        if (processedSessions.contains(dedupeKey)) {
             return;
         }
         if (runningSessionIds.contains(sessionId)) {
@@ -186,19 +192,19 @@ public class ProactiveDeliveryService {
         }
         if (isOlderThanMaxAge(asString(session.get("created_at")))) {
             // Historical run (e.g. on gateway restart): skip permanently so we never mass-deliver stale reports.
-            processedSessions.add(sessionId);
+            processedSessions.add(dedupeKey);
             return;
         }
         String userId = instance.getUserId();
         String agentId = instance.getAgentId();
         if (followupService.existsForSession(userId, agentId, sessionId)) {
-            processedSessions.add(sessionId);
+            processedSessions.add(dedupeKey);
             return;
         }
         if (!ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(markerService.getDeliver(userId, agentId,
             scheduleId))) {
             // Not opted into IM delivery — Inbox留底 only.
-            processedSessions.add(sessionId);
+            processedSessions.add(dedupeKey);
             return;
         }
         String report = extractFinalReport(instance, sessionId);
@@ -207,7 +213,7 @@ public class ProactiveDeliveryService {
             return;
         }
         deliver(instance, scheduleId, sessionId, report);
-        processedSessions.add(sessionId);
+        processedSessions.add(dedupeKey);
     }
 
     private void deliver(ManagedInstance instance, String scheduleId, String sessionId, String report) {
