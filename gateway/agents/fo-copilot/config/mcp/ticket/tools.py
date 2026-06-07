@@ -17,6 +17,7 @@ in isolation (see test_tools.py). server.py wires it to stdio.
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import Any
 
 from store import COPILOT_OWNER, TicketStore, available_transitions
@@ -117,6 +118,24 @@ def _t_get_state_context(args: dict[str, Any]) -> str:
     return _ok(f"{t['id']} [{t['status']}/{t['priority']}] {t['title']}", view)
 
 
+def _t_get_daily_brief(args: dict[str, Any]) -> str:
+    target = None
+    raw_date = args.get("date")
+    if raw_date:
+        try:
+            target = date.fromisoformat(raw_date)
+        except ValueError:
+            raise ToolError("INVALID_ARG", "date must be an ISO date (YYYY-MM-DD).",
+                            "Omit date for yesterday, or pass e.g. 2026-06-06.")
+    brief = _store.daily_brief(target)
+    fb = f" (no activity on {brief['fallbackFrom']}; rolled back)" if brief.get("fallbackFrom") else ""
+    summary = (
+        f"Daily brief {brief['date']}{fb}: {brief['opened']} opened, {brief['resolved']} resolved, "
+        f"{len(brief['awaitingDecision'])} awaiting your decision, {len(brief['atRisk'])} at SLA risk."
+    )
+    return _ok(summary, brief)
+
+
 def _t_get_candidates(args: dict[str, Any]) -> str:
     cands = _store.candidates()
     ticket_id = args.get("ticketId")
@@ -207,6 +226,7 @@ def _t_update_assignment(args: dict[str, Any]) -> str:
 
 _HANDLERS = {
     "get_todo": _t_get_todo,
+    "get_daily_brief": _t_get_daily_brief,
     "get_state_context": _t_get_state_context,
     "get_candidates": _t_get_candidates,
     "create": _t_create,
@@ -223,6 +243,17 @@ TOOLS: list[dict[str, Any]] = [
         "name": "get_todo",
         "description": "Proactive-watch entry point: list the tickets awaiting my (copilot's) follow-up, as concise summaries. Start a watch pass here; most tickets can be triaged from this view without a deep read.",
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "get_daily_brief",
+        "description": "Previous-day handling summary for the FO lead's morning brief: counts of tickets opened / resolved / handled, a priority breakdown, the currently-open important (P1/P2) backlog, the items awaiting the FO lead's decision (with the specific question for each), and what is at SLA risk. Defaults to yesterday and rolls back to the most recent active day if yesterday was quiet (never empty). Use for the scheduled daily-brief task or when asked 'how did yesterday go'.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "Optional ISO date (YYYY-MM-DD) to report on; defaults to yesterday."},
+            },
+            "additionalProperties": False,
+        },
     },
     {
         "name": "get_state_context",

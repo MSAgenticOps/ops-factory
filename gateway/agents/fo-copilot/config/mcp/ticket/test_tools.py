@@ -121,6 +121,46 @@ class TicketToolsTest(unittest.TestCase):
         res = call(self.tools, "comment", ticketId="INC-1042", body="note", operationId="op-1", followupId="f-1")
         self.assertTrue(res["ok"])
 
+    def test_daily_brief_always_has_data(self):
+        res = call(self.tools, "get_daily_brief")
+        self.assertTrue(res["ok"], res)
+        data = res["data"]
+        # structural contract
+        for key in ("date", "opened", "resolved", "handled", "byPriority",
+                    "importantOpen", "awaitingDecision", "atRisk"):
+            self.assertIn(key, data)
+        # seeded previous-day activity guarantees a non-empty window
+        self.assertGreaterEqual(data["opened"], 3)
+        self.assertGreaterEqual(data["resolved"], 2)
+        opened_ids = {t["id"] for t in data["openedTickets"]}
+        self.assertTrue({"INC-1051", "INC-1047", "REQ-2090"}.issubset(opened_ids))
+        resolved_ids = {t["id"] for t in data["resolvedTickets"]}
+        self.assertTrue({"INC-1051", "INC-1047"}.issubset(resolved_ids))
+
+    def test_daily_brief_awaiting_decision_explicit_and_derived(self):
+        data = call(self.tools, "get_daily_brief")["data"]
+        awaiting_ids = {a["id"] for a in data["awaitingDecision"]}
+        # CHG-3310 carries an explicit awaitingDecision marker
+        self.assertIn("CHG-3310", awaiting_ids)
+        # INC-1042 is an open P1 past its resolve SLA -> derived
+        self.assertIn("INC-1042", awaiting_ids)
+        # every item states what the FO lead must decide
+        self.assertTrue(all(a.get("question") for a in data["awaitingDecision"]))
+        # INC-1042 should also surface as an at-risk open P1
+        self.assertIn("INC-1042", {r["id"] for r in data["atRisk"]})
+
+    def test_daily_brief_explicit_date_fallback(self):
+        # a date far in the past has no activity -> rolls back, still returns data
+        res = call(self.tools, "get_daily_brief", date="2000-01-01")
+        self.assertTrue(res["ok"], res)
+        self.assertEqual(res["data"].get("fallbackFrom"), "2000-01-01")
+        self.assertGreaterEqual(res["data"]["opened"] + res["data"]["resolved"], 1)
+
+    def test_daily_brief_rejects_bad_date(self):
+        res = call(self.tools, "get_daily_brief", date="not-a-date")
+        self.assertFalse(res["ok"])
+        self.assertEqual(res["error"]["code"], "INVALID_ARG")
+
     def test_unknown_tool(self):
         res = json.loads(asyncio.run(self.tools.dispatch("nope", {})))
         self.assertFalse(res["ok"])

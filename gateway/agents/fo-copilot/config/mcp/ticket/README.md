@@ -6,16 +6,17 @@ pick an owner, and write (create / update / comment / transition / reassign).
 
 It is the **atomic operation layer** under the FO Copilot skills. Skills compose
 these tools into workflows (watch / intake / assign / advance / escalate /
-close); the tools themselves carry no business judgment (no P1/P2 authorization
-gate — that lives in the skill prompts). See
+close / daily-brief); the tools themselves carry no business judgment (no P1/P2
+authorization gate — that lives in the skill prompts). See
 [`docs/architecture/fo-copilot-proactive-assistant.md`](../../../../../../docs/architecture/fo-copilot-proactive-assistant.md)
 §4.2.
 
-## Tools (8)
+## Tools (9)
 
 | Tool | Kind | Purpose |
 | --- | --- | --- |
 | `get_todo` | read · scan | Tickets awaiting my follow-up, as concise summaries (watch entry point). |
+| `get_daily_brief` | read · digest | Previous-day handling summary (opened/resolved/handled counts, priority breakdown, open P1/P2 backlog, items awaiting the FO lead's decision, SLA risk); defaults to yesterday, rolls back to the most recent active day. Daily-brief entry point. |
 | `get_state_context` | read · deep | One ticket's full decision context; `format: concise \| detailed`. |
 | `get_candidates` | read · routing | Team roster (skills / on-shift / load / responsibilities); rank by `ticketId`. |
 | `create` | write | Create a ticket. |

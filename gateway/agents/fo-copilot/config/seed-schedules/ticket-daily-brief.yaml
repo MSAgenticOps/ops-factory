@@ -1,0 +1,15 @@
+version: 1.0.0
+title: Ticket daily brief
+description: "Daily FO operations brief: summarize the previous day's ticket handling and surface what needs the FO lead's decision."
+instructions: |
+  This is the FO lead's morning operations brief (daily-brief), fired once a day by a scheduled task.
+  Run the daily-brief skill workflow:
+  1. Call ticket.get_daily_brief to pull the previous day's handling summary (it already carries the
+     opened / resolved / handled counts, the priority breakdown, the open important backlog, the items
+     awaiting your decision, and what is at SLA risk; it rolls back to the most recent active day on its
+     own if yesterday was quiet).
+  2. Render it as a tight ops-director report per the skill template: numbers first, then the short list
+     of important items, then — leading — the decisions that need the FO lead today, each with its
+     concrete question.
+  3. Do not deep-read or change any ticket; this is a read-only digest, not a watch round.
+  This task only reports — it never touches ticket state. The report is delivered to the FO lead's bound IM channel.
