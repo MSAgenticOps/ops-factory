@@ -853,8 +853,14 @@ export class GoosedClient {
 
     // === Schedule APIs ===
 
-    async createSchedule(request: { id: string; recipe: Recipe; cron: string }): Promise<ScheduledJob> {
-        return this.post<ScheduledJob>('/schedule/create', request);
+    async createSchedule(
+        request: { id: string; recipe: Recipe; cron: string; deliver?: 'im' },
+    ): Promise<ScheduledJob> {
+        // goosed only accepts {id, recipe, cron}; the optional deliver flag is consumed by the gateway (which
+        // persists a per-schedule "push report to IM" marker) and is passed as a query param, not in the body.
+        const payload = { id: request.id, recipe: request.recipe, cron: request.cron };
+        const path = request.deliver === 'im' ? '/schedule/create?deliver=im' : '/schedule/create';
+        return this.post<ScheduledJob>(path, payload);
     }
 
     async listSchedules(): Promise<ScheduledJob[]> {

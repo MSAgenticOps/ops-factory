@@ -1348,6 +1348,8 @@
     "currentScheduleId": "当前计划 ID：{{id}}",
     "cron": "Cron 表达式",
     "cronHint": "支持 5 或 6 个字段。示例：0 0 9 * * *（每天 09:00）。",
+    "deliverToIm": "把回报发到我的 IM(微信 / WhatsApp)",
+    "deliverToImHint": "此任务运行时,把回报也推送到你绑定的 IM 渠道;无论是否推送,运行记录都会保留在 Inbox。",
     "saving": "保存中...",
     "create": "创建",
     "deleteConfirm": "确定删除定时操作 \"{{id}}\"？",

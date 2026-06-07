@@ -8,6 +8,12 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkerService;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -23,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
@@ -39,33 +46,48 @@ import java.nio.charset.StandardCharsets;
 @RestSchema(schemaId = "scheduleController")
 @RequestMapping("/api/gateway/agents/{agentId}/schedule")
 public class ScheduleController {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final InstanceManager instanceManager;
 
     private final GoosedProxy goosedProxy;
+
+    private final ProactiveDeliveryMarkerService deliveryMarkerService;
 
     /**
      * Creates the schedule controller instance.
      *
      * @param instanceManager agent instance lifecycle manager
      * @param goosedProxy HTTP proxy for forwarding requests to goosed processes
+     * @param deliveryMarkerService persists the per-user "deliver report to IM" marker for a schedule
      */
-    public ScheduleController(InstanceManager instanceManager, GoosedProxy goosedProxy) {
+    public ScheduleController(InstanceManager instanceManager, GoosedProxy goosedProxy,
+        ProactiveDeliveryMarkerService deliveryMarkerService) {
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;
+        this.deliveryMarkerService = deliveryMarkerService;
     }
 
     /**
-     * Creates a scheduled job.
+     * Creates a scheduled job. When {@code deliver=im} is supplied, also records (Gateway-side, keyed by schedule
+     * id) that this schedule's report should be pushed to the user's bound IM channels.
      *
      * @param agentId agent identifier
-     * @param body request body
+     * @param body request body (forwarded verbatim to goosed: {@code {id, recipe, cron}})
+     * @param deliver optional delivery channel; {@code im} marks the schedule for IM push
      * @param request current HTTP request
      * @return proxied goosed response
      */
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> createSchedule(@PathVariable("agentId") String agentId, @RequestBody String body,
-        HttpServletRequest request) {
-        return jsonProxy(agentId, request, HttpMethod.POST, "/schedule/create", body);
+        @RequestParam(value = "deliver", required = false) String deliver, HttpServletRequest request) {
+        // Forward the schedule body verbatim to goosed (it only accepts {id, recipe, cron}); the deliver flag is a
+        // Gateway-side concern persisted separately, keyed by schedule id, so goosed never sees it.
+        ResponseEntity<String> response = jsonProxy(agentId, request, HttpMethod.POST, "/schedule/create", body);
+        // Reconcile the Gateway-side delivery marker with the toggle: set it for deliver=im, clear it otherwise so a
+        // recreate that turned delivery off does not leave a stale marker.
+        reconcileDeliverMarker(agentId, request, extractScheduleId(body), deliver);
+        return response;
     }
 
     /**
@@ -106,7 +128,14 @@ public class ScheduleController {
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> deleteSchedule(@PathVariable("agentId") String agentId,
         @PathVariable("id") String id, HttpServletRequest request) {
-        return jsonProxy(agentId, request, HttpMethod.DELETE, "/schedule/delete/" + encode(id), null);
+        ResponseEntity<String> response =
+            jsonProxy(agentId, request, HttpMethod.DELETE, "/schedule/delete/" + encode(id), null);
+        // Clear any delivery marker for the deleted schedule so it cannot leave a dangling IM-push target.
+        String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
+        if (userId != null) {
+            deliveryMarkerService.remove(userId, agentId, id);
+        }
+        return response;
     }
 
     /**
@@ -200,6 +229,30 @@ public class ScheduleController {
         String result =
             goosedProxy.fetchJson(instance.getPort(), method, path, body, 30, instance.getSecretKey()).block();
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(result);
+    }
+
+    private void reconcileDeliverMarker(String agentId, HttpServletRequest request, String scheduleId, String deliver) {
+        String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
+        if (userId == null || scheduleId == null) {
+            return;
+        }
+        if (ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(deliver)) {
+            deliveryMarkerService.setDeliver(userId, agentId, scheduleId, ProactiveDeliveryMarkers.DELIVER_IM);
+        } else {
+            deliveryMarkerService.remove(userId, agentId, scheduleId);
+        }
+    }
+
+    private String extractScheduleId(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode id = OBJECT_MAPPER.readTree(body).get("id");
+            return id != null && id.isTextual() ? id.asText() : null;
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     private ManagedInstance resolveInstance(String agentId, HttpServletRequest request) {
