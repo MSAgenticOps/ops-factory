@@ -42,6 +42,11 @@ class BasicAuthAspectTest {
 
     private BasicAuthAspect aspect;
 
+    /**
+     * Sets up test fixtures before each test.
+     *
+     * @throws Throwable if setup fails
+     */
     @BeforeEach
     void setUp() throws Throwable {
         aspect = new BasicAuthAspect(request);
@@ -56,6 +61,9 @@ class BasicAuthAspectTest {
         when(signature.getName()).thenReturn("testMethod");
     }
 
+    /**
+     * Tears down test fixtures after each test.
+     */
     @AfterEach
     void tearDown() {
         contextUtilsMock.close();

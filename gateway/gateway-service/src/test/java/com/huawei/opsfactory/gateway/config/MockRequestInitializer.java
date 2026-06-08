@@ -22,6 +22,11 @@ import org.springframework.test.context.ContextConfiguration;
  */
 public class MockRequestInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
+    /**
+     * Initializes the application context with a mock HttpServletRequest.
+     *
+     * @param applicationContext the configurable application context to register the mock request
+     */
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
         HttpServletRequest mockRequest = Mockito.mock(HttpServletRequest.class);

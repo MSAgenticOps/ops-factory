@@ -18,6 +18,12 @@ import org.springframework.test.context.TestExecutionListener;
  */
 public class MockRequestTestExecutionListener implements TestExecutionListener {
 
+    /**
+     * Prepares the test instance by registering a mock HttpServletRequest if not already present.
+     *
+     * @param testContext the test context containing the application context
+     * @throws Exception if preparation fails
+     */
     @Override
     public void prepareTestInstance(TestContext testContext) throws Exception {
         Object context = testContext.getApplicationContext();

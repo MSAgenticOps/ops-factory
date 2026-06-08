@@ -18,6 +18,11 @@ import org.springframework.context.annotation.Primary;
 @TestConfiguration
 public class BaseControllerTestConfig {
 
+    /**
+     * Creates a mock HttpServletRequest bean for testing.
+     *
+     * @return a mocked HttpServletRequest instance
+     */
     @Bean
     @Primary
     public HttpServletRequest testHttpServletRequest() {
