@@ -348,6 +348,29 @@ public class InstanceManagerExtendedTest {
     }
 
     /**
+     * Tests that the gateway auth secret (gateway.secret-key) is injected so MCP extensions can authenticate
+     * callbacks to the gateway's AuthWebFilter (e.g. delegation/A2A, sop-executor), independent of GATEWAY_API_PASSWORD.
+     *
+     * @throws Exception if the operation fails
+     */
+    @Test
+    public void testBuildEnvironment_gatewaySecretKey_injectedFromProperties() throws Exception {
+        Path runtimeRoot = tempFolder.getRoot().toPath();
+
+        Method buildEnv = InstanceManager.class.getDeclaredMethod("buildEnvironment", String.class, String.class,
+            int.class, Path.class);
+        buildEnv.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env =
+            (Map<String, String>) buildEnv.invoke(instanceManager, "agent1", "user1", 9000, runtimeRoot);
+
+        // setUp configures properties.setSecretKey("test-secret"); it must be injected regardless of the (empty)
+        // GATEWAY_API_PASSWORD this instance was built with.
+        assertEquals("test-secret", env.get("GATEWAY_SECRET_KEY"));
+        assertNull("GATEWAY_API_PASSWORD stays unset when no --apipwd was provided", env.get("GATEWAY_API_PASSWORD"));
+    }
+
+    /**
      * Tests build environment gateway api password with special characters.
      *
      * @throws Exception if the operation fails

@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import './Message.css'
 import './ToolCallDisplay.css'
 import ToolCallDisplay from './ToolCallDisplay'
+import A2AStatusLine from './A2AStatusLine'
 import CitationMark from '../renderers/CitationMark'
 import FileCitationMark from '../renderers/FileCitationMark'
 import FileReferenceList from '../renderers/FileReferenceList'
@@ -816,14 +817,20 @@ function MessageInner({
                                             {toolCall.name.startsWith('todo__')
                                                 ? <TodoToolCard toolCall={toolCall} />
                                                 : (
-                                                    <ToolCallDisplay
-                                                        name={toolCall.name}
-                                                        args={toolCall.args}
-                                                        result={toolCall.result}
-                                                        isPending={toolCall.isPending}
-                                                        isError={toolCall.isError}
-                                                        embedded
-                                                    />
+                                                    <>
+                                                        <ToolCallDisplay
+                                                            name={toolCall.name}
+                                                            args={toolCall.args}
+                                                            result={toolCall.result}
+                                                            isPending={toolCall.isPending}
+                                                            isError={toolCall.isError}
+                                                            embedded
+                                                        />
+                                                        <A2AStatusLine
+                                                            requestId={toolCall.id}
+                                                            isPending={toolCall.isPending}
+                                                        />
+                                                    </>
                                                 )}
                                         </div>
                                     </div>

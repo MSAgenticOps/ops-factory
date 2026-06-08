@@ -14,6 +14,7 @@ import {
 import { useChat, convertBackendMessage, isChatOrderDebugEnabled, buildChatMessageOrderDigest } from '../../../platform/chat/useChat'
 import MessageList from '../../../platform/chat/MessageList'
 import ChatInput from '../../../platform/chat/ChatInput'
+import { A2AProgressContext } from '../../../platform/chat/a2aProgress'
 import ChatPanelShell from '../../../platform/chat/ChatPanelShell'
 import type { Session, ImageData } from '@goosed/sdk'
 import type { AttachedFile, SelectedSkill } from '../../../../types/message'
@@ -34,6 +35,9 @@ const BOTTOM_THRESHOLD_PX = 24
 const USER_MESSAGE_TOP_ANCHOR_PX = 24
 const USER_MESSAGE_TOP_TOLERANCE_PX = 12
 const BOTTOM_CONTENT_GAP_PX = 24
+// Product convention: only the orchestrator ("digital human") agent delegates; tool-agents are call targets only.
+// So the @mention agent picker is offered only when chatting with this agent.
+const A2A_INITIATOR_AGENT_ID = 'fo-copilot'
 
 function setScrollTop(element: HTMLElement, top: number, behavior: ScrollBehavior) {
     if (typeof element.scrollTo === 'function') {
@@ -127,9 +131,17 @@ export default function Chat() {
         return agents.find(agent => agent.id === activeAgentId)?.skills || []
     }, [activeAgentId, agents])
 
-    const { messages, chatState, isLoading, error, sessionError, tokenState, outputFilesEvent, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
+    // Agents the active agent may delegate to via @mention. Only the orchestrator ("digital human") delegates;
+    // tool-agents are call targets only, and an agent can't delegate to itself. Shared by the picker + the trigger.
+    const delegationAgents = useMemo(
+        () => (activeAgentId === A2A_INITIATOR_AGENT_ID ? agents.filter(agent => agent.id !== activeAgentId) : []),
+        [activeAgentId, agents],
+    )
+
+    const { messages, chatState, isLoading, error, sessionError, tokenState, outputFilesEvent, a2aProgress, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
         sessionId: activeSessionId || null,
         client: client!,
+        agents: delegationAgents,
     })
 
     useEffect(() => {
@@ -819,18 +831,20 @@ export default function Chat() {
                 {/* Messages area - scrollable */}
                 <div className="chat-messages-area" ref={messageScrollContainerRef}>
                     <div className="chat-messages-scroll">
-                        <MessageList
-                            messages={messages}
-                            isLoading={isLoading}
-                            chatState={chatState}
-                            agentId={activeAgentId}
-                            sessionId={activeSessionId || undefined}
-                            outputFilesEvent={outputFilesEvent}
-                            onRetry={handleRetry}
-                            onCancelRequest={handleStopMessage}
-                            scrollContainerRef={messageScrollContainerRef}
-                            showAnchorSpacer={!!pendingUserMessageAnchorId}
-                        />
+                        <A2AProgressContext.Provider value={a2aProgress}>
+                            <MessageList
+                                messages={messages}
+                                isLoading={isLoading}
+                                chatState={chatState}
+                                agentId={activeAgentId}
+                                sessionId={activeSessionId || undefined}
+                                outputFilesEvent={outputFilesEvent}
+                                onRetry={handleRetry}
+                                onCancelRequest={handleStopMessage}
+                                scrollContainerRef={messageScrollContainerRef}
+                                showAnchorSpacer={!!pendingUserMessageAnchorId}
+                            />
+                        </A2AProgressContext.Provider>
                     </div>
                 </div>
             </ChatPanelShell>
@@ -876,6 +890,7 @@ export default function Chat() {
                         modelInfo={modelInfo}
                         tokenState={tokenState}
                         skills={activeAgentSkills}
+                        agents={delegationAgents}
                         onBrowseSkillMarket={handleBrowseSkillMarket}
                     />
                 </div>

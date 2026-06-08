@@ -64,7 +64,9 @@ public class ServletWebConfig {
             config.setAllowedOrigins(Arrays.stream(configured.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
         }
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("x-secret-key", "x-user-id", "x-request-id", "content-type", "authorization"));
+        config.setAllowedHeaders(
+            Arrays.asList("x-secret-key", "x-user-id", "x-request-id", "content-type", "authorization",
+                "x-a2a-origin", "x-a2a-origin-session"));
         config.setExposedHeaders(Arrays.asList("*"));
         config.setMaxAge(3600L);
         return config;
@@ -93,7 +95,7 @@ public class ServletWebConfig {
         }
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, OPTIONS");
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
-            "x-secret-key, x-user-id, x-request-id, content-type, authorization");
+            "x-secret-key, x-user-id, x-request-id, content-type, authorization, x-a2a-origin, x-a2a-origin-session");
         response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "*");
         response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
     }

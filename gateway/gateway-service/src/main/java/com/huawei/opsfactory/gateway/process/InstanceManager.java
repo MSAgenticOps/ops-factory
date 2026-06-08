@@ -631,6 +631,7 @@ public class InstanceManager {
         applyScalarEnv(env, agentSecrets);
         applyGooseCoreEnv(env, agentId, userId, port, runtimeRoot);
         applyGatewayCallbackEnv(env);
+        applyGatewaySecretKey(env);
         applyGatewayApiPassword(env);
         return env;
     }
@@ -686,7 +687,19 @@ public class InstanceManager {
         }
     }
 
+    private void applyGatewaySecretKey(Map<String, String> env) {
+        // Gateway auth secret (gateway.secret-key) — the credential AuthWebFilter validates. Inject it explicitly so
+        // MCP extensions that call back into the gateway (e.g. delegation/A2A, sop-executor) authenticate using the
+        // resolved value, regardless of whether the launch script exported GATEWAY_SECRET_KEY into the parent env.
+        String gatewaySecretKey = properties.getSecretKey();
+        if (gatewaySecretKey != null) {
+            env.put("GATEWAY_SECRET_KEY", gatewaySecretKey);
+        }
+    }
+
     private void applyGatewayApiPassword(Map<String, String> env) {
+        // Downstream credential handed to agents (e.g. qos system-health uses it as QOS_PASSWORD); NOT the gateway
+        // auth secret. Only set when provided via --apipwd.
         if (gatewayApiPassword != null && !gatewayApiPassword.isEmpty()) {
             env.put("GATEWAY_API_PASSWORD", gatewayApiPassword);
         }

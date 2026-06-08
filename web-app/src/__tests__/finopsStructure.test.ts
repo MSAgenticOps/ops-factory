@@ -37,10 +37,10 @@ describe('finops frontend structure', () => {
 
         expect(runtimeSource).toContain('finopsServiceUrl')
         expect(runtimeSource).toContain('finopsSecretKey')
-        expect(runtimeSource).toContain("pathPrefix: '/finops'")
+        expect(runtimeSource).toContain("pathPrefix: '/api/finops'")
         expect(runtimeSource).toContain('FINOPS_URL')
         expect(runtimeSource).toContain('FINOPS_SECRET_KEY')
-        expect(viteSource).toContain("'/finops': 'http://127.0.0.1:8097'")
+        expect(viteSource).toContain("'/api/finops': 'http://127.0.0.1:8097'")
         expect(standalone.finopsServiceUrl).toBe('http://127.0.0.1:8097')
         expect(standalone.finopsSecretKey).toBe('')
         expect(embed.finopsServiceUrl).toBe('')
@@ -104,7 +104,7 @@ describe('finops frontend structure', () => {
         const tabsSource = read('src/app/modules/finops/components/DimensionTabs.tsx')
 
         expect(pageSource).toContain('SessionMessagesDrawer')
-        expect(pageSource).toContain('fetchFinOpsSessionMessages(currentSession)')
+        expect(pageSource).toContain('fetchFinOpsSessionMessages(currentSession, userId)')
         expect(pageSource).toContain('onSessionSelect={setSelectedSession}')
         expect(tabsSource).toContain('finops-clickable-row')
         expect(sessionDrawerSource).toContain('finops.drawer.messageTokens')

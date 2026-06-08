@@ -33,12 +33,14 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -74,9 +76,12 @@ public class AgentConfigService {
 
     private final CopyOnWriteArrayList<ResidentInstanceTarget> residentInstances = new CopyOnWriteArrayList<>();
 
-    private final ConcurrentHashMap<String, Map<String, Object>> configCache = new ConcurrentHashMap<>();
+    // Parsed YAML cached together with the source file's last-modified time. The cache is validated against the
+    // current mtime on every read, so out-of-band edits (e.g. hand-editing config.yaml while the gateway runs, not
+    // just gateway-mediated changes) are picked up automatically — while still avoiding a re-parse when unchanged.
+    private final ConcurrentHashMap<String, CachedYaml> configCache = new ConcurrentHashMap<>();
 
-    private final ConcurrentHashMap<String, Map<String, Object>> secretsCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, CachedYaml> secretsCache = new ConcurrentHashMap<>();
 
     private final Set<String> residentInstanceKeys = ConcurrentHashMap.newKeySet();
 
@@ -253,23 +258,53 @@ public class AgentConfigService {
      * @return cached YAML config map for the agent
      */
     public Map<String, Object> loadAgentConfigYaml(String agentId) {
-        return configCache.computeIfAbsent(agentId, id -> {
-            Path configPath = getAgentConfigDir(id).resolve("config.yaml");
-            return YamlLoader.load(configPath);
-        });
+        return loadYamlCached(configCache, agentId, getAgentConfigDir(agentId).resolve("config.yaml"));
     }
 
     /**
-     * Load the agent's secrets.yaml as a Map (cached).
+     * Load the agent's secrets.yaml as a Map (cached, mtime-validated).
      *
      * @param agentId agent instance identifier
      * @return cached YAML secrets map for the agent
      */
     public Map<String, Object> loadAgentSecretsYaml(String agentId) {
-        return secretsCache.computeIfAbsent(agentId, id -> {
-            Path secretsPath = getAgentConfigDir(id).resolve("secrets.yaml");
-            return YamlLoader.load(secretsPath);
-        });
+        return loadYamlCached(secretsCache, agentId, getAgentConfigDir(agentId).resolve("secrets.yaml"));
+    }
+
+    /**
+     * Returns the cached parsed YAML for {@code key} when the file is unchanged since it was cached (by last-modified
+     * time); otherwise re-reads, refreshes the cache, and returns the new map. This keeps the parse-avoidance benefit
+     * of caching while self-healing on out-of-band file edits, so a config.yaml change does not require a gateway
+     * restart to take effect.
+     */
+    private Map<String, Object> loadYamlCached(ConcurrentHashMap<String, CachedYaml> cache, String key, Path path) {
+        FileTime mtime = currentMtime(path);
+        CachedYaml cached = cache.get(key);
+        if (cached != null && Objects.equals(cached.mtime(), mtime)) {
+            return cached.config();
+        }
+        Map<String, Object> loaded = YamlLoader.load(path);
+        cache.put(key, new CachedYaml(mtime, loaded));
+        return loaded;
+    }
+
+    private FileTime currentMtime(Path path) {
+        try {
+            return Files.getLastModifiedTime(path);
+        } catch (IOException e) {
+            // Missing/unreadable file: distinct from any real mtime, so a cached value for a since-deleted file is
+            // not reused, and a since-created file is detected on the next read.
+            return null;
+        }
+    }
+
+    /**
+     * Parsed YAML cached together with the source file's last-modified time for staleness detection.
+     *
+     * @author x00000000
+     * @since 2026-06-06
+     */
+    private record CachedYaml(FileTime mtime, Map<String, Object> config) {
     }
 
     /**

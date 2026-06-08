@@ -149,3 +149,15 @@ extensions:
     timeout: 30
     bundled: null
     available_tools: []
+  delegation:
+    enabled: true
+    type: stdio
+    name: delegation
+    description: Agent-to-agent delegation for FO Copilot — call_agent hands a task to another predefined agent (via the gateway A2A endpoint) and returns its result; list_available_agents lists the exact agent ids you can target. Thin relay; all orchestration lives in the gateway. GATEWAY_URL / GATEWAY_SECRET_KEY are auto-injected by the gateway, so no envs are declared here.
+    cmd: config/mcp/delegation/.venv/bin/python
+    args:
+    - config/mcp/delegation/server.py
+    env_keys: []
+    timeout: 1200
+    bundled: null
+    available_tools: []
