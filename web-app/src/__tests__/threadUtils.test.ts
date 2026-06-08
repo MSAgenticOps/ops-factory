@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatRunTime, previewOf } from '../app/modules/thread/threadFormat'
+import { formatRunTime, previewOf, scheduleLabel } from '../app/modules/thread/threadFormat'
 import { countUnreadFollowups, type ThreadFollowup } from '../app/platform/providers/ThreadUnreadContext'
 
 function followup(time: string, summary = 'x'): ThreadFollowup {
@@ -28,6 +28,19 @@ describe('thread previewOf', () => {
         expect(previewOf('# 🎯 工单日报')).toBe('🎯 工单日报')
         expect(previewOf('**FO Daily Brief**')).toBe('FO Daily Brief')
         expect(previewOf('- a list item')).toBe('a list item')
+    })
+})
+
+describe('thread scheduleLabel', () => {
+    const t = (key: string, opts?: { defaultValue: string }) =>
+        (key === 'thread.schedule.ticket-daily-brief' ? '每日简报' : (opts?.defaultValue ?? key))
+
+    it('maps a known schedule id to its friendly name', () => {
+        expect(scheduleLabel('ticket-daily-brief', t)).toBe('每日简报')
+    })
+
+    it('falls back to the raw id for an unknown schedule', () => {
+        expect(scheduleLabel('custom-x', t)).toBe('custom-x')
     })
 })
 

@@ -58,29 +58,29 @@ test.describe('Assistant — workbench', () => {
       return
     }
 
-    // Always-on copilot dropdown + the conversation composer (shared shell).
-    await expect(page.locator('.thread-switcher')).toBeVisible()
+    // Always-on copilot dropdown (AgentSelector-style pill) + the conversation composer (shared shell).
+    await expect(page.locator('.agent-selector-trigger')).toBeVisible()
     await expect(page.locator('.chat-input-area-bottom')).toBeVisible()
     // The push timeline lives in the shared RightPanelHost as the narrow `thread` mode.
     await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
     await expect(page.locator('.right-panel-title')).toBeVisible()
   })
 
-  test('the push panel can be collapsed and reopened from the header toggle', async ({ page }) => {
+  test('the push panel closes from its × and reopens from the header icon', async ({ page }) => {
     await loginAs(page, USER)
     await page.goto('/#/thread')
     await page.waitForTimeout(3000)
 
-    const toggle = page.locator('.thread-rail-toggle')
-    if (!(await toggle.isVisible().catch(() => false))) {
+    const closeBtn = page.locator('.right-panel-close')
+    if (!(await closeBtn.isVisible().catch(() => false))) {
       test.skip(true, 'no bound assistant for this user')
       return
     }
 
     await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
-    await toggle.click()
+    await closeBtn.click()
     await expect(page.locator('.right-panel-host.open.thread')).toHaveCount(0)
-    await toggle.click()
+    await page.locator('.thread-panel-show').click()
     await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
   })
 })

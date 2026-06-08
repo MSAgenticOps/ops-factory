@@ -1307,11 +1307,15 @@
     "resumeError": "Failed to load this conversation: {{error}}",
     "pushesTitle": "Proactive pushes",
     "noPushes": "No proactive pushes delivered to this thread yet.",
-    "hidePushes": "Hide pushes",
     "showPushes": "Show pushes",
     "prev": "Previous",
     "next": "Next",
-    "gotoSession": "Go to session"
+    "viewRun": "View run",
+    "schedule": {
+      "ticket-daily-brief": "Daily brief",
+      "ticket-watch-loop": "Proactive watch",
+      "fo-copilot-memory-maintenance": "Memory upkeep"
+    }
   },
   "scheduler": {
     "title": "Scheduler",

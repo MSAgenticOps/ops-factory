@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useThreadUnread, type ThreadDescriptor } from '../../../platform/providers/ThreadUnreadContext'
 import { usePagePanel } from '../../../platform/providers/PagePanelContext'
+import Button from '../../../platform/ui/primitives/Button'
 import ThreadMainConversation from '../components/ThreadMainConversation'
 import ProactivePushTimeline from '../components/ProactivePushTimeline'
 import ProactiveRunModal from '../components/ProactiveRunModal'
+import ThreadSwitcher from '../components/ThreadSwitcher'
 import '../styles/thread.css'
 
 /**
@@ -65,28 +67,24 @@ export default function ThreadPage() {
     }
 
     const header = (
-        <div className="thread-breadcrumb">
-            <span className="thread-breadcrumb-label">{t('thread.title')}</span>
-            <span className="thread-breadcrumb-sep">›</span>
-            <select
-                className="thread-switcher"
-                value={selected?.key}
-                onChange={event => setSelectedKey(event.target.value)}
-                aria-label={t('thread.switcherLabel')}
-            >
-                {threads.map(thread => (
-                    <option key={thread.key} value={thread.key}>
-                        {thread.agentName} · {channelLabel(thread.channelType, t)}
-                    </option>
-                ))}
-            </select>
-            <button
-                type="button"
-                className="thread-rail-toggle"
-                onClick={() => setIsPanelOpen(open => !open)}
-            >
-                {isPanelOpen ? t('thread.hidePushes') : t('thread.showPushes')}
-            </button>
+        <div className="thread-header-bar">
+            <ThreadSwitcher threads={threads} selectedKey={selected?.key} onSelect={setSelectedKey} />
+            {!isPanelOpen && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    className="thread-panel-show"
+                    onClick={() => setIsPanelOpen(true)}
+                    aria-label={t('thread.showPushes')}
+                    title={t('thread.showPushes')}
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16">
+                        <rect x="3" y="4" width="18" height="16" rx="2" />
+                        <line x1="15" y1="4" x2="15" y2="20" />
+                    </svg>
+                </Button>
+            )}
         </div>
     )
 
@@ -106,10 +104,4 @@ export default function ThreadPage() {
             )}
         </>
     )
-}
-
-function channelLabel(type: string, t: (key: string) => string): string {
-    if (type === 'wechat') return t('channels.type_wechat')
-    if (type === 'whatsapp') return t('channels.type_whatsapp')
-    return type
 }

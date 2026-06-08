@@ -1307,11 +1307,15 @@
     "resumeError": "加载该对话失败:{{error}}",
     "pushesTitle": "主动推送",
     "noPushes": "还没有投递到该会话的主动推送。",
-    "hidePushes": "隐藏推送",
     "showPushes": "显示推送",
     "prev": "上一条",
     "next": "下一条",
-    "gotoSession": "前往会话"
+    "viewRun": "查看运行",
+    "schedule": {
+      "ticket-daily-brief": "每日简报",
+      "ticket-watch-loop": "主动巡检",
+      "fo-copilot-memory-maintenance": "记忆维护"
+    }
   },
   "scheduler": {
     "title": "定时任务",

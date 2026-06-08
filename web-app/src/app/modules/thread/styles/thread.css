@@ -1,43 +1,13 @@
-/* Assistant page — breadcrumb header content (rendered inside the shared conversation shell's 48px header). */
-.thread-breadcrumb {
+/* Assistant page header bar (rendered inside the shared conversation shell's 48px header). */
+.thread-header-bar {
     display: flex;
     align-items: center;
     gap: var(--spacing-2);
     width: 100%;
 }
 
-.thread-breadcrumb-label {
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-sm);
-}
-
-.thread-breadcrumb-sep {
-    color: var(--color-text-secondary);
-}
-
-.thread-switcher {
-    padding: 4px 10px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-primary);
-    color: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-}
-
-.thread-rail-toggle {
+.thread-panel-show {
     margin-left: auto;
-    padding: 4px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-primary);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    font-size: var(--font-size-sm);
-}
-
-.thread-rail-toggle:hover {
-    color: var(--color-text-primary);
 }
 
 /* Proactive-push timeline (rendered inside the shared right-panel body). */
@@ -66,24 +36,29 @@
     background: var(--color-bg-secondary);
 }
 
-.thread-card-head {
+/* Content first: the delivered brief preview leads the card. */
+.thread-card-preview {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Schedule + time as muted secondary metadata. */
+.thread-card-meta {
     display: flex;
     justify-content: space-between;
     gap: var(--spacing-2);
+    margin-top: 6px;
     font-size: var(--font-size-xs);
     color: var(--color-text-secondary);
 }
 
 .thread-card-schedule {
-    font-weight: 600;
-}
-
-.thread-card-preview {
-    margin-top: 4px;
-    font-size: var(--font-size-sm);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-weight: 500;
 }
 
 .thread-timeline-empty {
@@ -118,24 +93,11 @@
     color: var(--color-text-secondary);
 }
 
-/* Read-only run modal footer. */
+/* Run-modal footer + the rendered brief body. */
 .thread-modal-footer {
     display: flex;
     align-items: center;
     gap: var(--spacing-2);
-}
-
-.thread-modal-footer button {
-    padding: 4px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-primary);
-    cursor: pointer;
-}
-
-.thread-modal-footer button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .thread-modal-pos {
@@ -146,3 +108,49 @@
 .thread-modal-spacer {
     flex: 1;
 }
+
+.thread-brief {
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    color: var(--color-text-primary);
+}
+
+.thread-brief h1,
+.thread-brief h2,
+.thread-brief h3 {
+    margin: 1em 0 0.4em;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.thread-brief h1 { font-size: 1.15rem; }
+.thread-brief h2 { font-size: 1.05rem; }
+.thread-brief h3 { font-size: 0.95rem; }
+
+.thread-brief p { margin: 0.5em 0; }
+
+.thread-brief ul,
+.thread-brief ol {
+    margin: 0.5em 0;
+    padding-left: 1.4em;
+}
+
+.thread-brief li { margin: 0.2em 0; }
+
+.thread-brief strong { font-weight: 600; }
+
+.thread-brief hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 1em 0;
+}
+
+.thread-brief code {
+    font-size: 0.9em;
+    background: var(--color-bg-secondary);
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.thread-brief > :first-child { margin-top: 0; }
+.thread-brief > :last-child { margin-bottom: 0; }

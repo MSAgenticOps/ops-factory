@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { ThreadFollowup } from '../../../platform/providers/ThreadUnreadContext'
-import { formatRunTime, previewOf } from '../threadFormat'
+import { formatRunTime, previewOf, scheduleLabel } from '../threadFormat'
 
 interface ProactivePushTimelineProps {
     records: ThreadFollowup[]
@@ -8,9 +8,9 @@ interface ProactivePushTimelineProps {
 }
 
 /**
- * Body of the Assistant page's right panel: the proactive-push timeline. One uniform card per delivered run
- * (every schedule looks the same — content is not parsed, PRD §13.2), newest-first. Clicking a card opens it in
- * the read-only modal. The panel's title lives in the right-panel header, so this renders only the list.
+ * Body of the Assistant page's right panel: the proactive-push timeline. One card per delivered run, newest-first.
+ * The card leads with the delivered content (markdown-stripped preview); the schedule (friendly name) and time
+ * sit below as muted metadata. Clicking opens the brief in the read-only modal.
  */
 export default function ProactivePushTimeline({ records, onOpen }: ProactivePushTimelineProps) {
     const { t } = useTranslation()
@@ -22,11 +22,11 @@ export default function ProactivePushTimeline({ records, onOpen }: ProactivePush
             {records.map((record, index) => (
                 <li key={`${record.sessionId}-${record.time}`}>
                     <button type="button" className="thread-card" onClick={() => onOpen(index)}>
-                        <div className="thread-card-head">
-                            <span className="thread-card-schedule">{record.scheduleId}</span>
+                        <div className="thread-card-preview">{previewOf(record.summary)}</div>
+                        <div className="thread-card-meta">
+                            <span className="thread-card-schedule">{scheduleLabel(record.scheduleId, t)}</span>
                             <span className="thread-card-time">{formatRunTime(record.time)}</span>
                         </div>
-                        <div className="thread-card-preview">{previewOf(record.summary)}</div>
                     </button>
                 </li>
             ))}

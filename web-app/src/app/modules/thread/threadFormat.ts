@@ -24,3 +24,8 @@ export function formatRunTime(iso: string): string {
     const date = new Date(iso)
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleString()
 }
+
+/** Friendly schedule name: built-ins are mapped via i18n (`thread.schedule.<id>`); others fall back to the id. */
+export function scheduleLabel(scheduleId: string, t: (key: string, opts?: { defaultValue: string }) => string): string {
+    return t(`thread.schedule.${scheduleId}`, { defaultValue: scheduleId })
+}
