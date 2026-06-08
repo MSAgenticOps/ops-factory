@@ -68,12 +68,34 @@ public ResponseEntity<?> performSensitiveOperation() {
 
 #### Configuration
 
-Configure credentials in `application.properties` or `ops-common-default.properties`:
+Configure credentials in one of the following ways:
+
+**Option 1: In config.yaml** (recommended)
+
+```yaml
+# Machine-to-machine authentication (required for /machine/** endpoints)
+common:
+  aop:
+    machine:
+      username: "${COMMON_AOP_MACHINE_USERNAME:}"
+      password: "${COMMON_AOP_MACHINE_PASSWORD:}"
+```
+
+**Option 2: In application.properties or ops-common-default.properties**
 
 ```properties
 common.aop.machine.username=machine-user
 common.aop.machine.password=secure-password
 ```
+
+**Option 3: Via environment variables**
+
+```bash
+export COMMON_AOP_MACHINE_USERNAME=my-user
+export COMMON_AOP_MACHINE_PASSWORD=my-password
+```
+
+**Important**: The default configuration has empty values. If not configured, any request to `@BasicAuth` protected endpoints will be rejected with 401 Unauthorized.
 
 #### AOP Aspect
 
@@ -142,6 +164,16 @@ Add to your module's `pom.xml`:
     <version>${project.version}</version>
 </dependency>
 ```
+
+### Auto-Configuration
+
+ops-common provides Spring Boot auto-configuration. Simply adding the dependency will automatically:
+
+1. Register `BasicAuthAspect` for AOP-based authentication
+2. Register `CommonGlobalExceptionHandler` for centralized exception handling
+3. Enable aspect-oriented programming with `@EnableAspectJAutoProxy`
+
+No additional configuration is required in your Application class.
 
 ### Using @BasicAuth in Your Controller
 
@@ -239,6 +271,7 @@ export COMMON_AOP_MACHINE_PASSWORD=my-password
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1.0 | 2026-06-08 | Add Spring Boot auto-configuration; remove default credentials (fail-closed); fix ServiceComb fallback; improve logging |
 | 1.0.0 | 2026-06-06 | Initial release with @BasicAuth, global exception handling |
 
 ## Related Documentation

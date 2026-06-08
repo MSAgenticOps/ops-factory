@@ -16,6 +16,7 @@ import org.aspectj.lang.annotation.Aspect;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
@@ -43,7 +44,7 @@ public class BasicAuthAspect {
 
     private final HttpServletRequest request;
 
-    public BasicAuthAspect(HttpServletRequest request) {
+    public BasicAuthAspect(@Autowired(required = false) HttpServletRequest request) {
         this.request = request;
     }
 
@@ -65,17 +66,16 @@ public class BasicAuthAspect {
      */
     @Around("@annotation(BasicAuth)")
     public Object basicAuth(ProceedingJoinPoint pjp) throws Throwable {
-        logger.info("BasicAuthAspect triggered for method: {}", pjp.getSignature().getName());
-        String authHeader;
+        logger.debug("BasicAuth triggered for: {}", pjp.getSignature().getName());
+        String authHeader = null;
 
-        // 从请求头中获取Authorization
-        authHeader = request.getHeader("Authorization");
-        if (authHeader == null) {
-            authHeader = "";
-        }
-
-        // 从上文获取
         try {
+            // 从请求头中获取Authorization（可能在非 servlet 环境抛异常）
+            if (request != null) {
+                authHeader = request.getHeader("Authorization");
+            }
+
+            // 从 ServiceComb 上下文获取
             if (StringUtils.isEmpty(authHeader)) {
                 InvocationContext context = ContextUtils.getInvocationContext();
                 if (context != null) {
@@ -100,8 +100,8 @@ public class BasicAuthAspect {
 
                     // 用户名和密码的验证
                     if (StringUtils.isEmpty(configUserName) || StringUtils.isEmpty(configPassword)) {
-                        logger.error("Username or password configuration is empty");
-                        throw new ApiCallException("username or password configuration is empty.");
+                        logger.warn("Machine authentication not configured, rejecting @BasicAuth request");
+                        throw new AuthException("Machine authentication not configured");
                     }
 
                     if (configUserName.equals(userName) && configPassword.equals(password)) {

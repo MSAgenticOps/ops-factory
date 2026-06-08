@@ -1094,7 +1094,7 @@ public class BusinessIntelligenceService {
                             if (!(obj instanceof Object[])) {
                                 throw new IllegalStateException("Expected Object[] array");
                             }
-                            Object[] array = (Object[]) obj;
+                            Object[] array = obj;
                             if (array.length != 2) {
                                 throw new IllegalStateException("Expected array of length 2");
                             }

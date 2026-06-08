@@ -6,8 +6,6 @@ package com.huawei.opsfactory.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * Entry point for the OpsFactory Gateway Spring Boot application.
@@ -16,11 +14,6 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
  * @since 2026-05-09
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {
-    "com.huawei.opsfactory.gateway",
-    "com.huawei.opsfactory.common"
-})
-@EnableAspectJAutoProxy(proxyTargetClass = true)
 public class GatewayApplication {
 
     /**

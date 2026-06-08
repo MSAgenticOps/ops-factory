@@ -1,9 +1,18 @@
 server:
   port: 8092
 
+# Machine-to-machine authentication (required for /machine/** endpoints)
+# Environment variables: COMMON_AOP_MACHINE_USERNAME, COMMON_AOP_MACHINE_PASSWORD
+common:
+  aop:
+    machine:
+      username: "${COMMON_AOP_MACHINE_USERNAME:}"
+      password: "${COMMON_AOP_MACHINE_PASSWORD:}"
+
 knowledge:
   runtime:
     base-dir: "./data"
+
   database:
     type: sqlite
     url: ""

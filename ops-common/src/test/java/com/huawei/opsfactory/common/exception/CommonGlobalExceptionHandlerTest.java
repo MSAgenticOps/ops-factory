@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -33,10 +35,10 @@ class CommonGlobalExceptionHandlerTest {
         String errorMessage = "Invalid credentials";
         AuthException exception = new AuthException(errorMessage);
 
-        ResponseEntity<String> response = exceptionHandler.handleAuthException(exception);
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleAuthException(exception);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertEquals(errorMessage, response.getBody());
+        assertEquals(errorMessage, response.getBody().get("error"));
     }
 
     /**
@@ -46,7 +48,7 @@ class CommonGlobalExceptionHandlerTest {
     void testHandleAuthExceptionWithNullMessage() {
         AuthException exception = new AuthException(null);
 
-        ResponseEntity<String> response = exceptionHandler.handleAuthException(exception);
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleAuthException(exception);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
@@ -59,10 +61,10 @@ class CommonGlobalExceptionHandlerTest {
         String errorMessage = "Invalid parameter";
         ApiCallException exception = new ApiCallException(errorMessage);
 
-        ResponseEntity<String> response = exceptionHandler.handleApiCallException(exception);
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleApiCallException(exception);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals(errorMessage, response.getBody());
+        assertEquals(errorMessage, response.getBody().get("error"));
     }
 
     /**
@@ -72,7 +74,7 @@ class CommonGlobalExceptionHandlerTest {
     void testHandleApiCallExceptionWithNullMessage() {
         ApiCallException exception = new ApiCallException(null);
 
-        ResponseEntity<String> response = exceptionHandler.handleApiCallException(exception);
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleApiCallException(exception);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }

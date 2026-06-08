@@ -15,12 +15,10 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- Spring Boot Test -->
+        <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-             <version>${spring-boot.version}</version>
-            <scope>test</scope>
+            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
         <dependency>
@@ -28,29 +26,48 @@
             <artifactId>spring-web</artifactId>
         </dependency>
 
+        <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
-        <!-- ServiceComb for @RestSchema support -->
+        <!-- Lombok for @Getter/@Setter -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+
+        <!-- Apache Commons Lang for StringUtils -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+        <!-- Servlet API for HttpServletRequest -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+        </dependency>
+
+        <!-- ServiceComb for @RestSchema support (provided scope) -->
         <dependency>
             <groupId>org.apache.servicecomb</groupId>
             <artifactId>provider-springmvc</artifactId>
             <version>2.9.0</version>
+            <scope>provided</scope>
         </dependency>
 
-        <!-- Logging framework: SLF4J + Logback -->
+        <!-- Logging framework: SLF4J + Logback (versions from parent BOM) -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.9</version>
         </dependency>
 
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.4.14</version>
         </dependency>
     </dependencies>
 
@@ -59,9 +76,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <!-- Spring Boot -->
-        <spring-boot.version>3.5.12</spring-boot.version>
 
         <!-- Maven plugins -->
         <maven.dependency.version>3.6.1</maven.dependency.version>

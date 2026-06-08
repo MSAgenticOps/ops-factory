@@ -4,6 +4,9 @@
 
 package com.huawei.opsfactory.common.exception;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,9 +33,12 @@ public class CommonGlobalExceptionHandler {
      * @return response entity with error message and UNAUTHORIZED status
      */
     @ExceptionHandler(AuthException.class)
-    public ResponseEntity<String> handleAuthException(AuthException e) {
+    public ResponseEntity<Map<String, Object>> handleAuthException(AuthException e) {
         logger.warn("Authentication exception: {}", e.getMessage());
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", e.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
 
     /**
@@ -42,8 +48,11 @@ public class CommonGlobalExceptionHandler {
      * @return response entity with error message and BAD_REQUEST status
      */
     @ExceptionHandler(ApiCallException.class)
-    public ResponseEntity<String> handleApiCallException(ApiCallException e) {
+    public ResponseEntity<Map<String, Object>> handleApiCallException(ApiCallException e) {
         logger.warn("API call exception: {}", e.getMessage());
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", e.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 }
