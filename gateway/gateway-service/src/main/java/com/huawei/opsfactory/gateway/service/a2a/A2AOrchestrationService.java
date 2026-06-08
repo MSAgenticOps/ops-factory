@@ -195,7 +195,8 @@ public class A2AOrchestrationService {
             .takeUntil(translator::observeTerminal)
             .concatMap(event -> Flux.fromIterable(translator.progressFor(event)).map(this::toJson))
             .onErrorResume(err -> {
-                // Idle TimeoutException → no terminal observed → status() reports timeout; real errors → mark error.
+                // Idle TimeoutException -> no terminal observed -> status() reports timeout;
+                // real errors -> mark error.
                 if (!(err instanceof TimeoutException)) {
                     translator.markError(err.getMessage());
                 }
@@ -222,6 +223,9 @@ public class A2AOrchestrationService {
         String startResponse =
             goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/start", startBody, 120,
                 instance.getSecretKey()).block();
+        if (startResponse == null) {
+            throw new IllegalStateException("Empty response from /agent/start for agent " + agentId);
+        }
         String subSessionId = extractSessionId(startResponse);
         String resumeBody = writeJson(Map.of("session_id", subSessionId, "load_model_and_extensions", true));
         goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST, "/agent/resume", resumeBody, 120,
@@ -247,6 +251,8 @@ public class A2AOrchestrationService {
             goosedProxy.fetchJson(instance.getPort(), HttpMethod.POST,
                 goosedSessionPath(subSessionId, "cancel"), body, 30, instance.getSecretKey()).block();
         } catch (RuntimeException e) {
+            // Best-effort: cancel propagation to the sub-session must never fail the caller's cancel path,
+            // so any runtime failure here is logged and swallowed by design.
             log.warn("[A2A] cancel propagation failed sub={}: {}", subSessionId, e.getMessage());
         }
     }
