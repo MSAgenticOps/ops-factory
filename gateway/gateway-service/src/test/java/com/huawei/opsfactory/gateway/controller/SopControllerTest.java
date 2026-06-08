@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.service.SopService;
 import com.huawei.opsfactory.gateway.service.SolutionTypeService;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
@@ -43,7 +44,7 @@ import java.util.Map;
  */
 @RunWith(SpringRunner.class)
 @WebMvcTest(SopController.class)
-@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class, BaseControllerTestConfig.class})
 /**
  * Sop Controller Test.
  *

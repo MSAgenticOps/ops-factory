@@ -13,6 +13,7 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.AgentSkillInstallService;
 
@@ -37,7 +38,7 @@ import java.util.Map;
  */
 @RunWith(SpringRunner.class)
 @WebMvcTest(AgentSkillController.class)
-@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class, BaseControllerTestConfig.class})
 /**
  * Agent Skill Controller Test.
  *

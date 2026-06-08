@@ -4,12 +4,12 @@
 
 package com.huawei.opsfactory.common.aop;
 
-import com.huawei.opsfactory.common.exception.ApiCallException;
 import com.huawei.opsfactory.common.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.servicecomb.swagger.invocation.context.InvocationContext;
 import org.apache.servicecomb.swagger.invocation.context.ContextUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.Signature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,12 +43,17 @@ class BasicAuthAspectTest {
     private BasicAuthAspect aspect;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Throwable {
         aspect = new BasicAuthAspect(request);
         // Set test configuration values
         ReflectionTestUtils.setField(aspect, "configUserName", "testUser");
         ReflectionTestUtils.setField(aspect, "configPassword", "testPass");
         contextUtilsMock = mockStatic(ContextUtils.class);
+
+        // Configure proceedingJoinPoint mock
+        Signature signature = mock(Signature.class);
+        when(proceedingJoinPoint.getSignature()).thenReturn(signature);
+        when(signature.getName()).thenReturn("testMethod");
     }
 
     @AfterEach

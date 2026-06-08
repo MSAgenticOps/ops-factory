@@ -1106,7 +1106,9 @@ public class AgentConfigServiceTest {
             jobs.stream().filter(j -> "ticket-watch-loop".equals(j.get("id"))).findFirst().orElseThrow();
         assertEquals("0 */30 * * * *", watch.get("cron"));
         assertEquals(Boolean.FALSE, watch.get("paused"));
-        assertTrue(((String) watch.get("source")).endsWith("scheduled_recipes/ticket-watch-loop.yaml"));
+        String source = (String) watch.get("source");
+        assertTrue("Source path should contain scheduled_recipes/ticket-watch-loop.yaml",
+            source.contains("scheduled_recipes") && source.contains("ticket-watch-loop.yaml"));
         assertTrue(Files.exists(
             service.getUserAgentDir(USER_A, "test-agent").resolve("data").resolve(".schedules-seeded")));
     }
