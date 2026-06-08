@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import ListCard from '../../../platform/ui/list/ListCard'
 import type { ThreadFollowup } from '../../../platform/providers/ThreadUnreadContext'
-import { formatRunTime, previewOf, scheduleLabel } from '../threadFormat'
+import { formatRunTime, previewOf, scheduleAccent, scheduleLabel, snippetOf } from '../threadFormat'
 
 interface ProactivePushTimelineProps {
     records: ThreadFollowup[]
@@ -10,9 +10,9 @@ interface ProactivePushTimelineProps {
 
 /**
  * Body of the Assistant page's right panel: the proactive-push timeline. One {@link ListCard} per delivered run
- * (newest-first), so it matches the History session-list visual. The card leads with the delivered content
- * (markdown-stripped preview); the schedule (friendly name) and time sit below as muted metadata. The whole
- * card is a real `<button>` (keyboard-accessible) that opens the brief in the read-only modal.
+ * (newest-first). Each card reads like an inbox item — a header row (schedule type dot + name, run time), the
+ * brief's lead line as the title, and a muted snippet — so it sits in the same visual family as Inbox/History.
+ * The whole card is a real `<button>` (keyboard-accessible) that opens the brief in the read-only modal.
  */
 export default function ProactivePushTimeline({ records, onOpen }: ProactivePushTimelineProps) {
     const { t } = useTranslation()
@@ -21,19 +21,26 @@ export default function ProactivePushTimeline({ records, onOpen }: ProactivePush
     }
     return (
         <ul className="thread-timeline-list">
-            {records.map((record, index) => (
-                <li key={`${record.sessionId}-${record.time}`}>
-                    <ListCard className="thread-push-card">
-                        <button type="button" className="thread-push-button" onClick={() => onOpen(index)}>
-                            <span className="thread-push-preview">{previewOf(record.summary)}</span>
-                            <span className="thread-push-meta">
-                                <span className="thread-push-schedule">{scheduleLabel(record.scheduleId, t)}</span>
-                                <span className="thread-push-time">{formatRunTime(record.time)}</span>
-                            </span>
-                        </button>
-                    </ListCard>
-                </li>
-            ))}
+            {records.map((record, index) => {
+                const snippet = snippetOf(record.summary)
+                return (
+                    <li key={`${record.sessionId}-${record.time}`}>
+                        <ListCard className="thread-push-card">
+                            <button type="button" className="thread-push-button" onClick={() => onOpen(index)}>
+                                <span className="thread-push-head">
+                                    <span className="thread-push-source">
+                                        <span className={`thread-push-dot thread-push-dot-${scheduleAccent(record.scheduleId)}`} aria-hidden="true" />
+                                        <span className="thread-push-schedule">{scheduleLabel(record.scheduleId, t)}</span>
+                                    </span>
+                                    <span className="thread-push-time">{formatRunTime(record.time)}</span>
+                                </span>
+                                <span className="thread-push-title">{previewOf(record.summary)}</span>
+                                {snippet && <span className="thread-push-snippet">{snippet}</span>}
+                            </button>
+                        </ListCard>
+                    </li>
+                )
+            })}
         </ul>
     )
 }

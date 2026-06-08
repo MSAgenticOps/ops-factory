@@ -24,12 +24,50 @@
     color: var(--text-body);
 }
 
-/* User turn: a light full-width tinted block (Claude-style), so it stays scannable without an avatar. */
+/* User turn: a right-aligned chat bubble (Claude/Codex-style) — hugs short text, caps at a max width for long
+   text, stays on the right. Tall messages clamp with a "show more" toggle (see .user-clamped). */
+.message.user .message-body {
+    align-items: flex-end;
+}
+
 .message.user .message-content {
-    width: 100%;
-    max-width: 100%;
+    width: fit-content;
+    max-width: min(72%, 560px);
+    margin-left: auto;
     background: #eef2f6;
     color: #32353b;
+}
+
+.message.user .message-content.user-clamped {
+    max-height: 220px;
+    overflow: hidden;
+    position: relative;
+}
+
+.message.user .message-content.user-clamped::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 56px;
+    background: linear-gradient(rgba(238, 242, 246, 0), #eef2f6);
+    pointer-events: none;
+}
+
+.message-show-more {
+    margin-top: 4px;
+    align-self: flex-end;
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    font-size: var(--font-size-xs);
+    color: var(--color-accent);
+    cursor: pointer;
+}
+
+.message-show-more:hover {
+    text-decoration: underline;
 }
 
 /* Assistant turn: plain, transparent, full width. */
@@ -208,7 +246,10 @@
     padding: 0 2px;
 }
 
-.message.user .message-meta,
+.message.user .message-meta {
+    justify-content: flex-end;
+}
+
 .message.assistant .message-meta {
     justify-content: flex-start;
 }

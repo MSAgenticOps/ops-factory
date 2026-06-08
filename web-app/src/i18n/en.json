@@ -606,6 +606,8 @@
     "reasoningInProgress": "Reasoning...",
     "compactingContext": "Compacting context...",
     "copyMessage": "Copy message",
+    "showMore": "Show more",
+    "showLess": "Show less",
     "copyOutput": "Copy output",
     "copiedOutput": "Output copied",
     "voiceInput": "Voice input",

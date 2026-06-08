@@ -110,7 +110,7 @@
     padding: var(--spacing-4);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-2);
+    gap: var(--spacing-3);
 }
 
 /* Push card: reuse the platform list-card visual (ListCard provides border / radius / hover lift); a full-card
@@ -123,9 +123,9 @@
 .thread-push-button {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
     width: 100%;
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: var(--spacing-4);
     background: transparent;
     border: none;
     font: inherit;
@@ -134,33 +134,68 @@
     cursor: pointer;
 }
 
-/* Content first: the delivered brief preview leads the card. */
-.thread-push-preview {
-    font-size: var(--font-size-sm);
+/* Header row: schedule (type dot + name) left, run time right — the muted "envelope" of the push. */
+.thread-push-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+}
+
+.thread-push-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.thread-push-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.thread-push-dot-brief { background: #3b82f6; }
+.thread-push-dot-watch { background: #f59e0b; }
+.thread-push-dot-memory { background: #8b5cf6; }
+.thread-push-dot-default { background: #94a3b8; }
+
+.thread-push-schedule {
+    font-weight: 600;
     color: var(--color-text-primary);
-    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-push-time {
+    flex-shrink: 0;
+}
+
+/* Title: the delivered brief's lead line, prominent. */
+.thread-push-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1.45;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-/* Schedule + time as muted secondary metadata, left-grouped (not stretched edge-to-edge). */
-.thread-push-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
+/* Snippet: a muted secondary line of the brief body. */
+.thread-push-snippet {
     font-size: var(--font-size-xs);
     color: var(--color-text-secondary);
-}
-
-.thread-push-schedule {
-    font-weight: 500;
-}
-
-.thread-push-time::before {
-    content: '·';
-    margin-right: var(--spacing-2);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .thread-timeline-empty {

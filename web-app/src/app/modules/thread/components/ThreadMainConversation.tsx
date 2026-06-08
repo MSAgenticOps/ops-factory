@@ -11,8 +11,8 @@ import ChatInput from '../../../platform/chat/ChatInput'
 import { A2AProgressContext } from '../../../platform/chat/a2aProgress'
 import type { AttachedFile, SelectedSkill } from '../../../../types/message'
 
-// Product rule (mirrors modules/chat): only the orchestrator ("digital human") delegates via @mention; tool-agents
-// are call targets only. Duplicated here as a literal because modules must not import across module boundaries.
+// Product rule (mirrors the chat module): only the orchestrator ("digital human") delegates via @mention;
+// tool-agents are call targets only. Duplicated here as a literal because modules must not import across boundaries.
 const A2A_INITIATOR_AGENT_ID = 'fo-copilot'
 
 interface ThreadMainConversationProps {

@@ -476,6 +476,25 @@ function MessageInner({
     const lastTimeRef = useRef<number | null>(null)
     const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const wasStreamingRef = useRef(isStreaming)
+    // Long user messages collapse to a max height with a "show more" toggle (Claude/Codex-style bubble).
+    const [isUserExpanded, setIsUserExpanded] = useState(false)
+    const [userCanClamp, setUserCanClamp] = useState(false)
+    const userContentRef = useRef<HTMLDivElement>(null)
+
+    // Decide whether the user bubble needs a "show more" toggle: measure its full height against the clamp ceiling
+    // (kept in sync with the CSS .user-clamped max-height). Re-measure on width changes so wrapping is accounted for.
+    useEffect(() => {
+        if (!isUser) return
+        const el = userContentRef.current
+        if (!el) return
+        const USER_CLAMP_CEILING_PX = 220
+        const measure = () => setUserCanClamp(el.scrollHeight > USER_CLAMP_CEILING_PX + 8)
+        measure()
+        if (typeof ResizeObserver === 'undefined') return
+        const observer = new ResizeObserver(measure)
+        observer.observe(el)
+        return () => observer.disconnect()
+    }, [isUser, fullText])
 
     if (typeof message.created === 'number') {
         lastTimeRef.current = message.created
@@ -692,7 +711,10 @@ function MessageInner({
     return (
         <div className={`message ${isUser ? 'user' : 'assistant'}${isContinuation ? ' continuation' : ''} animate-slide-in`}>
             <div className="message-body">
-                <div className="message-content">
+                <div
+                    className={`message-content${isUser && userCanClamp && !isUserExpanded ? ' user-clamped' : ''}`}
+                    ref={isUser ? userContentRef : undefined}
+                >
                     {sessionError && (
                         <div className="message-error-banner">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -934,6 +956,16 @@ function MessageInner({
                         </div>
                     )}
                 </div>
+
+                {isUser && userCanClamp && (
+                    <button
+                        type="button"
+                        className="message-show-more"
+                        onClick={() => setIsUserExpanded(value => !value)}
+                    >
+                        {isUserExpanded ? t('chat.showLess') : t('chat.showMore')}
+                    </button>
+                )}
 
                 {displayTimeLabel && isLastInGroup && (
                     <div className="message-meta">

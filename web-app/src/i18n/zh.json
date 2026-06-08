@@ -607,6 +607,8 @@
     "reasoningInProgress": "正在思考...",
     "compactingContext": "正在压缩上下文...",
     "copyMessage": "复制消息",
+    "showMore": "展开",
+    "showLess": "收起",
     "copyOutput": "复制输出",
     "copiedOutput": "已复制输出",
     "voiceInput": "语音输入",

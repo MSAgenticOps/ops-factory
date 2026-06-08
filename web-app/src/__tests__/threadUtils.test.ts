@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatRunTime, previewOf, scheduleLabel } from '../app/modules/thread/threadFormat'
+import { formatRunTime, previewOf, scheduleAccent, scheduleLabel, snippetOf } from '../app/modules/thread/threadFormat'
 import { countUnreadFollowups, type ThreadFollowup } from '../app/platform/providers/ThreadUnreadContext'
 
 function followup(time: string, summary = 'x'): ThreadFollowup {
@@ -28,6 +28,33 @@ describe('thread previewOf', () => {
         expect(previewOf('# 🎯 工单日报')).toBe('🎯 工单日报')
         expect(previewOf('**FO Daily Brief**')).toBe('FO Daily Brief')
         expect(previewOf('- a list item')).toBe('a list item')
+    })
+})
+
+describe('thread snippetOf', () => {
+    it('returns the meaningful lines after the title, stripped + joined', () => {
+        const summary = '## 📋 工单日报\nOpened 6 · Resolved 2\n**Needs your decision (2)**'
+        expect(snippetOf(summary)).toBe('Opened 6 · Resolved 2 Needs your decision (2)')
+    })
+
+    it('is empty when there is only a title line', () => {
+        expect(snippetOf('# 只有标题')).toBe('')
+    })
+
+    it('handles empty input', () => {
+        expect(snippetOf('')).toBe('')
+    })
+})
+
+describe('thread scheduleAccent', () => {
+    it('maps known schedule ids to a type accent', () => {
+        expect(scheduleAccent('ticket-daily-brief')).toBe('brief')
+        expect(scheduleAccent('ticket-watch-loop')).toBe('watch')
+        expect(scheduleAccent('fo-copilot-memory-maintenance')).toBe('memory')
+    })
+
+    it('falls back to default for an unknown schedule', () => {
+        expect(scheduleAccent('something-else')).toBe('default')
     })
 })
 
