@@ -13,7 +13,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
  * Entry point for the OpsFactory Gateway Spring Boot application.
  *
  * @author x00000000
- * @since 2025-05-09
+ * @since 2026-05-09
  */
 @SpringBootApplication
 @ComponentScan(basePackages = {

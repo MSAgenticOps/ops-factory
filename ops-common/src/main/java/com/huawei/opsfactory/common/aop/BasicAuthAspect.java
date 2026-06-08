@@ -67,12 +67,10 @@ public class BasicAuthAspect {
     public Object basicAuth(ProceedingJoinPoint pjp) throws Throwable {
         logger.info("BasicAuthAspect triggered for method: {}", pjp.getSignature().getName());
         String authHeader;
-        
+
         // 从请求头中获取Authorization
-        try {
-            authHeader = request.getHeader("Authorization");
-        } catch (Exception e) {
-            logger.debug("Failed to get Authorization header from request", e);
+        authHeader = request.getHeader("Authorization");
+        if (authHeader == null) {
             authHeader = "";
         }
 
@@ -116,8 +114,9 @@ public class BasicAuthAspect {
         } catch (AuthException e) {
             logger.warn("Authentication failed: {}", e.getMessage());
             throw e;
-        } catch (Exception e) {
-            logger.warn("Authentication error", e);
+        } catch (IllegalArgumentException e) {
+            // Base64 解码失败
+            logger.warn("Authentication error: invalid credentials format - {}", e.getMessage());
             throw new AuthException("Authentication failed", e);
         }
 
