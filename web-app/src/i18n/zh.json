@@ -70,7 +70,7 @@
     "newChat": "新建对话",
     "history": "历史会话",
     "inbox": "收件箱",
-    "thread": "助理",
+    "thread": "主动助理",
     "agents": "智能体",
     "skillMarket": "技能市场",
     "channels": "渠道",
@@ -79,7 +79,7 @@
     "scheduler": "定时任务",
     "monitoring": "监控",
     "controlCenter": "控制中心",
-    "operationIntelligence": "智能运维",
+    "operationIntelligence": "运维智能",
     "operationKnowledgeGraph": "知识图谱",
     "finops": "Token 运营",
     "businessIntelligence": "业务智能",
@@ -1300,7 +1300,7 @@
     "summaryUnavailable": "暂无可展示的任务说明。"
   },
   "thread": {
-    "title": "助理",
+    "title": "主动助理",
     "switcherLabel": "切换助理",
     "loading": "正在加载会话…",
     "noThreads": "还没有绑定的 IM 会话。绑定一个渠道后即可开始会话。",

@@ -12,7 +12,8 @@ const threadModule: AppModule = {
             id: 'thread.nav',
             type: 'route',
             group: 'primary',
-            order: 45,
+            // Right under Home (10), above New chat (20) — the proactive assistant is the primary daily entry.
+            order: 15,
             titleKey: 'sidebar.thread',
             icon: 'thread',
             routeId: 'thread.index',
