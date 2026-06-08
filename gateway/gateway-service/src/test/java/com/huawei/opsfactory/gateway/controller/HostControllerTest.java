@@ -18,6 +18,7 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
@@ -44,7 +45,7 @@ import java.util.Map;
  */
 @RunWith(SpringRunner.class)
 @WebMvcTest(HostController.class)
-@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class, BaseControllerTestConfig.class})
 /**
  * Host Controller Test.
  *

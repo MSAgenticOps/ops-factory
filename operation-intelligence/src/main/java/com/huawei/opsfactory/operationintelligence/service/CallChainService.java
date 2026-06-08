@@ -8,6 +8,7 @@ import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceP
 import com.huawei.opsfactory.operationintelligence.qos.dv.DvClient;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
 import com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
 import com.huawei.opsfactory.operationintelligence.qos.parser.TimeSplitStrategy;
 import com.huawei.opsfactory.operationintelligence.qos.store.CallChainStore;
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -82,44 +84,34 @@ public class CallChainService {
     /**
      * Query call chain by conditions.
      *
-     * @param solutionType the solution type (for DV environment selection)
-     * @param solutionId the solution id (for DV must filter)
-     * @param conditions the list of conditions (each containing conditionKey and conditionValue)
-     * @param startTime the start time in milliseconds
-     * @param endTime the end time in milliseconds
-     * @param mode the query mode (method or service)
+     * @param request the query call chain request
      * @return the call chain tree
      */
-    public CallChainTree queryCallChain(String solutionType, String solutionId, List<Map<String, String>> conditions,
-        long startTime, long endTime, String mode) {
-        CallChainTree mockTree = loadMockTreeIfConfigured(conditions, startTime, endTime);
+    public CallChainTree queryCallChain(QueryCallChainRequest request) {
+        CallChainTree mockTree = loadMockTreeIfConfigured(toConditionMapList(request.getCondition()), request.getStartTime(), request.getEndTime());
         if (mockTree != null) {
             return mockTree;
         }
-        return doQueryCallChain(solutionType, solutionId, conditions, startTime, endTime, mode);
+        return doQueryCallChain(request);
     }
 
     /**
      * Internal implementation of query call chain.
      *
-     * @param solutionType the solution type (for DV environment selection)
-     * @param solutionId the solution id (for DV must filter)
-     * @param conditions the list of conditions (each containing conditionKey and conditionValue)
-     * @param startTime the start time in milliseconds
-     * @param endTime the end time in milliseconds
-     * @param mode the query mode (method or service)
+     * @param request the query call chain request
      * @return the call chain tree
      */
-    private CallChainTree doQueryCallChain(String solutionType, String solutionId, List<Map<String, String>> conditions,
-        long startTime, long endTime, String mode) {
-        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}], mode={}", solutionType,
-            conditions.size(), Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime), mode);
+    private CallChainTree doQueryCallChain(QueryCallChainRequest request) {
+        List<Map<String, String>> conditions = toConditionMapList(request.getCondition());
+        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}], mode={}",
+            request.getSolutionType(), conditions.size(), Instant.ofEpochMilli(request.getStartTime()),
+            Instant.ofEpochMilli(request.getEndTime()), request.getMode());
 
         // Determine chainType by matching conditionKey with config
         String chainType = determineChainType(conditions);
         if (chainType == null) {
             log.warn("No matching chain type found for conditions");
-            return createEmptyTree(null, conditions, startTime, endTime);
+            return createEmptyTree(null, conditions, request.getStartTime(), request.getEndTime());
         }
 
         log.info("Determined chainType: {}", chainType);
@@ -130,12 +122,12 @@ public class CallChainService {
 
         // Fetch entry logs (seqNo=1) with pagination and time splitting
         List<TraceLogRecord> entryLogs =
-            fetchEntryLogsWithSplit(solutionType, solutionId, chainType, conditionKey, conditions, config, startTime,
-                endTime);
+            fetchEntryLogsWithSplit(request.getSolutionType(), request.getSolutionId(), chainType, conditionKey, conditions,
+                config, request.getStartTime(), request.getEndTime());
 
         if (entryLogs.isEmpty()) {
             log.info("No entry logs found for query");
-            return createEmptyTree(chainType, conditions, startTime, endTime);
+            return createEmptyTree(chainType, conditions, request.getStartTime(), request.getEndTime());
         }
         // Extract TraceIDs
         Set<String> traceIds = entryLogs.stream().map(TraceLogRecord::getTraceId).collect(Collectors.toSet());
@@ -150,7 +142,8 @@ public class CallChainService {
         for (String traceId : traceIds) {
             log.debug("Fetching logs for TraceID: {}", traceId);
             List<TraceLogRecord> traceLogs =
-                dvClient.fetchByTraceId(solutionType, solutionId, traceId, startTime, endTime, querySize);
+                dvClient.fetchByTraceId(request.getSolutionType(), request.getSolutionId(), traceId,
+                    request.getStartTime(), request.getEndTime(), querySize);
             allLogs.addAll(traceLogs);
         }
 
@@ -161,7 +154,8 @@ public class CallChainService {
         String conditionValue = primaryCondition.get("conditionValue");
 
         // Build call chain tree
-        CallChainTree tree = chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size(), mode);
+        CallChainTree tree = chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size(),
+            request.getMode());
 
         // Set conditions
         List<CallChainTree.Condition> treeConditions = conditions.stream().map(cond -> {
@@ -174,8 +168,8 @@ public class CallChainService {
 
         // Set query time range
         CallChainTree.QueryTimeRange timeRange = new CallChainTree.QueryTimeRange();
-        timeRange.setStartTime(formatTime(startTime));
-        timeRange.setEndTime(formatTime(endTime));
+        timeRange.setStartTime(formatTime(request.getStartTime()));
+        timeRange.setEndTime(formatTime(request.getEndTime()));
         tree.setQueryTimeRange(timeRange);
 
         // Save to store
@@ -442,5 +436,23 @@ public class CallChainService {
             treeCondition.setConditionValue(cond.get("conditionValue"));
             return treeCondition;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * Convert QueryCallChainRequest.Condition list to Map list.
+     *
+     * @param conditions the list of QueryCallChainRequest.Condition
+     * @return the list of map conditions
+     */
+    private List<Map<String, String>> toConditionMapList(List<QueryCallChainRequest.Condition> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            return List.of();
+        }
+        return conditions.stream().map(cond -> {
+            Map<String, String> map = new LinkedHashMap<>();
+            map.put("conditionKey", cond.getConditionKey());
+            map.put("conditionValue", cond.getConditionValue());
+            return map;
+        }).toList();
     }
 }

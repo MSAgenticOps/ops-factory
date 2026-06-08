@@ -19,6 +19,7 @@ import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceP
 import com.huawei.opsfactory.operationintelligence.qos.dv.DvClient;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
 import com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
 import com.huawei.opsfactory.operationintelligence.qos.parser.TimeSplitStrategy;
 import com.huawei.opsfactory.operationintelligence.qos.store.CallChainStore;
@@ -99,9 +100,22 @@ class CallChainServiceTest {
         tree.setTotalCount(0L);
         when(chainBuilder.build(anyString(), anyString(), anyString(), anyList(), anyLong(), anyString())).thenReturn(tree);
 
-        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit", "CRM-001",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L,
-            "method");
+        QueryCallChainRequest request = new QueryCallChainRequest();
+        request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
+        List<Map<String, String>> conditions = List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020"));
+        request.setCondition(conditions.stream()
+            .map(map -> {
+                QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
+                condition.setConditionKey(map.get("conditionKey"));
+                condition.setConditionValue(map.get("conditionValue"));
+                return condition;
+            })
+            .toList());
+        request.setStartTime(1746057600000L);
+        request.setEndTime(1746662400000L);
+        request.setMode("method");
+        CallChainTree result = callChainService.queryCallChain(request);
 
         assertNotNull(result);
         assertNull(result.getChainType());
@@ -146,9 +160,22 @@ class CallChainServiceTest {
             return result;
         });
 
-        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit", "CRM-001",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020")), 1746057600000L, 1746662400000L,
-            "method");
+        QueryCallChainRequest request = new QueryCallChainRequest();
+        request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
+        List<Map<String, String>> conditions = List.of(Map.of("conditionKey", "menuId", "conditionValue", "604015020"));
+        request.setCondition(conditions.stream()
+            .map(map -> {
+                QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
+                condition.setConditionKey(map.get("conditionKey"));
+                condition.setConditionValue(map.get("conditionValue"));
+                return condition;
+            })
+            .toList());
+        request.setStartTime(1746057600000L);
+        request.setEndTime(1746662400000L);
+        request.setMode("method");
+        CallChainTree result = callChainService.queryCallChain(request);
 
         assertNotNull(result);
         assertEquals("BES", result.getChainType());
@@ -161,9 +188,14 @@ class CallChainServiceTest {
         callChain.setQuerySize(100);
         when(properties.getCallChain()).thenReturn(callChain);
 
-        CallChainTree result =
-            callChainService.queryCallChain("DigitalCRM.sit", "CRM-001", List.of(), 1746057600000L, 1746662400000L,
-                "method");
+        QueryCallChainRequest request = new QueryCallChainRequest();
+        request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
+        request.setCondition(List.of());
+        request.setStartTime(1746057600000L);
+        request.setEndTime(1746662400000L);
+        request.setMode("method");
+        CallChainTree result = callChainService.queryCallChain(request);
 
         assertNotNull(result);
     }
@@ -174,9 +206,14 @@ class CallChainServiceTest {
         callChain.setQuerySize(100);
         when(properties.getCallChain()).thenReturn(callChain);
 
-        CallChainTree result =
-            callChainService.queryCallChain("DigitalCRM.sit", "CRM-001", new ArrayList<>(), 1746057600000L,
-                1746662400000L, "method");
+        QueryCallChainRequest request = new QueryCallChainRequest();
+        request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
+        request.setCondition(new ArrayList<>());
+        request.setStartTime(1746057600000L);
+        request.setEndTime(1746662400000L);
+        request.setMode("method");
+        CallChainTree result = callChainService.queryCallChain(request);
 
         assertNotNull(result);
         assertNull(result.getChainType());
@@ -221,9 +258,22 @@ class CallChainServiceTest {
         when(properties.getCallChain()).thenReturn(callChain);
         when(properties.getConfigDirectory()).thenReturn(Path.of("/tmp"));
 
-        CallChainTree result = callChainService.queryCallChain("DigitalCRM.sit", "CRM-001",
-            List.of(Map.of("conditionKey", "menuId", "conditionValue", "6013101010007")), 1746057600000L,
-            1746058200000L, "TRACE");
+        QueryCallChainRequest request = new QueryCallChainRequest();
+        request.setSolutionType("DigitalCRM.sit");
+        request.setSolutionId("CRM-001");
+        List<Map<String, String>> conditions = List.of(Map.of("conditionKey", "menuId", "conditionValue", "6013101010007"));
+        request.setCondition(conditions.stream()
+            .map(map -> {
+                QueryCallChainRequest.Condition condition = new QueryCallChainRequest.Condition();
+                condition.setConditionKey(map.get("conditionKey"));
+                condition.setConditionValue(map.get("conditionValue"));
+                return condition;
+            })
+            .toList());
+        request.setStartTime(1746057600000L);
+        request.setEndTime(1746058200000L);
+        request.setMode("TRACE");
+        CallChainTree result = callChainService.queryCallChain(request);
 
         assertNotNull(result);
         assertEquals("BES", result.getChainType());

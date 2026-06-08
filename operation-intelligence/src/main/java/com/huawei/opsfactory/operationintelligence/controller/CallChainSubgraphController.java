@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * REST API for generating and querying short-lived call chain entity subgraphs.
  *
@@ -25,6 +27,7 @@ import java.util.Map;
  * @since 2026-05-27
  */
 @RestController
+@RestSchema(schemaId = "callChainSubgraphController")
 @RequestMapping("/api/operation-intelligence/call-chain/subgraphs")
 public class CallChainSubgraphController {
     private final CallChainSubgraphService callChainSubgraphService;

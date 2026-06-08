@@ -57,6 +57,12 @@ public class InternalRuntimeSourceController {
 
     /**
      * Creates the internal runtime source controller.
+     *
+     * @param instanceManager the instance manager
+     * @param agentConfigService the agent config service
+     * @param langfuseService the langfuse service
+     * @param gatewayProperties the gateway properties
+     * @param metricsBuffer the metrics buffer
      */
     public InternalRuntimeSourceController(InstanceManager instanceManager, AgentConfigService agentConfigService,
         LangfuseService langfuseService, GatewayProperties gatewayProperties, MetricsBuffer metricsBuffer) {

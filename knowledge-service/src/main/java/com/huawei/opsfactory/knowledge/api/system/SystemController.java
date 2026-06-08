@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * The SystemController.
  * @author x00000000
@@ -17,11 +19,17 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController("knowledgeSystemController")
+@RestSchema(schemaId = "systemController")
 @RequestMapping("/api/knowledge")
 public class SystemController {
 
     private final KnowledgeProperties properties;
 
+    /**
+     * Creates the system controller instance.
+     *
+     * @param properties the knowledge properties
+     */
     public SystemController(KnowledgeProperties properties) {
         this.properties = properties;
     }

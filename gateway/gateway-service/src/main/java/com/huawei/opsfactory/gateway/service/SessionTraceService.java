@@ -4,9 +4,11 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -62,12 +64,18 @@ public class SessionTraceService implements DisposableBean {
 
     private final Path traceRoot;
 
+    private final GatewayProperties gatewayProperties;
+
     /**
      * Creates the session trace service instance.
+     *
+     * @param gatewayProperties the gateway properties for path resolution
      */
-    public SessionTraceService() {
-        this.repoRoot = resolveRepoRoot();
-        this.gatewayRoot = repoRoot.resolve("gateway").normalize();
+    @Autowired
+    public SessionTraceService(GatewayProperties gatewayProperties) {
+        this.gatewayProperties = gatewayProperties;
+        this.repoRoot = gatewayProperties.getProjectRootPath();
+        this.gatewayRoot = gatewayProperties.getGatewayRootPath();
         this.scriptPath = resolveScriptPath(repoRoot);
         this.traceRoot = gatewayRoot.resolve("data").resolve("session-traces").normalize();
         cleanupExpiredTraceDirectories();
@@ -79,7 +87,7 @@ public class SessionTraceService implements DisposableBean {
      * @param userId user identifier
      * @param agentId agent identifier
      * @param sessionId session identifier
-     * @return the starts a background trace collection job for the given session
+     * @return the trace job snapshot
      */
     public synchronized TraceJobSnapshot startTrace(String userId, String agentId, String sessionId) {
         validateId("userId", userId);
@@ -126,7 +134,7 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Returns the path to the collected trace archive for a completed job.
      *
-     * @param jobId returns the path to the collected trace archive for a completed job
+     * @param jobId the job identifier
      * @return the path to the collected trace archive for a completed job
      */
     public Path getArchive(String jobId) {
@@ -268,22 +276,6 @@ public class SessionTraceService implements DisposableBean {
         } catch (IOException e) {
             log.warn("[SESSION-TRACE] failed to scan trace root {}: {}", traceRoot, e.getMessage());
         }
-    }
-
-    private static Path resolveRepoRoot() {
-        Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        if (Files.isDirectory(cwd.resolve("gateway")) && Files.isDirectory(cwd.resolve("web-app"))) {
-            return cwd;
-        }
-        if ("gateway".equals(cwd.getFileName() != null ? cwd.getFileName().toString() : "")) {
-            return cwd.getParent() != null ? cwd.getParent() : cwd;
-        }
-        Path parent = cwd.getParent();
-        if (parent != null && Files.isDirectory(parent.resolve("gateway"))
-            && Files.isDirectory(parent.resolve("web-app"))) {
-            return parent;
-        }
-        return cwd;
     }
 
     private static Path resolveScriptPath(Path repoRoot) {

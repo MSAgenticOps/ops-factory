@@ -9,6 +9,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -92,7 +93,9 @@ public class SessionTraceServiceTest {
         Path repoRoot = createRepoRoot();
         Files.writeString(repoRoot.resolve("gateway/scripts/collect-session-debug.sh"), archiveScript("sleep 1"));
         System.setProperty("user.dir", repoRoot.toString());
-        SessionTraceService service = new SessionTraceService();
+        GatewayProperties properties = new GatewayProperties();
+        properties.getPaths().setProjectRoot(repoRoot.toString());
+        SessionTraceService service = new SessionTraceService(properties);
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch ready = new CountDownLatch(2);
@@ -132,7 +135,9 @@ public class SessionTraceServiceTest {
         Path repoRoot = createRepoRoot();
         Files.writeString(repoRoot.resolve("gateway/scripts/collect-session-debug.sh"), archiveScript(""));
         System.setProperty("user.dir", repoRoot.toString());
-        SessionTraceService service = new SessionTraceService();
+        GatewayProperties properties = new GatewayProperties();
+        properties.getPaths().setProjectRoot(repoRoot.toString());
+        SessionTraceService service = new SessionTraceService(properties);
         try {
             String firstJobId = service.startTrace("admin", "qa-agent", "20260429_2").jobId();
             waitForDone(service, firstJobId);
@@ -161,7 +166,9 @@ public class SessionTraceServiceTest {
         Files.setLastModifiedTime(oldTraceDir, FileTime.from(Instant.now().minusSeconds(7200)));
         System.setProperty("user.dir", repoRoot.toString());
 
-        SessionTraceService service = new SessionTraceService();
+        GatewayProperties properties = new GatewayProperties();
+        properties.getPaths().setProjectRoot(repoRoot.toString());
+        SessionTraceService service = new SessionTraceService(properties);
         try {
             assertFalse(Files.exists(oldTraceDir));
         } finally {

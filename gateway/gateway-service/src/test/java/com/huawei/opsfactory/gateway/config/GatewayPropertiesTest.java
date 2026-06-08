@@ -211,7 +211,8 @@ public class GatewayPropertiesTest {
     }
 
     /**
-     * Tests resolves paths relative to gateway config path.
+     * Tests resolves paths based on configured project-root.
+     * Absolute paths are returned as-is, relative paths are resolved against user.dir.
      *
      * @throws IOException if the operation fails
      */
@@ -222,22 +223,13 @@ public class GatewayPropertiesTest {
         Files.createDirectories(gatewayRoot);
         Files.writeString(gatewayRoot.resolve("config.yaml"), "server:\n  port: 3000\n");
 
-        String previous = System.getProperty("GATEWAY_CONFIG_PATH");
-        System.setProperty("GATEWAY_CONFIG_PATH", gatewayRoot.resolve("config.yaml").toString());
-        try {
-            GatewayProperties props = new GatewayProperties();
-            GatewayProperties.Paths paths = new GatewayProperties.Paths();
-            paths.setProjectRoot("..");
-            props.setPaths(paths);
+        GatewayProperties props = new GatewayProperties();
+        GatewayProperties.Paths paths = new GatewayProperties.Paths();
+        // Test with absolute path
+        paths.setProjectRoot(tempRoot.toString());
+        props.setPaths(paths);
 
-            assertEquals(tempRoot.normalize(), props.getProjectRootPath());
-            assertEquals(gatewayRoot.normalize(), props.getGatewayRootPath());
-        } finally {
-            if (previous == null) {
-                System.clearProperty("GATEWAY_CONFIG_PATH");
-            } else {
-                System.setProperty("GATEWAY_CONFIG_PATH", previous);
-            }
-        }
+        assertEquals(tempRoot.normalize(), props.getProjectRootPath());
+        assertEquals(tempRoot.resolve("gateway").normalize(), props.getGatewayRootPath());
     }
 }

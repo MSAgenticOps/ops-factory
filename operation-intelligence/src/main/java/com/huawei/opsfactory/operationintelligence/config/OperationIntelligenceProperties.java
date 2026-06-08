@@ -41,9 +41,9 @@ public class OperationIntelligenceProperties {
     private Logging logging = new Logging();
 
     /**
-     * Gets the secret key.
+     * Gets the secret key used for authentication.
      *
-     * @return the result
+     * @return the secret key used for authentication
      */
     public String getSecretKey() {
         return secretKey;
@@ -59,9 +59,9 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * Gets the cors origin.
+     * Gets the allowed CORS origin pattern.
      *
-     * @return the result
+     * @return the allowed CORS origin pattern
      */
     public String getCorsOrigin() {
         return corsOrigin;
@@ -77,9 +77,9 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * Gets the data root.
+     * Gets the data root directory path.
      *
-     * @return the result
+     * @return the data root directory path
      */
     public String getDataRoot() {
         return dataRoot;
@@ -95,9 +95,9 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * Gets the qos.
+     * Gets the QoS configuration.
      *
-     * @return the result
+     * @return the QoS configuration
      */
     public Qos getQos() {
         return qos;
@@ -113,9 +113,9 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * Gets the knowledge graph.
+     * Gets the knowledge graph configuration.
      *
-     * @return the result
+     * @return the knowledge graph configuration
      */
     public KnowledgeGraph getKnowledgeGraph() {
         return knowledgeGraph;
@@ -131,9 +131,9 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * Gets the logging.
+     * Gets the logging configuration.
      *
-     * @return the result
+     * @return the logging configuration
      */
     public Logging getLogging() {
         return logging;
@@ -149,9 +149,9 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * Gets the call chain.
+     * Gets the call chain configuration.
      *
-     * @return the result
+     * @return the call chain configuration
      */
     public CallChain getCallChain() {
         return callChain;
@@ -167,9 +167,12 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * resolve Data Root.
+     * Resolves the absolute path to the data root directory.
+     * If the configured path is absolute, returns it directly.
+     * If relative, resolves against the current working directory (user.dir).
+     * If not configured, defaults to "./data" relative to user.dir.
      *
-     * @return the result
+     * @return the absolute path to the data root directory
      */
     public Path resolveDataRoot() {
         if (dataRoot != null && !dataRoot.isBlank()) {
@@ -177,15 +180,15 @@ public class OperationIntelligenceProperties {
             if (configured.isAbsolute()) {
                 return configured.normalize();
             }
-            return getConfigDirectory().resolve(configured).normalize();
+            return configured.toAbsolutePath().normalize();
         }
-        return getConfigDirectory().resolve("data").normalize();
+        return Path.of("data").toAbsolutePath().normalize();
     }
 
     /**
      * Resolves the knowledge graph data root under the configured data directory.
      *
-     * @return the result
+     * @return the absolute path to the knowledge graph data root directory
      */
     public Path resolveKnowledgeGraphDataRoot() {
         Path dataRootPath = resolveDataRoot();
@@ -203,7 +206,7 @@ public class OperationIntelligenceProperties {
     /**
      * Gets the config path.
      *
-     * @return the result
+     * @return the absolute path to the config file
      */
     public Path getConfigPath() {
         String configuredPath = configuredConfigPath();
@@ -220,7 +223,7 @@ public class OperationIntelligenceProperties {
     /**
      * Gets the config directory.
      *
-     * @return the result
+     * @return the directory containing the config file
      */
     public Path getConfigDirectory() {
         Path configPath = getConfigPath();
@@ -274,7 +277,7 @@ public class OperationIntelligenceProperties {
         /**
          * Checks whether the enabled.
          *
-         * @return the result
+         * @return true if enabled, false otherwise
          */
         public boolean isEnabled() {
             return enabled;
@@ -292,7 +295,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the collection interval ms.
          *
-         * @return the result
+         * @return the collection interval in milliseconds
          */
         public long getCollectionIntervalMs() {
             return collectionIntervalMs;
@@ -310,7 +313,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the rotation interval ms.
          *
-         * @return the result
+         * @return the rotation interval in milliseconds
          */
         public long getRotationIntervalMs() {
             return rotationIntervalMs;
@@ -328,7 +331,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the raw data retention days.
          *
-         * @return the result
+         * @return the raw data retention period in days
          */
         public long getRawDataRetentionDays() {
             return rawDataRetentionDays;
@@ -346,7 +349,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the detail data retention days.
          *
-         * @return the result
+         * @return the detail data retention period in days
          */
         public long getDetailDataRetentionDays() {
             return detailDataRetentionDays;
@@ -364,7 +367,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the normalize data retention days.
          *
-         * @return the result
+         * @return the normalized data retention period in days
          */
         public long getNormalizeDataRetentionDays() {
             return normalizeDataRetentionDays;
@@ -382,7 +385,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the weights.
          *
-         * @return the result
+         * @return the QoS weights configuration
          */
         public Weights getWeights() {
             return weights;
@@ -400,7 +403,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the thresholds.
          *
-         * @return the result
+         * @return the QoS thresholds configuration
          */
         public Thresholds getThresholds() {
             return thresholds;
@@ -418,7 +421,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the dv environments.
          *
-         * @return the result
+         * @return the list of DV environments
          */
         public List<DvEnvironment> getDvEnvironments() {
             return dvEnvironments;
@@ -449,7 +452,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the availability.
              *
-             * @return the result
+             * @return the availability weight
              */
             public double getAvailability() {
                 return availability;
@@ -467,7 +470,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the performance.
              *
-             * @return the result
+             * @return the performance weight
              */
             public double getPerformance() {
                 return performance;
@@ -485,7 +488,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the resource.
              *
-             * @return the result
+             * @return the resource weight
              */
             public double getResource() {
                 return resource;
@@ -517,7 +520,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the good.
              *
-             * @return the result
+             * @return the good threshold value
              */
             public double getGood() {
                 return good;
@@ -535,7 +538,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the warning.
              *
-             * @return the result
+             * @return the warning threshold value
              */
             public double getWarning() {
                 return warning;
@@ -553,7 +556,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the bad.
              *
-             * @return the result
+             * @return the bad threshold value
              */
             public double getBad() {
                 return bad;
@@ -601,7 +604,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the env code.
              *
-             * @return the result
+             * @return the environment code
              */
             public String getEnvCode() {
                 return envCode;
@@ -619,7 +622,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the env name.
              *
-             * @return the result
+             * @return the environment name
              */
             public String getEnvName() {
                 return envName;
@@ -637,7 +640,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the agent solution type.
              *
-             * @return the result
+             * @return the agent solution type
              */
             public String getAgentSolutionType() {
                 return agentSolutionType;
@@ -655,7 +658,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the product type name.
              *
-             * @return the result
+             * @return the product type name
              */
             public String getProductTypeName() {
                 return productTypeName;
@@ -673,7 +676,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the server url.
              *
-             * @return the result
+             * @return the server URL
              */
             public String getServerUrl() {
                 return serverUrl;
@@ -691,7 +694,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the utm user.
              *
-             * @return the result
+             * @return the UTM user name
              */
             public String getUtmUser() {
                 return utmUser;
@@ -709,7 +712,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the utm password.
              *
-             * @return the result
+             * @return the UTM password
              */
             @JsonIgnore
             public String getUtmPassword() {
@@ -728,7 +731,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the crt content.
              *
-             * @return the result
+             * @return the SSL certificate content
              */
             public String getCrtContent() {
                 return crtContent;
@@ -746,7 +749,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the crt file name.
              *
-             * @return the result
+             * @return the SSL certificate file name
              */
             public String getCrtFileName() {
                 return crtFileName;
@@ -764,7 +767,7 @@ public class OperationIntelligenceProperties {
             /**
              * Gets the dns.
              *
-             * @return the result
+             * @return the DNS server address
              */
             public String getDns() {
                 return dns;
@@ -782,7 +785,7 @@ public class OperationIntelligenceProperties {
             /**
              * Checks whether the strict ssl.
              *
-             * @return the result
+             * @return true if strict SSL is enabled, false otherwise
              */
             public boolean isStrictSsl() {
                 return strictSsl;
@@ -811,7 +814,7 @@ public class OperationIntelligenceProperties {
         /**
          * Checks whether the access log enabled.
          *
-         * @return the result
+         * @return true if access log is enabled, false otherwise
          */
         public boolean isAccessLogEnabled() {
             return accessLogEnabled;
@@ -861,7 +864,7 @@ public class OperationIntelligenceProperties {
         /**
          * Checks whether the enabled.
          *
-         * @return the result
+         * @return true if enabled, false otherwise
          */
         public boolean isEnabled() {
             return enabled;
@@ -1023,7 +1026,7 @@ public class OperationIntelligenceProperties {
         /**
          * Checks whether mock query is enabled.
          *
-         * @return the result
+         * @return true if mock query is enabled, false otherwise
          */
         public boolean isMockQueryEnabled() {
             return mockQueryEnabled;
@@ -1155,7 +1158,7 @@ public class OperationIntelligenceProperties {
         /**
          * Checks whether the enabled.
          *
-         * @return the result
+         * @return true if enabled, false otherwise
          */
         public boolean isEnabled() {
             return enabled;
@@ -1173,7 +1176,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the data dir.
          *
-         * @return the result
+         * @return the knowledge graph data directory
          */
         public String getDataDir() {
             return dataDir;
@@ -1191,7 +1194,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the max hops.
          *
-         * @return the result
+         * @return the maximum number of hops for graph traversal
          */
         public int getMaxHops() {
             return maxHops;
@@ -1209,7 +1212,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the snapshot retention.
          *
-         * @return the result
+         * @return the number of snapshots to retain
          */
         public int getSnapshotRetention() {
             return snapshotRetention;
@@ -1227,7 +1230,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the call chain subgraph directory.
          *
-         * @return the result
+         * @return the call chain subgraph directory name
          */
         public String getCallChainSubgraphDir() {
             return callChainSubgraphDir;
@@ -1245,7 +1248,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the call chain subgraph retention count.
          *
-         * @return the result
+         * @return the number of call chain subgraphs to retain
          */
         public int getCallChainSubgraphRetention() {
             return callChainSubgraphRetention;
@@ -1263,7 +1266,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the call chain subgraph ttl in minutes.
          *
-         * @return the result
+         * @return the call chain subgraph TTL in minutes
          */
         public int getCallChainSubgraphTtlMinutes() {
             return callChainSubgraphTtlMinutes;
@@ -1281,7 +1284,7 @@ public class OperationIntelligenceProperties {
         /**
          * Checks whether the resource subgraph extraction is enabled.
          *
-         * @return the result
+         * @return true if resource subgraph extraction is enabled, false otherwise
          */
         public boolean isResourceSubgraphEnabled() {
             return resourceSubgraphEnabled;
@@ -1299,7 +1302,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the resource subgraph max hops.
          *
-         * @return the result
+         * @return the maximum hops for resource subgraph traversal
          */
         public int getResourceSubgraphMaxHops() {
             return resourceSubgraphMaxHops;
@@ -1317,7 +1320,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the resource subgraph relation types.
          *
-         * @return the result
+         * @return the list of relation types for resource subgraph filtering
          */
         public List<String> getResourceSubgraphRelationTypes() {
             return resourceSubgraphRelationTypes;
@@ -1335,7 +1338,7 @@ public class OperationIntelligenceProperties {
         /**
          * Gets the resource subgraph entity types.
          *
-         * @return the result
+         * @return the list of entity types for resource subgraph filtering
          */
         public List<String> getResourceSubgraphEntityTypes() {
             return resourceSubgraphEntityTypes;

@@ -11,6 +11,14 @@ server:
     key-store-password: "changeit"      # env override: GATEWAY_KEY_STORE_PASSWORD
     key-store-type: "PKCS12"
 
+# Machine-to-machine authentication (required for /machine/** endpoints)
+# Environment variables: COMMON_AOP_MACHINE_USERNAME, COMMON_AOP_MACHINE_PASSWORD
+common:
+  aop:
+    machine:
+      username: "${COMMON_AOP_MACHINE_USERNAME:}"
+      password: "${COMMON_AOP_MACHINE_PASSWORD:}"
+
 gateway:
   secret-key: ""                        # env override: GATEWAY_SECRET_KEY [REQUIRED]
   cors-origin: "http://127.0.0.1:5173"  # env override: CORS_ORIGIN

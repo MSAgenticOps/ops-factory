@@ -34,9 +34,17 @@ load_config() {
         echo -e "  LIB ZIP: ${LIB_ZIP}"
         echo -e "  Agents ZIP: ${AGENTS_ZIP}"
         echo -e "  OI JAR: ${OI_JAR}"
+        echo -e "  OI LIB ZIP: ${OI_LIB_ZIP}"
         echo -e "  CC JAR: ${CC_JAR}"
+        echo -e "  CC LIB ZIP: ${CC_LIB_ZIP}"
         echo -e "  KS JAR: ${KS_JAR}"
+        echo -e "  KS LIB ZIP: ${KS_LIB_ZIP}"
         echo -e "  SM JAR: ${SM_JAR}"
+        echo -e "  SM LIB ZIP: ${SM_LIB_ZIP}"
+        echo -e "  BI JAR: ${BI_JAR}"
+        echo -e "  BI LIB ZIP: ${BI_LIB_ZIP}"
+        echo -e "  FinOps JAR: ${FINOPS_JAR}"
+        echo -e "  FinOps LIB ZIP: ${FINOPS_LIB_ZIP}"
         echo -e "  ROOT_PASSWORD: ${ROOT_PASSWORD:0:8}****"
         echo -e "  日志级别: ${LOG_LEVEL}"
         echo ""
@@ -139,6 +147,16 @@ validate_source_files() {
         SM_JAR=""
     fi
 
+    if [ ! -f "${SOURCE_DIR}${BI_JAR}" ]; then
+        print_warning "Business Intelligence JAR不存在: ${SOURCE_DIR}${BI_JAR}，将跳过BI部署"
+        BI_JAR=""
+    fi
+
+    if [ ! -f "${SOURCE_DIR}${FINOPS_JAR}" ]; then
+        print_warning "FinOps JAR不存在: ${SOURCE_DIR}${FINOPS_JAR}，将跳过FinOps部署"
+        FINOPS_JAR=""
+    fi
+
     print_success "源文件验证通过"
 }
 
@@ -155,15 +173,17 @@ show_operations() {
     echo "  3. 复制 gateway-service.jar"
     echo "  4. 更新 lib 依赖目录"
     echo "  5. 同步 agents 目录（排除 config.yaml、secrets.yaml、goose/）"
-    echo "  6. 部署 operation-intelligence（复制 JAR、合并配置）"
+    echo "  6. 部署 operation-intelligence（复制 JAR、更新 lib、合并配置）"
     echo "  7. 部署 dv_server.py mock 服务"
-    echo "  8. 部署 control-center（复制 JAR、合并配置）"
-    echo "  9. 部署 knowledge-service（复制 JAR、合并配置）"
-    echo "  10. 部署 skill-market（复制 JAR、合并配置）"
-    echo "  11. 合并 gateway config.yaml（保留环境特有的 server 设置）"
-    echo "  12. 复制 webapp"
-    echo "  13. 设置文件权限"
-    echo "  14. 重启所有服务（gateway + OI + dv_server + CC + KS + SM + webapp）"
+    echo "  8. 部署 control-center（复制 JAR、更新 lib、合并配置）"
+    echo "  9. 部署 knowledge-service（复制 JAR、更新 lib、合并配置）"
+    echo "  10. 部署 skill-market（复制 JAR、更新 lib、合并配置）"
+    echo "  11. 部署 business-intelligence（复制 JAR、更新 lib、合并配置）"
+    echo "  12. 部署 finops（复制 JAR、更新 lib、合并配置）"
+    echo "  13. 合并 gateway config.yaml（保留环境特有的 server 设置）"
+    echo "  14. 复制 webapp"
+    echo "  15. 设置文件权限"
+    echo "  16. 重启所有服务（gateway + OI + dv_server + CC + KS + SM + BI + FinOps + webapp）"
     echo ""
 }
 
@@ -228,13 +248,23 @@ tar zcvf "backup_${timestamp}.tar.gz" \
     gateway/agents/ \
     gateway/config.yaml \
     operation-intelligence/operation-intelligence.jar \
+    operation-intelligence/lib/ \
     operation-intelligence/config.yaml \
     control-center/config.yaml \
     control-center/control-center.jar \
+    control-center/lib/ \
     knowledge-service/config.yaml \
     knowledge-service/knowledge-service.jar \
+    knowledge-service/lib/ \
     skill-market/config.yaml \
-    skill-market/skill-market.jar
+    skill-market/skill-market.jar \
+    skill-market/lib/ \
+    business-intelligence/business-intelligence.jar \
+    business-intelligence/lib/ \
+    business-intelligence/config.yaml \
+    finops/finops.jar \
+    finops/lib/ \
+    finops/config.yaml
 mv "backup_${timestamp}.tar.gz" "${BACKUP_DIR}"
 
 echo "保留最近5个备份文件..."
@@ -247,6 +277,8 @@ find "${TARGET_OI_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null
 find "${TARGET_CC_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
 find "${TARGET_KS_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
 find "${TARGET_SM_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
+find "${TARGET_BI_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
+find "${TARGET_FINOPS_DIR}" -maxdepth 1 -name "config.yaml.bak*" -type f 2>/dev/null | xargs ls -t | tail -n +6 | xargs -r rm -f
 
 # 3. 复制 gateway-service.jar
 echo "正在复制 ${GATEWAY_JAR}..."
@@ -280,6 +312,14 @@ if [ -n "${OI_JAR}" ] && [ -f "${SOURCE_DIR}${OI_JAR}" ]; then
 
     # 复制新 JAR
     echo "yes" | cp "${SOURCE_DIR}${OI_JAR}" "${TARGET_OI_DIR}${OI_JAR}"
+
+    # 更新 OI lib 依赖目录
+    if [ -n "${OI_LIB_ZIP}" ] && [ -f "${SOURCE_DIR}${OI_LIB_ZIP}" ]; then
+        echo "正在更新 OI lib 目录..."
+        mkdir -p "${TARGET_OI_DIR}lib/"
+        rm -f "${TARGET_OI_DIR}lib/"*.jar
+        echo "A" | unzip -o "${SOURCE_DIR}${OI_LIB_ZIP}" -d "${TARGET_OI_DIR}lib/"
+    fi
 
     # 复制并修改配置
     if [ -f "${SOURCE_DIR}${OI_CONFIG_EXAMPLE}" ]; then
@@ -359,6 +399,14 @@ if [ -n "${CC_JAR}" ] && [ -f "${SOURCE_DIR}${CC_JAR}" ]; then
     # 复制新 JAR
     echo "yes" | cp "${SOURCE_DIR}${CC_JAR}" "${TARGET_CC_DIR}${CC_JAR}"
 
+    # 更新 CC lib 依赖目录
+    if [ -n "${CC_LIB_ZIP}" ] && [ -f "${SOURCE_DIR}${CC_LIB_ZIP}" ]; then
+        echo "正在更新 CC lib 目录..."
+        mkdir -p "${TARGET_CC_DIR}lib/"
+        rm -f "${TARGET_CC_DIR}lib/"*.jar
+        echo "A" | unzip -o "${SOURCE_DIR}${CC_LIB_ZIP}" -d "${TARGET_CC_DIR}lib/"
+    fi
+
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${CC_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${CC_CONFIG_EXAMPLE}" "${TARGET_CC_DIR}config.yaml"
@@ -383,6 +431,14 @@ if [ -n "${KS_JAR}" ] && [ -f "${SOURCE_DIR}${KS_JAR}" ]; then
     # 复制新 JAR
     echo "yes" | cp "${SOURCE_DIR}${KS_JAR}" "${TARGET_KS_DIR}${KS_JAR}"
 
+    # 更新 KS lib 依赖目录
+    if [ -n "${KS_LIB_ZIP}" ] && [ -f "${SOURCE_DIR}${KS_LIB_ZIP}" ]; then
+        echo "正在更新 KS lib 目录..."
+        mkdir -p "${TARGET_KS_DIR}lib/"
+        rm -f "${TARGET_KS_DIR}lib/"*.jar
+        echo "A" | unzip -o "${SOURCE_DIR}${KS_LIB_ZIP}" -d "${TARGET_KS_DIR}lib/"
+    fi
+
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${KS_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${KS_CONFIG_EXAMPLE}" "${TARGET_KS_DIR}config.yaml"
@@ -405,6 +461,14 @@ if [ -n "${SM_JAR}" ] && [ -f "${SOURCE_DIR}${SM_JAR}" ]; then
     # 复制新 JAR
     echo "yes" | cp "${SOURCE_DIR}${SM_JAR}" "${TARGET_SM_DIR}${SM_JAR}"
 
+    # 更新 SM lib 依赖目录
+    if [ -n "${SM_LIB_ZIP}" ] && [ -f "${SOURCE_DIR}${SM_LIB_ZIP}" ]; then
+        echo "正在更新 SM lib 目录..."
+        mkdir -p "${TARGET_SM_DIR}lib/"
+        rm -f "${TARGET_SM_DIR}lib/"*.jar
+        echo "A" | unzip -o "${SOURCE_DIR}${SM_LIB_ZIP}" -d "${TARGET_SM_DIR}lib/"
+    fi
+
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${SM_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${SM_CONFIG_EXAMPLE}" "${TARGET_SM_DIR}config.yaml"
@@ -414,7 +478,67 @@ if [ -n "${SM_JAR}" ] && [ -f "${SOURCE_DIR}${SM_JAR}" ]; then
     chmod 600 "${TARGET_SM_DIR}${SM_JAR}"
 fi
 
-# 11. 处理 Gateway config.yaml
+# 11. 部署 business-intelligence
+if [ -n "${BI_JAR}" ] && [ -f "${SOURCE_DIR}${BI_JAR}" ]; then
+    echo "正在部署 business-intelligence..."
+    mkdir -p "${TARGET_BI_DIR}"
+
+    # 备份旧配置
+    if [ -f "${TARGET_BI_DIR}config.yaml" ]; then
+        cp "${TARGET_BI_DIR}config.yaml" "${TARGET_BI_DIR}config.yaml.bak.${timestamp}"
+    fi
+
+    # 复制新 JAR
+    echo "yes" | cp "${SOURCE_DIR}${BI_JAR}" "${TARGET_BI_DIR}${BI_JAR}"
+
+    # 更新 BI lib 依赖目录
+    if [ -n "${BI_LIB_ZIP}" ] && [ -f "${SOURCE_DIR}${BI_LIB_ZIP}" ]; then
+        echo "正在更新 BI lib 目录..."
+        mkdir -p "${TARGET_BI_DIR}lib/"
+        rm -f "${TARGET_BI_DIR}lib/"*.jar
+        echo "A" | unzip -o "${SOURCE_DIR}${BI_LIB_ZIP}" -d "${TARGET_BI_DIR}lib/"
+    fi
+
+    # 直接替换配置
+    if [ -f "${SOURCE_DIR}${BI_CONFIG_EXAMPLE}" ]; then
+        echo "yes" | cp "${SOURCE_DIR}${BI_CONFIG_EXAMPLE}" "${TARGET_BI_DIR}config.yaml"
+    fi
+
+    chown root:root "${TARGET_BI_DIR}${BI_JAR}"
+    chmod 600 "${TARGET_BI_DIR}${BI_JAR}"
+fi
+
+# 12. 部署 finops
+if [ -n "${FINOPS_JAR}" ] && [ -f "${SOURCE_DIR}${FINOPS_JAR}" ]; then
+    echo "正在部署 finops..."
+    mkdir -p "${TARGET_FINOPS_DIR}"
+
+    # 备份旧配置
+    if [ -f "${TARGET_FINOPS_DIR}config.yaml" ]; then
+        cp "${TARGET_FINOPS_DIR}config.yaml" "${TARGET_FINOPS_DIR}config.yaml.bak.${timestamp}"
+    fi
+
+    # 复制新 JAR
+    echo "yes" | cp "${SOURCE_DIR}${FINOPS_JAR}" "${TARGET_FINOPS_DIR}${FINOPS_JAR}"
+
+    # 更新 FinOps lib 依赖目录
+    if [ -n "${FINOPS_LIB_ZIP}" ] && [ -f "${SOURCE_DIR}${FINOPS_LIB_ZIP}" ]; then
+        echo "正在更新 FinOps lib 目录..."
+        mkdir -p "${TARGET_FINOPS_DIR}lib/"
+        rm -f "${TARGET_FINOPS_DIR}lib/"*.jar
+        echo "A" | unzip -o "${SOURCE_DIR}${FINOPS_LIB_ZIP}" -d "${TARGET_FINOPS_DIR}lib/"
+    fi
+
+    # 直接替换配置
+    if [ -f "${SOURCE_DIR}${FINOPS_CONFIG_EXAMPLE}" ]; then
+        echo "yes" | cp "${SOURCE_DIR}${FINOPS_CONFIG_EXAMPLE}" "${TARGET_FINOPS_DIR}config.yaml"
+    fi
+
+    chown root:root "${TARGET_FINOPS_DIR}${FINOPS_JAR}"
+    chmod 600 "${TARGET_FINOPS_DIR}${FINOPS_JAR}"
+fi
+
+# 13. 处理 Gateway config.yaml
 echo "正在处理 Gateway config.yaml..."
 # 备份旧配置
 if [ -f "${TARGET_DIR}config.yaml" ]; then
@@ -431,7 +555,7 @@ else
 	echo "警告: config.yaml.example 不存在，跳过 Gateway 配置处理"
 fi
 
-# 11. 复制 webapp
+# 14. 复制 webapp
 if [ -n "${WEBAPP_ZIP}" ] && [ -f "${SOURCE_DIR}${WEBAPP_ZIP}" ]; then
     echo "正在复制 webapp..."
     rm -rf "${TARGET_WEBAPP_DIR}"/assets/*.js "${TARGET_WEBAPP_DIR}"/assets/*.css
@@ -439,12 +563,12 @@ if [ -n "${WEBAPP_ZIP}" ] && [ -f "${SOURCE_DIR}${WEBAPP_ZIP}" ]; then
     echo "A" | unzip "${SOURCE_DIR}${WEBAPP_ZIP}"
 fi
 
-# 12. 设置文件权限
+# 15. 设置文件权限
 echo "设置文件权限..."
 chown root:root "${TARGET_DIR}${GATEWAY_JAR}"
 chmod 600 "${TARGET_DIR}${GATEWAY_JAR}"
 
-# 13. 重启服务
+# 16. 重启服务
 echo "重启服务..."
 
 echo "正在停止gateway进程..."
@@ -459,6 +583,10 @@ echo "正在停止KS进程..."
 eval "${KILL_KS_COMMAND}" || true
 echo "正在停止SM进程..."
 eval "${KILL_SM_COMMAND}" || true
+echo "正在停止BI进程..."
+eval "${KILL_BI_COMMAND}" || true
+echo "正在停止FinOps进程..."
+eval "${KILL_FINOPS_COMMAND}" || true
 echo "正在停止WEBAPP进程..."
 eval "${KILL_WEBAPP_COMMAND}" || true
 pkill -9 goosed 2>/dev/null || true
@@ -508,6 +636,22 @@ if [ -f "${TARGET_SM_DIR}${SM_JAR}" ]; then
     echo "正在启动 skill-market 服务..."
     cd "${TARGET_SM_DIR}"
     nohup java -jar ${SM_JAR} --spring.config.location=config.yaml > sm.log 2>&1 &
+    sleep 5
+fi
+
+# 启动 business-intelligence 服务
+if [ -f "${TARGET_BI_DIR}${BI_JAR}" ]; then
+    echo "正在启动 business-intelligence 服务..."
+    cd "${TARGET_BI_DIR}"
+    nohup java -jar ${BI_JAR} --spring.config.location=config.yaml > bi.log 2>&1 &
+    sleep 5
+fi
+
+# 启动 finops 服务
+if [ -f "${TARGET_FINOPS_DIR}${FINOPS_JAR}" ]; then
+    echo "正在启动 finops 服务..."
+    cd "${TARGET_FINOPS_DIR}"
+    nohup java -jar ${FINOPS_JAR} --spring.config.location=config.yaml > finops.log 2>&1 &
     sleep 5
 fi
 
@@ -638,6 +782,24 @@ EOF
             ps -ef | grep "skill-market.jar" | grep -v grep
         else
             print_warning "Skill Market服务未运行，请检查日志"
+        fi
+
+        print_info "检查business-intelligence服务状态..."
+        if pgrep -f "business-intelligence.jar" > /dev/null; then
+            print_success "Business Intelligence服务正在运行"
+            echo "进程信息："
+            ps -ef | grep "business-intelligence.jar" | grep -v grep
+        else
+            print_warning "Business Intelligence服务未运行，请检查日志"
+        fi
+
+        print_info "检查finops服务状态..."
+        if pgrep -f "finops.jar" > /dev/null; then
+            print_success "FinOps服务正在运行"
+            echo "进程信息："
+            ps -ef | grep "finops.jar" | grep -v grep
+        else
+            print_warning "FinOps服务未运行，请检查日志"
         fi
     else
         echo ""

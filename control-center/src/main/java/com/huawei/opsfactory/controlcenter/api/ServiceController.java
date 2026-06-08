@@ -14,19 +14,28 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-@RestController
-@RequestMapping("/api/control-center/services")
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * Service Controller.
  *
  * @author x00000000
  * @since 2026-05-27
  */
+@RestController
+@RestSchema(schemaId = "serviceController")
+@RequestMapping("/api/control-center/services")
 public class ServiceController {
 
     private final ServiceHealthProbeService probeService;
     private final ServiceActionService actionService;
 
+    /**
+     * Creates the service controller instance.
+     *
+     * @param probeService the service health probe service
+     * @param actionService the service action service
+     */
     public ServiceController(ServiceHealthProbeService probeService, ServiceActionService actionService) {
         this.probeService = probeService;
         this.actionService = actionService;

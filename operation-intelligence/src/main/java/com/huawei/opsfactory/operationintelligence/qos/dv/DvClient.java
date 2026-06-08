@@ -6,6 +6,8 @@ package com.huawei.opsfactory.operationintelligence.qos.dv;
 
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.qos.model.AlarmInfo;
+import com.huawei.opsfactory.operationintelligence.qos.model.AlarmQueryRequest;
+import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceDataQueryRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceDataResult;
 import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
 
@@ -168,19 +170,14 @@ public class DvClient {
     }
 
     /**
-     * fetch Performance Data.
+     * Fetches performance data from DV service.
      *
-     * @param env the env
-     * @param moType the moType
-     * @param measUnitKey the measUnitKey
-     * @param dns the dns
-     * @param startTime the startTime
-     * @param endTime the endTime
-     * @return the result
+     * @param env the DV environment info
+     * @param request the performance data query request
+     * @return the list of performance data results
      */
-    public List<PerformanceDataResult> fetchPerformanceData(DvEnvironmentInfo env, String moType, String measUnitKey,
-        List<String> dns, long startTime, long endTime) {
-        return executeWithRetry(() -> doFetchPerformanceData(env, moType, measUnitKey, dns, startTime, endTime),
+    public List<PerformanceDataResult> fetchPerformanceData(DvEnvironmentInfo env, PerformanceDataQueryRequest request) {
+        return executeWithRetry(() -> doFetchPerformanceData(env, request),
             "fetchPerformanceData[" + env.getEnvCode() + "]");
     }
 
@@ -190,15 +187,10 @@ public class DvClient {
      * Internal implementation of fetching performance data.
      *
      * @param env the DV environment info
-     * @param moType the MO type
-     * @param measUnitKey the measurement unit key
-     * @param dns the list of DN names
-     * @param startTime the start time in milliseconds
-     * @param endTime the end time in milliseconds
+     * @param request the performance data query request
      * @return the list of performance data results
      */
-    private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, String moType, String measUnitKey,
-        List<String> dns, long startTime, long endTime) {
+    private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, PerformanceDataQueryRequest request) {
         try {
             RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
@@ -206,16 +198,16 @@ public class DvClient {
             String url = env.getServerUrl() + "/rest/dvpmservice/v1/openapi/monitor/history/data";
 
             Map<String, Object> timeRanges = new LinkedHashMap<>();
-            timeRanges.put(String.valueOf(startTime), endTime);
+            timeRanges.put(String.valueOf(request.getStartTime()), request.getEndTime());
 
             Map<String, Object> dnMap = new LinkedHashMap<>();
-            for (String dn : dns) {
+            for (String dn : request.getDns()) {
                 dnMap.put(dn, Map.of());
             }
 
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("moType", moType);
-            body.put("measUnitKey", measUnitKey);
+            body.put("moType", request.getMoType());
+            body.put("measUnitKey", request.getMeasUnitKey());
             body.put("timeRanges", timeRanges);
             body.put("dnOriginalValueMeasTypeCalTypes", dnMap);
 
@@ -235,44 +227,35 @@ public class DvClient {
             return parsePerformanceResult(response);
         } catch (IOException | IllegalStateException e) {
             throw new IllegalStateException("Failed to fetch performance data from " + env.getServerUrl() + " moType="
-                + moType + ": " + e.getMessage(), e);
+                + request.getMoType() + ": " + e.getMessage(), e);
         }
     }
 
     /**
-     * fetch Current Alarms.
+     * Fetches current alarms from DV service.
      *
-     * @param env the env
-     * @param startTime the startTime
-     * @param endTime the endTime
-     * @param severities the severities
-     * @param dns the dns
-     * @return the result
+     * @param env the DV environment info
+     * @param request the alarm query request
+     * @return the list of alarm info
      */
-    public List<AlarmInfo> fetchCurrentAlarms(DvEnvironmentInfo env, long startTime, long endTime,
-        List<String> severities, List<String> dns) {
-        return executeWithRetry(() -> doFetchCurrentAlarms(env, startTime, endTime, severities, dns),
-            "fetchCurrentAlarms[" + env.getEnvCode() + "]");
+    public List<AlarmInfo> fetchCurrentAlarms(DvEnvironmentInfo env, AlarmQueryRequest request) {
+        return executeWithRetry(() -> doFetchCurrentAlarms(env, request), "fetchCurrentAlarms[" + env.getEnvCode() + "]");
     }
 
     /**
      * Internal implementation of fetching current alarms.
      *
      * @param env the DV environment info
-     * @param startTime the start time in milliseconds
-     * @param endTime the end time in milliseconds
-     * @param severities the list of severity levels
-     * @param dns the list of DN names
+     * @param request the alarm query request
      * @return the list of alarm info
      */
-    private List<AlarmInfo> doFetchCurrentAlarms(DvEnvironmentInfo env, long startTime, long endTime,
-        List<String> severities, List<String> dns) {
+    private List<AlarmInfo> doFetchCurrentAlarms(DvEnvironmentInfo env, AlarmQueryRequest request) {
         try {
             RestClient webClient = getOrCreateRestClient(env);
             Map<String, String> headers = authService.buildAuthHeaders(env);
 
             String url = env.getServerUrl() + "/rest/fault/v1/current-alarms/scroll";
-            String jsonBody = MAPPER.writeValueAsString(buildAlarmQuery(startTime, endTime, severities, dns));
+            String jsonBody = MAPPER.writeValueAsString(buildAlarmQuery(request));
 
             String response = webClient.post()
                 .uri(url)
@@ -390,32 +373,31 @@ public class DvClient {
      * @param dns the list of DN names
      * @return the alarm query request body map
      */
-    private Map<String, Object> buildAlarmQuery(long startTime, long endTime, List<String> severities,
-        List<String> dns) {
+    private Map<String, Object> buildAlarmQuery(AlarmQueryRequest request) {
         List<Map<String, Object>> filters = new ArrayList<>();
 
         Map<String, Object> timeFilter = new LinkedHashMap<>();
         timeFilter.put("name", "OCCURUTC");
         timeFilter.put("field", "OCCURUTC");
         timeFilter.put("operator", "BETWEEN");
-        timeFilter.put("values", List.of(startTime, endTime));
+        timeFilter.put("values", List.of(request.getStartTime(), request.getEndTime()));
         filters.add(timeFilter);
 
-        if (severities != null && !severities.isEmpty()) {
+        if (request.getSeverities() != null && !request.getSeverities().isEmpty()) {
             Map<String, Object> severityFilter = new LinkedHashMap<>();
             severityFilter.put("name", "SEVERITY");
             severityFilter.put("field", "SEVERITY");
             severityFilter.put("operator", "IN");
-            severityFilter.put("values", severities);
+            severityFilter.put("values", request.getSeverities());
             filters.add(severityFilter);
         }
 
-        if (dns != null && !dns.isEmpty()) {
+        if (request.getDns() != null && !request.getDns().isEmpty()) {
             Map<String, Object> dnFilter = new LinkedHashMap<>();
             dnFilter.put("name", "NATIVEMEDN");
             dnFilter.put("field", "NATIVEMEDN");
             dnFilter.put("operator", "IN");
-            dnFilter.put("values", dns);
+            dnFilter.put("values", request.getDns());
             filters.add(dnFilter);
         }
 

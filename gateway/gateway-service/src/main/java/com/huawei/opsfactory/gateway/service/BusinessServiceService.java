@@ -60,6 +60,8 @@ public class BusinessServiceService {
 
     private ClusterRelationService clusterRelationService;
 
+    private BusinessTypeService businessTypeService;
+
     /**
      * Creates the business service service instance.
      */
@@ -109,6 +111,17 @@ public class BusinessServiceService {
     @Autowired
     public void setClusterRelationService(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
+    }
+
+    /**
+     * Sets the business type service via lazy injection.
+     *
+     * @param businessTypeService the business type service via lazy injection
+     */
+    @Lazy
+    @Autowired
+    public void setBusinessTypeService(BusinessTypeService businessTypeService) {
+        this.businessTypeService = businessTypeService;
     }
 
     /**
@@ -195,11 +208,20 @@ public class BusinessServiceService {
      * @throws ConflictException if name already exists in the group
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> createBusinessService(Map<String, Object> body) throws ConflictException {
+    public Map<String, Object> createBusinessService(Map<String, Object> body) throws ConflictException, NotFoundException {
         String name = ValidationUtils.validateStringField(body, "name", "Business service name", 100, true);
 
         String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
         String businessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
+
+        // Validate business type exists
+        if (businessTypeService != null) {
+            try {
+                businessTypeService.getBusinessType(businessTypeId);
+            } catch (NotFoundException e) {
+                throw new NotFoundException("Business type not found: " + businessTypeId);
+            }
+        }
 
         List<Map<String, Object>> servicesInGroup = listBusinessServices(groupId, null);
         boolean nameDuplicate = servicesInGroup.stream()
@@ -291,6 +313,14 @@ public class BusinessServiceService {
         }
         if (body.containsKey("businessTypeId")) {
             String newBusinessTypeId = ValidationUtils.requireNonBlank(body, "businessTypeId", "Business type is required");
+            // Validate business type exists
+            if (businessTypeService != null) {
+                try {
+                    businessTypeService.getBusinessType(newBusinessTypeId);
+                } catch (NotFoundException e) {
+                    throw new NotFoundException("Business type not found: " + newBusinessTypeId);
+                }
+            }
             bs.put("businessTypeId", newBusinessTypeId);
         }
         if (body.containsKey("enabled")) {
@@ -429,7 +459,7 @@ public class BusinessServiceService {
             }
             try {
                 created.add(createBusinessService(buildMigrationBody(business, candidate)));
-            } catch (ConflictException e) {
+            } catch (ConflictException | NotFoundException e) {
                 log.warn("Skipping business service creation during migration: {}", e.getMessage());
             }
         }
