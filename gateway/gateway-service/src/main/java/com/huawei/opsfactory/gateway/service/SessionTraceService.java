@@ -87,7 +87,7 @@ public class SessionTraceService implements DisposableBean {
      * @param userId user identifier
      * @param agentId agent identifier
      * @param sessionId session identifier
-     * @return the starts a background trace collection job for the given session
+     * @return the trace job snapshot
      */
     public synchronized TraceJobSnapshot startTrace(String userId, String agentId, String sessionId) {
         validateId("userId", userId);
@@ -134,7 +134,7 @@ public class SessionTraceService implements DisposableBean {
     /**
      * Returns the path to the collected trace archive for a completed job.
      *
-     * @param jobId returns the path to the collected trace archive for a completed job
+     * @param jobId the job identifier
      * @return the path to the collected trace archive for a completed job
      */
     public Path getArchive(String jobId) {
