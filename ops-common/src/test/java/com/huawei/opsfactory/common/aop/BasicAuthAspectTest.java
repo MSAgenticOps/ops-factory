@@ -120,7 +120,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with empty configuration.
-     * ApiCallException is thrown when configuration is missing.
+     * AuthException is thrown when configuration is missing.
      */
     @Test
     void testBasicAuthFailureEmptyConfiguration() {
@@ -131,9 +131,9 @@ class BasicAuthAspectTest {
         String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
-        ApiCallException exception = assertThrows(ApiCallException.class, () -> aspect.basicAuth(proceedingJoinPoint));
+        AuthException exception = assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
 
-        assertTrue(exception.getMessage().contains("username or password configuration is empty"));
+        assertTrue(exception.getMessage().contains("Machine authentication not configured"));
     }
 
     /**
