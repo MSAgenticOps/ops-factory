@@ -426,6 +426,7 @@ export default function ResourceFormModal({
                 if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
 
                 if (!nameResult.sanitized) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!codeResult.sanitized) { setError(t('hostResource.codeRequired')); setSaving(false); return }
                 if (!bsSelectedBusinessTypeId) { setError(t('hostResource.businessTypeRequired')); setSaving(false); return }
                 if (!bsGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
 
@@ -876,6 +877,10 @@ export default function ResourceFormModal({
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.bsName')}{requiredStar}</label>
                                         <input className="form-input" value={bsName} onChange={e => setBsName(e.target.value)} maxLength={100} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">{t('hostResource.bsCode')}{requiredStar}</label>
+                                        <input className="form-input" value={bsCode} onChange={e => setBsCode(e.target.value)} placeholder={t('hostResource.bsCodePlaceholder', { defaultValue: '' })} maxLength={50} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.bsPriority')}</label>

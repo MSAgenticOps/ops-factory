@@ -136,10 +136,11 @@ public abstract class BaseBusinessServiceController {
      * @param httpRequest current HTTP request
      * @return ResponseEntity with created business service
      * @throws ConflictException if validation fails (e.g., duplicate name)
+     * @throws NotFoundException if business type not found
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createBusinessService(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) throws ConflictException {
+        HttpServletRequest httpRequest) throws ConflictException, NotFoundException {
         Map<String, Object> bs = businessServiceService.createBusinessService(request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);

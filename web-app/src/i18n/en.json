@@ -2310,6 +2310,7 @@
     "confirmDeleteBusinessService": "Are you sure you want to delete this business service?",
     "bsName": "Business Name",
     "bsCode": "Business Code",
+    "bsCodePlaceholder": "e.g., order-service",
     "bsPriority": "Priority",
     "bsGroup": "Group",
     "bsClusters": "Entry Clusters",

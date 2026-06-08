@@ -153,7 +153,7 @@ class BaseBusinessServiceControllerTest {
      * Test creating a business service successfully.
      */
     @Test
-    void testCreateBusinessServiceSuccess() throws ConflictException {
+    void testCreateBusinessServiceSuccess() throws ConflictException, NotFoundException {
         Map<String, Object> requestBody = Map.of("name", "NewService", "description", "Test");
         Map<String, Object> createdService = Map.of("id", "new-id", "name", "NewService");
         when(businessServiceService.createBusinessService(requestBody)).thenReturn(createdService);
@@ -169,7 +169,7 @@ class BaseBusinessServiceControllerTest {
      * Test creating a business service with conflict throws ConflictException.
      */
     @Test
-    void testCreateBusinessServiceConflict() throws ConflictException {
+    void testCreateBusinessServiceConflict() throws ConflictException, NotFoundException {
         Map<String, Object> requestBody = Map.of("name", "ExistingService");
         when(businessServiceService.createBusinessService(requestBody))
             .thenThrow(new ConflictException("Service already exists"));
