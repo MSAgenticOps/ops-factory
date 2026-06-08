@@ -1,64 +1,17 @@
+/* Single-column, avatar-less message model (chat + Assistant page share this renderer): every message is a
+   full-width row in one column; user vs assistant is distinguished by a subtle full-width tint, not by avatars
+   or left/right alignment. The message column fills its container width so it matches the composer width. */
 .message {
     display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-4);
-    max-width: 800px;
+    flex-direction: column;
     width: 100%;
-}
-
-.message.assistant {
-    flex-direction: row;
-}
-
-.message.user {
-    flex-direction: row-reverse;
-}
-
-.message.continuation {
-    padding-left: 50px;
-}
-
-.message-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.message-avatar-icon {
-    width: 20px;
-    height: 20px;
-    display: block;
-}
-
-.message.user .message-avatar {
-    background: #e7ebf0;
-    color: #4b5563;
-}
-
-.message.assistant .message-avatar {
-    background: #eef1f4;
-    color: #4b5563;
 }
 
 .message-body {
     min-width: 0;
-    flex: 1;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-}
-
-.message.user .message-body {
-    align-items: flex-end;
-}
-
-.message.assistant .message-body {
     align-items: flex-start;
 }
 
@@ -71,19 +24,19 @@
     color: var(--text-body);
 }
 
+/* User turn: a light full-width tinted block (Claude-style), so it stays scannable without an avatar. */
 .message.user .message-content {
-    width: auto;
-    max-width: min(100%, 680px);
+    width: 100%;
+    max-width: 100%;
     background: #eef2f6;
     color: #32353b;
-    border-bottom-right-radius: var(--radius-sm);
 }
 
+/* Assistant turn: plain, transparent, full width. */
 .message.assistant .message-content {
     max-width: 100%;
     background: transparent;
     padding: 0;
-    border-bottom-left-radius: var(--radius-sm);
 }
 
 .message-error-banner {
@@ -255,10 +208,7 @@
     padding: 0 2px;
 }
 
-.message.user .message-meta {
-    justify-content: flex-end;
-}
-
+.message.user .message-meta,
 .message.assistant .message-meta {
     justify-content: flex-start;
 }

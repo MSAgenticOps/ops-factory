@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ThreadDescriptor } from '../../../platform/providers/ThreadUnreadContext'
-import '../../../platform/chat/AgentSelector.css'
 
 interface ThreadSwitcherProps {
     threads: ThreadDescriptor[]
@@ -10,9 +9,10 @@ interface ThreadSwitcherProps {
 }
 
 /**
- * Header pill dropdown to switch assistant/copilot — reuses the platform `AgentSelector` pill + menu styling
- * (so it matches the chat-input agent picker) but lists IM threads (label = agent name · channel), opening
- * downward from the page header. Single-select, unbounded item count.
+ * Header dropdown to switch assistant/copilot. Styled like the knowledge-base filter control (a compact
+ * `radius-md` field, not a pill) with a custom menu (unbounded item count) opening downward. Each item is one
+ * IM thread, labelled `agent · channel`; when two threads share the same agent + channel type (e.g. two WeChat
+ * accounts) the channel *name* disambiguates them.
  */
 export default function ThreadSwitcher({ threads, selectedKey, onSelect }: ThreadSwitcherProps) {
     const { t } = useTranslation()
@@ -28,43 +28,51 @@ export default function ThreadSwitcher({ threads, selectedKey, onSelect }: Threa
     }, [])
 
     const selected = threads.find(thread => thread.key === selectedKey) ?? threads[0]
-    const labelOf = (thread: ThreadDescriptor) => `${thread.agentName} · ${channelLabel(thread.channelType, t)}`
+    const labelOf = (thread: ThreadDescriptor) => {
+        const sameTypeCount = threads.filter(
+            other => other.agentName === thread.agentName && other.channelType === thread.channelType,
+        ).length
+        const channel = sameTypeCount > 1 && thread.channelName
+            ? thread.channelName
+            : channelLabel(thread.channelType, t)
+        return `${thread.agentName} · ${channel}`
+    }
 
     return (
-        <div className="agent-selector" ref={ref}>
+        <div className="thread-switcher" ref={ref}>
             <button
                 type="button"
-                className="agent-selector-trigger"
+                className="thread-switcher-trigger"
                 onClick={() => setIsOpen(open => !open)}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
                 aria-label={t('thread.switcherLabel')}
             >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" width="14" height="14"
-                    className="agent-icon">
-                    <path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H8l-3 3v-3H6a2 2 0 0 1-2-2z" />
-                </svg>
-                <span className="agent-name">{selected ? labelOf(selected) : ''}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"
-                    className={`chevron ${isOpen ? 'open' : ''}`}>
+                <span className="thread-switcher-label">{selected ? labelOf(selected) : ''}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"
+                    className={`thread-switcher-chevron ${isOpen ? 'open' : ''}`} aria-hidden="true">
                     <polyline points="6 9 12 15 18 9" />
                 </svg>
             </button>
 
             {isOpen && (
-                <div className="agent-dropdown below">
+                <div className="thread-switcher-menu" role="listbox">
                     {threads.map(thread => (
                         <button
                             key={thread.key}
                             type="button"
-                            className={`agent-option ${thread.key === selected?.key ? 'selected' : ''}`}
+                            role="option"
+                            aria-selected={thread.key === selected?.key}
+                            className={`thread-switcher-option ${thread.key === selected?.key ? 'selected' : ''}`}
                             onClick={() => {
                                 onSelect(thread.key)
                                 setIsOpen(false)
                             }}
                         >
-                            {labelOf(thread)}
+                            <span className="thread-switcher-option-label">{labelOf(thread)}</span>
                             {thread.key === selected?.key && (
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
-                                    width="14" height="14" className="check-icon">
+                                    width="14" height="14" className="thread-switcher-check" aria-hidden="true">
                                     <polyline points="20 6 9 17 4 12" />
                                 </svg>
                             )}

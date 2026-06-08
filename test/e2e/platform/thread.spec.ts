@@ -58,12 +58,17 @@ test.describe('Assistant — workbench', () => {
       return
     }
 
-    // Always-on copilot dropdown (AgentSelector-style pill) + the conversation composer (shared shell).
-    await expect(page.locator('.agent-selector-trigger')).toBeVisible()
+    // Always-on copilot dropdown (knowledge-base-style select control) + the conversation composer (shared shell).
+    await expect(page.locator('.thread-switcher-trigger')).toBeVisible()
     await expect(page.locator('.chat-input-area-bottom')).toBeVisible()
     // The push timeline lives in the shared RightPanelHost as the narrow `thread` mode.
     await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
     await expect(page.locator('.right-panel-title')).toBeVisible()
+
+    // Column B is a faithful replica of the chat composer: the full toolbar renders, while the in-composer
+    // agent picker is suppressed (the header switcher owns assistant identity).
+    await expect(page.locator('.conversation-shell .chat-input-toolbar')).toBeVisible()
+    await expect(page.locator('.conversation-shell .chat-input-toolbar .agent-selector')).toHaveCount(0)
   })
 
   test('the push panel closes from its × and reopens from the header icon', async ({ page }) => {
@@ -91,7 +96,7 @@ test.describe('Assistant — read-only run modal', () => {
     await page.goto('/#/thread')
     await page.waitForTimeout(3000)
 
-    const cards = page.locator('.thread-card')
+    const cards = page.locator('.thread-push-card')
     if ((await cards.count()) === 0) {
       test.skip(true, 'no proactive pushes for this user')
       return

@@ -10,6 +10,99 @@
     margin-left: auto;
 }
 
+/* Assistant switcher: a compact knowledge-base-style select control (radius-md field, not a pill). */
+.thread-switcher {
+    position: relative;
+}
+
+.thread-switcher-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    height: 32px;
+    max-width: 280px;
+    padding: 0 10px;
+    border: 1px solid #d9e0e9;
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.thread-switcher-trigger:hover {
+    border-color: #c7cfdb;
+    background: #fbfcfd;
+}
+
+.thread-switcher-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-switcher-chevron {
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+    transition: transform var(--transition-fast);
+}
+
+.thread-switcher-chevron.open {
+    transform: rotate(180deg);
+}
+
+.thread-switcher-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 60;
+    min-width: 240px;
+    max-width: 320px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--color-bg-primary);
+    border: 1px solid #d7dce3;
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.thread-switcher-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+
+.thread-switcher-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.thread-switcher-option.selected {
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+.thread-switcher-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-switcher-check {
+    flex-shrink: 0;
+    color: var(--color-accent);
+}
+
 /* Proactive-push timeline (rendered inside the shared right-panel body). */
 .thread-timeline-list {
     list-style: none;
@@ -20,24 +113,29 @@
     gap: var(--spacing-2);
 }
 
-.thread-card {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 10px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-primary);
-    cursor: pointer;
-    transition: border-color var(--transition-fast), background-color var(--transition-fast);
+/* Push card: reuse the platform list-card visual (ListCard provides border / radius / hover lift); a full-card
+   button leads with the delivered content, with schedule + time below as muted, left-grouped metadata. */
+.thread-push-card {
+    padding: 0;
+    overflow: hidden;
 }
 
-.thread-card:hover {
-    background: var(--color-bg-secondary);
+.thread-push-button {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding: var(--spacing-3) var(--spacing-4);
+    background: transparent;
+    border: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
 }
 
 /* Content first: the delivered brief preview leads the card. */
-.thread-card-preview {
+.thread-push-preview {
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
     line-height: 1.4;
@@ -47,18 +145,22 @@
     overflow: hidden;
 }
 
-/* Schedule + time as muted secondary metadata. */
-.thread-card-meta {
+/* Schedule + time as muted secondary metadata, left-grouped (not stretched edge-to-edge). */
+.thread-push-meta {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     gap: var(--spacing-2);
-    margin-top: 6px;
     font-size: var(--font-size-xs);
     color: var(--color-text-secondary);
 }
 
-.thread-card-schedule {
+.thread-push-schedule {
     font-weight: 500;
+}
+
+.thread-push-time::before {
+    content: '·';
+    margin-right: var(--spacing-2);
 }
 
 .thread-timeline-empty {
@@ -93,20 +195,38 @@
     color: var(--color-text-secondary);
 }
 
-/* Run-modal footer + the rendered brief body. */
-.thread-modal-footer {
+/* Run modal: title = schedule name + muted run-time subtitle; ←/→ pager strip leads the body. */
+.thread-run-title {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
+    flex-direction: column;
+    gap: 2px;
 }
 
-.thread-modal-pos {
+.thread-run-title-main {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+.thread-run-title-sub {
     font-size: var(--font-size-xs);
+    font-weight: 400;
     color: var(--color-text-secondary);
 }
 
-.thread-modal-spacer {
-    flex: 1;
+.thread-run-pager {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-3);
+    padding-bottom: var(--spacing-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.thread-run-pager-pos {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
 }
 
 .thread-brief {

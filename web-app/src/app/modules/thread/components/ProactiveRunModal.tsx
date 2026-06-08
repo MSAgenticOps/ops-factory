@@ -18,8 +18,10 @@ interface ProactiveRunModalProps {
 
 /**
  * Read-only viewer for one proactive push (PRD §13.2): renders the **delivered brief** (the follow-up's summary,
- * markdown-formatted) — the content the FO lead actually wants to read. The full run transcript (recipe /
- * thinking / tool calls) is the audit path behind "view run". ←/→ step the timeline without closing.
+ * markdown-formatted). Follows the platform modal spec (cf. the "create scheduled action" dialog): header =
+ * schedule name + muted run-time subtitle; body = an optional ←/→ pager strip then the brief; footer = the
+ * right-aligned action buttons only ("view run" opens the full transcript / audit path; "close"). ←/→ step the
+ * timeline in place without closing.
  */
 export default function ProactiveRunModal({ records, index, agentId, onIndexChange, onClose }: ProactiveRunModalProps) {
     const { t } = useTranslation()
@@ -28,17 +30,16 @@ export default function ProactiveRunModal({ records, index, agentId, onIndexChan
     // The records array can shrink under an open modal (a background poll); guard the index.
     if (!record) return null
 
+    const title = (
+        <span className="thread-run-title">
+            <span className="thread-run-title-main">{scheduleLabel(record.scheduleId, t)}</span>
+            <span className="thread-run-title-sub">{formatRunTime(record.time)}</span>
+        </span>
+    )
+
+    // Footer = right-aligned actions only, per the platform modal spec (header / body / action footer).
     const footer = (
-        <div className="thread-modal-footer">
-            <Button variant="ghost" size="sm" disabled={index <= 0} onClick={() => onIndexChange(index - 1)}>
-                {t('thread.prev')}
-            </Button>
-            <Button variant="ghost" size="sm" disabled={index >= records.length - 1}
-                onClick={() => onIndexChange(index + 1)}>
-                {t('thread.next')}
-            </Button>
-            <span className="thread-modal-pos">{index + 1} / {records.length}</span>
-            <span className="thread-modal-spacer" />
+        <>
             <Button
                 variant="secondary"
                 size="sm"
@@ -47,16 +48,42 @@ export default function ProactiveRunModal({ records, index, agentId, onIndexChan
                 {t('thread.viewRun')}
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>{t('common.close')}</Button>
-        </div>
+        </>
     )
 
     return (
-        <DetailDialog
-            title={`${scheduleLabel(record.scheduleId, t)} · ${formatRunTime(record.time)}`}
-            onClose={onClose}
-            variant="wide"
-            footer={footer}
-        >
+        <DetailDialog title={title} onClose={onClose} variant="wide" footer={footer}>
+            {records.length > 1 && (
+                <div className="thread-run-pager">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        disabled={index <= 0}
+                        onClick={() => onIndexChange(index - 1)}
+                        aria-label={t('thread.prev')}
+                        title={t('thread.prev')}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </Button>
+                    <span className="thread-run-pager-pos">{index + 1} / {records.length}</span>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        disabled={index >= records.length - 1}
+                        onClick={() => onIndexChange(index + 1)}
+                        aria-label={t('thread.next')}
+                        title={t('thread.next')}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </Button>
+                </div>
+            )}
             <div className="thread-brief">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{record.summary}</ReactMarkdown>
             </div>
