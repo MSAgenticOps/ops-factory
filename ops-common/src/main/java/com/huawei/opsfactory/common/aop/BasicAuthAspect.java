@@ -41,6 +41,12 @@ import java.util.Base64;
 public class BasicAuthAspect {
     private static final Logger logger = LoggerFactory.getLogger(BasicAuthAspect.class);
 
+    private final HttpServletRequest request;
+
+    public BasicAuthAspect(HttpServletRequest request) {
+        this.request = request;
+    }
+
     @Value("${common.aop.machine.username}")
     private String configUserName;
 
@@ -57,12 +63,11 @@ public class BasicAuthAspect {
      * @return the result of method execution
      * @throws Throwable if authentication fails or an error occurs
      */
-    @Around("@annotation(com.huawei.opsfactory.common.aop.BasicAuth) || @within(com.huawei.opsfactory.common.aop.BasicAuth)")
+    @Around("@annotation(BasicAuth)")
     public Object basicAuth(ProceedingJoinPoint pjp) throws Throwable {
         logger.info("BasicAuthAspect triggered for method: {}", pjp.getSignature().getName());
         String authHeader;
-        HttpServletRequest request = getCurrentRequest();
-
+        
         // 从请求头中获取Authorization
         try {
             authHeader = request.getHeader("Authorization");
@@ -119,18 +124,5 @@ public class BasicAuthAspect {
         // 认证失败
         logger.warn("Authentication failed: invalid credentials");
         throw new AuthException("Authentication failed");
-    }
-
-    /**
-     * Gets the current HTTP request from Spring context.
-     *
-     * @return the HTTP request
-     */
-    private HttpServletRequest getCurrentRequest() {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            return attributes.getRequest();
-        }
-        throw new AuthException("No HTTP request found in current context");
     }
 }

@@ -10,8 +10,13 @@ import com.huawei.opsfactory.gateway.service.CommandWhitelistService;
 import com.huawei.opsfactory.gateway.service.RemoteExecutionService;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 /**
  * REST controller for executing and risk-checking remote commands on managed hosts.
@@ -22,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RestSchema(schemaId = "remoteExecMachineController")
 @RequestMapping("/machine/gateway/remote")
-@BasicAuth
 public class RemoteExecMachineController extends BaseRemoteExecController {
 
     /**
@@ -31,5 +35,19 @@ public class RemoteExecMachineController extends BaseRemoteExecController {
     public RemoteExecMachineController(RemoteExecutionService remoteExecutionService,
         CommandWhitelistService commandWhitelistService) {
         super(remoteExecutionService, commandWhitelistService);
+    }
+
+    @Override
+    @PostMapping("/execute")
+    @BasicAuth
+    public ResponseEntity<Map<String, Object>> execute(@RequestBody Map<String, Object> request) {
+        return super.execute(request);
+    }
+
+    @Override
+    @PostMapping("/check-risk")
+    @BasicAuth
+    public ResponseEntity<Map<String, Object>> checkRisk(@RequestBody Map<String, Object> request) {
+        return super.checkRisk(request);
     }
 }

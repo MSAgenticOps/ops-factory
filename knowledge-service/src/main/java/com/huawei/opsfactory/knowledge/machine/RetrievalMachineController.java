@@ -26,7 +26,6 @@ import org.apache.servicecomb.provider.rest.common.RestSchema;
 @RestController
 @RestSchema(schemaId = "retrievalMachineController")
 @RequestMapping("/machine/knowledge")
-@BasicAuth
 public class RetrievalMachineController extends BaseRetrievalController {
 
     /**
@@ -40,18 +39,21 @@ public class RetrievalMachineController extends BaseRetrievalController {
 
     @Override
     @PostMapping("/search")
+    @BasicAuth
     public SearchResponse search(@RequestBody SearchRequest request) {
         return facade.search(request);
     }
 
     @Override
     @PostMapping("/search/compare")
+    @BasicAuth
     public CompareSearchResponse compare(@RequestBody CompareSearchRequest request) {
         return facade.compare(request);
     }
 
     @Override
     @GetMapping("/fetch/{chunkId}")
+    @BasicAuth
     public FetchResponse fetch(
         @PathVariable("chunkId") String chunkId,
         @RequestParam(defaultValue = "false") boolean includeNeighbors,
@@ -64,12 +66,14 @@ public class RetrievalMachineController extends BaseRetrievalController {
 
     @Override
     @PostMapping("/retrieve")
+    @BasicAuth
     public RetrieveResponse retrieve(@RequestBody RetrieveRequest request) {
         return facade.retrieve(request);
     }
 
     @Override
     @PostMapping("/explain")
+    @BasicAuth
     public ExplainResponse explain(@RequestBody ExplainRequest request) {
         return facade.explain(request);
     }
