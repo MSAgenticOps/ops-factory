@@ -712,7 +712,7 @@ function MessageInner({
         <div className={`message ${isUser ? 'user' : 'assistant'}${isContinuation ? ' continuation' : ''} animate-slide-in`}>
             <div className="message-body">
                 <div
-                    className={`message-content${isUser && userCanClamp && !isUserExpanded ? ' user-clamped' : ''}`}
+                    className={`message-content${isUser && userCanClamp ? ' has-toggle' : ''}${isUser && userCanClamp && !isUserExpanded ? ' user-clamped' : ''}`}
                     ref={isUser ? userContentRef : undefined}
                 >
                     {sessionError && (
@@ -955,17 +955,16 @@ function MessageInner({
                             </div>
                         </div>
                     )}
+                    {isUser && userCanClamp && (
+                        <button
+                            type="button"
+                            className="message-show-more"
+                            onClick={() => setIsUserExpanded(value => !value)}
+                        >
+                            {isUserExpanded ? t('chat.showLess') : t('chat.showMore')}
+                        </button>
+                    )}
                 </div>
-
-                {isUser && userCanClamp && (
-                    <button
-                        type="button"
-                        className="message-show-more"
-                        onClick={() => setIsUserExpanded(value => !value)}
-                    >
-                        {isUserExpanded ? t('chat.showLess') : t('chat.showMore')}
-                    </button>
-                )}
 
                 {displayTimeLabel && isLastInGroup && (
                     <div className="message-meta">

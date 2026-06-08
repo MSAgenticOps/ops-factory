@@ -100,6 +100,9 @@
     pointer-events: none;
     display: flex;
     justify-content: center;
+    /* Fade messages out as they reach the composer's top edge (transparent → conversation surface), so content
+       dissolves into the dock instead of butting hard against the input pill. */
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0, var(--color-bg-primary) 44px);
 }
 
 .chat-input-area-bottom .chat-input-area-inner {

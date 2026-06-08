@@ -25,12 +25,13 @@
 }
 
 /* User turn: a right-aligned chat bubble (Claude/Codex-style) — hugs short text, caps at a max width for long
-   text, stays on the right. Tall messages clamp with a "show more" toggle (see .user-clamped). */
+   text, stays on the right. Tall messages clamp with an in-bubble "show more" toggle pinned bottom-right. */
 .message.user .message-body {
     align-items: flex-end;
 }
 
 .message.user .message-content {
+    position: relative;
     width: fit-content;
     max-width: min(72%, 560px);
     margin-left: auto;
@@ -38,10 +39,14 @@
     color: #32353b;
 }
 
+/* Reserve room at the bottom for the in-bubble toggle (applies in both clamped + expanded states). */
+.message.user .message-content.has-toggle {
+    padding-bottom: 30px;
+}
+
 .message.user .message-content.user-clamped {
     max-height: 220px;
     overflow: hidden;
-    position: relative;
 }
 
 .message.user .message-content.user-clamped::after {
@@ -50,24 +55,28 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 56px;
+    height: 64px;
     background: linear-gradient(rgba(238, 242, 246, 0), #eef2f6);
     pointer-events: none;
 }
 
+/* Toggle lives inside the bubble, pinned to the bottom-right corner (over the fade when clamped). */
 .message-show-more {
-    margin-top: 4px;
-    align-self: flex-end;
-    background: none;
+    position: absolute;
+    bottom: 6px;
+    right: 10px;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.82);
     border: none;
-    padding: 2px 4px;
+    border-radius: 6px;
+    padding: 2px 8px;
     font-size: var(--font-size-xs);
     color: var(--color-accent);
     cursor: pointer;
 }
 
 .message-show-more:hover {
-    text-decoration: underline;
+    background: #ffffff;
 }
 
 /* Assistant turn: plain, transparent, full width. */
