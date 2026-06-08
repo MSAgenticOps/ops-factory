@@ -386,7 +386,10 @@ async function monitorMessages({ authDir, stateFile, logFile, inboxDir, outboxPe
     }
     processingOutbox = true;
     processOutbox({ token, baseUrl, outboxPendingDir, outboxSentDir, outboxErrorDir, stateFile, logFile })
-      .catch(error => appendLog(logFile, "wechat.outbox.pump_error", { error: String(error) }))
+      .catch(error =>
+        // The catch handler must itself never reject: if appendLog fails (e.g. log dir unwritable),
+        // swallow it so the rejection cannot escape the timer callback and crash the helper.
+        appendLog(logFile, "wechat.outbox.pump_error", { error: String(error) }).catch(() => {}))
       .finally(() => {
         processingOutbox = false;
       });
@@ -592,6 +595,13 @@ async function main() {
   }
   await runLogin(args);
 }
+
+// A detached background promise (e.g. the outbox pump timer) must never crash this long-running
+// helper: the Java supervisor does not auto-restart it, so an unhandled rejection would silently
+// kill the WeChat channel. Log and keep running instead of letting Node's default terminate us.
+process.on("unhandledRejection", (reason) => {
+  console.error("wechat-helper unhandledRejection:", reason);
+});
 
 main().catch(error => {
   console.error(error);

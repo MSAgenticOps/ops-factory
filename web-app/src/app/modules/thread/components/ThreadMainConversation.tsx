@@ -110,7 +110,8 @@ export default function ThreadMainConversation({ sessionId, agentId, header }: T
         return () => {
             cancelled = true
         }
-    }, [client, isConnected, agentId])
+        // `client` is memoized per agentId, so it already changes when the agent changes — agentId would be redundant.
+    }, [client, isConnected])
 
     const handleSend = (text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill) => {
         const messageId = sendMessage(text, images, attachedFiles, selectedSkill)

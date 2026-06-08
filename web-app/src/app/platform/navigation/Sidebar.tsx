@@ -12,14 +12,14 @@ import { buildNavigation } from '../NavigationBuilder'
 import { buildNewChatState } from '../chat/chatRouteState'
 import { renderIcon } from '../icons'
 import type { SidebarItemModel } from '../module-types'
+import { SidebarShell } from '../SidebarShell'
+import { useEnabledModules, useModuleContext } from '../useEnabledModules'
 
 function badgeCountForSource(badge: SidebarItemModel['badge'], inboxUnread: number, threadUnread: number): number {
     if (badge === 'inboxUnread') return inboxUnread
     if (badge === 'threadUnread') return threadUnread
     return 0
 }
-import { SidebarShell } from '../SidebarShell'
-import { useEnabledModules, useModuleContext } from '../useEnabledModules'
 
 export default function Sidebar() {
     const { t } = useTranslation()

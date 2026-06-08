@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import FilePreview from './preview/FilePreview'
 import CapabilityMarketPanel from './panels/CapabilityMarketPanel'
 import { useRightPanel } from './providers/RightPanelContext'
@@ -6,6 +7,7 @@ import { usePreview } from './providers/PreviewContext'
 import { usePagePanel } from './providers/PagePanelContext'
 
 export function RightPanelHost() {
+    const { t } = useTranslation()
     const { previewFile, isPreviewFullscreen } = usePreview()
     const { isMarketOpen, marketActiveTab, closeMarket, setMarketActiveTab } = useRightPanel()
     const { panel } = usePagePanel()
@@ -46,7 +48,7 @@ export function RightPanelHost() {
                             type="button"
                             className="right-panel-close"
                             onClick={panel.onClose}
-                            aria-label="Close panel"
+                            aria-label={t('common.close')}
                         >
                             ×
                         </button>

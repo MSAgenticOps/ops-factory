@@ -47,10 +47,19 @@ final class ProactiveFiles {
         Files.createDirectories(file.getParent());
         Path tmp = file.resolveSibling(file.getFileName().toString() + ".tmp");
         Files.writeString(tmp, content, StandardCharsets.UTF_8);
+        boolean moved = false;
         try {
-            Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (AtomicMoveNotSupportedException unsupported) {
-            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            moved = true;
+        } finally {
+            if (!moved) {
+                // Don't leave a stray <file>.tmp behind when both move attempts fail.
+                Files.deleteIfExists(tmp);
+            }
         }
     }
 }

@@ -75,6 +75,37 @@ public class ScheduleControllerTest {
     }
 
     /**
+     * Tests listing schedules annotates each job with its Gateway-side deliver marker (im / null) keyed by job id.
+     */
+    @Test
+    public void listSchedules_annotatesDeliverMarkers() {
+        MockHttpServletRequest request = request("GET", "/gateway/agents/test-agent/schedule/list");
+        when(goosedProxy.fetchJson(eq(INSTANCE_PORT), eq(HttpMethod.GET), eq("/schedule/list"), eq(null), eq(30),
+            eq(SECRET_KEY))).thenReturn(Mono.just("{\"jobs\":[{\"id\":\"job-1\"},{\"id\":\"job-2\"}]}"));
+        // job-1 is opted into IM delivery; job-2 has no marker (the mock returns null by default).
+        when(deliveryMarkerService.getDeliver(TEST_USER_ID, TEST_AGENT_ID, "job-1")).thenReturn("im");
+
+        ResponseEntity<String> result = controller.listSchedules(TEST_AGENT_ID, request);
+
+        assertEquals("{\"jobs\":[{\"id\":\"job-1\",\"deliver\":\"im\"},{\"id\":\"job-2\",\"deliver\":null}]}",
+            result.getBody());
+    }
+
+    /**
+     * Tests listing schedules passes a non-JSON goosed response through unchanged (no annotation, no failure).
+     */
+    @Test
+    public void listSchedules_passesThroughNonJson() {
+        MockHttpServletRequest request = request("GET", "/gateway/agents/test-agent/schedule/list");
+        when(goosedProxy.fetchJson(eq(INSTANCE_PORT), eq(HttpMethod.GET), eq("/schedule/list"), eq(null), eq(30),
+            eq(SECRET_KEY))).thenReturn(Mono.just("{bad"));
+
+        ResponseEntity<String> result = controller.listSchedules(TEST_AGENT_ID, request);
+
+        assertEquals("{bad", result.getBody());
+    }
+
+    /**
      * Tests creating a schedule proxies the request body and, with no deliver flag, clears any delivery marker.
      */
     @Test

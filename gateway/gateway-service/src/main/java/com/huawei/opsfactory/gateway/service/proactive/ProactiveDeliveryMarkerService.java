@@ -73,6 +73,27 @@ public class ProactiveDeliveryMarkerService {
     }
 
     /**
+     * Like {@link #getDeliver} but propagates a read failure instead of masking it as {@code null}, so a caller that
+     * must not silently drop a delivery (the proactive delivery loop) can retry on the next poll rather than treating a
+     * transient I/O error as "not configured". An invalid {@code scheduleId} is still reported as no marker.
+     *
+     * @param userId user identifier
+     * @param agentId agent identifier
+     * @param scheduleId schedule identifier
+     * @return the configured delivery channel, or {@code null} when none is set
+     * @throws IOException if the marker file exists but cannot be read
+     */
+    public String readDeliver(String userId, String agentId, String scheduleId) throws IOException {
+        try {
+            return ProactiveDeliveryMarkers.getDeliver(storage.deliveryMarkersFile(userId, agentId), scheduleId);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid scheduleId for deliver marker {}:{} scheduleId={}: {}", agentId, userId, scheduleId,
+                e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Removes any delivery marker for a schedule. Best-effort: logged on failure.
      *
      * @param userId user identifier

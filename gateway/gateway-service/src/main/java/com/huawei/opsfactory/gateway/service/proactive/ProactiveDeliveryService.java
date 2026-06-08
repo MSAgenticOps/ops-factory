@@ -201,8 +201,17 @@ public class ProactiveDeliveryService {
             processedSessions.add(dedupeKey);
             return;
         }
-        if (!ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(markerService.getDeliver(userId, agentId,
-            scheduleId))) {
+        String deliver;
+        try {
+            deliver = markerService.readDeliver(userId, agentId, scheduleId);
+        } catch (IOException e) {
+            // Transient read failure: do NOT mark processed, so the next poll retries instead of silently dropping
+            // a delivery the user opted into.
+            log.warn("Deferring proactive delivery decision (deliver marker unreadable) for {}:{} scheduleId={}: {}",
+                agentId, userId, oneLine(scheduleId), e.getMessage());
+            return;
+        }
+        if (!ProactiveDeliveryMarkers.DELIVER_IM.equalsIgnoreCase(deliver)) {
             // Not opted into IM delivery — Inbox留底 only.
             processedSessions.add(dedupeKey);
             return;
@@ -219,8 +228,11 @@ public class ProactiveDeliveryService {
     private void deliver(ManagedInstance instance, String scheduleId, String sessionId, String report) {
         String userId = instance.getUserId();
         String agentId = instance.getAgentId();
-        MDC.put("scheduleId", scheduleId);
-        MDC.put("sessionId", sessionId);
+        // scheduleId/sessionId originate from goosed session data; strip CR/LF before logging or putting them in the
+        // MDC so they cannot forge log records (CWE-117).
+        String safeScheduleId = oneLine(scheduleId);
+        MDC.put("scheduleId", safeScheduleId);
+        MDC.put("sessionId", oneLine(sessionId));
         try {
             int delivered = 0;
             for (ChannelSummary channel : channelConfigService.listChannels(userId)) {
@@ -231,15 +243,20 @@ public class ProactiveDeliveryService {
             }
             if (delivered == 0) {
                 log.warn("Proactive report not delivered: no IM binding for {}:{} scheduleId={}", agentId, userId,
-                    scheduleId);
+                    safeScheduleId);
             } else {
                 log.info("Delivered proactive report to {} IM conversation(s) for {}:{} scheduleId={} reportLen={}",
-                    delivered, agentId, userId, scheduleId, report.length());
+                    delivered, agentId, userId, safeScheduleId, report.length());
             }
         } finally {
             MDC.remove("scheduleId");
             MDC.remove("sessionId");
         }
+    }
+
+    /** Strips CR/LF so externally-sourced ids cannot forge log records (CWE-117). */
+    private static String oneLine(String value) {
+        return value == null ? null : value.replace('\r', '_').replace('\n', '_');
     }
 
     private int deliverToChannel(String userId, String agentId, ChannelSummary channel, String scheduleId,

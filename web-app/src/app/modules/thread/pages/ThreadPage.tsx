@@ -40,6 +40,14 @@ export default function ThreadPage() {
         [selected, followupsByKey],
     )
 
+    // If a background refresh shrinks records (or switches assistant) while the run modal is open,
+    // close it rather than leaving openIndex pointing past the end of the list.
+    useEffect(() => {
+        if (openIndex !== null && openIndex >= records.length) {
+            setOpenIndex(null)
+        }
+    }, [records, openIndex])
+
     // Mount the push timeline into the shared right panel (narrow `thread` mode); clear it on unmount / collapse.
     useEffect(() => {
         if (!selected || !isPanelOpen) {

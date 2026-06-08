@@ -959,6 +959,7 @@ function MessageInner({
                         <button
                             type="button"
                             className="message-show-more"
+                            aria-expanded={isUserExpanded}
                             onClick={() => setIsUserExpanded(value => !value)}
                         >
                             {isUserExpanded ? t('chat.showLess') : t('chat.showMore')}

@@ -29,6 +29,7 @@ import reactor.core.publisher.Mono;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -132,7 +133,7 @@ public class ProactiveDeliveryServiceTest {
 
     @Test
     public void notMarkedForIm_skips() throws Exception {
-        when(markerService.getDeliver(USER, AGENT, SCHEDULE)).thenReturn(null);
+        when(markerService.readDeliver(USER, AGENT, SCHEDULE)).thenReturn(null);
 
         service.pollAndDeliver();
 
@@ -142,7 +143,7 @@ public class ProactiveDeliveryServiceTest {
 
     @Test
     public void noImBinding_logsAndSkipsWithoutRecord() throws Exception {
-        when(markerService.getDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
+        when(markerService.readDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
         when(channelConfigService.listChannels(USER)).thenReturn(List.of());
 
         service.pollAndDeliver();
@@ -187,11 +188,27 @@ public class ProactiveDeliveryServiceTest {
     }
 
     @Test
+    public void transientDeliverMarkerReadFailure_retriesInsteadOfDropping() throws Exception {
+        markImAndBindOneWhatsApp();
+        // First read fails transiently; the run must NOT be marked processed, so the next poll retries rather than
+        // silently dropping a delivery the user opted into.
+        when(markerService.readDeliver(USER, AGENT, SCHEDULE)).thenThrow(new IOException("locked")).thenReturn("im");
+
+        service.pollAndDeliver();
+        assertEquals(0, outboxFileCount());
+        verify(followupService, never()).append(anyString(), anyString(), any());
+
+        service.pollAndDeliver();
+        assertEquals(1, outboxFileCount());
+        verify(followupService, times(1)).append(anyString(), anyString(), any());
+    }
+
+    @Test
     public void deliversOnePerConfiguredChannel_typeAgnostic() throws Exception {
         // Delivery is decoupled from which channel types exist: one outbox per enabled, bound channel, whatever the
         // type. Two channels of different types (one not even an IM the system special-cases) → two deliveries, each
         // with a targetKey carrying that channel's own type. No channel type is hardcoded in the delivery path.
-        when(markerService.getDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
+        when(markerService.readDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
         ChannelSummary whatsApp = new ChannelSummary("wa-1", "WA", "whatsapp", true, AGENT, USER, "ok", null, null, 1);
         ChannelSummary other = new ChannelSummary("tg-1", "Telegram", "telegram", true, AGENT, USER, "ok", null, null,
             1);
@@ -215,7 +232,7 @@ public class ProactiveDeliveryServiceTest {
     @Test
     public void skipsDisabledOrUnboundChannels() throws Exception {
         // Only enabled channels that actually have a bound conversation receive the report.
-        when(markerService.getDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
+        when(markerService.readDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
         ChannelSummary active = new ChannelSummary("a-1", "Active", "whatsapp", true, AGENT, USER, "ok", null, null, 1);
         ChannelSummary disabled = new ChannelSummary("d-1", "Disabled", "whatsapp", false, AGENT, USER, "off", null,
             null, 1);
@@ -257,8 +274,8 @@ public class ProactiveDeliveryServiceTest {
         verify(followupService).append(eq("carol"), eq(AGENT), argThat(r -> r.summary().contains("report-carol")));
     }
 
-    private void markImAndBindOneWhatsApp() {
-        when(markerService.getDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
+    private void markImAndBindOneWhatsApp() throws IOException {
+        when(markerService.readDeliver(USER, AGENT, SCHEDULE)).thenReturn("im");
         ChannelSummary summary = new ChannelSummary("wa-1", "WhatsApp", "whatsapp", true, AGENT, USER, "ok", null,
             null, 1);
         when(channelConfigService.listChannels(USER)).thenReturn(List.of(summary));
@@ -290,7 +307,7 @@ public class ProactiveDeliveryServiceTest {
     }
 
     private void stubUserDelivery(String user, int port, String sessionId, String report, String channelId,
-        Path outbox) {
+        Path outbox) throws IOException {
         when(goosedProxy.fetchJson(eq(port), eq("/sessions"), eq(SECRET))).thenReturn(Mono.just(
             "{\"sessions\":[{\"id\":\"" + sessionId + "\",\"schedule_id\":\"" + SCHEDULE + "\",\"created_at\":\""
                 + Instant.now() + "\"}]}"));
@@ -299,7 +316,7 @@ public class ProactiveDeliveryServiceTest {
         when(goosedProxy.fetchJson(eq(port), eq("/sessions/" + sessionId), eq(SECRET))).thenReturn(Mono.just(
             "{\"conversation\":[{\"role\":\"assistant\",\"metadata\":{\"userVisible\":true},"
                 + "\"content\":[{\"type\":\"text\",\"text\":\"" + report + "\"}]}]}"));
-        when(markerService.getDeliver(user, AGENT, SCHEDULE)).thenReturn("im");
+        when(markerService.readDeliver(user, AGENT, SCHEDULE)).thenReturn("im");
         ChannelSummary summary = new ChannelSummary(channelId, "WA", "whatsapp", true, AGENT, user, "ok", null, null,
             1);
         when(channelConfigService.listChannels(user)).thenReturn(List.of(summary));

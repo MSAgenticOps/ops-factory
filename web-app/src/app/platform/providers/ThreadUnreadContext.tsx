@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useGoosed } from './GoosedContext'
 import { useUser } from './UserContext'
 import { runtime, gatewayHeaders } from '../../../config/runtime'
@@ -112,16 +112,24 @@ export function ThreadUnreadProvider({ children }: { children: ReactNode }) {
         saveReadMap(storageKey, readMap)
     }, [storageKey, readMap])
 
+    const inFlightRef = useRef<AbortController | null>(null)
+
     const refresh = useCallback(async () => {
+        // Abort any in-flight refresh so an older, slower run can't overwrite newer state out of order.
+        inFlightRef.current?.abort()
         if (!isConnected) {
+            inFlightRef.current = null
             setThreads([])
             setFollowupsByKey({})
             return
         }
+        const controller = new AbortController()
+        inFlightRef.current = controller
+        const { signal } = controller
         setIsLoading(true)
         try {
             const headers = gatewayHeaders(userId)
-            const listRes = await fetch(`${runtime.GATEWAY_URL}/channels`, { headers })
+            const listRes = await fetch(`${runtime.GATEWAY_URL}/channels`, { headers, signal })
             if (!listRes.ok) {
                 setThreads([])
                 setFollowupsByKey({})
@@ -133,7 +141,7 @@ export function ThreadUnreadProvider({ children }: { children: ReactNode }) {
             const activeChannels = (listData.channels ?? []).filter(c => c.enabled && c.bindingCount > 0)
             const details = await Promise.all(activeChannels.map(async summary => {
                 const detailRes = await fetch(`${runtime.GATEWAY_URL}/channels/${encodeURIComponent(summary.id)}`,
-                    { headers })
+                    { headers, signal })
                 return detailRes.ok ? (await detailRes.json()) as ChannelDetail : null
             }))
             const descriptors: ThreadDescriptor[] = []
@@ -170,7 +178,7 @@ export function ThreadUnreadProvider({ children }: { children: ReactNode }) {
                 try {
                     const res = await fetch(
                         `${runtime.GATEWAY_URL}/agents/${encodeURIComponent(descriptor.agentId)}`
-                        + `/threads/followups?${params.toString()}`, { headers })
+                        + `/threads/followups?${params.toString()}`, { headers, signal })
                     if (!res.ok) {
                         followups[descriptor.key] = []
                         return
@@ -183,15 +191,26 @@ export function ThreadUnreadProvider({ children }: { children: ReactNode }) {
                 }
             }))
 
+            if (inFlightRef.current !== controller) return
             setThreads(descriptors)
             setFollowupsByKey(followups)
+        } catch (err) {
+            if ((err as { name?: string })?.name === 'AbortError') return
+            // Keep the poll resilient: a network/parse failure logs and leaves prior state intact.
+            console.warn('Thread unread refresh failed:', err)
         } finally {
-            setIsLoading(false)
+            if (inFlightRef.current === controller) {
+                inFlightRef.current = null
+                setIsLoading(false)
+            }
         }
     }, [agents, isConnected, userId])
 
     useEffect(() => {
         void refresh()
+        return () => {
+            inFlightRef.current?.abort()
+        }
     }, [refresh])
 
     useEffect(() => {
