@@ -5,6 +5,7 @@ control-center:
   secret-key: "change-me"
   cors-origin: "http://localhost:5173"
   request-timeout-ms: 5000
+  project-root: ".."
 
   services:
     - id: gateway

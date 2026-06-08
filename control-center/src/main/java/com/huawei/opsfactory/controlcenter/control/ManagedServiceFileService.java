@@ -6,6 +6,7 @@ package com.huawei.opsfactory.controlcenter.control;
 
 import com.huawei.opsfactory.controlcenter.config.ControlCenterProperties;
 import com.huawei.opsfactory.controlcenter.registry.ManagedServiceRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -28,14 +29,37 @@ import java.util.stream.Stream;
 public class ManagedServiceFileService {
 
     private final ManagedServiceRegistry registry;
+    private final ControlCenterProperties properties;
     private final Path projectRoot;
 
-    public ManagedServiceFileService(ManagedServiceRegistry registry) {
+    /**
+     * Creates the managed service file service instance.
+     *
+     * @param registry the managed service registry
+     * @param properties the control center properties
+     */
+    @Autowired
+    public ManagedServiceFileService(ManagedServiceRegistry registry, ControlCenterProperties properties) {
         this.registry = registry;
-        Path current = Path.of("").toAbsolutePath().normalize();
-        this.projectRoot = current.getFileName() != null && "control-center".equals(current.getFileName().toString())
-                ? current.getParent()
-                : current;
+        this.properties = properties;
+        this.projectRoot = resolveProjectRoot();
+    }
+
+    /**
+     * Resolves the project root directory from configuration.
+     *
+     * @return the absolute path to the project root directory
+     */
+    private Path resolveProjectRoot() {
+        String configuredRoot = properties.getProjectRoot();
+        if (configuredRoot != null && !configuredRoot.isEmpty()) {
+            Path configured = Path.of(configuredRoot);
+            if (configured.isAbsolute()) {
+                return configured.normalize();
+            }
+            return configured.toAbsolutePath().normalize();
+        }
+        return Path.of("").toAbsolutePath().normalize();
     }
 
     public Map<String, Object> readConfig(String serviceId) {

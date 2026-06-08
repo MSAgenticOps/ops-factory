@@ -21,6 +21,7 @@ public class ControlCenterProperties {
     private String secretKey = "change-me";
     private String corsOrigin = "http://127.0.0.1:5173";
     private int requestTimeoutMs = 5000;
+    private String projectRoot = "";
     private List<ServiceTarget> services = new ArrayList<>();
     private Langfuse langfuse = new Langfuse();
 
@@ -46,6 +47,24 @@ public class ControlCenterProperties {
 
     public void setRequestTimeoutMs(int requestTimeoutMs) {
         this.requestTimeoutMs = requestTimeoutMs;
+    }
+
+    /**
+     * Gets the project root directory.
+     *
+     * @return the project root directory
+     */
+    public String getProjectRoot() {
+        return projectRoot;
+    }
+
+    /**
+     * Sets the project root directory.
+     *
+     * @param projectRoot the project root directory
+     */
+    public void setProjectRoot(String projectRoot) {
+        this.projectRoot = projectRoot;
     }
 
     public List<ServiceTarget> getServices() {

@@ -167,9 +167,12 @@ public class OperationIntelligenceProperties {
     }
 
     /**
-     * resolve Data Root.
+     * Resolves the absolute path to the data root directory.
+     * If the configured path is absolute, returns it directly.
+     * If relative, resolves against the current working directory (user.dir).
+     * If not configured, defaults to "./data" relative to user.dir.
      *
-     * @return the result
+     * @return the absolute path to the data root directory
      */
     public Path resolveDataRoot() {
         if (dataRoot != null && !dataRoot.isBlank()) {
@@ -177,9 +180,9 @@ public class OperationIntelligenceProperties {
             if (configured.isAbsolute()) {
                 return configured.normalize();
             }
-            return getConfigDirectory().resolve(configured).normalize();
+            return configured.toAbsolutePath().normalize();
         }
-        return getConfigDirectory().resolve("data").normalize();
+        return Path.of("data").toAbsolutePath().normalize();
     }
 
     /**

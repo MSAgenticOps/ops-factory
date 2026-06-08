@@ -13,10 +13,9 @@ server:
 operation-intelligence:
   secret-key: ""                        # env override: OI_SECRET_KEY [REQUIRED]
   cors-origin: "*"                      # env override: OI_CORS_ORIGIN
-
   # Optional: override data directory (defaults to ./data relative to config file)
-  # Set to "../gateway" to reuse existing gateway/data/qos/ during migration
-  # data-root: "../gateway"
+  # Set to "./data" to reuse existing ./data/qos/ during migration
+  data-root: "./data"
 
   qos:
     enabled: true                             # enable health curve collection and API
