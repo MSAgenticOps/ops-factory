@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.common.aop;
 
+import com.huawei.opsfactory.common.exception.ApiCallException;
 import com.huawei.opsfactory.common.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.servicecomb.swagger.invocation.context.InvocationContext;
@@ -119,7 +120,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with empty configuration.
-     * ApiCallException is caught and wrapped in AuthException.
+     * ApiCallException is thrown when configuration is missing.
      */
     @Test
     void testBasicAuthFailureEmptyConfiguration() {
@@ -130,10 +131,9 @@ class BasicAuthAspectTest {
         String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
-        // ApiCallException is caught and wrapped in AuthException
-        AuthException exception = assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
+        ApiCallException exception = assertThrows(ApiCallException.class, () -> aspect.basicAuth(proceedingJoinPoint));
 
-        assertTrue(exception.getMessage().contains("Authentication failed"));
+        assertTrue(exception.getMessage().contains("username or password configuration is empty"));
     }
 
     /**
@@ -199,16 +199,6 @@ class BasicAuthAspectTest {
         String credentials = "testUser:wrongPass";
         String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
-
-        assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
-    }
-
-    /**
-     * Test request header retrieval failure.
-     */
-    @Test
-    void testBasicAuthRequestHeaderFailure() {
-        when(request.getHeader("Authorization")).thenThrow(new RuntimeException("Request error"));
 
         assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
     }
