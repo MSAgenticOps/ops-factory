@@ -265,7 +265,16 @@ async function writeInboxMessage(inboxDir, externalMessageId, payload) {
 async function moveFile(source, targetDir, suffix) {
   await ensureDir(targetDir);
   const target = path.join(targetDir, source.name.replace(/\.json$/i, `-${suffix}.json`));
-  await fs.rename(source.fullPath, target);
+  try {
+    await fs.rename(source.fullPath, target);
+  } catch (error) {
+    // Source already gone (e.g. archived by an earlier pass): treat the move as done rather
+    // than throwing. Mirrors whatsapp-web-helper's fs.rm(..., { force: true }) idempotency.
+    if (error?.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
 }
 
 async function waitForQrLogin({ stateFile, logFile, abortSignal }) {
@@ -361,9 +370,26 @@ async function processOutbox({ token, baseUrl, outboxPendingDir, outboxSentDir, 
 async function monitorMessages({ authDir, stateFile, logFile, inboxDir, outboxPendingDir, outboxSentDir, outboxErrorDir, token, baseUrl, abortSignal }) {
   let getUpdatesBuf = await loadSyncBuf(authDir);
   let stopped = false;
+  // Tracks live session health. We enter monitorMessages right after a successful login
+  // (state already "connected"), but seed from the persisted state so that a successful
+  // poll can clear a stale "error" left behind by an earlier transient failure.
+  let healthy = (await readJson(stateFile))?.status === "connected";
 
+  // Guard against re-entrancy: processOutbox does network IO that can outlast the interval,
+  // and two concurrent runs would race on the same pending file (one rename wins, the other
+  // throws ENOENT). Skip a tick while one is still in flight, and never let a failure escape
+  // the timer callback as an unhandled rejection that would crash the helper process.
+  let processingOutbox = false;
   const outboxTimer = setInterval(() => {
-    void processOutbox({ token, baseUrl, outboxPendingDir, outboxSentDir, outboxErrorDir, stateFile, logFile });
+    if (processingOutbox) {
+      return;
+    }
+    processingOutbox = true;
+    processOutbox({ token, baseUrl, outboxPendingDir, outboxSentDir, outboxErrorDir, stateFile, logFile })
+      .catch(error => appendLog(logFile, "wechat.outbox.pump_error", { error: String(error) }))
+      .finally(() => {
+        processingOutbox = false;
+      });
   }, 1500);
 
   abortSignal.addEventListener("abort", () => {
@@ -388,6 +414,7 @@ async function monitorMessages({ authDir, stateFile, logFile, inboxDir, outboxPe
       }
       if ((response.ret ?? 0) !== 0 || (response.errcode ?? 0) !== 0) {
         const message = `WeChat getUpdates failed: ${response.errmsg || response.errcode || response.ret}`;
+        healthy = false;
         await updateState(stateFile, {
           status: "error",
           message,
@@ -401,6 +428,20 @@ async function monitorMessages({ authDir, stateFile, logFile, inboxDir, outboxPe
         });
         await new Promise(resolve => setTimeout(resolve, 2000));
         continue;
+      }
+
+      // getUpdates succeeded. If an earlier poll had flipped the channel into "error",
+      // restore "connected" so the status reflects the live session instead of staying
+      // pinned to a stale transient failure that has since recovered.
+      if (!healthy) {
+        healthy = true;
+        await updateState(stateFile, {
+          status: "connected",
+          message: "WeChat connected.",
+          lastConnectedAt: new Date().toISOString(),
+          lastError: "",
+        });
+        await appendLog(logFile, "wechat.recovered");
       }
 
       if (typeof response.get_updates_buf === "string" && response.get_updates_buf.length > 0) {
@@ -430,6 +471,7 @@ async function monitorMessages({ authDir, stateFile, logFile, inboxDir, outboxPe
         break;
       }
       const message = error instanceof Error ? error.message : String(error);
+      healthy = false;
       await appendLog(logFile, "wechat.monitor.error", { error: message });
       await updateState(stateFile, {
         status: "error",
