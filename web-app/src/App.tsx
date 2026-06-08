@@ -5,6 +5,7 @@ import { InboxProvider } from './app/platform/providers/InboxContext'
 import { ThreadUnreadProvider } from './app/platform/providers/ThreadUnreadContext'
 import { SidebarProvider, useSidebar } from './app/platform/providers/SidebarContext'
 import { RightPanelProvider, useRightPanel } from './app/platform/providers/RightPanelContext'
+import { PagePanelProvider, usePagePanel } from './app/platform/providers/PagePanelContext'
 import { isEmbedMode } from './utils/urlParams'
 import { buildRoutes } from './app/platform/RouteBuilder'
 import { AppShell } from './app/platform/AppShell'
@@ -18,11 +19,14 @@ function AppContent() {
     const { previewFile, isPreviewFullscreen } = usePreview()
     const { isCollapsed } = useSidebar()
     const { isMarketOpen } = useRightPanel()
+    const { panel } = usePagePanel()
     const isPreviewOpen = !!previewFile
-    const isRightPanelOpen = isMarketOpen || isPreviewOpen
+    const isPagePanelOpen = !!panel && !isMarketOpen && !isPreviewOpen
+    const isRightPanelOpen = isMarketOpen || isPreviewOpen || isPagePanelOpen
     const rightPanelMode = (() => {
         if (isMarketOpen) return 'panel-drawer'
         if (isPreviewOpen) return `panel-preview${isPreviewFullscreen ? ' panel-preview-fullscreen' : ''}`
+        if (isPagePanelOpen) return `panel-${panel.mode}`
         return ''
     })()
     const isEmbed = IS_EMBED
@@ -54,7 +58,9 @@ export default function App() {
                         <ThreadUnreadProvider>
                             <PreviewProvider>
                                 <RightPanelProvider>
-                                    <AppContent />
+                                    <PagePanelProvider>
+                                        <AppContent />
+                                    </PagePanelProvider>
                                 </RightPanelProvider>
                             </PreviewProvider>
                         </ThreadUnreadProvider>

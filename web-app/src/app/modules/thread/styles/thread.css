@@ -1,103 +1,53 @@
-.thread-page {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
-
-.thread-header {
+/* Assistant page — breadcrumb header content (rendered inside the shared conversation shell's 48px header). */
+.thread-breadcrumb {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    gap: var(--spacing-2);
+    width: 100%;
 }
 
 .thread-breadcrumb-label {
-    color: var(--color-text-secondary, #64748b);
-    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
 }
 
 .thread-breadcrumb-sep {
-    color: var(--color-text-secondary, #94a3b8);
-}
-
-.thread-title {
-    font-weight: 600;
+    color: var(--color-text-secondary);
 }
 
 .thread-switcher {
     padding: 4px 10px;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 8px;
-    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
     color: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
 }
 
 .thread-rail-toggle {
     margin-left: auto;
     padding: 4px 12px;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 8px;
-    background: var(--color-surface, #ffffff);
-    color: var(--color-text-secondary, #64748b);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    color: var(--color-text-secondary);
     cursor: pointer;
+    font-size: var(--font-size-sm);
 }
 
-.thread-body {
-    display: flex;
-    flex: 1;
-    min-height: 0;
+.thread-rail-toggle:hover {
+    color: var(--color-text-primary);
 }
 
-.thread-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-
-.thread-conversation {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-
-.thread-messages {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-}
-
-.thread-conversation-error {
-    padding: 8px 16px;
-    color: var(--color-danger, #dc2626);
-    font-size: 13px;
-}
-
-.thread-rail {
-    width: 340px;
-    flex-shrink: 0;
-    border-left: 1px solid var(--color-border, #e5e7eb);
-    overflow-y: auto;
-    padding: 12px;
-}
-
-.thread-timeline-title {
-    margin: 0 0 10px;
-    font-size: 13px;
-    font-weight: 600;
-}
-
+/* Proactive-push timeline (rendered inside the shared right-panel body). */
 .thread-timeline-list {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: var(--spacing-4);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--spacing-2);
 }
 
 .thread-card {
@@ -105,22 +55,23 @@
     width: 100%;
     text-align: left;
     padding: 10px 12px;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 10px;
-    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
     cursor: pointer;
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
 .thread-card:hover {
-    border-color: var(--color-primary, #6366f1);
+    background: var(--color-bg-secondary);
 }
 
 .thread-card-head {
     display: flex;
     justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--color-text-secondary, #64748b);
+    gap: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
 }
 
 .thread-card-schedule {
@@ -129,41 +80,56 @@
 
 .thread-card-preview {
     margin-top: 4px;
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.thread-timeline-empty,
-.thread-main-empty {
-    color: var(--color-text-secondary, #64748b);
-    font-size: 13px;
-    padding: 16px 4px;
+.thread-timeline-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-4);
 }
 
-.thread-page-empty {
+.thread-main-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: var(--spacing-8) var(--spacing-4);
+}
+
+.thread-conversation-error {
+    padding: var(--spacing-2) var(--spacing-6);
+    color: var(--color-error);
+    font-size: var(--font-size-sm);
+}
+
+/* Empty state: no bound assistants. */
+.thread-empty {
+    height: 100vh;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .thread-empty-card {
-    margin: auto;
     text-align: center;
-    color: var(--color-text-secondary, #64748b);
+    color: var(--color-text-secondary);
 }
 
+/* Read-only run modal footer. */
 .thread-modal-footer {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-2);
 }
 
 .thread-modal-footer button {
     padding: 4px 12px;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 8px;
-    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
     cursor: pointer;
 }
 
@@ -173,8 +139,8 @@
 }
 
 .thread-modal-pos {
-    font-size: 12px;
-    color: var(--color-text-secondary, #64748b);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
 }
 
 .thread-modal-spacer {

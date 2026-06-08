@@ -1,0 +1,153 @@
+/*
+ * Shared conversation layout — promoted from modules/chat so chat and the Assistant (thread) page
+ * use the exact same shell: a 100vh column with a 48px header, centered scrollable messages, and a
+ * fixed, full-width, right-panel-aware composer dock. Class names are kept (`chat-*`) so the chat page
+ * consumes these rules unchanged (chat.css @imports this file).
+ */
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/*
+ * ConversationShell root: viewport-bounded without `flex: 1`, so it does NOT grow to its (tall) message
+ * content the way a flex item would inside the flex-column main-content — the header stays pinned and the
+ * messages scroll internally. ChatPage keeps its own `.chat-container`.
+ */
+.conversation-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+.chat-session-header {
+    height: var(--header-height);
+    padding: 0 var(--spacing-6);
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    flex-shrink: 0;
+}
+
+.chat-session-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.chat-messages-area {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.chat-anchor-spacer {
+    height: max(180px, 96vh);
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+.chat-input-area-bottom {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    z-index: 50;
+    padding: var(--spacing-6);
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+}
+
+.chat-input-area-bottom .chat-input-area-inner {
+    pointer-events: auto;
+}
+
+.main-wrapper.embed-mode .chat-input-area-bottom {
+    left: 0;
+}
+
+.chat-input-area-inner {
+    max-width: 880px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-messages-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-6);
+    max-width: 880px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.chat-messages-area .chat-messages-scroll {
+    padding-bottom: 140px;
+}
+
+.chat-content {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chat-messages {
+    padding: var(--spacing-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-6);
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+}
+
+.main-wrapper.with-right-panel .chat-messages-scroll,
+.main-wrapper.with-right-panel .chat-content,
+.main-wrapper.with-right-panel .chat-messages {
+    max-width: 100%;
+}
+
+.main-wrapper.with-right-panel.panel-preview .chat-input-area-bottom {
+    right: auto;
+    width: calc(45% - 110px);
+}
+
+.main-wrapper.with-right-panel.panel-preview-fullscreen .chat-input-area-bottom {
+    width: 100%;
+}
+
+.main-wrapper.with-right-panel.panel-preview .chat-input-area-inner {
+    max-width: 880px;
+}
+
+/* Assistant (thread) page: narrow right panel (~32%) → composer matches the wider main column. */
+.main-wrapper.with-right-panel.panel-thread .chat-input-area-bottom {
+    right: auto;
+    width: calc(68% - 110px);
+}
+
+.main-wrapper.with-right-panel.panel-thread .chat-input-area-inner {
+    max-width: 880px;
+}
+
+.main-wrapper.sidebar-collapsed .chat-input-area-bottom {
+    left: var(--sidebar-width-collapsed);
+}
+
+.main-wrapper.with-right-panel .page-container {
+    max-width: 100%;
+}

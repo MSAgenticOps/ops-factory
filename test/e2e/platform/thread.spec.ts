@@ -1,19 +1,19 @@
 /**
- * E2E Tests: Thread Page (PR9) — Real Operations
+ * E2E Tests: Assistant (Thread) Page (PR9) — Real Operations
  *
- * Covers:
- *   - Page renders (threads workbench or empty state)
- *   - Sidebar exposes the Thread entry
- *   - When a thread exists: column B (main conversation) + column C (proactive push timeline) render
- *   - Clicking a push card opens the read-only run modal; closing returns to the timeline
- *   - The push timeline can be collapsed / shown
+ * Covers (after the framework-reuse refactor):
+ *   - Page renders (conversation shell or empty state)
+ *   - Sidebar exposes the Assistant entry
+ *   - When an assistant exists: the shared conversation shell (column B), the always-on copilot dropdown,
+ *     and the proactive-push panel mounted into the shared RightPanelHost (narrow `thread` mode)
+ *   - The push panel can be collapsed / reopened from the header toggle
+ *   - Clicking a push card opens the read-only run modal; closing returns to the page
  *
  * Assertions are guarded by data presence (mirrors inbox.spec.ts) so the suite is robust whether or not the
  * logged-in user has bound IM conversations.
  */
 import { test, expect, type Page } from '@playwright/test'
 
-// Use admin so the test can exercise the rich path when bindings/follow-ups exist; all rich assertions are guarded.
 const USER = 'admin'
 
 async function loginAs(page: Page, username: string) {
@@ -22,68 +22,70 @@ async function loginAs(page: Page, username: string) {
     localStorage.setItem('opsfactory:userId', userId)
   }, username)
   await page.reload({ waitUntil: 'domcontentloaded' })
-  await page.waitForURL(/\/#\/?$/)
   await page.waitForTimeout(500)
 }
 
-test.describe('Thread — rendering', () => {
+test.describe('Assistant — rendering', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, USER)
   })
 
-  test('renders the workbench or the empty state', async ({ page }) => {
+  test('renders the conversation shell or the empty state', async ({ page }) => {
     await page.goto('/#/thread')
     await page.waitForTimeout(3000)
 
-    const hasWorkbench = await page.locator('.thread-header').isVisible().catch(() => false)
+    const hasConversation = await page.locator('.conversation-shell').isVisible().catch(() => false)
     const hasEmpty = await page.locator('.thread-empty-card').isVisible().catch(() => false)
-    expect(hasWorkbench || hasEmpty).toBeTruthy()
+    expect(hasConversation || hasEmpty).toBeTruthy()
   })
 
-  test('sidebar exposes the Thread entry', async ({ page }) => {
+  test('sidebar exposes the Assistant entry', async ({ page }) => {
     await page.goto('/#/thread')
-    const entry = page.locator('.nav-link:has-text("Threads"), .nav-link:has-text("会话")')
+    const entry = page.locator('.nav-link:has-text("Assistant"), .nav-link:has-text("助理")')
     await expect(entry.first()).toBeVisible({ timeout: 5000 })
   })
 })
 
-test.describe('Thread — workbench content', () => {
-  test('shows main conversation and push timeline when a thread exists', async ({ page }) => {
+test.describe('Assistant — workbench', () => {
+  test('shows the conversation, copilot dropdown, and the push panel in the right-panel framework', async ({ page }) => {
     await loginAs(page, USER)
     await page.goto('/#/thread')
     await page.waitForTimeout(3000)
 
-    const hasWorkbench = await page.locator('.thread-header').isVisible().catch(() => false)
-    if (!hasWorkbench) {
-      test.skip(true, 'no bound thread for this user')
+    const hasConversation = await page.locator('.conversation-shell').isVisible().catch(() => false)
+    if (!hasConversation) {
+      test.skip(true, 'no bound assistant for this user')
       return
     }
 
-    // Column B (main) is always present; column C (rail) is open by default.
-    await expect(page.locator('.thread-main')).toBeVisible()
-    await expect(page.locator('.thread-timeline-title')).toBeVisible()
+    // Always-on copilot dropdown + the conversation composer (shared shell).
+    await expect(page.locator('.thread-switcher')).toBeVisible()
+    await expect(page.locator('.chat-input-area-bottom')).toBeVisible()
+    // The push timeline lives in the shared RightPanelHost as the narrow `thread` mode.
+    await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
+    await expect(page.locator('.right-panel-title')).toBeVisible()
   })
 
-  test('toggling the rail hides and shows the push timeline', async ({ page }) => {
+  test('the push panel can be collapsed and reopened from the header toggle', async ({ page }) => {
     await loginAs(page, USER)
     await page.goto('/#/thread')
     await page.waitForTimeout(3000)
 
     const toggle = page.locator('.thread-rail-toggle')
     if (!(await toggle.isVisible().catch(() => false))) {
-      test.skip(true, 'no bound thread for this user')
+      test.skip(true, 'no bound assistant for this user')
       return
     }
 
-    await expect(page.locator('.thread-rail')).toBeVisible()
+    await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
     await toggle.click()
-    await expect(page.locator('.thread-rail')).toHaveCount(0)
+    await expect(page.locator('.right-panel-host.open.thread')).toHaveCount(0)
     await toggle.click()
-    await expect(page.locator('.thread-rail')).toBeVisible()
+    await expect(page.locator('.right-panel-host.open.thread')).toBeVisible()
   })
 })
 
-test.describe('Thread — read-only run modal', () => {
+test.describe('Assistant — read-only run modal', () => {
   test('clicking a push card opens the run modal and it can be closed', async ({ page }) => {
     await loginAs(page, USER)
     await page.goto('/#/thread')

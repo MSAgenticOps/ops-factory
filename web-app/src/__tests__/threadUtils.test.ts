@@ -22,6 +22,13 @@ describe('thread previewOf', () => {
     it('handles empty input', () => {
         expect(previewOf('')).toBe('')
     })
+
+    it('strips markdown heading / bold / bullet markers from the preview', () => {
+        expect(previewOf('## 第 3 步：核对 INC-1042 现状')).toBe('第 3 步：核对 INC-1042 现状')
+        expect(previewOf('# 🎯 工单日报')).toBe('🎯 工单日报')
+        expect(previewOf('**FO Daily Brief**')).toBe('FO Daily Brief')
+        expect(previewOf('- a list item')).toBe('a list item')
+    })
 })
 
 describe('thread formatRunTime', () => {

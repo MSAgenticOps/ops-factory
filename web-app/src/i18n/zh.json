@@ -68,9 +68,9 @@
   "sidebar": {
     "home": "首页",
     "newChat": "新建对话",
-    "history": "历史记录",
+    "history": "历史会话",
     "inbox": "收件箱",
-    "thread": "会话",
+    "thread": "助理",
     "agents": "智能体",
     "skillMarket": "技能市场",
     "channels": "渠道",
@@ -1298,8 +1298,8 @@
     "summaryUnavailable": "暂无可展示的任务说明。"
   },
   "thread": {
-    "title": "会话",
-    "switcherLabel": "切换会话",
+    "title": "助理",
+    "switcherLabel": "切换助理",
     "loading": "正在加载会话…",
     "noThreads": "还没有绑定的 IM 会话。绑定一个渠道后即可开始会话。",
     "noConversation": "还没有对话。当该联系人向助理发消息后,对话会显示在这里。",

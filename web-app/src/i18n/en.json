@@ -67,9 +67,9 @@
   "sidebar": {
     "home": "Home",
     "newChat": "New Chat",
-    "history": "History",
+    "history": "Session History",
     "inbox": "Inbox",
-    "thread": "Threads",
+    "thread": "Assistant",
     "agents": "Agents",
     "skillMarket": "Skill Market",
     "channels": "Channels",
@@ -1298,8 +1298,8 @@
     "summaryUnavailable": "No task summary is available yet."
   },
   "thread": {
-    "title": "Threads",
-    "switcherLabel": "Switch thread",
+    "title": "Assistant",
+    "switcherLabel": "Switch assistant",
     "loading": "Loading threads…",
     "noThreads": "No bound IM conversations yet. Bind a channel to start a thread.",
     "noConversation": "No conversation yet. Once this contact messages the assistant, it will appear here.",
