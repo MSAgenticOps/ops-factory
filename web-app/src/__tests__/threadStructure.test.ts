@@ -73,8 +73,8 @@ describe('thread frontend structure', () => {
     it('keeps visible thread copy aligned in both locales', () => {
         const en = JSON.parse(read('src/i18n/en.json'))
         const zh = JSON.parse(read('src/i18n/zh.json'))
-        expect(en.sidebar.thread).toBe('Proactive Assistant')
-        expect(zh.sidebar.thread).toBe('主动助理')
+        expect(en.sidebar.thread).toBe('My Assistant')
+        expect(zh.sidebar.thread).toBe('我的助理')
         expect(nestedKeys(en.thread).sort()).toEqual(nestedKeys(zh.thread).sort())
     })
 })

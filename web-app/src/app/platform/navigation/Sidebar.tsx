@@ -70,7 +70,7 @@ export default function Sidebar() {
             return (
                 <button
                     type="button"
-                    className="nav-link new-chat-nav"
+                    className="nav-link"
                     title={isCollapsed ? title : undefined}
                     onClick={() => void runAction(item)}
                     disabled={item.actionId === 'chat.startNew' && isCreatingSession}

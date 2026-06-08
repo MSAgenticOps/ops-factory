@@ -69,8 +69,8 @@
     "newChat": "New Chat",
     "history": "Session History",
     "inbox": "Inbox",
-    "thread": "Proactive Assistant",
-    "agents": "Agents",
+    "thread": "My Assistant",
+    "agents": "Agent Config",
     "skillMarket": "Skill Market",
     "channels": "Channels",
     "knowledge": "Knowledge",
@@ -1300,7 +1300,7 @@
     "summaryUnavailable": "No task summary is available yet."
   },
   "thread": {
-    "title": "Proactive Assistant",
+    "title": "My Assistant",
     "switcherLabel": "Switch assistant",
     "loading": "Loading threads…",
     "noThreads": "No bound IM conversations yet. Bind a channel to start a thread.",
