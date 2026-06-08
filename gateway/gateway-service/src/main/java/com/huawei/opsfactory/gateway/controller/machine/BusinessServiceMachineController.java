@@ -28,7 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * REST controller for CRUD operations on business service definitions.
+ * Machine-to-machine REST controller for business service CRUD operations.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -47,6 +49,15 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         super(businessServiceService);
     }
 
+    /**
+     * Lists business services, optionally filtered by group, host, or keyword.
+     *
+     * @param groupId optional group identifier filter
+     * @param hostId optional host identifier filter
+     * @param keyword optional keyword for full-text search
+     * @param request current HTTP request
+     * @return a map with "businessServices" list
+     */
     @Override
     @GetMapping
     @BasicAuth
@@ -56,6 +67,14 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.listBusinessServices(groupId, hostId, keyword, request);
     }
 
+    /**
+     * Gets a business service by ID.
+     *
+     * @param id business service identifier
+     * @param request current HTTP request
+     * @return ResponseEntity containing the business service or 404
+     * @throws NotFoundException if business service not found
+     */
     @Override
     @GetMapping("/{id}")
     @BasicAuth
@@ -64,6 +83,14 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.getBusinessService(id, request);
     }
 
+    /**
+     * Gets a business service with its associated hosts resolved.
+     *
+     * @param id business service identifier
+     * @param request current HTTP request
+     * @return ResponseEntity containing the resolved business service or 404
+     * @throws NotFoundException if business service not found
+     */
     @Override
     @GetMapping("/{id}/resolved")
     @BasicAuth
@@ -72,6 +99,14 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.getResolved(id, request);
     }
 
+    /**
+     * Lists hosts associated with a business service.
+     *
+     * @param id business service identifier
+     * @param request current HTTP request
+     * @return a map with "hosts" list
+     * @throws NotFoundException if business service not found
+     */
     @Override
     @GetMapping("/{id}/hosts")
     @BasicAuth
@@ -80,6 +115,14 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.getHosts(id, request);
     }
 
+    /**
+     * Gets the topology data for a business service.
+     *
+     * @param id business service identifier
+     * @param request current HTTP request
+     * @return a map with topology data
+     * @throws NotFoundException if business service not found
+     */
     @Override
     @GetMapping("/{id}/topology")
     @BasicAuth
@@ -88,6 +131,14 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.getTopology(id, request);
     }
 
+    /**
+     * Creates a new business service.
+     *
+     * @param request request body containing business service fields
+     * @param httpRequest current HTTP request
+     * @return ResponseEntity with created business service
+     * @throws ConflictException if validation fails (e.g., duplicate name)
+     */
     @Override
     @PostMapping
     @BasicAuth
@@ -96,6 +147,16 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.createBusinessService(request, httpRequest);
     }
 
+    /**
+     * Updates a business service by ID.
+     *
+     * @param id business service identifier
+     * @param request request body containing updated fields
+     * @param httpRequest current HTTP request
+     * @return ResponseEntity with updated business service
+     * @throws NotFoundException if business service not found
+     * @throws ConflictException if validation fails (e.g., duplicate name)
+     */
     @Override
     @PutMapping("/{id}")
     @BasicAuth
@@ -104,6 +165,13 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.updateBusinessService(id, request, httpRequest);
     }
 
+    /**
+     * Deletes a business service by ID.
+     *
+     * @param id business service identifier
+     * @param request current HTTP request
+     * @return ResponseEntity with success status or 404
+     */
     @Override
     @DeleteMapping("/{id}")
     @BasicAuth
@@ -112,6 +180,12 @@ public class BusinessServiceMachineController extends BaseBusinessServiceControl
         return super.deleteBusinessService(id, request);
     }
 
+    /**
+     * Migrates business data from the legacy business field to the business service table.
+     *
+     * @param request current HTTP request
+     * @return a map with migration result counts
+     */
     @Override
     @PostMapping("/migrate")
     @BasicAuth

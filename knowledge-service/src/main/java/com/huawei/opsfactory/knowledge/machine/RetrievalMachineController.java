@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.apache.servicecomb.provider.rest.common.RestSchema;
 
 /**
- * The RetrievalMachineController for machine endpoints.
+ * Machine-to-machine REST controller for knowledge retrieval operations.
+ * <p>
+ * Requires Basic authentication for all endpoints.
+ *
  * @author x00000000
  * @since 2026-05-26
  */
@@ -37,6 +40,12 @@ public class RetrievalMachineController extends BaseRetrievalController {
         super(facade);
     }
 
+    /**
+     * Searches knowledge documents based on a query.
+     *
+     * @param request the search request containing query parameters
+     * @return search results matching the query
+     */
     @Override
     @PostMapping("/search")
     @BasicAuth
@@ -44,6 +53,12 @@ public class RetrievalMachineController extends BaseRetrievalController {
         return facade.search(request);
     }
 
+    /**
+     * Compares two knowledge documents to find their differences.
+     *
+     * @param request the compare request containing document IDs
+     * @return comparison results highlighting differences
+     */
     @Override
     @PostMapping("/search/compare")
     @BasicAuth
@@ -51,6 +66,16 @@ public class RetrievalMachineController extends BaseRetrievalController {
         return facade.compare(request);
     }
 
+    /**
+     * Fetches a knowledge chunk by its identifier.
+     *
+     * @param chunkId the unique identifier of the chunk to fetch
+     * @param includeNeighbors whether to include neighboring chunks in the result
+     * @param neighborWindow the number of hops to consider for neighbors (1-20)
+     * @param includeMarkdown whether to include markdown formatting
+     * @param includeRawText whether to include raw text content
+     * @return the fetched chunk data
+     */
     @Override
     @GetMapping("/fetch/{chunkId}")
     @BasicAuth
@@ -64,6 +89,12 @@ public class RetrievalMachineController extends BaseRetrievalController {
         return facade.fetch(chunkId, includeNeighbors, neighborWindow);
     }
 
+    /**
+     * Retrieves relevant knowledge for a query based on an entity.
+     *
+     * @param request the retrieve request containing entity information
+     * @return retrieved knowledge snippets
+     */
     @Override
     @PostMapping("/retrieve")
     @BasicAuth
@@ -71,6 +102,12 @@ public class RetrievalMachineController extends BaseRetrievalController {
         return facade.retrieve(request);
     }
 
+    /**
+     * Explains the reasoning behind a knowledge retrieval result.
+     *
+     * @param request the explain request containing result details
+     * @return explanation of the reasoning process
+     */
     @Override
     @PostMapping("/explain")
     @BasicAuth

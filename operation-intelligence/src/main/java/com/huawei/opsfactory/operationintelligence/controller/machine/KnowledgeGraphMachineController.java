@@ -26,7 +26,9 @@ import org.apache.servicecomb.provider.rest.common.RestSchema;
 import java.util.Map;
 
 /**
- * Knowledge graph machine controller.
+ * Machine-to-machine REST controller for knowledge graph operations.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-20
@@ -45,6 +47,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         super(knowledgeGraphService);
     }
 
+    /**
+     * Imports or updates ontology data.
+     *
+     * @param request the ontology request
+     * @return the result
+     */
     @Override
     @PostMapping("/ontologies")
     @BasicAuth
@@ -52,6 +60,11 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.importOntology(request);
     }
 
+    /**
+     * Lists ontologies.
+     *
+     * @return the result
+     */
     @Override
     @GetMapping("/ontologies")
     @BasicAuth
@@ -59,6 +72,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.listOntologies();
     }
 
+    /**
+     * Gets ontology detail.
+     *
+     * @param ontologyId the ontology identifier
+     * @return the result
+     */
     @Override
     @GetMapping("/ontologies/{ontologyId}")
     @BasicAuth
@@ -66,6 +85,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.getOntology(ontologyId);
     }
 
+    /**
+     * Lists graph entity environments under one ontology.
+     *
+     * @param ontologyId the optional ontology identifier
+     * @return the result
+     */
     @Override
     @GetMapping("/environments")
     @BasicAuth
@@ -73,6 +98,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.listEnvironments(ontologyId);
     }
 
+    /**
+     * Deletes one ontology and all graph snapshots under it.
+     *
+     * @param ontologyId the ontology identifier
+     * @return the result
+     */
     @Override
     @DeleteMapping("/ontologies/{ontologyId}")
     @BasicAuth
@@ -80,6 +111,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.deleteOntology(ontologyId);
     }
 
+    /**
+     * Deletes one ontology and all graph snapshots under it via POST body.
+     *
+     * @param request the request containing ontologyId
+     * @return the result
+     */
     @Override
     @PostMapping("/admin/delete-ontology")
     @BasicAuth
@@ -87,6 +124,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.deleteOntologyByPost(request);
     }
 
+    /**
+     * Imports graph data.
+     *
+     * @param request the graph snapshot request
+     * @return the result
+     */
     @Override
     @PostMapping("/admin/import")
     @BasicAuth
@@ -94,6 +137,13 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.importGraph(request);
     }
 
+    /**
+     * Deletes graph entities for one environment.
+     *
+     * @param ontologyId the optional ontology identifier
+     * @param envCode the environment code
+     * @return the result
+     */
     @Override
     @DeleteMapping("/admin/entities")
     @BasicAuth
@@ -102,6 +152,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.deleteEntities(ontologyId, envCode);
     }
 
+    /**
+     * Deletes graph entities for one environment via POST body.
+     *
+     * @param request the request containing ontologyId and envCode
+     * @return the result
+     */
     @Override
     @PostMapping("/admin/delete-entities")
     @BasicAuth
@@ -109,6 +165,14 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.deleteEntitiesByPost(request);
     }
 
+    /**
+     * Gets an entity.
+     *
+     * @param entityId the entity identifier
+     * @param envCode the environment code
+     * @param ontologyId the optional ontology identifier
+     * @return the result
+     */
     @Override
     @GetMapping("/entities/{entityId}")
     @BasicAuth
@@ -118,6 +182,13 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.getEntity(ontologyId, envCode, entityId);
     }
 
+    /**
+     * Updates one entity in the current environment snapshot.
+     *
+     * @param entityId the entity identifier
+     * @param request the request containing ontologyId, envCode and entity payload
+     * @return the updated entity
+     */
     @Override
     @PutMapping("/entities/{entityId}")
     @BasicAuth
@@ -126,6 +197,14 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.updateEntity(entityId, request);
     }
 
+    /**
+     * Deletes one entity in the current environment snapshot.
+     *
+     * @param entityId the entity identifier
+     * @param envCode the environment code
+     * @param ontologyId the optional ontology identifier
+     * @return the deletion result
+     */
     @Override
     @DeleteMapping("/entities/{entityId}")
     @BasicAuth
@@ -135,6 +214,13 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.deleteEntity(ontologyId, envCode, entityId);
     }
 
+    /**
+     * Gets graph resource tree.
+     *
+     * @param envCode the environment code
+     * @param ontologyId the optional ontology identifier
+     * @return the result
+     */
     @Override
     @GetMapping("/resources/tree")
     @BasicAuth
@@ -143,6 +229,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.getResourceTree(ontologyId, envCode);
     }
 
+    /**
+     * Queries a subgraph.
+     *
+     * @param request the request containing query parameters
+     * @return the result
+     */
     @Override
     @PostMapping("/subgraph")
     @BasicAuth
@@ -150,6 +242,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.querySubgraph(request);
     }
 
+    /**
+     * Queries observations.
+     *
+     * @param request the request containing query parameters
+     * @return the result
+     */
     @Override
     @PostMapping("/observations/query")
     @BasicAuth
@@ -157,6 +255,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.queryObservations(request);
     }
 
+    /**
+     * Finds an impact path.
+     *
+     * @param request the request containing impact path parameters
+     * @return the result
+     */
     @Override
     @PostMapping("/impact-path")
     @BasicAuth
@@ -164,6 +268,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.findImpactPath(request);
     }
 
+    /**
+     * Gets root cause candidates.
+     *
+     * @param request the request containing query parameters
+     * @return the result
+     */
     @Override
     @PostMapping("/root-cause-candidates")
     @BasicAuth
@@ -171,6 +281,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.getRootCauseCandidates(request);
     }
 
+    /**
+     * Gets diagnosis context.
+     *
+     * @param request the request containing diagnosis parameters
+     * @return the result
+     */
     @Override
     @PostMapping("/diagnosis/context")
     @BasicAuth
@@ -178,6 +294,12 @@ public class KnowledgeGraphMachineController extends BaseKnowledgeGraphControlle
         return super.getDiagnosisContext(request);
     }
 
+    /**
+     * Exports native graph data.
+     *
+     * @param request the request containing export parameters
+     * @return the result
+     */
     @Override
     @PostMapping("/admin/export")
     @BasicAuth

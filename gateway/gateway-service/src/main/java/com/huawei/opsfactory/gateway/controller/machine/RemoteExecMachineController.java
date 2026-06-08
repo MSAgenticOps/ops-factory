@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST controller for executing and risk-checking remote commands on managed hosts.
+ * Machine-to-machine REST controller for remote command execution and risk checking.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -37,6 +39,12 @@ public class RemoteExecMachineController extends BaseRemoteExecController {
         super(remoteExecutionService, commandWhitelistService);
     }
 
+    /**
+     * Executes a remote command on a managed host after whitelist validation.
+     *
+     * @param request HTTP request containing hostId, command, and optional timeout
+     * @return the execution result
+     */
     @Override
     @PostMapping("/execute")
     @BasicAuth
@@ -44,6 +52,12 @@ public class RemoteExecMachineController extends BaseRemoteExecController {
         return super.execute(request);
     }
 
+    /**
+     * Checks the risk level of a command against the whitelist.
+     *
+     * @param request HTTP request containing the command to check
+     * @return the risk level check result
+     */
     @Override
     @PostMapping("/check-risk")
     @BasicAuth

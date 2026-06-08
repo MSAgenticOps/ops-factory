@@ -29,7 +29,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST controller for CRUD operations on cluster definitions.
+ * Machine-to-machine REST controller for cluster CRUD operations.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -51,6 +53,15 @@ public class ClusterMachineController extends BaseClusterController {
         super(clusterService, hostService, hostGroupService);
     }
 
+    /**
+     * Lists clusters, optionally filtered by group, type, or enabled status.
+     *
+     * @param groupId optional group identifier filter
+     * @param type type filter
+     * @param enabledOnly enabled-only filter flag
+     * @param request current HTTP request
+     * @return a map with "clusters" list
+     */
     @Override
     @GetMapping
     @BasicAuth
@@ -61,6 +72,14 @@ public class ClusterMachineController extends BaseClusterController {
         return super.listClusters(groupId, type, enabledOnly, request);
     }
 
+    /**
+     * Gets a cluster by ID with its associated hosts.
+     *
+     * @param id entity identifier
+     * @param request current HTTP request
+     * @return a response entity with the cluster details, or 404 if not found
+     * @throws NotFoundException if cluster not found
+     */
     @Override
     @GetMapping("/{id}")
     @BasicAuth
@@ -69,6 +88,12 @@ public class ClusterMachineController extends BaseClusterController {
         return super.getCluster(id, request);
     }
 
+    /**
+     * Returns all distinct cluster types.
+     *
+     * @param request current HTTP request
+     * @return all distinct cluster types
+     */
     @Override
     @GetMapping("/types")
     @BasicAuth
@@ -76,6 +101,13 @@ public class ClusterMachineController extends BaseClusterController {
         return super.getClusterTypes(request);
     }
 
+    /**
+     * Lists all hosts belonging to a cluster.
+     *
+     * @param id entity identifier
+     * @param request current HTTP request
+     * @return a map with "hosts" list
+     */
     @Override
     @GetMapping("/{id}/hosts")
     @BasicAuth
@@ -83,6 +115,14 @@ public class ClusterMachineController extends BaseClusterController {
         return super.getClusterHosts(id, request);
     }
 
+    /**
+     * Creates a new cluster.
+     *
+     * @param request HTTP request body containing cluster fields
+     * @param httpRequest current HTTP request
+     * @return response entity with created cluster
+     * @throws ConflictException if validation fails (e.g., duplicate name)
+     */
     @Override
     @PostMapping
     @BasicAuth
@@ -91,6 +131,16 @@ public class ClusterMachineController extends BaseClusterController {
         return super.createCluster(request, httpRequest);
     }
 
+    /**
+     * Updates a cluster by ID.
+     *
+     * @param id cluster identifier
+     * @param request request body containing updated fields
+     * @param httpRequest current HTTP request
+     * @return response entity with updated cluster
+     * @throws NotFoundException if cluster not found
+     * @throws ConflictException if validation fails (e.g., duplicate name)
+     */
     @Override
     @PutMapping("/{id}")
     @BasicAuth
@@ -99,6 +149,15 @@ public class ClusterMachineController extends BaseClusterController {
         return super.updateCluster(id, request, httpRequest);
     }
 
+    /**
+     * Deletes a cluster by ID, optionally forcing deletion of associated hosts.
+     *
+     * @param id entity identifier
+     * @param force whether to force the operation
+     * @param request current HTTP request
+     * @return response entity with success status or 404
+     * @throws ConflictException if conflict during deletion
+     */
     @Override
     @DeleteMapping("/{id}")
     @BasicAuth

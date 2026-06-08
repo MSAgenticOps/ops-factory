@@ -26,7 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST controller for managing cluster-to-cluster relation edges and graph queries.
+ * Machine-to-machine REST controller for cluster relation CRUD operations and graph queries.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -45,6 +47,13 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         super(clusterRelationService);
     }
 
+    /**
+     * Lists cluster relations, optionally filtered by cluster ID.
+     *
+     * @param clusterId optional cluster identifier to filter relations
+     * @param request current HTTP request
+     * @return a map with "relations" list
+     */
     @Override
     @GetMapping
     @BasicAuth
@@ -53,6 +62,13 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         return super.listRelations(clusterId, request);
     }
 
+    /**
+     * Returns the cluster relation graph data for visualization.
+     *
+     * @param groupId optional group identifier to filter graph data
+     * @param request current HTTP request
+     * @return a map with graph nodes and edges
+     */
     @Override
     @GetMapping("/graph")
     @BasicAuth
@@ -61,6 +77,14 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         return super.getGraph(groupId, request);
     }
 
+    /**
+     * Returns the neighbor clusters for a given cluster.
+     *
+     * @param clusterId cluster identifier to look up neighbors for
+     * @param request current HTTP request
+     * @return a map with neighbor cluster data
+     * @throws NotFoundException if cluster not found
+     */
     @Override
     @GetMapping("/clusters/{clusterId}/neighbors")
     @BasicAuth
@@ -69,6 +93,14 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         return super.getClusterNeighbors(clusterId, request);
     }
 
+    /**
+     * Returns the neighbor hosts for a given host via cluster relations.
+     *
+     * @param hostId host identifier to look up neighbors for
+     * @param request current HTTP request
+     * @return a map with neighbor host data
+     * @throws NotFoundException if host not found
+     */
     @Override
     @GetMapping("/hosts/{hostId}/neighbors")
     @BasicAuth
@@ -77,6 +109,15 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         return super.getHostNeighbors(hostId, request);
     }
 
+    /**
+     * Creates a new cluster relation edge.
+     *
+     * @param requestBody request body containing relation fields
+     * @param request current HTTP request
+     * @return response entity with created relation or 400 if validation fails
+     * @throws BadRequestException if validation fails
+     * @throws NotFoundException if referenced entities not found
+     */
     @Override
     @PostMapping
     @BasicAuth
@@ -85,6 +126,16 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         return super.createRelation(requestBody, request);
     }
 
+    /**
+     * Updates a cluster relation by ID.
+     *
+     * @param id relation identifier
+     * @param requestBody request body containing updated fields
+     * @param request current HTTP request
+     * @return response entity with updated relation or 404 if not found
+     * @throws BadRequestException if validation fails
+     * @throws NotFoundException if relation not found
+     */
     @Override
     @PutMapping("/{id}")
     @BasicAuth
@@ -94,6 +145,13 @@ public class ClusterRelationMachineController extends BaseClusterRelationControl
         return super.updateRelation(id, requestBody, request);
     }
 
+    /**
+     * Deletes a cluster relation by ID.
+     *
+     * @param id relation identifier
+     * @param request current HTTP request
+     * @return response entity with success status or 404 if not found
+     */
     @Override
     @DeleteMapping("/{id}")
     @BasicAuth

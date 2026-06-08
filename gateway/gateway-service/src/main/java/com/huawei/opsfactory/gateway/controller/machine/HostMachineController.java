@@ -31,7 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST controller for CRUD operations and connectivity testing on host entries.
+ * Machine-to-machine REST controller for host CRUD operations and connectivity testing.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -54,6 +56,18 @@ public class HostMachineController extends BaseHostController {
         super(hostService, clusterService, businessServiceService, hostGroupService);
     }
 
+    /**
+     * Lists hosts, optionally filtered by tags, cluster, group, business service, or enabled status.
+     *
+     * @param tags tags
+     * @param clusterId cluster identifier
+     * @param groupId group identifier
+     * @param businessServiceId business service id
+     * @param enabledOnly enabled-only filter flag
+     * @param request current HTTP request
+     * @return a map with "hosts" list
+     * @throws NotFoundException if referenced entity not found
+     */
     @Override
     @GetMapping
     @BasicAuth
@@ -66,6 +80,13 @@ public class HostMachineController extends BaseHostController {
         return super.listHosts(tags, clusterId, groupId, businessServiceId, enabledOnly, request);
     }
 
+    /**
+     * Gets a host by its IP address.
+     *
+     * @param ip ip address
+     * @param request current HTTP request
+     * @return a response entity with the host, or 404 if not found
+     */
     @Override
     @GetMapping("/by-ip")
     @BasicAuth
@@ -73,6 +94,14 @@ public class HostMachineController extends BaseHostController {
         return super.getHostByIp(ip, request);
     }
 
+    /**
+     * Gets a host by ID.
+     *
+     * @param id entity identifier
+     * @param request current HTTP request
+     * @return a response entity with the host, or 404 if not found
+     * @throws NotFoundException if host not found
+     */
     @Override
     @GetMapping("/{id}")
     @BasicAuth
@@ -81,6 +110,15 @@ public class HostMachineController extends BaseHostController {
         return super.getHost(id, request);
     }
 
+    /**
+     * Creates a new host.
+     *
+     * @param requestBody HTTP request body containing host fields
+     * @param request current HTTP request
+     * @return response entity with created host
+     * @throws ConflictException if host already exists
+     * @throws BadRequestException if validation fails
+     */
     @Override
     @PostMapping
     @BasicAuth
@@ -89,6 +127,17 @@ public class HostMachineController extends BaseHostController {
         return super.createHost(requestBody, request);
     }
 
+    /**
+     * Updates a host by ID.
+     *
+     * @param id host identifier
+     * @param requestBody request body containing updated fields
+     * @param request current HTTP request
+     * @return response entity with updated host, or 404 if not found
+     * @throws NotFoundException if host not found
+     * @throws ConflictException if update causes a conflict
+     * @throws BadRequestException if validation fails
+     */
     @Override
     @PutMapping("/{id}")
     @BasicAuth
@@ -98,6 +147,13 @@ public class HostMachineController extends BaseHostController {
         return super.updateHost(id, requestBody, request);
     }
 
+    /**
+     * Deletes a host by ID.
+     *
+     * @param id entity identifier
+     * @param request current HTTP request
+     * @return response entity with success status, or 404 if not found
+     */
     @Override
     @DeleteMapping("/{id}")
     @BasicAuth
@@ -105,6 +161,12 @@ public class HostMachineController extends BaseHostController {
         return super.deleteHost(id, request);
     }
 
+    /**
+     * Returns all unique host tags.
+     *
+     * @param request current HTTP request
+     * @return a map with "tags" list
+     */
     @Override
     @GetMapping("/tags")
     @BasicAuth
@@ -112,6 +174,13 @@ public class HostMachineController extends BaseHostController {
         return super.getTags(request);
     }
 
+    /**
+     * Tests SSH connectivity to a host.
+     *
+     * @param id host identifier
+     * @param request current HTTP request
+     * @return a map with test results
+     */
     @Override
     @PostMapping("/{id}/test")
     @BasicAuth

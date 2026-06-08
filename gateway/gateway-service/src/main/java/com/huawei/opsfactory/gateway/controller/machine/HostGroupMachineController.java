@@ -31,7 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST controller for CRUD operations on host group definitions and the group tree.
+ * Machine-to-machine REST controller for host group CRUD operations.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -54,6 +56,13 @@ public class HostGroupMachineController extends BaseHostGroupController {
         super(hostGroupService, clusterService, businessServiceService, hostService);
     }
 
+    /**
+     * Lists host groups, optionally filtered by enabled status.
+     *
+     * @param enabledOnly enabled-only filter flag
+     * @param request current HTTP request
+     * @return a map with "groups" list
+     */
     @Override
     @GetMapping
     @BasicAuth
@@ -63,6 +72,13 @@ public class HostGroupMachineController extends BaseHostGroupController {
         return super.listGroups(enabledOnly, request);
     }
 
+    /**
+     * Returns the hierarchical tree of groups, clusters, and business services.
+     *
+     * @param enabledOnly returns the hierarchical tree of groups, clusters, and business services
+     * @param request current HTTP request
+     * @return the hierarchical tree of groups, clusters, and business services
+     */
     @Override
     @GetMapping("/tree")
     @BasicAuth
@@ -72,6 +88,14 @@ public class HostGroupMachineController extends BaseHostGroupController {
         return super.getTree(enabledOnly, request);
     }
 
+    /**
+     * Gets a host group by ID.
+     *
+     * @param id entity identifier
+     * @param request current HTTP request
+     * @return a response entity with the host group, or 404 if not found
+     * @throws NotFoundException if host group not found
+     */
     @Override
     @GetMapping("/{id}")
     @BasicAuth
@@ -80,6 +104,15 @@ public class HostGroupMachineController extends BaseHostGroupController {
         return super.getGroup(id, request);
     }
 
+    /**
+     * Creates a new host group.
+     *
+     * @param request HTTP request body containing host group fields
+     * @param httpRequest current HTTP request
+     * @return response entity with created host group
+     * @throws BadRequestException if validation fails
+     * @throws ConflictException if host group already exists
+     */
     @Override
     @PostMapping
     @BasicAuth
@@ -88,6 +121,17 @@ public class HostGroupMachineController extends BaseHostGroupController {
         return super.createGroup(request, httpRequest);
     }
 
+    /**
+     * Updates a host group by ID.
+     *
+     * @param id host group identifier
+     * @param request request body containing updated fields
+     * @param httpRequest current HTTP request
+     * @return response entity with updated host group
+     * @throws NotFoundException if host group not found
+     * @throws BadRequestException if validation fails
+     * @throws ConflictException if update causes a conflict
+     */
     @Override
     @PutMapping("/{id}")
     @BasicAuth
@@ -97,6 +141,15 @@ public class HostGroupMachineController extends BaseHostGroupController {
         return super.updateGroup(id, request, httpRequest);
     }
 
+    /**
+     * Deletes a host group by ID, optionally forcing deletion of associated resources.
+     *
+     * @param id entity identifier
+     * @param force whether to force the operation
+     * @param request current HTTP request
+     * @return response entity with success status or 404
+     * @throws ConflictException if conflict during deletion
+     */
     @Override
     @DeleteMapping("/{id}")
     @BasicAuth

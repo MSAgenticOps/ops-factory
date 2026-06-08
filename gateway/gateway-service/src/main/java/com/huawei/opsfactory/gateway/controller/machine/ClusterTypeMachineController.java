@@ -25,7 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * REST controller for CRUD operations on cluster type definitions.
+ * Machine-to-machine REST controller for cluster type CRUD operations.
+ * <p>
+ * Requires Basic authentication for all endpoints.
  *
  * @author x00000000
  * @since 2026-05-09
@@ -44,6 +46,12 @@ public class ClusterTypeMachineController extends BaseClusterTypeController {
         super(clusterTypeService);
     }
 
+    /**
+     * Lists all cluster type definitions.
+     *
+     * @param request current HTTP request
+     * @return a map with "clusterTypes" list
+     */
     @Override
     @GetMapping
     @BasicAuth
@@ -51,6 +59,14 @@ public class ClusterTypeMachineController extends BaseClusterTypeController {
         return super.listClusterTypes(request);
     }
 
+    /**
+     * Gets a cluster type by ID.
+     *
+     * @param id cluster type identifier
+     * @param request current HTTP request
+     * @return response entity containing the cluster type or 404 if not found
+     * @throws NotFoundException if cluster type not found
+     */
     @Override
     @GetMapping("/{id}")
     @BasicAuth
@@ -59,6 +75,13 @@ public class ClusterTypeMachineController extends BaseClusterTypeController {
         return super.getClusterType(id, request);
     }
 
+    /**
+     * Creates a new cluster type.
+     *
+     * @param request request body containing cluster type fields
+     * @param httpRequest current HTTP request
+     * @return response entity with created cluster type or 400 if validation fails
+     */
     @Override
     @PostMapping
     @BasicAuth
@@ -67,6 +90,16 @@ public class ClusterTypeMachineController extends BaseClusterTypeController {
         return super.createClusterType(request, httpRequest);
     }
 
+    /**
+     * Updates a cluster type by ID.
+     *
+     * @param id cluster type identifier
+     * @param request request body containing updated fields
+     * @param httpRequest current HTTP request
+     * @return response entity with updated cluster type or 404 if not found
+     * @throws NotFoundException if cluster type not found
+     * @throws BadRequestException if validation fails
+     */
     @Override
     @PutMapping("/{id}")
     @BasicAuth
@@ -76,6 +109,13 @@ public class ClusterTypeMachineController extends BaseClusterTypeController {
         return super.updateClusterType(id, request, httpRequest);
     }
 
+    /**
+     * Deletes a cluster type by ID.
+     *
+     * @param id cluster type identifier
+     * @param request current HTTP request
+     * @return response entity with success status or 404 if not found
+     */
     @Override
     @DeleteMapping("/{id}")
     @BasicAuth
