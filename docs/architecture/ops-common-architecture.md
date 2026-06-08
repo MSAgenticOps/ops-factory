@@ -30,25 +30,49 @@ The `@BasicAuth` annotation provides machine-to-machine authentication for REST 
 
 ```java
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target(ElementType.METHOD)
 public @interface BasicAuth {
 }
 ```
 
 #### Usage
 
-Apply to controller methods or entire controller classes:
+Apply `@BasicAuth` to individual controller methods that require machine-to-machine authentication:
 
 ```java
-@RestController
-@RequestMapping("/machine/gateway/business-services")
-@BasicAuth  // Applies to all methods in this controller
-public class BusinessServiceMachineController {
+@PostMapping("/sensitive-operation")
+@BasicAuth
+public ResponseEntity<?> performSensitiveOperation() {
     // ...
 }
 ```
 
-Or apply to specific methods:
+For controllers with multiple protected endpoints, annotate each method:
+
+```java
+@RestController
+@RequestMapping("/machine/gateway/business-services")
+public class BusinessServiceMachineController {
+
+    @GetMapping
+    @BasicAuth
+    public ResponseEntity<?> listServices() {
+        // ...
+    }
+
+    @PostMapping
+    @BasicAuth
+    public ResponseEntity<?> createService() {
+        // ...
+    }
+}
+```
+
+**⚠️ Important Limitation:**
+
+Due to ServiceComb's `@RestSchema` annotation affecting the AOP proxy mechanism, **class-level `@BasicAuth` is not supported**. The aspect only intercepts methods annotated directly with `@BasicAuth`. Applying `@BasicAuth` at the class level will have no effect — all methods will be publicly accessible without authentication.
+
+This has been verified through testing: the AOP proxy chain does not properly resolve class-level annotations when `@RestSchema` is present on the controller.
 
 ```java
 @PostMapping("/sensitive-operation")
@@ -99,12 +123,12 @@ export COMMON_AOP_MACHINE_PASSWORD=my-password
 
 #### AOP Aspect
 
-The `BasicAuthAspect` intercepts all methods annotated with `@BasicAuth`:
+The `BasicAuthAspect` intercepts methods annotated with `@BasicAuth`:
 
-- Supports both method-level and class-level annotations
+- **Method-level annotation only** — class-level annotations are not supported due to ServiceComb's `@RestSchema` affecting AOP proxy resolution
 - Handles missing or invalid credentials appropriately
 - Logs authentication attempts for debugging
-- Wraps configuration errors in `ApiCallException` then `AuthException`
+- Wraps configuration errors in `AuthException`
 
 ### 2. Exception Handling
 
