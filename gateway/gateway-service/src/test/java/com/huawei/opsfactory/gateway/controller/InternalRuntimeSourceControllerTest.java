@@ -13,6 +13,7 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.monitoring.MetricsBuffer;
 import com.huawei.opsfactory.gateway.monitoring.MetricsSnapshot;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
@@ -40,7 +41,7 @@ import java.util.Map;
  */
 @RunWith(SpringRunner.class)
 @WebMvcTest(InternalRuntimeSourceController.class)
-@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class, BaseControllerTestConfig.class})
 /**
  * Internal Runtime Source Controller Test.
  *

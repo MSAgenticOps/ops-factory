@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * Call Chain Controller.
  * REST API for call chain mining operations.
@@ -30,6 +32,7 @@ import java.util.Map;
  * @since 2026-05-14
  */
 @RestController
+@RestSchema(schemaId = "callChainController")
 @RequestMapping("/api/operation-intelligence/call-chain")
 public class CallChainController {
 
@@ -90,8 +93,7 @@ public class CallChainController {
             return map;
         }).toList();
 
-        CallChainTree tree = callChainService.queryCallChain(request.getSolutionType(), request.getSolutionId(),
-            conditions, request.getStartTime(), request.getEndTime(), request.getMode());
+        CallChainTree tree = callChainService.queryCallChain(request);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("chainType", tree.getChainType());
         response.put("conditions", tree.getConditions());

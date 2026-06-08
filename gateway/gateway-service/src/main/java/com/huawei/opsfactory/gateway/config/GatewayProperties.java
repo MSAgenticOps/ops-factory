@@ -470,34 +470,26 @@ public class GatewayProperties {
 
     /**
      * Resolves the absolute path to the project root directory.
+     * If the configured path is absolute, returns it directly.
+     * If relative, resolves against the current working directory (user.dir).
      *
-     * @return the result
+     * @return the absolute path to the project root directory
      */
     public Path getProjectRootPath() {
         Path configuredRoot = Path.of(paths.getProjectRoot());
         if (configuredRoot.isAbsolute()) {
             return configuredRoot.normalize();
         }
-        if (configuredConfigPath() != null) {
-            return getConfigDirectory().resolve(configuredRoot).normalize();
-        }
         return configuredRoot.toAbsolutePath().normalize();
     }
 
     /**
      * Resolves the absolute path to the gateway root directory.
+     * Returns the project root with "/gateway" appended.
      *
-     * @return the result
+     * @return the absolute path to the gateway root directory
      */
     public Path getGatewayRootPath() {
-        if (configuredConfigPath() == null) {
-            return getProjectRootPath().resolve("gateway").normalize();
-        }
-        Path configPath = getConfigPath();
-        Path configDir = getConfigDirectory();
-        if ("config.yaml".equals(configPath.getFileName() != null ? configPath.getFileName().toString() : "")) {
-            return configDir;
-        }
         return getProjectRootPath().resolve("gateway").normalize();
     }
 

@@ -23,6 +23,7 @@
     <module>gateway</module>
     <module>knowledge-service</module>
     <module>operation-intelligence</module>
+    <module>ops-common</module>
     <module>prometheus-exporter</module>
     <module>skill-market</module>
   </modules>

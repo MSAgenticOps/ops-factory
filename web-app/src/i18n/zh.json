@@ -2325,6 +2325,7 @@
     "confirmDeleteBusinessService": "确定删除此业务服务？",
     "bsName": "业务名称",
     "bsCode": "业务编码",
+    "bsCodePlaceholder": "例如：order-service",
     "bsPriority": "优先级",
     "bsGroup": "所属分组",
     "bsClusters": "入口集群",

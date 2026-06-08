@@ -6,6 +6,7 @@ package com.huawei.opsfactory.operationintelligence.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -19,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallFlow;
 import com.huawei.opsfactory.operationintelligence.qos.model.FlowNode;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.service.CallChainService;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,8 +92,7 @@ class CallChainSubgraphControllerTest {
 
     @Test
     void generateAndGetSubgraph_persistsStoredSnapshot() throws Exception {
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), eq("CRM-001"), anyList(), anyLong(), anyLong(),
-            anyString()))
+        when(callChainService.queryCallChain(any(QueryCallChainRequest.class)))
             .thenReturn(createCallChainTree());
 
         Map<String, Object> request = Map.of(

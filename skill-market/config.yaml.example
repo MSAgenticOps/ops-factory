@@ -1,8 +1,17 @@
 server:
   port: 8095
 
+# Machine-to-machine authentication (required for /machine/** endpoints)
+# Environment variables: COMMON_AOP_MACHINE_USERNAME, COMMON_AOP_MACHINE_PASSWORD
+common:
+  aop:
+    machine:
+      username: "${COMMON_AOP_MACHINE_USERNAME:}"
+      password: "${COMMON_AOP_MACHINE_PASSWORD:}"
+
 skill-market:
   cors-origin: "*"
+
   runtime:
     base-dir: "./data"
   package:

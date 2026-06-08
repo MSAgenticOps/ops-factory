@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.operationintelligence.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -55,8 +56,7 @@ class CallChainControllerTest {
         tree.setTotalCount(100L);
         tree.setFlows(List.of());
 
-        when(callChainService.queryCallChain(anyString(), anyString(), anyList(), anyLong(), anyLong(),
-            anyString())).thenReturn(tree);
+        when(callChainService.queryCallChain(any(QueryCallChainRequest.class))).thenReturn(tree);
 
         QueryCallChainRequest request = new QueryCallChainRequest();
         request.setSolutionType("DigitalCRM.sit");

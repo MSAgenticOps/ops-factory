@@ -10,13 +10,20 @@ spring:
 server:
   port: 8096                            # env override: OI_PORT
 
+# Machine-to-machine authentication (required for /machine/** endpoints)
+# Environment variables: COMMON_AOP_MACHINE_USERNAME, COMMON_AOP_MACHINE_PASSWORD
+common:
+  aop:
+    machine:
+      username: "${COMMON_AOP_MACHINE_USERNAME:}"
+      password: "${COMMON_AOP_MACHINE_PASSWORD:}"
+
 operation-intelligence:
   secret-key: ""                        # env override: OI_SECRET_KEY [REQUIRED]
   cors-origin: "*"                      # env override: OI_CORS_ORIGIN
-
-  # Optional: override data directory (defaults to ./data relative to config file)
-  # Set to "../gateway" to reuse existing gateway/data/qos/ during migration
-  # data-root: "../gateway"
+  # Data directory path (relative to application working directory or absolute path)
+  # Defaults to ./data in the application working directory if not specified
+  data-root: "./data"
 
   qos:
     enabled: true                             # enable health curve collection and API

@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * The StatsController.
  * @author x00000000
@@ -16,11 +18,17 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
+@RestSchema(schemaId = "statsController")
 @RequestMapping("/api/knowledge/stats")
 public class StatsController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the stats controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public StatsController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

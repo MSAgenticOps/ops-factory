@@ -17,18 +17,26 @@ import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
-@RestController
-@RequestMapping("/api/control-center/services/{id}")
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * Service File Controller.
  *
  * @author x00000000
  * @since 2026-05-27
  */
+@RestController
+@RestSchema(schemaId = "serviceFileController")
+@RequestMapping("/api/control-center/services/{id}")
 public class ServiceFileController {
 
     private final ManagedServiceFileService managedServiceFileService;
 
+    /**
+     * Creates the service file controller instance.
+     *
+     * @param managedServiceFileService the managed service file service
+     */
     public ServiceFileController(ManagedServiceFileService managedServiceFileService) {
         this.managedServiceFileService = managedServiceFileService;
     }

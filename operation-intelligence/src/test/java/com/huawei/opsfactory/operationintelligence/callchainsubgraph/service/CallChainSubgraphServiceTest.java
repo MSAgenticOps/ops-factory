@@ -16,6 +16,7 @@ import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSna
 import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
 import com.huawei.opsfactory.operationintelligence.qos.model.CallFlow;
 import com.huawei.opsfactory.operationintelligence.qos.model.FlowNode;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
 import com.huawei.opsfactory.operationintelligence.service.CallChainService;
 
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +35,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -79,8 +81,7 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), eq("CRM-001"), anyList(), anyLong(), anyLong(),
-            anyString()))
+        when(callChainService.queryCallChain(any(QueryCallChainRequest.class)))
             .thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
             .thenReturn(ResourceSubgraphResult.empty());
@@ -129,8 +130,7 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(eq("DigitalCRM.sit"), eq("CRM-001"), anyList(), anyLong(), anyLong(),
-            anyString()))
+        when(callChainService.queryCallChain(any(QueryCallChainRequest.class)))
             .thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
             .thenReturn(createBhfResourceSubgraph());

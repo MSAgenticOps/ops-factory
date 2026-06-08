@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * The ProfileController.
  * @author x00000000
@@ -25,11 +27,17 @@ import org.springframework.web.bind.annotation.RestController;
  */
 
 @RestController
+@RestSchema(schemaId = "profileController")
 @RequestMapping("/api/knowledge/profiles")
 public class ProfileController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the profile controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public ProfileController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }

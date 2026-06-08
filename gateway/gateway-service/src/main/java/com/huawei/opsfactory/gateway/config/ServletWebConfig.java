@@ -36,6 +36,8 @@ public class ServletWebConfig {
 
     /**
      * Creates the servlet web config instance.
+     *
+     * @param properties the gateway properties
      */
     public ServletWebConfig(GatewayProperties properties) {
         this.properties = properties;

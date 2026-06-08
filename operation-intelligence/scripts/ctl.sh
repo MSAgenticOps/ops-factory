@@ -82,27 +82,19 @@ resolve_python() {
 start_dv_server() {
     if [ "$(check_strict_ssl_false)" != "true" ]; then return 0; fi
     if ! resolve_python; then
-        log_warn "Python not found, skipping mock DV server"
         return 0
     fi
     if [ -f "${DV_SERVER_PID_FILE}" ] && kill -0 "$(cat "${DV_SERVER_PID_FILE}")" 2>/dev/null; then
-        log_info "dv_server already running (PID: $(cat "${DV_SERVER_PID_FILE}"))"
         return 0
     fi
     local dv_script="${SCRIPT_DIR}/dv_server.py"
-    [ -f "${dv_script}" ] || { log_warn "dv_server.py not found at ${dv_script}"; return 0; }
+    [ -f "${dv_script}" ] || { return 0; }
     mkdir -p "${LOG_DIR}"
-    log_info "Starting dv_server (strict-ssl=false detected)..."
     cd "${SCRIPT_DIR}"
     nohup "${PYTHON}" -u "${dv_script}" > "${LOG_DIR}/dv_server.log" 2>&1 < /dev/null &
     echo $! > "${DV_SERVER_PID_FILE}"
     sleep 1
-    if kill -0 "$(cat "${DV_SERVER_PID_FILE}")" 2>/dev/null; then
-        log_info "dv_server started (PID: $(cat "${DV_SERVER_PID_FILE}"))"
-    else
-        log_warn "dv_server failed to start"
-        rm -f "${DV_SERVER_PID_FILE}"
-    fi
+    kill -0 "$(cat "${DV_SERVER_PID_FILE}")" 2>/dev/null || rm -f "${DV_SERVER_PID_FILE}"
 }
 
 stop_dv_server() {
@@ -110,7 +102,6 @@ stop_dv_server() {
     local pid
     pid="$(cat "${DV_SERVER_PID_FILE}")"
     if kill -0 "${pid}" 2>/dev/null; then
-        log_info "Stopping dv_server (PID: ${pid})..."
         kill "${pid}" 2>/dev/null || true
         local i
         for ((i=1; i<=10; i++)); do
@@ -204,9 +195,6 @@ do_status() {
         pid="$(daemon_read_pid "${PID_FILE}")"
         if curl -fsS "http://127.0.0.1:${OI_PORT}/actuator/health" >/dev/null 2>&1; then
             log_ok "operation-intelligence running (http://localhost:${OI_PORT}, PID: ${pid})"
-            if [ -f "${DV_SERVER_PID_FILE}" ] && kill -0 "$(cat "${DV_SERVER_PID_FILE}")" 2>/dev/null; then
-                log_ok "dv_server running (PID: $(cat "${DV_SERVER_PID_FILE}"))"
-            fi
         else
             log_warn "operation-intelligence process running (PID: ${pid}) but health check failed"
             return 1

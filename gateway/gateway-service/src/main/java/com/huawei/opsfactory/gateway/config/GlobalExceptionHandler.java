@@ -8,6 +8,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.huawei.opsfactory.common.exception.ApiCallException;
+import com.huawei.opsfactory.common.exception.AuthException;
 import com.huawei.opsfactory.gateway.controller.SessionErrorResponseException;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
@@ -234,6 +236,36 @@ public class GlobalExceptionHandler {
         body.put("success", false);
         body.put("error", "Resource not found: " + resourceLocation);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * Handles authentication exceptions and returns 401 Unauthorized.
+     *
+     * @param ex authentication exception
+     * @return 401 response with error details
+     */
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    /**
+     * Handles API call exceptions and returns 400 Bad Request.
+     *
+     * @param ex API call exception
+     * @return 400 response with error details
+     */
+    @ExceptionHandler(ApiCallException.class)
+    public ResponseEntity<Map<String, Object>> handleApiCallException(ApiCallException ex) {
+        log.warn("API call error: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**

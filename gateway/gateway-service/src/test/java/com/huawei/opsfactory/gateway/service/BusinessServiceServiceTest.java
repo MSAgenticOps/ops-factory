@@ -43,6 +43,8 @@ public class BusinessServiceServiceTest {
 
     private Path businessServicesDir;
 
+    private BusinessTypeService businessTypeService;
+
     /**
      * Sets the up.
      *
@@ -55,8 +57,12 @@ public class BusinessServiceServiceTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
 
+        businessTypeService = new BusinessTypeService(properties);
+        businessTypeService.init();
+
         businessServiceService = new BusinessServiceService(properties);
         businessServiceService.init();
+        businessServiceService.setBusinessTypeService(businessTypeService);
 
         businessServicesDir = Path.of(tempFolder.getRoot().getAbsolutePath())
             .toAbsolutePath()
@@ -64,6 +70,29 @@ public class BusinessServiceServiceTest {
             .resolve("gateway")
             .resolve("data")
             .resolve("business-services");
+
+        // Create a test business type
+        Path businessTypesDir = Path.of(tempFolder.getRoot().getAbsolutePath())
+            .toAbsolutePath()
+            .normalize()
+            .resolve("gateway")
+            .resolve("data")
+            .resolve("business-types");
+        Files.createDirectories(businessTypesDir);
+
+        Map<String, Object> businessType = new LinkedHashMap<>();
+        businessType.put("id", "bt-1");
+        businessType.put("name", "Test Business Type");
+        businessType.put("code", "test-bt");
+        businessType.put("description", "Test business type");
+        businessType.put("color", "#6366f1");
+        businessType.put("knowledge", "test");
+        businessType.put("createdAt", "2024-01-01T00:00:00Z");
+        businessType.put("updatedAt", "2024-01-01T00:00:00Z");
+
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(businessType);
+        Files.writeString(businessTypesDir.resolve("bt-1.json"), json, StandardCharsets.UTF_8);
     }
 
     // ── createBusinessService ──────────────────────────────────────

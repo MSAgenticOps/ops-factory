@@ -11,18 +11,26 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-@RestController
-@RequestMapping("/api/control-center/runtime")
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
 /**
  * Runtime Controller.
  *
  * @author x00000000
  * @since 2026-05-27
  */
+@RestController
+@RestSchema(schemaId = "runtimeController")
+@RequestMapping("/api/control-center/runtime")
 public class RuntimeController {
 
     private final GatewayRuntimeSourceClient gatewayRuntimeSourceClient;
 
+    /**
+     * Creates the runtime controller instance.
+     *
+     * @param gatewayRuntimeSourceClient the gateway runtime source client
+     */
     public RuntimeController(GatewayRuntimeSourceClient gatewayRuntimeSourceClient) {
         this.gatewayRuntimeSourceClient = gatewayRuntimeSourceClient;
     }
