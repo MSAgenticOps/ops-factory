@@ -18,14 +18,6 @@ export function snippetOf(summary: string): string {
     return rest.length > 120 ? `${rest.slice(0, 120)}…` : rest
 }
 
-/** Schedule-type accent (drives the card's leading color dot). Matched by substring so id variants still map. */
-export function scheduleAccent(scheduleId: string): 'brief' | 'watch' | 'memory' | 'default' {
-    if (scheduleId.includes('daily-brief')) return 'brief'
-    if (scheduleId.includes('watch')) return 'watch'
-    if (scheduleId.includes('memory')) return 'memory'
-    return 'default'
-}
-
 /** Strip the common markdown markers so a card preview reads as plain text (not `## ...` / `**...**`). */
 function stripMarkdown(line: string): string {
     return line

@@ -1312,7 +1312,7 @@
     "showPushes": "显示推送",
     "prev": "上一条",
     "next": "下一条",
-    "viewRun": "查看运行",
+    "openSession": "前往会话",
     "schedule": {
       "ticket-daily-brief": "每日简报",
       "ticket-watch-loop": "主动巡检",

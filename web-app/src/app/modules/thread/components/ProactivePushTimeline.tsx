@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import ListCard from '../../../platform/ui/list/ListCard'
 import type { ThreadFollowup } from '../../../platform/providers/ThreadUnreadContext'
-import { formatRunTime, previewOf, scheduleAccent, scheduleLabel, snippetOf } from '../threadFormat'
+import { formatRunTime, previewOf, scheduleLabel, snippetOf } from '../threadFormat'
 
 interface ProactivePushTimelineProps {
     records: ThreadFollowup[]
@@ -28,10 +28,7 @@ export default function ProactivePushTimeline({ records, onOpen }: ProactivePush
                         <ListCard className="thread-push-card">
                             <button type="button" className="thread-push-button" onClick={() => onOpen(index)}>
                                 <span className="thread-push-head">
-                                    <span className="thread-push-source">
-                                        <span className={`thread-push-dot thread-push-dot-${scheduleAccent(record.scheduleId)}`} aria-hidden="true" />
-                                        <span className="thread-push-schedule">{scheduleLabel(record.scheduleId, t)}</span>
-                                    </span>
+                                    <span className="thread-push-schedule">{scheduleLabel(record.scheduleId, t)}</span>
                                     <span className="thread-push-time">{formatRunTime(record.time)}</span>
                                 </span>
                                 <span className="thread-push-title">{previewOf(record.summary)}</span>

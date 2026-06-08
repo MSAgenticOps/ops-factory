@@ -134,7 +134,7 @@
     cursor: pointer;
 }
 
-/* Header row: schedule (type dot + name) left, run time right — the muted "envelope" of the push. */
+/* Header row: schedule name (left) + run time (right) — the muted "envelope" of the push. */
 .thread-push-head {
     display: flex;
     align-items: center;
@@ -144,26 +144,8 @@
     color: var(--color-text-secondary);
 }
 
-.thread-push-source {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-}
-
-.thread-push-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.thread-push-dot-brief { background: #3b82f6; }
-.thread-push-dot-watch { background: #f59e0b; }
-.thread-push-dot-memory { background: #8b5cf6; }
-.thread-push-dot-default { background: #94a3b8; }
-
 .thread-push-schedule {
+    min-width: 0;
     font-weight: 600;
     color: var(--color-text-primary);
     overflow: hidden;
@@ -230,7 +212,12 @@
     color: var(--color-text-secondary);
 }
 
-/* Run modal: title = schedule name + muted run-time subtitle; ←/→ pager strip leads the body. */
+/* Run modal: stable large height so paging short↔long briefs doesn't resize the frame (only the body scrolls). */
+.thread-run-modal {
+    height: min(80vh, 760px);
+}
+
+/* Header: schedule name + muted run-time subtitle (the ←/→ pager lives in the footer now, not a 3rd header row). */
 .thread-run-title {
     display: flex;
     flex-direction: column;
@@ -250,13 +237,19 @@
     color: var(--color-text-secondary);
 }
 
+/* Footer: ←/→ pager on the left, equal-weight neutral actions on the right. */
+.thread-run-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: var(--spacing-3);
+}
+
 .thread-run-pager {
     display: flex;
     align-items: center;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-3);
-    padding-bottom: var(--spacing-3);
-    border-bottom: 1px solid var(--color-border);
+    gap: 4px;
 }
 
 .thread-run-pager-pos {
@@ -264,46 +257,56 @@
     color: var(--color-text-secondary);
 }
 
+.thread-run-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+/* Delivered brief: capped to a comfortable reading width + a document-like rhythm. */
 .thread-brief {
-    font-size: var(--font-size-sm);
-    line-height: 1.6;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--spacing-2) 0 var(--spacing-4);
+    font-size: var(--font-size-base);
+    line-height: 1.7;
     color: var(--color-text-primary);
 }
 
 .thread-brief h1,
 .thread-brief h2,
 .thread-brief h3 {
-    margin: 1em 0 0.4em;
+    margin: 1.4em 0 0.5em;
     font-weight: 600;
     line-height: 1.3;
 }
 
-.thread-brief h1 { font-size: 1.15rem; }
+.thread-brief h1 { font-size: 1.2rem; }
 .thread-brief h2 { font-size: 1.05rem; }
-.thread-brief h3 { font-size: 0.95rem; }
+.thread-brief h3 { font-size: 0.95rem; color: var(--color-text-secondary); }
 
-.thread-brief p { margin: 0.5em 0; }
+.thread-brief p { margin: 0.6em 0; }
 
 .thread-brief ul,
 .thread-brief ol {
-    margin: 0.5em 0;
+    margin: 0.6em 0;
     padding-left: 1.4em;
 }
 
-.thread-brief li { margin: 0.2em 0; }
+.thread-brief li { margin: 0.3em 0; }
 
 .thread-brief strong { font-weight: 600; }
 
 .thread-brief hr {
     border: none;
     border-top: 1px solid var(--color-border);
-    margin: 1em 0;
+    margin: 1.5em 0;
 }
 
 .thread-brief code {
     font-size: 0.9em;
     background: var(--color-bg-secondary);
-    padding: 1px 4px;
+    padding: 1px 5px;
     border-radius: 4px;
 }
 

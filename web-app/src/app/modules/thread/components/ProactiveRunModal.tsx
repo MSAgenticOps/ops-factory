@@ -18,10 +18,10 @@ interface ProactiveRunModalProps {
 
 /**
  * Read-only viewer for one proactive push (PRD §13.2): renders the **delivered brief** (the follow-up's summary,
- * markdown-formatted). Follows the platform modal spec (cf. the "create scheduled action" dialog): header =
- * schedule name + muted run-time subtitle; body = an optional ←/→ pager strip then the brief; footer = the
- * right-aligned action buttons only ("view run" opens the full transcript / audit path; "close"). ←/→ step the
- * timeline in place without closing.
+ * markdown-formatted) in the platform's large (`wide`) modal at a **stable height** (only the body scrolls, so
+ * paging short↔long briefs doesn't resize the frame). Header = schedule name + muted run-time subtitle. Footer =
+ * the ←/→ pager on the left, neutral equal-weight actions on the right ("open session" navigates to that run's
+ * chat session; "close"). Neither action is primary — closing is at least as likely.
  */
 export default function ProactiveRunModal({ records, index, agentId, onIndexChange, onClose }: ProactiveRunModalProps) {
     const { t } = useTranslation()
@@ -37,53 +37,56 @@ export default function ProactiveRunModal({ records, index, agentId, onIndexChan
         </span>
     )
 
-    // Footer = right-aligned actions only, per the platform modal spec (header / body / action footer).
     const footer = (
-        <>
-            <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => navigate('/chat', { state: buildChatSessionState(record.sessionId, agentId) })}
-            >
-                {t('thread.viewRun')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>{t('common.close')}</Button>
-        </>
+        <div className="thread-run-footer">
+            <div className="thread-run-pager">
+                {records.length > 1 && (
+                    <>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            disabled={index <= 0}
+                            onClick={() => onIndexChange(index - 1)}
+                            aria-label={t('thread.prev')}
+                            title={t('thread.prev')}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                        </Button>
+                        <span className="thread-run-pager-pos">{index + 1} / {records.length}</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            disabled={index >= records.length - 1}
+                            onClick={() => onIndexChange(index + 1)}
+                            aria-label={t('thread.next')}
+                            title={t('thread.next')}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </Button>
+                    </>
+                )}
+            </div>
+            <div className="thread-run-actions">
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate('/chat', { state: buildChatSessionState(record.sessionId, agentId) })}
+                >
+                    {t('thread.openSession')}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={onClose}>{t('common.close')}</Button>
+            </div>
+        </div>
     )
 
     return (
-        <DetailDialog title={title} onClose={onClose} variant="wide" footer={footer}>
-            {records.length > 1 && (
-                <div className="thread-run-pager">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        disabled={index <= 0}
-                        onClick={() => onIndexChange(index - 1)}
-                        aria-label={t('thread.prev')}
-                        title={t('thread.prev')}
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
-                            <polyline points="15 18 9 12 15 6" />
-                        </svg>
-                    </Button>
-                    <span className="thread-run-pager-pos">{index + 1} / {records.length}</span>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        disabled={index >= records.length - 1}
-                        onClick={() => onIndexChange(index + 1)}
-                        aria-label={t('thread.next')}
-                        title={t('thread.next')}
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
-                            <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                    </Button>
-                </div>
-            )}
+        <DetailDialog title={title} onClose={onClose} variant="wide" className="thread-run-modal" footer={footer}>
             <div className="thread-brief">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{record.summary}</ReactMarkdown>
             </div>

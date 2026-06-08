@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatRunTime, previewOf, scheduleAccent, scheduleLabel, snippetOf } from '../app/modules/thread/threadFormat'
+import { formatRunTime, previewOf, scheduleLabel, snippetOf } from '../app/modules/thread/threadFormat'
 import { countUnreadFollowups, type ThreadFollowup } from '../app/platform/providers/ThreadUnreadContext'
 
 function followup(time: string, summary = 'x'): ThreadFollowup {
@@ -43,18 +43,6 @@ describe('thread snippetOf', () => {
 
     it('handles empty input', () => {
         expect(snippetOf('')).toBe('')
-    })
-})
-
-describe('thread scheduleAccent', () => {
-    it('maps known schedule ids to a type accent', () => {
-        expect(scheduleAccent('ticket-daily-brief')).toBe('brief')
-        expect(scheduleAccent('ticket-watch-loop')).toBe('watch')
-        expect(scheduleAccent('fo-copilot-memory-maintenance')).toBe('memory')
-    })
-
-    it('falls back to default for an unknown schedule', () => {
-        expect(scheduleAccent('something-else')).toBe('default')
     })
 })
 

@@ -468,6 +468,12 @@ textarea {
     width: 32%;
 }
 
+/* A faint surface tint behind the push cards so the white list-cards read as distinct cards (list-panel pattern),
+   instead of white-on-white outlines. Scoped to the thread panel; preview/market panels stay on the plain surface. */
+.right-panel-host.thread .right-panel-body {
+    background: var(--color-bg-secondary);
+}
+
 /* Generic page-panel chrome (mirrors the file-preview header so it aligns to the 48px top bar). */
 .right-panel-header {
     height: var(--header-height);
