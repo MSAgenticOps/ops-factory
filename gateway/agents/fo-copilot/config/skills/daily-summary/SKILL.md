@@ -1,5 +1,5 @@
 ---
-name: daily-brief
+name: daily-summary
 description: "Daily brief (daily-brief). The FO lead's morning operations brief: pull the previous day's ticket-handling summary and render it as a tight ops-director report — what came in, what got closed, what's still important, and above all what needs the FO lead's decision today. 每日运维简报。Use when the scheduled daily-brief task fires, or when asked how the previous day went."
 ---
 

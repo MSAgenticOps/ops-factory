@@ -1,5 +1,5 @@
 ---
-name: advance
+name: progress
 description: "Advance / correct a ticket (advance). Use when a ticket needs to move to its next state, or fields need correcting (change category, change priority, etc.). Read context, pick the target state, validate preconditions, write the reason, execute per authorization. 推进 / 订正工单。"
 ---
 
@@ -9,12 +9,10 @@ Move a ticket to its next state, or correct its fields. Works on generic ticket 
 
 ## Workflow
 
-1. **Read context**: `ticket.get` for current state, owner, priority, SLA. Only when you are actually going to act on this ticket, use `ticket.get_timeline` to deep-read the full history (routine scans do not read the timeline).
+1. **Read context**: `ticket.get_state_context` to query the ticket's detailed information and complete history.
 2. **Read memory**: check for any agreement on this ticket (e.g. "don't chase until the customer confirms Friday") or an existing escalation record, to avoid breaking an agreement or nagging twice.
-3. **Decide the action**: pick the target state (`ticket.list_transitions` to list available transitions) or the fields to correct (category, priority, etc.).
-4. **Validate preconditions**: are the transition's preconditions met, does it need confirmation (see the `Transition`'s `needsConfirm`)? If not, fill the gap or explain first.
-5. **Write the reason**: before / after executing, use `ticket.comment` to spell out why the change is made.
-6. **Execute**: `ticket.transition` to advance state, `ticket.update` to change fields — **per the authorization below**.
+3. **Decide and execute**: pick the target state or the fields to correct (category, priority, etc.), then directly call `ticket.transition` to execute the transition — **per the authorization below**.
+4. **Write the reason**: use `ticket.comment` to spell out why the change is made.
 
 ## Action authorization
 
