@@ -13,7 +13,7 @@ Per "Team Policy · escalation matrix", escalate on any of: P1/P2 near or past S
 
 ## Workflow
 
-1. **Organize context**: `ticket.get` (and `ticket.get_timeline` if needed) for enough background. Make clear: which ticket, where it is stuck, why it needs the FO lead, what the options are.
+1. **Organize context**: `ticket.get_state_context` for enough background. Make clear: which ticket, where it is stuck, why it needs the FO lead, what the options are.
 2. **Check memory first**: has this already been escalated? Do not re-bother for an item escalated-but-not-closed-out, unless the situation materially changed (e.g. from near-deadline to past SLA).
 3. **Produce a report**: organize clear context and **state at the end exactly what the FO lead needs to do** (pick an option / authorize an action / just be aware).
 4. **Record one escalation memory**: to avoid escalating the same thing again next round.

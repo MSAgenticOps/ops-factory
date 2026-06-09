@@ -1,5 +1,5 @@
 ---
-name: watch
+name: monitor
 description: "Proactive watch (watch). One round of ticket patrol fired by a scheduled task: pull the tickets 'waiting on me', judge each and try to pass the ball on, maintain memory, and produce one report. 主动看护。Use when the scheduled proactive ticket-watch task fires."
 ---
 
@@ -15,9 +15,13 @@ Every ticket has a "next-action owner". Watching = pushing out the tickets whose
 
 1. **Get the list**: `ticket.get_todo` for the tickets "waiting on me". Its selection rule is defined on the ticketing-system side; you do not care about the rule, only about working the list down item by item.
 2. **Handle each ticket**:
-   - `ticket.get` for current state, owner, priority, SLA (**summary level, do not read the timeline**).
+   - Loop through each ticket from the list in step 1.
+   - Call `ticket.get_state_context` to query the ticket's detailed information and decide the next action.
    - **Read memory**: is there an agreement on this ticket (e.g. "wait for the customer Friday"), has it already been escalated → avoid breaking an agreement or nagging twice.
-   - **Decide and handle per authorization**: advance / assign / escalate / close / comment-and-wait / hold. The goal is to pass the ball on.
+   - **Decide and execute per authorization**:
+     - If transition is needed, call `ticket.transition` to execute the transition.
+     - If reassignment is needed, call `ticket.update_assignment` to reassign to another person.
+     - The ultimate goal is to pass the ticket to someone else (no longer copilot).
 3. **Maintain memory**: write the new agreements that surfaced this round, clean up lapsed entries.
 4. **Produce a report**: focus on the 1–3 most important items; if nothing is wrong, a single line "all normal, no action needed".
 
