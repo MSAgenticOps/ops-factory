@@ -263,12 +263,10 @@ public class AgentController {
      * are respawned immediately; others respawn lazily on the next request.
      *
      * @param id agent identifier from the URL path
-     * @param request current HTTP request
      * @return response with the number of stopped instances, or an error body if the agent is unknown
      */
     @PostMapping("/{id}/instances/restart")
-    public ResponseEntity<Map<String, Object>> restartInstances(@PathVariable("id") String id,
-        HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> restartInstances(@PathVariable("id") String id) {
         AgentRegistryEntry entry = agentConfigService.findAgent(id);
         if (entry == null) {
             return badAgent(id);
