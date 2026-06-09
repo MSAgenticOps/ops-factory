@@ -7,6 +7,7 @@ import { useVoiceInput } from './useVoiceInput'
 import { useToast } from '../providers/ToastContext'
 import type { AttachedFile, SelectedSkill } from '../../../types/message'
 import type { SkillEntry } from '../../../types/skill'
+import { findAtMentionToken, buildMentionReplacement, filterAgents } from './mention'
 import './ChatInput.css'
 
 // File handling constants
@@ -133,6 +134,7 @@ interface ChatInputProps {
     presetMessage?: string
     presetToken?: number
     skills?: SkillEntry[]
+    agents?: { id: string; name?: string }[]
     onBrowseSkillMarket?: () => void
 }
 
@@ -153,6 +155,7 @@ export default function ChatInput({
     presetMessage,
     presetToken,
     skills = [],
+    agents = [],
     onBrowseSkillMarket,
 }: ChatInputProps) {
     const { t, i18n } = useTranslation()
@@ -166,8 +169,14 @@ export default function ChatInput({
     const [skillQuery, setSkillQuery] = useState('')
     const [skillSlashRange, setSkillSlashRange] = useState<{ start: number; end: number } | null>(null)
     const [activeSkillIndex, setActiveSkillIndex] = useState(0)
+    const [isMentionOpen, setIsMentionOpen] = useState(false)
+    const [mentionQuery, setMentionQuery] = useState('')
+    const [mentionRange, setMentionRange] = useState<{ start: number; end: number } | null>(null)
+    const [activeMentionIndex, setActiveMentionIndex] = useState(0)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const activeSkillItemRef = useRef<HTMLButtonElement>(null)
+    const activeMentionItemRef = useRef<HTMLButtonElement>(null)
 
     const sortedSkills = useMemo(() => [...skills].sort(compareSkills), [skills])
     const filteredSkills = useMemo(() => sortedSkills.filter(skill => {
@@ -182,6 +191,10 @@ export default function ChatInput({
     const hiddenSkillCount = Math.max(0, filteredSkills.length - visibleSkills.length)
 
     const activeSkill = visibleSkills[activeSkillIndex]
+
+    const filteredAgents = useMemo(() => filterAgents(agents, mentionQuery), [agents, mentionQuery])
+    const visibleAgents = useMemo(() => filteredAgents.slice(0, MAX_VISIBLE_SKILL_OPTIONS), [filteredAgents])
+    const activeAgent = visibleAgents[activeMentionIndex]
 
     const closeSkillPicker = useCallback(() => {
         setIsSkillPickerOpen(false)
@@ -205,6 +218,30 @@ export default function ChatInput({
         setIsSkillPickerOpen(true)
         setActiveSkillIndex(0)
     }, [closeSkillPicker, disabled])
+
+    const closeMentionPicker = useCallback(() => {
+        setIsMentionOpen(false)
+        setMentionQuery('')
+        setMentionRange(null)
+        setActiveMentionIndex(0)
+    }, [])
+
+    const updateMentionPickerState = useCallback((nextValue: string, cursor: number | null) => {
+        // No agents passed => this chat's agent is not a delegator (tool-agent); never offer the picker.
+        if (disabled || cursor == null || agents.length === 0) {
+            closeMentionPicker()
+            return
+        }
+        const token = findAtMentionToken(nextValue, cursor)
+        if (!token) {
+            closeMentionPicker()
+            return
+        }
+        setMentionQuery(token.query)
+        setMentionRange({ start: token.start, end: token.end })
+        setIsMentionOpen(true)
+        setActiveMentionIndex(0)
+    }, [closeMentionPicker, disabled, agents.length])
 
     const { state: voiceState, isSupported: voiceSupported, startListening, stopListening, error: voiceError } = useVoiceInput({
         onTranscript: (text) => setValue(text),
@@ -241,12 +278,29 @@ export default function ChatInput({
     useEffect(() => {
         setSelectedSkill(null)
         closeSkillPicker()
-    }, [selectedAgent, closeSkillPicker])
+        closeMentionPicker()
+    }, [selectedAgent, closeSkillPicker, closeMentionPicker])
 
     useEffect(() => {
         if (activeSkillIndex < visibleSkills.length) return
         setActiveSkillIndex(Math.max(0, visibleSkills.length - 1))
     }, [activeSkillIndex, visibleSkills.length])
+
+    useEffect(() => {
+        if (activeMentionIndex < visibleAgents.length) return
+        setActiveMentionIndex(Math.max(0, visibleAgents.length - 1))
+    }, [activeMentionIndex, visibleAgents.length])
+
+    // Keep the keyboard-selected option scrolled into view within the picker list.
+    useEffect(() => {
+        if (!isSkillPickerOpen) return
+        activeSkillItemRef.current?.scrollIntoView({ block: 'nearest' })
+    }, [activeSkillIndex, isSkillPickerOpen])
+
+    useEffect(() => {
+        if (!isMentionOpen) return
+        activeMentionItemRef.current?.scrollIntoView({ block: 'nearest' })
+    }, [activeMentionIndex, isMentionOpen])
 
     useEffect(() => {
         if (!selectedSkill) return
@@ -294,6 +348,22 @@ export default function ChatInput({
     const handleRemoveSelectedSkill = () => {
         setSelectedSkill(null)
         textareaRef.current?.focus()
+    }
+
+    const handleSelectMention = (agent: { id: string; name?: string }) => {
+        if (mentionRange) {
+            const { value: nextValue, caret } = buildMentionReplacement(value, mentionRange, agent.id)
+            setValue(nextValue)
+            window.requestAnimationFrame(() => {
+                const textarea = textareaRef.current
+                if (!textarea) return
+                textarea.focus()
+                textarea.setSelectionRange(caret, caret)
+            })
+        } else {
+            textareaRef.current?.focus()
+        }
+        closeMentionPicker()
     }
 
     const handleBrowseSkillMarket = () => {
@@ -479,7 +549,7 @@ export default function ChatInput({
 
     const handleSubmit = () => {
         if (disabled) return
-        if (isSkillPickerOpen) return
+        if (isSkillPickerOpen || isMentionOpen) return
 
         // Extract images as ImageData[]
         const images: ImageData[] = uploadedFiles
@@ -523,6 +593,28 @@ export default function ChatInput({
     }
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (isMentionOpen) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setActiveMentionIndex(index => visibleAgents.length === 0 ? 0 : (index + 1) % visibleAgents.length)
+                return
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setActiveMentionIndex(index => visibleAgents.length === 0 ? 0 : (index - 1 + visibleAgents.length) % visibleAgents.length)
+                return
+            }
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault()
+                if (activeAgent) handleSelectMention(activeAgent)
+                return
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault()
+                closeMentionPicker()
+                return
+            }
+        }
         if (isSkillPickerOpen) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
@@ -558,11 +650,13 @@ export default function ChatInput({
         const nextValue = e.target.value
         setValue(nextValue)
         updateSkillPickerState(nextValue, e.target.selectionStart)
+        updateMentionPickerState(nextValue, e.target.selectionStart)
     }
 
     const handleSelectionChange = (e: SyntheticEvent<HTMLTextAreaElement>) => {
         const textarea = e.currentTarget
         updateSkillPickerState(textarea.value, textarea.selectionStart)
+        updateMentionPickerState(textarea.value, textarea.selectionStart)
     }
 
     const handleFileInputClick = () => {
@@ -650,6 +744,7 @@ export default function ChatInput({
                                 return (
                                     <button
                                         key={skillId}
+                                        ref={index === activeSkillIndex ? activeSkillItemRef : null}
                                         type="button"
                                         className={`skill-picker-option ${index === activeSkillIndex ? 'active' : ''}`}
                                         onMouseDown={event => event.preventDefault()}
@@ -683,6 +778,43 @@ export default function ChatInput({
                         </>
                     )
                     })()}
+                </div>
+            )}
+
+            {isMentionOpen && (
+                <div className="skill-picker" role="listbox" aria-label={t('chat.mentionPickerLabel')}>
+                    <div className="skill-picker-header">
+                        <span>{t('chat.mentionPickerTitle')}</span>
+                        <span className="skill-picker-header-meta">
+                            {t('chat.skillPickerResultCount', { shown: visibleAgents.length, total: filteredAgents.length })}
+                            {mentionQuery && <span className="skill-picker-query">@{mentionQuery}</span>}
+                        </span>
+                    </div>
+                    {filteredAgents.length === 0 ? (
+                        <div className="skill-picker-empty"><p>{t('chat.mentionPickerNoMatches')}</p></div>
+                    ) : (
+                        <div className="skill-picker-list">
+                            {visibleAgents.map((agent, index) => (
+                                <button
+                                    key={agent.id}
+                                    ref={index === activeMentionIndex ? activeMentionItemRef : null}
+                                    type="button"
+                                    className={`skill-picker-option ${index === activeMentionIndex ? 'active' : ''}`}
+                                    onMouseDown={event => event.preventDefault()}
+                                    onClick={() => handleSelectMention(agent)}
+                                    title={agent.id}
+                                    role="option"
+                                    aria-selected={index === activeMentionIndex}
+                                >
+                                    <span className="skill-picker-option-icon" aria-hidden="true">@</span>
+                                    <span className="skill-picker-option-body">
+                                        <span className="skill-picker-option-name">{agent.name || agent.id}</span>
+                                        <span className="skill-picker-option-desc">{agent.id}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
+import sys
+
+# goose 1.33+ strips PYTHONPATH (treated as a disallowed env var), so make the
+# vendored dependencies in .python-deps importable without relying on it.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".python-deps"))
+
 from typing import Any, Optional
 
 from mcp.server.fastmcp import FastMCP

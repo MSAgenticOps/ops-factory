@@ -176,14 +176,14 @@ def _dump(payload: Any) -> str:
 
 
 def handle_get_platform_status() -> str:
-    system = cc("/control-center/runtime/system")
-    instances = cc("/control-center/runtime/instances")
+    system = cc("/api/control-center/runtime/system")
+    instances = cc("/api/control-center/runtime/instances")
     return _dump({"system": system, "instances": instances})
 
 
 def handle_get_agents_status() -> str:
-    agents = cc("/control-center/runtime/agents")
-    instances = cc("/control-center/runtime/instances")
+    agents = cc("/api/control-center/runtime/agents")
+    instances = cc("/api/control-center/runtime/instances")
     return _dump({"agents": agents, "instances": instances})
 
 
@@ -196,7 +196,7 @@ def handle_get_observability_data(hours: Any = None) -> str:
         "to": to_time.isoformat().replace("+00:00", "Z"),
     }
 
-    status = cc("/control-center/observability/status")
+    status = cc("/api/control-center/observability/status")
     if not status.get("enabled"):
         return _dump(
             {
@@ -213,9 +213,9 @@ def handle_get_observability_data(hours: Any = None) -> str:
             }
         )
 
-    overview = cc("/control-center/observability/overview", params)
-    traces = cc("/control-center/observability/traces", {**params, "limit": "30"})
-    observations = cc("/control-center/observability/observations", params)
+    overview = cc("/api/control-center/observability/overview", params)
+    traces = cc("/api/control-center/observability/traces", {**params, "limit": "30"})
+    observations = cc("/api/control-center/observability/observations", params)
     return _dump(
         {
             "timeRange": {
@@ -231,23 +231,23 @@ def handle_get_observability_data(hours: Any = None) -> str:
 
 
 def handle_get_realtime_metrics() -> str:
-    return _dump(cc("/control-center/runtime/metrics"))
+    return _dump(cc("/api/control-center/runtime/metrics"))
 
 
 def handle_list_services() -> str:
-    return _dump(cc("/control-center/services"))
+    return _dump(cc("/api/control-center/services"))
 
 
 def handle_get_service_status(service_id: Any) -> str:
     normalized = urllib.parse.quote(require_service_id(service_id), safe="")
-    return _dump(cc(f"/control-center/services/{normalized}"))
+    return _dump(cc(f"/api/control-center/services/{normalized}"))
 
 
 def handle_read_service_logs(service_id: Any, lines: Any = None) -> str:
     normalized = urllib.parse.quote(require_service_id(service_id), safe="")
     return _dump(
         cc(
-            f"/control-center/services/{normalized}/logs",
+            f"/api/control-center/services/{normalized}/logs",
             {"lines": normalize_lines(lines)},
         )
     )
@@ -255,29 +255,29 @@ def handle_read_service_logs(service_id: Any, lines: Any = None) -> str:
 
 def handle_read_service_config(service_id: Any) -> str:
     normalized = urllib.parse.quote(require_service_id(service_id), safe="")
-    return _dump(cc(f"/control-center/services/{normalized}/config"))
+    return _dump(cc(f"/api/control-center/services/{normalized}/config"))
 
 
 def handle_list_events() -> str:
-    return _dump(cc("/control-center/events"))
+    return _dump(cc("/api/control-center/events"))
 
 
 def handle_start_service(service_id: Any) -> str:
     normalized = urllib.parse.quote(require_service_id(service_id), safe="")
     return _dump(
-        cc(f"/control-center/services/{normalized}/actions/start", method="POST")
+        cc(f"/api/control-center/services/{normalized}/actions/start", method="POST")
     )
 
 
 def handle_stop_service(service_id: Any) -> str:
     normalized = urllib.parse.quote(require_service_id(service_id), safe="")
     return _dump(
-        cc(f"/control-center/services/{normalized}/actions/stop", method="POST")
+        cc(f"/api/control-center/services/{normalized}/actions/stop", method="POST")
     )
 
 
 def handle_restart_service(service_id: Any) -> str:
     normalized = urllib.parse.quote(require_service_id(service_id), safe="")
     return _dump(
-        cc(f"/control-center/services/{normalized}/actions/restart", method="POST")
+        cc(f"/api/control-center/services/{normalized}/actions/restart", method="POST")
     )

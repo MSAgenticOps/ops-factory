@@ -25,6 +25,7 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -202,6 +203,52 @@ public class AgentConfigServiceTest {
     public void testLoadAgentConfigYaml_noFile() {
         Map<String, Object> config = service.loadAgentConfigYaml("nonexistent");
         assertTrue(config.isEmpty());
+    }
+
+    /**
+     * An out-of-band config.yaml edit (changed mtime) is picked up without an explicit invalidateCache — the cache
+     * self-heals, so a hand-edited provider/model takes effect without a gateway restart.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testLoadAgentConfigYaml_picksUpOutOfBandFileEdit() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
+        Files.createDirectories(configDir);
+        Path configFile = configDir.resolve("config.yaml");
+        Files.writeString(configFile, "GOOSE_PROVIDER: custom_minimax-m2.7\n");
+        Files.setLastModifiedTime(configFile, FileTime.fromMillis(1_000_000L));
+
+        assertEquals("custom_minimax-m2.7", service.loadAgentConfigYaml("test-agent").get("GOOSE_PROVIDER"));
+
+        // Hand-edit the file (new content + newer mtime), bypassing the gateway and invalidateCache.
+        Files.writeString(configFile, "GOOSE_PROVIDER: custom_minimax-m3\n");
+        Files.setLastModifiedTime(configFile, FileTime.fromMillis(2_000_000L));
+
+        assertEquals("custom_minimax-m3", service.loadAgentConfigYaml("test-agent").get("GOOSE_PROVIDER"));
+    }
+
+    /**
+     * When the file's mtime is unchanged, the cache is served without re-parsing (preserves the caching benefit).
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testLoadAgentConfigYaml_servesCacheWhenMtimeUnchanged() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
+        Files.createDirectories(configDir);
+        Path configFile = configDir.resolve("config.yaml");
+        Files.writeString(configFile, "GOOSE_PROVIDER: openai\n");
+        FileTime mtime = FileTime.fromMillis(1_000_000L);
+        Files.setLastModifiedTime(configFile, mtime);
+
+        assertEquals("openai", service.loadAgentConfigYaml("test-agent").get("GOOSE_PROVIDER"));
+
+        // Change content but restore the same mtime: the cache must still serve the prior parse (no re-read).
+        Files.writeString(configFile, "GOOSE_PROVIDER: anthropic\n");
+        Files.setLastModifiedTime(configFile, mtime);
+
+        assertEquals("openai", service.loadAgentConfigYaml("test-agent").get("GOOSE_PROVIDER"));
     }
 
     /**

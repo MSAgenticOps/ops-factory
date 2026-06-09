@@ -145,28 +145,28 @@ describe('runtime.ts health check', () => {
 describe('vite.config.ts proxy rules', () => {
     const source = read('vite.config.ts')
 
-    it('proxies /gateway to gateway service', () => {
-        expect(source).toMatch(/['"]\/gateway['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:3000['"]/)
+    it('proxies /api/gateway to gateway service', () => {
+        expect(source).toMatch(/['"]\/api\/gateway['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:3000['"]/)
     })
 
-    it('proxies /skill-market to skill market service', () => {
-        expect(source).toMatch(/['"]\/skill-market['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8095['"]/)
+    it('proxies /api/skill-market to skill market service', () => {
+        expect(source).toMatch(/['"]\/api\/skill-market['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8095['"]/)
     })
 
-    it('proxies /operation-intelligence to OI service', () => {
-        expect(source).toMatch(/['"]\/operation-intelligence['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8096['"]/)
+    it('proxies /api/operation-intelligence to OI service', () => {
+        expect(source).toMatch(/['"]\/api\/operation-intelligence['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8096['"]/)
     })
 
-    it('proxies /knowledge to knowledge service', () => {
-        expect(source).toMatch(/['"]\/knowledge['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8092['"]/)
+    it('proxies /api/knowledge to knowledge service', () => {
+        expect(source).toMatch(/['"]\/api\/knowledge['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8092['"]/)
     })
 
-    it('proxies /control-center to control center service', () => {
-        expect(source).toMatch(/['"]\/control-center['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8094['"]/)
+    it('proxies /api/control-center to control center service', () => {
+        expect(source).toMatch(/['"]\/api\/control-center['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8094['"]/)
     })
 
-    it('proxies /business-intelligence to BI service', () => {
-        expect(source).toMatch(/['"]\/business-intelligence['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8093['"]/)
+    it('proxies /api/business-intelligence to BI service', () => {
+        expect(source).toMatch(/['"]\/api\/business-intelligence['"]\s*:\s*['"]http:\/\/127\.0\.0\.1:8093['"]/)
     })
 })
 

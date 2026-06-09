@@ -19,9 +19,22 @@ public final class GatewayConstants {
 
     public static final String HEADER_USER_ID = "x-user-id";
 
+    // A2A (agent-to-agent) request headers — the delegation extension self-reports its caller identity.
+    // depth is NOT carried here; it is derived gateway-side from the side-record (see A2ASessionStore).
+    public static final String HEADER_A2A_ORIGIN = "x-a2a-origin";
+
+    public static final String HEADER_A2A_ORIGIN_SESSION = "x-a2a-origin-session";
+
     public static final String QUERY_KEY = "key";
 
     public static final String QUERY_UID = "uid";
+
+    // A2A classification
+    public static final String A2A_ORIGIN = "a2a";
+
+    public static final String SESSION_TYPE_AGENT_CALL = "agent_call";
+
+    public static final String SESSION_FIELD_ORIGIN = "origin";
 
     // Default users
     public static final String SYSTEM_USER = "admin";

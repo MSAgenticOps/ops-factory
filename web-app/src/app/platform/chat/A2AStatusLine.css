@@ -1,0 +1,62 @@
+/*
+ * A2A delegation activity row — a compact meta caption hung under the `call_agent` tool card.
+ * Chrome-free (status is already on the process-step rail node) and left-grouped: a leading sub-result arrow
+ * anchors it to the card above, and middot separators keep agent / label / tool-count / elapsed reading as ONE
+ * line rather than items pinned to opposite edges. Inherits the app's design tokens (no bespoke palette).
+ */
+.a2a-status-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-text-tertiary);
+}
+
+.a2a-status-line .a2a-arrow {
+    opacity: 0.6;
+}
+
+.a2a-status-line .a2a-agent {
+    font-weight: 500;
+    color: var(--color-accent);
+}
+
+.a2a-status-line .a2a-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 260px;
+    color: var(--color-text-secondary);
+}
+
+.a2a-status-line .a2a-elapsed {
+    font-variant-numeric: tabular-nums;
+}
+
+/* middot separators before the secondary items, so the row groups as a single caption (no edge-pinning) */
+.a2a-status-line .a2a-label::before,
+.a2a-status-line .a2a-tools::before,
+.a2a-status-line .a2a-elapsed::before {
+    content: "·";
+    margin-right: 6px;
+    opacity: 0.55;
+}
+
+.a2a-spinner {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    opacity: 0.5;
+    flex-shrink: 0;
+    animation: a2a-spin 0.8s linear infinite;
+}
+
+@keyframes a2a-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

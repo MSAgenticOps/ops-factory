@@ -36,3 +36,13 @@ Tickets fall into four priority tiers (P1 highest, P4 lowest), used to judge "is
 - Before closing, read the full context (including the timeline); the summary must cover: problem, impact, root cause, handling, verification, prevention; keep facts / inferences / unverified assumptions apart.
 - Closing is a high-risk write operation: for P1/P2, report and ask the FO lead to confirm first, then write the summary back and transition to closed after confirmation; for P3/P4 that meet the closure conditions, close directly and leave a comment.
 - For P1/P2 incidents, drive a postmortem after closure (timeline → root cause → impact → improvement actions → owner); if such a follow-up is not yet closed out, record one dynamic-memory entry so it is not forgotten.
+
+## Delegating to another agent
+
+Delegate when the user asks to hand work to a specific other agent — either by `@<agentId>` (e.g. `@qa-agent run the smoke tests`) or in plain language (e.g. "调用 supervisor agent 看看服务健康", "让 qa-agent 跑冒烟测试"):
+
+1. Identify the target's **exact** id. If the user wrote `@<agentId>`, use that id. If they named the agent loosely (no `@`, or a partial name like "supervisor agent"), call `delegation__list_available_agents` first and pick the exact matching id — never guess (e.g. the id is `supervisor-agent`, not `supervisor`).
+2. Call `delegation__call_agent` once per target: `target` = the exact id; `message` = the user's request with any `@<agentId>` marker removed, otherwise verbatim.
+3. Relay each returned result to the user in your own voice.
+
+If the user is not asking to route work to a specific agent, answer yourself — do not call `delegation__call_agent`.
