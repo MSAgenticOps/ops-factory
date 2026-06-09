@@ -414,8 +414,10 @@ export function WhitelistTab({ commands, isLoading, error, fetchCommands, create
                                                     {cmd.pattern}
                                                 </code>
                                             </td>
-                                            <td className="sop-workflow-muted-text">
-                                                {cmd.description || '--'}
+                                            <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                <span title={cmd.description || '--'}>
+                                                    {cmd.description || '--'}
+                                                </span>
                                             </td>
                                             <td style={{ textAlign: 'center' }}>
                                                 <ToggleSwitch
