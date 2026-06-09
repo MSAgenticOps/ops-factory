@@ -186,6 +186,23 @@ public class SolutionTypeControllerTest {
             .andExpect(jsonPath("$.success").value(false));
     }
 
+    /**
+     * Tests delete solution type in use returns 409.
+     *
+     * @throws Exception test fail
+     */
+    @Test
+    public void testDeleteSolutionType_inUse_returns409() throws Exception {
+        when(solutionTypeService.deleteSolutionType("in-use"))
+            .thenThrow(new IllegalStateException("Solution type 'CRM' is in use by: 2 SOP(s) - Log Cleanup, Service Restart"));
+
+        mockMvc.perform(
+            delete("/api/gateway/solution-types/in-use").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("is in use")));
+    }
+
     // ── Auth tests ───────────────────────────────────────────────
 
     /**
