@@ -347,6 +347,8 @@ export interface ScheduledJob {
     paused?: boolean;
     current_session_id?: string | null;
     process_start_time?: string | null;
+    /** Gateway-side delivery channel for this schedule's report (e.g. "im"); null when unset. Not a goosed field. */
+    deliver?: string | null;
 }
 
 export interface ListSchedulesResponse {

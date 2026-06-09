@@ -64,7 +64,8 @@ test.describe('Local Tiny Agent', () => {
     await page.locator('.chat-send-btn-new').click()
 
     await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
-    await expect(page.locator('.agent-selector-trigger')).toContainText(AGENT_NAME, { timeout: 10_000 })
+    // Once the session has a message the agent is locked and the in-composer agent picker is hidden by design
+    // (switching agent = a new session). The agent identity is proven below by the tool call it actually runs.
 
     const messageArea = page.locator('.chat-messages-area')
     const expectedWorkingDir = path.join(repoRoot(), 'gateway', 'users', USER, 'agents', AGENT_ID)

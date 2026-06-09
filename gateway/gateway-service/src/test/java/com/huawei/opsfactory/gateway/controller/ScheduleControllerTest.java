@@ -14,6 +14,7 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkerService;
 
 import reactor.core.publisher.Mono;
 
@@ -43,6 +44,8 @@ public class ScheduleControllerTest {
 
     private GoosedProxy goosedProxy;
 
+    private ProactiveDeliveryMarkerService deliveryMarkerService;
+
     private ScheduleController controller;
 
     /**
@@ -52,7 +55,8 @@ public class ScheduleControllerTest {
     public void setUp() {
         instanceManager = mock(InstanceManager.class);
         goosedProxy = mock(GoosedProxy.class);
-        controller = new ScheduleController(instanceManager, goosedProxy);
+        deliveryMarkerService = mock(ProactiveDeliveryMarkerService.class);
+        controller = new ScheduleController(instanceManager, goosedProxy, deliveryMarkerService);
     }
 
     /**
@@ -71,7 +75,38 @@ public class ScheduleControllerTest {
     }
 
     /**
-     * Tests creating a schedule proxies the request body.
+     * Tests listing schedules annotates each job with its Gateway-side deliver marker (im / null) keyed by job id.
+     */
+    @Test
+    public void listSchedules_annotatesDeliverMarkers() {
+        MockHttpServletRequest request = request("GET", "/gateway/agents/test-agent/schedule/list");
+        when(goosedProxy.fetchJson(eq(INSTANCE_PORT), eq(HttpMethod.GET), eq("/schedule/list"), eq(null), eq(30),
+            eq(SECRET_KEY))).thenReturn(Mono.just("{\"jobs\":[{\"id\":\"job-1\"},{\"id\":\"job-2\"}]}"));
+        // job-1 is opted into IM delivery; job-2 has no marker (the mock returns null by default).
+        when(deliveryMarkerService.getDeliver(TEST_USER_ID, TEST_AGENT_ID, "job-1")).thenReturn("im");
+
+        ResponseEntity<String> result = controller.listSchedules(TEST_AGENT_ID, request);
+
+        assertEquals("{\"jobs\":[{\"id\":\"job-1\",\"deliver\":\"im\"},{\"id\":\"job-2\",\"deliver\":null}]}",
+            result.getBody());
+    }
+
+    /**
+     * Tests listing schedules passes a non-JSON goosed response through unchanged (no annotation, no failure).
+     */
+    @Test
+    public void listSchedules_passesThroughNonJson() {
+        MockHttpServletRequest request = request("GET", "/gateway/agents/test-agent/schedule/list");
+        when(goosedProxy.fetchJson(eq(INSTANCE_PORT), eq(HttpMethod.GET), eq("/schedule/list"), eq(null), eq(30),
+            eq(SECRET_KEY))).thenReturn(Mono.just("{bad"));
+
+        ResponseEntity<String> result = controller.listSchedules(TEST_AGENT_ID, request);
+
+        assertEquals("{bad", result.getBody());
+    }
+
+    /**
+     * Tests creating a schedule proxies the request body and, with no deliver flag, clears any delivery marker.
      */
     @Test
     public void createSchedule_proxiesBody() {
@@ -79,9 +114,25 @@ public class ScheduleControllerTest {
         when(goosedProxy.fetchJson(eq(INSTANCE_PORT), eq(HttpMethod.POST), eq("/schedule/create"),
             eq("{\"id\":\"job-1\"}"), eq(30), eq(SECRET_KEY))).thenReturn(Mono.just("{\"id\":\"job-1\"}"));
 
-        ResponseEntity<String> result = controller.createSchedule(TEST_AGENT_ID, "{\"id\":\"job-1\"}", request);
+        ResponseEntity<String> result =
+            controller.createSchedule(TEST_AGENT_ID, "{\"id\":\"job-1\"}", null, request);
 
         assertEquals("{\"id\":\"job-1\"}", result.getBody());
+        verify(deliveryMarkerService).remove(TEST_USER_ID, TEST_AGENT_ID, "job-1");
+    }
+
+    /**
+     * Tests creating a schedule with deliver=im persists the IM delivery marker keyed by schedule id.
+     */
+    @Test
+    public void createSchedule_withDeliverIm_marksSchedule() {
+        MockHttpServletRequest request = request("POST", "/gateway/agents/test-agent/schedule/create");
+        when(goosedProxy.fetchJson(eq(INSTANCE_PORT), eq(HttpMethod.POST), eq("/schedule/create"),
+            eq("{\"id\":\"job-1\"}"), eq(30), eq(SECRET_KEY))).thenReturn(Mono.just("{\"id\":\"job-1\"}"));
+
+        controller.createSchedule(TEST_AGENT_ID, "{\"id\":\"job-1\"}", "im", request);
+
+        verify(deliveryMarkerService).setDeliver(TEST_USER_ID, TEST_AGENT_ID, "job-1", "im");
     }
 
     /**
@@ -113,6 +164,7 @@ public class ScheduleControllerTest {
         ResponseEntity<String> result = controller.deleteSchedule(TEST_AGENT_ID, "job-1", request);
 
         assertEquals("{}", result.getBody());
+        verify(deliveryMarkerService).remove(TEST_USER_ID, TEST_AGENT_ID, "job-1");
     }
 
     /**

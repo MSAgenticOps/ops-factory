@@ -1,0 +1,210 @@
+/*
+ * Shared conversation layout — promoted from modules/chat so chat and the Assistant (thread) page
+ * use the exact same shell: a 100vh column with a 48px header, centered scrollable messages, and a
+ * fixed, full-width, right-panel-aware composer dock. Class names are kept (`chat-*`) so the chat page
+ * consumes these rules unchanged (chat.css @imports this file).
+ */
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/*
+ * ConversationShell root: viewport-bounded without `flex: 1`, so it does NOT grow to its (tall) message
+ * content the way a flex item would inside the flex-column main-content — the header stays pinned and the
+ * messages scroll internally. ChatPage keeps its own `.chat-container`.
+ */
+.conversation-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+.chat-session-header {
+    height: var(--header-height);
+    padding: 0 var(--spacing-6);
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    flex-shrink: 0;
+}
+
+.chat-session-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.chat-messages-area {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.chat-anchor-spacer {
+    height: max(180px, 96vh);
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+/* "Jump to bottom" control, shown in the composer dock when the latest message is below the fold.
+ * Shared by the chat page and the Assistant (thread) page (both render it inside .chat-input-area-inner). */
+.chat-scroll-bottom-action {
+    display: flex;
+    justify-content: center;
+    pointer-events: auto;
+}
+
+.chat-scroll-bottom-button {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--color-text-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.chat-scroll-bottom-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.18);
+}
+
+.chat-scroll-bottom-button:focus-visible {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 2px;
+}
+
+.chat-input-area-bottom {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    z-index: 50;
+    padding: var(--spacing-6);
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    /* Fade messages out as they reach the composer's top edge (transparent → conversation surface), so content
+       dissolves into the dock instead of butting hard against the input pill. */
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0, var(--color-bg-primary) 44px);
+}
+
+.chat-input-area-bottom .chat-input-area-inner {
+    pointer-events: auto;
+}
+
+.main-wrapper.embed-mode .chat-input-area-bottom {
+    left: 0;
+}
+
+/* Conversation column width — three reference points (drag-resize on C is a later addition):
+   - C hidden → B is independent → a generous MAX
+   - C shown → B is constrained → a comfortable DEFAULT (also gives roomier side margins)
+   - B never compresses below a readable floor when a panel is open
+   Messages (`.chat-messages`) and the composer (`.chat-input-area-inner`) both read `--conv-width`, so they are
+   always exactly the same width and centered together. */
+.main-wrapper {
+    --conv-width: 900px;
+}
+
+.main-wrapper.with-right-panel {
+    --conv-width: 760px;
+}
+
+.main-wrapper.with-right-panel .main-content {
+    min-width: 480px;
+}
+
+.chat-input-area-inner {
+    max-width: var(--conv-width);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Scroll viewport mirrors the composer dock: padding lives here (outside the 880 cap), full width, scrollbar at
+   the column edge. The centered 880-wide inner is `.chat-messages` — so message text and the composer inner share
+   the exact same width and left/right edges in both the no-panel and right-panel layouts. */
+.chat-messages-scroll {
+    flex: 1;
+    overflow-y: auto;
+    /* Reserve the scrollbar gutter symmetrically so the centered 880 column stays centered (and aligned with the
+       composer) on platforms with classic scrollbars; a no-op with macOS overlay scrollbars. */
+    scrollbar-gutter: stable both-edges;
+    padding: var(--spacing-6);
+    width: 100%;
+}
+
+.chat-messages-area .chat-messages-scroll {
+    padding-bottom: 140px;
+}
+
+.chat-content {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chat-messages {
+    padding: var(--spacing-6) 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-6);
+    width: 100%;
+    max-width: var(--conv-width);
+    margin: 0 auto;
+}
+
+.main-wrapper.with-right-panel.panel-preview .chat-input-area-bottom {
+    right: auto;
+    width: calc(45% - 110px);
+}
+
+.main-wrapper.with-right-panel.panel-preview-fullscreen .chat-input-area-bottom {
+    width: 100%;
+}
+
+.main-wrapper.with-right-panel.panel-preview .chat-input-area-inner {
+    max-width: var(--conv-width);
+}
+
+/*
+ * Assistant (thread) page: the composer docks INSIDE the conversation shell (column B) instead of as a
+ * viewport-fixed bar, so it spans the narrow main column exactly and stays centered regardless of the right
+ * panel width — no viewport-% guesswork. Scoped to `.conversation-shell`; ChatPage (`.chat-container`, with
+ * its viewport-fixed composer) is untouched. The 3-class selector also wins over `.sidebar-collapsed`'s `left`.
+ */
+.main-wrapper .conversation-shell .chat-input-area-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    width: auto;
+}
+
+.main-wrapper.sidebar-collapsed .chat-input-area-bottom {
+    left: var(--sidebar-width-collapsed);
+}
+
+.main-wrapper.with-right-panel .page-container {
+    max-width: 100%;
+}

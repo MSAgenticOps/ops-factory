@@ -19,7 +19,8 @@ import java.util.Map;
  * <ul>
  *   <li>{@code thinking} / {@code redactedThinking} content is dropped (never surfaced).</li>
  *   <li>A {@code toolRequest} becomes a {@code tool_call} progress frame whose label is a friendly action name.</li>
- *   <li>User-visible assistant {@code text} becomes a {@code text} progress frame and is accumulated as the result.</li>
+ *   <li>User-visible assistant {@code text} becomes a {@code text} progress frame and is accumulated
+ *       as the result.</li>
  *   <li>{@code Finish} / {@code Error} are terminal; everything else (Ping, ActiveRequests, Notification, ...) is
  *       ignored.</li>
  * </ul>

@@ -75,7 +75,7 @@ describe('operation intelligence frontend structure', () => {
         const zh = JSON.parse(read('src/i18n/zh.json'))
 
         expect(en.sidebar.operationIntelligence).toBe('Operation Intelligence')
-        expect(zh.sidebar.operationIntelligence).toBe('智能运维')
+        expect(zh.sidebar.operationIntelligence).toBe('运维智能')
         expect(Object.keys(en.operationIntelligence).sort()).toEqual(Object.keys(zh.operationIntelligence).sort())
         expect(Object.keys(en.operationIntelligence.knowledgeGraph).sort())
             .toEqual(Object.keys(zh.operationIntelligence.knowledgeGraph).sort())

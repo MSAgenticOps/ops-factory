@@ -12,6 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1021,6 +1022,16 @@ public class AgentConfigServiceTest {
         Files.writeString(seedDir.resolve("mem.yaml"), "version: 1.0.0\ntitle: mem\ninstructions: maintain memory\n");
     }
 
+    private void writeScheduleSeedWithDeliver(String agentId) throws IOException {
+        Path seedDir = gatewayRoot.resolve("agents").resolve(agentId).resolve("config").resolve("seed-schedules");
+        Files.createDirectories(seedDir);
+        Files.writeString(seedDir.resolve("seed.json"),
+            "[{\"id\":\"ticket-watch-loop\",\"cron\":\"0 */30 * * * *\",\"recipe\":\"watch.yaml\",\"deliver\":\"im\"},"
+                + "{\"id\":\"mem-maint\",\"cron\":\"0 0 12 * * *\",\"recipe\":\"mem.yaml\"}]");
+        Files.writeString(seedDir.resolve("watch.yaml"), "version: 1.0.0\ntitle: watch\ninstructions: run watch\n");
+        Files.writeString(seedDir.resolve("mem.yaml"), "version: 1.0.0\ntitle: mem\ninstructions: maintain memory\n");
+    }
+
     private Path scheduleJsonPath(String userId, String agentId) {
         return service.getUserAgentDir(userId, agentId).resolve("data").resolve("schedule.json");
     }
@@ -1204,6 +1215,26 @@ public class AgentConfigServiceTest {
         service.ensureSchedulesSeeded(USER_A, "test-agent");
 
         assertEquals(2, readScheduledJobs(USER_A, "test-agent").size());
+    }
+
+    /**
+     * A seed entry's optional {@code deliver} field is materialized into the per-user delivery marker: the
+     * opted-in task (ticket-watch-loop) is marked for IM push, while a task without {@code deliver} is not.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testEnsureSchedulesSeeded_seedsDeliverMarkerForOptedInTasks() throws IOException {
+        writeScheduleSeedWithDeliver("test-agent");
+
+        service.ensureSchedulesSeeded(USER_A, "test-agent");
+
+        Path deliveryFile = service.getUserAgentDir(USER_A, "test-agent")
+            .resolve(ProactiveDeliveryMarkers.DIR).resolve(ProactiveDeliveryMarkers.DELIVERY_FILE);
+        assertEquals(ProactiveDeliveryMarkers.DELIVER_IM,
+            ProactiveDeliveryMarkers.getDeliver(deliveryFile, "ticket-watch-loop"));
+        assertNull("a task without a deliver field must not be marked for IM",
+            ProactiveDeliveryMarkers.getDeliver(deliveryFile, "mem-maint"));
     }
 
     /**

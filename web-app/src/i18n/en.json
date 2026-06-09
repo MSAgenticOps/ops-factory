@@ -67,9 +67,10 @@
   "sidebar": {
     "home": "Home",
     "newChat": "New Chat",
-    "history": "History",
+    "history": "Session History",
     "inbox": "Inbox",
-    "agents": "Agents",
+    "thread": "My Assistant",
+    "agents": "Agent Config",
     "skillMarket": "Skill Market",
     "channels": "Channels",
     "knowledge": "Knowledge",
@@ -605,6 +606,8 @@
     "reasoningInProgress": "Reasoning...",
     "compactingContext": "Compacting context...",
     "copyMessage": "Copy message",
+    "showMore": "Show more",
+    "showLess": "Show less",
     "copyOutput": "Copy output",
     "copiedOutput": "Output copied",
     "voiceInput": "Voice input",
@@ -1296,6 +1299,26 @@
     "dismiss": "Dismiss",
     "summaryUnavailable": "No task summary is available yet."
   },
+  "thread": {
+    "title": "My Assistant",
+    "switcherLabel": "Switch assistant",
+    "loading": "Loading threads…",
+    "noThreads": "No bound IM conversations yet. Bind a channel to start a thread.",
+    "noConversation": "No conversation yet. Once this contact messages the assistant, it will appear here.",
+    "replyPlaceholder": "Reply…",
+    "resumeError": "Failed to load this conversation: {{error}}",
+    "pushesTitle": "Proactive pushes",
+    "noPushes": "No proactive pushes delivered to this thread yet.",
+    "showPushes": "Show pushes",
+    "prev": "Previous",
+    "next": "Next",
+    "openSession": "Open session",
+    "schedule": {
+      "ticket-daily-brief": "Daily brief",
+      "ticket-watch-loop": "Proactive watch",
+      "fo-copilot-memory-maintenance": "Memory upkeep"
+    }
+  },
   "scheduler": {
     "title": "Scheduler",
     "subtitle": "Create and manage cron-based actions per agent.",
@@ -1348,6 +1371,8 @@
     "currentScheduleId": "Current schedule ID: {{id}}",
     "cron": "Cron",
     "cronHint": "Supports 5 or 6 fields. Example: 0 0 9 * * * (every day at 09:00).",
+    "deliverToIm": "Push the report to my bound IM channels",
+    "deliverToImHint": "When this task runs, also push its report to your bound IM channels. The run is always kept in Inbox regardless.",
     "saving": "Saving...",
     "create": "Create",
     "deleteConfirm": "Delete scheduled action \"{{id}}\"?",

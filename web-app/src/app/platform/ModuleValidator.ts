@@ -7,6 +7,7 @@ const validIcons = new Set<IconKey>([
     'plus',
     'history',
     'inbox',
+    'thread',
     'files',
     'channels',
     'diagnosis',

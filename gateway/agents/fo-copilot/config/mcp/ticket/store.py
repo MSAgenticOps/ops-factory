@@ -17,7 +17,7 @@ import json
 import os
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +87,14 @@ def _build_seed() -> dict[str, Any]:
             "visibility": visibility,
         }
 
+    # Yesterday-anchored timestamp (always lands on the previous calendar day in UTC,
+    # regardless of the current hour) so the daily-brief always has a populated window.
+    def y_at(hour: int, minute: int = 0) -> str:
+        return _iso((now - timedelta(days=1)).replace(hour=hour, minute=minute, second=0, microsecond=0))
+
+    def y_evt(hour: int, author: str, kind: str, summary: str, visibility: str = "internal") -> dict[str, Any]:
+        return {"time": y_at(hour), "author": author, "type": kind, "summary": summary, "visibility": visibility}
+
     tickets = [
         {
             "id": "INC-1042",
@@ -146,6 +154,10 @@ def _build_seed() -> dict[str, Any]:
             "system": "ingress",
             "contact": "platform-team",
             "todo": True,
+            # Explicitly flagged as needing the FO lead's call (the daily-brief also
+            # *derives* awaiting-decision items from overdue P1/P2 — see daily_brief()).
+            "awaitingDecision": True,
+            "decisionNeeded": "CAB approval is stalled; decide whether to push the ingress 1.9 upgrade to next week's window or expedite an emergency change.",
             "createdAt": _iso(now - timedelta(days=2)),
             "updatedAt": _iso(now - timedelta(hours=6)),
             "sla": {
@@ -203,6 +215,71 @@ def _build_seed() -> dict[str, Any]:
             "timeline": [
                 evt(1680, "it-helpdesk", "created", "Multiple latency reports."),
                 evt(180, "chen.hao", "comment", "Investigating the afternoon traffic peak on gateway-2."),
+            ],
+        },
+        # --- previous-day activity (drives get_daily_brief) -------------------
+        # Two opened-and-resolved-yesterday plus one opened-yesterday-still-open
+        # carry-over, so the brief always reports a real prior-day window.
+        {
+            "id": "INC-1051",
+            "type": "Incident",
+            "title": "Payment gateway timeouts during EU checkout",
+            "description": "Gateway timeouts caused intermittent checkout failures for EU customers around midday.",
+            "status": "resolved",
+            "priority": "P1",
+            "owner": COPILOT_OWNER,
+            "category": "payments",
+            "system": "checkout-api",
+            "contact": "ops-oncall",
+            "todo": False,
+            "createdAt": y_at(8, 30),
+            "updatedAt": y_at(11, 10),
+            "sla": {"responseDueAt": y_at(9, 0), "resolveDueAt": y_at(12, 0)},
+            "timeline": [
+                y_evt(8, "monitoring", "created", "Auto-raised from gateway timeout alert."),
+                y_evt(9, COPILOT_OWNER, "comment", "Failed over to the secondary payment route; errors dropping."),
+                y_evt(11, COPILOT_OWNER, "transition", "in_progress -> resolved: failover held, error rate back to baseline."),
+            ],
+        },
+        {
+            "id": "INC-1047",
+            "type": "Incident",
+            "title": "Auth service elevated 401 errors",
+            "description": "A bad cache config caused a burst of spurious 401s on the auth service.",
+            "status": "resolved",
+            "priority": "P2",
+            "owner": COPILOT_OWNER,
+            "category": "identity",
+            "system": "auth-service",
+            "contact": "security-oncall",
+            "todo": False,
+            "createdAt": y_at(13, 15),
+            "updatedAt": y_at(15, 40),
+            "sla": {"responseDueAt": y_at(14, 0), "resolveDueAt": y_at(17, 0)},
+            "timeline": [
+                y_evt(13, "monitoring", "created", "401 rate above threshold."),
+                y_evt(14, COPILOT_OWNER, "comment", "Reverted the auth cache TTL change from the morning deploy."),
+                y_evt(15, COPILOT_OWNER, "transition", "in_progress -> resolved: 401 rate normal after revert."),
+            ],
+        },
+        {
+            "id": "REQ-2090",
+            "type": "ServiceRequest",
+            "title": "Grant analytics team read access to staging",
+            "description": "Analytics team requested read-only access to the staging dataset for a one-off audit.",
+            "status": "in_progress",
+            "priority": "P3",
+            "owner": "wang.fang",
+            "category": "database",
+            "system": "analytics-db",
+            "contact": "data-platform",
+            "todo": False,  # opened yesterday, still being worked by wang.fang — a carry-over
+            "createdAt": y_at(16, 45),
+            "updatedAt": y_at(17, 30),
+            "sla": {"responseDueAt": y_at(18, 0), "resolveDueAt": _iso(now + timedelta(hours=6))},
+            "timeline": [
+                y_evt(16, "data-platform", "created", "Submitted via the service catalog."),
+                y_evt(17, "wang.fang", "comment", "Preparing a scoped read role; will grant after review."),
             ],
         },
     ]
@@ -299,6 +376,132 @@ class TicketStore:
 
     def candidates(self) -> list[dict[str, Any]]:
         return self._load()["candidates"]
+
+    # States that still represent live work (not resolved/closed/cancelled) — i.e.
+    # tickets that can still breach their resolve SLA or await a decision.
+    _OPEN_STATES = {"new", "triage", "in_progress", "pending"}
+
+    @staticmethod
+    def _date_of(iso: str) -> date | None:
+        if not iso:
+            return None
+        try:
+            return datetime.fromisoformat(iso.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+    @classmethod
+    def _resolved_on(cls, t: dict[str, Any], d: date) -> bool:
+        """True if the ticket was moved to resolved/closed on date `d` (per timeline)."""
+        for e in t.get("timeline", []):
+            if e.get("type") != "transition":
+                continue
+            summary = e.get("summary", "")
+            if ("-> resolved" in summary or "-> closed" in summary) and cls._date_of(e.get("time", "")) == d:
+                return True
+        return False
+
+    @classmethod
+    def _handled_on(cls, t: dict[str, Any], d: date) -> bool:
+        """True if the copilot took at least one action on the ticket on date `d`."""
+        return any(
+            e.get("author") == COPILOT_OWNER and cls._date_of(e.get("time", "")) == d
+            for e in t.get("timeline", [])
+        )
+
+    def _latest_active_date(self, tickets: list[dict[str, Any]]) -> date | None:
+        """Most recent calendar day on which any ticket was opened or resolved."""
+        days: set[date] = set()
+        for t in tickets:
+            opened = self._date_of(t.get("createdAt", ""))
+            if opened is not None:
+                days.add(opened)
+            for e in t.get("timeline", []):
+                if e.get("type") == "transition":
+                    summary = e.get("summary", "")
+                    if "-> resolved" in summary or "-> closed" in summary:
+                        d = self._date_of(e.get("time", ""))
+                        if d is not None:
+                            days.add(d)
+        return max(days) if days else None
+
+    def _brief_for(self, tickets: list[dict[str, Any]], d: date) -> dict[str, Any]:
+        opened = [t for t in tickets if self._date_of(t.get("createdAt", "")) == d]
+        resolved = [t for t in tickets if self._resolved_on(t, d)]
+        handled = [t for t in tickets if self._handled_on(t, d)]
+        by_priority = {p: sum(1 for t in opened if t.get("priority") == p) for p in ("P1", "P2", "P3", "P4")}
+        return {
+            "date": d.isoformat(),
+            "opened": len(opened),
+            "resolved": len(resolved),
+            "handled": len(handled),
+            "byPriority": by_priority,
+            "openedTickets": [self._brief_line(t) for t in opened],
+            "resolvedTickets": [self._brief_line(t) for t in resolved],
+        }
+
+    @staticmethod
+    def _brief_line(t: dict[str, Any]) -> dict[str, Any]:
+        return {"id": t["id"], "title": t["title"], "priority": t.get("priority"), "status": t.get("status")}
+
+    def daily_brief(self, target_date: date | None = None) -> dict[str, Any]:
+        """Mock previous-day handling summary for the FO lead's morning brief.
+
+        Defaults to yesterday; if that day saw no opened/resolved activity, rolls
+        back to the most recent active day so the brief is never empty (`fallbackFrom`
+        records the originally requested date). Counts are date-scoped, but the
+        backlog views (`importantOpen`, `awaitingDecision`, `atRisk`) reflect *current*
+        state — that is what the FO lead needs to decide on today, regardless of when
+        each ticket was opened."""
+        data = self._load()
+        tickets = data["tickets"]
+        if target_date is None:
+            target_date = (_now() - timedelta(days=1)).date()
+
+        brief = self._brief_for(tickets, target_date)
+        if brief["opened"] == 0 and brief["resolved"] == 0:
+            latest = self._latest_active_date(tickets)
+            if latest is not None and latest != target_date:
+                brief = self._brief_for(tickets, latest)
+                brief["fallbackFrom"] = target_date.isoformat()
+
+        now = _now()
+        important_open = {
+            "P1": sum(1 for t in tickets if t["status"] in self._OPEN_STATES and t.get("priority") == "P1"),
+            "P2": sum(1 for t in tickets if t["status"] in self._OPEN_STATES and t.get("priority") == "P2"),
+        }
+
+        awaiting: list[dict[str, Any]] = []
+        at_risk: list[dict[str, Any]] = []
+        for t in tickets:
+            status = t.get("status")
+            priority = t.get("priority")
+            resolve_due = (t.get("sla") or {}).get("resolveDueAt")
+            overdue = bool(resolve_due) and (self._date_of(resolve_due) is not None) and resolve_due < _iso(now)
+            open_work = status in self._OPEN_STATES
+
+            # Explicit human flag awaits a decision regardless of state; the derived
+            # rule only fires on still-open work (a resolved ticket past its SLA is
+            # done, not a pending decision).
+            explicit = t.get("awaitingDecision") is True
+            derived = open_work and priority in ("P1", "P2") and overdue
+            if explicit or derived:
+                awaiting.append({
+                    "id": t["id"], "title": t["title"], "priority": priority, "status": status,
+                    "question": t.get("decisionNeeded")
+                    or f"{priority} is past its resolve SLA and still {status} — approve escalation / extra resources?",
+                })
+
+            if status in self._OPEN_STATES and priority in ("P1", "P2") and overdue:
+                at_risk.append({
+                    "id": t["id"], "title": t["title"], "priority": priority,
+                    "status": status, "resolveDueAt": resolve_due,
+                })
+
+        brief["importantOpen"] = important_open
+        brief["awaitingDecision"] = awaiting
+        brief["atRisk"] = at_risk
+        return brief
 
     # --- writes ----------------------------------------------------------
     def create(self, fields: dict[str, Any]) -> dict[str, Any]:

@@ -49,7 +49,7 @@ public record A2ASessionRecord(String subSessionId, String parentSessionId, Stri
      * @return a new record carrying {@code newStatus}
      */
     public A2ASessionRecord withStatus(String newStatus) {
-        return new A2ASessionRecord(subSessionId, parentSessionId, originAgentId, targetAgentId, callerUserId, createdAt,
-            newStatus, title);
+        return new A2ASessionRecord(subSessionId, parentSessionId, originAgentId, targetAgentId, callerUserId,
+            createdAt, newStatus, title);
     }
 }

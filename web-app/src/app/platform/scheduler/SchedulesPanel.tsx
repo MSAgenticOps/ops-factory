@@ -29,6 +29,7 @@ interface FormState {
     name: string
     instruction: string
     cron: string
+    deliverToIm: boolean
 }
 
 interface ScheduleDraftMap {
@@ -127,6 +128,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
         name: '',
         instruction: '',
         cron: DEFAULT_CRON,
+        deliverToIm: false,
     })
 
     // Keep the active agent in sync if the host passes a different fixed agent.
@@ -258,7 +260,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
         setEditingJob(null)
         setRuns([])
         setCreateAgentId(fixedAgentId || (selectedAgent === ALL_AGENTS ? (agents[0]?.id || '') : selectedAgent))
-        setForm({ name: '', instruction: '', cron: DEFAULT_CRON })
+        setForm({ name: '', instruction: '', cron: DEFAULT_CRON, deliverToIm: false })
         setShowModal(true)
     }
 
@@ -270,6 +272,8 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
             name: draft?.name || job.id,
             instruction: draft?.instruction || '',
             cron: job.cron,
+            // Source the toggle from the gateway-annotated marker (authoritative), not the session-only draft.
+            deliverToIm: job.deliver === 'im',
         })
         setShowModal(true)
         await loadRuns(job)
@@ -311,25 +315,27 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 description: `Scheduled action: ${form.name.trim()}`,
                 instructions: form.instruction.trim(),
             }
+            const deliver = form.deliverToIm ? 'im' as const : undefined
 
             if (editingJob) {
                 const original = jobs.find(job => job.agentId === targetAgentId && job.id === editingJob.id)
                 const wasPaused = !!original?.paused
 
                 const existingDraft = getDraftForJob(editingJob)
-                const recipeUnchanged = !!existingDraft
+                const settingsUnchanged = !!existingDraft
                     && existingDraft.name === form.name.trim()
                     && existingDraft.instruction === form.instruction.trim()
-                if (scheduleId === editingJob.id && recipeUnchanged) {
+                    && (editingJob.deliver === 'im') === form.deliverToIm
+                if (scheduleId === editingJob.id && settingsUnchanged) {
                     // Pure cron change: update in place so the existing schedule is never deleted.
                     await targetClient.updateSchedule(scheduleId, form.cron.trim())
                 } else if (scheduleId === editingJob.id) {
-                    // Recipe changed (no goosed recipe-update endpoint): recreate under the same id.
+                    // Recipe or delivery toggle changed (no goosed recipe-update endpoint): recreate under same id.
                     await targetClient.deleteSchedule(editingJob.id)
-                    await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim() })
+                    await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim(), deliver })
                 } else {
                     // Renamed: create the new id first, only then remove the old one.
-                    await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim() })
+                    await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim(), deliver })
                     await targetClient.deleteSchedule(editingJob.id)
                 }
 
@@ -338,7 +344,7 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                 }
                 showToast('success', t('scheduler.updated'))
             } else {
-                await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim() })
+                await targetClient.createSchedule({ id: scheduleId, recipe, cron: form.cron.trim(), deliver })
                 showToast('success', t('scheduler.created'))
             }
 
@@ -687,6 +693,15 @@ export default function SchedulesPanel({ agentId: fixedAgentId, embedded = false
                             />
                         </label>
                         <p className="scheduled-hint">{t('scheduler.cronHint')}</p>
+                        <label className="scheduled-field-label scheduled-field-checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.deliverToIm}
+                                onChange={(e) => setForm(prev => ({ ...prev, deliverToIm: e.target.checked }))}
+                            />
+                            {t('scheduler.deliverToIm')}
+                        </label>
+                        <p className="scheduled-hint">{t('scheduler.deliverToImHint')}</p>
                         {editingJob && (
                             <div className="scheduled-form-meta">
                                 <span className="scheduled-form-meta-label">{t('scheduler.lastRun')}</span>

@@ -126,6 +126,10 @@ Two boundary rules matter across the repo:
 
 See [docs/architecture/overview.md](./docs/architecture/overview.md) for the service-level source of truth and [docs/architecture/api-boundaries.md](./docs/architecture/api-boundaries.md) for compatibility rules.
 
+### FO Copilot proactive assistant
+
+The gateway also hosts **FO Copilot**, a proactive operations assistant (shown as **我的助理 / My Assistant** in the sidebar). It watches scheduled agent runs, and for schedules marked `deliver=im` it pushes each run's brief to the user's bound IM channels (WeChat and others) while always keeping the run in the WebApp Inbox. When the user replies from IM, the gateway re-injects recent follow-up context so the assistant can continue the thread — turning ops into a "scan → open → reply" loop. Delivery is configured under `gateway.proactive-delivery` in `gateway/config.yaml`. See [docs/architecture/fo-copilot-proactive-assistant.md](./docs/architecture/fo-copilot-proactive-assistant.md).
+
 ## Core Services
 
 | Service | Directory | Default Port | Stack | Responsibility |
@@ -139,6 +143,7 @@ See [docs/architecture/overview.md](./docs/architecture/overview.md) for the ser
 | Prometheus Exporter | `prometheus-exporter/` | `9091` | Java 21 + Spring Boot | Gateway-oriented Prometheus metrics export |
 | Operation Intelligence | `operation-intelligence/` | `8096` | Java 21 + Spring Boot | QoS health curve data collection, scoring, and query APIs (optional) |
 | FinOps / Token Ops | `finops/` | `8097` | Java 21 + Spring Boot | Token usage attribution by user, agent, session, model, and provider from gateway/goosed session data (optional) |
+| Ops Common | `ops-common/` | n/a | Java 21 + Spring Boot | Shared library: machine-interface auth aspect (`@BasicAuth`), common exceptions, and Spring autoconfiguration reused across services |
 | TypeScript SDK | `typescript-sdk/` | n/a | TypeScript | Programmatic gateway client |
 | Langfuse | `langfuse/` | `3100` | Docker Compose | Optional LLM observability integration |
 | OnlyOffice | `onlyoffice/` | `8080` | Docker Compose | Optional office document preview |
@@ -156,6 +161,7 @@ ops-factory/
 ├── operation-intelligence/   # QoS health curve service
 ├── finops/                   # Token Ops / FinOps usage analytics service
 ├── prometheus-exporter/      # Prometheus metrics exporter
+├── ops-common/               # Shared Java library: machine-API auth aspect, exceptions, autoconfig
 ├── typescript-sdk/           # @goosed/sdk client library
 ├── test/                     # Cross-service integration and E2E coverage
 ├── docs/                     # Architecture, development, and operations docs
@@ -316,6 +322,7 @@ Start here for cross-team work:
 - [docs/architecture/overview.md](./docs/architecture/overview.md)
 - [docs/architecture/api-boundaries.md](./docs/architecture/api-boundaries.md)
 - [docs/architecture/process-management.md](./docs/architecture/process-management.md)
+- [docs/architecture/fo-copilot-proactive-assistant.md](./docs/architecture/fo-copilot-proactive-assistant.md)
 - [docs/development/ui-guidelines.md](./docs/development/ui-guidelines.md)
 - [docs/development/review-checklist.md](./docs/development/review-checklist.md)
 

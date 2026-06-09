@@ -886,7 +886,10 @@ export default function Chat() {
                         autoFocus
                         selectedAgent={activeAgentId}
                         onAgentChange={handleAgentChange}
-                        showAgentSelector={true}
+                        // A session's agent/model are fixed once it has messages — switching agent means a NEW
+                        // session. So the picker is offered only on an empty draft; a resumed/started session
+                        // shows a read-only model badge (unifying chat-resume with the Assistant page).
+                        showAgentSelector={messages.length === 0}
                         modelInfo={modelInfo}
                         tokenState={tokenState}
                         skills={activeAgentSkills}

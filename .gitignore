@@ -42,6 +42,10 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Agent MCP adapter local mock data (default store/log, used only when the
+# TICKET_MOCK_STORE/*_LOG env vars are unset, e.g. ad-hoc local runs)
+gateway/agents/*/config/mcp/*/.data/
+
 # IDE / Editor
 .vscode/
 .idea/

@@ -63,7 +63,9 @@ public class ServletWebConfig {
         if (configured == null || configured.isBlank() || "*".equals(configured.trim())) {
             config.addAllowedOriginPattern("*");
         } else {
-            config.setAllowedOrigins(Arrays.stream(configured.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+            List<String> origins = Arrays.stream(configured.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).toList();
+            config.setAllowedOrigins(origins);
         }
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(

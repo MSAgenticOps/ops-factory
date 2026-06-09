@@ -8,6 +8,8 @@ import com.huawei.opsfactory.gateway.common.model.ManagedInstance;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import com.huawei.opsfactory.gateway.service.proactive.ChannelTargetKey;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveContextInjector;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelBinding;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelReplyResult;
@@ -18,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,18 +64,23 @@ public class SessionBridgeService {
 
     private final AgentConfigService agentConfigService;
 
+    private final ProactiveContextInjector contextInjector;
+
     private final WebClient webClient;
 
     /**
-     * Creates the session bridge service instance.
+     * Creates the session bridge service instance. {@code contextInjector} augments inbound IM replies with recent
+     * proactive follow-up context (PR8) before they reach the agent.
      */
     public SessionBridgeService(ChannelConfigService channelConfigService, ChannelBindingService channelBindingService,
-        InstanceManager instanceManager, GoosedProxy goosedProxy, AgentConfigService agentConfigService) {
+        InstanceManager instanceManager, GoosedProxy goosedProxy, AgentConfigService agentConfigService,
+        ProactiveContextInjector contextInjector) {
         this.channelConfigService = channelConfigService;
         this.channelBindingService = channelBindingService;
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;
         this.agentConfigService = agentConfigService;
+        this.contextInjector = contextInjector;
         this.webClient = goosedProxy.getWebClient();
     }
 
@@ -201,7 +209,15 @@ public class SessionBridgeService {
                     threadId);
                 String effectiveOwnerUserId = binding.ownerUserId() == null || binding.ownerUserId().isBlank()
                     ? channel.ownerUserId() : binding.ownerUserId();
-                return sendTextToSession(binding.agentId(), effectiveOwnerUserId, binding.sessionId(), text.trim())
+                // PR8: prepend recent proactive follow-ups so the agent can act on a terse IM reply (e.g. "关吧");
+                // the agent sees the augmented text, the IM surface still shows the user's original message. The
+                // follow-up lookup is a blocking file read, so run it on boundedElastic — never on a reactive thread.
+                String targetKey = ChannelTargetKey.of(channel.type(), channelId, accountId, conversationId, threadId);
+                return Mono.fromCallable(() -> contextInjector.augment(effectiveOwnerUserId, binding.agentId(),
+                        targetKey, text.trim()))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(agentVisibleText -> sendTextToSession(binding.agentId(), effectiveOwnerUserId,
+                        binding.sessionId(), agentVisibleText)
                     .onErrorResume(WebClientResponseException.class, error -> {
                         if (error.getStatusCode().value() != 404) {
                             return Mono.error(error);
@@ -211,7 +227,7 @@ public class SessionBridgeService {
                                 effectiveOwnerUserId, accountId, peerId, conversationId, threadId, conversationType,
                                 sessionId, binding.agentId()))
                             .flatMap(rebound -> sendTextToSession(rebound.agentId(), effectiveOwnerUserId,
-                                rebound.sessionId(), text.trim()));
+                                rebound.sessionId(), agentVisibleText));
                     })
                     .onErrorResume(IllegalStateException.class, error -> {
                         String message = error.getMessage() == null ? "" : error.getMessage();
@@ -223,7 +239,7 @@ public class SessionBridgeService {
                                 effectiveOwnerUserId, accountId, peerId, conversationId, threadId, conversationType,
                                 sessionId, binding.agentId()))
                             .flatMap(rebound -> sendTextToSession(rebound.agentId(), effectiveOwnerUserId,
-                                rebound.sessionId(), text.trim()));
+                                rebound.sessionId(), agentVisibleText));
                     })
                     .map(replyText -> {
                         channelBindingService.markConversationOutbound(channelId, effectiveOwnerUserId, accountId,
@@ -233,7 +249,7 @@ public class SessionBridgeService {
                         return new ChannelReplyResult(channelId, binding.accountId(), binding.peerId(),
                             binding.conversationId(), binding.threadId(), binding.conversationType(),
                             effectiveOwnerUserId, binding.agentId(), binding.sessionId(), replyText);
-                    });
+                    }));
             });
     }
 

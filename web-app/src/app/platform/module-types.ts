@@ -9,6 +9,7 @@ export type IconKey =
     | 'plus'
     | 'history'
     | 'inbox'
+    | 'thread'
     | 'files'
     | 'channels'
     | 'diagnosis'
@@ -23,7 +24,7 @@ export type IconKey =
     | 'monitoring'
     | 'hostResource'
 
-export type BadgeSource = 'none' | 'inboxUnread'
+export type BadgeSource = 'none' | 'inboxUnread' | 'threadUnread'
 
 export type RouteDefinition = {
     id: string

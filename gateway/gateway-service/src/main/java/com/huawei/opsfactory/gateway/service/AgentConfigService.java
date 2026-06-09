@@ -10,6 +10,8 @@ import com.huawei.opsfactory.gateway.common.model.ResidentInstanceTarget;
 import com.huawei.opsfactory.gateway.common.util.FileUtil;
 import com.huawei.opsfactory.gateway.common.util.YamlLoader;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
+import com.huawei.opsfactory.gateway.service.proactive.ProactiveStorage;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -953,11 +955,37 @@ public class AgentConfigService {
                 jobs.add(newScheduledJob(id, recipeDest.toAbsolutePath().normalize().toString(), cron));
                 added++;
             }
+            // A seed may opt its task into IM delivery (e.g. ticket-watch-loop). The marker is a Gateway-side
+            // concern stored per user, keyed by schedule id; set it once here as part of the one-time seed.
+            String deliver = seed.get("deliver");
+            if (!isBlank(deliver)) {
+                seedDeliverMarker(userId, agentId, id, deliver);
+            }
         }
         if (added > 0) {
             Files.writeString(scheduleJson, OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(jobs),
                 StandardCharsets.UTF_8);
             log.info("Seeded {} scheduled task(s) for {}:{} into {}", added, agentId, userId, scheduleJson);
+        }
+    }
+
+    /**
+     * Seeds the per-user IM-delivery marker for a built-in schedule (best-effort; a failure must not abort the
+     * surrounding schedule seed). Mirrors what the schedule-create endpoint persists when a user toggles delivery.
+     *
+     * @param userId user identifier
+     * @param agentId agent identifier
+     * @param scheduleId seeded schedule identifier
+     * @param deliver delivery channel value from the seed manifest (e.g. {@code im})
+     */
+    private void seedDeliverMarker(String userId, String agentId, String scheduleId, String deliver) {
+        Path deliveryFile = ProactiveStorage.deliveryMarkersFileIn(getUserAgentDir(userId, agentId));
+        try {
+            ProactiveDeliveryMarkers.setDeliver(deliveryFile, scheduleId, deliver);
+            log.info("Seeded deliver={} marker for schedule {} ({}:{})", deliver, scheduleId, agentId, userId);
+        } catch (IOException e) {
+            log.warn("Failed to seed deliver marker for schedule {} ({}:{}); it will not auto-deliver to IM: {}",
+                scheduleId, agentId, userId, e.getMessage());
         }
     }
 
