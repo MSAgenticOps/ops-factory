@@ -4,6 +4,7 @@ import type {
     AgentModelConfig,
     CreateProviderRequest,
     CreateProviderResponse,
+    RestartInstancesResponse,
     UpdateAgentConfigRequest,
     UpdateAgentConfigResponse,
     UpdateProviderRequest,
@@ -21,6 +22,7 @@ interface UseAgentConfigResult {
     updateModelConfig: (agentId: string, updates: AgentModelConfig) => Promise<UpdateAgentConfigResponse>
     createProvider: (agentId: string, provider: CreateProviderRequest) => Promise<CreateProviderResponse>
     updateProvider: (agentId: string, providerName: string, provider: UpdateProviderRequest) => Promise<CreateProviderResponse>
+    restartInstances: (agentId: string) => Promise<RestartInstancesResponse>
 }
 
 export function useAgentConfig(): UseAgentConfigResult {
@@ -165,6 +167,30 @@ export function useAgentConfig(): UseAgentConfigResult {
         }
     }, [userId])
 
+    const restartInstances = useCallback(async (agentId: string): Promise<RestartInstancesResponse> => {
+        setError(null)
+
+        try {
+            const res = await fetch(`${runtime.GATEWAY_URL}/agents/${agentId}/instances/restart`, {
+                method: 'POST',
+                headers: gatewayHeaders(userId),
+                signal: AbortSignal.timeout(30000),
+            })
+
+            const data: RestartInstancesResponse = await res.json()
+
+            if (!res.ok || !data.success) {
+                setError(data.error || 'Failed to restart instances')
+            }
+
+            return data
+        } catch (err) {
+            const errorMsg = getErrorMessage(err)
+            setError(errorMsg)
+            return { success: false, error: errorMsg }
+        }
+    }, [userId])
+
     return {
         config,
         isLoading,
@@ -174,5 +200,6 @@ export function useAgentConfig(): UseAgentConfigResult {
         updateModelConfig,
         createProvider,
         updateProvider,
+        restartInstances,
     }
 }

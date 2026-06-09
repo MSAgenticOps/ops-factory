@@ -350,7 +350,28 @@
     border-bottom-color: var(--color-text-primary);
 }
 
+.agent-restart-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-4);
+    margin-bottom: var(--spacing-4);
+}
+
+.agent-restart-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
+    .agent-restart-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .agent-configure-workspace-with-drawer .agent-configure-scroll-area {
         max-width: none;
     }
