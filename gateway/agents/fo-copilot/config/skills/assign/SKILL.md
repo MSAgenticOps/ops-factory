@@ -9,8 +9,16 @@ Pick a suitable handler for a ticket and complete (or recommend) the (re)assignm
 
 ## Workflow
 
-1. **Read context**: `ticket.get` for ticket details, focusing on the routing context (`routingContext`: candidates, skills, schedule, load, responsibility boundaries). When routing data is absent, state the default reason — do not invent candidates.
-2. **Pick a handler**: weigh skill match, whether the candidate is on shift, load level, and responsibility boundaries. An unavailable handler (on leave / off duty) is a common trigger for reassignment.
+1. **Read context**: `ticket.get_state_context` for ticket details, focusing on the routing context (`routingContext`: candidates, skills, schedule, load, responsibility boundaries). When routing data is absent, state the default reason — do not invent candidates.
+2. **Pick a handler**: 
+   - Call `ticket.get_candidates` to query current members' **skills** (技能), **on-duty status** (值班情况), and **load level** (负载情况)
+   - Combine with ticket details retrieved in step 1 (type, priority, category, affected system, etc.)
+   - Select the most suitable candidate based on:
+     - **Skill match**: Candidate's expertise aligns with the ticket's category/affected system
+     - **On-duty status**: Prefer candidates currently on shift
+     - **Load level**: Consider current workload to avoid overburdening
+     - **Responsibility boundaries**: Respect team/domain ownership rules
+   - An unavailable handler (on leave / off duty) is a common trigger for reassignment
 3. **Execute or propose**: reassign with `ticket.update_assignment`.
 4. **Comment to explain**: after reassigning, use `ticket.comment` to spell out "who it goes to, why, and when feedback is expected".
 
