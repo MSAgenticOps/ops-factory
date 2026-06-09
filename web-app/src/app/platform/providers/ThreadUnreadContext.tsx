@@ -196,8 +196,10 @@ export function ThreadUnreadProvider({ children }: { children: ReactNode }) {
             setFollowupsByKey(followups)
         } catch (err) {
             if ((err as { name?: string })?.name === 'AbortError') return
-            // Keep the poll resilient: a network/parse failure logs and leaves prior state intact.
-            console.warn('Thread unread refresh failed:', err)
+            // Keep the poll resilient: a network/parse failure leaves prior state intact (logged in dev only).
+            if (import.meta.env.DEV) {
+                console.warn('Thread unread refresh failed:', err)
+            }
         } finally {
             if (inFlightRef.current === controller) {
                 inFlightRef.current = null

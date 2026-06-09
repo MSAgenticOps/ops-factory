@@ -110,10 +110,15 @@ export default function ThreadMainConversation({ sessionId, agentId, header }: T
         return () => {
             cancelled = true
         }
-        // `client` is memoized per agentId, so it already changes when the agent changes — agentId would be redundant.
+        // client is memoized per agentId, so it already changes with the agent — agentId in deps would be redundant.
     }, [client, isConnected])
 
-    const handleSend = (text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill) => {
+    const handleSend = (
+        text: string,
+        images?: ImageData[],
+        attachedFiles?: AttachedFile[],
+        selectedSkill?: SelectedSkill,
+    ) => {
         const messageId = sendMessage(text, images, attachedFiles, selectedSkill)
         if (messageId) anchorSentMessage(messageId)
     }
@@ -129,7 +134,12 @@ export default function ThreadMainConversation({ sessionId, agentId, header }: T
             if (message.role !== 'user') continue
             const retryPayload = message.metadata?.retryPayload
             if (retryPayload) {
-                const messageId = sendMessage(retryPayload.text, retryPayload.images, retryPayload.attachedFiles, retryPayload.selectedSkill)
+                const messageId = sendMessage(
+                    retryPayload.text,
+                    retryPayload.images,
+                    retryPayload.attachedFiles,
+                    retryPayload.selectedSkill,
+                )
                 if (messageId) anchorSentMessage(messageId)
                 return
             }

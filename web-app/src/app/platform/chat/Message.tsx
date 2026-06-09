@@ -708,13 +708,16 @@ function MessageInner({
     const shouldShowCitedFileReferences = !isUser && !isStreaming && parsedFileCitations.length > 0
     const shouldShowRetrievedReferences = !isUser && !isStreaming && retrievedDocuments.length > 0
 
+    const contentClassName = [
+        'message-content',
+        isUser && userCanClamp && 'has-toggle',
+        isUser && userCanClamp && !isUserExpanded && 'user-clamped',
+    ].filter(Boolean).join(' ')
+
     return (
         <div className={`message ${isUser ? 'user' : 'assistant'}${isContinuation ? ' continuation' : ''} animate-slide-in`}>
             <div className="message-body">
-                <div
-                    className={`message-content${isUser && userCanClamp ? ' has-toggle' : ''}${isUser && userCanClamp && !isUserExpanded ? ' user-clamped' : ''}`}
-                    ref={isUser ? userContentRef : undefined}
-                >
+                <div className={contentClassName} ref={isUser ? userContentRef : undefined}>
                     {sessionError && (
                         <div className="message-error-banner">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">

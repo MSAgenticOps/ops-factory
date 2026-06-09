@@ -62,9 +62,10 @@ export function useConversationScroll({
     }, [scrollContainerRef])
 
     const getCurrentScrollTop = useCallback((element: HTMLElement): number => {
-        return element === document.scrollingElement || element === document.documentElement || element === document.body
-            ? window.scrollY
-            : element.scrollTop
+        const isDocumentScroll = element === document.scrollingElement
+            || element === document.documentElement
+            || element === document.body
+        return isDocumentScroll ? window.scrollY : element.scrollTop
     }, [])
 
     const getMaxScrollTop = useCallback((element: HTMLElement): number => {
@@ -72,7 +73,8 @@ export function useConversationScroll({
     }, [])
 
     const getBottomAnchorTop = useCallback((): number => {
-        const inputInner = document.querySelector('.chat-input-area-bottom .chat-input-area-inner') as HTMLElement | null
+        const composerSelector = '.chat-input-area-bottom .chat-input-area-inner'
+        const inputInner = document.querySelector(composerSelector) as HTMLElement | null
         return inputInner ? inputInner.getBoundingClientRect().top - BOTTOM_CONTENT_GAP_PX : window.innerHeight - 180
     }, [])
 
@@ -112,7 +114,13 @@ export function useConversationScroll({
             remainingScrollableDistance > BOTTOM_THRESHOLD_PX &&
             distancePastBottomAnchor > BOTTOM_THRESHOLD_PX,
         )
-    }, [getBottomAnchorTop, getCurrentScrollTop, getLastConversationElement, getMaxScrollTop, resolveActiveScrollElement])
+    }, [
+        getBottomAnchorTop,
+        getCurrentScrollTop,
+        getLastConversationElement,
+        getMaxScrollTop,
+        resolveActiveScrollElement,
+    ])
 
     useEffect(() => {
         updateScrollToBottomVisibility()
@@ -143,7 +151,8 @@ export function useConversationScroll({
         if (!messages.some(message => message.id === pendingAnchorId && message.role === 'user')) return
         const frame = window.requestAnimationFrame(() => {
             const activeScrollElement = resolveActiveScrollElement()
-            const targetElement = document.querySelector(`[data-message-id="${pendingAnchorId}"]`) as HTMLElement | null
+            const messageSelector = `[data-message-id="${CSS.escape(pendingAnchorId)}"]`
+            const targetElement = document.querySelector(messageSelector) as HTMLElement | null
             if (!targetElement) return
             const currentTop =
                 activeScrollElement === document.scrollingElement ||
@@ -168,7 +177,8 @@ export function useConversationScroll({
         let frame: number | null = null
         const completeAnchorIfSettled = () => {
             frame = null
-            const targetElement = document.querySelector(`[data-message-id="${pendingAnchorId}"]`) as HTMLElement | null
+            const messageSelector = `[data-message-id="${CSS.escape(pendingAnchorId)}"]`
+            const targetElement = document.querySelector(messageSelector) as HTMLElement | null
             if (!targetElement) return
             const currentTop = getCurrentScrollTop(activeScrollElement)
             const maxScrollTop = getMaxScrollTop(activeScrollElement)

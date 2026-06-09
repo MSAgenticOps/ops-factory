@@ -47,7 +47,7 @@ test.describe('Assistant — rendering', () => {
 })
 
 test.describe('Assistant — workbench', () => {
-  test('shows the conversation, copilot dropdown, and the push panel in the right-panel framework', async ({ page }) => {
+  test('shows the conversation, copilot dropdown, and the push panel', async ({ page }) => {
     await loginAs(page, USER)
     await page.goto('/#/thread')
     await page.waitForTimeout(3000)

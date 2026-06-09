@@ -761,7 +761,10 @@ export class GoosedClient {
 
         if (!response.ok) {
             const body = await response.text().catch(() => '');
-            throw new GoosedServerError(`A2A delegation failed (${response.status}): ${body.slice(0, 300)}`, response.status);
+            throw new GoosedServerError(
+                `A2A delegation failed (${response.status}): ${body.slice(0, 300)}`,
+                response.status,
+            );
         }
 
         for await (const { data } of this.sseDataLines(response)) {
