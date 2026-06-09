@@ -106,6 +106,7 @@ public class ClusterTypeService {
      *
      * @param id entity identifier
      * @return a cluster type by its ID
+     * @throws NotFoundException if the cluster type is not found
      */
     public Map<String, Object> getClusterType(String id) throws NotFoundException {
         Path file = clusterTypesDir.resolve(id + ".json");
@@ -121,7 +122,8 @@ public class ClusterTypeService {
      * Validates all fields before persistence.
      *
      * @param body request body
-     * @return the result
+     * @return the created cluster type map
+     * @throws IllegalArgumentException if validation fails or duplicate name/code exists
      */
     public Map<String, Object> createClusterType(Map<String, Object> body) {
         // Validate required fields
