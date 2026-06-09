@@ -102,22 +102,6 @@ public class SolutionTypeService {
     }
 
     /**
-     * Gets a solution type by its ID.
-     *
-     * @param id entity identifier
-     * @return the solution type map
-     * @throws NotFoundException if the solution type is not found
-     */
-    public Map<String, Object> getSolutionType(String id) throws NotFoundException {
-        Path file = solutionTypesDir.resolve(id + ".json");
-        Map<String, Object> st = readFile(file);
-        if (st == null) {
-            throw new NotFoundException("Solution type not found");
-        }
-        return st;
-    }
-
-    /**
      * Gets a solution type by its code.
      *
      * @param code solution type code
@@ -354,9 +338,9 @@ public class SolutionTypeService {
 
     /**
      * Validates a referenced solution type, allowing the universal default.
-     * Accepts either code or id, but always returns the code as the normalized value.
+     * Accepts only solution type code.
      *
-     * @param value referenced solution type code, id, or {@code null}
+     * @param value referenced solution type code or {@code null}
      * @return normalized solution type code
      */
     public String validateSolutionTypeReference(Object value) {
@@ -368,17 +352,7 @@ public class SolutionTypeService {
             return solutionType;
         }
 
-        // Try by code first (preferred), then by id (for backward compatibility)
-        Map<String, Object> st = null;
-        try {
-            st = getSolutionTypeByCode(solutionType);
-        } catch (NotFoundException e1) {
-            try {
-                st = getSolutionType(solutionType);
-            } catch (NotFoundException e2) {
-                throw new IllegalArgumentException("Solution type not found: " + solutionType, e1);
-            }
-        }
+        Map<String, Object> st = getSolutionTypeByCode(solutionType);
 
         String code = st.get("code") != null ? st.get("code").toString() : "";
         if (code.isBlank()) {

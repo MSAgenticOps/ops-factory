@@ -61,23 +61,6 @@ public class SolutionTypeController {
     }
 
     /**
-     * Gets a solution type by ID.
-     *
-     * @param id solution type identifier
-     * @param request current HTTP request
-     * @return ResponseEntity containing the solution type or 404
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getSolutionType(@PathVariable("id") String id,
-        HttpServletRequest request) throws NotFoundException {
-        Map<String, Object> st = solutionTypeService.getSolutionType(id);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        body.put("solutionType", st);
-        return ResponseEntity.ok(body);
-    }
-
-    /**
      * Creates a new solution type.
      *
      * @param request request body containing solution type fields

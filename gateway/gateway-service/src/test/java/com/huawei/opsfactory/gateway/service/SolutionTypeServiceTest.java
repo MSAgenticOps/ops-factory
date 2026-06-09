@@ -102,29 +102,6 @@ public class SolutionTypeServiceTest {
         assertEquals(1, types.size());
     }
 
-    // ── getSolutionType ────────────────────────────────────────────
-
-    /**
-     * Tests get solution type existing.
-     */
-    @Test
-    public void testGetSolutionType_existing() throws Exception {
-        createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
-
-        Map<String, Object> st = solutionTypeService.getSolutionType("st-1");
-        assertNotNull(st);
-        assertEquals("CRM Commerce", st.get("name"));
-        assertEquals("CRM billing solution", st.get("description"));
-    }
-
-    /**
-     * Tests get solution type not found.
-     */
-    @Test(expected = NotFoundException.class)
-    public void testGetSolutionType_notFound() throws Exception {
-        solutionTypeService.getSolutionType("nonexistent");
-    }
-
     /**
      * Tests validate solution type reference returns universal for null.
      */
