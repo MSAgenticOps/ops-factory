@@ -357,6 +357,17 @@ public class SopService {
             sop.putIfAbsent("stepsDescription", "");
             sop.putIfAbsent("targetSolution", "universal");
             sop.putIfAbsent("requiredTools", List.of());
+            // Normalize targetSolution from legacy UUID to code
+            Object targetSolution = sop.get("targetSolution");
+            if (targetSolution != null && !"universal".equals(targetSolution)) {
+                try {
+                    String normalizedCode = solutionTypeService.validateSolutionTypeReference(targetSolution);
+                    sop.put("targetSolution", normalizedCode);
+                } catch (IllegalArgumentException e) {
+                    // If validation fails, keep original value (may be deleted solution type)
+                    log.debug("Failed to normalize targetSolution: {}", targetSolution);
+                }
+            }
             return sop;
         } catch (IOException e) {
             log.error("Failed to read SOP file: {}", file, e);

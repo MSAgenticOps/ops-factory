@@ -117,20 +117,27 @@ public class SolutionTypeController {
      *
      * @param id solution type identifier
      * @param request current HTTP request
-     * @return ResponseEntity with success status or 404
+     * @return ResponseEntity with success status or error
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deleteSolutionType(@PathVariable("id") String id,
         HttpServletRequest request) {
-        boolean deleted = solutionTypeService.deleteSolutionType(id);
-        if (!deleted) {
+        try {
+            boolean deleted = solutionTypeService.deleteSolutionType(id);
+            if (!deleted) {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("success", false);
+                body.put("error", "Solution type not found: " + id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+            }
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            return ResponseEntity.ok(body);
+        } catch (IllegalStateException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Solution type not found: " + id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+            body.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        return ResponseEntity.ok(body);
     }
 }

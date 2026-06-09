@@ -228,7 +228,19 @@ public class ClusterTypeService {
         }
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+            Map<String, Object> ct = MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+            // Normalize solutionType from legacy UUID to code
+            Object solutionType = ct.get("solutionType");
+            if (solutionType != null && !"universal".equals(solutionType)) {
+                try {
+                    String normalizedCode = solutionTypeService.validateSolutionTypeReference(solutionType);
+                    ct.put("solutionType", normalizedCode);
+                } catch (IllegalArgumentException e) {
+                    // If validation fails, keep original value (may be deleted solution type)
+                    log.debug("Failed to normalize solutionType: {}", solutionType);
+                }
+            }
+            return ct;
         } catch (IOException e) {
             log.error("Failed to read cluster-type file: {}", file, e);
             return null;

@@ -44,6 +44,7 @@ export function useResourceExport() {
                 description: ct.description || '',
                 typeColor: ct.color || '',
                 knowledge: ct.knowledge || '',
+                solutionType: ct.solutionType || 'universal',
                 clusterMode: (() => {
                     if (ct.mode === 'peer') return 'Peer'
                     if (ct.mode === 'primary-backup') return 'Primary-Backup'

@@ -38,6 +38,7 @@ public class SolutionTypeServiceTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private SolutionTypeService solutionTypeService;
+    private GatewayProperties properties;
 
     private Path solutionTypesDir;
 
@@ -48,7 +49,7 @@ public class SolutionTypeServiceTest {
      */
     @Before
     public void setUp() throws IOException {
-        GatewayProperties properties = new GatewayProperties();
+        properties = new GatewayProperties();
         GatewayProperties.Paths paths = new GatewayProperties.Paths();
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
@@ -133,12 +134,12 @@ public class SolutionTypeServiceTest {
     }
 
     /**
-     * Tests validate solution type reference returns existing id.
+     * Tests validate solution type reference returns existing code.
      */
     @Test
-    public void testValidateSolutionTypeReference_existing_returnsId() {
+    public void testValidateSolutionTypeReference_existing_returnsCode() {
         createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
-        assertEquals("st-1", solutionTypeService.validateSolutionTypeReference("st-1"));
+        assertEquals("CRM_COMMERCE", solutionTypeService.validateSolutionTypeReference("CRM_COMMERCE"));
     }
 
     /**
@@ -691,6 +692,40 @@ public class SolutionTypeServiceTest {
         assertFalse(Files.exists(solutionTypesDir.resolve("st-del.json")));
     }
 
+    /**
+     * Tests delete solution type in use by SOP throws exception.
+     */
+    @Test
+    public void testDeleteSolutionType_inUseBySop_throwsException() throws IOException {
+        createSolutionType("st-used", "UsedSolution", "Used for testing");
+        String code = "USEDSOLUTION";
+
+        // Create an SOP that references this solution type
+        Path sopsDir = properties.getGatewayRootPath().resolve("data").resolve("sops");
+        Files.createDirectories(sopsDir);
+        Map<String, Object> sop = new LinkedHashMap<>();
+        sop.put("id", "sop-1");
+        sop.put("name", "TestSOP");
+        sop.put("description", "Test SOP");
+        sop.put("version", "1.0");
+        sop.put("triggerCondition", "");
+        sop.put("enabled", true);
+        sop.put("stepsDescription", "");
+        sop.put("targetSolution", code);
+        sop.put("requiredTools", List.of());
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(sop);
+        Files.writeString(sopsDir.resolve("sop-1.json"), json, StandardCharsets.UTF_8);
+
+        try {
+            solutionTypeService.deleteSolutionType("st-used");
+            fail("Expected IllegalStateException");
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("is in use"));
+            assertTrue(e.getMessage().contains("TestSOP"));
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────
 
     /**
@@ -705,7 +740,7 @@ public class SolutionTypeServiceTest {
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);
         st.put("name", name);
-        st.put("code", "");
+        st.put("code", name.toUpperCase().replaceAll(" ", "_"));
         st.put("description", description);
         st.put("color", "#8b5cf6");
         st.put("knowledge", "");

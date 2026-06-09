@@ -226,6 +226,12 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.clusterTypeInvalidMode', params: { mode: row.clusterMode } })
                                     continue
                                 }
+                                // Validate solution type if provided
+                                const solutionType = row.solutionType?.trim() || 'universal'
+                                if (solutionType !== 'universal' && !solutionTypeCodeSet.has(solutionType)) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeSolutionTypeNotFound', params: { solution: solutionType } })
+                                    continue
+                                }
                                 if (createdClusterTypeNames.has(nameResult.sanitized) || createdClusterTypeCodes.has(codeResult.sanitized)) {
                                     // Determine if it's a name or code duplicate
                                     if (createdClusterTypeCodes.has(codeResult.sanitized) && !createdClusterTypeNames.has(nameResult.sanitized)) {
@@ -269,6 +275,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     })(),
                                     commandPrefix: row.commandPrefix || '',
                                     envVariables: envVars,
+                                    solutionType: solutionType,
                                 })
                                 createdClusterTypeNames.add(nameResult.sanitized)
                                 createdClusterTypeCodes.add(codeResult.sanitized)

@@ -333,8 +333,8 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                     {solutionTypes.map(st => (
                         <button
                             key={st.id}
-                            className={`hr-solution-filter-pill ${solutionFilter === st.id ? 'active' : ''}`}
-                            onClick={() => setSolutionFilter(st.id)}
+                            className={`hr-solution-filter-pill ${solutionFilter === st.code ? 'active' : ''}`}
+                            onClick={() => setSolutionFilter(st.code)}
                         >
                             {st.name}
                         </button>
@@ -427,7 +427,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                 >
                                     <option value="universal">{t('hostResource.universal')}</option>
                                     {solutionTypes.map(st => (
-                                        <option key={st.id} value={st.id}>{st.name}</option>
+                                        <option key={st.id} value={st.code}>{st.name}</option>
                                     ))}
                                 </select>
                             </div>
