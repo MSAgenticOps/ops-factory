@@ -125,8 +125,10 @@ public class ThreadControllerTest {
         String accountId, String threadId) {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getAttribute(UserContextFilter.USER_ID_ATTR)).thenReturn(userId);
-        return controller.listFollowups(AGENT, channelId == null ? CHANNEL : channelId, conversationId, accountId,
-            threadId, null, request);
+        return controller.listFollowups(AGENT,
+            new ThreadController.FollowupQuery(channelId == null ? CHANNEL : channelId, conversationId, accountId,
+                threadId, null),
+            request);
     }
 
     private ProactiveFollowupRecord record(String targetKey, String scheduleId, String sessionId, String summary) {

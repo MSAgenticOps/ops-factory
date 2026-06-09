@@ -82,8 +82,11 @@ public class ProactiveDeliveryServiceTest {
         runtimeStorageService = mock(ChannelRuntimeStorageService.class);
         outboxDir = Files.createTempDirectory("proactive-outbox");
 
+        ProactiveDeliveryProperties properties = new ProactiveDeliveryProperties();
+        properties.setEnabled(true);
+        properties.setMaxAgeMinutes(1440);
         service = new ProactiveDeliveryService(instanceManager, goosedProxy, markerService, followupService,
-            channelConfigService, runtimeStorageService, true, 1440);
+            channelConfigService, runtimeStorageService, properties);
 
         ManagedInstance instance = mock(ManagedInstance.class);
         when(instance.getStatus()).thenReturn(ManagedInstance.Status.RUNNING);

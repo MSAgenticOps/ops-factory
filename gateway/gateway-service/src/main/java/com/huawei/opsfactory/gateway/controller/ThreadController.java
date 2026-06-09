@@ -21,7 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -73,25 +72,24 @@ public class ThreadController {
      * type so it matches the records written at delivery time.
      *
      * @param agentId agent identifier
-     * @param channelId channel identifier the conversation belongs to
-     * @param conversationId conversation identifier (binding coordinate)
-     * @param accountId account identifier (binding coordinate); defaults to {@code default}
-     * @param threadId thread identifier (binding coordinate), or empty for a direct conversation
-     * @param limit maximum records to return (defaults to 50, capped at 200)
+     * @param query thread/conversation query parameters (channel id + binding coordinates + limit)
      * @param request current HTTP request
-     * @return {@code {"followups": [...]}} oldest-first (the UI renders time-descending), or 400 on a bad channel
+     * @return {@code {"followups": [...]}} oldest-first (the UI renders time-descending), or 400 on a bad/missing
+     *     channel
      */
     @GetMapping(value = "/followups", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> listFollowups(@PathVariable("agentId") String agentId,
-        @RequestParam("channelId") String channelId,
-        @RequestParam("conversationId") String conversationId,
-        @RequestParam(value = "accountId", required = false) String accountId,
-        @RequestParam(value = "threadId", required = false) String threadId,
-        @RequestParam(value = "limit", required = false) Integer limit,
-        HttpServletRequest request) {
+        FollowupQuery query, HttpServletRequest request) {
         String userId = currentUserId(request);
-        String effectiveAccount = accountId == null || accountId.isBlank() ? DEFAULT_ACCOUNT_ID : accountId;
-        int effectiveLimit = clampLimit(limit);
+        if (query.channelId() == null || query.channelId().isBlank()
+            || query.conversationId() == null || query.conversationId().isBlank()) {
+            // channelId + conversationId are required to locate a thread (previously enforced by @RequestParam).
+            return ResponseEntity.badRequest().body(Map.of("error", "channelId and conversationId are required"));
+        }
+        String channelId = query.channelId();
+        String effectiveAccount = query.accountId() == null || query.accountId().isBlank()
+            ? DEFAULT_ACCOUNT_ID : query.accountId();
+        int effectiveLimit = clampLimit(query.limit());
         ChannelDetail channel;
         try {
             channel = channelConfigService.getChannel(channelId, userId);
@@ -108,8 +106,8 @@ public class ThreadController {
             log.warn("Thread followups: unknown channel {} for {}:{}", channelId, agentId, userId);
             return ResponseEntity.badRequest().body(Map.of("error", "unknown or invalid channel"));
         }
-        String targetKey =
-            ChannelTargetKey.of(channel.type(), channelId, effectiveAccount, conversationId, threadId);
+        String targetKey = ChannelTargetKey.of(channel.type(), channelId, effectiveAccount, query.conversationId(),
+            query.threadId());
         List<ProactiveFollowupRecord> followups =
             followupService.recentByTargetKey(userId, agentId, targetKey, effectiveLimit);
         log.info("Thread followups: {} record(s) on channel {} for {}:{}", followups.size(), channelId, agentId,
@@ -127,5 +125,19 @@ public class ThreadController {
     private String currentUserId(HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
         return userId == null || userId.isBlank() ? "admin" : userId;
+    }
+
+    /**
+     * Query parameters for {@link #listFollowups}, bound from the request query string. Bundled into one object to
+     * keep the handler within the method-parameter budget.
+     *
+     * @param channelId channel identifier the conversation belongs to (required)
+     * @param conversationId conversation identifier — binding coordinate (required)
+     * @param accountId account identifier (binding coordinate); defaults to {@code default} when blank
+     * @param threadId thread identifier (binding coordinate), or empty for a direct conversation
+     * @param limit maximum records to return (defaults to 50, capped at 200)
+     */
+    public record FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
+        Integer limit) {
     }
 }

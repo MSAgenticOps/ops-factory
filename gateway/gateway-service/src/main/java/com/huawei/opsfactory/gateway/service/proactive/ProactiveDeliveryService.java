@@ -16,12 +16,12 @@ import com.huawei.opsfactory.gateway.service.channel.model.ChannelSummary;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -107,22 +107,20 @@ public class ProactiveDeliveryService {
      * @param followupService follow-up record store (idempotency + audit)
      * @param channelConfigService channel + binding lookup
      * @param runtimeStorageService channel runtime path resolver (outbox)
-     * @param enabled whether proactive IM delivery is active
-     * @param maxAgeMinutes ignore scheduled runs older than this (avoids startup backfill of historical reports)
+     * @param properties proactive-delivery configuration (enabled flag + max run age)
      */
     public ProactiveDeliveryService(InstanceManager instanceManager, GoosedProxy goosedProxy,
         ProactiveDeliveryMarkerService markerService, ProactiveFollowupService followupService,
         ChannelConfigService channelConfigService, ChannelRuntimeStorageService runtimeStorageService,
-        @Value("${gateway.proactive-delivery.enabled:true}") boolean enabled,
-        @Value("${gateway.proactive-delivery.max-age-minutes:60}") long maxAgeMinutes) {
+        ProactiveDeliveryProperties properties) {
         this.instanceManager = instanceManager;
         this.goosedProxy = goosedProxy;
         this.markerService = markerService;
         this.followupService = followupService;
         this.channelConfigService = channelConfigService;
         this.runtimeStorageService = runtimeStorageService;
-        this.enabled = enabled;
-        this.maxAgeMinutes = maxAgeMinutes;
+        this.enabled = properties.isEnabled();
+        this.maxAgeMinutes = properties.getMaxAgeMinutes();
     }
 
     /**
@@ -157,8 +155,9 @@ public class ProactiveDeliveryService {
             }
             try {
                 processInstance(instance);
-            } catch (RuntimeException e) {
-                // Resilience boundary: one instance's arbitrary unchecked failure must not abort the whole scan.
+            } catch (IllegalArgumentException e) {
+                // Bad channel/target-key data for one instance must not abort the rest of the scan. Genuinely
+                // unexpected bugs are left to propagate (fail-fast); the next poll resets the guard and retries.
                 log.warn("Proactive delivery scan failed for {}:{}: {}", instance.getAgentId(), instance.getUserId(),
                     e.getMessage());
             }
@@ -389,16 +388,22 @@ public class ProactiveDeliveryService {
     }
 
     private Map<String, Object> fetchJsonObject(ManagedInstance instance, String path) {
+        // Resolve reactive failures (HTTP error, timeout) on the Mono so block() yields null instead of throwing a
+        // RuntimeException we'd have to catch broadly; only the JSON parse below then needs a (specific) catch.
+        String json = goosedProxy.fetchJson(instance.getPort(), path, instance.getSecretKey())
+            .onErrorResume(err -> {
+                log.warn("Proactive delivery failed to fetch {} from {}:{}: {}", path, instance.getAgentId(),
+                    instance.getUserId(), err.getMessage());
+                return Mono.empty();
+            })
+            .block();
+        if (json == null || json.isBlank()) {
+            return null;
+        }
         try {
-            String json = goosedProxy.fetchJson(instance.getPort(), path, instance.getSecretKey()).block();
-            if (json == null || json.isBlank()) {
-                return null;
-            }
             return mapper.readValue(json, new TypeReference<Map<String, Object>>() { });
-        } catch (RuntimeException | IOException e) {
-            // Best-effort fetch: a reactive .block() error (wrapped as RuntimeException) or a JSON/IO failure must
-            // degrade gracefully (caller treats null as "skip"), not abort the delivery cycle.
-            log.warn("Proactive delivery failed to fetch {} from {}:{}: {}", path, instance.getAgentId(),
+        } catch (IOException e) {
+            log.warn("Proactive delivery got unparseable JSON from {} for {}:{}: {}", path, instance.getAgentId(),
                 instance.getUserId(), e.getMessage());
             return null;
         }
