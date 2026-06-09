@@ -42,7 +42,7 @@ function startMockLlm(port: number): Promise<Server> {
     let raw = ''
     req.on('data', (chunk) => { raw += chunk })
     req.on('end', () => {
-      let body: any = {}
+      let body: { model?: unknown; stream?: unknown } = {}
       try { body = JSON.parse(raw) } catch { /* keep empty */ }
       const model = String(body.model || 'unknown')
       requestedModels.push(model)
