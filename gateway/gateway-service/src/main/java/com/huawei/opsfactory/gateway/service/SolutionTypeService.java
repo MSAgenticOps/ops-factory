@@ -342,6 +342,7 @@ public class SolutionTypeService {
      *
      * @param value referenced solution type code or {@code null}
      * @return normalized solution type code
+     * @throws IllegalArgumentException if solution type code is not found
      */
     public String validateSolutionTypeReference(Object value) {
         if (value == null) {
@@ -352,7 +353,12 @@ public class SolutionTypeService {
             return solutionType;
         }
 
-        Map<String, Object> st = getSolutionTypeByCode(solutionType);
+        Map<String, Object> st;
+        try {
+            st = getSolutionTypeByCode(solutionType);
+        } catch (NotFoundException e) {
+            throw new IllegalArgumentException("Solution type not found: " + solutionType, e);
+        }
 
         String code = st.get("code") != null ? st.get("code").toString() : "";
         if (code.isBlank()) {
