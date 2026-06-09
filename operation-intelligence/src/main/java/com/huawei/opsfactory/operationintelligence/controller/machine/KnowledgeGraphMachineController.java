@@ -6,7 +6,6 @@ package com.huawei.opsfactory.operationintelligence.controller.machine;
 
 import com.huawei.opsfactory.common.aop.BasicAuth;
 import com.huawei.opsfactory.operationintelligence.controller.base.BaseKnowledgeGraphController;
-import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphEntity;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphOntology;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.service.KnowledgeGraphService;
