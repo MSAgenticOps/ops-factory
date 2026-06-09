@@ -57,7 +57,11 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
         if (solutionFilter !== 'all') {
             result = result.filter(ct => {
                 const sol = ct.solutionType ?? 'universal'
-                return sol === solutionFilter || sol === 'universal'
+                // Only show exact match or universal when explicitly selected
+                if (solutionFilter === 'universal') {
+                    return sol === 'universal'
+                }
+                return sol === solutionFilter
             })
         }
         if (!searchTerm.trim()) return result
@@ -346,7 +350,12 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                     <div className="hr-type-tab-empty-text">{t('hostResource.noClusterTypes')}</div>
                 </div>
             )}
-            {!loading && clusterTypes.length > 0 && (
+            {!loading && clusterTypes.length > 0 && filteredTypes.length === 0 && (
+                <div className="hr-type-tab-empty">
+                    <div className="hr-type-tab-empty-text">{t('hostResource.noMatchingClusterTypes')}</div>
+                </div>
+            )}
+            {!loading && filteredTypes.length > 0 && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput
