@@ -10,7 +10,6 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shared file-safety helpers for the per-user proactive stores: a per-path monitor so read-modify-write cycles on
@@ -21,19 +20,37 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 2026-06-07
  */
 final class ProactiveFiles {
-    private static final ConcurrentHashMap<String, Object> LOCKS = new ConcurrentHashMap<>();
+    /*
+     * A fixed pool of monitors striped by path hash, NOT an unbounded per-path map. This bounds memory for the life
+     * of the process, and — unlike an evicting cache — a given path always maps to the same monitor, so mutual
+     * exclusion can never be broken by evicting a lock another thread is currently holding. Two distinct paths may
+     * share a monitor (benign false contention); the proactive stores are low-traffic, so that is negligible.
+     */
+    private static final int LOCK_STRIPES = 64;
+
+    private static final Object[] LOCKS = newLocks(LOCK_STRIPES);
 
     private ProactiveFiles() {
     }
 
+    private static Object[] newLocks(int count) {
+        Object[] locks = new Object[count];
+        for (int i = 0; i < count; i++) {
+            locks[i] = new Object();
+        }
+        return locks;
+    }
+
     /**
-     * Returns a process-wide monitor for a file path; callers synchronize their read-modify-write on it.
+     * Returns a process-wide monitor for a file path; callers synchronize their read-modify-write on it. The same
+     * path always returns the same monitor (striped over a fixed pool, so the pool never grows).
      *
      * @param path target file
      * @return the monitor object for that path
      */
     static Object lockFor(Path path) {
-        return LOCKS.computeIfAbsent(path.toAbsolutePath().normalize().toString(), key -> new Object());
+        String key = path.toAbsolutePath().normalize().toString();
+        return LOCKS[(key.hashCode() & Integer.MAX_VALUE) % LOCK_STRIPES];
     }
 
     /**
@@ -44,7 +61,10 @@ final class ProactiveFiles {
      * @throws IOException if the write or rename fails
      */
     static void atomicWrite(Path file, String content) throws IOException {
-        Files.createDirectories(file.getParent());
+        Path parent = file.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
         Path tmp = file.resolveSibling(file.getFileName().toString() + ".tmp");
         Files.writeString(tmp, content, StandardCharsets.UTF_8);
         boolean moved = false;
@@ -57,8 +77,12 @@ final class ProactiveFiles {
             moved = true;
         } finally {
             if (!moved) {
-                // Don't leave a stray <file>.tmp behind when both move attempts fail.
-                Files.deleteIfExists(tmp);
+                // Best-effort cleanup of the stray temp file; never let it mask the original move failure.
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException cleanupFailure) {
+                    // ignore: the original IOException from the failed move propagates instead
+                }
             }
         }
     }

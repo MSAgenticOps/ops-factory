@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -157,6 +158,7 @@ public class ProactiveDeliveryService {
             try {
                 processInstance(instance);
             } catch (RuntimeException e) {
+                // Resilience boundary: one instance's arbitrary unchecked failure must not abort the whole scan.
                 log.warn("Proactive delivery scan failed for {}:{}: {}", instance.getAgentId(), instance.getUserId(),
                     e.getMessage());
             }
@@ -381,7 +383,7 @@ public class ProactiveDeliveryService {
         }
         try {
             return Instant.parse(createdAt).isBefore(Instant.now().minus(Duration.ofMinutes(maxAgeMinutes)));
-        } catch (RuntimeException e) {
+        } catch (DateTimeParseException e) {
             return false;
         }
     }
@@ -394,6 +396,8 @@ public class ProactiveDeliveryService {
             }
             return mapper.readValue(json, new TypeReference<Map<String, Object>>() { });
         } catch (RuntimeException | IOException e) {
+            // Best-effort fetch: a reactive .block() error (wrapped as RuntimeException) or a JSON/IO failure must
+            // degrade gracefully (caller treats null as "skip"), not abort the delivery cycle.
             log.warn("Proactive delivery failed to fetch {} from {}:{}: {}", path, instance.getAgentId(),
                 instance.getUserId(), e.getMessage());
             return null;

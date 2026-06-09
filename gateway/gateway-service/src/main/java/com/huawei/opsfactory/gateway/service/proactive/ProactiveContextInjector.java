@@ -11,7 +11,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Prepends a "recent FO Copilot follow-up" summary to an inbound IM reply so the agent has the context to act on a
@@ -27,9 +29,21 @@ import java.util.List;
  */
 @Service
 public class ProactiveContextInjector {
-    private static final DateTimeFormatter ABSOLUTE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter ABSOLUTE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.ROOT);
 
     private static final int MAX_SUMMARY_CHARS = 500;
+
+    // Agent-context prompt fragments (Chinese ops context injected into the model input — not UI copy).
+    // Centralized as constants so the source carries no inline literals and the UTF-8 encoding is unambiguous.
+    private static final String CONTEXT_HEADER = "[最近 FO Copilot 主动跟进]\n";
+
+    private static final String USER_REPLY_HEADER = "\n[用户当前回复]\n";
+
+    private static final String RELATIVE_TODAY = "今天";
+
+    private static final String RELATIVE_YESTERDAY = "昨天";
+
+    private static final String RELATIVE_DAYS_AGO = "约 %d 天前";
 
     private final ProactiveFollowupService followupService;
 
@@ -63,12 +77,12 @@ public class ProactiveContextInjector {
         if (recent.isEmpty()) {
             return userText;
         }
-        StringBuilder sb = new StringBuilder("[最近 FO Copilot 主动跟进]\n");
+        StringBuilder sb = new StringBuilder(CONTEXT_HEADER);
         for (ProactiveFollowupRecord record : recent) {
             sb.append("- ").append(formatTime(record.time())).append(' ').append(nullToEmpty(record.scheduleId()))
                 .append(':').append(oneLine(record.summary())).append('\n');
         }
-        sb.append("\n[用户当前回复]\n").append(userText);
+        sb.append(USER_REPLY_HEADER).append(userText);
         return sb.toString();
     }
 
@@ -83,12 +97,12 @@ public class ProactiveContextInjector {
     private String relative(Instant instant) {
         long days = Duration.between(instant, Instant.now()).toDays();
         if (days <= 0) {
-            return "今天";
+            return RELATIVE_TODAY;
         }
         if (days == 1) {
-            return "昨天";
+            return RELATIVE_YESTERDAY;
         }
-        return "约 " + days + " 天前";
+        return String.format(Locale.ROOT, RELATIVE_DAYS_AGO, days);
     }
 
     private Instant parse(String iso) {
@@ -97,7 +111,7 @@ public class ProactiveContextInjector {
         }
         try {
             return Instant.parse(iso);
-        } catch (RuntimeException e) {
+        } catch (DateTimeParseException e) {
             return null;
         }
     }

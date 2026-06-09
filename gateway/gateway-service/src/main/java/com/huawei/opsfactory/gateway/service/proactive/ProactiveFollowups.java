@@ -6,6 +6,8 @@ package com.huawei.opsfactory.gateway.service.proactive;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +38,8 @@ public final class ProactiveFollowups {
     public static final long MAX_AGE_DAYS = 30;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final Logger LOG = LoggerFactory.getLogger(ProactiveFollowups.class);
 
     private ProactiveFollowups() {
     }
@@ -117,7 +122,8 @@ public final class ProactiveFollowups {
             try {
                 out.add(MAPPER.readValue(line, ProactiveFollowupRecord.class));
             } catch (JsonProcessingException malformed) {
-                // Skip a corrupt line rather than failing the whole read; the record file is best-effort.
+                // Skip a corrupt line rather than failing the whole read (best-effort store), but surface it.
+                LOG.warn("Skipping corrupt follow-up record in {}: {}", recordsFile, malformed.getOriginalMessage());
             }
         }
         return out;
@@ -141,7 +147,7 @@ public final class ProactiveFollowups {
         }
         try {
             return Instant.parse(iso);
-        } catch (RuntimeException e) {
+        } catch (DateTimeParseException e) {
             return null;
         }
     }
