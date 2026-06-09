@@ -166,7 +166,7 @@ public class AgentControllerTest {
      */
     @Test
     public void testDeleteAgent_asAdmin() throws Exception {
-        Mockito.doNothing().when(instanceManager).stopAllForAgent("agent1");
+        when(instanceManager.stopAllForAgent("agent1")).thenReturn(0);
         Mockito.doNothing().when(agentConfigService).deleteAgent("agent1");
 
         mockMvc.perform(delete("/api/gateway/agents/agent1").header("x-secret-key", "test").header("x-user-id", "admin"))
@@ -179,7 +179,7 @@ public class AgentControllerTest {
      */
     @Test
     public void testDeleteAgent_succeeds_forAnyUser() throws Exception {
-        Mockito.doNothing().when(instanceManager).stopAllForAgent("agent1");
+        when(instanceManager.stopAllForAgent("agent1")).thenReturn(0);
         Mockito.doNothing().when(agentConfigService).deleteAgent("agent1");
 
         mockMvc

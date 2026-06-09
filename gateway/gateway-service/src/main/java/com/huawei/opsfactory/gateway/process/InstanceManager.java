@@ -839,13 +839,15 @@ public class InstanceManager {
      * Stop all instances for a given agent across all users.
      *
      * @param agentId unique identifier of the agent whose instances should be stopped
+     * @return the number of instances that were stopped
      */
-    public void stopAllForAgent(String agentId) {
-        instances.values()
+    public int stopAllForAgent(String agentId) {
+        List<ManagedInstance> stopped = instances.values()
             .stream()
             .filter(inst -> inst.getAgentId().equals(agentId))
-            .toList()
-            .forEach(this::stopInstance);
+            .toList();
+        stopped.forEach(this::stopInstance);
+        return stopped.size();
     }
 
     /**
@@ -871,11 +873,7 @@ public class InstanceManager {
      * @return the number of instances that were stopped
      */
     public int restartAllForAgent(String agentId) {
-        List<ManagedInstance> stopped = instances.values()
-            .stream()
-            .filter(inst -> inst.getAgentId().equals(agentId))
-            .toList();
-        stopped.forEach(this::stopInstance);
+        int stopped = stopAllForAgent(agentId);
         agentConfigService.getResidentInstances()
             .stream()
             .filter(target -> target.agentId().equals(agentId))
@@ -885,7 +883,7 @@ public class InstanceManager {
                         target.userId(), inst.getPort()),
                     err -> log.error("Failed to respawn resident instance {}:{} after config restart: {}", agentId,
                         target.userId(), err.getMessage())));
-        return stopped.size();
+        return stopped;
     }
 
     /**

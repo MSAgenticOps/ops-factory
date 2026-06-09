@@ -296,7 +296,7 @@ export async function startControlCenter(gatewayPort: number, fixedPort?: number
           name: 'Gateway',
           'base-url': `http://127.0.0.1:${gatewayPort}`,
           required: true,
-          'health-path': '/gateway/status',
+          'health-path': '/api/gateway/status',
           'ctl-component': 'gateway',
           'config-path': 'gateway/config.yaml',
           'log-path': 'gateway/logs/gateway.log',

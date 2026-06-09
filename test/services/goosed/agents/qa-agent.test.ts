@@ -89,7 +89,7 @@ async function freePort(): Promise<number> {
 
 async function startQaJavaGateway(): Promise<GatewayHandle> {
   const port = await freePort()
-  const baseUrl = `http://127.0.0.1:${port}/gateway`
+  const baseUrl = `http://127.0.0.1:${port}/api/gateway`
 
   const jarPath = join(PROJECT_ROOT, 'gateway', 'gateway-service', 'target', 'gateway-service.jar')
   const libDir = join(PROJECT_ROOT, 'gateway', 'gateway-service', 'target', 'lib')
