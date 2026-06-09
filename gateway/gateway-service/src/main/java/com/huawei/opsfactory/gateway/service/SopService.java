@@ -172,7 +172,7 @@ public class SopService {
 
         // Handle enabled
         Object enabledObj = body.get("enabled");
-        boolean enabled = !(enabledObj instanceof Boolean) ? (Boolean) enabledObj : true;
+        boolean enabled = (enabledObj instanceof Boolean b) ? b : true;
 
         Map<String, Object> sop = new LinkedHashMap<>();
         sop.put("id", id);
@@ -250,7 +250,7 @@ public class SopService {
 
         if (body.containsKey("enabled")) {
             Object enabledObj = body.get("enabled");
-            boolean enabled = !(enabledObj instanceof Boolean) ? (Boolean) enabledObj : true;
+            boolean enabled = (enabledObj instanceof Boolean b) ? b : true;
             sop.put("enabled", enabled);
         }
 
