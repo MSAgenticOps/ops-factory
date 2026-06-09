@@ -64,6 +64,17 @@ public class SopControllerTest {
     @MockBean
     private PrewarmService prewarmService;
 
+    /**
+     * Helper method to create a long string for testing max length validation.
+     */
+    private String createLongString(int length) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            sb.append("A");
+        }
+        return sb.toString();
+    }
+
     // ── listSops ─────────────────────────────────────────────────
 
     /**
@@ -277,5 +288,187 @@ public class SopControllerTest {
             .header("x-user-id", "regular-user")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"name\": \"SOP\"}")).andExpect(status().isCreated());
+    }
+
+    // ── Validation tests ──────────────────────────────────────────────
+
+    /**
+     * Tests create SOP name exceeds max length (100).
+     */
+    @Test
+    public void testCreateSop_nameExceedsMaxLength() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("SOP name exceeds maximum length of 100"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"" + createLongString(101) + "\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("SOP name exceeds maximum length of 100"));
+    }
+
+    /**
+     * Tests create SOP missing required name.
+     */
+    @Test
+    public void testCreateSop_missingRequiredName() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("SOP name is required"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\": \"Test\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("SOP name is required"));
+    }
+
+    /**
+     * Tests create SOP XSS characters in name.
+     */
+    @Test
+    public void testCreateSop_xssCharactersInName() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("SOP name contains invalid characters (< > \" ' & ` /)"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test<script>alert(1)</script>\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("SOP name contains invalid characters (< > \" ' & ` /)"));
+    }
+
+    /**
+     * Tests create SOP version exceeds max length (50).
+     */
+    @Test
+    public void testCreateSop_versionExceedsMaxLength() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Version exceeds maximum length of 50"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"version\": \"" + createLongString(51) + "\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Version exceeds maximum length of 50"));
+    }
+
+    /**
+     * Tests create SOP description exceeds max length (500).
+     */
+    @Test
+    public void testCreateSop_descriptionExceedsMaxLength() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Description exceeds maximum length of 500"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"description\": \"" + createLongString(501) + "\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Description exceeds maximum length of 500"));
+    }
+
+    /**
+     * Tests create SOP triggerCondition exceeds max length (500).
+     */
+    @Test
+    public void testCreateSop_triggerConditionExceedsMaxLength() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Trigger condition exceeds maximum length of 500"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"triggerCondition\": \"" + createLongString(501) + "\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Trigger condition exceeds maximum length of 500"));
+    }
+
+    /**
+     * Tests create SOP stepsDescription exceeds max length (1000).
+     */
+    @Test
+    public void testCreateSop_stepsDescriptionExceedsMaxLength() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Steps description exceeds maximum length of 1000"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"stepsDescription\": \"" + createLongString(1001) + "\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Steps description exceeds maximum length of 1000"));
+    }
+
+    /**
+     * Tests create SOP invalid enabled value.
+     */
+    @Test
+    public void testCreateSop_invalidEnabledValue() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Enabled must be either TRUE or FALSE"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"enabled\": \"INVALID\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Enabled must be either TRUE or FALSE"));
+    }
+
+    /**
+     * Tests create SOP invalid mode value.
+     */
+    @Test
+    public void testCreateSop_invalidModeValue() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Mode must be either 'structured' or 'natural_language'"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"mode\": \"invalid_mode\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Mode must be either 'structured' or 'natural_language'"));
+    }
+
+    /**
+     * Tests create SOP solution type not found.
+     */
+    @Test
+    public void testCreateSop_solutionTypeNotFound() throws Exception {
+        when(sopService.createSop(any()))
+            .thenThrow(new IllegalArgumentException("Solution type not found: nonexistent_solution"));
+
+        mockMvc
+            .perform(post("/api/gateway/sops/").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"TestSOP\", \"targetSolution\": \"nonexistent_solution\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("Solution type not found: nonexistent_solution"));
     }
 }
