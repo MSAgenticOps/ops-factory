@@ -136,6 +136,69 @@ public class InstanceManagerTest {
     }
 
     /**
+     * Tests count for agent.
+     */
+    @Test
+    public void testCountForAgent() {
+        Process mockProcess = mock(Process.class);
+        addInstanceDirectly(new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret"));
+        addInstanceDirectly(new ManagedInstance("agent1", "user2", 8081, 1235L, mockProcess, "test-secret"));
+        addInstanceDirectly(new ManagedInstance("agent2", "user1", 8082, 1236L, mockProcess, "test-secret"));
+
+        assertEquals(2, instanceManager.countForAgent("agent1"));
+        assertEquals(1, instanceManager.countForAgent("agent2"));
+        assertEquals(0, instanceManager.countForAgent("agent3"));
+    }
+
+    /**
+     * Tests restart all for agent stops only that agent's instances and reports the count.
+     */
+    @Test
+    public void testRestartAllForAgent_stopsInstancesAndReturnsCount() {
+        Process mockProcess = mock(Process.class);
+        when(mockProcess.isAlive()).thenReturn(false);
+
+        ManagedInstance inst1 = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
+        inst1.setStatus(ManagedInstance.Status.RUNNING);
+        ManagedInstance inst2 = new ManagedInstance("agent1", "user2", 8081, 1235L, mockProcess, "test-secret");
+        inst2.setStatus(ManagedInstance.Status.RUNNING);
+        ManagedInstance inst3 = new ManagedInstance("agent2", "user1", 8082, 1236L, mockProcess, "test-secret");
+        inst3.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(inst1);
+        addInstanceDirectly(inst2);
+        addInstanceDirectly(inst3);
+
+        int stopped = instanceManager.restartAllForAgent("agent1");
+
+        assertEquals(2, stopped);
+        assertNull(instanceManager.getInstance("agent1", "user1"));
+        assertNull(instanceManager.getInstance("agent1", "user2"));
+        assertNotNull(instanceManager.getInstance("agent2", "user1"));
+    }
+
+    /**
+     * Tests restart all for agent triggers an async respawn for resident instances.
+     */
+    @Test
+    public void testRestartAllForAgent_respawnsResidentInstances() {
+        Process mockProcess = mock(Process.class);
+        when(mockProcess.isAlive()).thenReturn(false);
+        ManagedInstance inst = new ManagedInstance("agent1", "user1", 8080, 1234L, mockProcess, "test-secret");
+        inst.setStatus(ManagedInstance.Status.RUNNING);
+        addInstanceDirectly(inst);
+        when(agentConfigService.getResidentInstances())
+            .thenReturn(java.util.List.of(new com.huawei.opsfactory.gateway.common.model.ResidentInstanceTarget(
+                "user1", "agent1")));
+
+        int stopped = instanceManager.restartAllForAgent("agent1");
+
+        assertEquals(1, stopped);
+        // The respawn runs async and fails later (no goosed binary in unit tests), but it must at
+        // least reach runtime preparation for the resident target.
+        org.mockito.Mockito.verify(runtimePreparer, org.mockito.Mockito.timeout(5000)).prepare("agent1", "user1");
+    }
+
+    /**
      * Tests touch all for user.
      *
      * @throws InterruptedException if the operation fails

@@ -246,7 +246,7 @@ public class AgentController {
         }
         try {
             agentConfigService.updateModelConfig(id, body);
-            return ResponseEntity.ok(Map.of("success", true));
+            return ResponseEntity.ok(withRestartInfo(Map.of("success", true), id, true));
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);
@@ -255,6 +255,26 @@ public class AgentController {
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update model config", e);
         }
+    }
+
+    /**
+     * Restarts all running instances for the specified agent so saved model, provider, and API key
+     * configuration (injected as spawn-time environment variables) takes effect. Resident instances
+     * are respawned immediately; others respawn lazily on the next request.
+     *
+     * @param id agent identifier from the URL path
+     * @param request current HTTP request
+     * @return response with the number of stopped instances, or an error body if the agent is unknown
+     */
+    @PostMapping("/{id}/instances/restart")
+    public ResponseEntity<Map<String, Object>> restartInstances(@PathVariable("id") String id,
+        HttpServletRequest request) {
+        AgentRegistryEntry entry = agentConfigService.findAgent(id);
+        if (entry == null) {
+            return badAgent(id);
+        }
+        int stopped = instanceManager.restartAllForAgent(id);
+        return ResponseEntity.ok(Map.of("success", true, "stoppedInstances", stopped));
     }
 
     /**
@@ -274,7 +294,9 @@ public class AgentController {
         }
         try {
             Map<String, Object> provider = agentConfigService.createCustomProvider(id, body);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("success", true, "provider", provider));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(withRestartInfo(Map.of("success", true, "provider", provider), id,
+                    isActiveProvider(id, String.valueOf(provider.get("name")))));
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);
@@ -304,7 +326,8 @@ public class AgentController {
         }
         try {
             Map<String, Object> provider = agentConfigService.updateCustomProvider(id, providerName, body);
-            return ResponseEntity.ok(Map.of("success", true, "provider", provider));
+            return ResponseEntity.ok(withRestartInfo(Map.of("success", true, "provider", provider), id,
+                isActiveProvider(id, providerName)));
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorBody = new LinkedHashMap<>();
             errorBody.put("success", false);
@@ -396,6 +419,23 @@ public class AgentController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
+    }
+
+    /**
+     * Adds restart metadata to a successful config-write response. Saved values only reach goosed
+     * as spawn-time environment variables, so the caller needs to know whether running instances
+     * must be restarted for the change to take effect.
+     */
+    private Map<String, Object> withRestartInfo(Map<String, Object> base, String id, boolean requiresRestart) {
+        Map<String, Object> body = new LinkedHashMap<>(base);
+        body.put("requiresRestart", requiresRestart);
+        body.put("runningInstances", instanceManager.countForAgent(id));
+        return body;
+    }
+
+    private boolean isActiveProvider(String id, String providerName) {
+        return providerName != null
+            && providerName.equals(agentConfigService.loadAgentConfigYaml(id).get("GOOSE_PROVIDER"));
     }
 
     private ResponseEntity<Map<String, Object>> badAgent(String id) {
