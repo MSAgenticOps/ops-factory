@@ -223,6 +223,7 @@ export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUp
                     saving={saving}
                     onSave={handleSave}
                     onClose={() => setShowModal(false)}
+                    isEditing={!!editing}
                 />
             )}
         </div>
