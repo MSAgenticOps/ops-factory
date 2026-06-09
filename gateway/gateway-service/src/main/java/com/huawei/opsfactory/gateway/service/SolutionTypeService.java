@@ -314,6 +314,14 @@ public class SolutionTypeService {
 
     // ── Validation ────────────────────────────────────────────────────
 
+    /**
+     * Validates that the solution type name and code are unique.
+     *
+     * @param name the name to validate (may be null)
+     * @param code the code to validate (may be null)
+     * @param excludeId the id to exclude from uniqueness check (may be null)
+     * @throws IllegalArgumentException if name or code already exists
+     */
     private void validateNameAndCodeUnique(String name, String code, String excludeId) {
         List<Map<String, Object>> existing = listSolutionTypes();
         for (Map<String, Object> st : existing) {

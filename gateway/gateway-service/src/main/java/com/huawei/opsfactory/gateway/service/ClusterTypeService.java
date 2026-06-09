@@ -218,10 +218,12 @@ public class ClusterTypeService {
         }
     }
 
-    // ── Validation ──────────────────────────────────────────────────
-
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
+    /**
+     * Reads a cluster type from the given JSON file.
+     *
+     * @param file the JSON file path
+     * @return the parsed cluster type, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -247,6 +249,13 @@ public class ClusterTypeService {
         }
     }
 
+    /**
+     * Writes a cluster type entity to a JSON file.
+     *
+     * @param id the entity identifier used as the filename
+     * @param entity the cluster type data to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeEntityFile(String id, Map<String, Object> entity) {
         try {
             Files.createDirectories(clusterTypesDir);
