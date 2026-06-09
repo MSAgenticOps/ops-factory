@@ -102,7 +102,10 @@ public class CommandWhitelistService {
     public void addCommand(Map<String, Object> command) throws ConflictException, BadRequestException {
         // Validate pattern field (required)
         String pattern = ValidationUtils.requireNonBlank(command, "pattern", "Command pattern is required");
-        ValidationUtils.requireNoXssChars(pattern, "Command pattern");
+        // For command patterns, allow '/' (needed for paths like '/var/log') but block other XSS chars
+        if (ValidationUtils.hasDangerousChars(pattern)) {
+            throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+        }
         ValidationUtils.requireMaxLength(pattern, MAX_PATTERN_LENGTH, "Command pattern");
         if (!COMMAND_PATTERN_REGEX.matcher(pattern).matches()) {
             throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
@@ -147,9 +150,15 @@ public class CommandWhitelistService {
         if (updates.containsKey("pattern")) {
             Object newPatternObj = updates.get("pattern");
             if (newPatternObj != null && !newPatternObj.toString().trim().isEmpty()) {
-                newPattern = ValidationUtils.validateStringField(updates, "pattern", "Command pattern",
-                    MAX_PATTERN_LENGTH, true);
-                ValidationUtils.requireNoXssChars(newPattern, "Command pattern");
+                newPattern = newPatternObj.toString().trim();
+                if (newPattern.isEmpty()) {
+                    throw new BadRequestException("Command pattern is required");
+                }
+                // For command patterns, allow '/' (needed for paths like '/var/log') but block other XSS chars
+                if (ValidationUtils.hasDangerousChars(newPattern)) {
+                    throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+                }
+                ValidationUtils.requireMaxLength(newPattern, MAX_PATTERN_LENGTH, "Command pattern");
                 if (!COMMAND_PATTERN_REGEX.matcher(newPattern).matches()) {
                     throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
                 }

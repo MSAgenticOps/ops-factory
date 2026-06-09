@@ -237,8 +237,85 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorSourceNodeNotFound', { node: err.params?.node })
             case 'import.invalidNodes':
                 return t('hostResource.importErrorInvalidNodes', { name: err.params?.name })
-            case 'import.rowError':
-                return t('hostResource.importErrorRowError', { message: err.params?.message })
+            case 'import.rowError': {
+                const msg = err.params?.message || ''
+                const lowerMsg = msg.toLowerCase()
+
+                // 字段名映射（后端英文 → 前端中文标签）
+                const fieldNameMap: Record<string, string> = {
+                    'host name': t('hostResource.field_hosts_name'),
+                    'host ip': t('hostResource.field_hosts_ip'),
+                    'business ip': t('hostResource.field_hosts_businessIp'),
+                    'username': t('hostResource.field_hosts_username'),
+                    'cluster name': t('hostResource.field_clusters_name'),
+                    'cluster type': t('hostResource.field_clusters_type'),
+                    'host group': t('hostResource.field_clusters_group'),
+                    'business name': t('hostResource.field_businessServices_name'),
+                    'business type': t('hostResource.field_businessTypes_name'),
+                    'group name': t('hostResource.field_hostGroups_name'),
+                    'group code': t('hostResource.field_hostGroups_code'),
+                    'cluster type name': t('hostResource.field_clusterTypes_name'),
+                    'cluster type code': t('hostResource.field_clusterTypes_code'),
+                    'business type name': t('hostResource.field_businessTypes_name'),
+                    'business type code': t('hostResource.field_businessTypes_code'),
+                    'pattern': t('hostResource.field_whitelist_pattern'),
+                    'command pattern': t('hostResource.field_whitelist_pattern'),
+                    'sop name': t('hostResource.field_sops_name'),
+                }
+
+                // 提取字段名
+                let field: string | null = null
+                for (const [en, zh] of Object.entries(fieldNameMap)) {
+                    if (lowerMsg.includes(en.toLowerCase())) {
+                        field = zh
+                        break
+                    }
+                }
+
+                // not found 类错误（带字段名）
+                if (lowerMsg.includes('not found')) {
+                    return field
+                        ? t('hostResource.importErrorNotFoundWithField', { field })
+                        : t('hostResource.importErrorNotFound')
+                }
+
+                // required 类错误（带字段名）
+                if (lowerMsg.includes('required') || lowerMsg.includes('is required')) {
+                    return field
+                        ? t('hostResource.importErrorRequiredWithField', { field })
+                        : t('hostResource.importErrorRequired')
+                }
+
+                // Invalid 类错误（带字段名）
+                if (lowerMsg.includes('invalid')) {
+                    // 白名单命令模式的特殊处理
+                    if (lowerMsg.includes('command pattern') && lowerMsg.includes('invalid characters')) {
+                        const pattern = msg.match(/pattern[:is]+(.+?)[:]/)?.[1] || msg.match(/pattern[:is]+["'](.+?)["']/)?.[1] || ''
+                        return t('hostResource.importErrorWhitelistInvalidPattern', { pattern })
+                    }
+                    if (lowerMsg.includes('ip')) {
+                        return field
+                            ? t('hostResource.importErrorInvalidIpWithField', { field })
+                            : t('hostResource.importErrorInvalidIp')
+                    }
+                    return field
+                        ? t('hostResource.importErrorInvalidWithField', { field })
+                        : t('hostResource.importErrorInvalid')
+                }
+
+                // duplicate 类错误
+                if (lowerMsg.includes('duplicate') || lowerMsg.includes('conflict') || lowerMsg.includes('already exists')) {
+                    return t('hostResource.importErrorDuplicate')
+                }
+
+                // length 类错误
+                if (lowerMsg.includes('length') || lowerMsg.includes('too long')) {
+                    return t('hostResource.importErrorTooLong')
+                }
+
+                // 其他情况显示通用错误
+                return t('hostResource.importErrorRowError', { message: msg })
+            }
             case 'import.hostNameRequired':
                 return t('hostResource.importErrorHostNameRequired')
             case 'import.hostNameTooLong':
@@ -257,16 +334,16 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorCustomAttrDuplicateKey', { key: err.params?.key })
             case 'import.envVarDuplicateKey':
                 return t('hostResource.importErrorEnvVarDuplicateKey', { key: err.params?.key })
-            case 'import.duplicate':
-                return t('hostResource.importErrorDuplicate', {
-                    type: translateImportType(err.params?.type, t),
-                    name: err.params?.name
-                })
-            case 'import.duplicateCode':
-                return t('hostResource.importErrorDuplicateCode', {
-                    type: translateImportType(err.params?.type, t),
-                    code: err.params?.code
-                })
+            case 'import.duplicate': {
+                const typeLabel = translateImportType(err.params?.type, t)
+                const name = err.params?.name || ''
+                return `${typeLabel}「${name}」已存在`
+            }
+            case 'import.duplicateCode': {
+                const typeLabel = translateImportType(err.params?.type, t)
+                const code = err.params?.code || ''
+                return `${typeLabel}编码「${code}」已存在`
+            }
             case 'import.whitelistInvalidPattern':
                 return t('hostResource.importErrorWhitelistInvalidPattern', { pattern: err.params?.pattern })
             case 'import.whitelistPatternTooLong':

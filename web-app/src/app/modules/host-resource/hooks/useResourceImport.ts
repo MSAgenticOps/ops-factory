@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { readXlsxFile, parseSheetToObjects } from '../../../../utils/xlsxHelper'
 import { validateSheetStructure } from '../../../../utils/xlsxValidator'
 import { isValidIp } from '../../../../utils/ip-validation'
-import { validateAndSanitize } from '../../../../utils/inputValidation'
+import { validateAndSanitize, hasDangerousChars } from '../../../../utils/inputValidation'
 import { IMPORT_METADATA } from '../../../../utils/importExportMetadata'
 import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation, SolutionType } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
@@ -972,6 +972,11 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: pattern } })
                                     continue
                                 }
+                                // Check for XSS characters (allow '/' for paths, but block < > " ' & `)
+                                if (hasDangerousChars(pattern)) {
+                                    errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
+                                    continue
+                                }
                                 if (!/^[a-zA-Z0-9_\-./\s]+$/.test(pattern)) {
                                     errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
                                     continue
@@ -1010,8 +1015,13 @@ export function useResourceImport(deps: ImportDeps) {
                         }
                     } catch (err) {
                         const msg = err instanceof Error ? err.message : String(err)
-                        if (msg === 'Command whitelist entry conflict') {
-                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: row.pattern } })
+                        if (msg === 'Command whitelist entry conflict' || msg.includes('already exists') || msg.includes('conflict')) {
+                            // 根据导入类型设置名称字段
+                            let name = ''
+                            if (type === 'Whitelist') name = row.pattern
+                            else if (type === 'SOPs') name = row.name
+                            else name = row.name || row.pattern || ''
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: type, name: name } })
                         } else {
                             errors.push({ row: i + 2, code: 'import.rowError', params: { message: msg } })
                         }
