@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
@@ -113,21 +114,33 @@ public class BusinessTypeService {
 
     /**
      * Creates a new business type from the provided field map.
+     * Validates all fields (name, code, description, knowledge, color) before persistence.
      *
-     * @param body request body
-     * @return the result
+     * @param body request body containing business type fields
+     * @return the created business type map including generated id and timestamps
+     * @throws IllegalArgumentException if validation fails or the code already exists
      */
     public Map<String, Object> createBusinessType(Map<String, Object> body) {
+        String name = ValidationUtils.validateStringField(body, "name", "Business type name", 100, true);
+        String code = ValidationUtils.validateStringField(body, "code", "Business type code", 50, true);
+        validateNameAndCodeUnique(name, code, null);
+
+        String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+        String knowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 2000, false);
+
+        Object colorObj = body.get("color");
+        String color = (colorObj != null && !colorObj.toString().isBlank()) ? colorObj.toString() : "#6366f1";
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> bt = new LinkedHashMap<>();
         bt.put("id", id);
-        bt.put("name", body.getOrDefault("name", ""));
-        bt.put("code", body.getOrDefault("code", ""));
-        bt.put("description", body.getOrDefault("description", ""));
-        bt.put("color", body.getOrDefault("color", "#6366f1"));
-        bt.put("knowledge", body.getOrDefault("knowledge", ""));
+        bt.put("name", name);
+        bt.put("code", code);
+        bt.put("description", description);
+        bt.put("color", color);
+        bt.put("knowledge", knowledge);
         bt.put("createdAt", now);
         bt.put("updatedAt", now);
 
@@ -138,10 +151,14 @@ public class BusinessTypeService {
 
     /**
      * Updates an existing business type with the provided field map.
+     * Only fields present in the body are updated; each field is validated before being applied.
+     * Code field cannot be modified once created.
      *
-     * @param id an existing business type with the provided field map
-     * @param body an existing business type with the provided field map
-     * @return the result
+     * @param id entity identifier
+     * @param body updated fields
+     * @return the updated business type map
+     * @throws NotFoundException if the business type is not found
+     * @throws IllegalArgumentException if field validation fails or attempting to modify code
      */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -150,20 +167,29 @@ public class BusinessTypeService {
             throw new NotFoundException("Business type not found");
         }
 
-        if (body.containsKey("name")) {
-            bt.put("name", body.get("name"));
-        }
+        // Code field cannot be modified after creation
         if (body.containsKey("code")) {
-            bt.put("code", body.get("code"));
+            throw new IllegalArgumentException("Business type code cannot be modified after creation");
+        }
+
+        if (body.containsKey("name")) {
+            String newName = ValidationUtils.validateStringField(body, "name", "Business type name", 100, true);
+            validateNameAndCodeUnique(newName, null, id);
+            bt.put("name", newName);
         }
         if (body.containsKey("description")) {
-            bt.put("description", body.get("description"));
+            String newDescription = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+            bt.put("description", newDescription);
         }
         if (body.containsKey("color")) {
-            bt.put("color", body.get("color"));
+            Object colorObj = body.get("color");
+            if (colorObj != null) {
+                bt.put("color", colorObj.toString());
+            }
         }
         if (body.containsKey("knowledge")) {
-            bt.put("knowledge", body.get("knowledge"));
+            String newKnowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 2000, false);
+            bt.put("knowledge", newKnowledge);
         }
 
         bt.put("updatedAt", Instant.now().toString());
@@ -190,6 +216,38 @@ public class BusinessTypeService {
         } catch (IOException e) {
             log.error("Failed to delete business-type file: {}", file, e);
             return false;
+        }
+    }
+
+    // ── Validation ────────────────────────────────────────────────────
+
+    /**
+     * Validates that the business type name and code are unique.
+     *
+     * @param name the name to validate (may be null to only validate code)
+     * @param code the code to validate (may be null to only validate name)
+     * @param excludeId the ID of the current business type to exclude from validation (for updates)
+     * @throws IllegalArgumentException if name or code already exists
+     */
+    private void validateNameAndCodeUnique(String name, String code, String excludeId) {
+        List<Map<String, Object>> existing = listBusinessTypes();
+        for (Map<String, Object> bt : existing) {
+            String existingId = bt.get("id") != null ? bt.get("id").toString() : "";
+            if (excludeId != null && existingId.equals(excludeId)) {
+                continue;
+            }
+            if (name != null && !name.isBlank()) {
+                String existingName = bt.get("name") != null ? bt.get("name").toString() : "";
+                if (name.equalsIgnoreCase(existingName)) {
+                    throw new IllegalArgumentException("Business type name already exists: " + name);
+                }
+            }
+            if (code != null && !code.isBlank()) {
+                String existingCode = bt.get("code") != null ? bt.get("code").toString() : "";
+                if (code.equalsIgnoreCase(existingCode)) {
+                    throw new IllegalArgumentException("Business type code already exists: " + code);
+                }
+            }
         }
     }
 
