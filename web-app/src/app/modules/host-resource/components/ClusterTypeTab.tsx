@@ -449,6 +449,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                     value={form.commandPrefix}
                                     onChange={e => setForm(f => ({ ...f, commandPrefix: e.target.value }))}
                                     placeholder={t('hostResource.commandPrefixPlaceholder')}
+                                    maxLength={100}
                                 />
                             </div>
                             <div className="form-group">
@@ -461,6 +462,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                             placeholder={t('hostResource.varKey')}
                                             onChange={e => updateEnvVar(i, 'key', e.target.value)}
                                             style={{ flex: 1 }}
+                                            maxLength={100}
                                         />
                                         <input
                                             className="form-input"
@@ -468,6 +470,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                             placeholder={t('hostResource.varValue')}
                                             onChange={e => updateEnvVar(i, 'value', e.target.value)}
                                             style={{ flex: 1 }}
+                                            maxLength={500}
                                         />
                                         <button className="btn btn-secondary btn-sm" onClick={() => removeEnvVar(i)}>×</button>
                                     </div>

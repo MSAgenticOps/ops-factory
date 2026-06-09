@@ -52,6 +52,9 @@ public class ClusterTypeService {
 
     /**
      * Creates the cluster type service instance.
+     *
+     * @param properties the gateway configuration properties
+     * @param solutionTypeService the solution type service for validating solution type references
      */
     public ClusterTypeService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
         this.properties = properties;
@@ -134,7 +137,7 @@ public class ClusterTypeService {
         // Validate optional fields
         String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
         String knowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 2000, false);
-        String commandPrefix = ValidationUtils.validateStringField(body, "commandPrefix", "Command prefix", 0, false);
+        String commandPrefix = ValidationUtils.validateStringField(body, "commandPrefix", "Command prefix", 100, false);
 
         // Validate and extract mode
         String mode = body.getOrDefault("mode", "peer").toString();
@@ -178,9 +181,11 @@ public class ClusterTypeService {
      * Updates an existing cluster type with the provided field map.
      * Only fields present in the body are updated; each field is validated before being applied.
      *
-     * @param id an existing cluster type with the provided field map
-     * @param body an existing cluster type with the provided field map
-     * @return the result
+     * @param id the cluster type identifier to update
+     * @param body the field map containing fields to update
+     * @return the updated cluster type map
+     * @throws NotFoundException if the cluster type is not found
+     * @throws BadRequestException if the mode value is invalid
      */
     public Map<String, Object> updateClusterType(String id, Map<String, Object> body)
             throws NotFoundException, BadRequestException {
@@ -209,7 +214,7 @@ public class ClusterTypeService {
             ct.put("knowledge", newKnowledge);
         }
         if (body.containsKey("commandPrefix")) {
-            String newCommandPrefix = ValidationUtils.validateStringField(body, "commandPrefix", "Command prefix", 0, false);
+            String newCommandPrefix = ValidationUtils.validateStringField(body, "commandPrefix", "Command prefix", 100, false);
             ct.put("commandPrefix", newCommandPrefix.isEmpty() ? null : newCommandPrefix);
         }
         if (body.containsKey("envVariables")) {
@@ -240,7 +245,7 @@ public class ClusterTypeService {
      * Deletes a cluster type by its ID.
      *
      * @param id entity identifier
-     * @return the result
+     * @return true if the cluster type was deleted, false if it was not found
      */
     public boolean deleteClusterType(String id) {
         Path file = clusterTypesDir.resolve(id + ".json");
@@ -349,6 +354,12 @@ public class ClusterTypeService {
             if (key.isEmpty()) {
                 continue;
             }
+
+            // Validate key length
+            ValidationUtils.requireMaxLength(key, 100, "Environment variable key at index " + i);
+
+            // Validate value length
+            ValidationUtils.requireMaxLength(value, 500, "Environment variable value at index " + i);
 
             // Validate key with XSS check (strict)
             if (ValidationUtils.hasXssChars(key)) {

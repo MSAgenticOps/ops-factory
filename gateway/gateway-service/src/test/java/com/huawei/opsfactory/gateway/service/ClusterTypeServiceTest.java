@@ -350,6 +350,32 @@ public class ClusterTypeServiceTest {
     }
 
     /**
+     * Tests create cluster type command prefix too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateClusterType_commandPrefixTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("commandPrefix", "a".repeat(101));
+        clusterTypeService.createClusterType(body);
+    }
+
+    /**
+     * Tests create cluster type command prefix at max length.
+     */
+    @Test
+    public void testCreateClusterType_commandPrefixAtMaxLength() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("commandPrefix", "a".repeat(100));
+
+        Map<String, Object> result = clusterTypeService.createClusterType(body);
+        assertEquals("a".repeat(100), result.get("commandPrefix"));
+    }
+
+    /**
      * Tests create cluster type invalid mode.
      */
     @Test(expected = IllegalArgumentException.class)
@@ -459,6 +485,88 @@ public class ClusterTypeServiceTest {
         body.put("code", "CODE");
         body.put("envVariables", envVars);
         clusterTypeService.createClusterType(body);
+    }
+
+    /**
+     * Tests create cluster type env var key too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateClusterType_envVarKeyTooLong() throws Exception {
+        List<Map<String, String>> envVars = new ArrayList<>();
+        Map<String, String> env1 = new LinkedHashMap<>();
+        env1.put("key", "a".repeat(101));
+        env1.put("value", "value");
+        envVars.add(env1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("envVariables", envVars);
+        clusterTypeService.createClusterType(body);
+    }
+
+    /**
+     * Tests create cluster type env var value too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateClusterType_envVarValueTooLong() throws Exception {
+        List<Map<String, String>> envVars = new ArrayList<>();
+        Map<String, String> env1 = new LinkedHashMap<>();
+        env1.put("key", "KEY");
+        env1.put("value", "a".repeat(501));
+        envVars.add(env1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("envVariables", envVars);
+        clusterTypeService.createClusterType(body);
+    }
+
+    /**
+     * Tests create cluster type env var key at max length.
+     */
+    @Test
+    public void testCreateClusterType_envVarKeyAtMaxLength() throws Exception {
+        List<Map<String, String>> envVars = new ArrayList<>();
+        Map<String, String> env1 = new LinkedHashMap<>();
+        env1.put("key", "a".repeat(100));
+        env1.put("value", "value");
+        envVars.add(env1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("envVariables", envVars);
+
+        Map<String, Object> result = clusterTypeService.createClusterType(body);
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> resultEnv = (List<Map<String, String>>) result.get("envVariables");
+        assertEquals(1, resultEnv.size());
+        assertEquals("a".repeat(100), resultEnv.get(0).get("key"));
+    }
+
+    /**
+     * Tests create cluster type env var value at max length.
+     */
+    @Test
+    public void testCreateClusterType_envVarValueAtMaxLength() throws Exception {
+        List<Map<String, String>> envVars = new ArrayList<>();
+        Map<String, String> env1 = new LinkedHashMap<>();
+        env1.put("key", "KEY");
+        env1.put("value", "a".repeat(500));
+        envVars.add(env1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Name");
+        body.put("code", "CODE");
+        body.put("envVariables", envVars);
+
+        Map<String, Object> result = clusterTypeService.createClusterType(body);
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> resultEnv = (List<Map<String, String>>) result.get("envVariables");
+        assertEquals(1, resultEnv.size());
+        assertEquals("a".repeat(500), resultEnv.get(0).get("value"));
     }
 
     // ── updateClusterType ─────────────────────────────────────────
@@ -732,6 +840,22 @@ public class ClusterTypeServiceTest {
 
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("commandPrefix", "<script>");
+        clusterTypeService.updateClusterType(id, updates);
+    }
+
+    /**
+     * Tests update cluster type command prefix too long.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateClusterType_commandPrefixTooLong() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "Original");
+        body.put("code", "ORIG");
+        Map<String, Object> created = clusterTypeService.createClusterType(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("commandPrefix", "a".repeat(101));
         clusterTypeService.updateClusterType(id, updates);
     }
 
