@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
@@ -47,7 +48,7 @@ public class BusinessTypeService {
     /**
      * Creates the business type service instance.
      *
-     * @param properties properties
+     * @param properties gateway configuration properties
      */
     public BusinessTypeService(GatewayProperties properties) {
         this.properties = properties;
@@ -73,7 +74,7 @@ public class BusinessTypeService {
     /**
      * Lists all business types.
      *
-     * @return the result
+     * @return list of all business type maps
      */
     public List<Map<String, Object>> listBusinessTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -113,21 +114,34 @@ public class BusinessTypeService {
 
     /**
      * Creates a new business type from the provided field map.
+     * Validates all fields (name, code, description, knowledge, color) before persistence.
      *
-     * @param body request body
-     * @return the result
+     * @param body request body containing business type fields
+     * @return the created business type map including generated id and timestamps
+     * @throws IllegalArgumentException if validation fails or the code already exists
      */
     public Map<String, Object> createBusinessType(Map<String, Object> body) {
+        String name = ValidationUtils.validateStringField(body, "name", "Business type name", 100, true);
+        String code = ValidationUtils.validateStringField(body, "code", "Business type code", 50, true);
+        validateNameAndCodeUnique(name, code, null);
+
+        // description and knowledge: length validation only, no XSS check
+        String description = validateLengthOnly(body, "description", "Description", 500);
+        String knowledge = validateLengthOnly(body, "knowledge", "Knowledge", 2000);
+
+        Object colorObj = body.get("color");
+        String color = (colorObj != null && !colorObj.toString().isBlank()) ? colorObj.toString() : "#6366f1";
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> bt = new LinkedHashMap<>();
         bt.put("id", id);
-        bt.put("name", body.getOrDefault("name", ""));
-        bt.put("code", body.getOrDefault("code", ""));
-        bt.put("description", body.getOrDefault("description", ""));
-        bt.put("color", body.getOrDefault("color", "#6366f1"));
-        bt.put("knowledge", body.getOrDefault("knowledge", ""));
+        bt.put("name", name);
+        bt.put("code", code);
+        bt.put("description", description);
+        bt.put("color", color);
+        bt.put("knowledge", knowledge);
         bt.put("createdAt", now);
         bt.put("updatedAt", now);
 
@@ -138,10 +152,14 @@ public class BusinessTypeService {
 
     /**
      * Updates an existing business type with the provided field map.
+     * Only fields present in the body are updated; each field is validated before being applied.
+     * Code field cannot be modified once created.
      *
-     * @param id an existing business type with the provided field map
-     * @param body an existing business type with the provided field map
-     * @return the result
+     * @param id entity identifier
+     * @param body updated fields
+     * @return the updated business type map
+     * @throws NotFoundException if the business type is not found
+     * @throws IllegalArgumentException if field validation fails
      */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -150,20 +168,27 @@ public class BusinessTypeService {
             throw new NotFoundException("Business type not found");
         }
 
+        // Code field cannot be modified after creation - silently ignore if present
+        body.remove("code");
+
         if (body.containsKey("name")) {
-            bt.put("name", body.get("name"));
-        }
-        if (body.containsKey("code")) {
-            bt.put("code", body.get("code"));
+            String newName = ValidationUtils.validateStringField(body, "name", "Business type name", 100, true);
+            validateNameAndCodeUnique(newName, null, id);
+            bt.put("name", newName);
         }
         if (body.containsKey("description")) {
-            bt.put("description", body.get("description"));
+            String newDescription = validateLengthOnly(body, "description", "Description", 500);
+            bt.put("description", newDescription);
         }
         if (body.containsKey("color")) {
-            bt.put("color", body.get("color"));
+            Object colorObj = body.get("color");
+            if (colorObj != null) {
+                bt.put("color", colorObj.toString());
+            }
         }
         if (body.containsKey("knowledge")) {
-            bt.put("knowledge", body.get("knowledge"));
+            String newKnowledge = validateLengthOnly(body, "knowledge", "Knowledge", 2000);
+            bt.put("knowledge", newKnowledge);
         }
 
         bt.put("updatedAt", Instant.now().toString());
@@ -176,7 +201,7 @@ public class BusinessTypeService {
      * Deletes a business type by its ID.
      *
      * @param id entity identifier
-     * @return the result
+     * @return true if deleted, false if not found
      */
     public boolean deleteBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -193,8 +218,69 @@ public class BusinessTypeService {
         }
     }
 
+    // ── Validation ────────────────────────────────────────────────────
+
+    /**
+     * Validates that the business type name and code are unique.
+     *
+     * @param name the name to validate (may be null to only validate code)
+     * @param code the code to validate (may be null to only validate name)
+     * @param excludeId the ID of the current business type to exclude from validation (for updates)
+     * @throws IllegalArgumentException if name or code already exists
+     */
+    private void validateNameAndCodeUnique(String name, String code, String excludeId) {
+        List<Map<String, Object>> existing = listBusinessTypes();
+        for (Map<String, Object> bt : existing) {
+            String existingId = bt.get("id") != null ? bt.get("id").toString() : "";
+            if (excludeId != null && existingId.equals(excludeId)) {
+                continue;
+            }
+            if (name != null && !name.isBlank()) {
+                String existingName = bt.get("name") != null ? bt.get("name").toString() : "";
+                if (name.equalsIgnoreCase(existingName)) {
+                    throw new IllegalArgumentException("Business type name already exists: " + name);
+                }
+            }
+            if (code != null && !code.isBlank()) {
+                String existingCode = bt.get("code") != null ? bt.get("code").toString() : "";
+                if (code.equalsIgnoreCase(existingCode)) {
+                    throw new IllegalArgumentException("Business type code already exists: " + code);
+                }
+            }
+        }
+    }
+
+    /**
+     * Validates a field for length only, without XSS character check.
+     * Used for description and knowledge fields where XSS characters are allowed.
+     *
+     * @param body request body map
+     * @param field field name to extract
+     * @param displayName display name for error messages
+     * @param maxLength maximum allowed length (0 = no limit)
+     * @return the validated trimmed string, or empty string if missing/null
+     * @throws IllegalArgumentException if validation fails
+     */
+    private String validateLengthOnly(Map<String, Object> body, String field, String displayName, int maxLength) {
+        Object value = body.get(field);
+        if (value == null) {
+            return "";
+        }
+        String str = value.toString().trim();
+        if (maxLength > 0 && str.length() > maxLength) {
+            throw new IllegalArgumentException(displayName + " exceeds maximum length of " + maxLength);
+        }
+        return str;
+    }
+
     // ── File I/O Helpers ─────────────────────────────────────────────
 
+    /**
+     * Reads a business type JSON file from disk.
+     *
+     * @param file path to the JSON file
+     * @return the parsed map, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -208,6 +294,13 @@ public class BusinessTypeService {
         }
     }
 
+    /**
+     * Writes a business type entity to a JSON file on disk.
+     *
+     * @param id entity identifier used as the filename
+     * @param entity business type map to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeEntityFile(String id, Map<String, Object> entity) {
         try {
             Files.createDirectories(businessTypesDir);

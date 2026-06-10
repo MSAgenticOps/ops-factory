@@ -89,43 +89,6 @@ public class SolutionTypeControllerTest {
             .andExpect(jsonPath("$.solutionTypes[0].name").value("CRM Commerce"));
     }
 
-    // ── getSolutionType ────────────────────────────────────────────
-
-    /**
-     * Tests get solution type existing.
-     *
-     * @throws Exception test fail
-     */
-    @Test
-    public void testGetSolutionType_existing() throws Exception {
-        Map<String, Object> st = new LinkedHashMap<>();
-        st.put("id", "st-1");
-        st.put("name", "CRM Commerce");
-        when(solutionTypeService.getSolutionType("st-1")).thenReturn(st);
-
-        mockMvc
-            .perform(get("/api/gateway/solution-types/st-1").header("x-secret-key", "test").header("x-user-id", "admin"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.solutionType.id").value("st-1"));
-    }
-
-    /**
-     * Tests get solution type not found.
-     *
-     * @throws Exception test fail
-     */
-    @Test
-    public void testGetSolutionType_notFound() throws Exception {
-        when(solutionTypeService.getSolutionType("nonexistent"))
-            .thenThrow(new NotFoundException("Solution type not found"));
-
-        mockMvc.perform(
-            get("/api/gateway/solution-types/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.success").value(false));
-    }
-
     // ── createSolutionType ─────────────────────────────────────────
 
     /**
@@ -221,6 +184,23 @@ public class SolutionTypeControllerTest {
             delete("/api/gateway/solution-types/nonexistent").header("x-secret-key", "test").header("x-user-id", "admin"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.success").value(false));
+    }
+
+    /**
+     * Tests delete solution type in use returns 409.
+     *
+     * @throws Exception test fail
+     */
+    @Test
+    public void testDeleteSolutionType_inUse_returns409() throws Exception {
+        when(solutionTypeService.deleteSolutionType("in-use"))
+            .thenThrow(new IllegalStateException("Solution type 'CRM' is in use by: 2 SOP(s) - Log Cleanup, Service Restart"));
+
+        mockMvc.perform(
+            delete("/api/gateway/solution-types/in-use").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("is in use")));
     }
 
     // ── Auth tests ───────────────────────────────────────────────

@@ -281,7 +281,25 @@ public class HostService {
     }
 
     /**
+     * Validates that the clusterId exists.
+     *
+     * @param clusterId the cluster ID to validate
+     * @throws BadRequestException if cluster does not exist
+     */
+    private void validateClusterExistence(String clusterId) throws BadRequestException {
+        if (clusterId == null || clusterId.trim().isEmpty()) {
+            throw new BadRequestException("Cluster ID is required");
+        }
+        try {
+            clusterService.getCluster(clusterId);
+        } catch (NotFoundException e) {
+            throw new BadRequestException("Cluster not found: " + clusterId);
+        }
+    }
+
+    /**
      * Validates common host fields (hostname, os, location, purpose, business, description).
+     * Performs XSS checks and max length validation for each field to match frontend validation.
      *
      * @param body the request body map
      */
@@ -290,16 +308,16 @@ public class HostService {
             ValidationUtils.validateStringField(body, "hostname", "Hostname", 255, false);
         }
         if (body.containsKey("os")) {
-            ValidationUtils.validateStringField(body, "os", "OS", 0, false);
+            ValidationUtils.validateStringField(body, "os", "OS", 20, false);
         }
         if (body.containsKey("location")) {
-            ValidationUtils.validateStringField(body, "location", "Location", 0, false);
+            ValidationUtils.validateStringField(body, "location", "Location", 200, false);
         }
         if (body.containsKey("purpose")) {
-            ValidationUtils.validateStringField(body, "purpose", "Purpose", 0, false);
+            ValidationUtils.validateStringField(body, "purpose", "Purpose", 300, false);
         }
         if (body.containsKey("business")) {
-            ValidationUtils.validateStringField(body, "business", "Business", 0, false);
+            ValidationUtils.validateStringField(body, "business", "Business", 200, false);
         }
         if (body.containsKey("description")) {
             ValidationUtils.validateStringField(body, "description", "Description", 500, false);
@@ -316,27 +334,60 @@ public class HostService {
     private void validateHostCredentials(Map<String, Object> body, Map<String, Object> existingHost)
         throws BadRequestException {
         boolean isUpdate = existingHost != null;
+
+        // 添加调试日志 - 包括现有主机的用户名和密码
+        String existingUsername = isUpdate && existingHost.get("username") != null ? existingHost.get("username").toString() : "null";
+        String existingCredential = isUpdate && existingHost.get("credential") != null ? existingHost.get("credential").toString() : "null";
+        log.info("validateHostCredentials called - isUpdate={}, hasUsernameField={}, hasCredentialField={}",
+            isUpdate, body.containsKey("username"), body.containsKey("credential"));
+        log.info("Existing host data - username='{}', credential='{}'", existingUsername, existingCredential);
+
         if (isUpdate && !body.containsKey("username") && !body.containsKey("credential")) {
+            log.info("Skipping credential validation - no username/credential fields in update request");
             return;
         }
 
-        Object usernameObj = isUpdate && !body.containsKey("username")
-            ? existingHost.get("username") : body.get("username");
-        Object credentialObj = isUpdate && !body.containsKey("credential")
-            ? existingHost.get("credential") : body.get("credential");
-
-        String username = usernameObj != null ? usernameObj.toString().trim() : "";
-        String credential = credentialObj != null ? credentialObj.toString() : "";
-        boolean credentialIsSentinel = "***".equals(credential);
-
-        String credentialForCheck = credential;
-        if (isUpdate && credentialIsSentinel) {
-            Object existingCred = existingHost.get("credential");
-            credentialForCheck = existingCred != null ? existingCred.toString() : "";
+        // 处理用户名：使用请求中的新用户名或现有主机的用户名
+        String username;
+        if (isUpdate && !body.containsKey("username")) {
+            Object existingUsernameObj = existingHost.get("username");
+            username = existingUsernameObj != null ? existingUsernameObj.toString().trim() : "";
+        } else {
+            Object newUsernameObj = body.get("username");
+            username = newUsernameObj != null ? newUsernameObj.toString().trim() : "";
         }
 
+        // 处理密码：如果是现有主机的密码，先解密；如果是新密码，直接使用
+        String credential;
+        boolean isNewCredential = body.containsKey("credential");
+        if (isUpdate && !isNewCredential) {
+            // 使用现有主机的密码，需要先解密
+            Object existingCredObj = existingHost.get("credential");
+            String encryptedCred = existingCredObj != null ? existingCredObj.toString() : "";
+            if (!encryptedCred.isEmpty()) {
+                try {
+                    credential = decrypt(encryptedCred);
+                } catch (Exception e) {
+                    log.warn("Failed to decrypt existing credential, treating as empty: {}", e.getMessage());
+                    credential = "";
+                }
+            } else {
+                credential = "";
+            }
+        } else {
+            // 使用请求中的新密码
+            Object newCredObj = body.get("credential");
+            credential = newCredObj != null ? newCredObj.toString() : "";
+        }
+
+        log.info("Processed values - username='{}', credential='{}', isNewCredential={}", username, credential, isNewCredential);
+
+        boolean credentialIsSentinel = "***".equals(credential);
         boolean hasUsername = !username.isEmpty();
-        boolean hasCredential = !credentialForCheck.isEmpty();
+        boolean hasCredential = !credential.isEmpty() && !credentialIsSentinel;
+
+        log.info("Validation result - hasUsername={}, hasCredential={}, credentialIsSentinel={}",
+            hasUsername, hasCredential, credentialIsSentinel);
         if (hasUsername != hasCredential) {
             throw new BadRequestException("Username and credential must be provided together");
         }
@@ -403,6 +454,12 @@ public class HostService {
         }
     }
 
+    /**
+     * Resolves the cluster mode based on the cluster type.
+     *
+     * @param clusterId the cluster identifier to resolve mode for
+     * @return the cluster mode ("peer" or "primary-backup")
+     */
     private String resolveClusterMode(String clusterId) {
         try {
             Map<String, Object> cluster = clusterService.getCluster(clusterId);
@@ -421,52 +478,6 @@ public class HostService {
             log.debug("Unable to resolve cluster mode for missing cluster {}", clusterId);
         }
         return "peer";
-    }
-
-    @SuppressWarnings("unchecked")
-    private void syncClusterTypeToTags(Map<String, Object> host) {
-        if (clusterService == null) {
-            return;
-        }
-        Object clusterIdObj = host.get("clusterId");
-        if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
-            return;
-        }
-
-        String clusterId = clusterIdObj.toString();
-        String clusterTypeRaw = null;
-        try {
-            Map<String, Object> cluster = clusterService.getCluster(clusterId);
-            if (cluster != null && cluster.get("type") != null) {
-                clusterTypeRaw = cluster.get("type").toString();
-            }
-        } catch (NotFoundException e) {
-            log.debug("Skipping missing cluster {} while syncing host tags", clusterId);
-        }
-
-        final String clusterType = clusterTypeRaw;
-
-        // Get current tags
-        List<Object> tags = new ArrayList<>();
-        Object tagsObj = host.get("tags");
-        if (tagsObj instanceof List<?>) {
-            tags = new ArrayList<>((List<Object>) tagsObj);
-        }
-
-        // Remove any existing cluster type tags (exact match)
-        if (clusterType != null) {
-            final String ct = clusterType;
-            tags.removeIf(t -> t.toString().equals(ct));
-        }
-
-        // Add current cluster type tag
-        if (clusterType != null && !clusterType.isEmpty()) {
-            if (!tags.stream().anyMatch(t -> t.toString().equals(clusterType))) {
-                tags.add(clusterType);
-            }
-        }
-
-        host.put("tags", tags);
     }
 
     /**
@@ -582,6 +593,8 @@ public class HostService {
         ensureUniqueHostName(name, null);
 
         ValidationUtils.requireNonBlank(body, "ip", "Host IP is required");
+        String clusterId = ValidationUtils.requireNonBlank(body, "clusterId", "Cluster ID is required");
+        validateClusterExistence(clusterId);
         validateHostCommonFields(body);
         validateHostCredentials(body, null);
         validateHostCustomAttributes(body);
@@ -635,10 +648,13 @@ public class HostService {
         applyEncryptedCredential(host, body, id);
         validateHostIpFields(host);
 
+        // Validate clusterId exists (required)
+        Object clusterIdObj = host.get("clusterId");
+        validateClusterExistence(clusterIdObj != null ? clusterIdObj.toString() : null);
+
         Object ipObj = host.get("ip");
         if (ipObj != null && !ipObj.toString().isEmpty()) {
             String ip = ipObj.toString().trim();
-            Object clusterIdObj = host.get("clusterId");
             if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
                 checkHostIpDuplicate(id, ip, clusterIdObj.toString());
             }
@@ -731,6 +747,14 @@ public class HostService {
         return result;
     }
 
+    /**
+     * Recursively collects hosts from a group and all its sub-groups.
+     *
+     * @param groupId the group identifier to collect hosts from
+     * @param clusterService the cluster service for resolving clusters
+     * @param visited the set of already visited groups to avoid cycles
+     * @param result the list to collect host maps into
+     */
     private void collectHostsByGroup(String groupId, ClusterService clusterService, Set<String> visited,
         List<Map<String, Object>> result) {
         if (!visited.add(groupId)) {
@@ -830,6 +854,13 @@ public class HostService {
         }
     }
 
+    /**
+     * Ensures that the host name is unique across all hosts.
+     *
+     * @param name the host name to check for uniqueness
+     * @param excludedId the host ID to exclude from the uniqueness check (null for new hosts)
+     * @throws ConflictException if a host with the same name already exists
+     */
     private void ensureUniqueHostName(String name, String excludedId) throws ConflictException {
         for (Map<String, Object> existing : listHosts(null)) {
             boolean sameRecord = excludedId != null && excludedId.equals(existing.get("id"));
@@ -839,6 +870,14 @@ public class HostService {
         }
     }
 
+    /**
+     * Builds a host entity map from the request body.
+     *
+     * @param body the request body containing host fields
+     * @param id the host identifier
+     * @param now the current timestamp for createdAt and updatedAt fields
+     * @return the host entity map
+     */
     private Map<String, Object> buildHostEntity(Map<String, Object> body, String id, String now) {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("id", id);
@@ -863,6 +902,15 @@ public class HostService {
         return host;
     }
 
+    /**
+     * Encrypts the credential using AES-GCM encryption.
+     *
+     * @param id the host identifier for logging purposes
+     * @param credentialObj the credential object to encrypt
+     * @param creating true if creating a new host, false if updating an existing host
+     * @return the Base64-encoded encrypted credential with prepended IV
+     * @throws IllegalStateException if encryption fails
+     */
     private String encryptCredential(String id, Object credentialObj, boolean creating) {
         String rawCredential = credentialObj != null ? credentialObj.toString() : "";
         try {
@@ -875,7 +923,6 @@ public class HostService {
 
     private void persistHost(String id, Map<String, Object> host, String logTemplate, Object[] logArgs)
         throws BadRequestException {
-        syncClusterTypeToTags(host);
         validateHostRole(host);
         writeHostFile(id, host);
         log.info(logTemplate, logArgs);
@@ -889,12 +936,25 @@ public class HostService {
         clusterRelationService.syncHostClusterRelation(id, clusterId);
     }
 
+    /**
+     * Creates a copy of the host map with the credential field masked.
+     *
+     * @param host the host data map
+     * @return a new host map with credential masked as "***"
+     */
     private Map<String, Object> maskCredential(Map<String, Object> host) {
         Map<String, Object> result = new LinkedHashMap<>(host);
         result.put("credential", "***");
         return result;
     }
 
+    /**
+     * Loads a host by ID or throws NotFoundException if not found.
+     *
+     * @param id the host identifier
+     * @return the host data map
+     * @throws NotFoundException if the host is not found
+     */
     private Map<String, Object> loadHostOrThrow(String id) throws NotFoundException {
         Path file = hostsDir.resolve(id + ".json");
         Map<String, Object> host = readHostFile(file);
@@ -904,12 +964,25 @@ public class HostService {
         return host;
     }
 
+    /**
+     * Ensures that the updated host name is unique.
+     *
+     * @param id the host identifier to exclude from the uniqueness check
+     * @param body the request body that may contain a new name
+     * @throws ConflictException if the new name already exists
+     */
     private void ensureUpdatedNameUnique(String id, Map<String, Object> body) throws ConflictException {
         if (body.containsKey("name")) {
             ensureUniqueHostName(String.valueOf(body.get("name")), id);
         }
     }
 
+    /**
+     * Applies mutable fields from the request body to the host map.
+     *
+     * @param host the host data map to update
+     * @param body the request body containing the fields to apply
+     */
     private void applyMutableFields(Map<String, Object> host, Map<String, Object> body) {
         for (String field : MUTABLE_FIELDS) {
             if (body.containsKey(field)) {
@@ -918,6 +991,14 @@ public class HostService {
         }
     }
 
+    /**
+     * Applies and encrypts the credential from the request body to the host map.
+     * If the credential is the placeholder "***", the original credential is preserved.
+     *
+     * @param host the host data map to update
+     * @param body the request body that may contain a new credential
+     * @param id the host identifier for logging purposes
+     */
     private void applyEncryptedCredential(Map<String, Object> host, Map<String, Object> body, String id) {
         if (!body.containsKey("credential")) {
             return;
@@ -929,6 +1010,12 @@ public class HostService {
         }
     }
 
+    /**
+     * Loads a host with decrypted credential for connection testing.
+     *
+     * @param id the host identifier
+     * @return the host data map with decrypted credential, or null if not found
+     */
     private Map<String, Object> loadHostForConnectionTest(String id) {
         try {
             return getHostWithCredential(id);
@@ -938,6 +1025,15 @@ public class HostService {
         }
     }
 
+    /**
+     * Configures JSch session authentication based on auth type.
+     *
+     * @param jsch the JSch instance to configure
+     * @param session the JSch session to configure
+     * @param authType the authentication type ("key" or "password")
+     * @param credential the credential (private key for key auth, password for password auth)
+     * @throws JSchException if authentication configuration fails
+     */
     private void configureJschAuthentication(JSch jsch, Session session, String authType, String credential)
         throws JSchException {
         if ("key".equals(authType)) {
@@ -947,6 +1043,12 @@ public class HostService {
         session.setPassword(credential);
     }
 
+    /**
+     * Builds a connection success result map.
+     *
+     * @param latency the connection latency in milliseconds
+     * @return the result map indicating successful connection
+     */
     private Map<String, Object> buildConnectionSuccessResult(long latency) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
@@ -955,6 +1057,14 @@ public class HostService {
         return result;
     }
 
+    /**
+     * Builds a connection failure result map.
+     *
+     * @param id the host identifier (for future reference)
+     * @param message the failure message
+     * @param latency the connection attempt latency in milliseconds
+     * @return the result map indicating failed connection
+     */
     private Map<String, Object> buildConnectionFailureResult(String id, String message, long latency) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", false);
@@ -965,6 +1075,12 @@ public class HostService {
 
     // ── File I/O Helpers ─────────────────────────────────────────────
 
+    /**
+     * Reads a host file and parses the JSON content.
+     *
+     * @param file the path to the host file
+     * @return the host data map, or null if the file does not exist or cannot be parsed
+     */
     private Map<String, Object> readHostFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -978,6 +1094,13 @@ public class HostService {
         }
     }
 
+    /**
+     * Writes host data to a JSON file.
+     *
+     * @param id the host identifier used for the filename
+     * @param host the host data map to write
+     * @throws IllegalStateException if writing fails
+     */
     private void writeHostFile(String id, Map<String, Object> host) {
         try {
             Files.createDirectories(hostsDir);

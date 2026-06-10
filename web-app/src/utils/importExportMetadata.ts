@@ -27,7 +27,13 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
             { name: 'typeColor', labelKey: 'field_clusterTypes_typeColor', enLabel: 'Color', zhLabel: '标识颜色', required: false, validation: { type: 'string' } },
-            { name: 'knowledge', labelKey: 'field_clusterTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'string' } },
+            { name: 'knowledge', labelKey: 'field_clusterTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 2000) return { valid: false, error: 'Exceeds maximum length of 2000' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 2000 } } },
+            { name: 'solutionType', labelKey: 'field_clusterTypes_solutionType', enLabel: 'Solution Type Code', zhLabel: '解决方案类型编码', required: false, validation: { type: 'string' } },
             { name: 'clusterMode', labelKey: 'field_clusterTypes_clusterMode', enLabel: 'Cluster Mode', zhLabel: '集群模式（可选：Peer/Primary-Backup）', required: false, validation: { type: 'enum', enumValues: ['Peer', 'Primary-Backup'] } },
             { name: 'commandPrefix', labelKey: 'field_clusterTypes_commandPrefix', enLabel: 'Command Prefix', zhLabel: '命令前缀', required: false, validation: { type: 'string' } },
             { name: 'envVariables', labelKey: 'field_clusterTypes_envVariables', enLabel: 'Environment Variables', zhLabel: '环境变量', required: false, validation: { type: 'array', separator: ';' } },
@@ -42,6 +48,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 clusterMode: 'Peer',
                 commandPrefix: 'kubectl',
                 envVariables: 'KUBECONFIG=/etc/kubernetes/config;CLUSTER_NAME=prod',
+                solutionType: 'universal',
             },
         ],
     },
@@ -64,12 +71,15 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             }, description: 'validationXssProtected', descriptionParams: { max: 50 } } },
             { name: 'description', labelKey: 'field_businessTypes_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
-                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
                 if (value.length > 500) return { valid: false, error: 'Exceeds maximum length of 500' }
                 return { valid: true }
-            }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
+            }, description: 'validationMaxLength', descriptionParams: { max: 500 } } },
             { name: 'typeColor', labelKey: 'field_businessTypes_typeColor', enLabel: 'Color', zhLabel: '标识颜色', required: false, validation: { type: 'string' } },
-            { name: 'knowledge', labelKey: 'field_businessTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'string' } },
+            { name: 'knowledge', labelKey: 'field_businessTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (value.length > 2000) return { valid: false, error: 'Exceeds maximum length of 2000' }
+                return { valid: true }
+            }, description: 'validationMaxLength', descriptionParams: { max: 2000 } } },
         ],
         sampleData: [
             {
@@ -105,7 +115,12 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 500 } } },
             { name: 'typeColor', labelKey: 'field_solutionTypes_typeColor', enLabel: 'Color', zhLabel: '标识颜色', required: false, validation: { type: 'string' } },
-            { name: 'knowledge', labelKey: 'field_solutionTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'string' } },
+            { name: 'knowledge', labelKey: 'field_solutionTypes_knowledge', enLabel: 'Knowledge', zhLabel: '常识', required: false, validation: { type: 'custom', customValidator: (value: string) => {
+                if (!value.trim()) return { valid: true }
+                if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 2000) return { valid: false, error: 'Exceeds maximum length of 2000' }
+                return { valid: true }
+            }, description: 'validationXssProtected', descriptionParams: { max: 2000 } } },
         ],
         sampleData: [
             {
@@ -178,7 +193,7 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 if (value.length > 200) return { valid: false, error: 'Exceeds maximum length of 200' }
                 return { valid: true }
             }, description: 'validationXssProtected', descriptionParams: { max: 200 } } },
-            { name: 'group', labelKey: 'field_clusters_group', enLabel: 'Host Group', zhLabel: '所属主机组', required: true, validation: { type: 'string' } },
+            { name: 'group', labelKey: 'field_clusters_group', enLabel: 'Host Group', zhLabel: '所属环境组', required: true, validation: { type: 'string' } },
             { name: 'description', labelKey: 'field_clusters_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
@@ -226,13 +241,15 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'os', labelKey: 'field_hosts_os', enLabel: 'Operating System', zhLabel: '操作系统', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 20) return { valid: false, error: 'Exceeds maximum length of 20' }
                 return { valid: true }
-            }, description: 'validationXssProtected' } },
+            }, description: 'validationXssProtected', descriptionParams: { max: 20 } } },
             { name: 'location', labelKey: 'field_hosts_location', enLabel: 'Location', zhLabel: '部署位置', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 200) return { valid: false, error: 'Exceeds maximum length of 200' }
                 return { valid: true }
-            }, description: 'validationXssProtected' } },
+            }, description: 'validationXssProtected', descriptionParams: { max: 200 } } },
             { name: 'username', labelKey: 'field_hosts_username', enLabel: 'Username', zhLabel: '用户名', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (value && !/^[\x00-\x7F]*$/.test(value)) {
                     return { valid: false, error: 'Username must contain only ASCII characters' }
@@ -249,16 +266,17 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
             { name: 'business', labelKey: 'field_hosts_business', enLabel: 'Business', zhLabel: '业务', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 200) return { valid: false, error: 'Exceeds maximum length of 200' }
                 return { valid: true }
-            }, description: 'validationXssProtected' } },
+            }, description: 'validationXssProtected', descriptionParams: { max: 200 } } },
             { name: 'cluster', labelKey: 'field_hosts_cluster', enLabel: 'Cluster', zhLabel: '所属集群', required: false, validation: { type: 'string' } },
             { name: 'purpose', labelKey: 'field_hosts_purpose', enLabel: 'Purpose', zhLabel: '用途', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
+                if (value.length > 300) return { valid: false, error: 'Exceeds maximum length of 300' }
                 return { valid: true }
-            }, description: 'validationXssProtected' } },
+            }, description: 'validationXssProtected', descriptionParams: { max: 300 } } },
             { name: 'role', labelKey: 'field_hosts_role', enLabel: 'Role', zhLabel: '角色（可选：primary/backup）', required: false, validation: { type: 'enum', enumValues: ['primary', 'backup'] } },
-            { name: 'tags', labelKey: 'field_hosts_tags', enLabel: 'Tags', zhLabel: '标签', required: false, validation: { type: 'array', separator: ';' } },
             { name: 'description', labelKey: 'field_hosts_description', enLabel: 'Description', zhLabel: '描述', required: false, validation: { type: 'custom', customValidator: (value: string) => {
                 if (!value.trim()) return { valid: true }
                 if (hasXssChars(value)) return { valid: false, error: 'Contains invalid characters (< > " \' & ` /)' }
@@ -283,7 +301,6 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 cluster: 'Web Cluster 01',
                 purpose: 'Web service',
                 role: 'primary',
-                tags: 'web;production',
                 description: 'Production environment web server',
                 customAttributes: 'env=production;team=ops',
             },
@@ -302,7 +319,6 @@ export const IMPORT_METADATA: Record<ImportType, ResourceImportMetadata> = {
                 cluster: 'Database Cluster 01',
                 purpose: 'Database service',
                 role: 'primary',
-                tags: 'database;production',
                 description: 'Production environment database server',
                 customAttributes: 'env=production;team=dba',
             },

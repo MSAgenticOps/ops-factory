@@ -55,6 +55,8 @@ public class HostGroupService {
 
     /**
      * Creates the host group service instance.
+     *
+     * @param properties gateway configuration properties
      */
     public HostGroupService(GatewayProperties properties) {
         this.properties = properties;
@@ -80,7 +82,7 @@ public class HostGroupService {
     /**
      * Lists all host groups.
      *
-     * @return the result
+     * @return list of all host group maps
      */
     public List<Map<String, Object>> listGroups() {
         List<Map<String, Object>> groups = new ArrayList<>();
@@ -123,8 +125,8 @@ public class HostGroupService {
      * Clusters are attached based on their groupId matching a group's id.
      * Business services are attached to their groupId node.
      *
-     * @param groups groups
-     * @param clusters clusters
+     * @param groups list of host groups
+     * @param clusters list of clusters
      * @return tree structure with groups and clusters
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters) {
@@ -134,11 +136,10 @@ public class HostGroupService {
     /**
      * Builds tree structure including top-level groups, sub-groups, clusters, and business services.
      *
-     * @param groups groups
-     * @param clusters clusters
-     * @param businessServices business services
-     *        services
-     * @return the builds tree structure including top-level groups, sub-groups, clusters, and business services
+     * @param groups list of host groups
+     * @param clusters list of clusters
+     * @param businessServices list of business services
+     * @return tree structure map containing the group hierarchy
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
         List<Map<String, Object>> businessServices) {
@@ -151,6 +152,12 @@ public class HostGroupService {
         return result;
     }
 
+    /**
+     * Builds a map of group ID to group node with initialized child collections.
+     *
+     * @param groups list of host groups
+     * @return map of group ID to group node
+     */
     private Map<String, Map<String, Object>> buildGroupNodeMap(List<Map<String, Object>> groups) {
         Map<String, Map<String, Object>> groupNodeMap = new LinkedHashMap<>();
         for (Map<String, Object> group : groups) {
@@ -163,12 +170,24 @@ public class HostGroupService {
         return groupNodeMap;
     }
 
+    /**
+     * Attaches clusters to their respective group nodes.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @param clusters list of clusters to attach
+     */
     private void attachClusters(Map<String, Map<String, Object>> groupNodeMap, List<Map<String, Object>> clusters) {
         for (Map<String, Object> cluster : clusters) {
             appendGroupedItem(groupNodeMap, (String) cluster.get("groupId"), "clusters", cluster);
         }
     }
 
+    /**
+     * Attaches business services to their respective group nodes.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @param businessServices list of business services to attach
+     */
     private void attachBusinessServices(Map<String, Map<String, Object>> groupNodeMap,
         List<Map<String, Object>> businessServices) {
         for (Map<String, Object> bs : businessServices) {
@@ -176,6 +195,14 @@ public class HostGroupService {
         }
     }
 
+    /**
+     * Appends an item to the specified collection of a group node.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @param groupId ID of the target group
+     * @param key collection key (e.g., "clusters", "businessServices")
+     * @param item item to append
+     */
     @SuppressWarnings("unchecked")
     private void appendGroupedItem(Map<String, Map<String, Object>> groupNodeMap, String groupId, String key,
         Map<String, Object> item) {
@@ -185,6 +212,12 @@ public class HostGroupService {
         ((List<Map<String, Object>>) groupNodeMap.get(groupId).get(key)).add(item);
     }
 
+    /**
+     * Builds the group hierarchy by attaching sub-groups to their parent nodes.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @return list of top-level group nodes with nested children
+     */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> buildGroupHierarchy(Map<String, Map<String, Object>> groupNodeMap) {
         List<Map<String, Object>> tree = new ArrayList<>();
@@ -227,6 +260,17 @@ public class HostGroupService {
         }
 
         ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
+
+        // Validate parentId if provided
+        Object parentIdObj = body.get("parentId");
+        if (parentIdObj != null && !parentIdObj.toString().isEmpty()) {
+            String parentId = parentIdObj.toString();
+            boolean parentExists = allGroups.stream()
+                .anyMatch(g -> parentId.equals(g.get("id")));
+            if (!parentExists) {
+                throw new BadRequestException("Parent group not found: " + parentId);
+            }
+        }
 
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
@@ -289,7 +333,19 @@ public class HostGroupService {
             group.put("code", newCode);
         }
         if (body.containsKey("parentId")) {
-            group.put("parentId", body.get("parentId"));
+            Object newParentIdObj = body.get("parentId");
+            if (newParentIdObj != null && !newParentIdObj.toString().isEmpty()) {
+                String newParentId = newParentIdObj.toString();
+                List<Map<String, Object>> allGroups = listGroups();
+                boolean parentExists = allGroups.stream()
+                    .anyMatch(g -> newParentId.equals(g.get("id")));
+                if (!parentExists) {
+                    throw new BadRequestException("Parent group not found: " + newParentId);
+                }
+                group.put("parentId", newParentId);
+            } else {
+                group.put("parentId", null);
+            }
         }
         if (body.containsKey("description")) {
             String description = ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
@@ -396,8 +452,8 @@ public class HostGroupService {
      * or by inheritance from a disabled ancestor. Uses fixed-point iteration to
      * handle arbitrary nesting depth.
      *
-     * @param groups groups
-     * @return the compute the set of group IDs that are effectively disabled, either directly
+     * @param groups list of host groups
+     * @return set of group IDs that are effectively disabled
      */
     public Set<String> getDisabledGroupIds(List<Map<String, Object>> groups) {
         Set<String> disabled = new HashSet<>();
@@ -421,6 +477,12 @@ public class HostGroupService {
         return disabled;
     }
 
+    /**
+     * Reads a host group JSON file from disk.
+     *
+     * @param file path to the JSON file
+     * @return the parsed map, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -434,6 +496,13 @@ public class HostGroupService {
         }
     }
 
+    /**
+     * Writes a host group entity to a JSON file on disk.
+     *
+     * @param id entity identifier used as the filename
+     * @param entity host group map to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeEntityFile(String id, Map<String, Object> entity) {
         try {
             Files.createDirectories(groupsDir);

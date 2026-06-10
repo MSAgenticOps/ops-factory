@@ -61,23 +61,6 @@ public class SolutionTypeController {
     }
 
     /**
-     * Gets a solution type by ID.
-     *
-     * @param id solution type identifier
-     * @param request current HTTP request
-     * @return ResponseEntity containing the solution type or 404
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getSolutionType(@PathVariable("id") String id,
-        HttpServletRequest request) throws NotFoundException {
-        Map<String, Object> st = solutionTypeService.getSolutionType(id);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        body.put("solutionType", st);
-        return ResponseEntity.ok(body);
-    }
-
-    /**
      * Creates a new solution type.
      *
      * @param request request body containing solution type fields
@@ -117,20 +100,27 @@ public class SolutionTypeController {
      *
      * @param id solution type identifier
      * @param request current HTTP request
-     * @return ResponseEntity with success status or 404
+     * @return ResponseEntity with success status or error
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deleteSolutionType(@PathVariable("id") String id,
         HttpServletRequest request) {
-        boolean deleted = solutionTypeService.deleteSolutionType(id);
-        if (!deleted) {
+        try {
+            boolean deleted = solutionTypeService.deleteSolutionType(id);
+            if (!deleted) {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("success", false);
+                body.put("error", "Solution type not found: " + id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+            }
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            return ResponseEntity.ok(body);
+        } catch (IllegalStateException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
-            body.put("error", "Solution type not found: " + id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+            body.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", true);
-        return ResponseEntity.ok(body);
     }
 }

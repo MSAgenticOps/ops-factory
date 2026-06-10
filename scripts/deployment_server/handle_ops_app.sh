@@ -327,7 +327,16 @@ if [ -n "${OI_JAR}" ] && [ -f "${SOURCE_DIR}${OI_JAR}" ]; then
 
         # 用 Python 统一修改配置（避免 sed 和 yaml 格式冲突）
         python3 -c "
-import yaml
+import sys
+
+try:
+    import yaml
+except ImportError:
+    error_msg = 'Error: yaml module not installed. Run: pip install pyyaml'
+    print(error_msg, file=sys.stderr)
+    with open('./config_error.log', 'w') as err_log:
+        err_log.write(error_msg + '\n')
+    sys.exit(1)
 
 config_path = '${TARGET_OI_DIR}config.yaml'
 
@@ -347,30 +356,48 @@ dv_environments = [
     }
 ]
 
-with open(config_path) as f:
-    config = yaml.safe_load(f) or {}
+try:
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f) or {}
 
-# 修改 spring profile
-if 'spring' not in config:
-    config['spring'] = {}
-if 'profiles' not in config['spring']:
-    config['spring']['profiles'] = {}
-config['spring']['profiles']['active'] = 'prod'
+        # 修改 common.aop.machine 认证信息
+        if 'common' not in config:
+            config['common'] = {}
+        if 'aop' not in config['common']:
+            config['common']['aop'] = {}
+        if 'machine' not in config['common']['aop']:
+            config['common']['aop']['machine'] = {}
+        config['common']['aop']['machine']['username'] = 'opsfactory'
+        config['common']['aop']['machine']['password'] = 'opsfactory'
 
-# 修改 secret-key
-if 'operation-intelligence' not in config:
-    config['operation-intelligence'] = {}
-config['operation-intelligence']['secret-key'] = 'test'
+        # 修改 spring profile
+        if 'spring' not in config:
+            config['spring'] = {}
+        if 'profiles' not in config['spring']:
+            config['spring']['profiles'] = {}
+        config['spring']['profiles']['active'] = 'prod'
 
-# 注入 dv-environments
-if 'qos' not in config['operation-intelligence']:
-    config['operation-intelligence']['qos'] = {}
-config['operation-intelligence']['qos']['dv-environments'] = dv_environments
+        # 修改 secret-key
+        if 'operation-intelligence' not in config:
+            config['operation-intelligence'] = {}
+        config['operation-intelligence']['secret-key'] = 'test'
 
-with open(config_path, 'w') as f:
-    yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        # 注入 dv-environments
+        if 'qos' not in config['operation-intelligence']:
+            config['operation-intelligence']['qos'] = {}
+        config['operation-intelligence']['qos']['dv-environments'] = dv_environments
 
-print('OI config.yaml 处理完成')
+    with open(config_path, 'w', encoding='utf-8') as f:
+        yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+    print('OI config.yaml 处理完成')
+except Exception as e:
+    error_msg = f'Error processing OI config: {e}'
+    print(error_msg, file=sys.stderr)
+    # 写入错误日志到当前路径
+    with open('./config_error.log', 'w') as err_log:
+        err_log.write(error_msg + '\n')
+    sys.exit(1)
 "
     fi
 
@@ -412,6 +439,9 @@ if [ -n "${CC_JAR}" ] && [ -f "${SOURCE_DIR}${CC_JAR}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${CC_CONFIG_EXAMPLE}" "${TARGET_CC_DIR}config.yaml"
         # 修改 cors-origin 为 *
         sed -i 's/^  cors-origin:.*/  cors-origin: "*"/' "${TARGET_CC_DIR}config.yaml"
+        # 修改 common.aop.machine 认证信息
+        sed -i 's/^      username: "\\\${COMMON_AOP_MACHINE_USERNAME:}"/      username: "opsfactory"/' "${TARGET_CC_DIR}config.yaml"
+        sed -i 's/^      password: "\\\${COMMON_AOP_MACHINE_PASSWORD:}"/      password: "opsfactory"/' "${TARGET_CC_DIR}config.yaml"
     fi
 
     chown root:root "${TARGET_CC_DIR}${CC_JAR}"
@@ -442,6 +472,9 @@ if [ -n "${KS_JAR}" ] && [ -f "${SOURCE_DIR}${KS_JAR}" ]; then
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${KS_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${KS_CONFIG_EXAMPLE}" "${TARGET_KS_DIR}config.yaml"
+        # 修改 common.aop.machine 认证信息
+        sed -i 's/^      username: "\\\${COMMON_AOP_MACHINE_USERNAME:}"/      username: "opsfactory"/' "${TARGET_KS_DIR}config.yaml"
+        sed -i 's/^      password: "\\\${COMMON_AOP_MACHINE_PASSWORD:}"/      password: "opsfactory"/' "${TARGET_KS_DIR}config.yaml"
     fi
 
     chown root:root "${TARGET_KS_DIR}${KS_JAR}"
@@ -472,6 +505,9 @@ if [ -n "${SM_JAR}" ] && [ -f "${SOURCE_DIR}${SM_JAR}" ]; then
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${SM_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${SM_CONFIG_EXAMPLE}" "${TARGET_SM_DIR}config.yaml"
+        # 修改 common.aop.machine 认证信息
+        sed -i 's/^      username: "\\\${COMMON_AOP_MACHINE_USERNAME:}"/      username: "opsfactory"/' "${TARGET_SM_DIR}config.yaml"
+        sed -i 's/^      password: "\\\${COMMON_AOP_MACHINE_PASSWORD:}"/      password: "opsfactory"/' "${TARGET_SM_DIR}config.yaml"
     fi
 
     chown root:root "${TARGET_SM_DIR}${SM_JAR}"
@@ -502,6 +538,9 @@ if [ -n "${BI_JAR}" ] && [ -f "${SOURCE_DIR}${BI_JAR}" ]; then
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${BI_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${BI_CONFIG_EXAMPLE}" "${TARGET_BI_DIR}config.yaml"
+        # 修改 common.aop.machine 认证信息
+        sed -i 's/^      username: "\\\${COMMON_AOP_MACHINE_USERNAME:}"/      username: "opsfactory"/' "${TARGET_BI_DIR}config.yaml"
+        sed -i 's/^      password: "\\\${COMMON_AOP_MACHINE_PASSWORD:}"/      password: "opsfactory"/' "${TARGET_BI_DIR}config.yaml"
     fi
 
     chown root:root "${TARGET_BI_DIR}${BI_JAR}"
@@ -532,6 +571,13 @@ if [ -n "${FINOPS_JAR}" ] && [ -f "${SOURCE_DIR}${FINOPS_JAR}" ]; then
     # 直接替换配置
     if [ -f "${SOURCE_DIR}${FINOPS_CONFIG_EXAMPLE}" ]; then
         echo "yes" | cp "${SOURCE_DIR}${FINOPS_CONFIG_EXAMPLE}" "${TARGET_FINOPS_DIR}config.yaml"
+        # 修改 common.aop.machine 认证信息
+        sed -i 's/^      username: "\\\${COMMON_AOP_MACHINE_USERNAME:}"/      username: "opsfactory"/' "${TARGET_FINOPS_DIR}config.yaml"
+        sed -i 's/^      password: "\\\${COMMON_AOP_MACHINE_PASSWORD:}"/      password: "opsfactory"/' "${TARGET_FINOPS_DIR}config.yaml"
+        # 修改 FinOps 特定配置
+        sed -i 's/^  secret-key: "\\\${FINOPS_SECRET_KEY:}"/  secret-key: "test"/' "${TARGET_FINOPS_DIR}config.yaml"
+        sed -i 's/^    secret-key: "\\\${GATEWAY_SECRET_KEY:}"/    secret-key: "test"/' "${TARGET_FINOPS_DIR}config.yaml"
+        sed -i 's/^    user-id: "\\\${FINOPS_GATEWAY_USER_ID:}"/    user-id: "admin"/' "${TARGET_FINOPS_DIR}config.yaml"
     fi
 
     chown root:root "${TARGET_FINOPS_DIR}${FINOPS_JAR}"
@@ -542,17 +588,20 @@ fi
 echo "正在处理 Gateway config.yaml..."
 # 备份旧配置
 if [ -f "${TARGET_DIR}config.yaml" ]; then
-	cp "${TARGET_DIR}config.yaml" "${TARGET_DIR}config.yaml.bak.${timestamp}"
+    cp "${TARGET_DIR}config.yaml" "${TARGET_DIR}config.yaml.bak.${timestamp}"
 fi
 # 复制 example 为正式配置
 if [ -f "${SOURCE_DIR}config.yaml.example" ]; then
-	cp "${SOURCE_DIR}config.yaml.example" "${TARGET_DIR}config.yaml"
-	# 修改必要配置项
-	sed -i 's/^  secret-key: ""/  secret-key: "test"/' "${TARGET_DIR}config.yaml"
-	sed -i 's/^  cors-origin: "http:\/\/127\.0\.0\.1:5173"/  cors-origin: "*"/' "${TARGET_DIR}config.yaml"
-	echo "Gateway config.yaml 处理完成"
+    cp "${SOURCE_DIR}config.yaml.example" "${TARGET_DIR}config.yaml"
+    # 修改必要配置项
+    sed -i 's/^  secret-key: ""/  secret-key: "test"/' "${TARGET_DIR}config.yaml"
+    sed -i 's/^  cors-origin: "http:\/\/127\.0\.0\.1:5173"/  cors-origin: "*"/' "${TARGET_DIR}config.yaml"
+    # 修改 common.aop.machine 认证信息
+    sed -i 's/^      username: "\\\${COMMON_AOP_MACHINE_USERNAME:}"/      username: "opsfactory"/' "${TARGET_DIR}config.yaml"
+    sed -i 's/^      password: "\\\${COMMON_AOP_MACHINE_PASSWORD:}"/      password: "opsfactory"/' "${TARGET_DIR}config.yaml"
+    echo "Gateway config.yaml 处理完成"
 else
-	echo "警告: config.yaml.example 不存在，跳过 Gateway 配置处理"
+    echo "警告: config.yaml.example 不存在，跳过 Gateway 配置处理"
 fi
 
 # 14. 复制 webapp
