@@ -91,6 +91,7 @@ export default function ModelConfigSection({ config, onSave, onCreateProvider, o
         const tempError = validateTemperature(form.GOOSE_TEMPERATURE || '')
         if (tempError === 'format') errors.temperature = t('agentConfigure.temperatureFormat')
         else if (tempError === 'range') errors.temperature = t('agentConfigure.temperatureRange')
+        else if (tempError === 'precision') errors.temperature = t('agentConfigure.temperaturePrecision')
 
         const tokensError = validateMaxTokens(form.GOOSE_MAX_TOKENS || '')
         if (tokensError === 'format') errors.maxTokens = t('agentConfigure.maxTokensFormat')

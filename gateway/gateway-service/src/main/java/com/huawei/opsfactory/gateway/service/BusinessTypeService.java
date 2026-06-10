@@ -7,22 +7,11 @@ package com.huawei.opsfactory.gateway.service;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,14 +24,9 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class BusinessTypeService {
-    private static final Logger log = LoggerFactory.getLogger(BusinessTypeService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class BusinessTypeService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
-
-    private Path businessTypesDir;
 
     /**
      * Creates the business type service instance.
@@ -50,6 +34,7 @@ public class BusinessTypeService {
      * @param properties properties
      */
     public BusinessTypeService(GatewayProperties properties) {
+        super("business-type");
         this.properties = properties;
     }
 
@@ -58,14 +43,7 @@ public class BusinessTypeService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.businessTypesDir = gatewayRoot.resolve("data").resolve("business-types");
-        try {
-            Files.createDirectories(businessTypesDir);
-        } catch (IOException e) {
-            log.error("Failed to create business-types directory: {}", businessTypesDir, e);
-        }
-        log.info("BusinessTypeService initialized, businessTypesDir={}", businessTypesDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "business-types");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -76,24 +54,7 @@ public class BusinessTypeService {
      * @return the result
      */
     public List<Map<String, Object>> listBusinessTypes() {
-        List<Map<String, Object>> types = new ArrayList<>();
-        if (!Files.isDirectory(businessTypesDir)) {
-            return types;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(businessTypesDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                Map<String, Object> bt = readFile(file);
-                if (bt != null) {
-                    types.add(bt);
-                }
-            }
-        } catch (IOException e) {
-            log.error("Failed to list business-types from {}", businessTypesDir, e);
-        }
-        return types;
+        return listEntities();
     }
 
     /**
@@ -103,8 +64,7 @@ public class BusinessTypeService {
      * @return a business type by its ID
      */
     public Map<String, Object> getBusinessType(String id) throws NotFoundException {
-        Path file = businessTypesDir.resolve(id + ".json");
-        Map<String, Object> bt = readFile(file);
+        Map<String, Object> bt = readFile(resolveEntityFile(id));
         if (bt == null) {
             throw new NotFoundException("Business type not found");
         }
@@ -144,8 +104,7 @@ public class BusinessTypeService {
      * @return the result
      */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) throws NotFoundException {
-        Path file = businessTypesDir.resolve(id + ".json");
-        Map<String, Object> bt = readFile(file);
+        Map<String, Object> bt = readFile(resolveEntityFile(id));
         if (bt == null) {
             throw new NotFoundException("Business type not found");
         }
@@ -179,44 +138,6 @@ public class BusinessTypeService {
      * @return the result
      */
     public boolean deleteBusinessType(String id) {
-        Path file = businessTypesDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted business type: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete business-type file: {}", file, e);
-            return false;
-        }
-    }
-
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read business-type file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(businessTypesDir);
-            Path file = businessTypesDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write business-type file for id={}", id, e);
-            throw new IllegalStateException("Failed to save business type", e);
-        }
+        return deleteEntityFile(id);
     }
 }

@@ -1768,6 +1768,7 @@
     "contextLimitRange": "上下文长度必须在 1 到 2,000,000 之间",
     "temperatureFormat": "温度必须是有效的数字",
     "temperatureRange": "温度必须在 0 到 1 之间",
+    "temperaturePrecision": "温度最多支持两位小数",
     "maxTokensFormat": "最大 Tokens 必须是正整数",
     "maxTokensRange": "最大 Tokens 必须在 1 到 128,000 之间",
     "contextStrategyInvalid": "上下文策略必须是以下之一：summarize、truncate、clear、prompt",

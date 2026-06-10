@@ -101,9 +101,7 @@ public class QosController {
         long endTime = toLong(req.get("endTime"));
         validateTimeRange(startTime, endTime);
         List<Map<String, Object>> results = qosService.getHealthIndicator(envCode, startTime, endTime);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("results", results);
-        return response;
+        return resultsResponse(results);
     }
 
     /**
@@ -142,9 +140,7 @@ public class QosController {
         long endTime = toLong(req.get("endTime"));
         validateTimeRange(startTime, endTime);
         List<?> results = qosService.getResourceNormalize(envCode, startTime, endTime);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("results", results);
-        return response;
+        return resultsResponse(results);
     }
 
     /**
@@ -161,9 +157,7 @@ public class QosController {
         long endTime = toLong(req.get("endTime"));
         validateTimeRange(startTime, endTime);
         List<Map<String, Object>> results = qosService.getContributionData(envCode, startTime, endTime);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("results", results);
-        return response;
+        return resultsResponse(results);
     }
 
     /**
@@ -242,5 +236,11 @@ public class QosController {
         if (envCode == null || envCode.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "envCode is required");
         }
+    }
+
+    private Map<String, Object> resultsResponse(Object results) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("results", results);
+        return response;
     }
 }

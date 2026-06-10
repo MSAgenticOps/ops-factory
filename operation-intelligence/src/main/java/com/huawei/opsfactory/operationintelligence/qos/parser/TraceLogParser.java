@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.operationintelligence.qos.parser;
 
 import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
+import com.huawei.opsfactory.operationintelligence.qos.util.JsonNodeHelper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -43,28 +44,28 @@ public class TraceLogParser {
      */
     public TraceLogRecord parse(JsonNode logEntry) {
         TraceLogRecord record = new TraceLogRecord();
-        record.setTraceId(textVal(logEntry, "TraceID"));
-        record.setIp(textVal(logEntry, "ServerIP"));
-        record.setCluster(textVal(logEntry, "ClusterType"));
-        record.setClusterId(textVal(logEntry, "ClusterId"));
-        record.setLogMessage(textVal(logEntry, "LogMessage"));
-        record.setLogTime(textVal(logEntry, "Time"));
-        record.setCost(parseCost(textVal(logEntry, "cost")));
-        record.setMoi(textVal(logEntry, "moi"));
+        record.setTraceId(JsonNodeHelper.textVal(logEntry, "TraceID"));
+        record.setIp(JsonNodeHelper.textVal(logEntry, "ServerIP"));
+        record.setCluster(JsonNodeHelper.textVal(logEntry, "ClusterType"));
+        record.setClusterId(JsonNodeHelper.textVal(logEntry, "ClusterId"));
+        record.setLogMessage(JsonNodeHelper.textVal(logEntry, "LogMessage"));
+        record.setLogTime(JsonNodeHelper.textVal(logEntry, "Time"));
+        record.setCost(JsonNodeHelper.parseCost(JsonNodeHelper.textVal(logEntry, "cost")));
+        record.setMoi(JsonNodeHelper.textVal(logEntry, "moi"));
 
         // Field priority: url > serviceName > topic/eventName
-        String url = safeValue(textVal(logEntry, "url"));
-        String serviceName = safeValue(textVal(logEntry, "serviceName"));
+        String url = JsonNodeHelper.safeValue(JsonNodeHelper.textVal(logEntry, "url"));
+        String serviceName = JsonNodeHelper.safeValue(JsonNodeHelper.textVal(logEntry, "serviceName"));
 
         if (url != null) {
             record.setUrl(url);
         } else if (serviceName != null) {
             record.setServiceName(serviceName);
-            record.setOperationName(textVal(logEntry, "operationName"));
+            record.setOperationName(JsonNodeHelper.textVal(logEntry, "operationName"));
         }
 
         // Parse fields from AppendInfo
-        String appendInfo = textVal(logEntry, "AppendInfo");
+        String appendInfo = JsonNodeHelper.textVal(logEntry, "AppendInfo");
         if (appendInfo != null) {
             parseAppendInfo(record, appendInfo);
         }
@@ -116,56 +117,5 @@ public class TraceLogParser {
         String upper = logMessage.toUpperCase();
         return upper.startsWith("E") || upper.startsWith("END") || upper.startsWith("ER") || upper.startsWith("EBS")
             || upper.startsWith("EMQ") || upper.startsWith("EBPMP") || upper.startsWith("EBPMA");
-    }
-
-    /**
-     * Extract text value from JSON node.
-     *
-     * @param node the JSON node
-     * @param field the field name
-     * @return the text value or null
-     */
-    private String textVal(JsonNode node, String field) {
-        if (node == null || !node.has(field)) {
-            return null;
-        }
-        JsonNode fieldNode = node.get(field);
-        if (fieldNode.isNull()) {
-            return null;
-        }
-        return fieldNode.asText();
-    }
-
-    /**
-     * Parse cost string to Long.
-     *
-     * @param cost the cost string (e.g., "10ms", "100")
-     * @return the parsed cost or null
-     */
-    private Long parseCost(String cost) {
-        if (cost == null || cost.isEmpty()) {
-            return null;
-        }
-        try {
-            // Remove non-numeric characters (like "ms")
-            String numeric = cost.replaceAll("[^0-9]", "");
-            if (numeric.isEmpty()) {
-                return null;
-            }
-            return Long.parseLong(numeric);
-        } catch (NumberFormatException e) {
-            log.warn("Failed to parse cost: {}", cost);
-            return null;
-        }
-    }
-
-    /**
-     * Return null if value is "null" string, otherwise return the value.
-     *
-     * @param value the value to check
-     * @return null if "null", otherwise the value
-     */
-    private String safeValue(String value) {
-        return (value != null && !value.equals("null")) ? value : null;
     }
 }

@@ -8,9 +8,6 @@ import com.huawei.opsfactory.gateway.service.channel.model.ChannelConnectionConf
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelDetail;
 import com.huawei.opsfactory.gateway.service.channel.model.ChannelLoginState;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,12 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Manages WeChat channel login lifecycle including QR code login, logout, and runtime state file management.
@@ -37,8 +31,6 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class WeChatLoginService {
     private static final Logger log = LoggerFactory.getLogger(WeChatLoginService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ChannelConfigService channelConfigService;
 
@@ -73,10 +65,10 @@ public class WeChatLoginService {
     public ChannelLoginState getLoginState(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
         ChannelConnectionConfig config = channel.config();
-        Map<String, Object> runtimeState = readRuntimeState(channel);
-        String status = normalizeStatus(config.loginStatus());
+        Map<String, Object> runtimeState = ChannelProcessHelper.readRuntimeState(loginStateFile(channel));
+        String status = ChannelProcessHelper.normalizeStatus(config.loginStatus());
         if (runtimeState.get("status") instanceof String runtimeStatus && !runtimeStatus.isBlank()) {
-            status = normalizeStatus(runtimeStatus);
+            status = ChannelProcessHelper.normalizeStatus(runtimeStatus);
         }
         String message = switch (status) {
             case "connected":
@@ -90,15 +82,15 @@ public class WeChatLoginService {
                 yield "WeChat login required";
         };
 
-        String stateMessage = asString(runtimeState.get("message"));
+        String stateMessage = ChannelProcessHelper.asString(runtimeState.get("message"));
         if (stateMessage != null && !stateMessage.isBlank()) {
             message = stateMessage;
         }
-        String stateConnectedAt = asString(runtimeState.get("lastConnectedAt"));
-        String stateDisconnectedAt = asString(runtimeState.get("lastDisconnectedAt"));
-        String stateError = asString(runtimeState.get("lastError"));
-        String stateQr = asString(runtimeState.get("qrCodeDataUrl"));
-        String stateWechatId = asString(runtimeState.get("wechatId"));
+        String stateConnectedAt = ChannelProcessHelper.asString(runtimeState.get("lastConnectedAt"));
+        String stateDisconnectedAt = ChannelProcessHelper.asString(runtimeState.get("lastDisconnectedAt"));
+        String stateError = ChannelProcessHelper.asString(runtimeState.get("lastError"));
+        String stateQr = ChannelProcessHelper.asString(runtimeState.get("qrCodeDataUrl"));
+        String stateWechatId = ChannelProcessHelper.asString(runtimeState.get("wechatId"));
 
         return new ChannelLoginState(channel.id(), status, message, config.authStateDir(),
             stateWechatId != null ? stateWechatId : config.wechatId(),
@@ -126,29 +118,29 @@ public class WeChatLoginService {
      */
     public ChannelLoginState startLogin(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
-        Path authDir = resolveAuthDir(channel);
+        Path authDir = runtimeStorageService.authDirectory(channel);
         Path stateFile = loginStateFile(channel);
         Path pidFile = pidFile(channel);
         Path logFile = logFile(channel);
-        Path inboxDir = inboxDir(channel);
-        Path outboxPendingDir = outboxPendingDir(channel);
-        Path outboxSentDir = outboxSentDir(channel);
-        Path outboxErrorDir = outboxErrorDir(channel);
-        killIfRunning(pidFile);
+        Path inbox = runtimeStorageService.inboxDirectory(channel);
+        Path outboxPending = runtimeStorageService.outboxPendingDirectory(channel);
+        Path outboxSent = runtimeStorageService.outboxSentDirectory(channel);
+        Path outboxError = runtimeStorageService.outboxErrorDirectory(channel);
+        ChannelProcessHelper.killIfRunning(pidFile);
         try {
             Files.createDirectories(authDir);
-            Files.createDirectories(inboxDir);
-            Files.createDirectories(outboxPendingDir);
-            Files.createDirectories(outboxSentDir);
-            Files.createDirectories(outboxErrorDir);
+            Files.createDirectories(inbox);
+            Files.createDirectories(outboxPending);
+            Files.createDirectories(outboxSent);
+            Files.createDirectories(outboxError);
             Files.createDirectories(logFile.getParent());
         } catch (IOException e) {
             throw new IllegalStateException("Failed to create WeChat runtime directory", e);
         }
 
         writeInitialStateFile(channel, stateFile);
-        startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inboxDir, outboxPendingDir, outboxSentDir,
-            outboxErrorDir);
+        startHelperProcess(channel, authDir, stateFile, pidFile, logFile, inbox, outboxPending, outboxSent,
+            outboxError);
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.login_requested",
             "WeChat login requested; auth directory prepared at " + authDir);
 
@@ -174,20 +166,20 @@ public class WeChatLoginService {
      */
     public ChannelLoginState logout(String channelId, String ownerUserId) {
         ChannelDetail channel = requireChannel(channelId, ownerUserId);
-        Path authDir = resolveAuthDir(channel);
+        Path authDir = runtimeStorageService.authDirectory(channel);
         Path stateFile = loginStateFile(channel);
         Path pidFile = pidFile(channel);
         try {
-            killIfRunning(pidFile);
+            ChannelProcessHelper.killIfRunning(pidFile);
         } catch (IllegalStateException e) {
             log.debug("Failed to stop existing WeChat helper for {}", channelId, e);
         }
         try {
-            clearDirectory(authDir);
+            ChannelProcessHelper.clearDirectory(authDir);
         } catch (IllegalStateException e) {
             log.debug("Failed to clear WeChat auth dir for {}", channelId, e);
         }
-        deleteQuietly(stateFile);
+        ChannelProcessHelper.deleteQuietly(stateFile);
 
         writeDisconnectedStateFile(channel, stateFile);
         channelConfigService.recordEvent(channelId, ownerUserId, "info", "wechat.logged_out",
@@ -210,10 +202,6 @@ public class WeChatLoginService {
         return channel;
     }
 
-    private Path resolveAuthDir(ChannelDetail channel) {
-        return runtimeStorageService.authDirectory(channel);
-    }
-
     private Path loginStateFile(ChannelDetail channel) {
         return runtimeStorageService.loginStateFile(channel);
     }
@@ -224,31 +212,6 @@ public class WeChatLoginService {
 
     private Path logFile(ChannelDetail channel) {
         return runtimeStorageService.logFile(channel);
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> readRuntimeState(ChannelDetail channel) {
-        Path stateFile = loginStateFile(channel);
-        try {
-            if (!Files.exists(stateFile)) {
-                return Map.of();
-            }
-            String raw = Files.readString(stateFile, StandardCharsets.UTF_8);
-            if (raw.isBlank()) {
-                return Map.of();
-            }
-            return MAPPER.readValue(raw, Map.class);
-        } catch (IOException e) {
-            return Map.of();
-        }
-    }
-
-    private String asString(Object value) {
-        if (value == null) {
-            return null;
-        }
-        String text = String.valueOf(value).trim();
-        return text.isEmpty() ? null : text;
     }
 
     private void writeInitialStateFile(ChannelDetail channel, Path stateFile) {
@@ -264,7 +227,7 @@ public class WeChatLoginService {
         payload.put("lastError", "");
         payload.put("qrCodeDataUrl", null);
         try {
-            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+            Files.writeString(stateFile, ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload),
                 StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
@@ -285,7 +248,7 @@ public class WeChatLoginService {
         payload.put("qrCodeDataUrl", null);
         try {
             Files.createDirectories(stateFile.getParent());
-            Files.writeString(stateFile, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(payload),
+            Files.writeString(stateFile, ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload),
                 StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
@@ -333,85 +296,5 @@ public class WeChatLoginService {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to start WeChat helper", e);
         }
-    }
-
-    private void killIfRunning(Path pidFile) {
-        try {
-            if (!Files.exists(pidFile)) {
-                return;
-            }
-            String raw = Files.readString(pidFile, StandardCharsets.UTF_8).trim();
-            if (raw.isBlank()) {
-                Files.deleteIfExists(pidFile);
-                return;
-            }
-            Map<String, Object> pidPayload = MAPPER.readValue(raw, new TypeReference<>() {});
-            Object pidObj = pidPayload.get("pid");
-            if (!(pidObj instanceof Number number)) {
-                Files.deleteIfExists(pidFile);
-                return;
-            }
-            long pid = number.longValue();
-            ProcessHandle.of(pid).ifPresent(handle -> {
-                handle.destroy();
-                try {
-                    handle.onExit().get();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    handle.destroyForcibly();
-                } catch (ExecutionException e) {
-                    handle.destroyForcibly();
-                }
-            });
-            Files.deleteIfExists(pidFile);
-        } catch (IOException | NumberFormatException e) {
-            try {
-                Files.deleteIfExists(pidFile);
-            } catch (IOException deleteError) {
-                // ignore
-            }
-        }
-    }
-
-    private Path inboxDir(ChannelDetail channel) {
-        return runtimeStorageService.inboxDirectory(channel);
-    }
-
-    private Path outboxPendingDir(ChannelDetail channel) {
-        return runtimeStorageService.outboxPendingDirectory(channel);
-    }
-
-    private Path outboxSentDir(ChannelDetail channel) {
-        return runtimeStorageService.outboxSentDirectory(channel);
-    }
-
-    private Path outboxErrorDir(ChannelDetail channel) {
-        return runtimeStorageService.outboxErrorDirectory(channel);
-    }
-
-    private void clearDirectory(Path dir) {
-        if (dir == null || !Files.exists(dir)) {
-            return;
-        }
-        try (var walk = Files.walk(dir)) {
-            walk.sorted(Comparator.reverseOrder()).forEach(this::deleteQuietly);
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to clear directory " + dir, e);
-        }
-    }
-
-    private void deleteQuietly(Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException e) {
-            // best-effort cleanup
-        }
-    }
-
-    private String normalizeStatus(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return "disconnected";
-        }
-        return raw.trim().toLowerCase(Locale.ROOT);
     }
 }

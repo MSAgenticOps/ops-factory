@@ -25,6 +25,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class ProfileRepository {
 
+    private static final String INDEX_TABLE = "index_profile";
+    private static final String RETRIEVAL_TABLE = "retrieval_profile";
+
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final RowMapper<ProfileRecord> indexMapper = (rs, rowNum) -> map(rs, "index");
@@ -36,91 +39,91 @@ public class ProfileRepository {
     }
 
     public void insertIndex(ProfileRecord record) {
-        jdbcTemplate.update(
-            """
-            insert into index_profile (
-                id, name, config_json, owner_source_id, readonly, derived_from_profile_id, created_at, updated_at
-            ) values (?,?,?,?,?,?,?,?)
-            """,
-            record.id(), record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(),
-            record.readonly() ? 1 : 0, record.derivedFromProfileId(), record.createdAt().toString(), record.updatedAt().toString()
-        );
+        insert(INDEX_TABLE, record);
     }
 
     public void insertRetrieval(ProfileRecord record) {
+        insert(RETRIEVAL_TABLE, record);
+    }
+
+    public List<ProfileRecord> findAllIndex() {
+        return jdbcTemplate.query("select * from " + INDEX_TABLE + " order by created_at desc", indexMapper);
+    }
+
+    public List<ProfileRecord> findAllRetrieval() {
+        return jdbcTemplate.query("select * from " + RETRIEVAL_TABLE + " order by created_at desc", retrievalMapper);
+    }
+
+    public Optional<ProfileRecord> findIndexById(String id) {
+        return findById(INDEX_TABLE, indexMapper, id);
+    }
+
+    public Optional<ProfileRecord> findRetrievalById(String id) {
+        return findById(RETRIEVAL_TABLE, retrievalMapper, id);
+    }
+
+    public Optional<ProfileRecord> findIndexByName(String name) {
+        return findByName(INDEX_TABLE, indexMapper, name);
+    }
+
+    public Optional<ProfileRecord> findRetrievalByName(String name) {
+        return findByName(RETRIEVAL_TABLE, retrievalMapper, name);
+    }
+
+    public Optional<ProfileRecord> findIndexByOwnerSourceId(String sourceId) {
+        return findByOwnerSourceId(INDEX_TABLE, indexMapper, sourceId);
+    }
+
+    public Optional<ProfileRecord> findRetrievalByOwnerSourceId(String sourceId) {
+        return findByOwnerSourceId(RETRIEVAL_TABLE, retrievalMapper, sourceId);
+    }
+
+    public void updateIndex(ProfileRecord record) {
+        update(INDEX_TABLE, record);
+    }
+
+    public void updateRetrieval(ProfileRecord record) {
+        update(RETRIEVAL_TABLE, record);
+    }
+
+    public void deleteIndex(String id) {
+        delete(INDEX_TABLE, id);
+    }
+
+    public void deleteRetrieval(String id) {
+        delete(RETRIEVAL_TABLE, id);
+    }
+
+    private void insert(String table, ProfileRecord record) {
         jdbcTemplate.update(
-            """
-            insert into retrieval_profile (
-                id, name, config_json, owner_source_id, readonly, derived_from_profile_id, created_at, updated_at
-            ) values (?,?,?,?,?,?,?,?)
-            """,
+            "insert into " + table + " (id, name, config_json, owner_source_id, readonly, derived_from_profile_id, created_at, updated_at) values (?,?,?,?,?,?,?,?)",
             record.id(), record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(),
             record.readonly() ? 1 : 0, record.derivedFromProfileId(), record.createdAt().toString(), record.updatedAt().toString()
         );
     }
 
-    public List<ProfileRecord> findAllIndex() {
-        return jdbcTemplate.query("select * from index_profile order by created_at desc", indexMapper);
-    }
-
-    public List<ProfileRecord> findAllRetrieval() {
-        return jdbcTemplate.query("select * from retrieval_profile order by created_at desc", retrievalMapper);
-    }
-
-    public Optional<ProfileRecord> findIndexById(String id) {
-        return jdbcTemplate.query("select * from index_profile where id = ?", indexMapper, id).stream().findFirst();
-    }
-
-    public Optional<ProfileRecord> findRetrievalById(String id) {
-        return jdbcTemplate.query("select * from retrieval_profile where id = ?", retrievalMapper, id).stream().findFirst();
-    }
-
-    public Optional<ProfileRecord> findIndexByName(String name) {
-        return jdbcTemplate.query("select * from index_profile where name = ?", indexMapper, name).stream().findFirst();
-    }
-
-    public Optional<ProfileRecord> findRetrievalByName(String name) {
-        return jdbcTemplate.query("select * from retrieval_profile where name = ?", retrievalMapper, name).stream().findFirst();
-    }
-
-    public Optional<ProfileRecord> findIndexByOwnerSourceId(String sourceId) {
-        return jdbcTemplate.query("select * from index_profile where owner_source_id = ?", indexMapper, sourceId).stream().findFirst();
-    }
-
-    public Optional<ProfileRecord> findRetrievalByOwnerSourceId(String sourceId) {
-        return jdbcTemplate.query("select * from retrieval_profile where owner_source_id = ?", retrievalMapper, sourceId).stream().findFirst();
-    }
-
-    public void updateIndex(ProfileRecord record) {
+    private void update(String table, ProfileRecord record) {
         jdbcTemplate.update(
-            """
-            update index_profile
-            set name=?, config_json=?, owner_source_id=?, readonly=?, derived_from_profile_id=?, updated_at=?
-            where id=?
-            """,
+            "update " + table + " set name=?, config_json=?, owner_source_id=?, readonly=?, derived_from_profile_id=?, updated_at=? where id=?",
             record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(), record.readonly() ? 1 : 0,
             record.derivedFromProfileId(), record.updatedAt().toString(), record.id()
         );
     }
 
-    public void updateRetrieval(ProfileRecord record) {
-        jdbcTemplate.update(
-            """
-            update retrieval_profile
-            set name=?, config_json=?, owner_source_id=?, readonly=?, derived_from_profile_id=?, updated_at=?
-            where id=?
-            """,
-            record.name(), Jsons.write(objectMapper, record.config()), record.ownerSourceId(), record.readonly() ? 1 : 0,
-            record.derivedFromProfileId(), record.updatedAt().toString(), record.id()
-        );
+    private void delete(String table, String id) {
+        jdbcTemplate.update("delete from " + table + " where id = ?", id);
     }
 
-    public void deleteIndex(String id) {
-        jdbcTemplate.update("delete from index_profile where id = ?", id);
+    private Optional<ProfileRecord> findById(String table, RowMapper<ProfileRecord> mapper, String id) {
+        return jdbcTemplate.query("select * from " + table + " where id = ?", mapper, id).stream().findFirst();
     }
 
-    public void deleteRetrieval(String id) {
-        jdbcTemplate.update("delete from retrieval_profile where id = ?", id);
+    private Optional<ProfileRecord> findByName(String table, RowMapper<ProfileRecord> mapper, String name) {
+        return jdbcTemplate.query("select * from " + table + " where name = ?", mapper, name).stream().findFirst();
+    }
+
+    private Optional<ProfileRecord> findByOwnerSourceId(String table, RowMapper<ProfileRecord> mapper, String sourceId) {
+        return jdbcTemplate.query("select * from " + table + " where owner_source_id = ?", mapper, sourceId).stream().findFirst();
     }
 
     private ProfileRecord map(ResultSet rs, String type) throws SQLException {

@@ -4,20 +4,16 @@
 
 package com.huawei.opsfactory.operationintelligence.qos.model;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Flow Node.
- * Represents a single node in a call flow with its statistics.
+ * Common cost/performance statistics fields.
  *
- * @author call-chain
- * @since 2026-05-14
+ * @author x00000000
+ * @since 2026-06-08
  */
-public class FlowNode extends FlowNodeBase {
-    private List<IpStat> ipList;
-
-    private String clusterTypeId;
-
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class CostStatistics {
     private Long avgCost;
 
     private Long minCost;
@@ -29,22 +25,6 @@ public class FlowNode extends FlowNodeBase {
     private Long callCount;
 
     private Double successPercent;
-
-    public List<IpStat> getIpList() {
-        return ipList;
-    }
-
-    public void setIpList(List<IpStat> ipList) {
-        this.ipList = ipList;
-    }
-
-    public String getClusterTypeId() {
-        return clusterTypeId;
-    }
-
-    public void setClusterTypeId(String clusterTypeId) {
-        this.clusterTypeId = clusterTypeId;
-    }
 
     public Long getAvgCost() {
         return avgCost;

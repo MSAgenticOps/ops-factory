@@ -5,17 +5,12 @@
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,18 +27,11 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class SopService {
-    private static final Logger log = LoggerFactory.getLogger(SopService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class SopService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
 
     private final SolutionTypeService solutionTypeService;
-
-    private Path gatewayRoot;
-
-    private Path sopsDir;
 
     /**
      * Creates the sop service instance.
@@ -52,6 +40,7 @@ public class SopService {
      * @param solutionTypeService the solution type service for validation
      */
     public SopService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
+        super("sop");
         this.properties = properties;
         this.solutionTypeService = solutionTypeService;
     }
@@ -61,16 +50,7 @@ public class SopService {
      */
     @PostConstruct
     public void init() {
-        this.gatewayRoot = properties.getGatewayRootPath();
-        this.sopsDir = gatewayRoot.resolve("data").resolve("sops");
-
-        try {
-            Files.createDirectories(sopsDir);
-        } catch (IOException e) {
-            log.error("Failed to create SOPs directory: {}", sopsDir, e);
-        }
-
-        log.info("SopService initialized, sopsDir={}", sopsDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "sops");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -82,10 +62,10 @@ public class SopService {
      */
     public List<Map<String, Object>> listSops() {
         List<Map<String, Object>> sops = new ArrayList<>();
-        if (!Files.isDirectory(sopsDir)) {
+        if (!Files.isDirectory(getDataDir())) {
             return sops;
         }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(sopsDir, "*.json")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) {
                     continue;
@@ -96,7 +76,7 @@ public class SopService {
                 }
             }
         } catch (IOException e) {
-            log.error("Failed to list SOPs from {}", sopsDir, e);
+            log.error("Failed to list SOPs from {}", getDataDir(), e);
         }
         return sops;
     }
@@ -139,7 +119,7 @@ public class SopService {
             body.getOrDefault("targetSolution", "universal")));
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
-        writeSopFile(id, sop);
+        writeEntityFile(id, sop);
         log.info("Created SOP: id={}, name={}", id, sop.get("name"));
         return sop;
     }
@@ -185,7 +165,7 @@ public class SopService {
             sop.put("requiredTools", body.get("requiredTools"));
         }
 
-        writeSopFile(id, sop);
+        writeEntityFile(id, sop);
         log.info("Updated SOP: id={}", id);
         return sop;
     }
@@ -246,13 +226,13 @@ public class SopService {
      */
     private Path resolveSopFile(String id) {
         // Fast path: direct filename match
-        Path direct = sopsDir.resolve(id + ".json");
+        Path direct = resolveEntityFile(id);
         if (Files.exists(direct)) {
             return direct;
         }
         // Fallback: scan directory for a file whose internal "id" field matches
-        if (Files.isDirectory(sopsDir)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(sopsDir, "*.json")) {
+        if (Files.isDirectory(getDataDir())) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
                 for (Path file : stream) {
                     if (!Files.isRegularFile(file)) {
                         continue;
@@ -271,46 +251,21 @@ public class SopService {
     }
 
     /**
-     * Reads an SOP document from the given JSON file.
+     * Reads an SOP document from the given JSON file with backward-compatible defaults.
      *
      * @param file the JSON file path
      * @return the parsed SOP document, or null if the file does not exist or cannot be read
      */
     private Map<String, Object> readSopFile(Path file) {
-        if (!Files.exists(file)) {
+        Map<String, Object> sop = readFile(file);
+        if (sop == null) {
             return null;
         }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            Map<String, Object> sop = MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-            // Ensure backward-compatible defaults for new fields
-            sop.putIfAbsent("enabled", true);
-            sop.putIfAbsent("stepsDescription", "");
-            sop.putIfAbsent("targetSolution", "universal");
-            sop.putIfAbsent("requiredTools", List.of());
-            return sop;
-        } catch (IOException e) {
-            log.error("Failed to read SOP file: {}", file, e);
-            return null;
-        }
-    }
-
-    /**
-     * Writes an SOP document to a JSON file.
-     *
-     * @param id the entity identifier used as the filename
-     * @param sop the SOP data to persist
-     * @throws IllegalStateException if the file cannot be written
-     */
-    private void writeSopFile(String id, Map<String, Object> sop) {
-        try {
-            Files.createDirectories(sopsDir);
-            Path file = sopsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(sop);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write SOP file for id={}", id, e);
-            throw new IllegalStateException("Failed to save SOP", e);
-        }
+        // Ensure backward-compatible defaults for new fields
+        sop.putIfAbsent("enabled", true);
+        sop.putIfAbsent("stepsDescription", "");
+        sop.putIfAbsent("targetSolution", "universal");
+        sop.putIfAbsent("requiredTools", List.of());
+        return sop;
     }
 }

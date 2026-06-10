@@ -158,19 +158,10 @@ public class CallChainService {
             request.getMode());
 
         // Set conditions
-        List<CallChainTree.Condition> treeConditions = conditions.stream().map(cond -> {
-            CallChainTree.Condition c = new CallChainTree.Condition();
-            c.setConditionKey(cond.get("conditionKey"));
-            c.setConditionValue(cond.get("conditionValue"));
-            return c;
-        }).collect(Collectors.toList());
-        tree.setConditions(treeConditions);
+        tree.setConditions(buildTreeConditions(conditions));
 
         // Set query time range
-        CallChainTree.QueryTimeRange timeRange = new CallChainTree.QueryTimeRange();
-        timeRange.setStartTime(formatTime(request.getStartTime()));
-        timeRange.setEndTime(formatTime(request.getEndTime()));
-        tree.setQueryTimeRange(timeRange);
+        tree.setQueryTimeRange(buildQueryTimeRange(request.getStartTime(), request.getEndTime()));
 
         // Save to store
         chainStore.save(tree);
@@ -327,21 +318,12 @@ public class CallChainService {
         tree.setChainType(chainType);
 
         // Convert conditions to tree format
-        List<CallChainTree.Condition> treeConditions = conditions.stream().map(cond -> {
-            CallChainTree.Condition c = new CallChainTree.Condition();
-            c.setConditionKey(cond.get("conditionKey"));
-            c.setConditionValue(cond.get("conditionValue"));
-            return c;
-        }).collect(Collectors.toList());
-        tree.setConditions(treeConditions);
+        tree.setConditions(buildTreeConditions(conditions));
 
         tree.setFlows(new ArrayList<>());
         tree.setTotalCount(0L);
 
-        CallChainTree.QueryTimeRange timeRange = new CallChainTree.QueryTimeRange();
-        timeRange.setStartTime(formatTime(startTime));
-        timeRange.setEndTime(formatTime(endTime));
-        tree.setQueryTimeRange(timeRange);
+        tree.setQueryTimeRange(buildQueryTimeRange(startTime, endTime));
 
         return tree;
     }
@@ -384,13 +366,10 @@ public class CallChainService {
             }
             CallChainTree tree = MAPPER.treeToValue(dataNode, CallChainTree.class);
             if (tree.getConditions() == null || tree.getConditions().isEmpty()) {
-                tree.setConditions(toTreeConditions(conditions));
+                tree.setConditions(buildTreeConditions(conditions));
             }
             if (tree.getQueryTimeRange() == null) {
-                CallChainTree.QueryTimeRange timeRange = new CallChainTree.QueryTimeRange();
-                timeRange.setStartTime(formatTime(startTime));
-                timeRange.setEndTime(formatTime(endTime));
-                tree.setQueryTimeRange(timeRange);
+                tree.setQueryTimeRange(buildQueryTimeRange(startTime, endTime));
             }
             if (tree.getTotalCount() == null) {
                 tree.setTotalCount((long) (tree.getFlows() == null ? 0 : tree.getFlows().size()));
@@ -429,7 +408,7 @@ public class CallChainService {
      * @param conditions the list of map conditions
      * @return the list of tree conditions
      */
-    private List<CallChainTree.Condition> toTreeConditions(List<Map<String, String>> conditions) {
+    private List<CallChainTree.Condition> buildTreeConditions(List<Map<String, String>> conditions) {
         return conditions.stream().map(cond -> {
             CallChainTree.Condition treeCondition = new CallChainTree.Condition();
             treeCondition.setConditionKey(cond.get("conditionKey"));
@@ -454,5 +433,19 @@ public class CallChainService {
             map.put("conditionValue", cond.getConditionValue());
             return map;
         }).toList();
+    }
+
+    /**
+     * Build a query time range from start and end times.
+     *
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @return the query time range
+     */
+    private CallChainTree.QueryTimeRange buildQueryTimeRange(long startTime, long endTime) {
+        CallChainTree.QueryTimeRange timeRange = new CallChainTree.QueryTimeRange();
+        timeRange.setStartTime(formatTime(startTime));
+        timeRange.setEndTime(formatTime(endTime));
+        return timeRange;
     }
 }

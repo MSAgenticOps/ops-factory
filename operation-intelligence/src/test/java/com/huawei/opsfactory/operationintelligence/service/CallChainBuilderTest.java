@@ -191,16 +191,16 @@ class CallChainBuilderTest {
     @Test
     void testSeqNoComparison() {
         // Test seqNo comparison
-        int result1 = builder.compareSeqNo("1", "2");
+        int result1 = SeqNoComparator.compareSeqNo("1", "2");
         assertTrue(result1 < 0);
 
-        int result2 = builder.compareSeqNo("1.1", "1.2");
+        int result2 = SeqNoComparator.compareSeqNo("1.1", "1.2");
         assertTrue(result2 < 0);
 
-        int result3 = builder.compareSeqNo("1.1", "1.10");
+        int result3 = SeqNoComparator.compareSeqNo("1.1", "1.10");
         assertTrue(result3 < 0);
 
-        int result4 = builder.compareSeqNo("1", "1");
+        int result4 = SeqNoComparator.compareSeqNo("1", "1");
         assertEquals(0, result4);
     }
 

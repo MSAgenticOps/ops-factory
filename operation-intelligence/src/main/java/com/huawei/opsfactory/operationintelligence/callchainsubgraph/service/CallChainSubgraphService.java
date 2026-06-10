@@ -8,6 +8,7 @@ import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallC
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphResult;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphHistoryItem;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.store.CallChainSubgraphStore;
+import com.huawei.opsfactory.operationintelligence.common.util.ServiceValidator;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphEntity;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphObservation;
@@ -857,9 +858,7 @@ public class CallChainSubgraphService {
      * @param fieldName the field name for error messaging
      */
     private void requireText(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
-        }
+        ServiceValidator.requireText(value, fieldName);
     }
 
     /**

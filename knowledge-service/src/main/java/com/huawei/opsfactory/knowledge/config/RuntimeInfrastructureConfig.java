@@ -6,8 +6,6 @@ package com.huawei.opsfactory.knowledge.config;
 
 import com.huawei.opsfactory.knowledge.common.logging.MdcTaskDecorator;
 import com.huawei.opsfactory.knowledge.infrastructure.db.DatabaseDialect;
-import com.huawei.opsfactory.knowledge.infrastructure.db.PostgresqlDialect;
-import com.huawei.opsfactory.knowledge.infrastructure.db.SqliteDialect;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,8 +33,8 @@ public class RuntimeInfrastructureConfig {
     @Bean("knowledgeDatabaseDialect")
     public DatabaseDialect databaseDialect(KnowledgeDatabaseProperties databaseProperties) {
         return switch (normalizeType(databaseProperties)) {
-            case "sqlite" -> new SqliteDialect();
-            case "postgresql" -> new PostgresqlDialect();
+            case "sqlite" -> DatabaseDialect.SQLITE;
+            case "postgresql" -> DatabaseDialect.POSTGRESQL;
             default -> throw new IllegalStateException("Unsupported knowledge.database.type: " + databaseProperties.getType());
         };
     }

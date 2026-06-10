@@ -6,25 +6,14 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import jakarta.annotation.PostConstruct;
-
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.annotation.PostConstruct;
+
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,21 +26,17 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class ClusterTypeService {
-    private static final Logger log = LoggerFactory.getLogger(ClusterTypeService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class ClusterTypeService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
 
     private final SolutionTypeService solutionTypeService;
 
-    private Path clusterTypesDir;
-
     /**
      * Creates the cluster type service instance.
      */
     public ClusterTypeService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
+        super("cluster-type");
         this.properties = properties;
         this.solutionTypeService = solutionTypeService;
     }
@@ -61,14 +46,7 @@ public class ClusterTypeService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.clusterTypesDir = gatewayRoot.resolve("data").resolve("cluster-types");
-        try {
-            Files.createDirectories(clusterTypesDir);
-        } catch (IOException e) {
-            log.error("Failed to create cluster-types directory: {}", clusterTypesDir, e);
-        }
-        log.info("ClusterTypeService initialized, clusterTypesDir={}", clusterTypesDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "cluster-types");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -79,24 +57,7 @@ public class ClusterTypeService {
      * @return the result
      */
     public List<Map<String, Object>> listClusterTypes() {
-        List<Map<String, Object>> types = new ArrayList<>();
-        if (!Files.isDirectory(clusterTypesDir)) {
-            return types;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(clusterTypesDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                Map<String, Object> ct = readFile(file);
-                if (ct != null) {
-                    types.add(ct);
-                }
-            }
-        } catch (IOException e) {
-            log.error("Failed to list cluster-types from {}", clusterTypesDir, e);
-        }
-        return types;
+        return listEntities();
     }
 
     /**
@@ -106,8 +67,7 @@ public class ClusterTypeService {
      * @return a cluster type by its ID
      */
     public Map<String, Object> getClusterType(String id) throws NotFoundException {
-        Path file = clusterTypesDir.resolve(id + ".json");
-        Map<String, Object> ct = readFile(file);
+        Map<String, Object> ct = readFile(resolveEntityFile(id));
         if (ct == null) {
             throw new NotFoundException("Cluster type not found");
         }
@@ -153,8 +113,7 @@ public class ClusterTypeService {
      */
     public Map<String, Object> updateClusterType(String id, Map<String, Object> body)
             throws NotFoundException, BadRequestException {
-        Path file = clusterTypesDir.resolve(id + ".json");
-        Map<String, Object> ct = readFile(file);
+        Map<String, Object> ct = readFile(resolveEntityFile(id));
         if (ct == null) {
             throw new NotFoundException("Cluster type not found");
         }
@@ -204,46 +163,8 @@ public class ClusterTypeService {
      * @return the result
      */
     public boolean deleteClusterType(String id) {
-        Path file = clusterTypesDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted cluster type: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete cluster-type file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
     // ── Validation ──────────────────────────────────────────────────
-
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read cluster-type file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(clusterTypesDir);
-            Path file = clusterTypesDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write cluster-type file for id={}", id, e);
-            throw new IllegalStateException("Failed to save cluster type", e);
-        }
-    }
 }

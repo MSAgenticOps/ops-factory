@@ -8,20 +8,14 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,10 +33,7 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class HostRelationService {
-    private static final Logger log = LoggerFactory.getLogger(HostRelationService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class HostRelationService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
 
@@ -50,14 +41,13 @@ public class HostRelationService {
 
     private final ClusterService clusterService;
 
-    private Path relationsDir;
-
     private BusinessServiceService businessServiceService;
 
     /**
      * Creates the host relation service instance.
      */
     public HostRelationService(GatewayProperties properties, HostService hostService, ClusterService clusterService) {
+        super("host-relation");
         this.properties = properties;
         this.hostService = hostService;
         this.clusterService = clusterService;
@@ -79,14 +69,7 @@ public class HostRelationService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.relationsDir = gatewayRoot.resolve("data").resolve("host-relations");
-        try {
-            Files.createDirectories(relationsDir);
-        } catch (IOException e) {
-            log.error("Failed to create host-relations directory: {}", relationsDir, e);
-        }
-        log.info("HostRelationService initialized, relationsDir={}", relationsDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "host-relations");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -104,13 +87,13 @@ public class HostRelationService {
     public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType,
         String sourceId) {
         List<Map<String, Object>> relations = new ArrayList<>();
-        if (!Files.isDirectory(relationsDir)) {
+        if (!Files.isDirectory(getDataDir())) {
             return relations;
         }
 
         List<String> targetHostIds = resolveTargetHostIds(groupId, clusterId);
 
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) {
                     continue;
@@ -122,7 +105,7 @@ public class HostRelationService {
                 relations.add(rel);
             }
         } catch (IOException e) {
-            log.error("Failed to list relations from {}", relationsDir, e);
+            log.error("Failed to list relations from {}", getDataDir(), e);
         }
         return relations;
     }
@@ -239,7 +222,7 @@ public class HostRelationService {
      * @return the result
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
-        Path file = relationsDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
             throw new NotFoundException("Host relation not found");
@@ -296,7 +279,7 @@ public class HostRelationService {
      * @return the result
      */
     public boolean deleteRelation(String id) {
-        Path file = relationsDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         try {
             if (Files.exists(file)) {
                 // Read relation before delete to support sync
@@ -403,7 +386,7 @@ public class HostRelationService {
 
     private void processRelationsForGraph(Map<String, Map<String, Object>> hostMap,
         List<Map<String, Object>> matchedEdges) {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) {
                     continue;
@@ -555,30 +538,4 @@ public class HostRelationService {
     private record NeighborDirection(String direction, String neighborId) {
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read relation file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(relationsDir);
-            Path file = relationsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write relation file for id={}", id, e);
-            throw new IllegalStateException("Failed to save host relation", e);
-        }
-    }
 }

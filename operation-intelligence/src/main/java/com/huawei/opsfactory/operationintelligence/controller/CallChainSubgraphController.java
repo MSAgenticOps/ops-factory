@@ -6,6 +6,7 @@ package com.huawei.opsfactory.operationintelligence.controller;
 
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphRequest;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.service.CallChainSubgraphService;
+import com.huawei.opsfactory.operationintelligence.common.util.ControllerHelper;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
@@ -49,7 +49,7 @@ public class CallChainSubgraphController {
      */
     @PostMapping
     public Map<String, Object> generate(@RequestBody CallChainSubgraphRequest request) {
-        return ok("result", callChainSubgraphService.generate(request));
+        return ControllerHelper.ok("result", callChainSubgraphService.generate(request));
     }
 
     /**
@@ -62,7 +62,7 @@ public class CallChainSubgraphController {
     @GetMapping
     public Map<String, Object> list(@RequestParam(value = "ontologyId", required = false) String ontologyId,
         @RequestParam(value = "envCode", required = false) String envCode) {
-        return ok("result", callChainSubgraphService.list(ontologyId, envCode));
+        return ControllerHelper.ok("result", callChainSubgraphService.list(ontologyId, envCode));
     }
 
     /**
@@ -73,14 +73,6 @@ public class CallChainSubgraphController {
      */
     @GetMapping("/{subgraphId}")
     public Map<String, Object> get(@PathVariable("subgraphId") String subgraphId) {
-        return ok("result", callChainSubgraphService.get(subgraphId));
-    }
-
-    private Map<String, Object> ok(String key, Object value) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put(key, value);
-        response.put("error", null);
-        return response;
+        return ControllerHelper.ok("result", callChainSubgraphService.get(subgraphId));
     }
 }
