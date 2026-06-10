@@ -18,6 +18,7 @@ import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
+import com.huawei.opsfactory.gateway.service.PersistedSessionReader;
 import com.huawei.opsfactory.gateway.service.SessionCacheService;
 import com.huawei.opsfactory.gateway.service.SessionService;
 import com.huawei.opsfactory.gateway.service.a2a.A2ASessionRecord;
@@ -82,9 +83,11 @@ public class SessionControllerA2AClassificationTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
         A2ASessionStore store = new A2ASessionStore(properties);
+        PersistedSessionReader persistedSessionReader = mock(PersistedSessionReader.class);
+        when(persistedSessionReader.listUserSessions(USER)).thenReturn(List.of());
 
         controller = new SessionController(instanceManager, sessionService, goosedProxy, agentConfigService,
-            sessionCacheService, store);
+            sessionCacheService, store, persistedSessionReader);
 
         // Cache always misses and runs the supplier inline.
         when(sessionCacheService.get(USER)).thenReturn(null);
