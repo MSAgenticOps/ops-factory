@@ -106,12 +106,25 @@ function CreateKnowledgeModal({
     const isDescTooLong = description.length > KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH
     const hasInvalidChars = hasInvalidKnowledgeSourceNameChars(name)
     const isDuplicate = isDuplicateKnowledgeSourceName(name, existingNames)
+    const showDuplicateHint = !creating && isDuplicate
     const canSubmit = name.trim() && !isNameTooLong && !hasInvalidChars && !isDuplicate
 
     const handleCreate = useCallback(async () => {
         setError(null)
         if (!name.trim()) {
             setError(t('knowledge.nameRequired'))
+            return
+        }
+        if (isNameTooLong) {
+            setError(t('knowledge.nameTooLong'))
+            return
+        }
+        if (hasInvalidChars) {
+            setError(t('knowledge.nameInvalidChars'))
+            return
+        }
+        if (isDuplicate) {
+            setError(t('knowledge.nameDuplicate'))
             return
         }
 
@@ -138,7 +151,7 @@ function CreateKnowledgeModal({
         } finally {
             setCreating(false)
         }
-    }, [description, name, onClose, onCreated, showToast, t])
+    }, [description, hasInvalidChars, isDuplicate, isNameTooLong, name, onClose, onCreated, showToast, t, userId])
 
     return (
         <div className="modal-overlay">
@@ -174,7 +187,7 @@ function CreateKnowledgeModal({
                                 {t('knowledge.nameInvalidChars')}
                             </div>
                         )}
-                        {isDuplicate && !isNameTooLong && !hasInvalidChars && (
+                        {showDuplicateHint && !isNameTooLong && !hasInvalidChars && (
                             <div className="knowledge-field-hint knowledge-field-hint--error">
                                 {t('knowledge.nameDuplicate')}
                             </div>
