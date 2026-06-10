@@ -14,6 +14,7 @@ import com.huawei.opsfactory.knowledge.support.TestLogAppender;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -83,10 +84,10 @@ class ConfigYamlLoggingPropertiesTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
-                          "name": "config-yaml-log-test-source",
+                          "name": "config-yaml-log-test-source-%s",
                           "description": "config yaml logging verification"
                         }
-                        """))
+                        """.formatted(UUID.randomUUID())))
                 .andExpect(status().isOk());
 
             assertThat(appender.formattedMessages())
