@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +60,9 @@ public class KnowledgeServiceFacade {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeServiceFacade.class);
     private static final int COMPARE_FETCH_TOP_K = 64;
+    private static final int SOURCE_NAME_MAX_LENGTH = 64;
+    private static final int SOURCE_DESCRIPTION_MAX_LENGTH = 256;
+    private static final Pattern SOURCE_NAME_PATTERN = Pattern.compile("^[\\p{L}\\p{N}_\\s-]+$");
     private static final Set<String> GENERIC_CONTENT_TYPES = Set.of("application/octet-stream");
     private static final Set<String> CHM_CONTENT_TYPES = Set.of(
         "application/vnd.ms-htmlhelp",
@@ -164,17 +168,20 @@ public class KnowledgeServiceFacade {
     public SourceController.SourceResponse createSource(SourceController.CreateSourceRequest request) {
         Instant now = Instant.now();
         String id = Ids.newId("src");
+        String name = validateAndNormalizeSourceName(request.name(), true);
+        String description = normalizeSourceDescription(request.description());
+        ensureSourceNameAvailable(name, null);
         String indexProfileId = request.indexProfileId() != null ? request.indexProfileId() : profileBootstrapService.defaultIndexProfileId();
         String retrievalProfileId = request.retrievalProfileId() != null ? request.retrievalProfileId() : profileBootstrapService.defaultRetrievalProfileId();
         validateIndexProfileBindableToSource(indexProfileId, id);
         validateRetrievalProfileBindableToSource(retrievalProfileId, id);
         SourceRepository.SourceRecord record = new SourceRepository.SourceRecord(
-            id, request.name(), request.description(), "ACTIVE", "MANAGED", indexProfileId, retrievalProfileId,
+            id, name, description, "ACTIVE", "MANAGED", indexProfileId, retrievalProfileId,
             "ACTIVE", null, null, null, false, now, now
         );
         sourceRepository.insert(record);
         bindingRepository.upsert(new BindingRepository.BindingRecord(Ids.newId("spb"), id, indexProfileId, retrievalProfileId, now, now));
-        log.info("Created source sourceId={} name={} indexProfileId={} retrievalProfileId={}", id, request.name(), indexProfileId, retrievalProfileId);
+        log.info("Created source sourceId={} name={} indexProfileId={} retrievalProfileId={}", id, name, indexProfileId, retrievalProfileId);
         return toSourceResponse(record);
     }
 
@@ -205,12 +212,17 @@ public class KnowledgeServiceFacade {
         Instant now = Instant.now();
         String indexProfileId = request.indexProfileId() != null ? request.indexProfileId() : existing.indexProfileId();
         String retrievalProfileId = request.retrievalProfileId() != null ? request.retrievalProfileId() : existing.retrievalProfileId();
+        String name = request.name() != null ? validateAndNormalizeSourceName(request.name(), true) : existing.name();
+        String description = request.description() != null ? normalizeSourceDescription(request.description()) : existing.description();
+        if (request.name() != null) {
+            ensureSourceNameAvailable(name, sourceId);
+        }
         validateIndexProfileBindableToSource(indexProfileId, sourceId);
         validateRetrievalProfileBindableToSource(retrievalProfileId, sourceId);
         SourceRepository.SourceRecord updated = new SourceRepository.SourceRecord(
             sourceId,
-            request.name() != null ? request.name() : existing.name(),
-            request.description() != null ? request.description() : existing.description(),
+            name,
+            description,
             request.status() != null ? request.status() : existing.status(),
             existing.storageMode(),
             indexProfileId,
@@ -1986,6 +1998,43 @@ public class KnowledgeServiceFacade {
             return fallbackName;
         }
         return source.id() + "-" + profileType + "-profile";
+    }
+
+    private String validateAndNormalizeSourceName(String name, boolean required) {
+        String normalized = name == null ? "" : name.trim();
+        if (normalized.isBlank()) {
+            if (required) {
+                throw new IllegalStateException("Knowledge source name is required");
+            }
+            return normalized;
+        }
+        if (normalized.length() > SOURCE_NAME_MAX_LENGTH) {
+            throw new IllegalStateException("Knowledge source name must be at most " + SOURCE_NAME_MAX_LENGTH + " characters");
+        }
+        if (!SOURCE_NAME_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalStateException("Knowledge source name contains invalid characters");
+        }
+        return normalized;
+    }
+
+    private String normalizeSourceDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+        String normalized = description.trim();
+        if (normalized.length() > SOURCE_DESCRIPTION_MAX_LENGTH) {
+            throw new IllegalStateException(
+                "Knowledge source description must be at most " + SOURCE_DESCRIPTION_MAX_LENGTH + " characters");
+        }
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private void ensureSourceNameAvailable(String sourceName, String currentSourceId) {
+        sourceRepository.findByName(sourceName).ifPresent(existing -> {
+            if (currentSourceId == null || !existing.id().equals(currentSourceId)) {
+                throw new ApiConflictException("SOURCE_NAME_ALREADY_EXISTS", "Knowledge source name already exists: " + sourceName);
+            }
+        });
     }
 
     /**

@@ -748,7 +748,7 @@
     "descriptionPlaceholder": "简要描述该知识库的用途和内容范围。",
     "nameRequired": "知识库名称为必填项",
     "nameTooLong": "最长只能输入64个字符",
-    "nameInvalidChars": "名称只能包含文字、数字、下划线和连字符",
+    "nameInvalidChars": "名称只能包含文字、数字、下划线、连字符和空格",
     "nameDuplicate": "已存在同名知识库",
     "descTooLong": "描述最长只能输入256个字符",
     "searchPlaceholder": "搜索知识库...",

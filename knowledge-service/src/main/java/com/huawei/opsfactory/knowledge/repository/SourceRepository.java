@@ -52,6 +52,10 @@ public class SourceRepository {
         return jdbcTemplate.query("select * from knowledge_source where id = ?", mapper, id).stream().findFirst();
     }
 
+    public Optional<SourceRecord> findByName(String name) {
+        return jdbcTemplate.query("select * from knowledge_source where name = ?", mapper, name).stream().findFirst();
+    }
+
     public void update(SourceRecord record) {
         jdbcTemplate.update(
             """
