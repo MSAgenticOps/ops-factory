@@ -48,7 +48,7 @@ public class BusinessTypeService {
     /**
      * Creates the business type service instance.
      *
-     * @param properties properties
+     * @param properties gateway configuration properties
      */
     public BusinessTypeService(GatewayProperties properties) {
         this.properties = properties;
@@ -74,7 +74,7 @@ public class BusinessTypeService {
     /**
      * Lists all business types.
      *
-     * @return the result
+     * @return list of all business type maps
      */
     public List<Map<String, Object>> listBusinessTypes() {
         List<Map<String, Object>> types = new ArrayList<>();
@@ -159,7 +159,7 @@ public class BusinessTypeService {
      * @param body updated fields
      * @return the updated business type map
      * @throws NotFoundException if the business type is not found
-     * @throws IllegalArgumentException if field validation fails or attempting to modify code
+     * @throws IllegalArgumentException if field validation fails
      */
     public Map<String, Object> updateBusinessType(String id, Map<String, Object> body) throws NotFoundException {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -201,7 +201,7 @@ public class BusinessTypeService {
      * Deletes a business type by its ID.
      *
      * @param id entity identifier
-     * @return the result
+     * @return true if deleted, false if not found
      */
     public boolean deleteBusinessType(String id) {
         Path file = businessTypesDir.resolve(id + ".json");
@@ -275,6 +275,12 @@ public class BusinessTypeService {
 
     // ── File I/O Helpers ─────────────────────────────────────────────
 
+    /**
+     * Reads a business type JSON file from disk.
+     *
+     * @param file path to the JSON file
+     * @return the parsed map, or null if the file does not exist or cannot be read
+     */
     private Map<String, Object> readFile(Path file) {
         if (!Files.exists(file)) {
             return null;
@@ -288,6 +294,13 @@ public class BusinessTypeService {
         }
     }
 
+    /**
+     * Writes a business type entity to a JSON file on disk.
+     *
+     * @param id entity identifier used as the filename
+     * @param entity business type map to persist
+     * @throws IllegalStateException if the file cannot be written
+     */
     private void writeEntityFile(String id, Map<String, Object> entity) {
         try {
             Files.createDirectories(businessTypesDir);

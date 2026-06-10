@@ -454,6 +454,14 @@ public class HostGroupServiceTest {
 
     // ── Helpers ────────────────────────────────────────────────────
 
+    /**
+     * Creates a host group file directly on disk for testing disabled-group scenarios.
+     *
+     * @param id group identifier
+     * @param name group name
+     * @param parentId parent group identifier, or null for top-level
+     * @param enabled enabled state, or null to omit the field
+     */
     private void createGroup(String id, String name, String parentId, Boolean enabled) {
         Map<String, Object> group = new LinkedHashMap<>();
         group.put("id", id);
