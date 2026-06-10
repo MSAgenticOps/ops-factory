@@ -73,8 +73,18 @@ export interface UpdateProviderRequest {
 export interface UpdateAgentConfigResponse {
     success: boolean
     error?: string
+    // Saved values only reach goosed as spawn-time env vars; running instances keep the old
+    // config until restarted via the instances/restart endpoint.
+    requiresRestart?: boolean
+    runningInstances?: number
 }
 
 export interface CreateProviderResponse extends UpdateAgentConfigResponse {
     provider?: LlmProvider
+}
+
+export interface RestartInstancesResponse {
+    success: boolean
+    error?: string
+    stoppedInstances?: number
 }

@@ -166,7 +166,7 @@ public class AgentControllerTest {
      */
     @Test
     public void testDeleteAgent_asAdmin() throws Exception {
-        Mockito.doNothing().when(instanceManager).stopAllForAgent("agent1");
+        when(instanceManager.stopAllForAgent("agent1")).thenReturn(0);
         Mockito.doNothing().when(agentConfigService).deleteAgent("agent1");
 
         mockMvc.perform(delete("/api/gateway/agents/agent1").header("x-secret-key", "test").header("x-user-id", "admin"))
@@ -179,7 +179,7 @@ public class AgentControllerTest {
      */
     @Test
     public void testDeleteAgent_succeeds_forAnyUser() throws Exception {
-        Mockito.doNothing().when(instanceManager).stopAllForAgent("agent1");
+        when(instanceManager.stopAllForAgent("agent1")).thenReturn(0);
         Mockito.doNothing().when(agentConfigService).deleteAgent("agent1");
 
         mockMvc
@@ -262,6 +262,86 @@ public class AgentControllerTest {
                 .content("{\"agentsMd\": \"# Updated\\n\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
+    }
+
+    /**
+     * Tests update model config reports restart metadata.
+     */
+    @Test
+    public void testUpdateModelConfig_reportsRestartInfo() throws Exception {
+        when(agentConfigService.findAgent("agent1")).thenReturn(new AgentRegistryEntry("agent1", "Agent One"));
+        when(instanceManager.countForAgent("agent1")).thenReturn(2L);
+
+        mockMvc
+            .perform(put("/api/gateway/agents/agent1/model-config").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"GOOSE_PROVIDER\": \"custom_demo\", \"GOOSE_MODEL\": \"demo-model\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.requiresRestart").value(true))
+            .andExpect(jsonPath("$.runningInstances").value(2));
+    }
+
+    /**
+     * Tests update provider reports restart only when the provider is active.
+     */
+    @Test
+    public void testUpdateProvider_restartOnlyWhenActive() throws Exception {
+        when(agentConfigService.findAgent("agent1")).thenReturn(new AgentRegistryEntry("agent1", "Agent One"));
+        when(agentConfigService.updateCustomProvider(eq("agent1"), eq("custom_demo"), Mockito.anyMap()))
+            .thenReturn(Map.of("name", "custom_demo"));
+        when(agentConfigService.loadAgentConfigYaml("agent1"))
+            .thenReturn(Map.of("GOOSE_PROVIDER", "custom_demo"));
+        when(instanceManager.countForAgent("agent1")).thenReturn(1L);
+
+        mockMvc
+            .perform(put("/api/gateway/agents/agent1/providers/custom_demo").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"base_url\": \"https://example.com/v1\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.requiresRestart").value(true))
+            .andExpect(jsonPath("$.runningInstances").value(1));
+
+        when(agentConfigService.updateCustomProvider(eq("agent1"), eq("custom_other"), Mockito.anyMap()))
+            .thenReturn(Map.of("name", "custom_other"));
+
+        mockMvc
+            .perform(put("/api/gateway/agents/agent1/providers/custom_other").header("x-secret-key", "test")
+                .header("x-user-id", "admin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"base_url\": \"https://example.com/v1\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.requiresRestart").value(false));
+    }
+
+    /**
+     * Tests restart instances endpoint.
+     */
+    @Test
+    public void testRestartInstances() throws Exception {
+        when(agentConfigService.findAgent("agent1")).thenReturn(new AgentRegistryEntry("agent1", "Agent One"));
+        when(instanceManager.restartAllForAgent("agent1")).thenReturn(3);
+
+        mockMvc
+            .perform(post("/api/gateway/agents/agent1/instances/restart").header("x-secret-key", "test")
+                .header("x-user-id", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.stoppedInstances").value(3));
+    }
+
+    /**
+     * Tests restart instances for an unknown agent returns 400.
+     */
+    @Test
+    public void testRestartInstances_unknownAgent() throws Exception {
+        mockMvc
+            .perform(post("/api/gateway/agents/missing/instances/restart").header("x-secret-key", "test")
+                .header("x-user-id", "admin"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false));
     }
 
     /**

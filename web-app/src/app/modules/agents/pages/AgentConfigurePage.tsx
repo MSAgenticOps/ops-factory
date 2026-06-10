@@ -10,6 +10,7 @@ import { SkillMarketDrawer, SkillSection } from '../components/skill'
 import { PromptsSection } from '../components/prompt'
 import { MemorySection } from '../components/memory'
 import SchedulesPanel from '../../../platform/scheduler/SchedulesPanel'
+import Button from '../../../platform/ui/primitives/Button'
 import PageBackLink from '../../../platform/ui/primitives/PageBackLink'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import type { AgentModelConfig, CreateProviderRequest, UpdateProviderRequest } from '../../../../types/agentConfig'
@@ -22,7 +23,10 @@ export default function AgentConfigure() {
     const { t } = useTranslation()
     const { agentId } = useParams<{ agentId: string }>()
     const navigate = useNavigate()
-    const { config, isLoading, error, fetchConfig, updateConfig, updateModelConfig, createProvider, updateProvider } = useAgentConfig()
+    const {
+        config, isLoading, error, fetchConfig, updateConfig, updateModelConfig, createProvider, updateProvider,
+        restartInstances,
+    } = useAgentConfig()
     const { showToast } = useToast()
     const { refreshAgents } = useGoosed()
 
@@ -31,6 +35,11 @@ export default function AgentConfigure() {
     const [isSkillMarketOpen, setIsSkillMarketOpen] = useState(false)
     const [skillRefreshKey, setSkillRefreshKey] = useState(0)
     const [installedSkills, setInstalledSkills] = useState<SkillEntry[]>([])
+
+    // Saved model/provider config only reaches goosed as spawn-time env vars, so running instances
+    // need a restart before it takes effect. Holds the running-instance count reported by the save.
+    const [restartNotice, setRestartNotice] = useState<number | null>(null)
+    const [isRestarting, setIsRestarting] = useState(false)
 
     // Form state
     const [agentsMd, setAgentsMd] = useState('')
@@ -83,11 +92,18 @@ export default function AgentConfigure() {
         return false
     }
 
+    const applyRestartNotice = (result: { requiresRestart?: boolean; runningInstances?: number }) => {
+        if (result.requiresRestart) {
+            setRestartNotice(result.runningInstances ?? 0)
+        }
+    }
+
     const handleSaveModelConfig = async (updates: AgentModelConfig) => {
         if (!agentId) return false
         const result = await updateModelConfig(agentId, updates)
         if (result.success) {
             showToast('success', t('agentConfigure.modelConfigSaved'))
+            applyRestartNotice(result)
             await fetchConfig(agentId)
             await refreshAgents()
             return true
@@ -101,6 +117,7 @@ export default function AgentConfigure() {
         const result = await createProvider(agentId, provider)
         if (result.success) {
             showToast('success', t('agentConfigure.providerCreated'))
+            applyRestartNotice(result)
             await fetchConfig(agentId)
             return true
         }
@@ -113,11 +130,25 @@ export default function AgentConfigure() {
         const result = await updateProvider(agentId, providerName, provider)
         if (result.success) {
             showToast('success', t('agentConfigure.providerUpdated'))
+            applyRestartNotice(result)
             await fetchConfig(agentId)
             return true
         }
         showToast('error', result.error || t('agentConfigure.providerUpdateFailed'))
         return false
+    }
+
+    const handleRestartInstances = async () => {
+        if (!agentId) return
+        setIsRestarting(true)
+        const result = await restartInstances(agentId)
+        setIsRestarting(false)
+        if (result.success) {
+            showToast('success', t('agentConfigure.restartDone', { count: result.stoppedInstances ?? 0 }))
+            setRestartNotice(null)
+        } else {
+            showToast('error', result.error || t('agentConfigure.restartFailed'))
+        }
     }
 
     if (isLoading) {
@@ -187,6 +218,26 @@ export default function AgentConfigure() {
                         <span className="config-tab-divider" aria-hidden="true" />
                         {mineTabs.map(renderTab)}
                     </div>
+
+                    {restartNotice !== null && (
+                        <div className="conn-banner conn-banner-warning agent-restart-banner">
+                            <span className="agent-restart-banner-text">
+                                {restartNotice > 0
+                                    ? t('agentConfigure.restartRequired', { count: restartNotice })
+                                    : t('agentConfigure.restartNextStart')}
+                            </span>
+                            <span className="agent-restart-banner-actions">
+                                {restartNotice > 0 && (
+                                    <Button variant="secondary" size="sm" onClick={handleRestartInstances} disabled={isRestarting}>
+                                        {isRestarting ? t('agentConfigure.restarting') : t('agentConfigure.restartNow')}
+                                    </Button>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={() => setRestartNotice(null)} disabled={isRestarting}>
+                                    {t('common.close')}
+                                </Button>
+                            </span>
+                        </div>
+                    )}
 
                     {/* Tab Content */}
                     <div className="agent-configure-content">

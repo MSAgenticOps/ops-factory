@@ -839,13 +839,51 @@ public class InstanceManager {
      * Stop all instances for a given agent across all users.
      *
      * @param agentId unique identifier of the agent whose instances should be stopped
+     * @return the number of instances that were stopped
      */
-    public void stopAllForAgent(String agentId) {
-        instances.values()
+    public int stopAllForAgent(String agentId) {
+        List<ManagedInstance> stopped = instances.values()
             .stream()
             .filter(inst -> inst.getAgentId().equals(agentId))
-            .toList()
-            .forEach(this::stopInstance);
+            .toList();
+        stopped.forEach(this::stopInstance);
+        return stopped.size();
+    }
+
+    /**
+     * Counts instances currently tracked for the given agent across all users.
+     *
+     * @param agentId unique identifier of the agent
+     * @return the number of tracked instances for the agent
+     */
+    public long countForAgent(String agentId) {
+        return instances.values()
+            .stream()
+            .filter(inst -> inst.getAgentId().equals(agentId))
+            .count();
+    }
+
+    /**
+     * Restart all instances for a given agent so that spawn-time environment derived from
+     * config.yaml/secrets.yaml (provider, model, API keys) is rebuilt. Every tracked instance is
+     * stopped; resident instances are respawned asynchronously, while non-resident ones respawn
+     * lazily on the next request.
+     *
+     * @param agentId unique identifier of the agent whose instances should be restarted
+     * @return the number of instances that were stopped
+     */
+    public int restartAllForAgent(String agentId) {
+        int stopped = stopAllForAgent(agentId);
+        agentConfigService.getResidentInstances()
+            .stream()
+            .filter(target -> target.agentId().equals(agentId))
+            .forEach(target -> getOrSpawn(target.agentId(), target.userId())
+                .subscribe(
+                    inst -> log.info("Respawned resident instance {}:{} on port {} after config restart", agentId,
+                        target.userId(), inst.getPort()),
+                    err -> log.error("Failed to respawn resident instance {}:{} after config restart: {}", agentId,
+                        target.userId(), err.getMessage())));
+        return stopped;
     }
 
     /**

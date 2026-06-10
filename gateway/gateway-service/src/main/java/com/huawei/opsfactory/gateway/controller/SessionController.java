@@ -404,6 +404,11 @@ public class SessionController {
     /**
      * Lists all sessions for a specific agent by proxying the request to the goosed instance.
      *
+     * <p>Read-only: reuses a running instance without spawning a new one or refreshing its idle
+     * timestamp, so background pollers (e.g. the inbox) neither keep instances alive forever nor
+     * resurrect idle-reaped ones. Returns an empty list when no instance is running, matching
+     * the {@code GET /sessions} aggregate-listing semantics.
+     *
      * @param agentId agent identifier from the URL path
      * @param exchange current server web exchange carrying user context attributes
      * @return Mono that completes when the proxied response has been written back
@@ -411,7 +416,10 @@ public class SessionController {
     @GetMapping(value = "/agents/{agentId}/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
     public String listAgentSessions(@PathVariable("agentId") String agentId, HttpServletRequest request) {
         String userId = (String) request.getAttribute(UserContextFilter.USER_ID_ATTR);
-        ManagedInstance instance = instanceManager.getOrSpawn(agentId, userId).block();
+        ManagedInstance instance = instanceManager.getInstance(agentId, userId);
+        if (instance == null || instance.getStatus() != ManagedInstance.Status.RUNNING) {
+            return "{\"sessions\":[]}";
+        }
         String result = goosedProxy.fetchJson(instance.getPort(), "/sessions", instance.getSecretKey()).block();
         return result;
     }

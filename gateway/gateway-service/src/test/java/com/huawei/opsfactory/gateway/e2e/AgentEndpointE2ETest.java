@@ -256,7 +256,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void deleteAgent_admin_success() throws Exception {
-        doNothing().when(instanceManager).stopAllForAgent("test-agent");
+        when(instanceManager.stopAllForAgent("test-agent")).thenReturn(0);
         doNothing().when(agentConfigService).deleteAgent("test-agent");
 
         webClient.delete()
@@ -281,7 +281,7 @@ public class AgentEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void deleteAgent_nonAdmin_succeeds() throws Exception {
-        doNothing().when(instanceManager).stopAllForAgent("test-agent");
+        when(instanceManager.stopAllForAgent("test-agent")).thenReturn(0);
         doNothing().when(agentConfigService).deleteAgent("test-agent");
 
         webClient.delete()

@@ -169,8 +169,9 @@ export async function startGateway(): Promise<GatewayHandle> {
  */
 export async function startJavaGateway(extraEnv: Record<string, string> = {}): Promise<GatewayHandle> {
   const port = await freePort()
-  const baseUrl = `http://127.0.0.1:${port}/gateway`
-  const healthUrl = `http://127.0.0.1:${port}/gateway/status`
+  // Java gateway controllers are mounted under /api/gateway (see e.g. AgentController).
+  const baseUrl = `http://127.0.0.1:${port}/api/gateway`
+  const healthUrl = `http://127.0.0.1:${port}/api/gateway/status`
 
   const jarPath = join(PROJECT_ROOT, 'gateway', 'gateway-service', 'target', 'gateway-service.jar')
   const libDir = join(PROJECT_ROOT, 'gateway', 'gateway-service', 'target', 'lib')
@@ -295,7 +296,7 @@ export async function startControlCenter(gatewayPort: number, fixedPort?: number
           name: 'Gateway',
           'base-url': `http://127.0.0.1:${gatewayPort}`,
           required: true,
-          'health-path': '/gateway/status',
+          'health-path': '/api/gateway/status',
           'ctl-component': 'gateway',
           'config-path': 'gateway/config.yaml',
           'log-path': 'gateway/logs/gateway.log',

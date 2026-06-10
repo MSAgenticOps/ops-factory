@@ -42,4 +42,22 @@ public class HttpSupport {
         headers.forEach((name, values) -> values.forEach(value -> request.header(name, value)));
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
+
+    /**
+     * Sends a POST request with an empty body and the given headers.
+     *
+     * @param url target URL
+     * @param headers request headers
+     * @return the HTTP response with a string body
+     * @throws IOException if an I/O error occurs sending the request
+     * @throws InterruptedException if the operation is interrupted
+     */
+    public HttpResponse<String> post(String url, HttpHeaders headers) throws IOException, InterruptedException {
+        HttpRequest.Builder request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofMillis(properties.getRequestTimeoutMs()))
+                .POST(HttpRequest.BodyPublishers.noBody());
+        headers.forEach((name, values) -> values.forEach(value -> request.header(name, value)));
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
 }
