@@ -315,6 +315,11 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                     return t('hostResource.importErrorTooLong')
                 }
 
+                // 特定后端错误消息映射
+                if (lowerMsg.includes('host role is not allowed in peer cluster mode')) {
+                    return t('hostResource.importErrorHostRoleNotAllowedInPeerCluster')
+                }
+
                 // 其他情况显示通用错误
                 return t('hostResource.importErrorRowError', { message: msg })
             }

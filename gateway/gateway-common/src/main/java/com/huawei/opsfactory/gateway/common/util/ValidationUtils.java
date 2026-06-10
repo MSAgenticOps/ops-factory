@@ -115,6 +115,9 @@ public final class ValidationUtils {
         return value != null && !value.isEmpty() && XSS_PATTERN.matcher(value).find();
     }
 
+    // Pattern that excludes '/' from the blacklist
+    private static final Pattern DANGEROUS_CHARS_PATTERN = Pattern.compile("[<>\"'&`]");
+
     /**
      * Checks if the given string contains dangerous characters for environment variable values.
      * This is more permissive than hasXssChars as it allows '/' which is common in paths and URLs.
@@ -123,12 +126,7 @@ public final class ValidationUtils {
      * @return true if the string contains dangerous characters, false otherwise
      */
     public static boolean hasDangerousChars(String value) {
-        if (value == null || value.isEmpty()) {
-            return false;
-        }
-        // Pattern that excludes '/' from the blacklist
-        java.util.regex.Pattern DANGEROUS_CHARS = java.util.regex.Pattern.compile("[<>\"'&`]");
-        return DANGEROUS_CHARS.matcher(value).find();
+        return value != null && !value.isEmpty() && DANGEROUS_CHARS_PATTERN.matcher(value).find();
     }
 
     /**

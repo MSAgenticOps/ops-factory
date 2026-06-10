@@ -6,6 +6,7 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -126,8 +127,9 @@ public class SolutionTypeService {
      * @param body request body containing solution type fields
      * @return the created solution type map including generated id and timestamps
      * @throws IllegalArgumentException if validation fails or the code already exists
+     * @throws ConflictException if the file cannot be written
      */
-    public Map<String, Object> createSolutionType(Map<String, Object> body) {
+    public Map<String, Object> createSolutionType(Map<String, Object> body) throws ConflictException {
         String name = ValidationUtils.validateStringField(body, "name", "Solution type name", 100, true);
         String code = ValidationUtils.validateStringField(body, "code", "Solution type code", 50, true);
         validateNameAndCodeUnique(name, code, null);
@@ -167,8 +169,9 @@ public class SolutionTypeService {
      * @return the updated solution type map
      * @throws NotFoundException if the solution type is not found
      * @throws IllegalArgumentException if field validation fails or the new code already exists
+     * @throws ConflictException if the file cannot be written
      */
-    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
+    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
         Path file = solutionTypesDir.resolve(id + ".json");
         Map<String, Object> st = readFile(file);
         if (st == null) {
@@ -217,9 +220,9 @@ public class SolutionTypeService {
      *
      * @param id entity identifier
      * @return true if the file was deleted, false if it did not exist
-     * @throws IllegalStateException if the solution type is in use
+     * @throws ConflictException if the solution type is in use
      */
-    public boolean deleteSolutionType(String id) {
+    public boolean deleteSolutionType(String id) throws ConflictException {
         // Get the solution type code first
         Map<String, Object> st = readFile(solutionTypesDir.resolve(id + ".json"));
         if (st == null) {
@@ -244,7 +247,7 @@ public class SolutionTypeService {
                 errorMsg.append(usage.get("clusterTypes").size()).append(" Cluster Type(s) - ");
                 errorMsg.append(String.join(", ", usage.get("clusterTypes")));
             }
-            throw new IllegalStateException(errorMsg.toString());
+            throw new ConflictException(errorMsg.toString());
         }
 
         Path file = solutionTypesDir.resolve(id + ".json");
@@ -401,9 +404,9 @@ public class SolutionTypeService {
      *
      * @param id the entity identifier used as the filename
      * @param entity the solution type data to persist
-     * @throws IllegalStateException if the file cannot be written
+     * @throws ConflictException if the file cannot be written
      */
-    private void writeEntityFile(String id, Map<String, Object> entity) {
+    private void writeEntityFile(String id, Map<String, Object> entity) throws ConflictException {
         try {
             Files.createDirectories(solutionTypesDir);
             Path file = solutionTypesDir.resolve(id + ".json");
@@ -411,7 +414,7 @@ public class SolutionTypeService {
             Files.writeString(file, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to write solution-type file for id={}", id, e);
-            throw new IllegalStateException("Failed to save solution type", e);
+            throw new ConflictException("Failed to save solution type", e);
         }
     }
 }

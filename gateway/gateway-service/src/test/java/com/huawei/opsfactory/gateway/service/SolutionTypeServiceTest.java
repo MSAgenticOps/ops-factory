@@ -17,6 +17,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -94,7 +96,7 @@ public class SolutionTypeServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testListSolutionTypes_skipsCorruptFile() throws IOException {
+    public void testListSolutionTypes_skipsCorruptFile() throws Exception {
         createSolutionType("st-1", "CRM Commerce", "CRM solution");
         Files.writeString(solutionTypesDir.resolve("bad.json"), "not valid json {}", StandardCharsets.UTF_8);
 
@@ -114,7 +116,7 @@ public class SolutionTypeServiceTest {
      * Tests validate solution type reference returns existing code.
      */
     @Test
-    public void testValidateSolutionTypeReference_existing_returnsCode() {
+    public void testValidateSolutionTypeReference_existing_returnsCode() throws Exception {
         createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
         assertEquals("CRM_COMMERCE", solutionTypeService.validateSolutionTypeReference("CRM_COMMERCE"));
     }
@@ -661,7 +663,7 @@ public class SolutionTypeServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testDeleteSolutionType_fileRemoved() throws IOException {
+    public void testDeleteSolutionType_fileRemoved() throws Exception {
         createSolutionType("st-del", "ToDelete", "desc");
         assertTrue(Files.exists(solutionTypesDir.resolve("st-del.json")));
 
@@ -673,7 +675,7 @@ public class SolutionTypeServiceTest {
      * Tests delete solution type in use by SOP throws exception.
      */
     @Test
-    public void testDeleteSolutionType_inUseBySop_throwsException() throws IOException {
+    public void testDeleteSolutionType_inUseBySop_throwsException() throws Exception {
         createSolutionType("st-used", "UsedSolution", "Used for testing");
         String code = "USEDSOLUTION";
 
@@ -696,8 +698,8 @@ public class SolutionTypeServiceTest {
 
         try {
             solutionTypeService.deleteSolutionType("st-used");
-            fail("Expected IllegalStateException");
-        } catch (IllegalStateException e) {
+            fail("Expected ConflictException");
+        } catch (ConflictException e) {
             assertTrue(e.getMessage().contains("is in use"));
             assertTrue(e.getMessage().contains("TestSOP"));
         }
@@ -707,7 +709,7 @@ public class SolutionTypeServiceTest {
      * Tests delete solution type in use by cluster type throws exception.
      */
     @Test
-    public void testDeleteSolutionType_inUseByClusterType_throwsException() throws IOException {
+    public void testDeleteSolutionType_inUseByClusterType_throwsException() throws Exception {
         createSolutionType("st-used-ct", "UsedSolutionCT", "Used for testing");
         String code = "USEDSOLUTIONCT";
 
@@ -733,8 +735,8 @@ public class SolutionTypeServiceTest {
 
         try {
             solutionTypeService.deleteSolutionType("st-used-ct");
-            fail("Expected IllegalStateException");
-        } catch (IllegalStateException e) {
+            fail("Expected ConflictException");
+        } catch (ConflictException e) {
             assertTrue(e.getMessage().contains("is in use"));
             assertTrue(e.getMessage().contains("TestCluster"));
         }
@@ -744,7 +746,7 @@ public class SolutionTypeServiceTest {
      * Tests delete solution type in use by both SOP and cluster type throws exception with both details.
      */
     @Test
-    public void testDeleteSolutionType_inUseByBoth_throwsExceptionWithBothDetails() throws IOException {
+    public void testDeleteSolutionType_inUseByBoth_throwsExceptionWithBothDetails() throws Exception {
         createSolutionType("st-used-both", "UsedSolutionBoth", "Used for testing");
         String code = "USEDSOLUTIONBOTH";
 
@@ -787,8 +789,8 @@ public class SolutionTypeServiceTest {
 
         try {
             solutionTypeService.deleteSolutionType("st-used-both");
-            fail("Expected IllegalStateException");
-        } catch (IllegalStateException e) {
+            fail("Expected ConflictException");
+        } catch (ConflictException e) {
             assertTrue(e.getMessage().contains("is in use"));
             assertTrue(e.getMessage().contains("TestSOP"));
             assertTrue(e.getMessage().contains("TestCluster"));
@@ -820,7 +822,7 @@ public class SolutionTypeServiceTest {
      * Tests check solution type usage with SOP.
      */
     @Test
-    public void testCheckSolutionTypeUsage_withSop() throws IOException {
+    public void testCheckSolutionTypeUsage_withSop() throws Exception {
         createSolutionType("st-check", "CheckSolution", "For checking usage");
         String code = "CHECKSOLUTION";
 
@@ -851,7 +853,7 @@ public class SolutionTypeServiceTest {
      * Tests check solution type usage with cluster type.
      */
     @Test
-    public void testCheckSolutionTypeUsage_withClusterType() throws IOException {
+    public void testCheckSolutionTypeUsage_withClusterType() throws Exception {
         createSolutionType("st-check-ct", "CheckSolutionCT", "For checking usage");
         String code = "CHECKSOLUTIONCT";
 
@@ -902,11 +904,11 @@ public class SolutionTypeServiceTest {
      * @param name the solution type name
      * @param description the solution type description
      */
-    private void createSolutionType(String id, String name, String description) {
+    private void createSolutionType(String id, String name, String description) throws ConflictException {
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);
         st.put("name", name);
-        st.put("code", name.toUpperCase().replaceAll(" ", "_"));
+        st.put("code", name.toUpperCase(Locale.ROOT).replaceAll(" ", "_"));
         st.put("description", description);
         st.put("color", "#8b5cf6");
         st.put("knowledge", "");
@@ -919,7 +921,7 @@ public class SolutionTypeServiceTest {
                 .writeValueAsString(st);
             Files.writeString(file, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new ConflictException("Failed to create test file", e);
         }
     }
 }

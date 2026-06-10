@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.controller;
 
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.service.SolutionTypeService;
 
@@ -69,7 +70,7 @@ public class SolutionTypeController {
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createSolutionType(@RequestBody Map<String, Object> request,
-        HttpServletRequest httpRequest) {
+        HttpServletRequest httpRequest) throws ConflictException {
         Map<String, Object> st = solutionTypeService.createSolutionType(request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -87,7 +88,7 @@ public class SolutionTypeController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateSolutionType(@PathVariable("id") String id,
-        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException {
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) throws NotFoundException, ConflictException {
         Map<String, Object> st = solutionTypeService.updateSolutionType(id, request);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", true);
@@ -116,7 +117,7 @@ public class SolutionTypeController {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", true);
             return ResponseEntity.ok(body);
-        } catch (IllegalStateException e) {
+        } catch (ConflictException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", false);
             body.put("error", e.getMessage());

@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
@@ -374,7 +375,7 @@ public class ClusterTypeService {
             }
 
             // Check for duplicate keys (case-insensitive)
-            String lowerKey = key.toLowerCase();
+            String lowerKey = key.toLowerCase(Locale.ROOT);
             if (seenKeys.containsKey(lowerKey)) {
                 throw new IllegalArgumentException(
                     "Duplicate environment variable key: " + key + " (conflicts with " + seenKeys.get(lowerKey) + ")");

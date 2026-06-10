@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
@@ -194,7 +195,7 @@ public class SolutionTypeControllerTest {
     @Test
     public void testDeleteSolutionType_inUse_returns409() throws Exception {
         when(solutionTypeService.deleteSolutionType("in-use"))
-            .thenThrow(new IllegalStateException("Solution type 'CRM' is in use by: 2 SOP(s) - Log Cleanup, Service Restart"));
+            .thenThrow(new ConflictException("Solution type 'CRM' is in use by: 2 SOP(s) - Log Cleanup, Service Restart"));
 
         mockMvc.perform(
             delete("/api/gateway/solution-types/in-use").header("x-secret-key", "test").header("x-user-id", "admin"))

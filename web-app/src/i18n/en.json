@@ -2543,6 +2543,7 @@
     "importErrorHostUsernameRequired": "Host username is required",
     "importErrorHostAuthTypeInvalid": "Invalid auth type \"{{value}}\". Must be password or key",
     "importErrorHostRoleInvalid": "Invalid role \"{{value}}\". Must be primary or backup",
+    "importErrorHostRoleNotAllowedInPeerCluster": "Host role is not allowed in peer cluster mode",
     "importErrorClusterTypeNameRequired": "Cluster type name is required",
     "importErrorClusterTypeNameTooLong": "Cluster type name length is {{length}}, exceeding 100 characters",
     "importErrorClusterTypeCodeRequired": "Cluster type code is required",

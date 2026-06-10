@@ -335,19 +335,15 @@ public class HostService {
         throws BadRequestException {
         boolean isUpdate = existingHost != null;
 
-        // 添加调试日志 - 包括现有主机的用户名和密码
-        String existingUsername = isUpdate && existingHost.get("username") != null ? existingHost.get("username").toString() : "null";
-        String existingCredential = isUpdate && existingHost.get("credential") != null ? existingHost.get("credential").toString() : "null";
-        log.info("validateHostCredentials called - isUpdate={}, hasUsernameField={}, hasCredentialField={}",
+        log.debug("Validating host credentials - isUpdate={}, hasUsernameField={}, hasCredentialField={}",
             isUpdate, body.containsKey("username"), body.containsKey("credential"));
-        log.info("Existing host data - username='{}', credential='{}'", existingUsername, existingCredential);
 
         if (isUpdate && !body.containsKey("username") && !body.containsKey("credential")) {
-            log.info("Skipping credential validation - no username/credential fields in update request");
+            log.debug("Skipping credential validation - no username/credential fields in update request");
             return;
         }
 
-        // 处理用户名：使用请求中的新用户名或现有主机的用户名
+        // Process username: use new username from request or existing host's username
         String username;
         if (isUpdate && !body.containsKey("username")) {
             Object existingUsernameObj = existingHost.get("username");
@@ -357,17 +353,16 @@ public class HostService {
             username = newUsernameObj != null ? newUsernameObj.toString().trim() : "";
         }
 
-        // 处理密码：如果是现有主机的密码，先解密；如果是新密码，直接使用
+        // Process credential: decrypt existing if updating without new credential; use new otherwise
         String credential;
         boolean isNewCredential = body.containsKey("credential");
         if (isUpdate && !isNewCredential) {
-            // 使用现有主机的密码，需要先解密
             Object existingCredObj = existingHost.get("credential");
             String encryptedCred = existingCredObj != null ? existingCredObj.toString() : "";
             if (!encryptedCred.isEmpty()) {
                 try {
                     credential = decrypt(encryptedCred);
-                } catch (Exception e) {
+                } catch (GeneralSecurityException | IllegalArgumentException e) {
                     log.warn("Failed to decrypt existing credential, treating as empty: {}", e.getMessage());
                     credential = "";
                 }
@@ -375,18 +370,17 @@ public class HostService {
                 credential = "";
             }
         } else {
-            // 使用请求中的新密码
             Object newCredObj = body.get("credential");
             credential = newCredObj != null ? newCredObj.toString() : "";
         }
 
-        log.info("Processed values - username='{}', credential='{}', isNewCredential={}", username, credential, isNewCredential);
+        log.debug("Credential validation processed - isNewCredential={}", isNewCredential);
 
         boolean credentialIsSentinel = "***".equals(credential);
         boolean hasUsername = !username.isEmpty();
         boolean hasCredential = !credential.isEmpty() && !credentialIsSentinel;
 
-        log.info("Validation result - hasUsername={}, hasCredential={}, credentialIsSentinel={}",
+        log.debug("Credential validation result - hasUsername={}, hasCredential={}, credentialIsSentinel={}",
             hasUsername, hasCredential, credentialIsSentinel);
         if (hasUsername != hasCredential) {
             throw new BadRequestException("Username and credential must be provided together");

@@ -2543,6 +2543,7 @@
     "importErrorHostUsernameRequired": "主机用户名不能为空",
     "importErrorHostAuthTypeInvalid": "无效的认证类型 \"{{value}}\"，必须为 password 或 key",
     "importErrorHostRoleInvalid": "无效的角色 \"{{value}}\"，必须为 primary 或 backup",
+    "importErrorHostRoleNotAllowedInPeerCluster": "对等集群模式下不允许设置主机角色",
     "importErrorClusterTypeNameRequired": "集群类型名称不能为空",
     "importErrorClusterTypeNameTooLong": "集群类型名称长度为{{length}}，超过100字符",
     "importErrorClusterTypeCodeRequired": "集群类型编码不能为空",
