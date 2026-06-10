@@ -824,7 +824,7 @@
 .mon-inst-table-header,
 .mon-inst-table-row {
     display: grid;
-    grid-template-columns: 1fr 120px 80px 100px 100px;
+    grid-template-columns: 1fr 120px 80px 100px 100px 96px;
     gap: var(--spacing-4);
     padding: var(--spacing-3) var(--spacing-5);
     align-items: center;
@@ -1018,7 +1018,7 @@
 
     .mon-inst-table-header,
     .mon-inst-table-row {
-        grid-template-columns: 1fr 100px 70px 80px 80px;
+        grid-template-columns: 1fr 100px 70px 80px 80px 84px;
     }
 
     .mon-obs-toolbar {

@@ -15,8 +15,12 @@ import com.huawei.opsfactory.gateway.service.LangfuseService;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.servicecomb.provider.rest.common.RestSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +43,8 @@ import java.util.stream.Collectors;
 @RestSchema(schemaId = "internalRuntimeSourceController")
 @RequestMapping("/api/gateway/runtime-source")
 public class InternalRuntimeSourceController {
+    private static final Logger log = LoggerFactory.getLogger(InternalRuntimeSourceController.class);
+
     private final InstanceManager instanceManager;
 
     private final AgentConfigService agentConfigService;
@@ -154,6 +160,78 @@ public class InternalRuntimeSourceController {
         result.put("runningInstances", (int) running);
         result.put("byAgent", byAgent);
         return result;
+    }
+
+    /**
+     * Stops a single managed instance identified by agent and user.
+     *
+     * @param agentId agent identifier from the URL path
+     * @param userId user identifier from the URL path
+     * @return success with status "stopped", or an error body when no instance is tracked
+     */
+    @PostMapping("/instances/{agentId}/{userId}/stop")
+    public Map<String, Object> stopInstance(@PathVariable("agentId") String agentId,
+        @PathVariable("userId") String userId) {
+        ManagedInstance instance = instanceManager.getInstance(agentId, userId);
+        if (instance == null) {
+            return Map.of("success", false, "error", "Instance not found: " + agentId + ":" + userId);
+        }
+        log.info("[RUNTIME-ACTION] stop requested for {}:{}", agentId, userId);
+        instanceManager.stopInstance(instance);
+        return Map.of("success", true, "status", "stopped");
+    }
+
+    /**
+     * Starts an instance for the given agent and user. Spawning happens asynchronously; callers
+     * should poll {@code GET /instances} to observe the starting → running transition.
+     *
+     * @param agentId agent identifier from the URL path
+     * @param userId user identifier from the URL path
+     * @return success with status "running" when already up or "starting" when a spawn was triggered
+     */
+    @PostMapping("/instances/{agentId}/{userId}/start")
+    public Map<String, Object> startInstance(@PathVariable("agentId") String agentId,
+        @PathVariable("userId") String userId) {
+        if (agentConfigService.findAgent(agentId) == null) {
+            return Map.of("success", false, "error", "Unknown agent: " + agentId);
+        }
+        ManagedInstance existing = instanceManager.getInstance(agentId, userId);
+        if (existing != null && existing.getStatus() == ManagedInstance.Status.RUNNING) {
+            return Map.of("success", true, "status", "running");
+        }
+        log.info("[RUNTIME-ACTION] start requested for {}:{}", agentId, userId);
+        spawnDetached(agentId, userId, "start");
+        return Map.of("success", true, "status", "starting");
+    }
+
+    /**
+     * Restarts a single managed instance so spawn-time environment derived from config.yaml and
+     * secrets.yaml (provider, model, API keys) is rebuilt. The respawn happens asynchronously.
+     *
+     * @param agentId agent identifier from the URL path
+     * @param userId user identifier from the URL path
+     * @return success with status "restarting", or an error body when no instance is tracked
+     */
+    @PostMapping("/instances/{agentId}/{userId}/restart")
+    public Map<String, Object> restartInstance(@PathVariable("agentId") String agentId,
+        @PathVariable("userId") String userId) {
+        ManagedInstance instance = instanceManager.getInstance(agentId, userId);
+        if (instance == null) {
+            return Map.of("success", false, "error", "Instance not found: " + agentId + ":" + userId);
+        }
+        log.info("[RUNTIME-ACTION] restart requested for {}:{}", agentId, userId);
+        instanceManager.stopInstance(instance);
+        spawnDetached(agentId, userId, "restart");
+        return Map.of("success", true, "status", "restarting");
+    }
+
+    private void spawnDetached(String agentId, String userId, String action) {
+        instanceManager.getOrSpawn(agentId, userId)
+            .subscribe(
+                inst -> log.info("[RUNTIME-ACTION] {} spawned {}:{} on port {}", action, agentId, userId,
+                    inst.getPort()),
+                err -> log.error("[RUNTIME-ACTION] {} failed to spawn {}:{}: {}", action, agentId, userId,
+                    err.getMessage()));
     }
 
     /**
