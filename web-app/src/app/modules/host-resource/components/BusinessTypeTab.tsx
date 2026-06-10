@@ -66,15 +66,14 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
         if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
-            // Validate and sanitize form fields
+            // Validate and sanitize form fields (name/code only; description allows any characters)
             const fieldLabels = {
                 name: t('hostResource.typeName'),
                 code: t('hostResource.typeCode'),
-                description: t('hostResource.description'),
             }
             const validationResult = validateFormData(
                 form,
-                ['name', 'code', 'description'],
+                ['name', 'code'],
                 fieldLabels
             )
 
@@ -102,7 +101,8 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
             }
 
             if (editing) {
-                await onUpdate(editing.id, sanitizedForm)
+                const { code: _, ...updateBody } = sanitizedForm
+                await onUpdate(editing.id, updateBody)
             } else {
                 await onCreate(sanitizedForm)
             }
@@ -184,6 +184,7 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
                     saving={saving}
                     onSave={handleSave}
                     onClose={() => setShowModal(false)}
+                    isEditing={!!editing}
                 />
             )}
         </div>

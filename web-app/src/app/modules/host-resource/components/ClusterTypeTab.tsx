@@ -95,15 +95,14 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
         if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
-            // Validate and sanitize form fields
+            // Validate and sanitize form fields (name/code only; description allows any characters)
             const fieldLabels = {
                 name: t('hostResource.typeName'),
                 code: t('hostResource.typeCode'),
-                description: t('hostResource.description'),
             }
             const validationResult = validateFormData(
                 form,
-                ['name', 'code', 'description'],
+                ['name', 'code'],
                 fieldLabels
             )
 

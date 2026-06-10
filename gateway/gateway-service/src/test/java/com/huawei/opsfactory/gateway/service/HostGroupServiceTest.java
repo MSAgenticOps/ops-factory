@@ -8,8 +8,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -327,6 +329,127 @@ public class HostGroupServiceTest {
         // Re-enable
         hostGroupService.updateGroup(id, Map.of("enabled", true));
         assertEquals(true, hostGroupService.getGroup(id).get("enabled"));
+    }
+
+    // ── parentId validation ───────────────────────────────────────────
+
+    /**
+     * Tests create group with invalid parent id throws exception.
+     */
+    @Test
+    public void testCreateGroup_invalidParentId_throwsException() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "SUB-PROD");
+        body.put("code", "SUB-PROD");
+        body.put("parentId", "nonexistent-parent-id");
+
+        try {
+            hostGroupService.createGroup(body);
+            fail("Expected BadRequestException for invalid parentId");
+        } catch (BadRequestException e) {
+            assertTrue(e.getMessage().contains("Parent group not found"));
+        }
+    }
+
+    /**
+     * Tests create group with valid parent id succeeds.
+     */
+    @Test
+    public void testCreateGroup_validParentId_succeeds() throws Exception {
+        // First create a parent group
+        Map<String, Object> parentBody = new LinkedHashMap<>();
+        parentBody.put("name", "PROD");
+        parentBody.put("code", "PROD");
+        Map<String, Object> parent = hostGroupService.createGroup(parentBody);
+        String parentId = (String) parent.get("id");
+
+        // Now create a child group with valid parentId
+        Map<String, Object> childBody = new LinkedHashMap<>();
+        childBody.put("name", "SUB-PROD");
+        childBody.put("code", "SUB-PROD");
+        childBody.put("parentId", parentId);
+
+        Map<String, Object> result = hostGroupService.createGroup(childBody);
+        assertNotNull(result.get("id"));
+        assertEquals("SUB-PROD", result.get("name"));
+        assertEquals(parentId, result.get("parentId"));
+    }
+
+    /**
+     * Tests update group with invalid parent id throws exception.
+     */
+    @Test
+    public void testUpdateGroup_invalidParentId_throwsException() throws Exception {
+        // First create a group
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "PROD");
+        body.put("code", "PROD");
+        Map<String, Object> created = hostGroupService.createGroup(body);
+        String id = (String) created.get("id");
+
+        // Try to update with invalid parentId
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("parentId", "nonexistent-parent-id");
+
+        try {
+            hostGroupService.updateGroup(id, updates);
+            fail("Expected BadRequestException for invalid parentId");
+        } catch (BadRequestException e) {
+            assertTrue(e.getMessage().contains("Parent group not found"));
+        }
+    }
+
+    /**
+     * Tests update group with valid parent id succeeds.
+     */
+    @Test
+    public void testUpdateGroup_validParentId_succeeds() throws Exception {
+        // First create two groups
+        Map<String, Object> parentBody = new LinkedHashMap<>();
+        parentBody.put("name", "PROD");
+        parentBody.put("code", "PROD");
+        Map<String, Object> parent = hostGroupService.createGroup(parentBody);
+        String parentId = (String) parent.get("id");
+
+        Map<String, Object> childBody = new LinkedHashMap<>();
+        childBody.put("name", "SUB-PROD");
+        childBody.put("code", "SUB-PROD");
+        Map<String, Object> child = hostGroupService.createGroup(childBody);
+        String childId = (String) child.get("id");
+
+        // Update child with valid parentId
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("parentId", parentId);
+
+        Map<String, Object> result = hostGroupService.updateGroup(childId, updates);
+        assertEquals(parentId, result.get("parentId"));
+    }
+
+    /**
+     * Tests update group clears parent id.
+     */
+    @Test
+    public void testUpdateGroup_clearParentId_succeeds() throws Exception {
+        // First create a parent and child
+        Map<String, Object> parentBody = new LinkedHashMap<>();
+        parentBody.put("name", "PROD");
+        parentBody.put("code", "PROD");
+        Map<String, Object> parent = hostGroupService.createGroup(parentBody);
+        String parentId = (String) parent.get("id");
+
+        Map<String, Object> childBody = new LinkedHashMap<>();
+        childBody.put("name", "SUB-PROD");
+        childBody.put("code", "SUB-PROD");
+        childBody.put("parentId", parentId);
+        Map<String, Object> child = hostGroupService.createGroup(childBody);
+        String childId = (String) child.get("id");
+
+        // Clear parentId
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("parentId", null);
+
+        Map<String, Object> result = hostGroupService.updateGroup(childId, updates);
+        assertEquals(null, result.get("parentId"));
     }
 
     // ── Helpers ────────────────────────────────────────────────────

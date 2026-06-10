@@ -231,6 +231,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorPurposeTooLong', { length: err.params?.length })
             case 'import.descriptionTooLong':
                 return t('hostResource.importErrorDescriptionTooLong', { length: err.params?.length })
+            case 'import.knowledgeTooLong':
+                return t('hostResource.importErrorKnowledgeTooLong', { length: err.params?.length })
             case 'import.targetHostNotFound':
                 return t('hostResource.importErrorTargetHostNotFound', { host: err.params?.host })
             case 'import.sourceNodeNotFound':
@@ -364,6 +366,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorHostPortOutOfRange', { port: err.params?.port })
             case 'import.setParentFailed':
                 return t('hostResource.importErrorSetParentFailed', { message: err.params?.message })
+            case 'import.parentGroupNotFound':
+                return t('hostResource.importErrorParentGroupNotFound', { parentGroup: err.params?.parentGroup })
             case 'import.importFailed':
                 return t('hostResource.importErrorImportFailed', { message: err.params?.message })
             case 'import.clusterTypeNameRequired':

@@ -319,6 +319,13 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
+                                if (row.knowledge) {
+                                    const knowledge = row.knowledge?.trim() || ''
+                                    if (knowledge.length > 2000) {
+                                        errors.push({ row: i + 2, code: 'import.knowledgeTooLong', params: { length: String(knowledge.length), max: '2000' } })
+                                        continue
+                                    }
+                                }
                                 if (createdBusinessTypeNames.has(nameResult.sanitized) || createdBusinessTypeCodes.has(codeResult.sanitized)) {
                                     // Determine if it's a name or code duplicate
                                     if (createdBusinessTypeCodes.has(codeResult.sanitized) && !createdBusinessTypeNames.has(nameResult.sanitized)) {
@@ -1052,15 +1059,25 @@ export function useResourceImport(deps: ImportDeps) {
                     const parentRows = rows.filter(r => r.parentGroup)
                     for (let i = 0; i < parentRows.length; i++) {
                         const row = parentRows[i]
+                        const parentGroupName = row.parentGroup?.trim() || ''
                         const groupId = groupNameToId.get(row.name)
-                        const parentId = groupNameToId.get(row.parentGroup) || groupCodeToId.get(row.parentGroup)
-                        if (groupId && parentId) {
-                            try {
-                                await deps.updateGroup(groupId, { parentId })
-                            } catch (err) {
-                                const msg = err instanceof Error ? err.message : String(err)
-                                errors.push({ row: i + 2, code: 'import.setParentFailed', params: { message: msg } })
-                            }
+                        const parentId = groupNameToId.get(parentGroupName) || groupCodeToId.get(parentGroupName)
+                        if (!groupId) {
+                            // Group itself was not created earlier, skip
+                            continue
+                        }
+                        if (!parentId) {
+                            // Parent group not found, add error
+                            const rowIndex = rows.indexOf(row) + 2
+                            errors.push({ row: rowIndex, code: 'import.parentGroupNotFound', params: { parentGroup: parentGroupName } })
+                            continue
+                        }
+                        try {
+                            await deps.updateGroup(groupId, { parentId })
+                        } catch (err) {
+                            const msg = err instanceof Error ? err.message : String(err)
+                            const rowIndex = rows.indexOf(row) + 2
+                            errors.push({ row: rowIndex, code: 'import.setParentFailed', params: { message: msg } })
                         }
                     }
                 }

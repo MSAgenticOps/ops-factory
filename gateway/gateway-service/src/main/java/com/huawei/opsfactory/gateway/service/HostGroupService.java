@@ -228,6 +228,17 @@ public class HostGroupService {
 
         ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
 
+        // Validate parentId if provided
+        Object parentIdObj = body.get("parentId");
+        if (parentIdObj != null && !parentIdObj.toString().isEmpty()) {
+            String parentId = parentIdObj.toString();
+            boolean parentExists = allGroups.stream()
+                .anyMatch(g -> parentId.equals(g.get("id")));
+            if (!parentExists) {
+                throw new BadRequestException("Parent group not found: " + parentId);
+            }
+        }
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
@@ -289,7 +300,19 @@ public class HostGroupService {
             group.put("code", newCode);
         }
         if (body.containsKey("parentId")) {
-            group.put("parentId", body.get("parentId"));
+            Object newParentIdObj = body.get("parentId");
+            if (newParentIdObj != null && !newParentIdObj.toString().isEmpty()) {
+                String newParentId = newParentIdObj.toString();
+                List<Map<String, Object>> allGroups = listGroups();
+                boolean parentExists = allGroups.stream()
+                    .anyMatch(g -> newParentId.equals(g.get("id")));
+                if (!parentExists) {
+                    throw new BadRequestException("Parent group not found: " + newParentId);
+                }
+                group.put("parentId", newParentId);
+            } else {
+                group.put("parentId", null);
+            }
         }
         if (body.containsKey("description")) {
             String description = ValidationUtils.validateStringField(body, "description", "Group description", 500, false);

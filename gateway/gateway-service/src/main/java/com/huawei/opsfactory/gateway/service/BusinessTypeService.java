@@ -125,8 +125,9 @@ public class BusinessTypeService {
         String code = ValidationUtils.validateStringField(body, "code", "Business type code", 50, true);
         validateNameAndCodeUnique(name, code, null);
 
-        String description = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
-        String knowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 2000, false);
+        // description and knowledge: length validation only, no XSS check
+        String description = validateLengthOnly(body, "description", "Description", 500);
+        String knowledge = validateLengthOnly(body, "knowledge", "Knowledge", 2000);
 
         Object colorObj = body.get("color");
         String color = (colorObj != null && !colorObj.toString().isBlank()) ? colorObj.toString() : "#6366f1";
@@ -167,10 +168,8 @@ public class BusinessTypeService {
             throw new NotFoundException("Business type not found");
         }
 
-        // Code field cannot be modified after creation
-        if (body.containsKey("code")) {
-            throw new IllegalArgumentException("Business type code cannot be modified after creation");
-        }
+        // Code field cannot be modified after creation - silently ignore if present
+        body.remove("code");
 
         if (body.containsKey("name")) {
             String newName = ValidationUtils.validateStringField(body, "name", "Business type name", 100, true);
@@ -178,7 +177,7 @@ public class BusinessTypeService {
             bt.put("name", newName);
         }
         if (body.containsKey("description")) {
-            String newDescription = ValidationUtils.validateStringField(body, "description", "Description", 500, false);
+            String newDescription = validateLengthOnly(body, "description", "Description", 500);
             bt.put("description", newDescription);
         }
         if (body.containsKey("color")) {
@@ -188,7 +187,7 @@ public class BusinessTypeService {
             }
         }
         if (body.containsKey("knowledge")) {
-            String newKnowledge = ValidationUtils.validateStringField(body, "knowledge", "Knowledge", 2000, false);
+            String newKnowledge = validateLengthOnly(body, "knowledge", "Knowledge", 2000);
             bt.put("knowledge", newKnowledge);
         }
 
@@ -249,6 +248,29 @@ public class BusinessTypeService {
                 }
             }
         }
+    }
+
+    /**
+     * Validates a field for length only, without XSS character check.
+     * Used for description and knowledge fields where XSS characters are allowed.
+     *
+     * @param body request body map
+     * @param field field name to extract
+     * @param displayName display name for error messages
+     * @param maxLength maximum allowed length (0 = no limit)
+     * @return the validated trimmed string, or empty string if missing/null
+     * @throws IllegalArgumentException if validation fails
+     */
+    private String validateLengthOnly(Map<String, Object> body, String field, String displayName, int maxLength) {
+        Object value = body.get(field);
+        if (value == null) {
+            return "";
+        }
+        String str = value.toString().trim();
+        if (maxLength > 0 && str.length() > maxLength) {
+            throw new IllegalArgumentException(displayName + " exceeds maximum length of " + maxLength);
+        }
+        return str;
     }
 
     // ── File I/O Helpers ─────────────────────────────────────────────
