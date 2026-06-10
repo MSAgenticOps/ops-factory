@@ -126,6 +126,7 @@ export default function Chat() {
     const recoverySessionId = locatorState.kind === 'recovering' ? locatorState.sessionId : ''
     const activeSessionId = readyLocator?.sessionId || recoverySessionId
     const activeAgentId = readyLocator?.agentId || ''
+    const activeAgentName = agents.find(agent => agent.id === activeAgentId)?.name || activeAgentId
     const client = activeAgentId ? getClient(activeAgentId) : null
     const activeAgentSkills = useMemo(() => {
         return agents.find(agent => agent.id === activeAgentId)?.skills || []
@@ -888,6 +889,7 @@ export default function Chat() {
                         })()}
                         autoFocus
                         selectedAgent={activeAgentId}
+                        selectedAgentName={activeAgentName}
                         onAgentChange={handleAgentChange}
                         // A session's agent/model are fixed once it has messages — switching agent means a NEW
                         // session. So the picker is offered only on an empty draft; a resumed/started session
