@@ -384,21 +384,7 @@ public class LexicalIndexService {
     }
 
     private SearchService.SearchableChunk toSearchableChunk(ChunkRepository.ChunkRecord record) {
-        return new SearchService.SearchableChunk(
-            record.id(),
-            record.documentId(),
-            record.sourceId(),
-            record.title(),
-            record.titlePath(),
-            record.keywords(),
-            record.text(),
-            record.markdown(),
-            record.pageFrom(),
-            record.pageTo(),
-            record.ordinal(),
-            record.editStatus(),
-            record.updatedBy()
-        );
+        return SearchService.SearchableChunk.from(record);
     }
 
     private String defaultString(String value) {

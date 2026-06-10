@@ -10,23 +10,16 @@ import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
@@ -36,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -51,10 +45,7 @@ import javax.crypto.spec.SecretKeySpec;
  * @since 2026-05-09
  */
 @Service
-public class HostService {
-    private static final Logger log = LoggerFactory.getLogger(HostService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class HostService extends JsonFileEntityStore {
 
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
 
@@ -70,10 +61,6 @@ public class HostService {
         "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
 
     private final GatewayProperties properties;
-
-    private Path gatewayRoot;
-
-    private Path hostsDir;
 
     private SecretKeySpec aesKey;
 
@@ -95,6 +82,7 @@ public class HostService {
      * @param properties gateway configuration properties
      */
     public HostService(GatewayProperties properties) {
+        super("host");
         this.properties = properties;
     }
 
@@ -169,8 +157,7 @@ public class HostService {
      */
     @PostConstruct
     public void init() {
-        this.gatewayRoot = properties.getGatewayRootPath();
-        this.hostsDir = gatewayRoot.resolve("data").resolve("hosts");
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "hosts");
 
         // Derive AES key from configuration (ensure exactly 32 bytes for AES-256)
         String keyStr = properties.getCredentialEncryptionKey();
@@ -178,14 +165,6 @@ public class HostService {
         byte[] rawKeyBytes = keyStr.getBytes(StandardCharsets.UTF_8);
         System.arraycopy(rawKeyBytes, 0, keyBytes, 0, Math.min(rawKeyBytes.length, 32));
         this.aesKey = new SecretKeySpec(keyBytes, "AES");
-
-        try {
-            Files.createDirectories(hostsDir);
-        } catch (IOException e) {
-            log.error("Failed to create hosts directory: {}", hostsDir, e);
-        }
-
-        log.info("HostService initialized, hostsDir={}", hostsDir);
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -481,27 +460,14 @@ public class HostService {
      * @return list of host maps with credentials masked
      */
     public List<Map<String, Object>> listHosts(String[] tags) {
+        List<Map<String, Object>> allHosts = listEntities();
         List<Map<String, Object>> hosts = new ArrayList<>();
-        if (!Files.isDirectory(hostsDir)) {
-            return hosts;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(hostsDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                Map<String, Object> host = readHostFile(file);
-                if (host == null) {
-                    continue;
-                }
-                host.put("credential", "***");
-                if (!matchesTags(host, tags)) {
-                    continue;
-                }
-                hosts.add(host);
+        for (Map<String, Object> host : allHosts) {
+            Map<String, Object> masked = maskCredential(host);
+            if (!matchesTags(masked, tags)) {
+                continue;
             }
-        } catch (IOException e) {
-            log.error("Failed to list hosts from {}", hostsDir, e);
+            hosts.add(masked);
         }
         return hosts;
     }
@@ -536,13 +502,12 @@ public class HostService {
      * @return host data map with credential masked
      */
     public Map<String, Object> getHost(String id) throws NotFoundException {
-        Path file = hostsDir.resolve(id + ".json");
-        Map<String, Object> host = readHostFile(file);
+        Path file = resolveEntityFile(id);
+        Map<String, Object> host = readFile(file);
         if (host == null) {
             throw new NotFoundException("Host not found");
         }
-        host.put("credential", "***");
-        return host;
+        return maskCredential(host);
     }
 
     /**
@@ -552,8 +517,8 @@ public class HostService {
      * @return host data map with decrypted credential for internal use
      */
     public Map<String, Object> getHostWithCredential(String id) throws NotFoundException {
-        Path file = hostsDir.resolve(id + ".json");
-        Map<String, Object> host = readHostFile(file);
+        Path file = resolveEntityFile(id);
+        Map<String, Object> host = readFile(file);
         if (host == null) {
             log.warn("Host not found when loading with credential id={}", id);
             throw new NotFoundException("Host not found");
@@ -682,18 +647,7 @@ public class HostService {
             businessServiceService.removeHostFromAllBusinessServices(id);
         }
 
-        Path file = hostsDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted host: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete host file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
     /**
@@ -703,26 +657,13 @@ public class HostService {
      * @return list of host maps belonging to the specified cluster, with credentials masked
      */
     public List<Map<String, Object>> listHostsByCluster(String clusterId) {
+        List<Map<String, Object>> allHosts = listEntities();
         List<Map<String, Object>> hosts = new ArrayList<>();
-        if (!Files.isDirectory(hostsDir)) {
-            return hosts;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(hostsDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                Map<String, Object> host = readHostFile(file);
-                if (host != null) {
-                    Object hostClusterId = host.get("clusterId");
-                    if (clusterId.equals(hostClusterId)) {
-                        host.put("credential", "***");
-                        hosts.add(host);
-                    }
-                }
+        for (Map<String, Object> host : allHosts) {
+            Object hostClusterId = host.get("clusterId");
+                    if (Objects.equals(clusterId, hostClusterId)) {
+                hosts.add(maskCredential(host));
             }
-        } catch (IOException e) {
-            log.error("Failed to list hosts from {}", hostsDir, e);
         }
         return hosts;
     }
@@ -918,7 +859,7 @@ public class HostService {
     private void persistHost(String id, Map<String, Object> host, String logTemplate, Object[] logArgs)
         throws BadRequestException {
         validateHostRole(host);
-        writeHostFile(id, host);
+        writeEntityFile(id, host);
         log.info(logTemplate, logArgs);
     }
 
@@ -950,8 +891,8 @@ public class HostService {
      * @throws NotFoundException if the host is not found
      */
     private Map<String, Object> loadHostOrThrow(String id) throws NotFoundException {
-        Path file = hostsDir.resolve(id + ".json");
-        Map<String, Object> host = readHostFile(file);
+        Path file = resolveEntityFile(id);
+        Map<String, Object> host = readFile(file);
         if (host == null) {
             throw new NotFoundException("Host not found");
         }
@@ -1065,46 +1006,6 @@ public class HostService {
         result.put("message", message);
         result.put("latency", latency + "ms");
         return result;
-    }
-
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    /**
-     * Reads a host file and parses the JSON content.
-     *
-     * @param file the path to the host file
-     * @return the host data map, or null if the file does not exist or cannot be parsed
-     */
-    private Map<String, Object> readHostFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read host file: {}", file, e);
-            return null;
-        }
-    }
-
-    /**
-     * Writes host data to a JSON file.
-     *
-     * @param id the host identifier used for the filename
-     * @param host the host data map to write
-     * @throws IllegalStateException if writing fails
-     */
-    private void writeHostFile(String id, Map<String, Object> host) {
-        try {
-            Files.createDirectories(hostsDir);
-            Path file = hostsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(host);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write host file for id={}", id, e);
-            throw new IllegalStateException("Failed to save host", e);
-        }
     }
 
     // ── AES-GCM Encryption ───────────────────────────────────────────

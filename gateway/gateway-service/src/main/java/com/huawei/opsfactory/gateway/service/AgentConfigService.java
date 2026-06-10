@@ -432,6 +432,10 @@ public class AgentConfigService {
             throw new IllegalArgumentException("Provider '" + provider + "' not found for agent '" + agentId
                 + "': no matching definition in custom_providers/");
         }
+        String temperature = modelConfig.containsKey("GOOSE_TEMPERATURE")
+            ? modelConfig.get("GOOSE_TEMPERATURE")
+            : asString(config.get("GOOSE_TEMPERATURE"));
+        validateTemperaturePrecision(temperature);
 
         for (String key : MODEL_CONFIG_KEYS) {
             if (modelConfig.containsKey(key)) {
@@ -601,6 +605,29 @@ public class AgentConfigService {
 
     private boolean customProviderExists(String agentId, String providerName) {
         return listCustomProviders(agentId).stream().anyMatch(provider -> providerName.equals(provider.get("name")));
+    }
+
+    private void validateTemperaturePrecision(String temperature) {
+        String value = trimToNull(temperature);
+        if (value == null) {
+            return;
+        }
+        if (!value.matches("\\d*\\.?\\d+")) {
+            throw new IllegalArgumentException("GOOSE_TEMPERATURE must be a valid number");
+        }
+        int decimalPoint = value.indexOf('.');
+        if (decimalPoint >= 0 && value.length() - decimalPoint - 1 > 2) {
+            throw new IllegalArgumentException("GOOSE_TEMPERATURE supports at most two decimal places");
+        }
+        double parsed;
+        try {
+            parsed = Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("GOOSE_TEMPERATURE must be a valid number", e);
+        }
+        if (parsed < 0 || parsed > 1) {
+            throw new IllegalArgumentException("GOOSE_TEMPERATURE must be between 0 and 1");
+        }
     }
 
     private Path getCustomProvidersDir(String agentId) {

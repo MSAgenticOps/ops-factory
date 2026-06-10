@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
+import com.huawei.opsfactory.knowledge.repository.ChunkRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -218,6 +219,29 @@ public class SearchService {
         String editStatus,
         String updatedBy
     ) {
+        /**
+         * Creates a SearchableChunk from a ChunkRepository.ChunkRecord.
+         *
+         * @param record the chunk record
+         * @return the searchable chunk
+         */
+        public static SearchableChunk from(ChunkRepository.ChunkRecord record) {
+            return new SearchableChunk(
+                record.id(),
+                record.documentId(),
+                record.sourceId(),
+                record.title(),
+                record.titlePath(),
+                record.keywords(),
+                record.text(),
+                record.markdown(),
+                record.pageFrom(),
+                record.pageTo(),
+                record.ordinal(),
+                record.editStatus(),
+                record.updatedBy()
+            );
+        }
     }
 
     public record SearchMatch(

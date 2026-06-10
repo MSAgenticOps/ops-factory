@@ -9,17 +9,11 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,17 +32,11 @@ import java.util.regex.Pattern;
  * @since 2026-05-30
  */
 @Service
-public class SolutionTypeService {
-    private static final Logger log = LoggerFactory.getLogger(SolutionTypeService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
+public class SolutionTypeService extends JsonFileEntityStore {
     // Hex color pattern: #RRGGBB format, safe with bounded quantifier {6}
     private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
     private final GatewayProperties properties;
-
-    private Path solutionTypesDir;
 
     /**
      * Creates the solution type service instance.
@@ -56,6 +44,7 @@ public class SolutionTypeService {
      * @param properties gateway properties
      */
     public SolutionTypeService(GatewayProperties properties) {
+        super("solution-type");
         this.properties = properties;
     }
 
@@ -64,14 +53,7 @@ public class SolutionTypeService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.solutionTypesDir = gatewayRoot.resolve("data").resolve("solution-types");
-        try {
-            Files.createDirectories(solutionTypesDir);
-        } catch (IOException e) {
-            log.error("Failed to create solution-types directory: {}", solutionTypesDir, e);
-        }
-        log.info("SolutionTypeService initialized, solutionTypesDir={}", solutionTypesDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "solution-types");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -82,24 +64,22 @@ public class SolutionTypeService {
      * @return a list of all solution type maps; empty list if the directory does not exist or is empty
      */
     public List<Map<String, Object>> listSolutionTypes() {
-        List<Map<String, Object>> types = new ArrayList<>();
-        if (!Files.isDirectory(solutionTypesDir)) {
-            return types;
+        return listEntities();
+    }
+
+    /**
+     * Gets a solution type by its ID.
+     *
+     * @param id entity identifier
+     * @return a solution type by its ID
+     * @throws NotFoundException if the solution type is not found
+     */
+    public Map<String, Object> getSolutionType(String id) throws NotFoundException {
+        Map<String, Object> st = readFile(resolveEntityFile(id));
+        if (st == null) {
+            throw new NotFoundException("Solution type not found");
         }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(solutionTypesDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                Map<String, Object> st = readFile(file);
-                if (st != null) {
-                    types.add(st);
-                }
-            }
-        } catch (IOException e) {
-            log.error("Failed to list solution-types from {}", solutionTypesDir, e);
-        }
-        return types;
+        return st;
     }
 
     /**
@@ -172,8 +152,7 @@ public class SolutionTypeService {
      * @throws ConflictException if the file cannot be written
      */
     public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
-        Path file = solutionTypesDir.resolve(id + ".json");
-        Map<String, Object> st = readFile(file);
+        Map<String, Object> st = readFile(resolveEntityFile(id));
         if (st == null) {
             throw new NotFoundException("Solution type not found");
         }
@@ -224,7 +203,7 @@ public class SolutionTypeService {
      */
     public boolean deleteSolutionType(String id) throws ConflictException {
         // Get the solution type code first
-        Map<String, Object> st = readFile(solutionTypesDir.resolve(id + ".json"));
+        Map<String, Object> st = readFile(resolveEntityFile(id));
         if (st == null) {
             return false;
         }
@@ -250,15 +229,11 @@ public class SolutionTypeService {
             throw new ConflictException(errorMsg.toString());
         }
 
-        Path file = solutionTypesDir.resolve(id + ".json");
-        try {
-            Files.delete(file);
+        boolean deleted = deleteEntityFile(id);
+        if (deleted) {
             log.info("Deleted solution type: id={}, code={}", id, code);
-            return true;
-        } catch (IOException e) {
-            log.error("Failed to delete solution-type file: {}", file, e);
-            return false;
         }
+        return deleted;
     }
 
     /**
@@ -378,43 +353,4 @@ public class SolutionTypeService {
         return code;
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    /**
-     * Reads a solution type from the given JSON file.
-     *
-     * @param file the JSON file path
-     * @return the parsed solution type, or null if the file does not exist or cannot be read
-     */
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read solution-type file: {}", file, e);
-            return null;
-        }
-    }
-
-    /**
-     * Writes a solution type entity to a JSON file.
-     *
-     * @param id the entity identifier used as the filename
-     * @param entity the solution type data to persist
-     * @throws ConflictException if the file cannot be written
-     */
-    private void writeEntityFile(String id, Map<String, Object> entity) throws ConflictException {
-        try {
-            Files.createDirectories(solutionTypesDir);
-            Path file = solutionTypesDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write solution-type file for id={}", id, e);
-            throw new ConflictException("Failed to save solution type", e);
-        }
-    }
 }

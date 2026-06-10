@@ -207,7 +207,7 @@ class KnowledgeRealHttpIntegrationTest {
 
     @Test
     void shouldRebuildIndexesForMiguKnowledgeBaseUsingUploadedDocuments() throws Exception {
-        String sourceId = createSourceOverHttp("咪咕运维知识库 —— 测试");
+        String sourceId = createSourceOverHttp("咪咕运维知识库 - 测试");
         uploadFilesOverHttp(sourceId, inputFiles());
 
         int cacheCountBeforeRebuild = jdbcTemplate.queryForObject("select count(*) from embedding_cache", Integer.class);

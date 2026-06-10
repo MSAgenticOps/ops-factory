@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.operationintelligence.knowledgegraph.service;
 
+import com.huawei.opsfactory.operationintelligence.common.util.PathValidator;
+import com.huawei.opsfactory.operationintelligence.common.util.ServiceValidator;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphEntity;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphExportPackage;
@@ -34,7 +36,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -48,8 +49,6 @@ public class KnowledgeGraphService {
     private static final String DEFAULT_SCHEMA_VERSION = "1.0";
 
     private static final String EXPORT_FORMAT = "KG_NATIVE_JSON";
-
-    private static final Pattern SAFE_ID_PATTERN = Pattern.compile("[A-Za-z0-9_.-]+");
 
     private final Map<String, ReentrantLock> ontologyLocks = new ConcurrentHashMap<>();
 
@@ -160,7 +159,6 @@ public class KnowledgeGraphService {
             return result;
         } finally {
             lock.unlock();
-            ontologyLocks.remove(ontologyId);
         }
     }
 
@@ -192,7 +190,7 @@ public class KnowledgeGraphService {
         prepareDefaults(request);
         requireSafeId(request.getOntologyId(), "ontologyId");
         requireSafeId(request.getEnvCode(), "envCode");
-        requireText(request.getSourceSystem(), "sourceSystem");
+        ServiceValidator.requireText(request.getSourceSystem(), "sourceSystem");
         if (!"UPSERT".equals(request.getImportMode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only UPSERT importMode is supported");
         }
@@ -241,7 +239,7 @@ public class KnowledgeGraphService {
         ensureEnabled();
         ontologyId = resolveOntologyId(ontologyId);
         requireSafeId(envCode, "envCode");
-        requireText(entityId, "entityId");
+        ServiceValidator.requireText(entityId, "entityId");
         return graphStore.getEntity(ontologyId, envCode, entityId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity not found"));
     }
@@ -257,25 +255,19 @@ public class KnowledgeGraphService {
      */
     public GraphEntity updateEntity(String ontologyId, String envCode, String entityId, GraphEntity request) {
         ensureEnabled();
-        ontologyId = resolveOntologyId(ontologyId);
+        String resolvedId = resolveOntologyId(ontologyId);
         requireSafeId(envCode, "envCode");
-        requireText(entityId, "entityId");
-        String lockKey = ontologyId + ":" + envCode;
-        ReentrantLock lock = ontologyLocks.computeIfAbsent(lockKey, key -> new ReentrantLock());
-        lock.lock();
-        try {
-            GraphSnapshot snapshot = getRequiredSnapshot(ontologyId, envCode);
-            GraphEntity existing = getEntity(ontologyId, envCode, entityId);
+        ServiceValidator.requireText(entityId, "entityId");
+        return withEntityLock(resolvedId, envCode, () -> {
+            GraphSnapshot snapshot = getRequiredSnapshot(resolvedId, envCode);
+            GraphEntity existing = getEntity(resolvedId, envCode, entityId);
             GraphEntity updated = mergeEntity(existing, request, entityId);
             persistSnapshotModification(snapshot, next ->
                 next.setEntities(snapshot.getEntities().stream()
                     .map(e -> entityId.equals(e.getId()) ? updated : e)
                     .toList()));
             return updated;
-        } finally {
-            lock.unlock();
-            ontologyLocks.remove(lockKey);
-        }
+        });
     }
 
     /**
@@ -288,15 +280,12 @@ public class KnowledgeGraphService {
      */
     public Map<String, Object> deleteEntity(String ontologyId, String envCode, String entityId) {
         ensureEnabled();
-        ontologyId = resolveOntologyId(ontologyId);
+        String resolvedId = resolveOntologyId(ontologyId);
         requireSafeId(envCode, "envCode");
-        requireText(entityId, "entityId");
-        String lockKey = ontologyId + ":" + envCode;
-        ReentrantLock lock = ontologyLocks.computeIfAbsent(lockKey, key -> new ReentrantLock());
-        lock.lock();
-        try {
-            GraphSnapshot snapshot = getRequiredSnapshot(ontologyId, envCode);
-            getEntity(ontologyId, envCode, entityId);
+        ServiceValidator.requireText(entityId, "entityId");
+        return withEntityLock(resolvedId, envCode, () -> {
+            GraphSnapshot snapshot = getRequiredSnapshot(resolvedId, envCode);
+            getEntity(resolvedId, envCode, entityId);
             persistSnapshotModification(snapshot, next -> {
                 next.setEntities(snapshot.getEntities().stream()
                     .filter(e -> !entityId.equals(e.getId()))
@@ -312,10 +301,7 @@ public class KnowledgeGraphService {
             result.put("entityId", entityId);
             result.put("deleted", true);
             return result;
-        } finally {
-            lock.unlock();
-            ontologyLocks.remove(lockKey);
-        }
+        });
     }
 
     /**
@@ -330,7 +316,7 @@ public class KnowledgeGraphService {
         ensureEnabled();
         ontologyId = resolveOntologyId(ontologyId);
         requireSafeId(envCode, "envCode");
-        requireText(entityId, "entityId");
+        ServiceValidator.requireText(entityId, "entityId");
         int configuredMaxHops = Math.max(properties.getKnowledgeGraph().getMaxHops(), 1);
         if (maxHops < 0 || maxHops > configuredMaxHops) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -355,7 +341,7 @@ public class KnowledgeGraphService {
         ensureEnabled();
         ontologyId = resolveOntologyId(ontologyId);
         requireSafeId(envCode, "envCode");
-        requireText(entityId, "entityId");
+        ServiceValidator.requireText(entityId, "entityId");
         validateHops("upstreamHops", upstreamHops);
         validateHops("downstreamHops", downstreamHops);
         return graphStore.querySubgraph(ontologyId, envCode, entityId, upstreamHops, downstreamHops)
@@ -481,8 +467,8 @@ public class KnowledgeGraphService {
         String toEntityId = stringValue(request.get("toEntityId"));
         int maxHops = boundedHops(request.get("maxHops"), 4);
         requireSafeId(envCode, "envCode");
-        requireText(fromEntityId, "fromEntityId");
-        requireText(toEntityId, "toEntityId");
+        ServiceValidator.requireText(fromEntityId, "fromEntityId");
+        ServiceValidator.requireText(toEntityId, "toEntityId");
         GraphSnapshot path = graphStore.findPath(ontologyId, envCode, fromEntityId, toEntityId, maxHops)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Impact path not found"));
         Map<String, Object> result = new LinkedHashMap<>();
@@ -805,14 +791,32 @@ public class KnowledgeGraphService {
     }
 
     private void requireText(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        ServiceValidator.requireText(value, fieldName);
+    }
+
+    /**
+     * Executes an action under a per-environment lock, ensuring cleanup.
+     *
+     * @param ontologyId the ontology ID
+     * @param envCode the environment code
+     * @param action the action to execute under lock
+     * @param <T> the return type
+     * @return the result of the action
+     */
+    private <T> T withEntityLock(String ontologyId, String envCode, java.util.function.Supplier<T> action) {
+        String lockKey = ontologyId + ":" + envCode;
+        ReentrantLock lock = ontologyLocks.computeIfAbsent(lockKey, key -> new ReentrantLock());
+        lock.lock();
+        try {
+            return action.get();
+        } finally {
+            lock.unlock();
         }
     }
 
     private void requireSafeId(String value, String fieldName) {
         requireText(value, fieldName);
-        if (!SAFE_ID_PATTERN.matcher(value).matches()) {
+        if (!PathValidator.SAFE_SEGMENT.matcher(value).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 fieldName + " contains unsupported path characters");
         }

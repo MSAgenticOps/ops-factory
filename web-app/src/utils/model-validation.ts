@@ -19,12 +19,19 @@ export function validateContextLimit(value: string): 'format' | 'range' | null {
     return null
 }
 
-export function validateTemperature(value: string): 'format' | 'range' | null {
+export type TemperatureValidationError = 'format' | 'range' | 'precision'
+
+export function validateTemperature(value: string): TemperatureValidationError | null {
     const trimmed = value.trim()
     if (!trimmed) return null
 
     if (!/^\d*\.?\d+$/.test(trimmed)) {
         return 'format'
+    }
+
+    const decimalPart = trimmed.split('.')[1] || ''
+    if (decimalPart.length > 2) {
+        return 'precision'
     }
 
     const num = parseFloat(trimmed)

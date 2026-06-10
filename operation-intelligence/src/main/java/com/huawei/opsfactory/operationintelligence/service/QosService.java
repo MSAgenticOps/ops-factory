@@ -127,17 +127,7 @@ public class QosService {
             .filter(d -> d.getTimestamp() != null && d.getTimestamp() >= startTime && d.getTimestamp() <= endTime)
             .collect(Collectors.toList());
 
-        int total = filtered.size();
-        int from = (pageIndex - 1) * pageSize;
-        int to = Math.min(from + pageSize, total);
-        List<IndicatorDetailData> page = from < total ? filtered.subList(from, to) : List.of();
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("total", total);
-        result.put("pageIndex", pageIndex);
-        result.put("pageSize", pageSize);
-        result.put("results", page);
-        return result;
+        return buildPagedResult(filtered, pageIndex, pageSize);
     }
 
     /**
@@ -175,17 +165,7 @@ public class QosService {
             .filter(d -> d.getOccurUtc() != null && d.getOccurUtc() >= startTime && d.getOccurUtc() <= endTime)
             .collect(Collectors.toList());
 
-        int total = filtered.size();
-        int from = (pageIndex - 1) * pageSize;
-        int to = Math.min(from + pageSize, total);
-        List<AlarmDetailData> page = from < total ? filtered.subList(from, to) : List.of();
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("total", total);
-        result.put("pageIndex", pageIndex);
-        result.put("pageSize", pageSize);
-        result.put("results", page);
-        return result;
+        return buildPagedResult(filtered, pageIndex, pageSize);
     }
 
     /**
@@ -279,5 +259,18 @@ public class QosService {
             .map(IndicatorNormalizeData::getIndicatorValue)
             .findFirst()
             .orElse(null);
+    }
+
+    private <T> Map<String, Object> buildPagedResult(List<T> filtered, int pageIndex, int pageSize) {
+        int total = filtered.size();
+        int from = (pageIndex - 1) * pageSize;
+        int to = Math.min(from + pageSize, total);
+        List<T> page = from < total ? filtered.subList(from, to) : List.of();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", total);
+        result.put("pageIndex", pageIndex);
+        result.put("pageSize", pageSize);
+        result.put("results", page);
+        return result;
     }
 }

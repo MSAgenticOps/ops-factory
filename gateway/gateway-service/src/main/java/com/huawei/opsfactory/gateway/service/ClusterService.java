@@ -10,21 +10,12 @@ import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,14 +32,9 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class ClusterService {
-    private static final Logger log = LoggerFactory.getLogger(ClusterService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class ClusterService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
-
-    private Path clustersDir;
 
     private ClusterRelationService clusterRelationService;
 
@@ -58,6 +44,7 @@ public class ClusterService {
      * @param properties gateway configuration properties
      */
     public ClusterService(GatewayProperties properties) {
+        super("cluster");
         this.properties = properties;
     }
 
@@ -77,14 +64,7 @@ public class ClusterService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.clustersDir = gatewayRoot.resolve("data").resolve("clusters");
-        try {
-            Files.createDirectories(clustersDir);
-        } catch (IOException e) {
-            log.error("Failed to create clusters directory: {}", clustersDir, e);
-        }
-        log.info("ClusterService initialized, clustersDir={}", clustersDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "clusters");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -97,37 +77,24 @@ public class ClusterService {
      * @return list of cluster maps matching the filters
      */
     public List<Map<String, Object>> listClusters(String groupId, String type) {
+        List<Map<String, Object>> allClusters = listEntities();
         List<Map<String, Object>> clusters = new ArrayList<>();
-        if (!Files.isDirectory(clustersDir)) {
-            return clusters;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(clustersDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
+        for (Map<String, Object> cluster : allClusters) {
+            // Filter by groupId
+            if (groupId != null && !groupId.isEmpty()) {
+                Object cg = cluster.get("groupId");
+                if (!groupId.equals(cg)) {
                     continue;
                 }
-                Map<String, Object> cluster = readFile(file);
-                if (cluster == null) {
-                    continue;
-                }
-                // Filter by groupId
-                if (groupId != null && !groupId.isEmpty()) {
-                    Object cg = cluster.get("groupId");
-                    if (!groupId.equals(cg)) {
-                        continue;
-                    }
-                }
-                // Filter by type
-                if (type != null && !type.isEmpty()) {
-                    Object ct = cluster.get("type");
-                    if (!type.equalsIgnoreCase(ct != null ? ct.toString() : "")) {
-                        continue;
-                    }
-                }
-                clusters.add(cluster);
             }
-        } catch (IOException e) {
-            log.error("Failed to list clusters from {}", clustersDir, e);
+            // Filter by type
+            if (type != null && !type.isEmpty()) {
+                Object ct = cluster.get("type");
+                if (!type.equalsIgnoreCase(ct != null ? ct.toString() : "")) {
+                    continue;
+                }
+            }
+            clusters.add(cluster);
         }
         return clusters;
     }
@@ -139,7 +106,7 @@ public class ClusterService {
      * @return cluster data map
      */
     public Map<String, Object> getCluster(String id) throws NotFoundException {
-        Path file = clustersDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
             throw new NotFoundException("Cluster not found");
@@ -218,7 +185,7 @@ public class ClusterService {
      * @throws ConflictException if name already exists in the group
      */
     public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
-        Path file = clustersDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
             throw new NotFoundException("Cluster not found");
@@ -283,18 +250,7 @@ public class ClusterService {
             clusterRelationService.deleteRelationsByCluster(id);
         }
 
-        Path file = clustersDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted cluster: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete cluster file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
     /**
@@ -319,44 +275,7 @@ public class ClusterService {
         }
 
         // Delete the cluster file itself
-        Path file = clustersDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Force-deleted cluster: id={}, removed {} hosts", id, hosts.size());
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to force-delete cluster file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read cluster file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(clustersDir);
-            Path file = clustersDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write cluster file for id={}", id, e);
-            throw new IllegalStateException("Failed to save cluster", e);
-        }
-    }
 }

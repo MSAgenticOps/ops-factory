@@ -360,7 +360,7 @@ public class SessionEndpointE2ETest extends BaseE2ETest {
      */
     @Test
     public void listAgentSessions_authenticated_proxiesToGoosed() {
-        when(instanceManager.getOrSpawn("test-agent", "alice")).thenReturn(Mono.just(runningInstance));
+        when(instanceManager.getInstance("test-agent", "alice")).thenReturn(runningInstance);
         when(goosedProxy.fetchJson(eq(9999), eq("/sessions"), anyString())).thenReturn(Mono.just("[]"));
 
         webClient.get()

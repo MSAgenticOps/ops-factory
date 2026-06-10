@@ -84,7 +84,7 @@ async function getResponseError(response: Response): Promise<string> {
 }
 
 export default function HistoryPage() {
-    const { t, i18n } = useTranslation()
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const { showToast } = useToast()
     const { requestConfirm } = useConfirmDialog()
@@ -113,8 +113,6 @@ export default function HistoryPage() {
         return () => clearTimeout(timer)
     }, [searchTerm])
 
-    const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
-    const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
     const canTraceSessions = true
 
     const getSessionKey = useCallback((session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`, [])
@@ -302,15 +300,13 @@ export default function HistoryPage() {
                     break
                 }
             }
-            setLastDeletedSessionId(session.id)
-            setLastDeletedAt(Date.now())
+            showToast('success', t('history.sessionDeleted'))
             historySessions.refresh()
         } catch (err) {
             console.error('Failed to delete session:', err)
             const message = err instanceof Error ? err.message : 'Unknown error'
             if (message.includes('Resource not found')) {
-                setLastDeletedSessionId(session.id)
-                setLastDeletedAt(Date.now())
+                showToast('success', t('history.sessionDeleted'))
                 historySessions.refresh()
                 return
             }
@@ -337,20 +333,6 @@ export default function HistoryPage() {
             {tracingSessionKeys.size > 0 && (
                 <div className="conn-banner conn-banner-warning">
                     {t('history.traceSessionActiveNotice')}
-                </div>
-            )}
-
-            {lastDeletedSessionId && lastDeletedAt && (
-                <div
-                    style={{
-                        padding: 'var(--spacing-3)',
-                        background: 'rgba(16, 185, 129, 0.15)',
-                        borderRadius: 'var(--radius-lg)',
-                        color: 'var(--color-text-secondary)',
-                        marginBottom: 'var(--spacing-6)',
-                    }}
-                >
-                    {t('history.sessionDeleted')} • {new Date(lastDeletedAt).toLocaleTimeString(i18n.language === 'en' ? 'en-US' : 'zh-CN', { hour: '2-digit', minute: '2-digit' })}
                 </div>
             )}
 

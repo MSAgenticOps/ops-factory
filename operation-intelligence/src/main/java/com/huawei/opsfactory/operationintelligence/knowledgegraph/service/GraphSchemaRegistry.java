@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.operationintelligence.knowledgegraph.service;
 
+import com.huawei.opsfactory.operationintelligence.common.util.ServiceValidator;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.EntityTypeDefinition;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphEntity;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphObservation;
@@ -273,9 +274,7 @@ public class GraphSchemaRegistry {
     }
 
     private void requireText(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw badRequest(fieldName + " is required");
-        }
+        ServiceValidator.requireText(value, fieldName);
     }
 
     private void requireProperty(GraphEntity entity, String propertyName) {

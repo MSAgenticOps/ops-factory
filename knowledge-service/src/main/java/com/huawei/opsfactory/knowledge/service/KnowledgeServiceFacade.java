@@ -14,6 +14,7 @@ import com.huawei.opsfactory.knowledge.common.error.ApiConflictException;
 import com.huawei.opsfactory.knowledge.common.logging.LoggingKeys;
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.common.util.Ids;
+import com.huawei.opsfactory.knowledge.common.util.Jsons;
 import com.huawei.opsfactory.knowledge.config.KnowledgeLoggingProperties;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.BindingRepository;
@@ -36,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +60,9 @@ public class KnowledgeServiceFacade {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeServiceFacade.class);
     private static final int COMPARE_FETCH_TOP_K = 64;
+    private static final int SOURCE_NAME_MAX_LENGTH = 64;
+    private static final int SOURCE_DESCRIPTION_MAX_LENGTH = 256;
+    private static final Pattern SOURCE_NAME_PATTERN = Pattern.compile("^[\\p{L}\\p{N}_\\s-]+$");
     private static final Set<String> GENERIC_CONTENT_TYPES = Set.of("application/octet-stream");
     private static final Set<String> CHM_CONTENT_TYPES = Set.of(
         "application/vnd.ms-htmlhelp",
@@ -163,17 +168,20 @@ public class KnowledgeServiceFacade {
     public SourceController.SourceResponse createSource(SourceController.CreateSourceRequest request) {
         Instant now = Instant.now();
         String id = Ids.newId("src");
+        String name = validateAndNormalizeSourceName(request.name(), true);
+        String description = normalizeSourceDescription(request.description());
+        ensureSourceNameAvailable(name, null);
         String indexProfileId = request.indexProfileId() != null ? request.indexProfileId() : profileBootstrapService.defaultIndexProfileId();
         String retrievalProfileId = request.retrievalProfileId() != null ? request.retrievalProfileId() : profileBootstrapService.defaultRetrievalProfileId();
         validateIndexProfileBindableToSource(indexProfileId, id);
         validateRetrievalProfileBindableToSource(retrievalProfileId, id);
         SourceRepository.SourceRecord record = new SourceRepository.SourceRecord(
-            id, request.name(), request.description(), "ACTIVE", "MANAGED", indexProfileId, retrievalProfileId,
+            id, name, description, "ACTIVE", "MANAGED", indexProfileId, retrievalProfileId,
             "ACTIVE", null, null, null, false, now, now
         );
         sourceRepository.insert(record);
         bindingRepository.upsert(new BindingRepository.BindingRecord(Ids.newId("spb"), id, indexProfileId, retrievalProfileId, now, now));
-        log.info("Created source sourceId={} name={} indexProfileId={} retrievalProfileId={}", id, request.name(), indexProfileId, retrievalProfileId);
+        log.info("Created source sourceId={} name={} indexProfileId={} retrievalProfileId={}", id, name, indexProfileId, retrievalProfileId);
         return toSourceResponse(record);
     }
 
@@ -204,12 +212,17 @@ public class KnowledgeServiceFacade {
         Instant now = Instant.now();
         String indexProfileId = request.indexProfileId() != null ? request.indexProfileId() : existing.indexProfileId();
         String retrievalProfileId = request.retrievalProfileId() != null ? request.retrievalProfileId() : existing.retrievalProfileId();
+        String name = request.name() != null ? validateAndNormalizeSourceName(request.name(), true) : existing.name();
+        String description = request.description() != null ? normalizeSourceDescription(request.description()) : existing.description();
+        if (request.name() != null) {
+            ensureSourceNameAvailable(name, sourceId);
+        }
         validateIndexProfileBindableToSource(indexProfileId, sourceId);
         validateRetrievalProfileBindableToSource(retrievalProfileId, sourceId);
         SourceRepository.SourceRecord updated = new SourceRepository.SourceRecord(
             sourceId,
-            request.name() != null ? request.name() : existing.name(),
-            request.description() != null ? request.description() : existing.description(),
+            name,
+            description,
             request.status() != null ? request.status() : existing.status(),
             existing.storageMode(),
             indexProfileId,
@@ -592,10 +605,7 @@ public class KnowledgeServiceFacade {
             hash(request.text() + request.markdown()), "USER_EDITED", "system", Instant.now(), Instant.now()
         );
         chunkRepository.insert(record);
-        SearchService.SearchableChunk searchableChunk = toSearchableChunk(record);
-        Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(List.of(searchableChunk));
-        lexicalIndexService.upsertChunks(List.of(searchableChunk));
-        vectorIndexService.upsertChunks(List.of(searchableChunk), vectors);
+        reindexChunks(List.of(toSearchableChunk(record)));
         refreshDocumentChunkStats(documentId);
         return new ChunkController.ChunkMutationResponse(record.id(), documentId, true, true, record.editStatus(), record.updatedAt());
     }
@@ -633,10 +643,7 @@ public class KnowledgeServiceFacade {
             Instant.now()
         );
         chunkRepository.update(updated);
-        SearchService.SearchableChunk searchableChunk = toSearchableChunk(updated);
-        Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(List.of(searchableChunk));
-        lexicalIndexService.upsertChunks(List.of(searchableChunk));
-        vectorIndexService.upsertChunks(List.of(searchableChunk), vectors);
+        reindexChunks(List.of(toSearchableChunk(updated)));
         refreshDocumentChunkStats(existing.documentId());
         return new ChunkController.ChunkMutationResponse(chunkId, existing.documentId(), true, true, updated.editStatus(), updated.updatedAt());
     }
@@ -661,10 +668,7 @@ public class KnowledgeServiceFacade {
             "USER_EDITED", "system", existing.createdAt(), Instant.now()
         );
         chunkRepository.update(updated);
-        SearchService.SearchableChunk searchableChunk = toSearchableChunk(updated);
-        Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(List.of(searchableChunk));
-        lexicalIndexService.upsertChunks(List.of(searchableChunk));
-        vectorIndexService.upsertChunks(List.of(searchableChunk), vectors);
+        reindexChunks(List.of(toSearchableChunk(updated)));
         refreshDocumentChunkStats(existing.documentId());
         return new ChunkController.ChunkKeywordsResponse(chunkId, keywords, true, true, updated.updatedAt());
     }
@@ -948,27 +952,10 @@ public class KnowledgeServiceFacade {
      * @param pageSize the number of items per page
      * @return a paginated response of index profile summaries
      */
-    /**
-     * Lists all index profiles with pagination.
-     *
-     * @param page the page number (1-based)
-     * @param pageSize the number of items per page
-     * @return a paginated response of index profile summaries
-     */
     public PageResponse<ProfileController.ProfileSummary> listIndexProfiles(int page, int pageSize) {
-        List<ProfileController.ProfileSummary> items = profileRepository.findAllIndex().stream()
-            .map(this::toProfileSummary)
-            .toList();
-        return page(items, page, pageSize);
+        return listProfiles(true, page, pageSize);
     }
 
-    /**
-     * Lists all retrieval profiles with pagination.
-     *
-     * @param page the page number (1-based)
-     * @param pageSize the number of items per page
-     * @return a paginated response of retrieval profile summaries
-     */
     /**
      * Lists all retrieval profiles with pagination.
      *
@@ -977,21 +964,15 @@ public class KnowledgeServiceFacade {
      * @return a paginated response of retrieval profile summaries
      */
     public PageResponse<ProfileController.ProfileSummary> listRetrievalProfiles(int page, int pageSize) {
-        List<ProfileController.ProfileSummary> items = profileRepository.findAllRetrieval().stream()
-            .map(this::toProfileSummary)
-            .toList();
+        return listProfiles(false, page, pageSize);
+    }
+
+    private PageResponse<ProfileController.ProfileSummary> listProfiles(boolean isIndex, int page, int pageSize) {
+        List<ProfileRepository.ProfileRecord> records = isIndex ? profileRepository.findAllIndex() : profileRepository.findAllRetrieval();
+        List<ProfileController.ProfileSummary> items = records.stream().map(this::toProfileSummary).toList();
         return page(items, page, pageSize);
     }
 
-    /**
-     * Creates a new index profile.
-     *
-     * @param request the create profile request
-     * @return the created profile detail
-     * @throws IllegalArgumentException if the profile name is invalid
-     * @throws IllegalStateException if the profile config is invalid
-     * @throws ApiConflictException if the profile name already exists
-     */
     /**
      * Creates a new index profile.
      *
@@ -1004,32 +985,9 @@ public class KnowledgeServiceFacade {
     @Transactional
     public ProfileController.ProfileDetail createIndexProfile(ProfileController.CreateProfileRequest request) {
         validateIndexProfileConfig(request.config());
-        Instant now = Instant.now();
-        String profileName = request.name() != null ? request.name().trim() : null;
-        ensureProfileNameAvailable(profileName, null, true);
-        ProfileRepository.ProfileRecord record = new ProfileRepository.ProfileRecord(
-            Ids.newId("ip"),
-            profileName,
-            request.config(),
-            "index",
-            null,
-            false,
-            null,
-            now,
-            now
-        );
-        profileRepository.insertIndex(record);
-        return toProfileDetail(record);
+        return createProfile(request, true);
     }
 
-    /**
-     * Creates a new retrieval profile.
-     *
-     * @param request the create profile request
-     * @return the created profile detail
-     * @throws IllegalArgumentException if the profile name is invalid
-     * @throws ApiConflictException if the profile name already exists
-     */
     /**
      * Creates a new retrieval profile.
      *
@@ -1040,31 +998,34 @@ public class KnowledgeServiceFacade {
      */
     @Transactional
     public ProfileController.ProfileDetail createRetrievalProfile(ProfileController.CreateProfileRequest request) {
+        return createProfile(request, false);
+    }
+
+    private ProfileController.ProfileDetail createProfile(ProfileController.CreateProfileRequest request, boolean isIndex) {
         Instant now = Instant.now();
         String profileName = request.name() != null ? request.name().trim() : null;
-        ensureProfileNameAvailable(profileName, null, false);
+        ensureProfileNameAvailable(profileName, null, isIndex);
+        String idPrefix = isIndex ? "ip" : "rp";
+        String type = isIndex ? "index" : "retrieval";
         ProfileRepository.ProfileRecord record = new ProfileRepository.ProfileRecord(
-            Ids.newId("rp"),
+            Ids.newId(idPrefix),
             profileName,
             request.config(),
-            "retrieval",
+            type,
             null,
             false,
             null,
             now,
             now
         );
-        profileRepository.insertRetrieval(record);
+        if (isIndex) {
+            profileRepository.insertIndex(record);
+        } else {
+            profileRepository.insertRetrieval(record);
+        }
         return toProfileDetail(record);
     }
 
-    /**
-     * Retrieves an index profile by its identifier.
-     *
-     * @param id the profile identifier
-     * @return the profile detail
-     * @throws IllegalArgumentException if the profile is not found
-     */
     /**
      * Retrieves an index profile by its identifier.
      *
@@ -1073,17 +1034,9 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the profile is not found
      */
     public ProfileController.ProfileDetail getIndexProfile(String id) {
-        ProfileRepository.ProfileRecord record = profileRepository.findIndexById(id).orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + id));
-        return toProfileDetail(record);
+        return toProfileDetail(findProfileById(id, true));
     }
 
-    /**
-     * Retrieves a retrieval profile by its identifier.
-     *
-     * @param id the profile identifier
-     * @return the profile detail
-     * @throws IllegalArgumentException if the profile is not found
-     */
     /**
      * Retrieves a retrieval profile by its identifier.
      *
@@ -1092,20 +1045,17 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the profile is not found
      */
     public ProfileController.ProfileDetail getRetrievalProfile(String id) {
-        ProfileRepository.ProfileRecord record = profileRepository.findRetrievalById(id).orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + id));
-        return toProfileDetail(record);
+        return toProfileDetail(findProfileById(id, false));
     }
 
-    /**
-     * Updates an existing index profile.
-     *
-     * @param id the profile identifier
-     * @param request the update profile request
-     * @return the update response
-     * @throws IllegalArgumentException if the profile is not found
-     * @throws ApiConflictException if the profile is read-only or name already exists
-     * @throws IllegalStateException if the profile config is invalid
-     */
+    private ProfileRepository.ProfileRecord findProfileById(String id, boolean isIndex) {
+        String label = isIndex ? "Index" : "Retrieval";
+        Optional<ProfileRepository.ProfileRecord> found = isIndex
+            ? profileRepository.findIndexById(id)
+            : profileRepository.findRetrievalById(id);
+        return found.orElseThrow(() -> new IllegalArgumentException(label + " profile not found: " + id));
+    }
+
     /**
      * Updates an existing index profile.
      *
@@ -1118,27 +1068,12 @@ public class KnowledgeServiceFacade {
      */
     @Transactional
     public ProfileController.ProfileUpdateResponse updateIndexProfile(String id, ProfileController.UpdateProfileRequest request) {
-        ProfileRepository.ProfileRecord existing = profileRepository.findIndexById(id).orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + id));
-        ensureProfileMutable(existing, "index");
         validateIndexProfileConfig(request.config());
-        String profileName = request.name() != null ? request.name().trim() : existing.name();
-        ensureProfileNameAvailable(profileName, id, true);
-        ProfileRepository.ProfileRecord updated = new ProfileRepository.ProfileRecord(
-            id,
-            profileName,
-            mergeMaps(existing.config(), request.config()),
-            "index",
-            existing.ownerSourceId(),
-            existing.readonly(),
-            existing.derivedFromProfileId(),
-            existing.createdAt(),
-            Instant.now()
-        );
-        profileRepository.updateIndex(updated);
+        ProfileController.ProfileUpdateResponse response = updateProfile(id, request, true);
         if (request.config() != null && !request.config().isEmpty()) {
             markSourcesRebuildRequiredByIndexProfile(id);
         }
-        return new ProfileController.ProfileUpdateResponse(id, updated.name(), updated.updatedAt());
+        return response;
     }
 
     /**
@@ -1152,22 +1087,31 @@ public class KnowledgeServiceFacade {
      */
     @Transactional
     public ProfileController.ProfileUpdateResponse updateRetrievalProfile(String id, ProfileController.UpdateProfileRequest request) {
-        ProfileRepository.ProfileRecord existing = profileRepository.findRetrievalById(id).orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + id));
-        ensureProfileMutable(existing, "retrieval");
+        return updateProfile(id, request, false);
+    }
+
+    private ProfileController.ProfileUpdateResponse updateProfile(String id, ProfileController.UpdateProfileRequest request, boolean isIndex) {
+        String label = isIndex ? "index" : "retrieval";
+        ProfileRepository.ProfileRecord existing = findProfileById(id, isIndex);
+        ensureProfileMutable(existing, label);
         String profileName = request.name() != null ? request.name().trim() : existing.name();
-        ensureProfileNameAvailable(profileName, id, false);
+        ensureProfileNameAvailable(profileName, id, isIndex);
         ProfileRepository.ProfileRecord updated = new ProfileRepository.ProfileRecord(
             id,
             profileName,
             mergeMaps(existing.config(), request.config()),
-            "retrieval",
+            label,
             existing.ownerSourceId(),
             existing.readonly(),
             existing.derivedFromProfileId(),
             existing.createdAt(),
             Instant.now()
         );
-        profileRepository.updateRetrieval(updated);
+        if (isIndex) {
+            profileRepository.updateIndex(updated);
+        } else {
+            profileRepository.updateRetrieval(updated);
+        }
         return new ProfileController.ProfileUpdateResponse(id, updated.name(), updated.updatedAt());
     }
 
@@ -1182,13 +1126,7 @@ public class KnowledgeServiceFacade {
      */
     @Transactional
     public ProfileController.DeleteProfileResponse deleteIndexProfile(String id) {
-        ensureProfileMutable(
-            profileRepository.findIndexById(id).orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + id)),
-            "index"
-        );
-        ensureProfileNotBound(id, true);
-        profileRepository.deleteIndex(id);
-        return new ProfileController.DeleteProfileResponse(id, true);
+        return deleteProfile(id, true);
     }
 
     /**
@@ -1202,12 +1140,19 @@ public class KnowledgeServiceFacade {
      */
     @Transactional
     public ProfileController.DeleteProfileResponse deleteRetrievalProfile(String id) {
-        ensureProfileMutable(
-            profileRepository.findRetrievalById(id).orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + id)),
-            "retrieval"
-        );
-        ensureProfileNotBound(id, false);
-        profileRepository.deleteRetrieval(id);
+        return deleteProfile(id, false);
+    }
+
+    private ProfileController.DeleteProfileResponse deleteProfile(String id, boolean isIndex) {
+        String label = isIndex ? "index" : "retrieval";
+        ProfileRepository.ProfileRecord record = findProfileById(id, isIndex);
+        ensureProfileMutable(record, label);
+        ensureProfileNotBound(id, isIndex);
+        if (isIndex) {
+            profileRepository.deleteIndex(id);
+        } else {
+            profileRepository.deleteRetrieval(id);
+        }
         return new ProfileController.DeleteProfileResponse(id, true);
     }
 
@@ -1330,11 +1275,7 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the source or index profile is not found
      */
     public SourceController.SourceProfileConfigResponse getSourceIndexProfileConfig(String sourceId) {
-        SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
-            .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
-        ProfileRepository.ProfileRecord profile = profileRepository.findIndexById(source.indexProfileId())
-            .orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + source.indexProfileId()));
-        return toSourceProfileConfigResponse(source, profile, false);
+        return getSourceProfileConfig(sourceId, true);
     }
 
     /**
@@ -1461,10 +1402,14 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the source or retrieval profile is not found
      */
     public SourceController.SourceProfileConfigResponse getSourceRetrievalProfileConfig(String sourceId) {
+        return getSourceProfileConfig(sourceId, false);
+    }
+
+    private SourceController.SourceProfileConfigResponse getSourceProfileConfig(String sourceId, boolean isIndex) {
         SourceRepository.SourceRecord source = sourceRepository.findById(sourceId)
             .orElseThrow(() -> new IllegalArgumentException("Source not found: " + sourceId));
-        ProfileRepository.ProfileRecord profile = profileRepository.findRetrievalById(source.retrievalProfileId())
-            .orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + source.retrievalProfileId()));
+        String profileId = isIndex ? source.indexProfileId() : source.retrievalProfileId();
+        ProfileRepository.ProfileRecord profile = findProfileById(profileId, isIndex);
         return toSourceProfileConfigResponse(source, profile, false);
     }
 
@@ -1770,19 +1715,8 @@ public class KnowledgeServiceFacade {
             Path artifactDir = storageManager.artifactDir(sourceId, documentId);
             storageManager.writeString(artifactDir.resolve("content.md"), conversion.markdown());
             List<ChunkingService.ChunkDraft> chunks = chunkingService.chunk(conversion.title(), conversion.text(), conversion.markdown());
-            List<SearchService.SearchableChunk> insertedChunks = new ArrayList<>();
-            for (ChunkingService.ChunkDraft draft : chunks) {
-                ChunkRepository.ChunkRecord chunkRecord = new ChunkRepository.ChunkRecord(
-                    Ids.newId("chk"), documentId, sourceId, draft.ordinal(), draft.title(), draft.titlePath(), draft.keywords(),
-                    draft.text(), draft.markdown(), 1, 1, draft.tokenCount(), draft.textLength(), hash(draft.text() + draft.markdown()),
-                    "SYSTEM_GENERATED", "system", now, now
-                );
-                chunkRepository.insert(chunkRecord);
-                insertedChunks.add(toSearchableChunk(chunkRecord));
-            }
-            Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(insertedChunks);
-            lexicalIndexService.upsertChunks(insertedChunks);
-            vectorIndexService.upsertChunks(insertedChunks, vectors);
+            List<SearchService.SearchableChunk> insertedChunks = createAndInsertChunks(documentId, sourceId, chunks, now);
+            reindexChunks(insertedChunks);
             refreshDocumentChunkStats(documentId);
             log.info(
                 "Processed upload sourceId={} documentId={} documentName={} contentType={} chunkCount={} fileSizeBytes={}",
@@ -1876,9 +1810,7 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the profile does not exist
      */
     private void validateIndexProfileExists(String profileId) {
-        if (profileId != null && profileRepository.findIndexById(profileId).isEmpty()) {
-            throw new IllegalArgumentException("Index profile not found: " + profileId);
-        }
+        validateProfileExists(profileId, true);
     }
 
     /**
@@ -1888,8 +1820,18 @@ public class KnowledgeServiceFacade {
      * @throws IllegalArgumentException if the profile does not exist
      */
     private void validateRetrievalProfileExists(String profileId) {
-        if (profileId != null && profileRepository.findRetrievalById(profileId).isEmpty()) {
-            throw new IllegalArgumentException("Retrieval profile not found: " + profileId);
+        validateProfileExists(profileId, false);
+    }
+
+    private void validateProfileExists(String profileId, boolean isIndex) {
+        if (profileId != null) {
+            Optional<ProfileRepository.ProfileRecord> found = isIndex
+                ? profileRepository.findIndexById(profileId)
+                : profileRepository.findRetrievalById(profileId);
+            if (found.isEmpty()) {
+                String label = isIndex ? "Index" : "Retrieval";
+                throw new IllegalArgumentException(label + " profile not found: " + profileId);
+            }
         }
     }
 
@@ -1902,13 +1844,7 @@ public class KnowledgeServiceFacade {
      * @throws ApiConflictException if the profile cannot be bound to the source
      */
     private void validateIndexProfileBindableToSource(String profileId, String sourceId) {
-        validateIndexProfileExists(profileId);
-        if (profileId == null) {
-            return;
-        }
-        ProfileRepository.ProfileRecord profile = profileRepository.findIndexById(profileId)
-            .orElseThrow(() -> new IllegalArgumentException("Index profile not found: " + profileId));
-        ensureProfileBindableToSource(profile, sourceId, "index");
+        validateProfileBindableToSource(profileId, sourceId, true);
     }
 
     /**
@@ -1920,13 +1856,21 @@ public class KnowledgeServiceFacade {
      * @throws ApiConflictException if the profile cannot be bound to the source
      */
     private void validateRetrievalProfileBindableToSource(String profileId, String sourceId) {
-        validateRetrievalProfileExists(profileId);
+        validateProfileBindableToSource(profileId, sourceId, false);
+    }
+
+    private void validateProfileBindableToSource(String profileId, String sourceId, boolean isIndex) {
+        validateProfileExists(profileId, isIndex);
         if (profileId == null) {
             return;
         }
-        ProfileRepository.ProfileRecord profile = profileRepository.findRetrievalById(profileId)
-            .orElseThrow(() -> new IllegalArgumentException("Retrieval profile not found: " + profileId));
-        ensureProfileBindableToSource(profile, sourceId, "retrieval");
+        String label = isIndex ? "index" : "retrieval";
+        Optional<ProfileRepository.ProfileRecord> found = isIndex
+            ? profileRepository.findIndexById(profileId)
+            : profileRepository.findRetrievalById(profileId);
+        ProfileRepository.ProfileRecord profile = found
+            .orElseThrow(() -> new IllegalArgumentException(label + " profile not found: " + profileId));
+        ensureProfileBindableToSource(profile, sourceId, label);
     }
 
     /**
@@ -1967,13 +1911,6 @@ public class KnowledgeServiceFacade {
     }
 
     /**
-     * Ensures the specified profile is not currently bound to any source.
-     *
-     * @param profileId the profile identifier
-     * @param indexProfile true if the profile is an index profile, false if retrieval
-     * @throws IllegalStateException if the profile is still bound to a source
-     */
-    /**
      * Ensures the given profile is not currently bound to any source.
      *
      * @param profileId the profile identifier
@@ -1989,14 +1926,6 @@ public class KnowledgeServiceFacade {
         }
     }
 
-    /**
-     * Deletes a source-owned profile if it is present and eligible for deletion.
-     *
-     * @param profile the profile record to potentially delete
-     * @param indexProfile true if the profile is an index profile, false if retrieval
-     * @param sourceId the source identifier that owns the profile
-     * @param defaultProfileId the default profile identifier that should not be deleted
-     */
     /**
      * Deletes a source-owned profile if it is not the default and not read-only.
      *
@@ -2025,14 +1954,6 @@ public class KnowledgeServiceFacade {
     }
 
     /**
-     * Determines whether a profile should be forked for a specific source.
-     *
-     * @param profile the profile record to evaluate
-     * @param sourceId the source identifier requesting the profile
-     * @param defaultProfileId the system default profile identifier
-     * @return true if the profile should be forked, false otherwise
-     */
-    /**
      * Determines whether a profile should be forked (copied) for a specific source.
      *
      * @param profile the profile record
@@ -2050,16 +1971,6 @@ public class KnowledgeServiceFacade {
         return !sourceId.equals(profile.ownerSourceId());
     }
 
-    /**
-     * Resolves the name for a source-owned profile based on the request and fallback.
-     *
-     * @param source the source record that owns the profile
-     * @param profileType the type of profile (e.g., "index" or "retrieval")
-     * @param requestedName the name requested by the caller, may be null
-     * @param fallbackName the fallback name to use if no valid request name is provided
-     * @param forNewSourceOwnedProfile true if this is for a newly created source-owned profile
-     * @return the resolved profile name
-     */
     /**
      * Generates a name for a source-owned profile.
      *
@@ -2089,14 +2000,43 @@ public class KnowledgeServiceFacade {
         return source.id() + "-" + profileType + "-profile";
     }
 
-    /**
-     * Ensures the specified profile name is available for use.
-     *
-     * @param profileName the profile name to check
-     * @param currentProfileId the identifier of the current profile being updated, may be null
-     * @param indexProfile true if checking an index profile, false if retrieval
-     * @throws ApiConflictException if the profile name is already in use by another profile
-     */
+    private String validateAndNormalizeSourceName(String name, boolean required) {
+        String normalized = name == null ? "" : name.trim();
+        if (normalized.isBlank()) {
+            if (required) {
+                throw new IllegalStateException("Knowledge source name is required");
+            }
+            return normalized;
+        }
+        if (normalized.length() > SOURCE_NAME_MAX_LENGTH) {
+            throw new IllegalStateException("Knowledge source name must be at most " + SOURCE_NAME_MAX_LENGTH + " characters");
+        }
+        if (!SOURCE_NAME_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalStateException("Knowledge source name contains invalid characters");
+        }
+        return normalized;
+    }
+
+    private String normalizeSourceDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+        String normalized = description.trim();
+        if (normalized.length() > SOURCE_DESCRIPTION_MAX_LENGTH) {
+            throw new IllegalStateException(
+                "Knowledge source description must be at most " + SOURCE_DESCRIPTION_MAX_LENGTH + " characters");
+        }
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private void ensureSourceNameAvailable(String sourceName, String currentSourceId) {
+        sourceRepository.findByName(sourceName).ifPresent(existing -> {
+            if (currentSourceId == null || !existing.id().equals(currentSourceId)) {
+                throw new ApiConflictException("SOURCE_NAME_ALREADY_EXISTS", "Knowledge source name already exists: " + sourceName);
+            }
+        });
+    }
+
     /**
      * Ensures the given profile name is available (not already in use by another profile).
      *
@@ -2299,11 +2239,32 @@ public class KnowledgeServiceFacade {
      * @return the searchable chunk
      */
     private SearchService.SearchableChunk toSearchableChunk(ChunkRepository.ChunkRecord record) {
-        return new SearchService.SearchableChunk(
-            record.id(), record.documentId(), record.sourceId(), record.title(), record.titlePath(),
-            record.keywords(), record.text(), record.markdown(), record.pageFrom(), record.pageTo(),
-            record.ordinal(), record.editStatus(), record.updatedBy()
-        );
+        return SearchService.SearchableChunk.from(record);
+    }
+
+    private void reindexChunks(List<SearchService.SearchableChunk> chunks) {
+        Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(chunks);
+        lexicalIndexService.upsertChunks(chunks);
+        vectorIndexService.upsertChunks(chunks, vectors);
+    }
+
+    private List<SearchService.SearchableChunk> createAndInsertChunks(
+        String documentId, String sourceId, List<ChunkingService.ChunkDraft> drafts, Instant now
+    ) {
+        List<SearchService.SearchableChunk> result = new ArrayList<>();
+        for (ChunkingService.ChunkDraft draft : drafts) {
+            String text = draft.text() != null ? draft.text() : "";
+            String markdown = draft.markdown() != null ? draft.markdown() : "";
+            ChunkRepository.ChunkRecord chunkRecord = new ChunkRepository.ChunkRecord(
+                Ids.newId("chk"), documentId, sourceId, draft.ordinal(), draft.title(), draft.titlePath(),
+                draft.keywords(),
+                text, markdown, 1, 1, draft.tokenCount(), draft.textLength(), hash(text + markdown),
+                "SYSTEM_GENERATED", "system", now, now
+            );
+            chunkRepository.insert(chunkRecord);
+            result.add(toSearchableChunk(chunkRecord));
+        }
+        return result;
     }
 
     /**
@@ -2597,20 +2558,9 @@ public class KnowledgeServiceFacade {
 
         stageCallback.accept("CHUNKING");
         List<ChunkingService.ChunkDraft> chunks = chunkingService.chunk(conversion.title(), conversion.text(), conversion.markdown());
-        List<SearchService.SearchableChunk> insertedChunks = new ArrayList<>();
-        for (ChunkingService.ChunkDraft draft : chunks) {
-            ChunkRepository.ChunkRecord chunkRecord = new ChunkRepository.ChunkRecord(
-                Ids.newId("chk"), document.id(), document.sourceId(), draft.ordinal(), draft.title(), draft.titlePath(), draft.keywords(),
-                draft.text(), draft.markdown(), 1, 1, draft.tokenCount(), draft.textLength(), hash(draft.text() + draft.markdown()),
-                "SYSTEM_GENERATED", "system", now, now
-            );
-            chunkRepository.insert(chunkRecord);
-            insertedChunks.add(toSearchableChunk(chunkRecord));
-        }
+        List<SearchService.SearchableChunk> insertedChunks = createAndInsertChunks(document.id(), document.sourceId(), chunks, now);
         stageCallback.accept("INDEXING");
-        Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(insertedChunks);
-        lexicalIndexService.upsertChunks(insertedChunks);
-        vectorIndexService.upsertChunks(insertedChunks, vectors);
+        reindexChunks(insertedChunks);
         refreshDocumentChunkStats(document.id());
         if (log.isDebugEnabled()) {
             log.debug(

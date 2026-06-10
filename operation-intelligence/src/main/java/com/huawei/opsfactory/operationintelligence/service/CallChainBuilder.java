@@ -117,7 +117,7 @@ public class CallChainBuilder {
             List<TraceLogRecord> traceLogs = entry.getValue();
 
             // 排序并生成序列签名
-            traceLogs.sort(Comparator.comparing(TraceLogRecord::getSeqNo, this::compareSeqNo));
+            traceLogs.sort(Comparator.comparing(TraceLogRecord::getSeqNo, SeqNoComparator::compareSeqNo));
 
             // 验证 seqNo 完整性
             if (!isSeqNoSequenceValid(traceLogs)) {
@@ -164,47 +164,6 @@ public class CallChainBuilder {
         } catch (java.security.NoSuchAlgorithmException e) {
             log.warn("SHA-256 algorithm not available, using original signature", e);
             return signature; // Fallback to original signature
-        }
-    }
-
-    /**
-     * Compare seqNo values with dot notation.
-     *
-     * @param s1 first seqNo
-     * @param s2 second seqNo
-     * @return comparison result
-     */
-    int compareSeqNo(String s1, String s2) {
-        if (s1 == null)
-            s1 = "0";
-        if (s2 == null)
-            s2 = "0";
-
-        String[] parts1 = s1.split("\\.");
-        String[] parts2 = s2.split("\\.");
-
-        int len = Math.max(parts1.length, parts2.length);
-        for (int i = 0; i < len; i++) {
-            int v1 = i < parts1.length ? parseSeqNoPart(parts1[i]) : 0;
-            int v2 = i < parts2.length ? parseSeqNoPart(parts2[i]) : 0;
-            if (v1 != v2) {
-                return Integer.compare(v1, v2);
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Parse a single seqNo part to integer.
-     *
-     * @param part the seqNo part
-     * @return the integer value
-     */
-    private int parseSeqNoPart(String part) {
-        try {
-            return Integer.parseInt(part);
-        } catch (NumberFormatException e) {
-            return 0;
         }
     }
 

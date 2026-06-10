@@ -8,6 +8,7 @@ import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.Map;
@@ -67,7 +68,7 @@ public class SourceController {
     }
 
     @PatchMapping("/{sourceId}")
-    public SourceResponse updateSource(@PathVariable("sourceId") String sourceId, @RequestBody UpdateSourceRequest request) {
+    public SourceResponse updateSource(@PathVariable("sourceId") String sourceId, @Valid @RequestBody UpdateSourceRequest request) {
         return facade.updateSource(sourceId, request);
     }
 
@@ -128,7 +129,7 @@ public class SourceController {
     }
 
     public record CreateSourceRequest(
-        @NotBlank @Size(max = 64) String name,
+        @NotBlank @Size(max = 64) @Pattern(regexp = "^[\\p{L}\\p{N}_\\s-]+$") String name,
         @Size(max = 256) String description,
         String indexProfileId,
         String retrievalProfileId
@@ -136,8 +137,8 @@ public class SourceController {
     }
 
     public record UpdateSourceRequest(
-        String name,
-        String description,
+        @Size(max = 64) @Pattern(regexp = "^[\\p{L}\\p{N}_\\s-]+$") String name,
+        @Size(max = 256) String description,
         String status,
         String indexProfileId,
         String retrievalProfileId
