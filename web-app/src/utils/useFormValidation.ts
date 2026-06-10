@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useToast } from '../app/platform/providers/ToastContext'
 import { validateAndSanitize, validateEnvValue } from './inputValidation'
 
@@ -27,6 +28,7 @@ export interface FormValidationResult<T> {
  */
 export function useFormValidation() {
     const { showToast } = useToast()
+    const { t } = useTranslation()
 
     /**
      * Validate and sanitize a single string field
@@ -71,9 +73,9 @@ export function useFormValidation() {
 
             if (!result.valid) {
                 hasError = true
-                // Use the specific error from validation result, or fall back to generic message
-                const message = result.error || errorMessages?.[field as string] || 'hostResource.invalidChars'
-                showToast('error', message)
+                // Use i18n key instead of the hardcoded English error from result.error
+                const message = errorMessages?.[field as string] || 'hostResource.invalidChars'
+                showToast('error', t(message))
                 break
             }
 
@@ -85,7 +87,7 @@ export function useFormValidation() {
             valid: !hasError,
             sanitized
         }
-    }, [showToast])
+    }, [showToast, t])
 
     /**
      * Validate and sanitize environment variables array
@@ -109,8 +111,9 @@ export function useFormValidation() {
                 const keyResult = validateAndSanitize(env.key, 'envVariables.key')
                 if (!keyResult.valid) {
                     hasError = true
+                    // Use i18n key for XSS character error
                     const message = errorMessages?.envKey || 'hostResource.invalidChars'
-                    showToast('error', message)
+                    showToast('error', t(message))
                     break
                 }
                 sanitized[i] = { ...env, key: keyResult.sanitized }
@@ -121,8 +124,9 @@ export function useFormValidation() {
                 const valueResult = validateEnvValue(env.value, 'envVariables.value')
                 if (!valueResult.valid) {
                     hasError = true
-                    const message = errorMessages?.envValue || 'hostResource.invalidChars'
-                    showToast('error', message)
+                    // Use i18n key for env value XSS character error (allows / but not other chars)
+                    const message = errorMessages?.envValue || 'hostResource.invalidCharsEnv'
+                    showToast('error', t(message))
                     break
                 }
                 sanitized[i] = { ...sanitized[i], value: valueResult.sanitized }
@@ -133,7 +137,7 @@ export function useFormValidation() {
             valid: !hasError,
             sanitized
         }
-    }, [showToast])
+    }, [showToast, t])
 
     return {
         validateField,

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { readXlsxFile, parseSheetToObjects } from '../../../../utils/xlsxHelper'
 import { validateSheetStructure } from '../../../../utils/xlsxValidator'
 import { isValidIp } from '../../../../utils/ip-validation'
-import { validateAndSanitize } from '../../../../utils/inputValidation'
+import { validateAndSanitize, hasDangerousChars } from '../../../../utils/inputValidation'
 import { IMPORT_METADATA } from '../../../../utils/importExportMetadata'
 import type { HostGroup, Cluster, Host, HostCreateRequest, BusinessService, ClusterType, BusinessType, HostRelation, SolutionType } from '../../../../types/host'
 import type { SopCreateRequest } from '../../../../types/sop'
@@ -226,6 +226,12 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.clusterTypeInvalidMode', params: { mode: row.clusterMode } })
                                     continue
                                 }
+                                // Validate solution type if provided
+                                const solutionType = row.solutionType?.trim() || 'universal'
+                                if (solutionType !== 'universal' && !solutionTypeCodeSet.has(solutionType)) {
+                                    errors.push({ row: i + 2, code: 'import.clusterTypeSolutionTypeNotFound', params: { solution: solutionType } })
+                                    continue
+                                }
                                 if (createdClusterTypeNames.has(nameResult.sanitized) || createdClusterTypeCodes.has(codeResult.sanitized)) {
                                     // Determine if it's a name or code duplicate
                                     if (createdClusterTypeCodes.has(codeResult.sanitized) && !createdClusterTypeNames.has(nameResult.sanitized)) {
@@ -269,6 +275,7 @@ export function useResourceImport(deps: ImportDeps) {
                                     })(),
                                     commandPrefix: row.commandPrefix || '',
                                     envVariables: envVars,
+                                    solutionType: solutionType,
                                 })
                                 createdClusterTypeNames.add(nameResult.sanitized)
                                 createdClusterTypeCodes.add(codeResult.sanitized)
@@ -309,6 +316,13 @@ export function useResourceImport(deps: ImportDeps) {
                                     const description = row.description?.trim() || ''
                                     if (description.length > 500) {
                                         errors.push({ row: i + 2, code: 'import.descriptionTooLong', params: { length: String(description.length) } })
+                                        continue
+                                    }
+                                }
+                                if (row.knowledge) {
+                                    const knowledge = row.knowledge?.trim() || ''
+                                    if (knowledge.length > 2000) {
+                                        errors.push({ row: i + 2, code: 'import.knowledgeTooLong', params: { length: String(knowledge.length), max: '2000' } })
                                         continue
                                     }
                                 }
@@ -448,11 +462,22 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
+                                // Parent group check: must exist if provided
+                                let parentId: string | undefined
+                                if (row.parentGroup) {
+                                    const parentGroupName = String(row.parentGroup).trim()
+                                    parentId = groupNameToId.get(parentGroupName) || groupCodeToId.get(parentGroupName)
+                                    if (!parentId) {
+                                        errors.push({ row: i + 2, code: 'import.parentGroupNotFound', params: { parentGroup: parentGroupName } })
+                                        continue
+                                    }
+                                }
                                 const created = await deps.createGroup({
                                     name: nameResult.sanitized,
                                     code: codeResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     enabled: row.enabled ? String(row.enabled).toUpperCase() === 'TRUE' : true,
+                                    parentId,
                                 })
                                 groupNameToId.set(nameResult.sanitized, created.id)
                                 groupCodeToId.set(codeResult.sanitized, created.id)
@@ -600,6 +625,22 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.businessIpInvalid', params: { ip: row.businessIp } })
                                     continue
                                 }
+                                // Validate port if provided
+                                if (row.port) {
+                                    const portStr = String(row.port).trim()
+                                    if (portStr === '') {
+                                        // Empty string after trim is treated as no port provided
+                                    } else if (!/^\d+$/.test(portStr)) {
+                                        errors.push({ row: i + 2, code: 'import.hostPortInvalid', params: { port: portStr } })
+                                        continue
+                                    } else {
+                                        const portNum = parseInt(portStr, 10)
+                                        if (portNum < 1 || portNum > 65535) {
+                                            errors.push({ row: i + 2, code: 'import.hostPortOutOfRange', params: { port: portStr } })
+                                            continue
+                                        }
+                                    }
+                                }
                                 if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
                                     errors.push({ row: i + 2, code: 'import.usernameInvalidChars' })
                                     continue
@@ -662,10 +703,15 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Host', name: hostName } })
                                     continue
                                 }
+                                // Validate cluster is required
+                                if (!row.cluster || !row.cluster.trim()) {
+                                    errors.push({ row: i + 2, code: 'import.clusterRequired' })
+                                    continue
+                                }
                                 const clusterId = row.cluster
                                     ? clusterNameToId.get(row.cluster)
                                     : undefined
-                                if (!clusterId && row.cluster) {
+                                if (!clusterId) {
                                     errors.push({ row: i + 2, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
                                     continue
                                 }
@@ -719,7 +765,6 @@ export function useResourceImport(deps: ImportDeps) {
                                     clusterId,
                                     purpose: row.purpose ? validateAndSanitize(row.purpose, 'Purpose').sanitized : undefined,
                                     role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
-                                    tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : undefined,
                                     customAttributes,
                                 })
@@ -965,6 +1010,11 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: pattern } })
                                     continue
                                 }
+                                // Check for XSS characters (allow '/' for paths, but block < > " ' & `)
+                                if (hasDangerousChars(pattern)) {
+                                    errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
+                                    continue
+                                }
                                 if (!/^[a-zA-Z0-9_\-./\s]+$/.test(pattern)) {
                                     errors.push({ row: i + 2, code: 'import.whitelistInvalidPattern', params: { pattern: pattern } })
                                     continue
@@ -1003,27 +1053,15 @@ export function useResourceImport(deps: ImportDeps) {
                         }
                     } catch (err) {
                         const msg = err instanceof Error ? err.message : String(err)
-                        if (msg === 'Command whitelist entry conflict') {
-                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Whitelist', name: row.pattern } })
+                        if (msg === 'Command whitelist entry conflict' || msg.includes('already exists') || msg.includes('conflict')) {
+                            // 根据导入类型设置名称字段
+                            let name = ''
+                            if (type === 'Whitelist') name = row.pattern
+                            else if (type === 'SOPs') name = row.name
+                            else name = row.name || row.pattern || ''
+                            errors.push({ row: i + 2, code: 'import.duplicate', params: { type: type, name: name } })
                         } else {
                             errors.push({ row: i + 2, code: 'import.rowError', params: { message: msg } })
-                        }
-                    }
-                }
-
-                if (type === 'HostGroups') {
-                    const parentRows = rows.filter(r => r.parentGroup)
-                    for (let i = 0; i < parentRows.length; i++) {
-                        const row = parentRows[i]
-                        const groupId = groupNameToId.get(row.name)
-                        const parentId = groupNameToId.get(row.parentGroup) || groupCodeToId.get(row.parentGroup)
-                        if (groupId && parentId) {
-                            try {
-                                await deps.updateGroup(groupId, { parentId })
-                            } catch (err) {
-                                const msg = err instanceof Error ? err.message : String(err)
-                                errors.push({ row: i + 2, code: 'import.setParentFailed', params: { message: msg } })
-                            }
                         }
                     }
                 }

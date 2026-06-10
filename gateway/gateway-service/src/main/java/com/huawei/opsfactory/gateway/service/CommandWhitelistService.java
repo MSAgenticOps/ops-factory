@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Manages the command whitelist and validates remote commands against enabled patterns and risk levels.
@@ -32,6 +34,10 @@ import java.util.Map;
 public class CommandWhitelistService extends JsonFileEntityStore {
 
     private static final int MAX_PATTERN_LENGTH = 500;
+    private static final int MAX_DESCRIPTION_LENGTH = 500;
+
+    // Pattern for command whitelist: only allows alphanumeric, underscore, hyphen, dot, forward slash, and space
+    private static final Pattern COMMAND_PATTERN_REGEX = Pattern.compile("^[a-zA-Z0-9_\\-./\\s]+$");
 
     private static final List<String> DEFAULT_COMMANDS = List.of("ps", "tail", "grep", "cat", "ls", "df", "free",
         "netstat", "top", "cd", "find", "wc", "head", "date", "uptime", "echo", "iostat", "ping");
@@ -85,27 +91,38 @@ public class CommandWhitelistService extends JsonFileEntityStore {
      * @param command adds a new command to the whitelist, rejecting duplicate patterns
      */
     public void addCommand(Map<String, Object> command) throws ConflictException, BadRequestException {
+        // Validate pattern field (required)
+        String pattern = ValidationUtils.requireNonBlank(command, "pattern", "Command pattern is required");
+        // For command patterns, allow '/' (needed for paths like '/var/log') but block other XSS chars
+        if (ValidationUtils.hasDangerousChars(pattern)) {
+            throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+        }
+        ValidationUtils.requireMaxLength(pattern, MAX_PATTERN_LENGTH, "Command pattern");
+        if (!COMMAND_PATTERN_REGEX.matcher(pattern).matches()) {
+            throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+        }
+
+        // Validate description field (optional, max length)
+        if (command.containsKey("description")) {
+            String description = ValidationUtils.validateStringField(command, "description", "Description", MAX_DESCRIPTION_LENGTH, false);
+            command.put("description", description);
+        }
+
+        // Check for duplicate patterns
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
-
-        // Validate pattern length
-        Object patternObj = command.get("pattern");
-        if (patternObj != null) {
-            String newPattern = patternObj.toString();
-            validatePattern(newPattern);
-            // Dedup: reject duplicate patterns
-            for (Map<String, Object> existing : commands) {
-                if (newPattern.equals(existing.get("pattern"))) {
-                    throw new ConflictException("Command pattern already exists");
-                }
+        for (Map<String, Object> existing : commands) {
+            if (pattern.equals(existing.get("pattern"))) {
+                throw new ConflictException("Command pattern already exists");
             }
         }
 
+        command.put("pattern", pattern);
         commands.add(command);
         whitelist.put("commands", commands);
         writeWhitelistFile(whitelist);
-        log.info("Added command to whitelist: {}", command.get("pattern"));
+        log.info("Added command to whitelist: {}", pattern);
     }
 
     /**
@@ -119,12 +136,32 @@ public class CommandWhitelistService extends JsonFileEntityStore {
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
 
-        // Validate new pattern length if pattern is being updated
+        // Validate pattern if being updated
+        String newPattern = pattern;
         if (updates.containsKey("pattern")) {
             Object newPatternObj = updates.get("pattern");
-            if (newPatternObj != null) {
-                validatePattern(newPatternObj.toString());
+            if (newPatternObj != null && !newPatternObj.toString().trim().isEmpty()) {
+                newPattern = newPatternObj.toString().trim();
+                if (newPattern.isEmpty()) {
+                    throw new BadRequestException("Command pattern is required");
+                }
+                // For command patterns, allow '/' (needed for paths like '/var/log') but block other XSS chars
+                if (ValidationUtils.hasDangerousChars(newPattern)) {
+                    throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+                }
+                ValidationUtils.requireMaxLength(newPattern, MAX_PATTERN_LENGTH, "Command pattern");
+                if (!COMMAND_PATTERN_REGEX.matcher(newPattern).matches()) {
+                    throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+                }
+                updates.put("pattern", newPattern);
             }
+        }
+
+        // Validate description if being updated
+        if (updates.containsKey("description")) {
+            String description = ValidationUtils.validateStringField(updates, "description", "Description",
+                MAX_DESCRIPTION_LENGTH, false);
+            updates.put("description", description);
         }
 
         boolean found = false;
@@ -454,16 +491,6 @@ public class CommandWhitelistService extends JsonFileEntityStore {
             return empty;
         }
         return result;
-    }
-
-    private void validatePattern(String pattern) throws BadRequestException {
-        if (pattern == null || pattern.trim().isEmpty()) {
-            throw new BadRequestException("Command pattern is required");
-        }
-        if (pattern.length() > MAX_PATTERN_LENGTH) {
-            throw new BadRequestException(
-                "Command pattern exceeds maximum length of " + MAX_PATTERN_LENGTH + " characters");
-        }
     }
 
     private void writeWhitelistFile(Map<String, Object> whitelist) {

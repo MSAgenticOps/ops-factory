@@ -6,14 +6,19 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import jakarta.annotation.PostConstruct;
 
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +33,6 @@ import java.util.regex.Pattern;
  */
 @Service
 public class SolutionTypeService extends JsonFileEntityStore {
-
     // Hex color pattern: #RRGGBB format, safe with bounded quantifier {6}
     private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
@@ -67,16 +71,33 @@ public class SolutionTypeService extends JsonFileEntityStore {
      * Gets a solution type by its ID.
      *
      * @param id entity identifier
-     * @return the solution type map
+     * @return a solution type by its ID
      * @throws NotFoundException if the solution type is not found
      */
     public Map<String, Object> getSolutionType(String id) throws NotFoundException {
-        Path file = resolveEntityFile(id);
-        Map<String, Object> st = readFile(file);
+        Map<String, Object> st = readFile(resolveEntityFile(id));
         if (st == null) {
             throw new NotFoundException("Solution type not found");
         }
         return st;
+    }
+
+    /**
+     * Gets a solution type by its code.
+     *
+     * @param code solution type code
+     * @return the solution type map
+     * @throws NotFoundException if the solution type is not found
+     */
+    public Map<String, Object> getSolutionTypeByCode(String code) throws NotFoundException {
+        List<Map<String, Object>> types = listSolutionTypes();
+        for (Map<String, Object> st : types) {
+            String stCode = st.get("code") != null ? st.get("code").toString() : "";
+            if (code.equals(stCode)) {
+                return st;
+            }
+        }
+        throw new NotFoundException("Solution type not found: " + code);
     }
 
     /**
@@ -86,8 +107,9 @@ public class SolutionTypeService extends JsonFileEntityStore {
      * @param body request body containing solution type fields
      * @return the created solution type map including generated id and timestamps
      * @throws IllegalArgumentException if validation fails or the code already exists
+     * @throws ConflictException if the file cannot be written
      */
-    public Map<String, Object> createSolutionType(Map<String, Object> body) {
+    public Map<String, Object> createSolutionType(Map<String, Object> body) throws ConflictException {
         String name = ValidationUtils.validateStringField(body, "name", "Solution type name", 100, true);
         String code = ValidationUtils.validateStringField(body, "code", "Solution type code", 50, true);
         validateNameAndCodeUnique(name, code, null);
@@ -127,10 +149,10 @@ public class SolutionTypeService extends JsonFileEntityStore {
      * @return the updated solution type map
      * @throws NotFoundException if the solution type is not found
      * @throws IllegalArgumentException if field validation fails or the new code already exists
+     * @throws ConflictException if the file cannot be written
      */
-    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException {
-        Path file = resolveEntityFile(id);
-        Map<String, Object> st = readFile(file);
+    public Map<String, Object> updateSolutionType(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
+        Map<String, Object> st = readFile(resolveEntityFile(id));
         if (st == null) {
             throw new NotFoundException("Solution type not found");
         }
@@ -173,16 +195,111 @@ public class SolutionTypeService extends JsonFileEntityStore {
 
     /**
      * Deletes a solution type by its ID.
+     * Checks if the solution type is being used by SOPs or cluster types before deletion.
      *
      * @param id entity identifier
      * @return true if the file was deleted, false if it did not exist
+     * @throws ConflictException if the solution type is in use
      */
-    public boolean deleteSolutionType(String id) {
-        return deleteEntityFile(id);
+    public boolean deleteSolutionType(String id) throws ConflictException {
+        // Get the solution type code first
+        Map<String, Object> st = readFile(resolveEntityFile(id));
+        if (st == null) {
+            return false;
+        }
+        String code = st.get("code") != null ? st.get("code").toString() : "";
+
+        // Check if the solution type is in use
+        Map<String, List<String>> usage = checkSolutionTypeUsage(code);
+        if (!usage.isEmpty()) {
+            StringBuilder errorMsg = new StringBuilder("Solution type '");
+            errorMsg.append(st.get("name") != null ? st.get("name").toString() : code);
+            errorMsg.append("' is in use by: ");
+            if (usage.containsKey("sops")) {
+                errorMsg.append(usage.get("sops").size()).append(" SOP(s) - ");
+                errorMsg.append(String.join(", ", usage.get("sops")));
+            }
+            if (usage.containsKey("clusterTypes")) {
+                if (usage.containsKey("sops")) {
+                    errorMsg.append(", ");
+                }
+                errorMsg.append(usage.get("clusterTypes").size()).append(" Cluster Type(s) - ");
+                errorMsg.append(String.join(", ", usage.get("clusterTypes")));
+            }
+            throw new ConflictException(errorMsg.toString());
+        }
+
+        boolean deleted = deleteEntityFile(id);
+        if (deleted) {
+            log.info("Deleted solution type: id={}, code={}", id, code);
+        }
+        return deleted;
+    }
+
+    /**
+     * Checks if a solution type is being used by SOPs or cluster types.
+     *
+     * @param code the solution type code
+     * @return a map with usage info: {"sops": [...], "clusterTypes": [...]} or empty if not in use
+     */
+    public Map<String, List<String>> checkSolutionTypeUsage(String code) {
+        Map<String, List<String>> usage = new LinkedHashMap<>();
+
+        // Check SOPs
+        Path sopsDir = properties.getGatewayRootPath().resolve("data").resolve("sops");
+        if (Files.isDirectory(sopsDir)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(sopsDir, "*.json")) {
+                for (Path file : stream) {
+                    if (!Files.isRegularFile(file)) {
+                        continue;
+                    }
+                    Map<String, Object> sop = readFile(file);
+                    if (sop != null) {
+                        String targetSolution = sop.get("targetSolution") != null ? sop.get("targetSolution").toString() : "";
+                        if (code.equals(targetSolution)) {
+                            usage.computeIfAbsent("sops", k -> new ArrayList<>()).add(sop.get("name") != null ? sop.get("name").toString() : "unnamed");
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Failed to check SOP usage for solution type: {}", code, e);
+            }
+        }
+
+        // Check cluster types
+        Path clusterTypesDir = properties.getGatewayRootPath().resolve("data").resolve("cluster-types");
+        if (Files.isDirectory(clusterTypesDir)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(clusterTypesDir, "*.json")) {
+                for (Path file : stream) {
+                    if (!Files.isRegularFile(file)) {
+                        continue;
+                    }
+                    Map<String, Object> ct = readFile(file);
+                    if (ct != null) {
+                        String solutionType = ct.get("solutionType") != null ? ct.get("solutionType").toString() : "";
+                        if (code.equals(solutionType)) {
+                            usage.computeIfAbsent("clusterTypes", k -> new ArrayList<>()).add(ct.get("name") != null ? ct.get("name").toString() : "unnamed");
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Failed to check cluster type usage for solution type: {}", code, e);
+            }
+        }
+
+        return usage;
     }
 
     // ── Validation ────────────────────────────────────────────────────
 
+    /**
+     * Validates that the solution type name and code are unique.
+     *
+     * @param name the name to validate (may be null)
+     * @param code the code to validate (may be null)
+     * @param excludeId the id to exclude from uniqueness check (may be null)
+     * @throws IllegalArgumentException if name or code already exists
+     */
     private void validateNameAndCodeUnique(String name, String code, String excludeId) {
         List<Map<String, Object>> existing = listSolutionTypes();
         for (Map<String, Object> st : existing) {
@@ -207,9 +324,11 @@ public class SolutionTypeService extends JsonFileEntityStore {
 
     /**
      * Validates a referenced solution type, allowing the universal default.
+     * Accepts only solution type code.
      *
-     * @param value referenced solution type id or {@code null}
-     * @return normalized solution type id
+     * @param value referenced solution type code or {@code null}
+     * @return normalized solution type code
+     * @throws IllegalArgumentException if solution type code is not found
      */
     public String validateSolutionTypeReference(Object value) {
         if (value == null) {
@@ -219,12 +338,19 @@ public class SolutionTypeService extends JsonFileEntityStore {
         if ("universal".equals(solutionType)) {
             return solutionType;
         }
+
+        Map<String, Object> st;
         try {
-            getSolutionType(solutionType);
+            st = getSolutionTypeByCode(solutionType);
         } catch (NotFoundException e) {
             throw new IllegalArgumentException("Solution type not found: " + solutionType, e);
         }
-        return solutionType;
+
+        String code = st.get("code") != null ? st.get("code").toString() : "";
+        if (code.isBlank()) {
+            throw new IllegalArgumentException("Solution type has empty code: " + solutionType);
+        }
+        return code;
     }
 
 }

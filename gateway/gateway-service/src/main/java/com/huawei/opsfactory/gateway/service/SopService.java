@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import jakarta.annotation.PostConstruct;
@@ -28,6 +29,12 @@ import java.util.UUID;
  */
 @Service
 public class SopService extends JsonFileEntityStore {
+    // SOP field length limits
+    private static final int MAX_NAME_LENGTH = 100;
+    private static final int MAX_VERSION_LENGTH = 50;
+    private static final int MAX_DESCRIPTION_LENGTH = 500;
+    private static final int MAX_TRIGGER_CONDITION_LENGTH = 500;
+    private static final int MAX_STEPS_DESCRIPTION_LENGTH = 1000;
 
     private final GatewayProperties properties;
 
@@ -40,7 +47,7 @@ public class SopService extends JsonFileEntityStore {
      * @param solutionTypeService the solution type service for validation
      */
     public SopService(GatewayProperties properties, SolutionTypeService solutionTypeService) {
-        super("sop");
+        super("SOP");
         this.properties = properties;
         this.solutionTypeService = solutionTypeService;
     }
@@ -103,20 +110,58 @@ public class SopService extends JsonFileEntityStore {
      * @return the result
      */
     public Map<String, Object> createSop(Map<String, Object> body) {
-        String name = body.getOrDefault("name", "") != null ? body.getOrDefault("name", "").toString() : "";
+        // Validate name (required)
+        String name = ValidationUtils.requireNonBlank(body, "name", "SOP name is required");
+        ValidationUtils.requireNoXssChars(name, "SOP name");
+        ValidationUtils.requireMaxLength(name, MAX_NAME_LENGTH, "SOP name");
         validateSopNameUnique(name, null);
         String id = UUID.randomUUID().toString();
 
+        // Validate optional fields with length limits
+        String version = "1.0.0";
+        if (body.containsKey("version")) {
+            String versionValue = ValidationUtils.validateStringField(body, "version", "Version",
+                MAX_VERSION_LENGTH, false);
+            if (!versionValue.isEmpty()) {
+                version = versionValue;
+            }
+        }
+
+        String description = "";
+        if (body.containsKey("description")) {
+            description = ValidationUtils.validateStringField(body, "description", "Description",
+                MAX_DESCRIPTION_LENGTH, false);
+        }
+
+        String triggerCondition = "";
+        if (body.containsKey("triggerCondition")) {
+            triggerCondition = ValidationUtils.validateStringField(body, "triggerCondition", "Trigger Condition",
+                MAX_TRIGGER_CONDITION_LENGTH, false);
+        }
+
+        String stepsDescription = "";
+        if (body.containsKey("stepsDescription")) {
+            stepsDescription = ValidationUtils.validateStringField(body, "stepsDescription", "Steps Description",
+                MAX_STEPS_DESCRIPTION_LENGTH, false);
+        }
+
+        // Validate targetSolution
+        String targetSolution = solutionTypeService.validateSolutionTypeReference(
+            body.getOrDefault("targetSolution", "universal"));
+
+        // Handle enabled
+        Object enabledObj = body.get("enabled");
+        boolean enabled = (enabledObj instanceof Boolean b) ? b : true;
+
         Map<String, Object> sop = new LinkedHashMap<>();
         sop.put("id", id);
-        sop.put("name", body.getOrDefault("name", ""));
-        sop.put("description", body.getOrDefault("description", ""));
-        sop.put("version", body.getOrDefault("version", "1.0.0"));
-        sop.put("triggerCondition", body.getOrDefault("triggerCondition", ""));
-        sop.put("enabled", body.getOrDefault("enabled", true));
-        sop.put("stepsDescription", body.getOrDefault("stepsDescription", ""));
-        sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(
-            body.getOrDefault("targetSolution", "universal")));
+        sop.put("name", name);
+        sop.put("description", description);
+        sop.put("version", version);
+        sop.put("triggerCondition", triggerCondition);
+        sop.put("enabled", enabled);
+        sop.put("stepsDescription", stepsDescription);
+        sop.put("targetSolution", targetSolution);
         sop.put("requiredTools", body.getOrDefault("requiredTools", List.of()));
 
         writeEntityFile(id, sop);
@@ -138,31 +183,54 @@ public class SopService extends JsonFileEntityStore {
             throw new IllegalArgumentException("SOP not found: " + id);
         }
 
-        // Update mutable fields
+        // Update mutable fields with validation
         if (body.containsKey("name")) {
-            validateSopNameUnique(body.get("name").toString(), id);
-            sop.put("name", body.get("name"));
+            String newName = ValidationUtils.validateStringField(body, "name", "SOP name",
+                MAX_NAME_LENGTH, true);
+            ValidationUtils.requireNoXssChars(newName, "SOP name");
+            validateSopNameUnique(newName, id);
+            sop.put("name", newName);
         }
+
         if (body.containsKey("description")) {
-            sop.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Description",
+                MAX_DESCRIPTION_LENGTH, false);
+            sop.put("description", description);
         }
+
         if (body.containsKey("version")) {
-            sop.put("version", body.get("version"));
+            String version = ValidationUtils.validateStringField(body, "version", "Version",
+                MAX_VERSION_LENGTH, false);
+            if (!version.isEmpty()) {
+                sop.put("version", version);
+            }
         }
+
         if (body.containsKey("triggerCondition")) {
-            sop.put("triggerCondition", body.get("triggerCondition"));
+            String triggerCondition = ValidationUtils.validateStringField(body, "triggerCondition", "Trigger Condition",
+                MAX_TRIGGER_CONDITION_LENGTH, false);
+            sop.put("triggerCondition", triggerCondition);
         }
-        if (body.containsKey("enabled")) {
-            sop.put("enabled", body.get("enabled"));
-        }
+
         if (body.containsKey("stepsDescription")) {
-            sop.put("stepsDescription", body.get("stepsDescription"));
+            String stepsDescription = ValidationUtils.validateStringField(body, "stepsDescription", "Steps Description",
+                MAX_STEPS_DESCRIPTION_LENGTH, false);
+            sop.put("stepsDescription", stepsDescription);
         }
+
         if (body.containsKey("targetSolution")) {
-            sop.put("targetSolution", solutionTypeService.validateSolutionTypeReference(body.get("targetSolution")));
+            String targetSolution = solutionTypeService.validateSolutionTypeReference(body.get("targetSolution"));
+            sop.put("targetSolution", targetSolution);
         }
+
         if (body.containsKey("requiredTools")) {
             sop.put("requiredTools", body.get("requiredTools"));
+        }
+
+        if (body.containsKey("enabled")) {
+            Object enabledObj = body.get("enabled");
+            boolean enabled = (enabledObj instanceof Boolean b) ? b : true;
+            sop.put("enabled", enabled);
         }
 
         writeEntityFile(id, sop);
@@ -179,12 +247,11 @@ public class SopService extends JsonFileEntityStore {
     public boolean deleteSop(String id) {
         Path file = resolveSopFile(id);
         try {
-            if (Files.exists(file)) {
-                Files.delete(file);
+            boolean deleted = Files.deleteIfExists(file);
+            if (deleted) {
                 log.info("Deleted SOP: id={}", id);
-                return true;
             }
-            return false;
+            return deleted;
         } catch (IOException e) {
             log.error("Failed to delete SOP file: {}", file, e);
             return false;
@@ -251,7 +318,7 @@ public class SopService extends JsonFileEntityStore {
     }
 
     /**
-     * Reads an SOP document from the given JSON file with backward-compatible defaults.
+     * Reads an SOP document from the given JSON file.
      *
      * @param file the JSON file path
      * @return the parsed SOP document, or null if the file does not exist or cannot be read
@@ -266,6 +333,17 @@ public class SopService extends JsonFileEntityStore {
         sop.putIfAbsent("stepsDescription", "");
         sop.putIfAbsent("targetSolution", "universal");
         sop.putIfAbsent("requiredTools", List.of());
+        // Normalize targetSolution from legacy UUID to code
+        Object targetSolution = sop.get("targetSolution");
+        if (targetSolution != null && !"universal".equals(targetSolution)) {
+            try {
+                String normalizedCode = solutionTypeService.validateSolutionTypeReference(targetSolution);
+                sop.put("targetSolution", normalizedCode);
+            } catch (IllegalArgumentException e) {
+                // If validation fails, keep original value (may be deleted solution type)
+                log.debug("Failed to normalize targetSolution: {}", targetSolution);
+            }
+        }
         return sop;
     }
 }

@@ -4,7 +4,6 @@
 
 package com.huawei.opsfactory.common.aop;
 
-import com.huawei.opsfactory.common.exception.ApiCallException;
 import com.huawei.opsfactory.common.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.servicecomb.swagger.invocation.context.InvocationContext;
@@ -19,6 +18,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -76,7 +77,8 @@ class BasicAuthAspectTest {
     @Test
     void testBasicAuthSuccessViaHeader() throws Throwable {
         String credentials = "testUser:testPass";
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            credentials.getBytes(StandardCharsets.UTF_8));
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
         when(proceedingJoinPoint.proceed()).thenReturn("Success");
 
@@ -92,7 +94,8 @@ class BasicAuthAspectTest {
     void testBasicAuthSuccessViaContext() throws Throwable {
         InvocationContext invocationContext = mock(InvocationContext.class);
         String credentials = "testUser:testPass";
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            credentials.getBytes(StandardCharsets.UTF_8));
 
         when(request.getHeader("Authorization")).thenReturn(null);
         contextUtilsMock.when(ContextUtils::getInvocationContext).thenReturn(invocationContext);
@@ -110,7 +113,8 @@ class BasicAuthAspectTest {
     @Test
     void testBasicAuthFailureInvalidCredentials() {
         String credentials = "wrongUser:wrongPass";
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            credentials.getBytes(StandardCharsets.UTF_8));
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
         AuthException exception = assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
@@ -128,7 +132,8 @@ class BasicAuthAspectTest {
         ReflectionTestUtils.setField(aspect, "configPassword", "testPass");
 
         String credentials = "testUser:testPass";
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            credentials.getBytes(StandardCharsets.UTF_8));
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
         AuthException exception = assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
@@ -151,7 +156,8 @@ class BasicAuthAspectTest {
      */
     @Test
     void testBasicAuthFailureMalformedCredentials() {
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString("NoColonHere".getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            "NoColonHere".getBytes(StandardCharsets.UTF_8));
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
         assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
@@ -185,7 +191,8 @@ class BasicAuthAspectTest {
     @Test
     void testBasicAuthFailureWrongUsername() {
         String credentials = "wrongUser:testPass";
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            credentials.getBytes(StandardCharsets.UTF_8));
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
         assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));
@@ -197,7 +204,8 @@ class BasicAuthAspectTest {
     @Test
     void testBasicAuthFailureWrongPassword() {
         String credentials = "testUser:wrongPass";
-        String base64Credentials = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+        String base64Credentials = java.util.Base64.getEncoder().encodeToString(
+            credentials.getBytes(StandardCharsets.UTF_8));
         when(request.getHeader("Authorization")).thenReturn("Basic " + base64Credentials);
 
         assertThrows(AuthException.class, () -> aspect.basicAuth(proceedingJoinPoint));

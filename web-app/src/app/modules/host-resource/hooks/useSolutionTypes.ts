@@ -61,7 +61,22 @@ export function useSolutionTypes() {
             method: 'DELETE',
             headers: gatewayHeaders(userId),
         })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        if (!res.ok) {
+            // Try to parse error message from response body
+            let errorMsg = `HTTP ${res.status}`
+            try {
+                const data = await res.json()
+                if (data.error) {
+                    errorMsg = data.error
+                }
+            } catch {
+                // If parsing fails, use the default error message
+                if (res.status === 409) {
+                    errorMsg = 'Solution type is in use and cannot be deleted'
+                }
+            }
+            throw new Error(errorMsg)
+        }
         const data = await res.json()
         if (data.success) {
             await fetchSolutionTypes()

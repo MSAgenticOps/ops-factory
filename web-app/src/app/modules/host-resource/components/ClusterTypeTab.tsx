@@ -57,7 +57,11 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
         if (solutionFilter !== 'all') {
             result = result.filter(ct => {
                 const sol = ct.solutionType ?? 'universal'
-                return sol === solutionFilter || sol === 'universal'
+                // Only show exact match or universal when explicitly selected
+                if (solutionFilter === 'universal') {
+                    return sol === 'universal'
+                }
+                return sol === solutionFilter
             })
         }
         if (!searchTerm.trim()) return result
@@ -91,15 +95,14 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
         if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
-            // Validate and sanitize form fields
+            // Validate and sanitize form fields (name/code only; description allows any characters)
             const fieldLabels = {
                 name: t('hostResource.typeName'),
                 code: t('hostResource.typeCode'),
-                description: t('hostResource.description'),
             }
             const validationResult = validateFormData(
                 form,
-                ['name', 'code', 'description'],
+                ['name', 'code'],
                 fieldLabels
             )
 
@@ -329,8 +332,8 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                     {solutionTypes.map(st => (
                         <button
                             key={st.id}
-                            className={`hr-solution-filter-pill ${solutionFilter === st.id ? 'active' : ''}`}
-                            onClick={() => setSolutionFilter(st.id)}
+                            className={`hr-solution-filter-pill ${solutionFilter === st.code ? 'active' : ''}`}
+                            onClick={() => setSolutionFilter(st.code)}
                         >
                             {st.name}
                         </button>
@@ -346,7 +349,12 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                     <div className="hr-type-tab-empty-text">{t('hostResource.noClusterTypes')}</div>
                 </div>
             )}
-            {!loading && clusterTypes.length > 0 && (
+            {!loading && clusterTypes.length > 0 && filteredTypes.length === 0 && (
+                <div className="hr-type-tab-empty">
+                    <div className="hr-type-tab-empty-text">{t('hostResource.noMatchingClusterTypes')}</div>
+                </div>
+            )}
+            {!loading && filteredTypes.length > 0 && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput
@@ -418,7 +426,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                 >
                                     <option value="universal">{t('hostResource.universal')}</option>
                                     {solutionTypes.map(st => (
-                                        <option key={st.id} value={st.id}>{st.name}</option>
+                                        <option key={st.id} value={st.code}>{st.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -440,6 +448,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                     value={form.commandPrefix}
                                     onChange={e => setForm(f => ({ ...f, commandPrefix: e.target.value }))}
                                     placeholder={t('hostResource.commandPrefixPlaceholder')}
+                                    maxLength={100}
                                 />
                             </div>
                             <div className="form-group">
@@ -452,6 +461,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                             placeholder={t('hostResource.varKey')}
                                             onChange={e => updateEnvVar(i, 'key', e.target.value)}
                                             style={{ flex: 1 }}
+                                            maxLength={100}
                                         />
                                         <input
                                             className="form-input"
@@ -459,6 +469,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, 
                                             placeholder={t('hostResource.varValue')}
                                             onChange={e => updateEnvVar(i, 'value', e.target.value)}
                                             style={{ flex: 1 }}
+                                            maxLength={500}
                                         />
                                         <button className="btn btn-secondary btn-sm" onClick={() => removeEnvVar(i)}>×</button>
                                     </div>

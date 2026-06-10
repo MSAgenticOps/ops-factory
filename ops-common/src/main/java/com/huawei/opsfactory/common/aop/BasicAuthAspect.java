@@ -4,7 +4,6 @@
 
 package com.huawei.opsfactory.common.aop;
 
-import com.huawei.opsfactory.common.exception.ApiCallException;
 import com.huawei.opsfactory.common.exception.AuthException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -20,8 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 
