@@ -16,6 +16,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
@@ -42,21 +43,52 @@ public class HostServiceTest {
 
     private Path hostsDir;
 
+    private ClusterService clusterService;
+
+    private HostGroupService hostGroupService;
+
     /**
      * Sets the up.
      *
      * @throws IOException if the operation fails
+     * @throws ConflictException if a resource with the same name already exists
+     * @throws BadRequestException if validation fails
      */
     @Before
-    public void setUp() throws IOException {
+    public void setUp() throws IOException, ConflictException, BadRequestException {
         properties = new GatewayProperties();
         GatewayProperties.Paths paths = new GatewayProperties.Paths();
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
         properties.setCredentialEncryptionKey("test-key-test-key-test-key-32");
 
+        // Initialize HostGroupService
+        hostGroupService = new HostGroupService(properties);
+        hostGroupService.init();
+
+        // Initialize ClusterService
+        clusterService = new ClusterService(properties);
+        clusterService.init();
+
+        // Create a test group
+        Map<String, Object> groupBody = new LinkedHashMap<>();
+        groupBody.put("name", "TestGroup");
+        groupBody.put("code", "test-group-code");
+        Map<String, Object> createdGroup = hostGroupService.createGroup(groupBody);
+        String groupId = (String) createdGroup.get("id");
+
+        // Create a test cluster
+        Map<String, Object> clusterBody = new LinkedHashMap<>();
+        clusterBody.put("name", "TestCluster");
+        clusterBody.put("type", "test-type");
+        clusterBody.put("groupId", groupId);
+        Map<String, Object> createdCluster = clusterService.createCluster(clusterBody);
+        // Use the actual created cluster ID instead of the constant
+        String actualClusterId = (String) createdCluster.get("id");
+
         hostService = new HostService(properties);
         hostService.init();
+        hostService.setClusterService(clusterService);
 
         hostsDir = Path.of(tempFolder.getRoot().getAbsolutePath())
             .toAbsolutePath()
@@ -64,6 +96,9 @@ public class HostServiceTest {
             .resolve("gateway")
             .resolve("data")
             .resolve("hosts");
+
+        // Store the actual cluster ID for use in tests
+        System.setProperty("test.cluster.id", actualClusterId);
     }
 
     // ── listHosts ──────────────────────────────────────────────────
@@ -166,9 +201,7 @@ public class HostServiceTest {
      */
     @Test
     public void testGetHostWithCredential_decryptsCredential() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "TestHost");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("TestHost", "10.0.0.1");
         body.put("port", 22);
         body.put("username", "root");
         body.put("authType", "password");
@@ -197,9 +230,7 @@ public class HostServiceTest {
      */
     @Test
     public void testCreateHost_success() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "TestHost");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("TestHost", "10.0.0.1");
         body.put("port", 22);
         body.put("username", "root");
         body.put("authType", "password");
@@ -227,9 +258,7 @@ public class HostServiceTest {
      */
     @Test
     public void testCreateHost_defaultValues() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "MinimalHost");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("MinimalHost", "10.0.0.1");
 
         Map<String, Object> result = hostService.createHost(body);
 
@@ -247,9 +276,7 @@ public class HostServiceTest {
      */
     @Test
     public void testCreateHost_encryptedCredentialStored() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "EncHost");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("EncHost", "10.0.0.1");
         body.put("username", "root");
         body.put("credential", "plainTextPassword");
 
@@ -269,9 +296,7 @@ public class HostServiceTest {
      */
     @Test
     public void testUpdateHost_success() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Original");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Original", "10.0.0.1");
         body.put("username", "root");
         body.put("credential", "pass");
         hostService.createHost(body);
@@ -291,15 +316,14 @@ public class HostServiceTest {
      */
     @Test
     public void testUpdateHost_updateCredential() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Host");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
         body.put("username", "root");
         body.put("credential", "oldPassword");
         hostService.createHost(body);
         String id = getFirstHostId();
 
         Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("username", "root");
         updates.put("credential", "newPassword");
 
         Map<String, Object> result = hostService.updateHost(id, updates);
@@ -315,9 +339,7 @@ public class HostServiceTest {
      */
     @Test
     public void testUpdateHost_updateTags() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Host");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
         body.put("tags", List.of("OLD"));
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -334,9 +356,7 @@ public class HostServiceTest {
      */
     @Test
     public void testUpdateHost_partialUpdate() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Original");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Original", "10.0.0.1");
         body.put("description", "original desc");
         hostService.createHost(body);
         String id = getFirstHostId();
@@ -366,25 +386,26 @@ public class HostServiceTest {
     @Test
     public void testUpdateHost_maskedCredentialPreservesOriginal() throws Exception {
         // Create host with a known password
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Host");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
         body.put("username", "root");
         body.put("credential", "originalSecretPassword");
         hostService.createHost(body);
         String id = getFirstHostId();
 
-        // Simulate frontend sending back the masked "***" value (edit without password change)
+        // Simulate frontend editing only the name, not username/credential
+        // Frontend will not send username or credential when they are not modified
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "UpdatedName");
-        updates.put("credential", "***");
+        // Don't send username or credential - they should be preserved
 
-        hostService.updateHost(id, updates);
+        Map<String, Object> result = hostService.updateHost(id, updates);
+        assertEquals("UpdatedName", result.get("name"));
+        assertEquals("root", result.get("username"));
+        assertEquals("***", result.get("credential"));
 
-        // Verify the original credential is preserved (not overwritten with "***")
+        // Verify the original credential is preserved (not overwritten)
         Map<String, Object> withCred = hostService.getHostWithCredential(id);
         assertEquals("originalSecretPassword", withCred.get("credential"));
-        assertEquals("UpdatedName", withCred.get("name"));
     }
 
     /**
@@ -394,9 +415,7 @@ public class HostServiceTest {
      */
     @Test
     public void testUpdateHost_updatedAtChanges() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Host");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
         hostService.createHost(body);
         String id = getFirstHostId();
 
@@ -419,9 +438,7 @@ public class HostServiceTest {
      */
     @Test
     public void testCreateHost_validIpv4() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Ipv4Host");
-        body.put("ip", "192.168.1.1");
+        Map<String, Object> body = createStandardHostBody("Ipv4Host", "192.168.1.1");
 
         Map<String, Object> result = hostService.createHost(body);
         assertEquals("192.168.1.1", result.get("ip"));
@@ -432,9 +449,7 @@ public class HostServiceTest {
      */
     @Test
     public void testCreateHost_validIpv6() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Ipv6Host");
-        body.put("ip", "fe80::1");
+        Map<String, Object> body = createStandardHostBody("Ipv6Host", "fe80::1");
 
         Map<String, Object> result = hostService.createHost(body);
         assertEquals("fe80::1", result.get("ip"));
@@ -445,9 +460,7 @@ public class HostServiceTest {
      */
     @Test(expected = BadRequestException.class)
     public void testCreateHost_invalidIp() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "BadIpHost");
-        body.put("ip", "256.1.1.1");
+        Map<String, Object> body = createStandardHostBody("BadIpHost", "256.1.1.1");
 
         hostService.createHost(body);
     }
@@ -457,9 +470,7 @@ public class HostServiceTest {
      */
     @Test(expected = BadRequestException.class)
     public void testCreateHost_invalidBusinessIp() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "BadBizIpHost");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("BadBizIpHost", "10.0.0.1");
         body.put("businessIp", "abc.def");
 
         hostService.createHost(body);
@@ -470,9 +481,7 @@ public class HostServiceTest {
      */
     @Test(expected = BadRequestException.class)
     public void testUpdateHost_invalidIp() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Host");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
         hostService.createHost(body);
         String id = getFirstHostId();
 
@@ -491,6 +500,196 @@ public class HostServiceTest {
         body.put("ip", "");
 
         hostService.createHost(body);
+    }
+
+    // ── Field Length Validation ───────────────────────────────────────────
+
+    /**
+     * Tests create host with OS field exceeding max length.
+     */
+    @Test
+    public void testCreateHost_osTooLong() throws Exception {
+        Map<String, Object> body = createStandardHostBody("OsTooLongHost", "10.0.0.1");
+        body.put("os", "a".repeat(21)); // Max is 20
+
+        try {
+            hostService.createHost(body);
+            assertTrue("Should throw exception for OS field too long", false);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("OS") || e.getMessage().contains("exceeds"));
+        }
+    }
+
+    /**
+     * Tests create host with location field exceeding max length.
+     */
+    @Test
+    public void testCreateHost_locationTooLong() throws Exception {
+        Map<String, Object> body = createStandardHostBody("LocTooLongHost", "10.0.0.1");
+        body.put("location", "a".repeat(201)); // Max is 200
+
+        try {
+            hostService.createHost(body);
+            assertTrue("Should throw exception for location field too long", false);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Location") || e.getMessage().contains("exceeds"));
+        }
+    }
+
+    /**
+     * Tests create host with purpose field exceeding max length.
+     */
+    @Test
+    public void testCreateHost_purposeTooLong() throws Exception {
+        Map<String, Object> body = createStandardHostBody("PurposeTooLongHost", "10.0.0.1");
+        body.put("purpose", "a".repeat(301)); // Max is 300
+
+        try {
+            hostService.createHost(body);
+            assertTrue("Should throw exception for purpose field too long", false);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Purpose") || e.getMessage().contains("exceeds"));
+        }
+    }
+
+    /**
+     * Tests create host with business field exceeding max length.
+     */
+    @Test
+    public void testCreateHost_businessTooLong() throws Exception {
+        Map<String, Object> body = createStandardHostBody("BusinessTooLongHost", "10.0.0.1");
+        body.put("business", "a".repeat(201)); // Max is 200
+
+        try {
+            hostService.createHost(body);
+            assertTrue("Should throw exception for business field too long", false);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Business") || e.getMessage().contains("exceeds"));
+        }
+    }
+
+    /**
+     * Tests create host with valid max length fields.
+     */
+    @Test
+    public void testCreateHost_maxLengthFieldsAccepted() throws Exception {
+        Map<String, Object> body = createStandardHostBody("MaxLengthHost", "10.0.0.1");
+        body.put("os", "a".repeat(20)); // Max is 20
+        body.put("location", "a".repeat(200)); // Max is 200
+        body.put("purpose", "a".repeat(300)); // Max is 300
+        body.put("business", "a".repeat(200)); // Max is 200
+        body.put("description", "a".repeat(500)); // Max is 500
+
+        Map<String, Object> result = hostService.createHost(body);
+        assertNotNull(result);
+        assertEquals("MaxLengthHost", result.get("name"));
+    }
+
+    // ── Username/Credential Synchronization ───────────────────────────────
+
+    /**
+     * Tests update host with both username and credential succeeds.
+     * This simulates the scenario where the user modifies both username and password.
+     */
+    @Test
+    public void testUpdateHost_usernameAndCredentialTogether() throws Exception {
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
+        body.put("username", "root");
+        body.put("credential", "oldpass");
+        hostService.createHost(body);
+        String id = getFirstHostId();
+
+        // Frontend behavior: user modifies both username and password
+        // Frontend sends: username="newuser", credential="newpass"
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("username", "newuser");
+        updates.put("credential", "newpass");
+
+        Map<String, Object> result = hostService.updateHost(id, updates);
+        assertEquals("newuser", result.get("username"));
+
+        // Verify credential was updated
+        Map<String, Object> withCred = hostService.getHostWithCredential(id);
+        assertEquals("newpass", withCred.get("credential"));
+    }
+
+    /**
+     * Tests update host with empty username but with credential throws exception.
+     * This simulates the scenario where the user clears username but provides a credential.
+     */
+    @Test
+    public void testUpdateHost_emptyUsernameWithCredential() throws Exception {
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
+        body.put("username", "root");
+        body.put("credential", "pass");
+        hostService.createHost(body);
+        String id = getFirstHostId();
+
+        // Frontend behavior: user clears username (makes it empty) but provides a credential
+        // Frontend sends: username="", credential="newpass"
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("username", "");
+        updates.put("credential", "newpass");
+
+        try {
+            hostService.updateHost(id, updates);
+            assertTrue("Should throw exception for empty username with credential", false);
+        } catch (BadRequestException e) {
+            assertTrue(e.getMessage().contains("Username and credential must be provided together"));
+        }
+    }
+
+    /**
+     * Tests update host with username but empty credential throws exception.
+     * This simulates the scenario where the user provides username but clears credential.
+     */
+    @Test
+    public void testUpdateHost_usernameWithEmptyCredential() throws Exception {
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
+        body.put("username", "root");
+        body.put("credential", "pass");
+        hostService.createHost(body);
+        String id = getFirstHostId();
+
+        // Frontend behavior: user provides username but clears credential (makes it empty)
+        // Frontend sends: username="newuser", credential=""
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("username", "newuser");
+        updates.put("credential", "");
+
+        try {
+            hostService.updateHost(id, updates);
+            assertTrue("Should throw exception for username with empty credential", false);
+        } catch (BadRequestException e) {
+            assertTrue(e.getMessage().contains("Username and credential must be provided together"));
+        }
+    }
+
+    /**
+     * Tests update host with empty username and empty credential succeeds.
+     * This simulates the scenario where the user clears both username and credential.
+     */
+    @Test
+    public void testUpdateHost_emptyUsernameAndCredential() throws Exception {
+        Map<String, Object> body = createStandardHostBody("Host", "10.0.0.1");
+        body.put("username", "root");
+        body.put("credential", "pass");
+        hostService.createHost(body);
+        String id = getFirstHostId();
+
+        // Frontend behavior: user clears both username and credential
+        // Frontend sends: username="", credential=""
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("username", "");
+        updates.put("credential", "");
+
+        Map<String, Object> result = hostService.updateHost(id, updates);
+        assertEquals("", result.get("username"));
+        assertEquals("***", result.get("credential"));
+
+        // Verify both are cleared
+        Map<String, Object> withCred = hostService.getHostWithCredential(id);
+        assertEquals("", withCred.get("credential"));
     }
 
     // ── deleteHost ─────────────────────────────────────────────────
@@ -587,9 +786,7 @@ public class HostServiceTest {
      */
     @Test
     public void testCreateHost_withKeyAuth() throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "KeyHost");
-        body.put("ip", "10.0.0.1");
+        Map<String, Object> body = createStandardHostBody("KeyHost", "10.0.0.1");
         body.put("username", "root");
         body.put("authType", "key");
         body.put("credential", "-----BEGIN RSA PRIVATE KEY-----\nfakekey\n-----END RSA PRIVATE KEY-----");
@@ -601,6 +798,32 @@ public class HostServiceTest {
 
     // ── Helpers ────────────────────────────────────────────────────
 
+    /**
+     * Creates a standard host body with required fields.
+     *
+     * @param name the host name
+     * @param ip the host IP address
+     * @return the host body map with required fields
+     */
+    private Map<String, Object> createStandardHostBody(String name, String ip) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", name);
+        body.put("ip", ip);
+        // Use the first available cluster from the cluster service
+        List<Map<String, Object>> clusters = clusterService.listClusters(null, null);
+        String clusterId = clusters.isEmpty() ? "test-cluster-id" : (String) clusters.get(0).get("id");
+        body.put("clusterId", clusterId);
+        return body;
+    }
+
+    /**
+     * Creates a test host file directly without going through the service.
+     *
+     * @param id the host identifier to use
+     * @param name the host name
+     * @param ip the host IP address
+     * @param tags the list of tags to assign
+     */
     private void createHost(String id, String name, String ip, List<String> tags) {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("id", id);
@@ -625,6 +848,12 @@ public class HostServiceTest {
         }
     }
 
+    /**
+     * Gets the ID of the first host in the hosts list.
+     *
+     * @return the host identifier
+     * @throws IllegalStateException if no hosts exist
+     */
     private String getFirstHostId() {
         List<Map<String, Object>> hosts = hostService.listHosts(null);
         assertFalse("Expected at least one host", hosts.isEmpty());
