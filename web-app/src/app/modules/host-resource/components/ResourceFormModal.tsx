@@ -489,17 +489,6 @@ export default function ResourceFormModal({
                 if (hostCredential && hostCredential !== '***' && !/^[\x00-\x7F]*$/.test(hostCredential)) {
                     setError(t('hostResource.credentialInvalidChars')); setSaving(false); return
                 }
-                // Username and credential must both be provided or both be empty
-                // Skip validation in edit mode if credential is not modified ('***' placeholder)
-                const isEditing = editingItem?.type === 'host'
-                const credentialModified = hostCredential !== '***'
-                if (credentialModified || !isEditing) {
-                    const hasUsername = hostUsername.trim().length > 0
-                    const hasCredential = hostCredential.trim().length > 0 && hostCredential !== '***'
-                    if (hasUsername !== hasCredential) {
-                        setError(t('hostResource.usernameCredentialMismatch')); setSaving(false); return
-                    }
-                }
                 const editingHostId = editingItem?.type === 'host' ? editingItem.data.id : null
                 const trimmedHostName = nameResult.sanitized
                 const duplicate = hosts.some(h => h.name?.toLowerCase() === trimmedHostName.toLowerCase() && h.id !== editingHostId)
@@ -541,7 +530,6 @@ export default function ResourceFormModal({
                     hostname: hostnameResult.sanitized || null,
                     ip: hostIp.trim(), port: hostPort,
                     os: osResult.sanitized || null, location: locationResult.sanitized || null,
-                    username: hostUsername.trim(),
                     authType: hostAuthType, clusterId: hostClusterId || null,
                     purpose: purposeResult.sanitized || null,
                     business: businessResult.sanitized || null, description: descResult.sanitized,
@@ -549,12 +537,20 @@ export default function ResourceFormModal({
                     businessIp: hostBusinessIp.trim() || null,
                     role: hostRole || null,
                 }
-                if (hostCredential && hostCredential !== '***') payload.credential = hostCredential
+                if (hostUsername !== undefined) payload.username = hostUsername.trim()
+                // Send credential if it's not the placeholder *** (including empty string to clear it)
+                if (hostCredential !== '***') payload.credential = hostCredential.trim()
                 await onSaveHost(payload as unknown as HostCreateRequest)
             }
             onClose()
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error')
+            let errorMessage = err instanceof Error ? err.message : 'Unknown error'
+            // 特殊处理：主机编辑的用户名密码同步错误
+            if (errorMessage === 'Username and credential must be provided together') {
+                setError(t('hostResource.usernameCredentialMismatch'))
+            } else {
+                setError(errorMessage)
+            }
         } finally {
             setSaving(false)
         }
@@ -1020,11 +1016,11 @@ export default function ResourceFormModal({
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.os')}</label>
-                                            <input className="form-input" value={hostOs} onChange={e => setHostOs(e.target.value)} />
+                                            <input className="form-input" value={hostOs} onChange={e => setHostOs(e.target.value)} maxLength={20} />
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.location')}</label>
-                                            <input className="form-input" value={hostLocation} onChange={e => setHostLocation(e.target.value)} />
+                                            <input className="form-input" value={hostLocation} onChange={e => setHostLocation(e.target.value)} maxLength={200} />
                                         </div>
                                     </div>
 
@@ -1090,13 +1086,13 @@ export default function ResourceFormModal({
                                         })()}
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.purpose')}</label>
-                                            <input className="form-input" value={hostPurpose} onChange={e => setHostPurpose(e.target.value)} />
+                                            <input className="form-input" value={hostPurpose} onChange={e => setHostPurpose(e.target.value)} maxLength={300} />
                                         </div>
                                     </div>
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.business')}</label>
-                                            <input className="form-input" value={hostBusiness} onChange={e => setHostBusiness(e.target.value)} />
+                                            <input className="form-input" value={hostBusiness} onChange={e => setHostBusiness(e.target.value)} maxLength={200} />
                                         </div>
                                     </div>
 

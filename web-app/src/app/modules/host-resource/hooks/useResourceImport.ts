@@ -607,6 +607,22 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.businessIpInvalid', params: { ip: row.businessIp } })
                                     continue
                                 }
+                                // Validate port if provided
+                                if (row.port) {
+                                    const portStr = String(row.port).trim()
+                                    if (portStr === '') {
+                                        // Empty string after trim is treated as no port provided
+                                    } else if (!/^\d+$/.test(portStr)) {
+                                        errors.push({ row: i + 2, code: 'import.hostPortInvalid', params: { port: portStr } })
+                                        continue
+                                    } else {
+                                        const portNum = parseInt(portStr, 10)
+                                        if (portNum < 1 || portNum > 65535) {
+                                            errors.push({ row: i + 2, code: 'import.hostPortOutOfRange', params: { port: portStr } })
+                                            continue
+                                        }
+                                    }
+                                }
                                 if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
                                     errors.push({ row: i + 2, code: 'import.usernameInvalidChars' })
                                     continue
@@ -726,7 +742,6 @@ export function useResourceImport(deps: ImportDeps) {
                                     clusterId,
                                     purpose: row.purpose ? validateAndSanitize(row.purpose, 'Purpose').sanitized : undefined,
                                     role: (roleValue === 'primary' || roleValue === 'backup') ? roleValue : undefined,
-                                    tags: row.tags ? row.tags.split(';').map(t => t.trim()).filter(Boolean) : [],
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : undefined,
                                     customAttributes,
                                 })

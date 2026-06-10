@@ -127,7 +127,6 @@ export function useResourceExport() {
                     if (h.role === 'backup') return 'backup'
                     return ''
                 })(),
-                tags: Array.isArray(h.tags) ? h.tags.join(';') : '',
                 description: h.description || '',
                 customAttributes: Array.isArray(h.customAttributes) ? h.customAttributes.map(a => `${a.key}=${a.value}`).join(';') : '',
             }))

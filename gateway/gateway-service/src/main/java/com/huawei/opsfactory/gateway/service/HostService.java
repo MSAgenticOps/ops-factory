@@ -282,6 +282,7 @@ public class HostService {
 
     /**
      * Validates common host fields (hostname, os, location, purpose, business, description).
+     * Performs XSS checks and max length validation for each field to match frontend validation.
      *
      * @param body the request body map
      */
@@ -290,16 +291,16 @@ public class HostService {
             ValidationUtils.validateStringField(body, "hostname", "Hostname", 255, false);
         }
         if (body.containsKey("os")) {
-            ValidationUtils.validateStringField(body, "os", "OS", 0, false);
+            ValidationUtils.validateStringField(body, "os", "OS", 20, false);
         }
         if (body.containsKey("location")) {
-            ValidationUtils.validateStringField(body, "location", "Location", 0, false);
+            ValidationUtils.validateStringField(body, "location", "Location", 200, false);
         }
         if (body.containsKey("purpose")) {
-            ValidationUtils.validateStringField(body, "purpose", "Purpose", 0, false);
+            ValidationUtils.validateStringField(body, "purpose", "Purpose", 300, false);
         }
         if (body.containsKey("business")) {
-            ValidationUtils.validateStringField(body, "business", "Business", 0, false);
+            ValidationUtils.validateStringField(body, "business", "Business", 200, false);
         }
         if (body.containsKey("description")) {
             ValidationUtils.validateStringField(body, "description", "Description", 500, false);
@@ -316,27 +317,60 @@ public class HostService {
     private void validateHostCredentials(Map<String, Object> body, Map<String, Object> existingHost)
         throws BadRequestException {
         boolean isUpdate = existingHost != null;
+
+        // 添加调试日志 - 包括现有主机的用户名和密码
+        String existingUsername = isUpdate && existingHost.get("username") != null ? existingHost.get("username").toString() : "null";
+        String existingCredential = isUpdate && existingHost.get("credential") != null ? existingHost.get("credential").toString() : "null";
+        log.info("validateHostCredentials called - isUpdate={}, hasUsernameField={}, hasCredentialField={}",
+            isUpdate, body.containsKey("username"), body.containsKey("credential"));
+        log.info("Existing host data - username='{}', credential='{}'", existingUsername, existingCredential);
+
         if (isUpdate && !body.containsKey("username") && !body.containsKey("credential")) {
+            log.info("Skipping credential validation - no username/credential fields in update request");
             return;
         }
 
-        Object usernameObj = isUpdate && !body.containsKey("username")
-            ? existingHost.get("username") : body.get("username");
-        Object credentialObj = isUpdate && !body.containsKey("credential")
-            ? existingHost.get("credential") : body.get("credential");
-
-        String username = usernameObj != null ? usernameObj.toString().trim() : "";
-        String credential = credentialObj != null ? credentialObj.toString() : "";
-        boolean credentialIsSentinel = "***".equals(credential);
-
-        String credentialForCheck = credential;
-        if (isUpdate && credentialIsSentinel) {
-            Object existingCred = existingHost.get("credential");
-            credentialForCheck = existingCred != null ? existingCred.toString() : "";
+        // 处理用户名：使用请求中的新用户名或现有主机的用户名
+        String username;
+        if (isUpdate && !body.containsKey("username")) {
+            Object existingUsernameObj = existingHost.get("username");
+            username = existingUsernameObj != null ? existingUsernameObj.toString().trim() : "";
+        } else {
+            Object newUsernameObj = body.get("username");
+            username = newUsernameObj != null ? newUsernameObj.toString().trim() : "";
         }
 
+        // 处理密码：如果是现有主机的密码，先解密；如果是新密码，直接使用
+        String credential;
+        boolean isNewCredential = body.containsKey("credential");
+        if (isUpdate && !isNewCredential) {
+            // 使用现有主机的密码，需要先解密
+            Object existingCredObj = existingHost.get("credential");
+            String encryptedCred = existingCredObj != null ? existingCredObj.toString() : "";
+            if (!encryptedCred.isEmpty()) {
+                try {
+                    credential = decrypt(encryptedCred);
+                } catch (Exception e) {
+                    log.warn("Failed to decrypt existing credential, treating as empty: {}", e.getMessage());
+                    credential = "";
+                }
+            } else {
+                credential = "";
+            }
+        } else {
+            // 使用请求中的新密码
+            Object newCredObj = body.get("credential");
+            credential = newCredObj != null ? newCredObj.toString() : "";
+        }
+
+        log.info("Processed values - username='{}', credential='{}', isNewCredential={}", username, credential, isNewCredential);
+
+        boolean credentialIsSentinel = "***".equals(credential);
         boolean hasUsername = !username.isEmpty();
-        boolean hasCredential = !credentialForCheck.isEmpty();
+        boolean hasCredential = !credential.isEmpty() && !credentialIsSentinel;
+
+        log.info("Validation result - hasUsername={}, hasCredential={}, credentialIsSentinel={}",
+            hasUsername, hasCredential, credentialIsSentinel);
         if (hasUsername != hasCredential) {
             throw new BadRequestException("Username and credential must be provided together");
         }
@@ -421,52 +455,6 @@ public class HostService {
             log.debug("Unable to resolve cluster mode for missing cluster {}", clusterId);
         }
         return "peer";
-    }
-
-    @SuppressWarnings("unchecked")
-    private void syncClusterTypeToTags(Map<String, Object> host) {
-        if (clusterService == null) {
-            return;
-        }
-        Object clusterIdObj = host.get("clusterId");
-        if (clusterIdObj == null || clusterIdObj.toString().isEmpty()) {
-            return;
-        }
-
-        String clusterId = clusterIdObj.toString();
-        String clusterTypeRaw = null;
-        try {
-            Map<String, Object> cluster = clusterService.getCluster(clusterId);
-            if (cluster != null && cluster.get("type") != null) {
-                clusterTypeRaw = cluster.get("type").toString();
-            }
-        } catch (NotFoundException e) {
-            log.debug("Skipping missing cluster {} while syncing host tags", clusterId);
-        }
-
-        final String clusterType = clusterTypeRaw;
-
-        // Get current tags
-        List<Object> tags = new ArrayList<>();
-        Object tagsObj = host.get("tags");
-        if (tagsObj instanceof List<?>) {
-            tags = new ArrayList<>((List<Object>) tagsObj);
-        }
-
-        // Remove any existing cluster type tags (exact match)
-        if (clusterType != null) {
-            final String ct = clusterType;
-            tags.removeIf(t -> t.toString().equals(ct));
-        }
-
-        // Add current cluster type tag
-        if (clusterType != null && !clusterType.isEmpty()) {
-            if (!tags.stream().anyMatch(t -> t.toString().equals(clusterType))) {
-                tags.add(clusterType);
-            }
-        }
-
-        host.put("tags", tags);
     }
 
     /**
@@ -875,7 +863,6 @@ public class HostService {
 
     private void persistHost(String id, Map<String, Object> host, String logTemplate, Object[] logArgs)
         throws BadRequestException {
-        syncClusterTypeToTags(host);
         validateHostRole(host);
         writeHostFile(id, host);
         log.info(logTemplate, logArgs);

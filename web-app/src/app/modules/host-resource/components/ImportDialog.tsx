@@ -358,6 +358,10 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorUsernameCredentialMismatch')
             case 'import.businessIpInvalid':
                 return t('hostResource.importErrorBusinessIpInvalid', { ip: err.params?.ip })
+            case 'import.hostPortInvalid':
+                return t('hostResource.importErrorHostPortInvalid', { port: err.params?.port })
+            case 'import.hostPortOutOfRange':
+                return t('hostResource.importErrorHostPortOutOfRange', { port: err.params?.port })
             case 'import.setParentFailed':
                 return t('hostResource.importErrorSetParentFailed', { message: err.params?.message })
             case 'import.importFailed':
