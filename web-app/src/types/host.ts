@@ -13,7 +13,6 @@ export interface Host {
     business?: string
     clusterId?: string
     purpose?: string
-    tags: string[]
     description: string
     customAttributes?: CustomAttribute[]
     role?: 'primary' | 'backup' | null
@@ -40,7 +39,6 @@ export interface HostCreateRequest {
     business?: string
     clusterId?: string
     purpose?: string
-    tags: string[]
     description?: string
     customAttributes?: CustomAttribute[]
     role?: 'primary' | 'backup' | null

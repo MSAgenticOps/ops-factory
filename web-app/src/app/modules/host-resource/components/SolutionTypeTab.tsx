@@ -146,7 +146,7 @@ export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUp
                         // Process first token (SOP section)
                         const sopMatch = clusterTypeSplit[0].match(/(\d+) SOP\(s\) - (.+)/)
                         if (sopMatch) {
-                            const count = sopMatch[1]
+                            const count = parseInt(sopMatch[1], 10)
                             const names = sopMatch[2].trim()
                             parts.push(t('hostResource.solutionTypeUsedBySops', { count, names }))
                         }
@@ -154,7 +154,7 @@ export default function SolutionTypeTab({ solutionTypes, loading, onCreate, onUp
                         if (clusterTypeSplit.length > 1) {
                             const clusterMatch = clusterTypeSplit[1].match(/(\d+) Cluster Type\(s\) - (.+)/)
                             if (clusterMatch) {
-                                const count = clusterMatch[1]
+                                const count = parseInt(clusterMatch[1], 10)
                                 const names = clusterMatch[2].trim()
                                 parts.push(t('hostResource.solutionTypeUsedByClusterTypes', { count, names }))
                             }
