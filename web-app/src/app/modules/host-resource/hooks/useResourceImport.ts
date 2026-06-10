@@ -462,11 +462,22 @@ export function useResourceImport(deps: ImportDeps) {
                                         continue
                                     }
                                 }
+                                // Parent group check: must exist if provided
+                                let parentId: string | undefined
+                                if (row.parentGroup) {
+                                    const parentGroupName = String(row.parentGroup).trim()
+                                    parentId = groupNameToId.get(parentGroupName) || groupCodeToId.get(parentGroupName)
+                                    if (!parentId) {
+                                        errors.push({ row: i + 2, code: 'import.parentGroupNotFound', params: { parentGroup: parentGroupName } })
+                                        continue
+                                    }
+                                }
                                 const created = await deps.createGroup({
                                     name: nameResult.sanitized,
                                     code: codeResult.sanitized,
                                     description: row.description ? validateAndSanitize(row.description, 'Description').sanitized : '',
                                     enabled: row.enabled ? String(row.enabled).toUpperCase() === 'TRUE' : true,
+                                    parentId,
                                 })
                                 groupNameToId.set(nameResult.sanitized, created.id)
                                 groupCodeToId.set(codeResult.sanitized, created.id)
@@ -1051,33 +1062,6 @@ export function useResourceImport(deps: ImportDeps) {
                             errors.push({ row: i + 2, code: 'import.duplicate', params: { type: type, name: name } })
                         } else {
                             errors.push({ row: i + 2, code: 'import.rowError', params: { message: msg } })
-                        }
-                    }
-                }
-
-                if (type === 'HostGroups') {
-                    const parentRows = rows.filter(r => r.parentGroup)
-                    for (let i = 0; i < parentRows.length; i++) {
-                        const row = parentRows[i]
-                        const parentGroupName = row.parentGroup?.trim() || ''
-                        const groupId = groupNameToId.get(row.name)
-                        const parentId = groupNameToId.get(parentGroupName) || groupCodeToId.get(parentGroupName)
-                        if (!groupId) {
-                            // Group itself was not created earlier, skip
-                            continue
-                        }
-                        if (!parentId) {
-                            // Parent group not found, add error
-                            const rowIndex = rows.indexOf(row) + 2
-                            errors.push({ row: rowIndex, code: 'import.parentGroupNotFound', params: { parentGroup: parentGroupName } })
-                            continue
-                        }
-                        try {
-                            await deps.updateGroup(groupId, { parentId })
-                        } catch (err) {
-                            const msg = err instanceof Error ? err.message : String(err)
-                            const rowIndex = rows.indexOf(row) + 2
-                            errors.push({ row: rowIndex, code: 'import.setParentFailed', params: { message: msg } })
                         }
                     }
                 }
