@@ -46,8 +46,6 @@ public class CommandWhitelistService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
 
-    private Path gatewayRoot;
-
     private Path whitelistFile;
 
     /**
@@ -63,8 +61,7 @@ public class CommandWhitelistService extends JsonFileEntityStore {
      */
     @PostConstruct
     public void init() {
-        this.gatewayRoot = properties.getGatewayRootPath();
-        initDataDir(gatewayRoot.resolve("data"), "command-whitelist-dir");
+        Path gatewayRoot = properties.getGatewayRootPath();
         this.whitelistFile = gatewayRoot.resolve("data").resolve("command-whitelist.json");
 
         initializeDefaultIfNeeded();

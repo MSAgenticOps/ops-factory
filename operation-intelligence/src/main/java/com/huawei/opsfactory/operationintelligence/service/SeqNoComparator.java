@@ -14,7 +14,8 @@ public final class SeqNoComparator {
 
     private static final System.Logger log = System.getLogger(SeqNoComparator.class.getName());
 
-    private SeqNoComparator() {}
+    private SeqNoComparator() {
+    }
 
     /**
      * Compare seqNo values with dot notation.
@@ -24,10 +25,12 @@ public final class SeqNoComparator {
      * @return comparison result
      */
     public static int compareSeqNo(String s1, String s2) {
-        if (s1 == null)
+        if (s1 == null) {
             s1 = "0";
-        if (s2 == null)
+        }
+        if (s2 == null) {
             s2 = "0";
+        }
 
         String[] parts1 = s1.split("\\.");
         String[] parts2 = s2.split("\\.");

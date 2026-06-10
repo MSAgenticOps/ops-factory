@@ -85,7 +85,8 @@ public class WeChatMessagePumpService {
     private void processInboundFile(ChannelDetail channel, Path file) {
         Map<String, Object> payload;
         try {
-            payload = ChannelProcessHelper.mapper().readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
+            String raw = Files.readString(file, StandardCharsets.UTF_8);
+            payload = ChannelProcessHelper.mapper().readValue(raw, Map.class);
         } catch (IOException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "wechat.inbox_invalid",
                 "Failed to parse inbound WeChat file " + file.getFileName());
@@ -138,8 +139,8 @@ public class WeChatMessagePumpService {
         Path file = pendingDir.resolve(payload.get("id") + ".json");
         try {
             Files.createDirectories(pendingDir);
-            Files.writeString(file, ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                StandardCharsets.UTF_8);
+            String json = ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload);
+            Files.writeString(file, json, StandardCharsets.UTF_8);
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "wechat.outbox_enqueued",
                 "Queued WeChat reply for " + peerId);
         } catch (IOException e) {

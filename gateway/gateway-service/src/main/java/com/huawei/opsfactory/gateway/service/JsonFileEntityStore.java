@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Base class for services that persist entities as individual JSON files in a directory.
@@ -32,6 +33,8 @@ public class JsonFileEntityStore {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final Pattern SAFE_ENTITY_ID = Pattern.compile("[A-Za-z0-9_.-]+");
 
     /**
      * Returns the shared ObjectMapper instance for subclasses.
@@ -165,14 +168,14 @@ public class JsonFileEntityStore {
     }
 
     /**
-     * Resolves the entity file path after validating the ID does not contain path traversal sequences.
+     * Resolves the entity file path after validating the ID with a safe filename whitelist.
      *
      * @param id the entity identifier
      * @return the resolved file path
-     * @throws IllegalArgumentException if the ID contains path traversal characters
+     * @throws IllegalArgumentException if the ID contains unsafe filename characters
      */
     protected Path resolveEntityFile(String id) {
-        if (id == null || id.contains("..") || id.contains("/") || id.contains("\\")) {
+        if (id == null || !SAFE_ENTITY_ID.matcher(id).matches()) {
             throw new IllegalArgumentException("Invalid entity ID: " + id);
         }
         return dataDir.resolve(id + ".json");

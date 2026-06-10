@@ -34,10 +34,21 @@ final class ChannelProcessHelper {
     private ChannelProcessHelper() {
     }
 
+    /**
+     * Returns the shared object mapper for channel process state files.
+     *
+     * @return the shared object mapper
+     */
     static ObjectMapper mapper() {
         return MAPPER;
     }
 
+    /**
+     * Converts a value to trimmed text.
+     *
+     * @param value the source value
+     * @return trimmed text, or null when the value is null or blank
+     */
     static String asString(Object value) {
         if (value == null) {
             return null;
@@ -46,6 +57,12 @@ final class ChannelProcessHelper {
         return text.isEmpty() ? null : text;
     }
 
+    /**
+     * Normalizes a raw channel connection status.
+     *
+     * @param raw the raw status
+     * @return normalized lowercase status, or disconnected when blank
+     */
     static String normalizeStatus(String raw) {
         if (raw == null || raw.isBlank()) {
             return "disconnected";
@@ -53,6 +70,12 @@ final class ChannelProcessHelper {
         return raw.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Reads a channel runtime state file.
+     *
+     * @param stateFile the runtime state file
+     * @return the parsed runtime state, or an empty map when unavailable
+     */
     @SuppressWarnings("unchecked")
     static Map<String, Object> readRuntimeState(Path stateFile) {
         try {
@@ -69,6 +92,11 @@ final class ChannelProcessHelper {
         }
     }
 
+    /**
+     * Terminates a process referenced by a PID file when it is still running.
+     *
+     * @param pidFile the PID file
+     */
     static void killIfRunning(Path pidFile) {
         try {
             if (!Files.exists(pidFile)) {
@@ -102,11 +130,16 @@ final class ChannelProcessHelper {
             try {
                 Files.deleteIfExists(pidFile);
             } catch (IOException deleteError) {
-                // ignore
+                log.debug("Failed to delete PID file {} during cleanup: {}", pidFile, deleteError.getMessage());
             }
         }
     }
 
+    /**
+     * Deletes all files under a directory.
+     *
+     * @param dir the directory to clear
+     */
     static void clearDirectory(Path dir) {
         if (dir == null || !Files.exists(dir)) {
             return;
@@ -118,19 +151,31 @@ final class ChannelProcessHelper {
         }
     }
 
+    /**
+     * Deletes a path and suppresses cleanup failures.
+     *
+     * @param path the path to delete
+     */
     static void deleteQuietly(Path path) {
         try {
             Files.deleteIfExists(path);
         } catch (IOException e) {
-            // best-effort cleanup
+            log.debug("Best-effort cleanup failed for {}: {}", path, e.getMessage());
         }
     }
 
+    /**
+     * Moves one processed payload file into the processed directory.
+     *
+     * @param processedDir the processed directory
+     * @param file the source file
+     * @param suffix the suffix to append before the JSON extension
+     */
     static void moveToProcessed(Path processedDir, Path file, String suffix) {
         try {
             Files.createDirectories(processedDir);
-            Files.move(file,
-                processedDir.resolve(file.getFileName().toString().replace(".json", "-" + suffix + ".json")));
+            String newName = file.getFileName().toString().replace(".json", "-" + suffix + ".json");
+            Files.move(file, processedDir.resolve(newName));
         } catch (IOException e) {
             deleteQuietly(file);
         }

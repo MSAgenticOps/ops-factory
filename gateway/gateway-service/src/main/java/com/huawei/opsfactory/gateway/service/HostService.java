@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -650,7 +651,7 @@ public class HostService extends JsonFileEntityStore {
         List<Map<String, Object>> hosts = new ArrayList<>();
         for (Map<String, Object> host : allHosts) {
             Object hostClusterId = host.get("clusterId");
-            if (clusterId.equals(hostClusterId)) {
+                    if (Objects.equals(clusterId, hostClusterId)) {
                 hosts.add(maskCredential(host));
             }
         }

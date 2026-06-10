@@ -149,7 +149,8 @@ public class WhatsAppMessagePumpService {
     private void processInboundFile(ChannelDetail channel, Path file) {
         Map<String, Object> payload;
         try {
-            payload = ChannelProcessHelper.mapper().readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
+            String raw = Files.readString(file, StandardCharsets.UTF_8);
+            payload = ChannelProcessHelper.mapper().readValue(raw, Map.class);
         } catch (IOException e) {
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "warning", "whatsapp.inbox_invalid",
                 "Failed to parse inbound WhatsApp file " + file.getFileName());
@@ -200,8 +201,8 @@ public class WhatsAppMessagePumpService {
         Path file = pendingDir.resolve(payload.get("id") + ".json");
         try {
             Files.createDirectories(pendingDir);
-            Files.writeString(file, ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                StandardCharsets.UTF_8);
+            String json = ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload);
+            Files.writeString(file, json, StandardCharsets.UTF_8);
             channelConfigService.recordEvent(channel.id(), channel.ownerUserId(), "info", "whatsapp.outbox_enqueued",
                 "Queued WhatsApp reply for " + peerId);
         } catch (IOException e) {

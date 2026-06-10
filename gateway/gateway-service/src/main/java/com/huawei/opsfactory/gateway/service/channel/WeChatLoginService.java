@@ -227,8 +227,8 @@ public class WeChatLoginService {
         payload.put("lastError", "");
         payload.put("qrCodeDataUrl", null);
         try {
-            Files.writeString(stateFile, ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                StandardCharsets.UTF_8);
+            String json = ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload);
+            Files.writeString(stateFile, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
         }
@@ -248,8 +248,8 @@ public class WeChatLoginService {
         payload.put("qrCodeDataUrl", null);
         try {
             Files.createDirectories(stateFile.getParent());
-            Files.writeString(stateFile, ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload),
-                StandardCharsets.UTF_8);
+            String json = ChannelProcessHelper.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(payload);
+            Files.writeString(stateFile, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write WeChat login state file", e);
         }

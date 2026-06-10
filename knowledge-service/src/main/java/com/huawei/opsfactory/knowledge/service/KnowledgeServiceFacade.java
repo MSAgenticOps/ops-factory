@@ -940,24 +940,10 @@ public class KnowledgeServiceFacade {
      * @param pageSize the number of items per page
      * @return a paginated response of index profile summaries
      */
-    /**
-     * Lists all index profiles with pagination.
-     *
-     * @param page the page number (1-based)
-     * @param pageSize the number of items per page
-     * @return a paginated response of index profile summaries
-     */
     public PageResponse<ProfileController.ProfileSummary> listIndexProfiles(int page, int pageSize) {
         return listProfiles(true, page, pageSize);
     }
 
-    /**
-     * Lists all retrieval profiles with pagination.
-     *
-     * @param page the page number (1-based)
-     * @param pageSize the number of items per page
-     * @return a paginated response of retrieval profile summaries
-     */
     /**
      * Lists all retrieval profiles with pagination.
      *
@@ -984,29 +970,12 @@ public class KnowledgeServiceFacade {
      * @throws IllegalStateException if the profile config is invalid
      * @throws ApiConflictException if the profile name already exists
      */
-    /**
-     * Creates a new index profile.
-     *
-     * @param request the create profile request
-     * @return the created profile detail
-     * @throws IllegalArgumentException if the profile name is invalid
-     * @throws IllegalStateException if the profile config is invalid
-     * @throws ApiConflictException if the profile name already exists
-     */
     @Transactional
     public ProfileController.ProfileDetail createIndexProfile(ProfileController.CreateProfileRequest request) {
         validateIndexProfileConfig(request.config());
         return createProfile(request, true);
     }
 
-    /**
-     * Creates a new retrieval profile.
-     *
-     * @param request the create profile request
-     * @return the created profile detail
-     * @throws IllegalArgumentException if the profile name is invalid
-     * @throws ApiConflictException if the profile name already exists
-     */
     /**
      * Creates a new retrieval profile.
      *
@@ -1052,24 +1021,10 @@ public class KnowledgeServiceFacade {
      * @return the profile detail
      * @throws IllegalArgumentException if the profile is not found
      */
-    /**
-     * Retrieves an index profile by its identifier.
-     *
-     * @param id the profile identifier
-     * @return the profile detail
-     * @throws IllegalArgumentException if the profile is not found
-     */
     public ProfileController.ProfileDetail getIndexProfile(String id) {
         return toProfileDetail(findProfileById(id, true));
     }
 
-    /**
-     * Retrieves a retrieval profile by its identifier.
-     *
-     * @param id the profile identifier
-     * @return the profile detail
-     * @throws IllegalArgumentException if the profile is not found
-     */
     /**
      * Retrieves a retrieval profile by its identifier.
      *
@@ -1089,16 +1044,6 @@ public class KnowledgeServiceFacade {
         return found.orElseThrow(() -> new IllegalArgumentException(label + " profile not found: " + id));
     }
 
-    /**
-     * Updates an existing index profile.
-     *
-     * @param id the profile identifier
-     * @param request the update profile request
-     * @return the update response
-     * @throws IllegalArgumentException if the profile is not found
-     * @throws ApiConflictException if the profile is read-only or name already exists
-     * @throws IllegalStateException if the profile config is invalid
-     */
     /**
      * Updates an existing index profile.
      *
@@ -1954,13 +1899,6 @@ public class KnowledgeServiceFacade {
     }
 
     /**
-     * Ensures the specified profile is not currently bound to any source.
-     *
-     * @param profileId the profile identifier
-     * @param indexProfile true if the profile is an index profile, false if retrieval
-     * @throws IllegalStateException if the profile is still bound to a source
-     */
-    /**
      * Ensures the given profile is not currently bound to any source.
      *
      * @param profileId the profile identifier
@@ -1976,14 +1914,6 @@ public class KnowledgeServiceFacade {
         }
     }
 
-    /**
-     * Deletes a source-owned profile if it is present and eligible for deletion.
-     *
-     * @param profile the profile record to potentially delete
-     * @param indexProfile true if the profile is an index profile, false if retrieval
-     * @param sourceId the source identifier that owns the profile
-     * @param defaultProfileId the default profile identifier that should not be deleted
-     */
     /**
      * Deletes a source-owned profile if it is not the default and not read-only.
      *
@@ -2012,14 +1942,6 @@ public class KnowledgeServiceFacade {
     }
 
     /**
-     * Determines whether a profile should be forked for a specific source.
-     *
-     * @param profile the profile record to evaluate
-     * @param sourceId the source identifier requesting the profile
-     * @param defaultProfileId the system default profile identifier
-     * @return true if the profile should be forked, false otherwise
-     */
-    /**
      * Determines whether a profile should be forked (copied) for a specific source.
      *
      * @param profile the profile record
@@ -2037,16 +1959,6 @@ public class KnowledgeServiceFacade {
         return !sourceId.equals(profile.ownerSourceId());
     }
 
-    /**
-     * Resolves the name for a source-owned profile based on the request and fallback.
-     *
-     * @param source the source record that owns the profile
-     * @param profileType the type of profile (e.g., "index" or "retrieval")
-     * @param requestedName the name requested by the caller, may be null
-     * @param fallbackName the fallback name to use if no valid request name is provided
-     * @param forNewSourceOwnedProfile true if this is for a newly created source-owned profile
-     * @return the resolved profile name
-     */
     /**
      * Generates a name for a source-owned profile.
      *
@@ -2076,14 +1988,6 @@ public class KnowledgeServiceFacade {
         return source.id() + "-" + profileType + "-profile";
     }
 
-    /**
-     * Ensures the specified profile name is available for use.
-     *
-     * @param profileName the profile name to check
-     * @param currentProfileId the identifier of the current profile being updated, may be null
-     * @param indexProfile true if checking an index profile, false if retrieval
-     * @throws ApiConflictException if the profile name is already in use by another profile
-     */
     /**
      * Ensures the given profile name is available (not already in use by another profile).
      *
@@ -2300,9 +2204,12 @@ public class KnowledgeServiceFacade {
     ) {
         List<SearchService.SearchableChunk> result = new ArrayList<>();
         for (ChunkingService.ChunkDraft draft : drafts) {
+            String text = draft.text() != null ? draft.text() : "";
+            String markdown = draft.markdown() != null ? draft.markdown() : "";
             ChunkRepository.ChunkRecord chunkRecord = new ChunkRepository.ChunkRecord(
-                Ids.newId("chk"), documentId, sourceId, draft.ordinal(), draft.title(), draft.titlePath(), draft.keywords(),
-                draft.text(), draft.markdown(), 1, 1, draft.tokenCount(), draft.textLength(), hash(draft.text() + draft.markdown()),
+                Ids.newId("chk"), documentId, sourceId, draft.ordinal(), draft.title(), draft.titlePath(),
+                draft.keywords(),
+                text, markdown, 1, 1, draft.tokenCount(), draft.textLength(), hash(text + markdown),
                 "SYSTEM_GENERATED", "system", now, now
             );
             chunkRepository.insert(chunkRecord);

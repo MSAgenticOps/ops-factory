@@ -159,7 +159,6 @@ public class KnowledgeGraphService {
             return result;
         } finally {
             lock.unlock();
-            ontologyLocks.remove(ontologyId);
         }
     }
 
@@ -812,7 +811,6 @@ public class KnowledgeGraphService {
             return action.get();
         } finally {
             lock.unlock();
-            ontologyLocks.remove(lockKey);
         }
     }
 
