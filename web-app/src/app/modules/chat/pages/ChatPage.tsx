@@ -222,7 +222,10 @@ export default function Chat() {
 
     const createSessionWithAgent = useCallback(async (agentId: string, options: { initialMessage?: string; initialSelectedSkill?: SelectedSkill } = {}) => {
         if (createSessionInFlightRef.current?.agentId === agentId) {
-            return createSessionInFlightRef.current.promise
+            // Swallow the shared promise's rejection: the original caller already surfaces the
+            // error via initError, and an uncaught rejection here would skip the callers'
+            // isInitializing cleanup, leaving the page on the loading spinner forever.
+            return createSessionInFlightRef.current.promise.catch(() => null)
         }
 
         cleanupEmptyDraftSessions('replace_draft_session')
