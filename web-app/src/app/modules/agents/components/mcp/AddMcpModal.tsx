@@ -141,7 +141,7 @@ export default function AddMcpModal({
     const trimmedName = name.trim()
     const envKeysSet = new Set<string>()
     const envs: Record<string, string> = {}
-    for (const { key, value, fromExisting } of envVars) {
+    for (const { key, value } of envVars) {
       const trimmedKey = key.trim()
       const trimmedValue = value.trim()
 

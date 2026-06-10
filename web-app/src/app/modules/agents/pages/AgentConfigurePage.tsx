@@ -33,12 +33,6 @@ function localizeProviderError(backendError: string, t: (key: string, params?: R
     return t('agentConfigure.providerCreateFailed', { error: backendError })
 }
 
-/**
- * Localize an array of backend error messages, one per validation rule.
- */
-function localizeProviderErrors(errors: string[], t: (key: string, params?: Record<string, unknown>) => string): string {
-    return errors.map(err => localizeProviderError(err, t)).join('\n')
-}
 
 type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory' | 'schedules'
 
