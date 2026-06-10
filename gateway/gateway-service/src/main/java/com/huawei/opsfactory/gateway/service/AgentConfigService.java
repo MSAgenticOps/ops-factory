@@ -425,8 +425,12 @@ public class AgentConfigService {
         if (model == null) {
             throw new IllegalArgumentException("GOOSE_MODEL is required");
         }
-        if (!customProviderExists(agentId, provider) && !provider.equals(config.get("GOOSE_PROVIDER"))) {
-            throw new IllegalArgumentException("Provider '" + provider + "' not found for agent '" + agentId + "'");
+        // Custom providers resolve against custom_providers/*.json at spawn time; saving a name
+        // without a matching definition would break every future instance start (resume 500),
+        // so reject it here even when it matches the currently configured value.
+        if (provider.startsWith("custom_") && !customProviderExists(agentId, provider)) {
+            throw new IllegalArgumentException("Provider '" + provider + "' not found for agent '" + agentId
+                + "': no matching definition in custom_providers/");
         }
 
         for (String key : MODEL_CONFIG_KEYS) {

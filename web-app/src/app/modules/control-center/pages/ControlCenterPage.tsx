@@ -23,10 +23,16 @@ import {
   type DailyPoint,
   type TraceRow,
   type AgentInfo,
+  type InstanceSnapshot,
   type ManagedServiceStatus,
 } from '../hooks/useControlCenterMonitoring'
 import { useMetrics, type MetricsPoint, type AgentMetrics } from '../hooks/useControlCenterMetrics'
-import { useControlCenterActions, type ControlCenterAction } from '../hooks/useControlCenterActions'
+import {
+  useControlCenterActions,
+  useInstanceActions,
+  type ControlCenterAction,
+  type InstanceAction,
+} from '../hooks/useControlCenterActions'
 import { useControlCenterEvents } from '../hooks/useControlCenterEvents'
 import DependencyStatus from '../../../platform/ui/primitives/DependencyStatus'
 import '../styles/control-center.css'
@@ -637,7 +643,7 @@ function PlatformTab() {
       )}
       {confirmState && (
         <ActionConfirmDialog
-          service={confirmState.service}
+          targetName={confirmState.service.name}
           action={confirmState.action}
           isRunning={pendingServiceId === confirmState.service.id && pendingAction === confirmState.action}
           onClose={() => {
@@ -697,9 +703,43 @@ function EventsTab() {
 
 function AgentsTab() {
   const { t } = useTranslation()
-  const { instances, agents, isLoading, error, runtimeError } = useMonitoringPlatform()
+  const { instances, agents, isLoading, error, runtimeError, refresh } = useMonitoringPlatform()
   const { data: metricsData } = useMetrics(30_000)
+  const { showToast } = useToast()
+  const { runInstanceAction, pendingInstanceKey, pendingAction } = useInstanceActions()
+  const [confirmState, setConfirmState] = useState<{
+    instance: InstanceSnapshot
+    agentName: string
+    action: InstanceAction
+  } | null>(null)
   const loadError = runtimeError || error
+
+  const handleConfirmInstanceAction = async () => {
+    if (!confirmState) return
+    const { instance, agentName, action } = confirmState
+    const targetName = `${agentName} (${instance.userId})`
+    try {
+      const result = await runInstanceAction(instance.agentId, instance.userId, action)
+      if (result.success) {
+        showToast('success', t('controlCenter.actionSuccess', {
+          action: t(`controlCenter.actionLabel.${action}`),
+          service: targetName,
+        }))
+        refresh()
+        // Start/restart spawn asynchronously; refresh again so the starting → running transition
+        // shows up. Stop is synchronous on the gateway, so the immediate refresh already reflects it.
+        if (action !== 'stop') {
+          window.setTimeout(refresh, 3000)
+        }
+      } else {
+        showToast('error', result.error || t('common.somethingWentWrong'))
+      }
+    } catch (actionError) {
+      showToast('error', actionError instanceof Error ? actionError.message : t('common.somethingWentWrong'))
+    } finally {
+      setConfirmState(null)
+    }
+  }
 
   if (isLoading && agents.length === 0) {
     return <div className="mon-loading">{t('monitoring.loading')}</div>
@@ -741,10 +781,12 @@ function AgentsTab() {
                       <span className="mon-agent-card-name">{agent.name}</span>
                       <span className={`status-pill status-${agent.status}`}>{agent.status}</span>
                     </div>
-                    <div className="mon-agent-card-meta">
-                      <span className="mon-agent-card-tag">{agent.provider}</span>
-                      <span className="mon-agent-card-tag">{agent.model}</span>
-                    </div>
+                    {(agent.provider || agent.model) && (
+                      <div className="mon-agent-card-meta">
+                        {agent.provider && <span className="mon-agent-card-tag">{agent.provider}</span>}
+                        {agent.model && <span className="mon-agent-card-tag">{agent.model}</span>}
+                      </div>
+                    )}
                   </div>
                   <div className="mon-agent-card-stats">
                     <div className="mon-agent-card-stat">
@@ -796,21 +838,69 @@ function AgentsTab() {
                 <span>{t('monitoring.instancesPort')}</span>
                 <span>{t('monitoring.instancesStatus')}</span>
                 <span>{t('monitoring.instancesIdleSince')}</span>
+                <span>{t('monitoring.instancesActions')}</span>
               </div>
               {instances.byAgent.flatMap(group =>
-                group.instances.map(inst => (
-                  <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
-                    <span className="mon-agent-name">{group.agentName}</span>
-                    <span>{inst.userId}</span>
-                    <span className="mon-agent-model">{inst.port}</span>
-                    <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
-                    <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
-                  </div>
-                ))
+                group.instances.map(inst => {
+                  const isPending = pendingInstanceKey === `${inst.agentId}:${inst.userId}`
+                  const openConfirm = (action: InstanceAction) =>
+                    setConfirmState({ instance: inst, agentName: group.agentName, action })
+                  return (
+                    <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
+                      <span className="mon-agent-name">{group.agentName}</span>
+                      <span>{inst.userId}</span>
+                      <span className="mon-agent-model">{inst.port}</span>
+                      <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
+                      <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
+                      <span>
+                        <ResourceCardActionGroup className="mon-inst-actions">
+                          {inst.status === 'running' ? (
+                            <>
+                              <ResourceCardRestartAction
+                                onClick={() => openConfirm('restart')}
+                                disabled={isPending}
+                                label={isPending && pendingAction === 'restart'
+                                  ? t('controlCenter.actionRunning')
+                                  : t('controlCenter.actionLabel.restart')}
+                              />
+                              <ResourceCardStopAction
+                                onClick={() => openConfirm('stop')}
+                                disabled={isPending}
+                                label={isPending && pendingAction === 'stop'
+                                  ? t('controlCenter.actionRunning')
+                                  : t('controlCenter.actionLabel.stop')}
+                              />
+                            </>
+                          ) : (
+                            <ResourceCardStartAction
+                              onClick={() => openConfirm('start')}
+                              disabled={isPending || inst.status === 'starting'}
+                              label={isPending && pendingAction === 'start'
+                                ? t('controlCenter.actionRunning')
+                                : t('controlCenter.actionLabel.start')}
+                            />
+                          )}
+                        </ResourceCardActionGroup>
+                      </span>
+                    </div>
+                  )
+                })
               )}
             </div>
           )}
         </div>
+      )}
+      {confirmState && (
+        <ActionConfirmDialog
+          targetName={`${confirmState.agentName} (${confirmState.instance.userId})`}
+          action={confirmState.action}
+          warning={confirmState.action === 'start' ? undefined : t('controlCenter.instanceActionWarning')}
+          isRunning={pendingInstanceKey === `${confirmState.instance.agentId}:${confirmState.instance.userId}`}
+          onClose={() => {
+            if (!pendingAction) setConfirmState(null)
+          }}
+          onConfirm={() => void handleConfirmInstanceAction()}
+        />
       )}
     </>
   )
@@ -1286,14 +1376,16 @@ function ServiceCard({
 }
 
 function ActionConfirmDialog({
-  service,
+  targetName,
   action,
+  warning,
   isRunning,
   onClose,
   onConfirm,
 }: {
-  service: ManagedServiceStatus
+  targetName: string
   action: ControlCenterAction
+  warning?: string
   isRunning: boolean
   onClose: () => void
   onConfirm: () => void
@@ -1305,7 +1397,7 @@ function ActionConfirmDialog({
     <DetailDialog
       title={t('controlCenter.actionConfirmTitle', {
         action: t(`controlCenter.actionLabel.${action}`),
-        service: service.name,
+        service: targetName,
       })}
       onClose={onClose}
       className="control-center-confirm-dialog"
@@ -1323,8 +1415,9 @@ function ActionConfirmDialog({
       <p className="control-center-confirm-copy">
         {t('controlCenter.actionConfirmBody', {
           action: t(`controlCenter.actionLabel.${action}`),
-          service: service.name,
+          service: targetName,
         })}
+        {warning ? ` ${warning}` : ''}
       </p>
     </DetailDialog>
   )

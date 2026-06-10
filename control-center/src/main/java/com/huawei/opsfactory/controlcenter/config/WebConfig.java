@@ -36,7 +36,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/control-center/**")
                 .allowedOrigins(resolveAllowedOrigins())
                 .allowedMethods("GET", "POST", "PUT", "OPTIONS", "DELETE")
-                .allowedHeaders("content-type", "x-secret-key");
+                .allowedHeaders("content-type", "x-secret-key", "x-user-id");
     }
 
     private String[] resolveAllowedOrigins() {

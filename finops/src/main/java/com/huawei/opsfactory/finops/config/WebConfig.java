@@ -40,7 +40,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/finops/**")
             .allowedOrigins(resolveAllowedOrigins())
             .allowedMethods("GET", "POST", "OPTIONS")
-            .allowedHeaders("content-type", "x-secret-key");
+            .allowedHeaders("content-type", "x-secret-key", "x-user-id");
     }
 
     private String[] resolveAllowedOrigins() {

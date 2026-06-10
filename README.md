@@ -36,11 +36,7 @@ The current architectural boundary is:
 
 ![Monitoring Observation](media/demo-monitoring-observation.gif)
 
-#### 6. KB Agent (Feishu)
-
-![KB Agent Feishu](media/demo-kb-agent-feishu.gif)
-
-#### 7. Self-Supervisor Agent
+#### 6. Self-Supervisor Agent
 
 ![Self-Supervisor Agent](media/demo-self-supervisor-agent.gif)
 
