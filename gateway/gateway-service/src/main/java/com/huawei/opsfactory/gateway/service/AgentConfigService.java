@@ -68,6 +68,8 @@ public class AgentConfigService {
 
     private static final Pattern PROVIDER_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
 
+    private static final List<String> CUSTOM_PROVIDER_SAMPLE_SUFFIXES = List.of(".sample.json", ".example.json");
+
     private static final List<String> MODEL_CONFIG_KEYS = List.of("GOOSE_PROVIDER", "GOOSE_MODEL", "GOOSE_FAST_MODEL",
         "GOOSE_MODE", "GOOSE_CONTEXT_LIMIT", "GOOSE_MAX_TOKENS", "GOOSE_TEMPERATURE", "GOOSE_CONTEXT_STRATEGY",
         "GOOSE_AUTO_COMPACT_THRESHOLD", "GOOSE_MAX_TURNS");
@@ -381,10 +383,16 @@ public class AgentConfigService {
                 if (!Files.isRegularFile(entry)) {
                     continue;
                 }
+                String fileName = entry.getFileName().toString();
+                if (isCustomProviderSampleFile(fileName)) {
+                    log.debug("Skipping custom provider sample file {} for {}", fileName, agentId);
+                    continue;
+                }
                 try {
                     Map<String, Object> provider =
                         OBJECT_MAPPER.readValue(entry.toFile(), new TypeReference<Map<String, Object>>() {});
-                    provider.put("fileName", entry.getFileName().toString());
+                    warnIfCustomProviderNameDoesNotMatchFile(agentId, fileName, provider);
+                    provider.put("fileName", fileName);
                     providers.add(provider);
                 } catch (IOException | IllegalArgumentException e) {
                     log.warn("Failed to parse custom provider {} for {}: {}", entry.getFileName(), agentId,
@@ -604,7 +612,31 @@ public class AgentConfigService {
     }
 
     private boolean customProviderExists(String agentId, String providerName) {
-        return listCustomProviders(agentId).stream().anyMatch(provider -> providerName.equals(provider.get("name")));
+        long matches =
+            listCustomProviders(agentId).stream().filter(provider -> providerName.equals(provider.get("name"))).count();
+        if (matches > 1) {
+            throw new IllegalArgumentException(
+                "Provider '" + providerName + "' has duplicate definitions in custom_providers/");
+        }
+        return matches == 1;
+    }
+
+    private boolean isCustomProviderSampleFile(String fileName) {
+        return CUSTOM_PROVIDER_SAMPLE_SUFFIXES.stream().anyMatch(fileName::endsWith);
+    }
+
+    private void warnIfCustomProviderNameDoesNotMatchFile(String agentId, String fileName,
+        Map<String, Object> provider) {
+        String providerName = asString(provider.get("name"));
+        if (providerName == null || providerName.isBlank()) {
+            log.warn("Custom provider {} for {} is missing name", fileName, agentId);
+            return;
+        }
+        String expectedFileName = providerName + ".json";
+        if (!fileName.equals(expectedFileName)) {
+            log.warn("Custom provider {} for {} declares name '{}'; expected file name {}", fileName, agentId,
+                providerName, expectedFileName);
+        }
     }
 
     private void validateTemperaturePrecision(String temperature) {

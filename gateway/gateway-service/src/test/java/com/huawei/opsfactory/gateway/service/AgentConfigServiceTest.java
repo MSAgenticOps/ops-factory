@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
@@ -286,6 +287,32 @@ public class AgentConfigServiceTest {
     }
 
     /**
+     * Tests list custom providers ignores sample json files.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testListCustomProviders_ignoresSampleJson() throws IOException {
+        Path providersDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_provider.sample.json"),
+            "{\n" + "  \"name\": \"custom_local\",\n" + "  \"display_name\": \"Sample\",\n"
+                + "  \"api_key_env\": \"CUSTOM_SAMPLE_API_KEY\",\n"
+                + "  \"models\": [{ \"name\": \"sample-model\" }]\n" + "}\n");
+        Files.writeString(providersDir.resolve("custom_local.json"),
+            "{\n" + "  \"name\": \"custom_local\",\n" + "  \"display_name\": \"Local\",\n"
+                + "  \"api_key_env\": \"CUSTOM_LOCAL_API_KEY\",\n"
+                + "  \"models\": [{ \"name\": \"model-a\" }]\n" + "}\n");
+
+        List<Map<String, Object>> providers = service.listCustomProviders("test-agent");
+
+        assertEquals(1, providers.size());
+        assertEquals("custom_local.json", providers.get(0).get("fileName"));
+        assertEquals("CUSTOM_LOCAL_API_KEY", providers.get(0).get("api_key_env"));
+    }
+
+    /**
      * Tests extract agent config summary counts extension states.
      */
     @Test
@@ -324,6 +351,30 @@ public class AgentConfigServiceTest {
         assertEquals("model-a", config.get("GOOSE_MODEL"));
         assertEquals("0.4", config.get("GOOSE_TEMPERATURE"));
         assertEquals("4096", config.get("GOOSE_MAX_TOKENS"));
+    }
+
+    /**
+     * Tests update model config rejects duplicate custom provider names.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testUpdateModelConfig_rejectsDuplicateCustomProviderNames() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
+        Path providersDir = configDir.resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_local.json"),
+            "{\"name\":\"custom_local\",\"models\":[{\"name\":\"model-a\"}]}\n");
+        Files.writeString(providersDir.resolve("custom_local_duplicate.json"),
+            "{\"name\":\"custom_local\",\"models\":[{\"name\":\"model-b\"}]}\n");
+        Files.writeString(configDir.resolve("config.yaml"),
+            "GOOSE_PROVIDER: old_provider\n" + "GOOSE_MODEL: old_model\n" + "GOOSE_TEMPERATURE: '0.2'\n");
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> service.updateModelConfig("test-agent",
+                Map.of("GOOSE_PROVIDER", "custom_local", "GOOSE_MODEL", "model-a")));
+
+        assertTrue(error.getMessage().contains("duplicate definitions"));
     }
 
     /**
