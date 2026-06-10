@@ -17,23 +17,6 @@ import type { AgentModelConfig, CreateProviderRequest, UpdateProviderRequest } f
 import type { SkillEntry } from '../../../../types/skill'
 import '../styles/agents.css'
 
-/**
- * Map backend English error messages for provider operations to localized i18n keys.
- * Backend returns English-only messages (e.g. "Provider 'xxx' already exists"),
- * so we pattern-match them here and return localized text.
- */
-function localizeProviderError(backendError: string, t: (key: string, params?: Record<string, unknown>) => string): string {
-    if (/Provider '.+?' already exists/i.test(backendError)) {
-        return t('agentConfigure.providerDuplicateName')
-    }
-    const fieldLengthMatch = backendError.match(/^(Provider name|Display name|Base URL|API key|Model name|Description) must not exceed (\d+) characters$/i)
-    if (fieldLengthMatch) {
-        return t('agentConfigure.providerFieldTooLong', { field: fieldLengthMatch[1], max: fieldLengthMatch[2] })
-    }
-    return t('agentConfigure.providerCreateFailed', { error: backendError })
-}
-
-
 type ConfigTab = 'basic' | 'model' | 'prompts' | 'mcp' | 'skills' | 'memory' | 'schedules'
 
 export default function AgentConfigure() {
