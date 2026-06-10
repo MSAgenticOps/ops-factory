@@ -143,7 +143,6 @@ residentInstances:
 agents:
   - {id: universal-agent, name: Universal Agent}
   - {id: fo-copilot, name: FO Copilot}
-  - {id: kb-agent, name: KB Agent}
   - {id: report-agent, name: Report Agent}
   - {id: qos-agent, name: QoS Agent}
   - {id: qa-agent, name: QA Agent}

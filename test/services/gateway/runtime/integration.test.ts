@@ -212,7 +212,6 @@ describe('Agent listing & config', () => {
     const { agents } = await res.json()
     const ids = agents.map((a: any) => a.id)
     expect(ids).toContain('universal-agent')
-    expect(ids).toContain('kb-agent')
     expect(ids).toContain('qa-cli-agent')
     expect(ids).toContain('supervisor-agent')
     expect(ids).toContain('report-agent')
