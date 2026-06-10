@@ -448,7 +448,11 @@ export function SopsTab({ solutionTypes, sops, isLoading, error, fetchSops, crea
         if (solutionFilter !== 'all') {
             result = result.filter(s => {
                 const sol = s.targetSolution ?? 'universal'
-                return sol === solutionFilter || sol === 'universal'
+                // Only show exact match or universal when explicitly selected
+                if (solutionFilter === 'universal') {
+                    return sol === 'universal'
+                }
+                return sol === solutionFilter
             })
         }
         if (!searchTerm.trim()) return result
@@ -527,6 +531,27 @@ export function SopsTab({ solutionTypes, sops, isLoading, error, fetchSops, crea
                                     <h3 className="empty-state-title">{t('remoteDiagnosis.sops.noSops')}</h3>
                                     <p className="empty-state-description">
                                         {t('remoteDiagnosis.sops.noSopsHint')}
+                                    </p>
+                                </div>
+                            </div>
+                        )
+                    }
+                    if (filteredSops.length === 0) {
+                        return (
+                            <div className="sop-workflow-empty-shell">
+                                <div className="empty-state">
+                                    <svg
+                                        className="empty-state-icon"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                    >
+                                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    <h3 className="empty-state-title">{t('hostResource.noMatchingSops')}</h3>
+                                    <p className="empty-state-description">
+                                        {t('hostResource.noMatchingSopsHint')}
                                     </p>
                                 </div>
                             </div>

@@ -17,6 +17,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -38,6 +40,7 @@ public class SolutionTypeServiceTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private SolutionTypeService solutionTypeService;
+    private GatewayProperties properties;
 
     private Path solutionTypesDir;
 
@@ -48,7 +51,7 @@ public class SolutionTypeServiceTest {
      */
     @Before
     public void setUp() throws IOException {
-        GatewayProperties properties = new GatewayProperties();
+        properties = new GatewayProperties();
         GatewayProperties.Paths paths = new GatewayProperties.Paths();
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
@@ -93,35 +96,12 @@ public class SolutionTypeServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testListSolutionTypes_skipsCorruptFile() throws IOException {
+    public void testListSolutionTypes_skipsCorruptFile() throws Exception {
         createSolutionType("st-1", "CRM Commerce", "CRM solution");
         Files.writeString(solutionTypesDir.resolve("bad.json"), "not valid json {}", StandardCharsets.UTF_8);
 
         List<Map<String, Object>> types = solutionTypeService.listSolutionTypes();
         assertEquals(1, types.size());
-    }
-
-    // ── getSolutionType ────────────────────────────────────────────
-
-    /**
-     * Tests get solution type existing.
-     */
-    @Test
-    public void testGetSolutionType_existing() throws Exception {
-        createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
-
-        Map<String, Object> st = solutionTypeService.getSolutionType("st-1");
-        assertNotNull(st);
-        assertEquals("CRM Commerce", st.get("name"));
-        assertEquals("CRM billing solution", st.get("description"));
-    }
-
-    /**
-     * Tests get solution type not found.
-     */
-    @Test(expected = NotFoundException.class)
-    public void testGetSolutionType_notFound() throws Exception {
-        solutionTypeService.getSolutionType("nonexistent");
     }
 
     /**
@@ -133,12 +113,12 @@ public class SolutionTypeServiceTest {
     }
 
     /**
-     * Tests validate solution type reference returns existing id.
+     * Tests validate solution type reference returns existing code.
      */
     @Test
-    public void testValidateSolutionTypeReference_existing_returnsId() {
+    public void testValidateSolutionTypeReference_existing_returnsCode() throws Exception {
         createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
-        assertEquals("st-1", solutionTypeService.validateSolutionTypeReference("st-1"));
+        assertEquals("CRM_COMMERCE", solutionTypeService.validateSolutionTypeReference("CRM_COMMERCE"));
     }
 
     /**
@@ -683,12 +663,235 @@ public class SolutionTypeServiceTest {
      * @throws IOException if the operation fails
      */
     @Test
-    public void testDeleteSolutionType_fileRemoved() throws IOException {
+    public void testDeleteSolutionType_fileRemoved() throws Exception {
         createSolutionType("st-del", "ToDelete", "desc");
         assertTrue(Files.exists(solutionTypesDir.resolve("st-del.json")));
 
         solutionTypeService.deleteSolutionType("st-del");
         assertFalse(Files.exists(solutionTypesDir.resolve("st-del.json")));
+    }
+
+    /**
+     * Tests delete solution type in use by SOP throws exception.
+     */
+    @Test
+    public void testDeleteSolutionType_inUseBySop_throwsException() throws Exception {
+        createSolutionType("st-used", "UsedSolution", "Used for testing");
+        String code = "USEDSOLUTION";
+
+        // Create an SOP that references this solution type
+        Path sopsDir = properties.getGatewayRootPath().resolve("data").resolve("sops");
+        Files.createDirectories(sopsDir);
+        Map<String, Object> sop = new LinkedHashMap<>();
+        sop.put("id", "sop-1");
+        sop.put("name", "TestSOP");
+        sop.put("description", "Test SOP");
+        sop.put("version", "1.0");
+        sop.put("triggerCondition", "");
+        sop.put("enabled", true);
+        sop.put("stepsDescription", "");
+        sop.put("targetSolution", code);
+        sop.put("requiredTools", List.of());
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(sop);
+        Files.writeString(sopsDir.resolve("sop-1.json"), json, StandardCharsets.UTF_8);
+
+        try {
+            solutionTypeService.deleteSolutionType("st-used");
+            fail("Expected ConflictException");
+        } catch (ConflictException e) {
+            assertTrue(e.getMessage().contains("is in use"));
+            assertTrue(e.getMessage().contains("TestSOP"));
+        }
+    }
+
+    /**
+     * Tests delete solution type in use by cluster type throws exception.
+     */
+    @Test
+    public void testDeleteSolutionType_inUseByClusterType_throwsException() throws Exception {
+        createSolutionType("st-used-ct", "UsedSolutionCT", "Used for testing");
+        String code = "USEDSOLUTIONCT";
+
+        // Create a cluster type that references this solution type
+        Path clusterTypesDir = properties.getGatewayRootPath().resolve("data").resolve("cluster-types");
+        Files.createDirectories(clusterTypesDir);
+        Map<String, Object> ct = new LinkedHashMap<>();
+        ct.put("id", "ct-1");
+        ct.put("name", "TestCluster");
+        ct.put("code", "TEST_CLUSTER");
+        ct.put("description", "Test cluster");
+        ct.put("color", "#10b981");
+        ct.put("knowledge", "");
+        ct.put("commandPrefix", "");
+        ct.put("envVariables", List.of());
+        ct.put("mode", "peer");
+        ct.put("solutionType", code);
+        ct.put("createdAt", "2026-05-30T00:00:00Z");
+        ct.put("updatedAt", "2026-05-30T00:00:00Z");
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(ct);
+        Files.writeString(clusterTypesDir.resolve("ct-1.json"), json, StandardCharsets.UTF_8);
+
+        try {
+            solutionTypeService.deleteSolutionType("st-used-ct");
+            fail("Expected ConflictException");
+        } catch (ConflictException e) {
+            assertTrue(e.getMessage().contains("is in use"));
+            assertTrue(e.getMessage().contains("TestCluster"));
+        }
+    }
+
+    /**
+     * Tests delete solution type in use by both SOP and cluster type throws exception with both details.
+     */
+    @Test
+    public void testDeleteSolutionType_inUseByBoth_throwsExceptionWithBothDetails() throws Exception {
+        createSolutionType("st-used-both", "UsedSolutionBoth", "Used for testing");
+        String code = "USEDSOLUTIONBOTH";
+
+        // Create an SOP that references this solution type
+        Path sopsDir = properties.getGatewayRootPath().resolve("data").resolve("sops");
+        Files.createDirectories(sopsDir);
+        Map<String, Object> sop = new LinkedHashMap<>();
+        sop.put("id", "sop-1");
+        sop.put("name", "TestSOP");
+        sop.put("description", "Test SOP");
+        sop.put("version", "1.0");
+        sop.put("triggerCondition", "");
+        sop.put("enabled", true);
+        sop.put("stepsDescription", "");
+        sop.put("targetSolution", code);
+        sop.put("requiredTools", List.of());
+        String sopJson = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(sop);
+        Files.writeString(sopsDir.resolve("sop-1.json"), sopJson, StandardCharsets.UTF_8);
+
+        // Create a cluster type that references this solution type
+        Path clusterTypesDir = properties.getGatewayRootPath().resolve("data").resolve("cluster-types");
+        Files.createDirectories(clusterTypesDir);
+        Map<String, Object> ct = new LinkedHashMap<>();
+        ct.put("id", "ct-1");
+        ct.put("name", "TestCluster");
+        ct.put("code", "TEST_CLUSTER");
+        ct.put("description", "Test cluster");
+        ct.put("color", "#10b981");
+        ct.put("knowledge", "");
+        ct.put("commandPrefix", "");
+        ct.put("envVariables", List.of());
+        ct.put("mode", "peer");
+        ct.put("solutionType", code);
+        ct.put("createdAt", "2026-05-30T00:00:00Z");
+        ct.put("updatedAt", "2026-05-30T00:00:00Z");
+        String ctJson = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(ct);
+        Files.writeString(clusterTypesDir.resolve("ct-1.json"), ctJson, StandardCharsets.UTF_8);
+
+        try {
+            solutionTypeService.deleteSolutionType("st-used-both");
+            fail("Expected ConflictException");
+        } catch (ConflictException e) {
+            assertTrue(e.getMessage().contains("is in use"));
+            assertTrue(e.getMessage().contains("TestSOP"));
+            assertTrue(e.getMessage().contains("TestCluster"));
+        }
+    }
+
+    /**
+     * Tests get solution type by code existing.
+     */
+    @Test
+    public void testGetSolutionTypeByCode_existing() throws Exception {
+        createSolutionType("st-1", "CRM Commerce", "CRM billing solution");
+
+        Map<String, Object> st = solutionTypeService.getSolutionTypeByCode("CRM_COMMERCE");
+        assertNotNull(st);
+        assertEquals("CRM Commerce", st.get("name"));
+        assertEquals("CRM billing solution", st.get("description"));
+    }
+
+    /**
+     * Tests get solution type by code not found.
+     */
+    @Test(expected = NotFoundException.class)
+    public void testGetSolutionTypeByCode_notFound() throws Exception {
+        solutionTypeService.getSolutionTypeByCode("nonexistent");
+    }
+
+    /**
+     * Tests check solution type usage with SOP.
+     */
+    @Test
+    public void testCheckSolutionTypeUsage_withSop() throws Exception {
+        createSolutionType("st-check", "CheckSolution", "For checking usage");
+        String code = "CHECKSOLUTION";
+
+        // Create an SOP that references this solution type
+        Path sopsDir = properties.getGatewayRootPath().resolve("data").resolve("sops");
+        Files.createDirectories(sopsDir);
+        Map<String, Object> sop = new LinkedHashMap<>();
+        sop.put("id", "sop-1");
+        sop.put("name", "TestSOP");
+        sop.put("description", "Test SOP");
+        sop.put("version", "1.0");
+        sop.put("triggerCondition", "");
+        sop.put("enabled", true);
+        sop.put("stepsDescription", "");
+        sop.put("targetSolution", code);
+        sop.put("requiredTools", List.of());
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(sop);
+        Files.writeString(sopsDir.resolve("sop-1.json"), json, StandardCharsets.UTF_8);
+
+        Map<String, List<String>> usage = solutionTypeService.checkSolutionTypeUsage(code);
+        assertTrue(usage.containsKey("sops"));
+        assertEquals(1, usage.get("sops").size());
+        assertEquals("TestSOP", usage.get("sops").get(0));
+    }
+
+    /**
+     * Tests check solution type usage with cluster type.
+     */
+    @Test
+    public void testCheckSolutionTypeUsage_withClusterType() throws Exception {
+        createSolutionType("st-check-ct", "CheckSolutionCT", "For checking usage");
+        String code = "CHECKSOLUTIONCT";
+
+        // Create a cluster type that references this solution type
+        Path clusterTypesDir = properties.getGatewayRootPath().resolve("data").resolve("cluster-types");
+        Files.createDirectories(clusterTypesDir);
+        Map<String, Object> ct = new LinkedHashMap<>();
+        ct.put("id", "ct-1");
+        ct.put("name", "TestCluster");
+        ct.put("code", "TEST_CLUSTER");
+        ct.put("description", "Test cluster");
+        ct.put("color", "#10b981");
+        ct.put("knowledge", "");
+        ct.put("commandPrefix", "");
+        ct.put("envVariables", List.of());
+        ct.put("mode", "peer");
+        ct.put("solutionType", code);
+        ct.put("createdAt", "2026-05-30T00:00:00Z");
+        ct.put("updatedAt", "2026-05-30T00:00:00Z");
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+            .writeValueAsString(ct);
+        Files.writeString(clusterTypesDir.resolve("ct-1.json"), json, StandardCharsets.UTF_8);
+
+        Map<String, List<String>> usage = solutionTypeService.checkSolutionTypeUsage(code);
+        assertTrue(usage.containsKey("clusterTypes"));
+        assertEquals(1, usage.get("clusterTypes").size());
+        assertEquals("TestCluster", usage.get("clusterTypes").get(0));
+    }
+
+    /**
+     * Tests check solution type usage empty when not in use.
+     */
+    @Test
+    public void testCheckSolutionTypeUsage_emptyWhenNotInUse() throws Exception {
+        createSolutionType("st-unused", "UnusedSolution", "Not used by anything");
+
+        Map<String, List<String>> usage = solutionTypeService.checkSolutionTypeUsage("UNUSEDSOLUTION");
+        assertTrue(usage.isEmpty());
     }
 
     // ── Helpers ──────────────────────────────────────────────────
@@ -701,11 +904,11 @@ public class SolutionTypeServiceTest {
      * @param name the solution type name
      * @param description the solution type description
      */
-    private void createSolutionType(String id, String name, String description) {
+    private void createSolutionType(String id, String name, String description) throws ConflictException {
         Map<String, Object> st = new LinkedHashMap<>();
         st.put("id", id);
         st.put("name", name);
-        st.put("code", "");
+        st.put("code", name.toUpperCase(Locale.ROOT).replaceAll(" ", "_"));
         st.put("description", description);
         st.put("color", "#8b5cf6");
         st.put("knowledge", "");
@@ -718,7 +921,7 @@ public class SolutionTypeServiceTest {
                 .writeValueAsString(st);
             Files.writeString(file, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new ConflictException("Failed to create test file", e);
         }
     }
 }

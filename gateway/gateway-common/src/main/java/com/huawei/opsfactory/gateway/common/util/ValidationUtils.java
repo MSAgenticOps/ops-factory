@@ -106,6 +106,30 @@ public final class ValidationUtils {
     }
 
     /**
+     * Checks if the given string contains XSS-sensitive characters.
+     *
+     * @param value string to check
+     * @return true if the string contains XSS characters, false otherwise
+     */
+    public static boolean hasXssChars(String value) {
+        return value != null && !value.isEmpty() && XSS_PATTERN.matcher(value).find();
+    }
+
+    // Pattern that excludes '/' from the blacklist
+    private static final Pattern DANGEROUS_CHARS_PATTERN = Pattern.compile("[<>\"'&`]");
+
+    /**
+     * Checks if the given string contains dangerous characters for environment variable values.
+     * This is more permissive than hasXssChars as it allows '/' which is common in paths and URLs.
+     *
+     * @param value string to check
+     * @return true if the string contains dangerous characters, false otherwise
+     */
+    public static boolean hasDangerousChars(String value) {
+        return value != null && !value.isEmpty() && DANGEROUS_CHARS_PATTERN.matcher(value).find();
+    }
+
+    /**
      * Validates a string field from a request body map.
      * Performs null-safety, non-blank check (if required), XSS check, and max-length check.
      *

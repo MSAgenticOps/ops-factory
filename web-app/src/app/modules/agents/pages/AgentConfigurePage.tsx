@@ -184,7 +184,7 @@ export default function AgentConfigure() {
     ]
     const mineTabs: { key: ConfigTab; label: string }[] = [
         { key: 'memory', label: t('configTabs.memory') },
-        { key: 'schedules', label: t('configTabs.schedules') },
+        // { key: 'schedules', label: t('configTabs.schedules') }, // 屏蔽定时任务页签
     ]
 
     const renderTab = (tab: { key: ConfigTab; label: string }) => (

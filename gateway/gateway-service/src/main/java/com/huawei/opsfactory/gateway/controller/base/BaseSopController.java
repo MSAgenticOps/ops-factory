@@ -30,7 +30,7 @@ import java.util.Map;
  * @since 2026-06-06
  */
 public abstract class BaseSopController {
-    protected static final Logger log = LoggerFactory.getLogger(BaseSopController.class);
+    private static final Logger log = LoggerFactory.getLogger(BaseSopController.class);
 
     protected final SopService sopService;
 

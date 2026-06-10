@@ -118,8 +118,15 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testAddCommand_multiple() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "cmd1", "enabled", true));
-        whitelistService.addCommand(Map.of("pattern", "cmd2", "enabled", true));
+        Map<String, Object> cmd1 = new LinkedHashMap<>();
+        cmd1.put("pattern", "cmd1");
+        cmd1.put("enabled", true);
+        whitelistService.addCommand(cmd1);
+
+        Map<String, Object> cmd2 = new LinkedHashMap<>();
+        cmd2.put("pattern", "cmd2");
+        cmd2.put("enabled", true);
+        whitelistService.addCommand(cmd2);
 
         Map<String, Object> whitelist = whitelistService.getWhitelist();
         @SuppressWarnings("unchecked")
@@ -273,7 +280,9 @@ public class CommandWhitelistServiceTest {
     @Test
     public void testValidateCommand_disabledCommand() throws Exception {
         // Disable 'ps' first
-        whitelistService.updateCommand("ps", Map.of("enabled", false));
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("enabled", false);
+        whitelistService.updateCommand("ps", updates);
 
         List<String> rejected = whitelistService.validateCommand("ps -ef");
         assertEquals(1, rejected.size());
@@ -432,7 +441,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_simpleWithAbsolutePath() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("/home/nslb");
         assertTrue(rejected.isEmpty());
     }
@@ -442,7 +456,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_simpleWithAbsolutePathAndArgs() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("/home/nslb list -v");
         assertTrue(rejected.isEmpty());
     }
@@ -452,7 +471,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_simpleWithRelativePath() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("./nslb collect");
         assertTrue(rejected.isEmpty());
     }
@@ -462,7 +486,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_exactMatch() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("nslb list");
         assertTrue(rejected.isEmpty());
     }
@@ -472,7 +501,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_withExtraArgs() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("nslb list -v");
         assertTrue(rejected.isEmpty());
     }
@@ -482,7 +516,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_differentArgs_rejected() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("nslb collect");
         assertEquals(1, rejected.size());
         assertEquals("nslb", rejected.get(0));
@@ -493,7 +532,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_wordBoundary_rejected() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("nslb listx");
         assertEquals(1, rejected.size());
         assertEquals("nslb", rejected.get(0));
@@ -504,7 +548,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_withPath() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("/home/nslb list");
         assertTrue(rejected.isEmpty());
     }
@@ -514,7 +563,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_withPathDifferentArgs_rejected() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         List<String> rejected = whitelistService.validateCommand("/home/nslb collect");
         assertEquals(1, rejected.size());
         assertEquals("/home/nslb", rejected.get(0));
@@ -525,8 +579,18 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_simpleAndPrefixCoexist() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "medium"));
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd1 = new LinkedHashMap<>();
+        cmd1.put("pattern", "nslb");
+        cmd1.put("enabled", true);
+        cmd1.put("riskLevel", "medium");
+        whitelistService.addCommand(cmd1);
+
+        Map<String, Object> cmd2 = new LinkedHashMap<>();
+        cmd2.put("pattern", "nslb list");
+        cmd2.put("enabled", true);
+        cmd2.put("riskLevel", "low");
+        whitelistService.addCommand(cmd2);
+
         // nslb collect matches the simple pattern "nslb"
         List<String> rejected = whitelistService.validateCommand("nslb collect");
         assertTrue(rejected.isEmpty());
@@ -537,7 +601,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testPrefixMode_onlyPrefix_noSimple() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         // nslb collect does NOT match prefix pattern "nslb list"
         List<String> rejected = whitelistService.validateCommand("nslb collect");
         assertEquals(1, rejected.size());
@@ -550,7 +619,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testGetRiskLevel_prefixModeLow() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         assertEquals("low", whitelistService.getRiskLevel("nslb list"));
     }
 
@@ -559,7 +633,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testGetRiskLevel_prefixModeNoMatch() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         assertEquals("high", whitelistService.getRiskLevel("nslb collect"));
     }
 
@@ -569,8 +648,18 @@ public class CommandWhitelistServiceTest {
     @Test
     public void testGetRiskLevel_longerPatternWins() throws Exception {
         // When both "nslb"(medium) and "nslb list"(low) match, the longer pattern wins → low
-        whitelistService.addCommand(Map.of("pattern", "nslb", "enabled", true, "riskLevel", "medium"));
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd1 = new LinkedHashMap<>();
+        cmd1.put("pattern", "nslb");
+        cmd1.put("enabled", true);
+        cmd1.put("riskLevel", "medium");
+        whitelistService.addCommand(cmd1);
+
+        Map<String, Object> cmd2 = new LinkedHashMap<>();
+        cmd2.put("pattern", "nslb list");
+        cmd2.put("enabled", true);
+        cmd2.put("riskLevel", "low");
+        whitelistService.addCommand(cmd2);
+
         assertEquals("low", whitelistService.getRiskLevel("nslb list"));
     }
 
@@ -579,7 +668,12 @@ public class CommandWhitelistServiceTest {
      */
     @Test
     public void testGetRiskLevel_prefixModeWithPath() throws Exception {
-        whitelistService.addCommand(Map.of("pattern", "nslb list", "enabled", true, "riskLevel", "low"));
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("pattern", "nslb list");
+        cmd.put("enabled", true);
+        cmd.put("riskLevel", "low");
+        whitelistService.addCommand(cmd);
+
         assertEquals("low", whitelistService.getRiskLevel("/home/nslb list"));
     }
 }

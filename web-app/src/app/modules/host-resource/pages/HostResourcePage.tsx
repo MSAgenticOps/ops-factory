@@ -615,7 +615,20 @@ export default function HostResourcePage() {
     const safePage = Math.min(currentPage, totalPages)
     const paginatedHosts = filteredHosts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
-    const handleExport = useCallback(() => {
+    const handleExport = useCallback(async () => {
+        // 导出前主动刷新所有数据，确保包含刚新建/修改的数据
+        await Promise.all([
+            fetchGroups(),
+            fetchAllClusters(),
+            fetchAllHosts(),
+            fetchHostRelations(),
+            fetchBusinessServices(),
+            clusterTypesHook.fetchClusterTypes(),
+            businessTypesHook.fetchBusinessTypes(),
+            solutionTypesHook.fetchSolutionTypes(),
+            fetchWhitelistCommands(),
+            sopsHook.fetchSops(),
+        ])
         exportAllAsZip({
             groups, clusters, allHosts, hostRelations,
             businessServices,
@@ -625,7 +638,7 @@ export default function HostResourcePage() {
             whitelistCommands,
             sops: sopsHook.sops,
         }, t)
-    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook.clusterTypes, businessTypesHook.businessTypes, solutionTypesHook.solutionTypes, whitelistCommands, sopsHook.sops, t])
+    }, [exportAllAsZip, groups, clusters, allHosts, hostRelations, businessServices, clusterTypesHook, businessTypesHook, solutionTypesHook, whitelistCommands, sopsHook, t, fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchWhitelistCommands])
 
     const openCreateModal = useCallback(() => {
         setEditingItem(null)

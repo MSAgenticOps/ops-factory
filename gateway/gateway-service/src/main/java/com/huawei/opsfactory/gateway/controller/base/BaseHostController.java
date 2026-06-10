@@ -42,7 +42,7 @@ import java.util.Set;
  * @since 2026-06-06
  */
 public abstract class BaseHostController {
-    protected static final Logger log = LoggerFactory.getLogger(BaseHostController.class);
+    private static final Logger log = LoggerFactory.getLogger(BaseHostController.class);
 
     protected final HostService hostService;
     protected final ClusterService clusterService;

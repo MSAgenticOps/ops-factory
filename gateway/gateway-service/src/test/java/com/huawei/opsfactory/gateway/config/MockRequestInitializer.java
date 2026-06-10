@@ -8,15 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.test.context.ContextConfiguration;
 
 /**
  * Application context initializer that registers mock HttpServletRequest for tests.
- *
- * To use in a test class:
- * <pre>
- * @ContextConfiguration(initializers = MockRequestInitializer.class)
- * </pre>
  *
  * @since 2026-06-08
  */

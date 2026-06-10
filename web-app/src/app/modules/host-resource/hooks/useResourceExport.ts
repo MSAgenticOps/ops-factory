@@ -44,6 +44,7 @@ export function useResourceExport() {
                 description: ct.description || '',
                 typeColor: ct.color || '',
                 knowledge: ct.knowledge || '',
+                solutionType: ct.solutionType || 'universal',
                 clusterMode: (() => {
                     if (ct.mode === 'peer') return 'Peer'
                     if (ct.mode === 'primary-backup') return 'Primary-Backup'
@@ -126,7 +127,6 @@ export function useResourceExport() {
                     if (h.role === 'backup') return 'backup'
                     return ''
                 })(),
-                tags: Array.isArray(h.tags) ? h.tags.join(';') : '',
                 description: h.description || '',
                 customAttributes: Array.isArray(h.customAttributes) ? h.customAttributes.map(a => `${a.key}=${a.value}`).join(';') : '',
             }))

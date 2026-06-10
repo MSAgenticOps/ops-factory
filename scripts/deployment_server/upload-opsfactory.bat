@@ -43,6 +43,8 @@ set "OI_CONFIG_SRC=C:\zhulin\ops-factory\operation-intelligence\config.yaml.exam
 set "CC_CONFIG_SRC=C:\zhulin\ops-factory\control-center\config.yaml.example"
 set "KS_CONFIG_SRC=C:\zhulin\ops-factory\knowledge-service\config.yaml.example"
 set "SM_CONFIG_SRC=C:\zhulin\ops-factory\skill-market\config.yaml.example"
+set "BI_CONFIG_SRC=C:\zhulin\ops-factory\business-intelligence\config.yaml.example"
+set "FINOPS_CONFIG_SRC=C:\zhulin\ops-factory\finops\config.yaml.example"
 
 echo Configuration:
 echo   User: %USER%
@@ -392,6 +394,24 @@ if !SUCCESS_COUNT! gtr 0 (
             echo   SM config uploaded as sm-config.yaml.example: SUCCESS
         ) else (
             echo   SM config upload: FAILED
+        )
+    )
+    echo Uploading BI config as bi-config.yaml.example...
+    if exist "%BI_CONFIG_SRC%" (
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%BI_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%bi-config.yaml.example
+        if !errorlevel! equ 0 (
+            echo   BI config uploaded as bi-config.yaml.example: SUCCESS
+        ) else (
+            echo   BI config upload: FAILED
+        )
+    )
+    echo Uploading FinOps config as finops-config.yaml.example...
+    if exist "%FINOPS_CONFIG_SRC%" (
+        "%PSCP_PATH%" -pw %PASSWORD% -batch -P 22 "%FINOPS_CONFIG_SRC%" %USER%@%HOST%:%REMOTE_PATH%finops-config.yaml.example
+        if !errorlevel! equ 0 (
+            echo   FinOps config uploaded as finops-config.yaml.example: SUCCESS
+        ) else (
+            echo   FinOps config upload: FAILED
         )
     )
     echo Attempting to execute remote script: /home/paas/gateway/handle_ops_app.sh
