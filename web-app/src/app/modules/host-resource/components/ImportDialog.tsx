@@ -414,6 +414,8 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorBusinessServiceCodeRequired')
             case 'import.businessServiceGroupRequired':
                 return t('hostResource.importErrorBusinessServiceGroupRequired')
+            case 'import.clusterRequired':
+                return t('hostResource.importErrorClusterRequired')
             case 'import.businessServicePriorityInvalid':
                 return t('hostResource.importErrorBusinessServicePriorityInvalid', { priority: err.params?.priority })
             case 'import.sopNameRequired':

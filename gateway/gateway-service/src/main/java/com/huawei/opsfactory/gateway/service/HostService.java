@@ -281,6 +281,23 @@ public class HostService {
     }
 
     /**
+     * Validates that the clusterId exists.
+     *
+     * @param clusterId the cluster ID to validate
+     * @throws BadRequestException if cluster does not exist
+     */
+    private void validateClusterExistence(String clusterId) throws BadRequestException {
+        if (clusterId == null || clusterId.trim().isEmpty()) {
+            throw new BadRequestException("Cluster ID is required");
+        }
+        try {
+            clusterService.getCluster(clusterId);
+        } catch (NotFoundException e) {
+            throw new BadRequestException("Cluster not found: " + clusterId);
+        }
+    }
+
+    /**
      * Validates common host fields (hostname, os, location, purpose, business, description).
      * Performs XSS checks and max length validation for each field to match frontend validation.
      *
@@ -570,6 +587,8 @@ public class HostService {
         ensureUniqueHostName(name, null);
 
         ValidationUtils.requireNonBlank(body, "ip", "Host IP is required");
+        String clusterId = ValidationUtils.requireNonBlank(body, "clusterId", "Cluster ID is required");
+        validateClusterExistence(clusterId);
         validateHostCommonFields(body);
         validateHostCredentials(body, null);
         validateHostCustomAttributes(body);
@@ -623,10 +642,13 @@ public class HostService {
         applyEncryptedCredential(host, body, id);
         validateHostIpFields(host);
 
+        // Validate clusterId exists (required)
+        Object clusterIdObj = host.get("clusterId");
+        validateClusterExistence(clusterIdObj != null ? clusterIdObj.toString() : null);
+
         Object ipObj = host.get("ip");
         if (ipObj != null && !ipObj.toString().isEmpty()) {
             String ip = ipObj.toString().trim();
-            Object clusterIdObj = host.get("clusterId");
             if (clusterIdObj != null && !clusterIdObj.toString().isEmpty()) {
                 checkHostIpDuplicate(id, ip, clusterIdObj.toString());
             }

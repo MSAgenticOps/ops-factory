@@ -481,6 +481,7 @@ export default function ResourceFormModal({
                 if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
 
                 if (!nameResult.sanitized || !hostIp.trim()) { setError(t('hostResource.nameAndIpRequired')); setSaving(false); return }
+                if (!hostClusterId.trim()) { setError(t('hostResource.clusterRequired')); setSaving(false); return }
                 if (!isValidIp(hostIp)) { setError(t('hostResource.ipInvalid')); setSaving(false); return }
                 if (hostBusinessIp.trim() && !isValidIp(hostBusinessIp)) { setError(t('hostResource.businessIpInvalid')); setSaving(false); return }
                 if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
@@ -1046,7 +1047,7 @@ export default function ResourceFormModal({
                                     <h4 className="hr-section-label">{t('hostResource.businessInfo')}</h4>
                                     <div className="hr-form-row">
                                         <div className="form-group">
-                                            <label className="form-label">{t('hostResource.cluster')}</label>
+                                            <label className="form-label">{t('hostResource.cluster')}{requiredStar}</label>
                                             <SearchableSelect
                                                 value={hostClusterId}
                                                 onChange={(id) => {

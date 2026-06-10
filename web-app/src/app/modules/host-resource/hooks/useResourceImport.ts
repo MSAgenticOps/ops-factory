@@ -685,10 +685,15 @@ export function useResourceImport(deps: ImportDeps) {
                                     errors.push({ row: i + 2, code: 'import.duplicate', params: { type: 'Host', name: hostName } })
                                     continue
                                 }
+                                // Validate cluster is required
+                                if (!row.cluster || !row.cluster.trim()) {
+                                    errors.push({ row: i + 2, code: 'import.clusterRequired' })
+                                    continue
+                                }
                                 const clusterId = row.cluster
                                     ? clusterNameToId.get(row.cluster)
                                     : undefined
-                                if (!clusterId && row.cluster) {
+                                if (!clusterId) {
                                     errors.push({ row: i + 2, code: 'import.clusterNotFound', params: { cluster: row.cluster } })
                                     continue
                                 }
