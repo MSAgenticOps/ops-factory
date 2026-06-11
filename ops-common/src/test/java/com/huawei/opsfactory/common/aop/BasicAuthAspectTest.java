@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.common.aop;
 
+import com.huawei.opsfactory.common.config.CommonProperties;
 import com.huawei.opsfactory.common.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.servicecomb.swagger.invocation.context.InvocationContext;
@@ -17,7 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.nio.charset.StandardCharsets;
 
@@ -32,10 +34,14 @@ import static org.mockito.Mockito.when;
  * @since 2026-06-06
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class BasicAuthAspectTest {
 
     @Mock
     private HttpServletRequest request;
+
+    @Mock
+    private CommonProperties commonProperties;
 
     @Mock
     private ProceedingJoinPoint proceedingJoinPoint;
@@ -51,10 +57,9 @@ class BasicAuthAspectTest {
      */
     @BeforeEach
     void setUp() throws Throwable {
-        aspect = new BasicAuthAspect(request);
-        // Set test configuration values
-        ReflectionTestUtils.setField(aspect, "configUserName", "testUser");
-        ReflectionTestUtils.setField(aspect, "configPassword", "testPass");
+        when(commonProperties.getUserName()).thenReturn("testUser");
+        when(commonProperties.getPassword()).thenReturn("testPass");
+        aspect = new BasicAuthAspect(request, commonProperties);
         contextUtilsMock = mockStatic(ContextUtils.class);
 
         // Configure proceedingJoinPoint mock
@@ -73,6 +78,8 @@ class BasicAuthAspectTest {
 
     /**
      * Test successful authentication via request header.
+     *
+     * @throws Throwable if an error occurs during test execution
      */
     @Test
     void testBasicAuthSuccessViaHeader() throws Throwable {
@@ -89,6 +96,8 @@ class BasicAuthAspectTest {
 
     /**
      * Test successful authentication via invocation context.
+     *
+     * @throws Throwable if an error occurs during test execution
      */
     @Test
     void testBasicAuthSuccessViaContext() throws Throwable {
@@ -128,8 +137,8 @@ class BasicAuthAspectTest {
      */
     @Test
     void testBasicAuthFailureEmptyConfiguration() {
-        ReflectionTestUtils.setField(aspect, "configUserName", "");
-        ReflectionTestUtils.setField(aspect, "configPassword", "testPass");
+        when(commonProperties.getUserName()).thenReturn("");
+        when(commonProperties.getPassword()).thenReturn("testPass");
 
         String credentials = "testUser:testPass";
         String base64Credentials = java.util.Base64.getEncoder().encodeToString(
