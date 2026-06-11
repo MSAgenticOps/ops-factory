@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
-import { FileDown, Network, Radar, RefreshCw, Save, Search, Trash2, Upload } from '../../../platform/ui/icons/AppIcons'
+import { CornerDownRight, CornerUpRight, Network, Radar, RefreshCw, Save, Search, Trash2 } from '../../../platform/ui/icons/AppIcons'
 import { useTranslation } from 'react-i18next'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import SectionCard from '../../../platform/ui/primitives/SectionCard'
@@ -2551,14 +2551,14 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                     <div className="kg-tab-page">
                         <div className="kg-tab-actions kg-ontology-actions">
                             <Button
-                                leadingIcon={<Upload size={16} />}
+                                leadingIcon={<CornerDownRight size={16} />}
                                 onClick={() => ontologyFileInputRef.current?.click()}
                                 disabled={loading}
                             >
                                 {t('operationIntelligence.knowledgeGraph.importOntology')}
                             </Button>
                             <Button
-                                leadingIcon={<FileDown size={16} />}
+                                leadingIcon={<CornerUpRight size={16} />}
                                 onClick={handleExportOntology}
                                 disabled={loading}
                             >
@@ -2748,14 +2748,14 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                     </select>
                                 </label>
                                 <Button
-                                    leadingIcon={<Upload size={16} />}
+                                    leadingIcon={<CornerDownRight size={16} />}
                                     onClick={() => entitiesFileInputRef.current?.click()}
                                     disabled={loading}
                                 >
                                     {t('operationIntelligence.knowledgeGraph.importEntities')}
                                 </Button>
                                 <Button
-                                    leadingIcon={<FileDown size={16} />}
+                                    leadingIcon={<CornerUpRight size={16} />}
                                     onClick={handleExportEntities}
                                     disabled={loading}
                                 >

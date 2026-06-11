@@ -28,6 +28,13 @@ class FlywayMigrationResourceTest {
     }
 
     @Test
+    void shouldShipSourceNameUniqueIndexMigration() {
+        ClassPathResource migration = new ClassPathResource("db/migration/common/V6__add_source_name_unique_index.sql");
+
+        assertThat(migration.exists()).isTrue();
+    }
+
+    @Test
     void shouldShipAllJavaMigrationClassesOnClasspath() {
         assertThat(classExists("db.migration.common.V2__add_source_runtime_columns")).isTrue();
         assertThat(classExists("db.migration.common.V3__add_job_progress_columns")).isTrue();
