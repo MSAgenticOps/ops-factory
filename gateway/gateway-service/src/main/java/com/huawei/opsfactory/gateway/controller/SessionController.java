@@ -12,7 +12,6 @@ import com.huawei.opsfactory.gateway.filter.UserContextFilter;
 import com.huawei.opsfactory.gateway.process.InstanceManager;
 import com.huawei.opsfactory.gateway.proxy.GoosedProxy;
 import com.huawei.opsfactory.gateway.service.AgentConfigService;
-import com.huawei.opsfactory.gateway.service.PersistedSessionReader;
 import com.huawei.opsfactory.gateway.service.SessionCacheService;
 import com.huawei.opsfactory.gateway.service.SessionService;
 import com.huawei.opsfactory.gateway.service.a2a.A2ASessionRecord;
@@ -86,8 +85,6 @@ public class SessionController {
 
     private final A2ASessionStore a2aSessionStore;
 
-    private final PersistedSessionReader persistedSessionReader;
-
     /**
      * Creates the session controller instance.
      *
@@ -97,18 +94,16 @@ public class SessionController {
      * @param agentConfigService agent configuration and directory resolver
      * @param sessionCacheService in-memory session list cache
      * @param a2aSessionStore A2A sub-session side-record store (agent_call classification + offline listing)
-     * @param persistedSessionReader reads persisted goosed session metadata from local stores
      */
     public SessionController(InstanceManager instanceManager, SessionService sessionService, GoosedProxy goosedProxy,
         AgentConfigService agentConfigService, SessionCacheService sessionCacheService,
-        A2ASessionStore a2aSessionStore, PersistedSessionReader persistedSessionReader) {
+        A2ASessionStore a2aSessionStore) {
         this.instanceManager = instanceManager;
         this.sessionService = sessionService;
         this.goosedProxy = goosedProxy;
         this.agentConfigService = agentConfigService;
         this.sessionCacheService = sessionCacheService;
         this.a2aSessionStore = a2aSessionStore;
-        this.persistedSessionReader = persistedSessionReader;
     }
 
     /**
@@ -236,7 +231,6 @@ public class SessionController {
                 }
             }
         }
-        mergePersistedSessions(userId, parsed);
         // Tag live A2A sub-sessions with origin=a2a and merge in offline (idle-reaped) sub-sessions from the
         // side-record so the "Agent 调用" history stays complete even when the target instance is gone.
         tagAndMergeA2aSessions(userId, parsed);
@@ -254,41 +248,6 @@ public class SessionController {
         List<Map<String, Object>> effective = sessionCacheService.getOrFetch(userId, () -> parsed);
         log.info("[SESSION-LIST] fetched userId={} total={}", userId, effective.size());
         return applyFiltersAndPaginate(effective, safePageIndex, safePageSize, search, agentId, type);
-    }
-
-    private void mergePersistedSessions(String userId, List<Map<String, Object>> parsed) {
-        Set<String> liveKeys = new HashSet<>();
-        for (Map<String, Object> session : parsed) {
-            String key = sessionKey(session);
-            if (key != null) {
-                liveKeys.add(key);
-            }
-        }
-        int added = 0;
-        for (Map<String, Object> session : persistedSessionReader.listUserSessions(userId)) {
-            String key = sessionKey(session);
-            if (key == null || liveKeys.contains(key)) {
-                continue;
-            }
-            parsed.add(session);
-            liveKeys.add(key);
-            added++;
-        }
-        log.debug("[SESSION-LIST] merged persisted sessions userId={} added={}", userId, added);
-    }
-
-    private String sessionKey(Map<String, Object> session) {
-        Object agentId = session.get("agentId");
-        Object sessionId = session.get("id");
-        if (agentId == null || sessionId == null) {
-            return null;
-        }
-        String agent = agentId.toString();
-        String id = sessionId.toString();
-        if (agent.isBlank() || id.isBlank()) {
-            return null;
-        }
-        return agent + ':' + id;
     }
 
     /**

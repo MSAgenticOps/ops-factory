@@ -154,12 +154,6 @@
       <artifactId>context-propagation</artifactId>
       <version>1.1.4</version>
     </dependency>
-    <!-- SQLite driver for reading persisted goosed session metadata. -->
-    <dependency>
-      <groupId>org.xerial</groupId>
-      <artifactId>sqlite-jdbc</artifactId>
-      <version>3.51.1.0</version>
-    </dependency>
     <!-- WebClient for GoosedProxy (client-side reactive support) -->
     <dependency>
       <groupId>org.springframework</groupId>
