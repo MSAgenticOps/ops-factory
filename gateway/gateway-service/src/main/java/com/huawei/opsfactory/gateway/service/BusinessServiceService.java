@@ -10,19 +10,13 @@ import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,14 +37,9 @@ import java.util.stream.Collectors;
  * @since 2026-05-09
  */
 @Service
-public class BusinessServiceService {
-    private static final Logger log = LoggerFactory.getLogger(BusinessServiceService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class BusinessServiceService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
-
-    private Path businessServicesDir;
 
     private ClusterService clusterService;
 
@@ -66,6 +55,7 @@ public class BusinessServiceService {
      * Creates the business service service instance.
      */
     public BusinessServiceService(GatewayProperties properties) {
+        super("business-service");
         this.properties = properties;
     }
 
@@ -129,14 +119,7 @@ public class BusinessServiceService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.businessServicesDir = gatewayRoot.resolve("data").resolve("business-services");
-        try {
-            Files.createDirectories(businessServicesDir);
-        } catch (IOException e) {
-            log.error("Failed to create business-services directory: {}", businessServicesDir, e);
-        }
-        log.info("BusinessServiceService initialized, businessServicesDir={}", businessServicesDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "business-services");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -150,10 +133,10 @@ public class BusinessServiceService {
      */
     public List<Map<String, Object>> listBusinessServices(String groupId, String hostId) {
         List<Map<String, Object>> services = new ArrayList<>();
-        if (!Files.isDirectory(businessServicesDir)) {
+        if (!Files.isDirectory(getDataDir())) {
             return services;
         }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(businessServicesDir, "*.json")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) {
                     continue;
@@ -180,7 +163,7 @@ public class BusinessServiceService {
                 services.add(bs);
             }
         } catch (IOException e) {
-            log.error("Failed to list business-services from {}", businessServicesDir, e);
+            log.error("Failed to list business-services from {}", getDataDir(), e);
         }
         return services;
     }
@@ -192,7 +175,7 @@ public class BusinessServiceService {
      * @return a business service by its ID
      */
     public Map<String, Object> getBusinessService(String id) throws NotFoundException {
-        Path file = businessServicesDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
             throw new NotFoundException("Business service not found");
@@ -267,7 +250,7 @@ public class BusinessServiceService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> updateBusinessService(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
-        Path file = businessServicesDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         Map<String, Object> bs = readFile(file);
         if (bs == null) {
             throw new NotFoundException("Business service not found");
@@ -349,7 +332,7 @@ public class BusinessServiceService {
             clusterRelationService.deleteRelationsByBusinessService(id);
         }
 
-        Path file = businessServicesDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         try {
             if (Files.exists(file)) {
                 Files.delete(file);
@@ -782,7 +765,7 @@ public class BusinessServiceService {
 
     private List<Map<String, Object>> listAllRelations() {
         List<Map<String, Object>> relations = new ArrayList<>();
-        Path relDir = businessServicesDir.getParent().resolve("host-relations");
+        Path relDir = getDataDir().getParent().resolve("host-relations");
         if (!Files.isDirectory(relDir)) {
             return relations;
         }
@@ -819,30 +802,4 @@ public class BusinessServiceService {
         return node;
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read business-service file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(businessServicesDir);
-            Path file = businessServicesDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write business-service file for id={}", id, e);
-            throw new IllegalStateException("Failed to save business service", e);
-        }
-    }
 }

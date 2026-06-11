@@ -10,20 +10,10 @@ import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,18 +30,12 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class HostGroupService {
-    private static final Logger log = LoggerFactory.getLogger(HostGroupService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
+public class HostGroupService extends JsonFileEntityStore {
     private static final String MSG_CODE_REQUIRED = "Environment code is required";
 
     private static final String MSG_CODE_EXISTS = "Environment code already exists";
 
     private final GatewayProperties properties;
-
-    private Path groupsDir;
 
     /**
      * Creates the host group service instance.
@@ -59,6 +43,7 @@ public class HostGroupService {
      * @param properties gateway configuration properties
      */
     public HostGroupService(GatewayProperties properties) {
+        super("host group");
         this.properties = properties;
     }
 
@@ -67,14 +52,7 @@ public class HostGroupService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.groupsDir = gatewayRoot.resolve("data").resolve("host-groups");
-        try {
-            Files.createDirectories(groupsDir);
-        } catch (IOException e) {
-            log.error("Failed to create host-groups directory: {}", groupsDir, e);
-        }
-        log.info("HostGroupService initialized, groupsDir={}", groupsDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "host-groups");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -85,24 +63,7 @@ public class HostGroupService {
      * @return list of all host group maps
      */
     public List<Map<String, Object>> listGroups() {
-        List<Map<String, Object>> groups = new ArrayList<>();
-        if (!Files.isDirectory(groupsDir)) {
-            return groups;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(groupsDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                Map<String, Object> group = readFile(file);
-                if (group != null) {
-                    groups.add(group);
-                }
-            }
-        } catch (IOException e) {
-            log.error("Failed to list groups from {}", groupsDir, e);
-        }
-        return groups;
+        return listEntities();
     }
 
     /**
@@ -112,8 +73,7 @@ public class HostGroupService {
      * @return a host group by its ID
      */
     public Map<String, Object> getGroup(String id) throws NotFoundException {
-        Path file = groupsDir.resolve(id + ".json");
-        Map<String, Object> group = readFile(file);
+        Map<String, Object> group = readFile(resolveEntityFile(id));
         if (group == null) {
             throw new NotFoundException("Host group not found");
         }
@@ -302,8 +262,7 @@ public class HostGroupService {
      */
     public Map<String, Object> updateGroup(String id, Map<String, Object> body)
         throws NotFoundException, BadRequestException, ConflictException {
-        Path file = groupsDir.resolve(id + ".json");
-        Map<String, Object> group = readFile(file);
+        Map<String, Object> group = readFile(resolveEntityFile(id));
         if (group == null) {
             throw new NotFoundException("Host group not found");
         }
@@ -386,18 +345,7 @@ public class HostGroupService {
                 "Cannot delete group with clusters. Remove clusters first.");
         }
 
-        Path file = groupsDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted host group: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete group file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
     /**
@@ -431,21 +379,8 @@ public class HostGroupService {
         }
 
         // 4. Delete the group file itself
-        Path file = groupsDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Force-deleted host group: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to force-delete group file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
-
-    // ── File I/O Helpers ─────────────────────────────────────────────
 
     /**
      * Compute the set of group IDs that are effectively disabled, either directly
@@ -477,41 +412,4 @@ public class HostGroupService {
         return disabled;
     }
 
-    /**
-     * Reads a host group JSON file from disk.
-     *
-     * @param file path to the JSON file
-     * @return the parsed map, or null if the file does not exist or cannot be read
-     */
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read group file: {}", file, e);
-            return null;
-        }
-    }
-
-    /**
-     * Writes a host group entity to a JSON file on disk.
-     *
-     * @param id entity identifier used as the filename
-     * @param entity host group map to persist
-     * @throws IllegalStateException if the file cannot be written
-     */
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(groupsDir);
-            Path file = groupsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write group file for id={}", id, e);
-            throw new IllegalStateException("Failed to save host group", e);
-        }
-    }
 }

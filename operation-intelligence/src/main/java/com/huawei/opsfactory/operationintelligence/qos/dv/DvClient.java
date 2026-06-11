@@ -10,6 +10,7 @@ import com.huawei.opsfactory.operationintelligence.qos.model.AlarmQueryRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceDataQueryRequest;
 import com.huawei.opsfactory.operationintelligence.qos.model.PerformanceDataResult;
 import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
+import com.huawei.opsfactory.operationintelligence.qos.util.JsonNodeHelper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -49,6 +50,11 @@ public class DvClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final int MAX_RETRIES = 3;
+
+    private static final String PATH_MOS = "/rest/eammimservice/v1/openapi/mit/mos";
+    private static final String PATH_PERFORMANCE = "/rest/dvpmservice/v1/openapi/monitor/history/data";
+    private static final String PATH_ALARMS = "/rest/fault/v1/current-alarms/scroll";
+    private static final String PATH_TRACELOG = "/cmp/api/logmatrix/v1/logdata/tracelog";
 
     private static final int ALARM_BATCH_SIZE = 500;
 
@@ -95,7 +101,7 @@ public class DvClient {
      * @return the text value, or null if not present or null
      */
     private static String textVal(JsonNode node, String field) {
-        return node.has(field) && !node.get(field).isNull() ? node.get(field).asText() : null;
+        return JsonNodeHelper.textVal(node, field);
     }
 
     // --- MO 查询（性能数据前置接口） ---
@@ -114,9 +120,7 @@ public class DvClient {
 
         for (var config : environments) {
             if (solutionType.equals(config.getAgentSolutionType())) {
-                return new DvEnvironmentInfo(config.getEnvCode(), config.getAgentSolutionType(), config.getServerUrl(),
-                    config.getUtmUser(), config.getUtmPassword(), config.getCrtContent(), config.getCrtFileName(),
-                    config.getDns());
+                return DvEnvironmentInfo.fromConfig(config);
             }
         }
 
@@ -145,23 +149,11 @@ public class DvClient {
      */
     private List<String> doFetchMos(DvEnvironmentInfo env, List<String> dns) {
         try {
-            RestClient webClient = getOrCreateRestClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String url = env.getServerUrl() + "/rest/eammimservice/v1/openapi/mit/mos";
             String jsonBody = MAPPER.writeValueAsString(dns);
-
-            String response = webClient.post()
-                .uri(url)
-                .headers(h -> headers.forEach(h::add))
-                .body(jsonBody)
-                .retrieve()
-                .body(String.class);
-
+            String response = executePost(env, PATH_MOS, jsonBody);
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
             }
-
             return parseChildren(response);
         } catch (IOException | IllegalStateException e) {
             throw new IllegalStateException("Failed to fetch MOs from " + env.getServerUrl() + ": " + e.getMessage(),
@@ -192,11 +184,6 @@ public class DvClient {
      */
     private List<PerformanceDataResult> doFetchPerformanceData(DvEnvironmentInfo env, PerformanceDataQueryRequest request) {
         try {
-            RestClient webClient = getOrCreateRestClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String url = env.getServerUrl() + "/rest/dvpmservice/v1/openapi/monitor/history/data";
-
             Map<String, Object> timeRanges = new LinkedHashMap<>();
             timeRanges.put(String.valueOf(request.getStartTime()), request.getEndTime());
 
@@ -212,13 +199,7 @@ public class DvClient {
             body.put("dnOriginalValueMeasTypeCalTypes", dnMap);
 
             String jsonBody = MAPPER.writeValueAsString(body);
-
-            String response = webClient.post()
-                .uri(url)
-                .headers(h -> headers.forEach(h::add))
-                .body(jsonBody)
-                .retrieve()
-                .body(String.class);
+            String response = executePost(env, PATH_PERFORMANCE, jsonBody);
 
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
@@ -251,18 +232,8 @@ public class DvClient {
      */
     private List<AlarmInfo> doFetchCurrentAlarms(DvEnvironmentInfo env, AlarmQueryRequest request) {
         try {
-            RestClient webClient = getOrCreateRestClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String url = env.getServerUrl() + "/rest/fault/v1/current-alarms/scroll";
             String jsonBody = MAPPER.writeValueAsString(buildAlarmQuery(request));
-
-            String response = webClient.post()
-                .uri(url)
-                .headers(h -> headers.forEach(h::add))
-                .body(jsonBody)
-                .retrieve()
-                .body(String.class);
+            String response = executePost(env, PATH_ALARMS, jsonBody);
 
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
@@ -362,6 +333,39 @@ public class DvClient {
     @PreDestroy
     public void shutdown() {
         clientCache.clear();
+    }
+
+    /**
+     * Executes a POST request to the DV server and returns the response body.
+     *
+     * @param env the DV environment info
+     * @param path the URL path (appended to server URL)
+     * @param jsonBody the JSON request body
+     * @return the response body string, or null if empty
+     * @throws IOException if the request fails
+     */
+    private String executePost(DvEnvironmentInfo env, String path, String jsonBody) throws IOException {
+        RestClient webClient = getOrCreateRestClient(env);
+        Map<String, String> headers = authService.buildAuthHeaders(env);
+        return webClient.post()
+            .uri(env.getServerUrl() + path)
+            .headers(h -> headers.forEach(h::add))
+            .body(jsonBody)
+            .retrieve()
+            .body(String.class);
+    }
+
+    /**
+     * Executes a tracelog POST request, serializing the body map.
+     *
+     * @param env the DV environment info
+     * @param body the query body map
+     * @return the response body string, or null if empty
+     * @throws IOException if serialization or request fails
+     */
+    private String executeTraceLogPost(DvEnvironmentInfo env, Map<String, Object> body) throws IOException {
+        String jsonBody = MAPPER.writeValueAsString(body);
+        return executePost(env, PATH_TRACELOG, jsonBody);
     }
 
     /**
@@ -612,25 +616,12 @@ public class DvClient {
         com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig config, long startTime, long endTime,
         int querySize) {
         try {
-            RestClient webClient = getOrCreateRestClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String url = env.getServerUrl() + "/cmp/api/logmatrix/v1/logdata/tracelog";
             Map<String, Object> body = buildTraceLogQuery(chainType, conditionKey, conditions, config,
                 env.getAgentSolutionType(), solutionId, startTime, endTime, querySize);
-
-            String jsonBody = MAPPER.writeValueAsString(body);
-            String response = webClient.post()
-                .uri(url)
-                .headers(h -> headers.forEach(h::add))
-                .body(jsonBody)
-                .retrieve()
-                .body(String.class);
-
+            String response = executeTraceLogPost(env, body);
             if (response == null || response.isBlank()) {
                 return Collections.emptyList();
             }
-
             return parseTraceLogResponse(response);
         } catch (IOException | IllegalStateException e) {
             throw new IllegalStateException(
@@ -652,25 +643,15 @@ public class DvClient {
     private List<TraceLogRecord> doFetchByTraceId(DvEnvironmentInfo env, String solutionId, String traceId,
         long startTime, long endTime, int querySize) {
         try {
-            RestClient webClient = getOrCreateRestClient(env);
-            Map<String, String> headers = authService.buildAuthHeaders(env);
-
-            String url = env.getServerUrl() + "/cmp/api/logmatrix/v1/logdata/tracelog";
             Map<String, Object> body =
                 buildTraceLogQueryByTraceId(traceId, env.getAgentSolutionType(), solutionId, startTime, endTime, querySize);
-
             String jsonBody = MAPPER.writeValueAsString(body);
 
-            log.info("[TraceLog Request] URL: {}, TraceId: {}", url, traceId);
+            log.info("[TraceLog Request] URL: {}{}, TraceId: {}", env.getServerUrl(), PATH_TRACELOG, traceId);
 
-            String response = webClient.post()
-                .uri(url)
-                .headers(h -> headers.forEach(h::add))
-                .body(jsonBody)
-                .retrieve()
-                .body(String.class);
+            String response = executePost(env, PATH_TRACELOG, jsonBody);
 
-            log.info("[TraceLog Response] URL: {}, Status: {}", url,
+            log.info("[TraceLog Response] TraceId: {}, Status: {}", traceId,
                 response != null && !response.isBlank() ? "OK" : "Empty");
 
             if (response == null || response.isBlank()) {
@@ -702,13 +683,6 @@ public class DvClient {
         List<Map<String, String>> conditions,
         com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig config, String agentSolutionType,
         String solutionId, long startTime, long endTime, int querySize) {
-        List<Map<String, Object>> sort = List.of(Map.of("fieldName", "Time", "order", "desc"));
-
-        List<Map<String, Object>> customIndex =
-            List.of(Map.of("solutionType", agentSolutionType, "logtype", "tracelog"));
-
-        Map<String, Object> fieldCondition = new LinkedHashMap<>();
-        Map<String, Object> boolCondition = new LinkedHashMap<>();
         Map<String, Object> must = new LinkedHashMap<>();
 
         // TraceID prefix filter
@@ -751,21 +725,7 @@ public class DvClient {
         // Set AppendInfo filter
         must.put("AppendInfo", appendInfoFilter.toString());
 
-        boolCondition.put("must", must);
-        fieldCondition.put("boolCondition", boolCondition);
-
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("sort", sort);
-        body.put("solutionType", agentSolutionType);
-        body.put("customIndex", customIndex);
-        body.put("from", "0");
-        body.put("size", String.valueOf(querySize));
-        body.put("beginTime", formatTime(startTime));
-        body.put("endTime", formatTime(endTime));
-        body.put("timePattern", "yyyy-MM-dd HH:mm:ss.SSS");
-        body.put("fieldCondition", fieldCondition);
-
-        return body;
+        return buildTraceLogBody(agentSolutionType, must, startTime, endTime, querySize);
     }
 
     /**
@@ -781,6 +741,29 @@ public class DvClient {
      */
     private Map<String, Object> buildTraceLogQueryByTraceId(String traceId, String agentSolutionType,
         String solutionId, long startTime, long endTime, int querySize) {
+        Map<String, Object> must = new LinkedHashMap<>();
+
+        // Exact TraceID match
+        must.put("TraceID", traceId);
+
+        // SolutionId filter
+        must.put("SolutionId", solutionId);
+
+        return buildTraceLogBody(agentSolutionType, must, startTime, endTime, querySize);
+    }
+
+    /**
+     * Builds the common tracelog query body structure shared by both query variants.
+     *
+     * @param agentSolutionType the agent solution type
+     * @param must the must-condition map (TraceID, SolutionId, etc.)
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @param querySize the query page size
+     * @return the query request body map
+     */
+    private Map<String, Object> buildTraceLogBody(String agentSolutionType, Map<String, Object> must,
+        long startTime, long endTime, int querySize) {
         List<Map<String, Object>> sort = List.of(Map.of("fieldName", "Time", "order", "desc"));
 
         // Use LinkedHashMap to preserve field order
@@ -791,14 +774,6 @@ public class DvClient {
 
         Map<String, Object> fieldCondition = new LinkedHashMap<>();
         Map<String, Object> boolCondition = new LinkedHashMap<>();
-        Map<String, Object> must = new LinkedHashMap<>();
-
-        // Exact TraceID match
-        must.put("TraceID", traceId);
-
-        // SolutionId filter
-        must.put("SolutionId", solutionId);
-
         boolCondition.put("must", must);
         fieldCondition.put("boolCondition", boolCondition);
 
@@ -936,18 +911,7 @@ public class DvClient {
      * @return the parsed cost value, or null if invalid
      */
     private Long parseCost(String cost) {
-        if (cost == null || cost.isEmpty()) {
-            return null;
-        }
-        try {
-            String numeric = cost.replaceAll("[^0-9]", "");
-            if (numeric.isEmpty()) {
-                return null;
-            }
-            return Long.parseLong(numeric);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return JsonNodeHelper.parseCost(cost);
     }
 
     /**
@@ -957,6 +921,6 @@ public class DvClient {
      * @return the value, or null if the input is "null" string
      */
     private String safeValue(String value) {
-        return (value != null && !value.equals("null")) ? value : null;
+        return JsonNodeHelper.safeValue(value);
     }
 }

@@ -4,6 +4,8 @@
 
 package com.huawei.opsfactory.operationintelligence.qos.dv;
 
+import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -77,6 +79,22 @@ public class DvEnvironmentInfo {
         String utmPassword, String crtContent, String crtFileName, String dns) {
         this(envCode, agentSolutionType, serverUrl, utmUser, utmPassword, crtContent, crtFileName);
         this.dns = dns;
+    }
+
+    /**
+     * Creates a DvEnvironmentInfo from a DvEnvironment config POJO.
+     * Note: also propagates strictSsl from config. If the target environment uses
+     * self-signed certificates, ensure strictSsl is set to false in the configuration.
+     *
+     * @param config the DV environment configuration
+     * @return the DV environment info
+     */
+    public static DvEnvironmentInfo fromConfig(OperationIntelligenceProperties.Qos.DvEnvironment config) {
+        DvEnvironmentInfo info = new DvEnvironmentInfo(config.getEnvCode(), config.getAgentSolutionType(),
+            config.getServerUrl(), config.getUtmUser(), config.getUtmPassword(), config.getCrtContent(),
+            config.getCrtFileName(), config.getDns());
+        info.setStrictSsl(config.isStrictSsl());
+        return info;
     }
 
     /**

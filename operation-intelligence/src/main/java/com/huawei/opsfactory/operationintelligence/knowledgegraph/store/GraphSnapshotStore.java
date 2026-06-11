@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.operationintelligence.knowledgegraph.store;
 
+import com.huawei.opsfactory.operationintelligence.common.util.PathValidator;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 import com.huawei.opsfactory.operationintelligence.knowledgegraph.model.GraphSnapshot;
 
@@ -23,9 +24,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -40,9 +41,8 @@ public class GraphSnapshotStore {
 
     private static final ObjectMapper MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
-    private static final DateTimeFormatter FILE_TS_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
-
-    private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("[A-Za-z0-9_.-]+");
+    private static final DateTimeFormatter FILE_TS_FORMAT =
+        DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS", Locale.ROOT);
 
     private final OperationIntelligenceProperties properties;
 
@@ -234,8 +234,8 @@ public class GraphSnapshotStore {
 
     private Path envDir(String ontologyId, String envCode) {
         Path root = resolveRoot();
-        Path resolved = root.resolve(safePathSegment(ontologyId, "ontologyId"))
-            .resolve(safePathSegment(envCode, "envCode"))
+        Path resolved = root.resolve(PathValidator.requireSafeSegment(ontologyId, "ontologyId"))
+            .resolve(PathValidator.requireSafeSegment(envCode, "envCode"))
             .normalize();
         if (!resolved.startsWith(root)) {
             throw new IllegalArgumentException("Graph snapshot path is outside data root");
@@ -245,18 +245,11 @@ public class GraphSnapshotStore {
 
     private Path ontologyDir(String ontologyId) {
         Path root = resolveRoot();
-        Path resolved = root.resolve(safePathSegment(ontologyId, "ontologyId")).normalize();
+        Path resolved = root.resolve(PathValidator.requireSafeSegment(ontologyId, "ontologyId")).normalize();
         if (!resolved.startsWith(root)) {
             throw new IllegalArgumentException("Graph ontology snapshot path is outside data root");
         }
         return resolved;
-    }
-
-    private String safePathSegment(String value, String fieldName) {
-        if (value == null || !SAFE_PATH_SEGMENT.matcher(value).matches()) {
-            throw new IllegalArgumentException(fieldName + " contains unsupported path characters");
-        }
-        return value;
     }
 
     private void deleteRecursively(Path root) {

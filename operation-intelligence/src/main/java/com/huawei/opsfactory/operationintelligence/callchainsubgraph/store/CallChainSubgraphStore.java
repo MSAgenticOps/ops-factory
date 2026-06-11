@@ -5,6 +5,7 @@
 package com.huawei.opsfactory.operationintelligence.callchainsubgraph.store;
 
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphResult;
+import com.huawei.opsfactory.operationintelligence.common.util.PathValidator;
 import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +24,6 @@ import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -37,8 +37,6 @@ public class CallChainSubgraphStore {
     private static final Logger log = LoggerFactory.getLogger(CallChainSubgraphStore.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
-
-    private static final Pattern SAFE_PATH_SEGMENT = Pattern.compile("[A-Za-z0-9_.-]+");
 
     private final OperationIntelligenceProperties properties;
 
@@ -193,13 +191,6 @@ public class CallChainSubgraphStore {
     }
 
     private Path filePath(String subgraphId) {
-        return resolveRoot().resolve("subgraph_" + safePathSegment(subgraphId, "subgraphId") + ".json").normalize();
-    }
-
-    private String safePathSegment(String value, String fieldName) {
-        if (value == null || !SAFE_PATH_SEGMENT.matcher(value).matches()) {
-            throw new IllegalArgumentException(fieldName + " contains unsupported path characters");
-        }
-        return value;
+        return resolveRoot().resolve("subgraph_" + PathValidator.requireSafeSegment(subgraphId, "subgraphId") + ".json").normalize();
     }
 }

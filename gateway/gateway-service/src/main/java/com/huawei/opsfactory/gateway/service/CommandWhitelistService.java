@@ -10,13 +10,8 @@ import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -36,10 +31,7 @@ import java.util.regex.Pattern;
  * @since 2026-05-09
  */
 @Service
-public class CommandWhitelistService {
-    private static final Logger log = LoggerFactory.getLogger(CommandWhitelistService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class CommandWhitelistService extends JsonFileEntityStore {
 
     private static final int MAX_PATTERN_LENGTH = 500;
     private static final int MAX_DESCRIPTION_LENGTH = 500;
@@ -60,14 +52,13 @@ public class CommandWhitelistService {
 
     private final GatewayProperties properties;
 
-    private Path gatewayRoot;
-
     private Path whitelistFile;
 
     /**
      * Creates the command whitelist service instance.
      */
     public CommandWhitelistService(GatewayProperties properties) {
+        super("command-whitelist");
         this.properties = properties;
     }
 
@@ -76,7 +67,7 @@ public class CommandWhitelistService {
      */
     @PostConstruct
     public void init() {
-        this.gatewayRoot = properties.getGatewayRootPath();
+        Path gatewayRoot = properties.getGatewayRootPath();
         this.whitelistFile = gatewayRoot.resolve("data").resolve("command-whitelist.json");
 
         initializeDefaultIfNeeded();
@@ -493,26 +484,19 @@ public class CommandWhitelistService {
     // ── File I/O Helpers ─────────────────────────────────────────────
 
     private Map<String, Object> readWhitelistFile() {
-        if (!Files.exists(whitelistFile)) {
+        Map<String, Object> result = readFile(whitelistFile);
+        if (result == null) {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("commands", new ArrayList<>());
             return empty;
         }
-        try {
-            String json = Files.readString(whitelistFile, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read command whitelist file: {}", whitelistFile, e);
-            Map<String, Object> empty = new LinkedHashMap<>();
-            empty.put("commands", new ArrayList<>());
-            return empty;
-        }
+        return result;
     }
 
     private void writeWhitelistFile(Map<String, Object> whitelist) {
         try {
             Files.createDirectories(whitelistFile.getParent());
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(whitelist);
+            String json = mapper().writerWithDefaultPrettyPrinter().writeValueAsString(whitelist);
             Files.writeString(whitelistFile, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to write command whitelist file: {}", whitelistFile, e);

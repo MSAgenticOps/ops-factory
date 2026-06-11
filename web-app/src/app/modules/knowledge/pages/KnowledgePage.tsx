@@ -16,6 +16,12 @@ import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
+import {
+    KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH,
+    KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+    hasInvalidKnowledgeSourceNameChars,
+    isDuplicateKnowledgeSourceName,
+} from '../utils/sourceValidation'
 
 interface SourceSummary {
     id: string
@@ -96,16 +102,29 @@ function CreateKnowledgeModal({
     const [creating, setCreating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const isNameTooLong = name.length > 64
-    const isDescTooLong = description.length > 256
-    const hasInvalidChars = !!name && !/^[\p{L}\p{N}_\s-]*$/u.test(name)
-    const isDuplicate = existingNames.has(name.trim())
+    const isNameTooLong = name.length > KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
+    const isDescTooLong = description.length > KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH
+    const hasInvalidChars = hasInvalidKnowledgeSourceNameChars(name)
+    const isDuplicate = isDuplicateKnowledgeSourceName(name, existingNames)
+    const showDuplicateHint = !creating && isDuplicate
     const canSubmit = name.trim() && !isNameTooLong && !hasInvalidChars && !isDuplicate
 
     const handleCreate = useCallback(async () => {
         setError(null)
         if (!name.trim()) {
             setError(t('knowledge.nameRequired'))
+            return
+        }
+        if (isNameTooLong) {
+            setError(t('knowledge.nameTooLong'))
+            return
+        }
+        if (hasInvalidChars) {
+            setError(t('knowledge.nameInvalidChars'))
+            return
+        }
+        if (isDuplicate) {
+            setError(t('knowledge.nameDuplicate'))
             return
         }
 
@@ -132,7 +151,7 @@ function CreateKnowledgeModal({
         } finally {
             setCreating(false)
         }
-    }, [description, name, onClose, onCreated, showToast, t])
+    }, [description, hasInvalidChars, isDuplicate, isNameTooLong, name, onClose, onCreated, showToast, t, userId])
 
     return (
         <div className="modal-overlay">
@@ -157,18 +176,18 @@ function CreateKnowledgeModal({
                             placeholder={t('knowledge.namePlaceholder')}
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            maxLength={64}
+                            maxLength={KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                             autoFocus
                         />
                         <div className={`knowledge-field-hint${isNameTooLong ? ' knowledge-field-hint--error' : ''}`}>
-                            {isNameTooLong ? t('knowledge.nameTooLong') : `${name.length}/64`}
+                            {isNameTooLong ? t('knowledge.nameTooLong') : `${name.length}/${KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}`}
                         </div>
                         {hasInvalidChars && !isNameTooLong && (
                             <div className="knowledge-field-hint knowledge-field-hint--error">
                                 {t('knowledge.nameInvalidChars')}
                             </div>
                         )}
-                        {isDuplicate && !isNameTooLong && !hasInvalidChars && (
+                        {showDuplicateHint && !isNameTooLong && !hasInvalidChars && (
                             <div className="knowledge-field-hint knowledge-field-hint--error">
                                 {t('knowledge.nameDuplicate')}
                             </div>
@@ -183,10 +202,10 @@ function CreateKnowledgeModal({
                             placeholder={t('knowledge.descriptionPlaceholder')}
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            maxLength={256}
+                            maxLength={KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH}
                         />
                         <div className={`knowledge-field-hint${isDescTooLong ? ' knowledge-field-hint--error' : ''}`}>
-                            {isDescTooLong ? t('knowledge.descTooLong') : `${description.length}/256`}
+                            {isDescTooLong ? t('knowledge.descTooLong') : `${description.length}/${KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH}`}
                         </div>
                     </div>
                 </div>
@@ -287,7 +306,7 @@ export default function Knowledge() {
     const navigate = useNavigate()
     const { userId } = useUser()
     const [sources, setSources] = useState<SourceSummary[]>([])
-    const existingSourceNames = useMemo(() => new Set(sources.map(s => s.name)), [sources])
+    const existingSourceNames = useMemo(() => new Set(sources.map(s => s.name.trim())), [sources])
     const [stats, setStats] = useState<Record<string, SourceStats>>({})
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)

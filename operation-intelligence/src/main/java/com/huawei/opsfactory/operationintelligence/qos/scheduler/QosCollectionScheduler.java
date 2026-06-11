@@ -453,11 +453,7 @@ public class QosCollectionScheduler {
     }
 
     private DvEnvironmentInfo toDvEnvironmentInfo(OperationIntelligenceProperties.Qos.DvEnvironment config) {
-        DvEnvironmentInfo info = new DvEnvironmentInfo(config.getEnvCode(), config.getAgentSolutionType(),
-            config.getServerUrl(), config.getUtmUser(), config.getUtmPassword(), config.getCrtContent(),
-            config.getCrtFileName(), config.getDns());
-        info.setStrictSsl(config.isStrictSsl());
-        return info;
+        return DvEnvironmentInfo.fromConfig(config);
     }
 
     private Map<String, BigDecimal> resolveAlarmWeights(ProductConfigRule config) {

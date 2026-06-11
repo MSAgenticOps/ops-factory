@@ -8,11 +8,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
+import com.huawei.opsfactory.gateway.support.TestLogAppender;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -286,6 +288,60 @@ public class AgentConfigServiceTest {
     }
 
     /**
+     * Tests list custom providers ignores sample json files.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testListCustomProviders_ignoresSampleJson() throws IOException {
+        Path providersDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_provider.sample.json"),
+            "{\n" + "  \"name\": \"custom_local\",\n" + "  \"display_name\": \"Sample\",\n"
+                + "  \"api_key_env\": \"CUSTOM_SAMPLE_API_KEY\",\n"
+                + "  \"models\": [{ \"name\": \"sample-model\" }]\n" + "}\n");
+        Files.writeString(providersDir.resolve("custom_local.json"),
+            "{\n" + "  \"name\": \"custom_local\",\n" + "  \"display_name\": \"Local\",\n"
+                + "  \"api_key_env\": \"CUSTOM_LOCAL_API_KEY\",\n"
+                + "  \"models\": [{ \"name\": \"model-a\" }]\n" + "}\n");
+
+        List<Map<String, Object>> providers = service.listCustomProviders("test-agent");
+
+        assertEquals(1, providers.size());
+        assertEquals("custom_local.json", providers.get(0).get("fileName"));
+        assertEquals("CUSTOM_LOCAL_API_KEY", providers.get(0).get("api_key_env"));
+    }
+
+    /**
+     * Tests list custom providers sanitizes untrusted values before logging.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testListCustomProviders_sanitizesUntrustedValuesBeforeLogging() throws IOException {
+        Path providersDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_local.json"),
+            "{\n" + "  \"name\": \"custom\\nforged\",\n" + "  \"display_name\": \"Local\",\n"
+                + "  \"models\": [{ \"name\": \"model-a\" }]\n" + "}\n");
+
+        try (TestLogAppender appender = TestLogAppender.attachTo(AgentConfigService.class)) {
+            service.listCustomProviders("test-agent");
+
+            String message = appender.formattedMessages()
+                .stream()
+                .filter(item -> item.contains("declares name"))
+                .findFirst()
+                .orElseThrow();
+            assertFalse(message.contains("\n"));
+            assertFalse(message.contains("\r"));
+            assertTrue(message.contains("custom\\nforged"));
+        }
+    }
+
+    /**
      * Tests extract agent config summary counts extension states.
      */
     @Test
@@ -324,6 +380,30 @@ public class AgentConfigServiceTest {
         assertEquals("model-a", config.get("GOOSE_MODEL"));
         assertEquals("0.4", config.get("GOOSE_TEMPERATURE"));
         assertEquals("4096", config.get("GOOSE_MAX_TOKENS"));
+    }
+
+    /**
+     * Tests update model config rejects duplicate custom provider names.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testUpdateModelConfig_rejectsDuplicateCustomProviderNames() throws IOException {
+        Path configDir = gatewayRoot.resolve("agents").resolve("test-agent").resolve("config");
+        Path providersDir = configDir.resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_local.json"),
+            "{\"name\":\"custom_local\",\"models\":[{\"name\":\"model-a\"}]}\n");
+        Files.writeString(providersDir.resolve("custom_local_duplicate.json"),
+            "{\"name\":\"custom_local\",\"models\":[{\"name\":\"model-b\"}]}\n");
+        Files.writeString(configDir.resolve("config.yaml"),
+            "GOOSE_PROVIDER: old_provider\n" + "GOOSE_MODEL: old_model\n" + "GOOSE_TEMPERATURE: '0.2'\n");
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+            () -> service.updateModelConfig("test-agent",
+                Map.of("GOOSE_PROVIDER", "custom_local", "GOOSE_MODEL", "model-a")));
+
+        assertTrue(error.getMessage().contains("duplicate definitions"));
     }
 
     /**
@@ -387,6 +467,115 @@ public class AgentConfigServiceTest {
         List<Map<String, Object>> providers = service.listCustomProviders("test-agent");
         assertEquals(1, providers.size());
         assertEquals("custom_existing.json", providers.get(0).get("fileName"));
+    }
+
+    /**
+     * Tests create provider rejects name exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsNameTooLong() throws IOException {
+        String longName = "a".repeat(201);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", longName, "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 200 characters"));
+    }
+
+    /**
+     * Tests create provider rejects display name exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsDisplayNameTooLong() throws IOException {
+        String longDisplayName = "b".repeat(256);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", "custom-toolong-display", "display_name", longDisplayName,
+                    "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 255 characters"));
+    }
+
+    /**
+     * Tests create provider rejects base URL exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsBaseUrlTooLong() throws IOException {
+        String longUrl = "http://localhost/" + "c".repeat(490);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", "custom-toolong-url", "base_url", longUrl, "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 500 characters"));
+    }
+
+    /**
+     * Tests create provider rejects description exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_rejectsDescriptionTooLong() throws IOException {
+        String longDescription = "d".repeat(1001);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.createCustomProvider("test-agent",
+                Map.of("name", "custom-toolong-desc", "description", longDescription,
+                    "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 1000 characters"));
+    }
+
+    /**
+     * Tests create provider accepts fields at exactly max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testCreateCustomProvider_acceptsFieldAtMaxLength() throws IOException {
+        String maxName = "n".repeat(200);
+        String maxDisplayName = "d".repeat(255);
+        String maxUrl = "http://localhost/" + "u".repeat(483); // "http://localhost/" = 17 chars + 483 = 500
+        String maxDescription = "x".repeat(1000);
+        Map<String, Object> provider = service.createCustomProvider("test-agent",
+            Map.of("name", maxName, "display_name", maxDisplayName, "description", maxDescription,
+                "base_url", maxUrl, "models", List.of(Map.of("name", "model-1"))));
+
+        assertEquals(maxName, provider.get("name"));
+        assertEquals(maxDisplayName, provider.get("display_name"));
+        assertEquals(maxDescription, provider.get("description"));
+        assertTrue(provider.get("base_url").toString().startsWith("http://localhost/"));
+    }
+
+    /**
+     * Tests update provider rejects fields exceeding max length.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testUpdateCustomProvider_rejectsFieldTooLong() throws IOException {
+        Path providersDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_len_test.json"),
+            "{\n  \"name\": \"custom_len_test\",\n  \"engine\": \"openai\",\n  \"api_key_env\": \"CUSTOM_LEN_TEST_API_KEY\",\n  \"base_url\": \"http://localhost/v1\",\n  \"models\": []\n}\n");
+
+        String longDescription = "z".repeat(1001);
+        IllegalArgumentException ex = org.junit.Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> service.updateCustomProvider("test-agent", "custom_len_test",
+                Map.of("description", longDescription, "base_url", "http://localhost/v1", "models",
+                    List.of(Map.of("name", "model-1")))));
+        assertTrue(ex.getMessage().contains("must not exceed 1000 characters"));
     }
 
     /**

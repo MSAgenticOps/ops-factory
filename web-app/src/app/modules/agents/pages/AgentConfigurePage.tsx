@@ -117,7 +117,6 @@ export default function AgentConfigure() {
         const result = await createProvider(agentId, provider)
         if (result.success) {
             showToast('success', t('agentConfigure.providerCreated'))
-            applyRestartNotice(result)
             await fetchConfig(agentId)
             return true
         }

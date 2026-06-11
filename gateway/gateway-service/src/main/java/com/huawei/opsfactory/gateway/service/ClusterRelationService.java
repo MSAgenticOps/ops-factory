@@ -8,19 +8,13 @@ import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,16 +37,10 @@ import java.util.UUID;
  * @since 2026-05-09
  */
 @Service
-public class ClusterRelationService {
+public class ClusterRelationService extends JsonFileEntityStore {
     private static final String MEMBERSHIP_RELATION = "包含";
 
-    private static final Logger log = LoggerFactory.getLogger(ClusterRelationService.class);
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     private final GatewayProperties properties;
-
-    private Path relationsDir;
 
     private HostService hostService;
 
@@ -68,6 +56,7 @@ public class ClusterRelationService {
      * Creates the cluster relation service instance.
      */
     public ClusterRelationService(GatewayProperties properties) {
+        super("cluster-relation");
         this.properties = properties;
     }
 
@@ -131,14 +120,7 @@ public class ClusterRelationService {
      */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.relationsDir = gatewayRoot.resolve("data").resolve("cluster-relations");
-        try {
-            Files.createDirectories(relationsDir);
-        } catch (IOException e) {
-            log.error("Failed to create cluster-relations directory: {}", relationsDir, e);
-        }
-        log.info("ClusterRelationService initialized, relationsDir={}", relationsDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "cluster-relations");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
@@ -151,10 +133,10 @@ public class ClusterRelationService {
      */
     public List<Map<String, Object>> listRelations(String clusterId) {
         List<Map<String, Object>> relations = new ArrayList<>();
-        if (!Files.isDirectory(relationsDir)) {
+        if (!Files.isDirectory(getDataDir())) {
             return relations;
         }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) {
                     continue;
@@ -176,7 +158,7 @@ public class ClusterRelationService {
                 relations.add(rel);
             }
         } catch (IOException e) {
-            log.error("Failed to list cluster-relations from {}", relationsDir, e);
+            log.error("Failed to list cluster-relations from {}", getDataDir(), e);
         }
         return relations;
     }
@@ -211,7 +193,7 @@ public class ClusterRelationService {
      * @return the result
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
-        Path file = relationsDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
             throw new NotFoundException("Cluster relation not found");
@@ -268,7 +250,7 @@ public class ClusterRelationService {
      * @return the result
      */
     public boolean deleteRelation(String id) {
-        Path file = relationsDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         try {
             if (Files.exists(file)) {
                 Map<String, Object> rel = readFile(file);
@@ -904,30 +886,4 @@ public class ClusterRelationService {
         }
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read cluster-relation file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(relationsDir);
-            Path file = relationsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write cluster-relation file for id={}", id, e);
-            throw new IllegalStateException("Failed to save cluster relation", e);
-        }
-    }
 }

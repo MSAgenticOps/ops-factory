@@ -10,6 +10,12 @@ import { getErrorMessage } from '../../../../utils/errorMessages'
 import { triggerDownload } from '../../../../utils/fileDownload'
 import KnowledgeChunksTab from '../components/KnowledgeChunksTab'
 import KnowledgeRetrievalTab from '../components/KnowledgeRetrievalTab'
+import {
+    KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH,
+    KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+    hasInvalidKnowledgeSourceNameChars,
+    isDuplicateKnowledgeSourceName,
+} from '../utils/sourceValidation'
 import type { ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
 import type {
     KnowledgeDocumentArtifacts,
@@ -906,18 +912,27 @@ function appendFilesToQueue(
 
 function EditBasicInfoModal({
     source,
+    existingNames,
     onClose,
     onSave,
+    onValidateName,
 }: {
     source: KnowledgeSource
+    existingNames: Set<string>
     onClose: () => void
     onSave: (updates: { name: string; description: string | null }) => Promise<boolean>
+    onValidateName: (name: string) => Promise<string | null>
 }) {
     const { t } = useTranslation()
     const [name, setName] = useState(source.name)
     const [description, setDescription] = useState(source.description || '')
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const isNameTooLong = name.length > KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
+    const isDescTooLong = description.length > KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH
+    const hasInvalidChars = hasInvalidKnowledgeSourceNameChars(name)
+    const isDuplicate = isDuplicateKnowledgeSourceName(name, existingNames, source.name)
+    const canSubmit = !!name.trim() && !isNameTooLong && !isDescTooLong && !hasInvalidChars && !isDuplicate
 
     const handleSave = useCallback(async () => {
         setError(null)
@@ -926,8 +941,31 @@ function EditBasicInfoModal({
             setError(t('knowledge.nameRequired'))
             return
         }
+        if (isNameTooLong) {
+            setError(t('knowledge.nameTooLong'))
+            return
+        }
+        if (hasInvalidChars) {
+            setError(t('knowledge.nameInvalidChars'))
+            return
+        }
+        if (isDuplicate) {
+            setError(t('knowledge.nameDuplicate'))
+            return
+        }
+        if (isDescTooLong) {
+            setError(t('knowledge.descTooLong'))
+            return
+        }
 
         setSaving(true)
+        const nameError = await onValidateName(name.trim())
+        if (nameError) {
+            setError(nameError)
+            setSaving(false)
+            return
+        }
+
         const success = await onSave({
             name: name.trim(),
             description: description.trim() || null,
@@ -941,7 +979,7 @@ function EditBasicInfoModal({
 
         setSaving(false)
         onClose()
-    }, [description, name, onClose, onSave, t])
+    }, [description, hasInvalidChars, isDescTooLong, isDuplicate, isNameTooLong, name, onClose, onSave, onValidateName, t])
 
     return (
         <div className="modal-overlay">
@@ -966,8 +1004,22 @@ function EditBasicInfoModal({
                             type="text"
                             value={name}
                             onChange={event => setName(event.target.value)}
+                            maxLength={KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                             autoFocus
                         />
+                        <div className={`knowledge-field-hint${isNameTooLong ? ' knowledge-field-hint--error' : ''}`}>
+                            {isNameTooLong ? t('knowledge.nameTooLong') : `${name.length}/${KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}`}
+                        </div>
+                        {hasInvalidChars && !isNameTooLong && (
+                            <div className="knowledge-field-hint knowledge-field-hint--error">
+                                {t('knowledge.nameInvalidChars')}
+                            </div>
+                        )}
+                        {isDuplicate && !isNameTooLong && !hasInvalidChars && (
+                            <div className="knowledge-field-hint knowledge-field-hint--error">
+                                {t('knowledge.nameDuplicate')}
+                            </div>
+                        )}
                     </div>
 
                     <div className="form-group">
@@ -978,7 +1030,11 @@ function EditBasicInfoModal({
                             rows={4}
                             value={description}
                             onChange={event => setDescription(event.target.value)}
+                            maxLength={KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH}
                         />
+                        <div className={`knowledge-field-hint${isDescTooLong ? ' knowledge-field-hint--error' : ''}`}>
+                            {isDescTooLong ? t('knowledge.descTooLong') : `${description.length}/${KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH}`}
+                        </div>
                     </div>
                 </div>
 
@@ -989,7 +1045,7 @@ function EditBasicInfoModal({
                     <button
                         className="btn btn-primary"
                         onClick={handleSave}
-                        disabled={saving || !name.trim()}
+                        disabled={saving || !canSubmit}
                     >
                         {saving ? t('knowledge.saving') : t('common.save')}
                     </button>
@@ -1791,6 +1847,7 @@ export default function KnowledgeConfigure() {
         deleteSource,
     } = useKnowledgeSourceDetail(sourceId, userId)
     const [showEditBasicInfoModal, setShowEditBasicInfoModal] = useState(false)
+    const [existingSourceNames, setExistingSourceNames] = useState<Set<string>>(new Set())
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showRebuildModal, setShowRebuildModal] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -1860,6 +1917,41 @@ export default function KnowledgeConfigure() {
             setHasOpenedRetrievalTab(true)
         }
     }, [activeTab])
+
+    useEffect(() => {
+        if (!source) {
+            setExistingSourceNames(new Set())
+            return
+        }
+
+        let cancelled = false
+        const currentSourceName = source.name.trim()
+
+        async function loadSourceNames() {
+            try {
+                const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=1000`, {
+                    headers: knowledgeHeaders(userId),
+                })
+                const data = await response.json().catch(() => null) as PagedResponse<KnowledgeSource> | null
+                if (!response.ok) {
+                    throw new Error(response.statusText)
+                }
+                if (!cancelled) {
+                    setExistingSourceNames(new Set((data?.items || []).map(item => item.name.trim())))
+                }
+            } catch {
+                if (!cancelled) {
+                    setExistingSourceNames(new Set([currentSourceName]))
+                }
+            }
+        }
+
+        void loadSourceNames()
+
+        return () => {
+            cancelled = true
+        }
+    }, [source, userId])
 
     const defaultsConfigGroups = useMemo(
         () => defaults
@@ -2052,9 +2144,41 @@ export default function KnowledgeConfigure() {
             return true
         }
 
+        if (result.error?.toLowerCase().includes('already exists')) {
+            showToast('error', t('knowledge.nameDuplicate'))
+            return false
+        }
+
         showToast('error', result.error || t('knowledge.saveFailed'))
         return false
     }, [saveSource, showToast, t])
+
+    const validateBasicInfoName = useCallback(async (name: string): Promise<string | null> => {
+        if (!source) {
+            return null
+        }
+
+        if (name.trim() === source.name.trim()) {
+            return null
+        }
+
+        try {
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=1000`, {
+                headers: knowledgeHeaders(userId),
+            })
+            const data = await response.json().catch(() => null) as PagedResponse<KnowledgeSource> | null
+            if (!response.ok) {
+                return null
+            }
+
+            const latestNames = new Set((data?.items || []).map(item => item.name.trim()))
+            return isDuplicateKnowledgeSourceName(name, latestNames, source.name)
+                ? t('knowledge.nameDuplicate')
+                : null
+        } catch {
+            return null
+        }
+    }, [source, t, userId])
 
     const handleSaveIndexProfile = useCallback(async (): Promise<boolean> => {
         const nextTitleBoost = Number(titleBoost)
@@ -3037,8 +3161,10 @@ export default function KnowledgeConfigure() {
             {showEditBasicInfoModal && (
                 <EditBasicInfoModal
                     source={source}
+                    existingNames={existingSourceNames}
                     onClose={() => setShowEditBasicInfoModal(false)}
                     onSave={handleSaveBasicInfo}
+                    onValidateName={validateBasicInfoName}
                 />
             )}
 

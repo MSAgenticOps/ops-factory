@@ -427,6 +427,17 @@
     color: #4f5967;
 }
 
+.toolbar-agent-info {
+    max-width: 200px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: #5f6b7a;
+}
+
+.toolbar-agent-info svg {
+    flex-shrink: 0;
+}
+
 .toolbar-token-info {
     display: inline-flex;
     align-items: center;
