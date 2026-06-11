@@ -50,6 +50,8 @@ public class KnowledgeGraphService {
 
     private static final String EXPORT_FORMAT = "KG_NATIVE_JSON";
 
+    private static final int MAX_SAFE_ID_LENGTH = 128;
+
     private final Map<String, ReentrantLock> ontologyLocks = new ConcurrentHashMap<>();
 
     private final OperationIntelligenceProperties properties;
@@ -104,7 +106,16 @@ public class KnowledgeGraphService {
      */
     public GraphOntology importOntology(GraphOntology ontology) {
         ensureEnabled();
+        if (ontology == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ontology is required");
+        }
+        requireText(ontology.getOntologyId(), "ontologyId");
+        ontology.setOntologyId(ontology.getOntologyId().trim());
         requireSafeId(ontology.getOntologyId(), "ontologyId");
+        if (schemaRegistry.existsOntology(ontology.getOntologyId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ontology ID already exists: " + ontology.getOntologyId());
+        }
         GraphOntology registered = schemaRegistry.register(ontology);
         ontologyStore.save(registered);
         return registered;
@@ -816,7 +827,16 @@ public class KnowledgeGraphService {
 
     private void requireSafeId(String value, String fieldName) {
         requireText(value, fieldName);
-        if (!PathValidator.SAFE_SEGMENT.matcher(value).matches()) {
+        String trimmedValue = value.trim();
+        if (!value.equals(trimmedValue)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                fieldName + " contains unsupported path characters");
+        }
+        if (trimmedValue.length() > MAX_SAFE_ID_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                fieldName + " is too long. Maximum length is " + MAX_SAFE_ID_LENGTH);
+        }
+        if (!PathValidator.SAFE_SEGMENT.matcher(trimmedValue).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 fieldName + " contains unsupported path characters");
         }
