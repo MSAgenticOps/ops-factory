@@ -337,6 +337,24 @@ public class ClusterRelationServiceTest {
     }
 
     /**
+     * Tests that a non-string description throws BadRequestException.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test(expected = BadRequestException.class)
+    public void testCreateRelation_descriptionNotString_throwsBadRequest() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        body.put("description", List.of("not", "a", "string"));
+
+        relationService.createRelation(body);
+    }
+
+    /**
      * Tests creating a relation with business-service source type succeeds.
      *
      * @throws Exception if the test fails
@@ -404,6 +422,27 @@ public class ClusterRelationServiceTest {
         updateBody.put("description", null);
         Map<String, Object> updated = relationService.updateRelation(id, updateBody);
         assertNull(updated.get("description"));
+    }
+
+    /**
+     * Tests that updating a relation with a non-string description throws BadRequestException.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test(expected = BadRequestException.class)
+    public void testUpdateRelation_descriptionNotString_throwsBadRequest() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        Map<String, Object> created = relationService.createRelation(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updateBody = new LinkedHashMap<>();
+        updateBody.put("description", 12345);
+        relationService.updateRelation(id, updateBody);
     }
 
     /**
