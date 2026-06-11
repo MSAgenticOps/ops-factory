@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { createZip } from '../../../../utils/zipHelper'
 import { generateExportXlsx } from '../../../../utils/xlsxHelper'
 import * as XLSX from 'xlsx'
-import type { HostGroup, Cluster, Host, BusinessService, HostRelation, ClusterType, BusinessType, SolutionType } from '../../../../types/host'
+import type { HostGroup, Cluster, Host, BusinessService, ClusterRelation, ClusterType, BusinessType, SolutionType } from '../../../../types/host'
 import type { Sop } from '../../../../types/sop'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
 
@@ -15,7 +15,7 @@ export function useResourceExport() {
         groups: HostGroup[]
         clusters: Cluster[]
         allHosts: Host[]
-        hostRelations: HostRelation[]
+        clusterRelations: ClusterRelation[]
         businessServices: BusinessService[]
         clusterTypes: ClusterType[]
         businessTypes: BusinessType[]
@@ -26,7 +26,7 @@ export function useResourceExport() {
         setExporting(true)
         try {
             const {
-                groups, clusters, allHosts, hostRelations,
+                groups, clusters, allHosts, clusterRelations,
                 businessServices, clusterTypes, businessTypes, solutionTypes,
                 whitelistCommands, sops,
             } = params
@@ -148,40 +148,29 @@ export function useResourceExport() {
             const bsBlob = workbookToBlob(bsWorkbook)
             files.push({ name: 'business_services.xlsx', data: bsBlob })
 
-            // 7. Relations XLSX
-            const allHostMap = new Map(allHosts.map(h => [h.id, h]))
+            // 7. Relations XLSX — Cluster Relations
             const bsMap = new Map(businessServices.map(bs => [bs.id, bs]))
-            const relData: { sourceNode: string; destNode: string; description: string }[] = []
+            const relData: { sourceNode: string; destNode: string; sourceNodeType: string; destNodeType: string; description: string }[] = []
 
-            for (const r of hostRelations) {
-                const sourceName = r.sourceType === 'business-service'
-                    ? (bsMap.get(r.sourceHostId)?.name ?? '')
-                    : (allHostMap.get(r.sourceHostId)?.name ?? '')
-                const destName = allHostMap.get(r.targetHostId)?.name ?? ''
+            for (const r of clusterRelations) {
+                // 跳过 host→cluster 关系（仅导出 cluster→cluster 和 business-service→cluster）
+                if (r.sourceType === 'host') continue
+
+                let sourceName = ''
+                if (r.sourceType === 'cluster') {
+                    sourceName = clusterMap.get(r.sourceId)?.name ?? ''
+                } else if (r.sourceType === 'business-service') {
+                    sourceName = bsMap.get(r.sourceId)?.name ?? ''
+                }
+                const destName = clusterMap.get(r.targetId)?.name ?? ''
                 if (sourceName && destName) {
                     relData.push({
                         sourceNode: sourceName,
                         destNode: destName,
+                        sourceNodeType: r.sourceType === 'cluster' ? 'Cluster' : 'Business Service',
+                        destNodeType: 'Cluster',
                         description: r.description || '',
                     })
-                }
-            }
-
-            for (const bs of businessServices) {
-                for (const hostId of bs.hostIds) {
-                    const hostName = allHostMap.get(hostId)?.name
-                    if (hostName) {
-                        const exists = relData.some(r =>
-                            r.sourceNode === bs.name && r.destNode === hostName
-                        )
-                        if (!exists) {
-                            relData.push({
-                                sourceNode: bs.name,
-                                destNode: hostName,
-                                description: '',
-                            })
-                        }
-                    }
                 }
             }
 
