@@ -80,6 +80,17 @@ public class GraphSchemaRegistry {
     }
 
     /**
+     * Checks whether an ontology exists in the runtime registry.
+     *
+     * @param ontologyId the ontologyId
+     * @return true if the ontology exists
+     */
+    public boolean existsOntology(String ontologyId) {
+        String resolvedOntologyId = resolveOntologyId(ontologyId);
+        return ontologies.containsKey(resolvedOntologyId);
+    }
+
+    /**
      * Deletes an ontology from runtime registry.
      *
      * @param ontologyId the ontologyId
