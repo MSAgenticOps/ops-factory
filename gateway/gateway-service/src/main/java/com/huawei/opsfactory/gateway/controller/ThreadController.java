@@ -144,9 +144,21 @@ public class ThreadController {
         private String threadId;
         private Integer limit;
 
+        /**
+         * 默认构造函数。
+         */
         public FollowupQuery() {
         }
 
+        /**
+         * 全参构造函数。
+         *
+         * @param channelId 渠道标识
+         * @param conversationId 会话标识
+         * @param accountId 账户标识
+         * @param threadId 线程标识
+         * @param limit 返回记录数上限
+         */
         public FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
             Integer limit) {
             this.channelId = channelId;
@@ -156,42 +168,92 @@ public class ThreadController {
             this.limit = limit;
         }
 
+        /**
+         * 获取渠道标识。
+         *
+         * @return 渠道标识
+         */
         public String getChannelId() {
             return channelId;
         }
 
+        /**
+         * 设置渠道标识。
+         *
+         * @param channelId 渠道标识
+         */
         public void setChannelId(String channelId) {
             this.channelId = channelId;
         }
 
+        /**
+         * 获取会话标识。
+         *
+         * @return 会话标识
+         */
         public String getConversationId() {
             return conversationId;
         }
 
+        /**
+         * 设置会话标识。
+         *
+         * @param conversationId 会话标识
+         */
         public void setConversationId(String conversationId) {
             this.conversationId = conversationId;
         }
 
+        /**
+         * 获取账户标识。
+         *
+         * @return 账户标识
+         */
         public String getAccountId() {
             return accountId;
         }
 
+        /**
+         * 设置账户标识。
+         *
+         * @param accountId 账户标识
+         */
         public void setAccountId(String accountId) {
             this.accountId = accountId;
         }
 
+        /**
+         * 获取线程标识。
+         *
+         * @return 线程标识
+         */
         public String getThreadId() {
             return threadId;
         }
 
+        /**
+         * 设置线程标识。
+         *
+         * @param threadId 线程标识
+         */
         public void setThreadId(String threadId) {
             this.threadId = threadId;
         }
 
+        /**
+         * 获取返回记录数上限。
+         *
+         * @return 返回记录数上限
+         */
         public Integer getLimit() {
             return limit;
         }
 
+        /**
+         * 设置返回记录数上限。
+         *
+         * @param limit 返回记录数上限
+         */
         public void setLimit(Integer limit) {
             this.limit = limit;
         }

@@ -168,7 +168,9 @@ public class ClusterRelationService extends JsonFileEntityStore {
      * Creates a new cluster relation from the provided field map.
      *
      * @param body request body
-     * @return the result
+     * @return the created relation
+     * @throws BadRequestException if the request body is invalid
+     * @throws NotFoundException if the source or target entity is not found
      */
     public Map<String, Object> createRelation(Map<String, Object> body) throws BadRequestException, NotFoundException {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
@@ -196,9 +198,11 @@ public class ClusterRelationService extends JsonFileEntityStore {
     /**
      * Updates an existing cluster relation with the provided field map.
      *
-     * @param id an existing cluster relation with the provided field map
-     * @param body an existing cluster relation with the provided field map
-     * @return the result
+     * @param id relation identifier
+     * @param body request body
+     * @return the updated relation
+     * @throws BadRequestException if the request body is invalid
+     * @throws NotFoundException if the relation is not found
      */
     public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
         Path file = resolveEntityFile(id);
