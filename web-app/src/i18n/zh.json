@@ -2672,6 +2672,8 @@
     "field_relations_sourceNodeType": "源节点类型",
     "field_relations_destNodeType": "目标节点类型",
     "field_relations_description": "描述",
+    "desc_field_relations_sourceNode": "源节点，支持集群名称或业务服务名称",
+    "desc_field_relations_destNode": "目标节点，仅支持集群名称",
     "desc_field_relations_sourceNodeType": "源节点类型。可选值：Cluster（集群）、Business Service（业务服务）",
     "desc_field_relations_destNodeType": "目标节点类型。必须为 Cluster（集群）",
     "field_sops_name": "SOP 名称",

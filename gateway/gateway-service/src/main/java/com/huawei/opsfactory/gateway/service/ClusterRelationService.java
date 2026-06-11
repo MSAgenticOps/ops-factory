@@ -172,6 +172,9 @@ public class ClusterRelationService extends JsonFileEntityStore {
      */
     public Map<String, Object> createRelation(Map<String, Object> body) throws BadRequestException, NotFoundException {
         String sourceType = (String) body.getOrDefault("sourceType", "cluster");
+        if (!"cluster".equals(sourceType) && !"business-service".equals(sourceType)) {
+            throw new BadRequestException("Invalid sourceType. Supported values: cluster, business-service");
+        }
         String sourceId = (String) body.get("sourceId");
         String targetId = (String) body.get("targetId");
         validateRelationBody(sourceId, targetId);

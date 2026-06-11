@@ -2673,6 +2673,8 @@
     "field_relations_sourceNodeType": "Source Node Type",
     "field_relations_destNodeType": "Target Node Type",
     "field_relations_description": "Description",
+    "desc_field_relations_sourceNode": "Source node, supports cluster name or business service name",
+    "desc_field_relations_destNode": "Target node, supports cluster name only",
     "desc_field_relations_sourceNodeType": "Source node type. Supported values: Cluster, Business Service",
     "desc_field_relations_destNodeType": "Target node type. Must be Cluster",
     "field_sops_name": "SOP Name",
