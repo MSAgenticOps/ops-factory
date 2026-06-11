@@ -653,6 +653,16 @@
     gap: var(--spacing-3);
 }
 
+.kg-field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.kg-field .kg-required-marker {
+    color: var(--color-danger, #dc2626);
+}
+
 .kg-workspace {
     display: flex;
     flex-direction: column;

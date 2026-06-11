@@ -718,6 +718,7 @@ function serializeEditableFieldValue(kind: EntityEditableFieldKind, value: unkno
 function parseEditableFieldValue(
     field: EntityEditableField,
     value: EntityEditableValue | undefined,
+    t: (key: string, options?: Record<string, unknown>) => string,
 ): { value?: unknown; error?: string } {
     if (field.kind === 'boolean') {
         return { value: value === true }
@@ -725,14 +726,14 @@ function parseEditableFieldValue(
     const textValue = String(value ?? '').trim()
     if (!textValue) {
         if (field.required) {
-            return { error: `${field.label} is required` }
+            return { error: t('operationIntelligence.knowledgeGraph.entityFieldRequired', { field: field.label }) }
         }
         return { value: undefined }
     }
     if (field.kind === 'number') {
         const numberValue = Number(textValue)
         if (Number.isNaN(numberValue)) {
-            return { error: `${field.label} must be a valid number` }
+            return { error: t('operationIntelligence.knowledgeGraph.entityFieldNumberInvalid', { field: field.label }) }
         }
         return { value: numberValue }
     }
@@ -740,7 +741,7 @@ function parseEditableFieldValue(
         try {
             return { value: JSON.parse(textValue) }
         } catch {
-            return { error: `${field.label} must be valid JSON` }
+            return { error: t('operationIntelligence.knowledgeGraph.entityFieldJsonInvalid', { field: field.label }) }
         }
     }
     return { value: textValue }
@@ -804,13 +805,14 @@ function buildUpdatedGraphEntity(
     entity: GraphEntity,
     fields: EntityEditableField[],
     draft: Record<string, EntityEditableValue>,
+    t: (key: string, options?: Record<string, unknown>) => string,
 ): { entity?: GraphEntity; error?: string } {
     const properties: Record<string, unknown> = {}
     let name = entity.name
     let displayName = entity.displayName
     let status = entity.status
     for (const field of fields) {
-        const parsed = parseEditableFieldValue(field, draft[editableFieldId(field.section, field.key)])
+        const parsed = parseEditableFieldValue(field, draft[editableFieldId(field.section, field.key)], t)
         if (parsed.error) {
             return { error: parsed.error }
         }
@@ -1557,6 +1559,19 @@ function formatHistoryTimestamp(value: string, locale?: string): string {
     }).format(new Date(timestamp))
 }
 
+function formatDateInputValue(date: Date): string {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
+function formatTimeInputValue(date: Date): string {
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+}
+
 function splitDateTimeLocalValue(value: string): { dateValue: string; timeValue: string } {
     const [dateValue = '', timeValue = ''] = value.split('T')
     return {
@@ -1617,6 +1632,9 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const [testingEntityId, setTestingEntityId] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [savingEntity, setSavingEntity] = useState(false)
+    const nowForInputLimits = new Date()
+    const maxCallChainDateValue = formatDateInputValue(nowForInputLimits)
+    const maxCallChainTimeValue = formatTimeInputValue(nowForInputLimits)
     const ontologyFileInputRef = useRef<HTMLInputElement | null>(null)
     const entitiesFileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -2229,6 +2247,10 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
             showToast('warning', t('operationIntelligence.knowledgeGraph.callChainTimeRangeInvalid'))
             return
         }
+        if (startTime > Date.now() || endTime > Date.now()) {
+            showToast('warning', t('operationIntelligence.knowledgeGraph.callChainFutureTimeInvalid'))
+            return
+        }
         setLoading(true)
         try {
             const response = await generateCallChainSubgraph({
@@ -2287,6 +2309,10 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
         const nextEndTime = parseDateTimeLocalValue(nextEndTimeLocal)
         if (nextStartTime === null || nextEndTime === null || nextEndTime <= nextStartTime) {
             showToast('warning', t('operationIntelligence.knowledgeGraph.callChainTimeRangeInvalid'))
+            return
+        }
+        if (nextStartTime > Date.now() || nextEndTime > Date.now()) {
+            showToast('warning', t('operationIntelligence.knowledgeGraph.callChainFutureTimeInvalid'))
             return
         }
         setCallChainTimeRange({
@@ -2420,7 +2446,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
     const handleSaveEntity = async (entity: GraphEntity) => {
         const fullEntity = snapshot?.entities.find(item => item.id === entity.id) ?? entity
         const fields = buildEntityEditableFields(fullEntity, entityTypeDefinitions[fullEntity.type] ?? null, t)
-        const nextEntity = buildUpdatedGraphEntity(fullEntity, fields, entityDraftValues)
+        const nextEntity = buildUpdatedGraphEntity(fullEntity, fields, entityDraftValues, t)
         if (!nextEntity.entity) {
             showToast('error', nextEntity.error ?? t('operationIntelligence.knowledgeGraph.entityUpdateFailed'))
             return
@@ -2948,6 +2974,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         <input
                                             type="date"
                                             value={callChainDateTimeDraft.startDateValue}
+                                            max={maxCallChainDateValue}
                                             onChange={event => setCallChainDateTimeDraft(previous => previous ? {
                                                 ...previous,
                                                 startDateValue: event.target.value,
@@ -2959,6 +2986,9 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         <input
                                             type="time"
                                             value={callChainDateTimeDraft.startTimeValue}
+                                            max={callChainDateTimeDraft.startDateValue === maxCallChainDateValue
+                                                ? maxCallChainTimeValue
+                                                : undefined}
                                             onChange={event => setCallChainDateTimeDraft(previous => previous ? {
                                                 ...previous,
                                                 startTimeValue: event.target.value,
@@ -2970,6 +3000,7 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         <input
                                             type="date"
                                             value={callChainDateTimeDraft.endDateValue}
+                                            max={maxCallChainDateValue}
                                             onChange={event => setCallChainDateTimeDraft(previous => previous ? {
                                                 ...previous,
                                                 endDateValue: event.target.value,
@@ -2981,6 +3012,9 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         <input
                                             type="time"
                                             value={callChainDateTimeDraft.endTimeValue}
+                                            max={callChainDateTimeDraft.endDateValue === maxCallChainDateValue
+                                                ? maxCallChainTimeValue
+                                                : undefined}
                                             onChange={event => setCallChainDateTimeDraft(previous => previous ? {
                                                 ...previous,
                                                 endTimeValue: event.target.value,
@@ -3296,7 +3330,10 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                         const draftValue = entityDraftValues[editableFieldId(field.section, field.key)]
                                         return (
                                             <label key={editableFieldId(field.section, field.key)} className="kg-field">
-                                                <span>{field.label}{field.required ? ' *' : ''}</span>
+                                                <span className="kg-field-label">
+                                                    {field.label}
+                                                    {field.required ? <span className="kg-required-marker" aria-hidden="true">*</span> : null}
+                                                </span>
                                                 {field.kind === 'boolean' ? (
                                                     <select
                                                         value={draftValue === true ? 'true' : 'false'}
