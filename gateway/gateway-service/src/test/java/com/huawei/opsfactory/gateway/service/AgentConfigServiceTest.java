@@ -14,6 +14,7 @@ import static org.junit.Assert.assertTrue;
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.service.proactive.ProactiveDeliveryMarkers;
+import com.huawei.opsfactory.gateway.support.TestLogAppender;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -310,6 +311,34 @@ public class AgentConfigServiceTest {
         assertEquals(1, providers.size());
         assertEquals("custom_local.json", providers.get(0).get("fileName"));
         assertEquals("CUSTOM_LOCAL_API_KEY", providers.get(0).get("api_key_env"));
+    }
+
+    /**
+     * Tests list custom providers sanitizes untrusted values before logging.
+     *
+     * @throws IOException if the operation fails
+     */
+    @Test
+    public void testListCustomProviders_sanitizesUntrustedValuesBeforeLogging() throws IOException {
+        Path providersDir =
+            gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("custom_providers");
+        Files.createDirectories(providersDir);
+        Files.writeString(providersDir.resolve("custom_local.json"),
+            "{\n" + "  \"name\": \"custom\\nforged\",\n" + "  \"display_name\": \"Local\",\n"
+                + "  \"models\": [{ \"name\": \"model-a\" }]\n" + "}\n");
+
+        try (TestLogAppender appender = TestLogAppender.attachTo(AgentConfigService.class)) {
+            service.listCustomProviders("test-agent");
+
+            String message = appender.formattedMessages()
+                .stream()
+                .filter(item -> item.contains("declares name"))
+                .findFirst()
+                .orElseThrow();
+            assertFalse(message.contains("\n"));
+            assertFalse(message.contains("\r"));
+            assertTrue(message.contains("custom\\nforged"));
+        }
     }
 
     /**

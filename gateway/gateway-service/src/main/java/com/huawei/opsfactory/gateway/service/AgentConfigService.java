@@ -393,7 +393,8 @@ public class AgentConfigService {
                 }
                 String fileName = entry.getFileName().toString();
                 if (isCustomProviderSampleFile(fileName)) {
-                    log.debug("Skipping custom provider sample file {} for {}", fileName, agentId);
+                    log.debug("Skipping custom provider sample file {} for {}", sanitizeForLog(fileName),
+                        sanitizeForLog(agentId));
                     continue;
                 }
                 try {
@@ -687,17 +688,24 @@ public class AgentConfigService {
         return CUSTOM_PROVIDER_SAMPLE_SUFFIXES.stream().anyMatch(fileName::endsWith);
     }
 
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace("\r", "\\r").replace("\n", "\\n");
+    }
+
     private void warnIfCustomProviderNameDoesNotMatchFile(String agentId, String fileName,
         Map<String, Object> provider) {
         String providerName = asString(provider.get("name"));
         if (providerName == null || providerName.isBlank()) {
-            log.warn("Custom provider {} for {} is missing name", fileName, agentId);
+            log.warn("Custom provider {} for {} is missing name", sanitizeForLog(fileName), sanitizeForLog(agentId));
             return;
         }
         String expectedFileName = providerName + ".json";
         if (!fileName.equals(expectedFileName)) {
-            log.warn("Custom provider {} for {} declares name '{}'; expected file name {}", fileName, agentId,
-                providerName, expectedFileName);
+            log.warn("Custom provider {} for {} declares name '{}'; expected file name {}", sanitizeForLog(fileName),
+                sanitizeForLog(agentId), sanitizeForLog(providerName), sanitizeForLog(expectedFileName));
         }
     }
 
