@@ -182,11 +182,8 @@ public class ClusterRelationService extends JsonFileEntityStore {
         validateRelationBody(sourceId, targetId);
         validateRelationSource(sourceType, sourceId);
         validateRelationTarget(targetId);
-        Object descriptionObj = body.get("description");
-        if (descriptionObj != null) {
-            ValidationUtils.requireMaxLength(descriptionObj.toString(), 500, "Description");
-        }
-        Map<String, Object> relation = buildRelationEntity(body, sourceType, sourceId, targetId);
+        String description = validateDescription(body.get("description"));
+        Map<String, Object> relation = buildRelationEntity(body, sourceType, sourceId, targetId, description);
         String id = (String) relation.get("id");
         writeEntityFile(id, relation);
         log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId,
@@ -214,11 +211,8 @@ public class ClusterRelationService extends JsonFileEntityStore {
         String currentSourceType = (String) relation.getOrDefault("sourceType", "cluster");
 
         if (body.containsKey("description")) {
-            Object descObj = body.get("description");
-            if (descObj != null) {
-                ValidationUtils.requireMaxLength(descObj.toString(), 500, "Description");
-            }
-            relation.put("description", descObj);
+            String desc = validateDescription(body.get("description"));
+            relation.put("description", desc);
         }
         if (body.containsKey("sourceId")) {
             String sourceId = (String) body.get("sourceId");
@@ -613,17 +607,36 @@ public class ClusterRelationService extends JsonFileEntityStore {
     }
 
     private Map<String, Object> buildRelationEntity(Map<String, Object> body, String sourceType, String sourceId,
-        String targetId) {
+        String targetId, String description) {
         String now = Instant.now().toString();
         Map<String, Object> relation = new LinkedHashMap<>();
         relation.put("id", UUID.randomUUID().toString());
         relation.put("sourceType", sourceType);
         relation.put("sourceId", sourceId);
         relation.put("targetId", targetId);
-        relation.put("description", body.getOrDefault("description", ""));
+        relation.put("description", description != null ? description : "");
         relation.put("createdAt", now);
         relation.put("updatedAt", now);
         return relation;
+    }
+
+    /**
+     * Validates the description field: must be a string and within max length.
+     *
+     * @param value the raw description value from request body
+     * @return the validated description string, or null if input is null
+     * @throws BadRequestException if the value is not a string or exceeds max length
+     */
+    private String validateDescription(Object value) throws BadRequestException {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String)) {
+            throw new BadRequestException("Description must be a string");
+        }
+        String description = (String) value;
+        ValidationUtils.requireMaxLength(description, 500, "Description");
+        return description;
     }
 
     private void syncBusinessServiceIfNeeded(String sourceType, String sourceId) {
