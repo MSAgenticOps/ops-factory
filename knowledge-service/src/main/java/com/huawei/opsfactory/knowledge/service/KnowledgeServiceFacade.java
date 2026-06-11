@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.annotation.Transactional;
@@ -179,7 +180,11 @@ public class KnowledgeServiceFacade {
             id, name, description, "ACTIVE", "MANAGED", indexProfileId, retrievalProfileId,
             "ACTIVE", null, null, null, false, now, now
         );
-        sourceRepository.insert(record);
+        try {
+            sourceRepository.insert(record);
+        } catch (DataIntegrityViolationException ex) {
+            throw sourceNameConflict(name, ex);
+        }
         bindingRepository.upsert(new BindingRepository.BindingRecord(Ids.newId("spb"), id, indexProfileId, retrievalProfileId, now, now));
         log.info("Created source sourceId={} name={} indexProfileId={} retrievalProfileId={}", id, name, indexProfileId, retrievalProfileId);
         return toSourceResponse(record);
@@ -235,7 +240,11 @@ public class KnowledgeServiceFacade {
             existing.createdAt(),
             now
         );
-        sourceRepository.update(updated);
+        try {
+            sourceRepository.update(updated);
+        } catch (DataIntegrityViolationException ex) {
+            throw sourceNameConflict(name, ex);
+        }
         bindingRepository.upsert(new BindingRepository.BindingRecord(
             Ids.newId("spb"), sourceId, updated.indexProfileId(), updated.retrievalProfileId(), existing.createdAt(), now
         ));
@@ -2032,9 +2041,20 @@ public class KnowledgeServiceFacade {
     private void ensureSourceNameAvailable(String sourceName, String currentSourceId) {
         sourceRepository.findByName(sourceName).ifPresent(existing -> {
             if (currentSourceId == null || !existing.id().equals(currentSourceId)) {
-                throw new ApiConflictException("SOURCE_NAME_ALREADY_EXISTS", "Knowledge source name already exists: " + sourceName);
+                throw sourceNameConflict(sourceName, null);
             }
         });
+    }
+
+    private ApiConflictException sourceNameConflict(String sourceName, Throwable cause) {
+        ApiConflictException conflict = new ApiConflictException(
+            "SOURCE_NAME_ALREADY_EXISTS",
+            "Knowledge source name already exists: " + sourceName
+        );
+        if (cause != null) {
+            conflict.initCause(cause);
+        }
+        return conflict;
     }
 
     /**
