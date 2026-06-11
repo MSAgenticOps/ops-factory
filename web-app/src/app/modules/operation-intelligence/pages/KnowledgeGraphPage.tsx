@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
-import { CornerDownRight, CornerUpRight, Network, Radar, RefreshCw, Save, Search, Trash2 } from '../../../platform/ui/icons/AppIcons'
+import { CornerDownRight, CornerUpRight, Download, Network, Radar, RefreshCw, Save, Search, Trash2 } from '../../../platform/ui/icons/AppIcons'
 import { useTranslation } from 'react-i18next'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import SectionCard from '../../../platform/ui/primitives/SectionCard'
@@ -449,7 +449,40 @@ function sampleEntityPayload(): GraphSnapshot {
                 severity: 'warning',
                 value: 350,
                 unit: 'ms',
-                properties: {},
+                properties: { threshold: 200 },
+            },
+            {
+                id: 'obs-service-order-availability',
+                entityId: 'service-order',
+                observedAt: new Date().toISOString(),
+                category: 'availability',
+                name: 'health_check',
+                severity: 'normal',
+                value: true,
+                unit: 'boolean',
+                properties: { endpoint: '/health' },
+            },
+            {
+                id: 'obs-host-cpu',
+                entityId: 'host-10-0-0-1',
+                observedAt: new Date().toISOString(),
+                category: 'capacity',
+                name: 'cpu_usage',
+                severity: 'critical',
+                value: 92.5,
+                unit: '%',
+                properties: { cores: 8 },
+            },
+            {
+                id: 'obs-host-memory',
+                entityId: 'host-10-0-0-1',
+                observedAt: new Date().toISOString(),
+                category: 'capacity',
+                name: 'memory_usage',
+                severity: 'normal',
+                value: 45.2,
+                unit: '%',
+                properties: { total_gb: 32 },
             },
         ],
     }
@@ -2744,6 +2777,13 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                 {t('operationIntelligence.knowledgeGraph.importOntology')}
                             </Button>
                             <Button
+                                leadingIcon={<Download size={16} />}
+                                onClick={handleDownloadOntologySample}
+                                disabled={loading}
+                            >
+                                {t('operationIntelligence.knowledgeGraph.downloadSample')}
+                            </Button>
+                            <Button
                                 leadingIcon={<CornerUpRight size={16} />}
                                 onClick={handleExportOntology}
                                 disabled={loading}
@@ -2939,6 +2979,13 @@ export default function KnowledgeGraphPage({ embedded = false }: KnowledgeGraphP
                                     disabled={loading}
                                 >
                                     {t('operationIntelligence.knowledgeGraph.importEntities')}
+                                </Button>
+                                <Button
+                                    leadingIcon={<Download size={16} />}
+                                    onClick={handleDownloadEntitiesSample}
+                                    disabled={loading}
+                                >
+                                    {t('operationIntelligence.knowledgeGraph.downloadSample')}
                                 </Button>
                                 <Button
                                     leadingIcon={<CornerUpRight size={16} />}
