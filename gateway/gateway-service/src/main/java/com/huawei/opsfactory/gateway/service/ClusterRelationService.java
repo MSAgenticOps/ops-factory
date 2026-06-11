@@ -183,7 +183,7 @@ public class ClusterRelationService extends JsonFileEntityStore {
         validateRelationSource(sourceType, sourceId);
         validateRelationTarget(targetId);
         String description = validateDescription(body.get("description"));
-        Map<String, Object> relation = buildRelationEntity(body, sourceType, sourceId, targetId, description);
+        Map<String, Object> relation = buildRelationEntity(sourceType, sourceId, targetId, description);
         String id = (String) relation.get("id");
         writeEntityFile(id, relation);
         log.info("Created cluster relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceId,
@@ -606,7 +606,7 @@ public class ClusterRelationService extends JsonFileEntityStore {
         }
     }
 
-    private Map<String, Object> buildRelationEntity(Map<String, Object> body, String sourceType, String sourceId,
+    private Map<String, Object> buildRelationEntity(String sourceType, String sourceId,
         String targetId, String description) {
         String now = Instant.now().toString();
         Map<String, Object> relation = new LinkedHashMap<>();
@@ -631,10 +631,11 @@ public class ClusterRelationService extends JsonFileEntityStore {
         if (value == null) {
             return null;
         }
-        if (!(value instanceof String)) {
+
+        if (!(value instanceof String description)) {
             throw new BadRequestException("Description must be a string");
         }
-        String description = (String) value;
+
         ValidationUtils.requireMaxLength(description, 500, "Description");
         return description;
     }
