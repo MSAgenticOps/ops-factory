@@ -103,6 +103,7 @@ public class KnowledgeGraphService {
      *
      * @param ontology the ontology
      * @return imported ontology
+     * @throws ResponseStatusException if the ontology is null, its ID is invalid, or the ID already exists
      */
     public GraphOntology importOntology(GraphOntology ontology) {
         ensureEnabled();
@@ -112,11 +113,7 @@ public class KnowledgeGraphService {
         requireText(ontology.getOntologyId(), "ontologyId");
         ontology.setOntologyId(ontology.getOntologyId().trim());
         requireSafeId(ontology.getOntologyId(), "ontologyId");
-        if (schemaRegistry.existsOntology(ontology.getOntologyId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Ontology ID already exists: " + ontology.getOntologyId());
-        }
-        GraphOntology registered = schemaRegistry.register(ontology);
+        GraphOntology registered = schemaRegistry.registerNew(ontology);
         ontologyStore.save(registered);
         return registered;
     }
@@ -830,7 +827,7 @@ public class KnowledgeGraphService {
         String trimmedValue = value.trim();
         if (!value.equals(trimmedValue)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                fieldName + " contains unsupported path characters");
+                fieldName + " must not contain leading or trailing whitespace");
         }
         if (trimmedValue.length() > MAX_SAFE_ID_LENGTH) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
