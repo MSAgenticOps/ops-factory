@@ -5,9 +5,13 @@
 package com.huawei.opsfactory.gateway.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,9 +41,12 @@ public class ClusterRelationServiceTest {
     private ClusterRelationService relationService;
     private HostGroupService hostGroupService;
     private ClusterService clusterService;
+    private BusinessServiceService businessServiceService;
+    private BusinessTypeService businessTypeService;
 
     private Path groupsDir;
     private Path clustersDir;
+    private Path businessServicesDir;
 
     /**
      * Sets the up.
@@ -59,16 +66,30 @@ public class ClusterRelationServiceTest {
         clusterService = new ClusterService(properties);
         clusterService.init();
 
+        businessTypeService = new BusinessTypeService(properties);
+        businessTypeService.init();
+
+        HostService hostService = new HostService(properties);
+        hostService.init();
+
+        businessServiceService = new BusinessServiceService(properties);
+        businessServiceService.init();
+        businessServiceService.setBusinessTypeService(businessTypeService);
+        businessServiceService.setHostService(hostService);
+
         relationService = new ClusterRelationService(properties);
         relationService.init();
         relationService.setHostGroupService(hostGroupService);
         relationService.setClusterService(clusterService);
+        relationService.setBusinessServiceService(businessServiceService);
+        businessServiceService.setClusterRelationService(relationService);
 
         Path gatewayData = Path.of(tempFolder.getRoot().getAbsolutePath())
             .toAbsolutePath().normalize()
             .resolve("gateway").resolve("data");
         groupsDir = gatewayData.resolve("host-groups");
         clustersDir = gatewayData.resolve("clusters");
+        businessServicesDir = gatewayData.resolve("business-services");
     }
 
     // ── collectSubGroupClusters via reflection ─────────────────
@@ -208,5 +229,170 @@ public class ClusterRelationServiceTest {
         String json = new com.fasterxml.jackson.databind.ObjectMapper()
             .writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
         Files.writeString(clustersDir.resolve(id + ".json"), json, StandardCharsets.UTF_8);
+    }
+
+    private void createBusinessServiceOnDisk(String id, String name) throws IOException {
+        Map<String, Object> bs = new LinkedHashMap<>();
+        bs.put("id", id);
+        bs.put("name", name);
+        bs.put("typeId", "bt-1");
+        bs.put("description", "");
+        bs.put("hostIds", List.of());
+        bs.put("createdAt", "2026-01-01T00:00:00Z");
+        bs.put("updatedAt", "2026-01-01T00:00:00Z");
+
+        String json = new com.fasterxml.jackson.databind.ObjectMapper()
+            .writerWithDefaultPrettyPrinter().writeValueAsString(bs);
+        Files.writeString(businessServicesDir.resolve(id + ".json"), json, StandardCharsets.UTF_8);
+    }
+
+    // ── createRelation validation tests ───────────────────────────
+
+    /**
+     * Tests that an invalid sourceType throws BadRequestException.
+     *
+     * @throws IOException if disk operation fails
+     */
+    @Test(expected = BadRequestException.class)
+    public void testCreateRelation_invalidSourceType_throwsBadRequest() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceType", "invalid-type");
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+
+        relationService.createRelation(body);
+    }
+
+    /**
+     * Tests that a description exceeding 500 characters throws IllegalArgumentException.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateRelation_descriptionTooLong_throwsException() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        body.put("description", "a".repeat(501));
+
+        relationService.createRelation(body);
+    }
+
+    /**
+     * Tests that a description at exactly 500 characters is accepted.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testCreateRelation_descriptionAtMaxLength_success() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        body.put("description", "a".repeat(500));
+
+        Map<String, Object> result = relationService.createRelation(body);
+        assertNotNull(result.get("id"));
+        assertEquals("a".repeat(500), result.get("description"));
+    }
+
+    /**
+     * Tests creating a relation with business-service source type succeeds.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testCreateRelation_businessServiceSource_success() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+        createBusinessServiceOnDisk("bs1", "Business-Service-1");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceType", "business-service");
+        body.put("sourceId", "bs1");
+        body.put("targetId", "c1");
+        body.put("description", "test relation");
+
+        Map<String, Object> result = relationService.createRelation(body);
+        assertNotNull(result.get("id"));
+        assertEquals("business-service", result.get("sourceType"));
+        assertEquals("bs1", result.get("sourceId"));
+        assertEquals("c1", result.get("targetId"));
+    }
+
+    // ── updateRelation validation tests ───────────────────────────
+
+    /**
+     * Tests that updating a relation with a too-long description throws IllegalArgumentException.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateRelation_descriptionTooLong_throwsException() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        Map<String, Object> created = relationService.createRelation(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updateBody = new LinkedHashMap<>();
+        updateBody.put("description", "a".repeat(501));
+        relationService.updateRelation(id, updateBody);
+    }
+
+    /**
+     * Tests that updating a relation with a null description succeeds and clears the description.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testUpdateRelation_descriptionNull_success() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        body.put("description", "initial desc");
+        Map<String, Object> created = relationService.createRelation(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updateBody = new LinkedHashMap<>();
+        updateBody.put("description", null);
+        Map<String, Object> updated = relationService.updateRelation(id, updateBody);
+        assertNull(updated.get("description"));
+    }
+
+    /**
+     * Tests that updating a relation with a valid description succeeds.
+     *
+     * @throws Exception if the test fails
+     */
+    @Test
+    public void testUpdateRelation_descriptionValid_success() throws Exception {
+        String g1 = createGroupOnDisk("g1", "ROOT", null);
+        createClusterOnDisk("c1", "Cluster-1", g1);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sourceId", "c1");
+        body.put("targetId", "c1");
+        Map<String, Object> created = relationService.createRelation(body);
+        String id = (String) created.get("id");
+
+        Map<String, Object> updateBody = new LinkedHashMap<>();
+        updateBody.put("description", "updated description");
+        Map<String, Object> updated = relationService.updateRelation(id, updateBody);
+        assertEquals("updated description", updated.get("description"));
     }
 }
