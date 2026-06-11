@@ -915,11 +915,13 @@ function EditBasicInfoModal({
     existingNames,
     onClose,
     onSave,
+    onValidateName,
 }: {
     source: KnowledgeSource
     existingNames: Set<string>
     onClose: () => void
     onSave: (updates: { name: string; description: string | null }) => Promise<boolean>
+    onValidateName: (name: string) => Promise<string | null>
 }) {
     const { t } = useTranslation()
     const [name, setName] = useState(source.name)
@@ -957,6 +959,13 @@ function EditBasicInfoModal({
         }
 
         setSaving(true)
+        const nameError = await onValidateName(name.trim())
+        if (nameError) {
+            setError(nameError)
+            setSaving(false)
+            return
+        }
+
         const success = await onSave({
             name: name.trim(),
             description: description.trim() || null,
@@ -970,7 +979,7 @@ function EditBasicInfoModal({
 
         setSaving(false)
         onClose()
-    }, [description, hasInvalidChars, isDescTooLong, isDuplicate, isNameTooLong, name, onClose, onSave, t])
+    }, [description, hasInvalidChars, isDescTooLong, isDuplicate, isNameTooLong, name, onClose, onSave, onValidateName, t])
 
     return (
         <div className="modal-overlay">
@@ -2135,9 +2144,41 @@ export default function KnowledgeConfigure() {
             return true
         }
 
+        if (result.error?.toLowerCase().includes('already exists')) {
+            showToast('error', t('knowledge.nameDuplicate'))
+            return false
+        }
+
         showToast('error', result.error || t('knowledge.saveFailed'))
         return false
     }, [saveSource, showToast, t])
+
+    const validateBasicInfoName = useCallback(async (name: string): Promise<string | null> => {
+        if (!source) {
+            return null
+        }
+
+        if (name.trim() === source.name.trim()) {
+            return null
+        }
+
+        try {
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=1000`, {
+                headers: knowledgeHeaders(userId),
+            })
+            const data = await response.json().catch(() => null) as PagedResponse<KnowledgeSource> | null
+            if (!response.ok) {
+                return null
+            }
+
+            const latestNames = new Set((data?.items || []).map(item => item.name.trim()))
+            return isDuplicateKnowledgeSourceName(name, latestNames, source.name)
+                ? t('knowledge.nameDuplicate')
+                : null
+        } catch {
+            return null
+        }
+    }, [source, t, userId])
 
     const handleSaveIndexProfile = useCallback(async (): Promise<boolean> => {
         const nextTitleBoost = Number(titleBoost)
@@ -3123,6 +3164,7 @@ export default function KnowledgeConfigure() {
                     existingNames={existingSourceNames}
                     onClose={() => setShowEditBasicInfoModal(false)}
                     onSave={handleSaveBasicInfo}
+                    onValidateName={validateBasicInfoName}
                 />
             )}
 
