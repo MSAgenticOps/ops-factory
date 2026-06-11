@@ -145,19 +145,19 @@ public class ThreadController {
         private Integer limit;
 
         /**
-         * 默认构造函数。
+         * Default no-args constructor.
          */
         public FollowupQuery() {
         }
 
         /**
-         * 全参构造函数。
+         * All-args constructor.
          *
-         * @param channelId 渠道标识
-         * @param conversationId 会话标识
-         * @param accountId 账户标识
-         * @param threadId 线程标识
-         * @param limit 返回记录数上限
+         * @param channelId channel identifier
+         * @param conversationId conversation identifier
+         * @param accountId account identifier
+         * @param threadId thread identifier
+         * @param limit maximum records to return
          */
         public FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
             Integer limit) {
@@ -169,90 +169,90 @@ public class ThreadController {
         }
 
         /**
-         * 获取渠道标识。
+         * Returns the channel identifier.
          *
-         * @return 渠道标识
+         * @return channel identifier
          */
         public String getChannelId() {
             return channelId;
         }
 
         /**
-         * 设置渠道标识。
+         * Sets the channel identifier.
          *
-         * @param channelId 渠道标识
+         * @param channelId channel identifier
          */
         public void setChannelId(String channelId) {
             this.channelId = channelId;
         }
 
         /**
-         * 获取会话标识。
+         * Returns the conversation identifier.
          *
-         * @return 会话标识
+         * @return conversation identifier
          */
         public String getConversationId() {
             return conversationId;
         }
 
         /**
-         * 设置会话标识。
+         * Sets the conversation identifier.
          *
-         * @param conversationId 会话标识
+         * @param conversationId conversation identifier
          */
         public void setConversationId(String conversationId) {
             this.conversationId = conversationId;
         }
 
         /**
-         * 获取账户标识。
+         * Returns the account identifier.
          *
-         * @return 账户标识
+         * @return account identifier
          */
         public String getAccountId() {
             return accountId;
         }
 
         /**
-         * 设置账户标识。
+         * Sets the account identifier.
          *
-         * @param accountId 账户标识
+         * @param accountId account identifier
          */
         public void setAccountId(String accountId) {
             this.accountId = accountId;
         }
 
         /**
-         * 获取线程标识。
+         * Returns the thread identifier.
          *
-         * @return 线程标识
+         * @return thread identifier
          */
         public String getThreadId() {
             return threadId;
         }
 
         /**
-         * 设置线程标识。
+         * Sets the thread identifier.
          *
-         * @param threadId 线程标识
+         * @param threadId thread identifier
          */
         public void setThreadId(String threadId) {
             this.threadId = threadId;
         }
 
         /**
-         * 获取返回记录数上限。
+         * Returns the maximum number of records to return.
          *
-         * @return 返回记录数上限
+         * @return maximum records to return
          */
         public Integer getLimit() {
             return limit;
         }
 
         /**
-         * 设置返回记录数上限。
+         * Sets the maximum number of records to return.
          *
-         * @param limit 返回记录数上限
+         * @param limit maximum records to return
          */
         public void setLimit(Integer limit) {
             this.limit = limit;

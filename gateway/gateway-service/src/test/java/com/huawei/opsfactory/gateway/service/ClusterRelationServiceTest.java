@@ -17,6 +17,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -224,7 +226,7 @@ public class ClusterRelationServiceTest {
         group.put("createdAt", "2026-01-01T00:00:00Z");
         group.put("updatedAt", "2026-01-01T00:00:00Z");
 
-        String json = new com.fasterxml.jackson.databind.ObjectMapper()
+        String json = new ObjectMapper()
             .writerWithDefaultPrettyPrinter().writeValueAsString(group);
         Files.writeString(groupsDir.resolve(id + ".json"), json, StandardCharsets.UTF_8);
         return id;
@@ -249,7 +251,7 @@ public class ClusterRelationServiceTest {
         cluster.put("createdAt", "2026-01-01T00:00:00Z");
         cluster.put("updatedAt", "2026-01-01T00:00:00Z");
 
-        String json = new com.fasterxml.jackson.databind.ObjectMapper()
+        String json = new ObjectMapper()
             .writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
         Files.writeString(clustersDir.resolve(id + ".json"), json, StandardCharsets.UTF_8);
     }
@@ -271,7 +273,7 @@ public class ClusterRelationServiceTest {
         bs.put("createdAt", "2026-01-01T00:00:00Z");
         bs.put("updatedAt", "2026-01-01T00:00:00Z");
 
-        String json = new com.fasterxml.jackson.databind.ObjectMapper()
+        String json = new ObjectMapper()
             .writerWithDefaultPrettyPrinter().writeValueAsString(bs);
         Files.writeString(businessServicesDir.resolve(id + ".json"), json, StandardCharsets.UTF_8);
     }
