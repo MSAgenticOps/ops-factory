@@ -11,7 +11,6 @@ import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
-import com.huawei.opsfactory.gateway.exception.NotFoundException;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -49,7 +48,7 @@ public class ClusterRelationServiceTest {
     private Path businessServicesDir;
 
     /**
-     * Sets the up.
+     * Initializes the test environment with temporary directories and service instances.
      *
      * @throws IOException if the operation fails
      */
@@ -94,6 +93,13 @@ public class ClusterRelationServiceTest {
 
     // ── collectSubGroupClusters via reflection ─────────────────
 
+    /**
+     * Invokes the private collectSubGroupClusters method via reflection.
+     *
+     * @param groupId the group identifier to collect clusters for
+     * @return the list of collected cluster maps
+     * @throws Exception if reflection invocation fails
+     */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> invokeCollect(String groupId) throws Exception {
         Method method = ClusterRelationService.class.getDeclaredMethod(
@@ -198,6 +204,15 @@ public class ClusterRelationServiceTest {
 
     // ── Disk helpers ──────────────────────────────────────────────
 
+    /**
+     * Creates a host group JSON file on disk for testing.
+     *
+     * @param id the group identifier
+     * @param name the group name
+     * @param parentId the parent group identifier, or null for root groups
+     * @return the group identifier
+     * @throws IOException if writing to disk fails
+     */
     private String createGroupOnDisk(String id, String name, String parentId) throws IOException {
         Map<String, Object> group = new LinkedHashMap<>();
         group.put("id", id);
@@ -215,6 +230,14 @@ public class ClusterRelationServiceTest {
         return id;
     }
 
+    /**
+     * Creates a cluster JSON file on disk for testing.
+     *
+     * @param id the cluster identifier
+     * @param name the cluster name
+     * @param groupId the parent group identifier
+     * @throws IOException if writing to disk fails
+     */
     private void createClusterOnDisk(String id, String name, String groupId) throws IOException {
         Map<String, Object> cluster = new LinkedHashMap<>();
         cluster.put("id", id);
@@ -231,6 +254,13 @@ public class ClusterRelationServiceTest {
         Files.writeString(clustersDir.resolve(id + ".json"), json, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Creates a business service JSON file on disk for testing.
+     *
+     * @param id the business service identifier
+     * @param name the business service name
+     * @throws IOException if writing to disk fails
+     */
     private void createBusinessServiceOnDisk(String id, String name) throws IOException {
         Map<String, Object> bs = new LinkedHashMap<>();
         bs.put("id", id);
