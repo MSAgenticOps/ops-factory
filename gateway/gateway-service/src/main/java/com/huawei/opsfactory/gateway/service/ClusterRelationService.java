@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.gateway.service;
 
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
@@ -176,6 +177,10 @@ public class ClusterRelationService extends JsonFileEntityStore {
         validateRelationBody(sourceId, targetId);
         validateRelationSource(sourceType, sourceId);
         validateRelationTarget(targetId);
+        Object descriptionObj = body.get("description");
+        if (descriptionObj != null) {
+            ValidationUtils.requireMaxLength(descriptionObj.toString(), 500, "Description");
+        }
         Map<String, Object> relation = buildRelationEntity(body, sourceType, sourceId, targetId);
         String id = (String) relation.get("id");
         writeEntityFile(id, relation);
@@ -202,7 +207,11 @@ public class ClusterRelationService extends JsonFileEntityStore {
         String currentSourceType = (String) relation.getOrDefault("sourceType", "cluster");
 
         if (body.containsKey("description")) {
-            relation.put("description", body.get("description"));
+            Object descObj = body.get("description");
+            if (descObj != null) {
+                ValidationUtils.requireMaxLength(descObj.toString(), 500, "Description");
+            }
+            relation.put("description", descObj);
         }
         if (body.containsKey("sourceId")) {
             String sourceId = (String) body.get("sourceId");

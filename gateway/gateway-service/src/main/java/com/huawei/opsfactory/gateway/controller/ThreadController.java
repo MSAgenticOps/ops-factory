@@ -81,15 +81,15 @@ public class ThreadController {
     public ResponseEntity<Map<String, Object>> listFollowups(@PathVariable("agentId") String agentId,
         FollowupQuery query, HttpServletRequest request) {
         String userId = currentUserId(request);
-        if (query.channelId() == null || query.channelId().isBlank()
-            || query.conversationId() == null || query.conversationId().isBlank()) {
+        if (query.getChannelId() == null || query.getChannelId().isBlank()
+            || query.getConversationId() == null || query.getConversationId().isBlank()) {
             // channelId + conversationId are required to locate a thread (previously enforced by @RequestParam).
             return ResponseEntity.badRequest().body(Map.of("error", "channelId and conversationId are required"));
         }
-        String channelId = query.channelId();
-        String effectiveAccount = query.accountId() == null || query.accountId().isBlank()
-            ? DEFAULT_ACCOUNT_ID : query.accountId();
-        int effectiveLimit = clampLimit(query.limit());
+        String channelId = query.getChannelId();
+        String effectiveAccount = query.getAccountId() == null || query.getAccountId().isBlank()
+            ? DEFAULT_ACCOUNT_ID : query.getAccountId();
+        int effectiveLimit = clampLimit(query.getLimit());
         ChannelDetail channel;
         try {
             channel = channelConfigService.getChannel(channelId, userId);
@@ -106,8 +106,8 @@ public class ThreadController {
             log.warn("Thread followups: unknown channel {} for {}:{}", channelId, agentId, userId);
             return ResponseEntity.badRequest().body(Map.of("error", "unknown or invalid channel"));
         }
-        String targetKey = ChannelTargetKey.of(channel.type(), channelId, effectiveAccount, query.conversationId(),
-            query.threadId());
+        String targetKey = ChannelTargetKey.of(channel.type(), channelId, effectiveAccount, query.getConversationId(),
+            query.getThreadId());
         List<ProactiveFollowupRecord> followups =
             followupService.recentByTargetKey(userId, agentId, targetKey, effectiveLimit);
         log.info("Thread followups: {} record(s) on channel {} for {}:{}", followups.size(), channelId, agentId,
@@ -137,7 +137,63 @@ public class ThreadController {
      * @param threadId thread identifier (binding coordinate), or empty for a direct conversation
      * @param limit maximum records to return (defaults to 50, capped at 200)
      */
-    public record FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
-        Integer limit) {
+    public static class FollowupQuery {
+        private String channelId;
+        private String conversationId;
+        private String accountId;
+        private String threadId;
+        private Integer limit;
+
+        public FollowupQuery() {
+        }
+
+        public FollowupQuery(String channelId, String conversationId, String accountId, String threadId,
+            Integer limit) {
+            this.channelId = channelId;
+            this.conversationId = conversationId;
+            this.accountId = accountId;
+            this.threadId = threadId;
+            this.limit = limit;
+        }
+
+        public String getChannelId() {
+            return channelId;
+        }
+
+        public void setChannelId(String channelId) {
+            this.channelId = channelId;
+        }
+
+        public String getConversationId() {
+            return conversationId;
+        }
+
+        public void setConversationId(String conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        public String getAccountId() {
+            return accountId;
+        }
+
+        public void setAccountId(String accountId) {
+            this.accountId = accountId;
+        }
+
+        public String getThreadId() {
+            return threadId;
+        }
+
+        public void setThreadId(String threadId) {
+            this.threadId = threadId;
+        }
+
+        public Integer getLimit() {
+            return limit;
+        }
+
+        public void setLimit(Integer limit) {
+            this.limit = limit;
+        }
     }
 }

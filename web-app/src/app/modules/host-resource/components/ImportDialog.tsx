@@ -233,8 +233,14 @@ export default function ImportDialog({ open, onClose, importing, progress, onImp
                 return t('hostResource.importErrorDescriptionTooLong', { length: err.params?.length })
             case 'import.knowledgeTooLong':
                 return t('hostResource.importErrorKnowledgeTooLong', { length: err.params?.length })
+            case 'import.sourceNodeTypeInvalid':
+                return t('hostResource.importErrorSourceNodeTypeInvalid', { value: err.params?.value })
+            case 'import.destNodeTypeInvalid':
+                return t('hostResource.importErrorDestNodeTypeInvalid', { value: err.params?.value })
+            case 'import.targetClusterNotFound':
+                return t('hostResource.importErrorTargetClusterNotFound', { cluster: err.params?.cluster })
             case 'import.targetHostNotFound':
-                return t('hostResource.importErrorTargetHostNotFound', { host: err.params?.host })
+                return t('hostResource.importErrorTargetHostNotFound', { cluster: err.params?.cluster })
             case 'import.sourceNodeNotFound':
                 return t('hostResource.importErrorSourceNodeNotFound', { node: err.params?.node })
             case 'import.invalidNodes':

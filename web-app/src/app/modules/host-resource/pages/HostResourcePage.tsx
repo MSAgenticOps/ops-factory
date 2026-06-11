@@ -87,7 +87,7 @@ export default function HostResourcePage() {
     const { groups, fetchGroups, createGroup, updateGroup, deleteGroup } = useHostGroups()
     const { clusters, fetchAllClusters, createCluster, updateCluster, deleteCluster } = useClusters()
     const { hosts, allHosts, fetchHosts, fetchAllHosts, createHost, updateHost, deleteHost, testConnection } = useHostResource()
-    const { relations: hostRelations, fetchGraph, fetchRelations: fetchHostRelations, createRelation } = useHostRelations()
+    const { relations: hostRelations, fetchGraph, fetchRelations: fetchHostRelations } = useHostRelations()
     const { relations: clusterRelations, clusterGraphData, fetchClusterGraph, fetchRelations: fetchClusterRelations, createRelation: createClusterRelation, updateRelation: updateClusterRelation, deleteRelation: deleteClusterRelation } = useClusterRelations()
     const { businessServices, fetchBusinessServices, createBusinessService, updateBusinessService, deleteBusinessService } = useBusinessServices()
     const clusterTypesHook = useClusterTypes()
@@ -107,13 +107,13 @@ export default function HostResourcePage() {
     // Export / Import hooks
     const { exporting, exportAllAsZip } = useResourceExport()
     const { importing, progress, importXlsx } = useResourceImport({
-        fetchGroups, fetchAllClusters, fetchAllHosts, fetchHostRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands, fetchSops: sopsHook.fetchSops,
-        groups, clusters, allHosts, businessServices, relations: hostRelations,
+        fetchGroups, fetchAllClusters, fetchAllHosts, fetchClusterRelations, fetchBusinessServices, fetchGraph, fetchWhitelist: fetchWhitelistCommands, fetchSops: sopsHook.fetchSops,
+        groups, clusters, allHosts, businessServices, clusterRelations,
         clusterTypes: clusterTypesHook.clusterTypes,
         businessTypes: businessTypesHook.businessTypes,
         solutionTypes: solutionTypesHook.solutionTypes,
         createGroup, updateGroup, createCluster, createHost,
-        createBusinessService, createRelation,
+        createBusinessService, createClusterRelation,
         createClusterType: clusterTypesHook.createClusterType,
         createBusinessType: businessTypesHook.createBusinessType,
         createSolutionType: solutionTypesHook.createSolutionType,
@@ -125,7 +125,6 @@ export default function HostResourcePage() {
     useEffect(() => { fetchGroups() }, [fetchGroups])
     useEffect(() => { fetchAllClusters() }, [fetchAllClusters])
     useEffect(() => { fetchAllHosts() }, [fetchAllHosts])
-    useEffect(() => { fetchHostRelations() }, [fetchHostRelations])
     useEffect(() => { fetchBusinessServices() }, [fetchBusinessServices])
     useEffect(() => { fetchClusterGraph() }, [fetchClusterGraph])
 
@@ -621,7 +620,7 @@ export default function HostResourcePage() {
             fetchGroups(),
             fetchAllClusters(),
             fetchAllHosts(),
-            fetchHostRelations(),
+            fetchClusterRelations(),
             fetchBusinessServices(),
             clusterTypesHook.fetchClusterTypes(),
             businessTypesHook.fetchBusinessTypes(),
@@ -630,7 +629,8 @@ export default function HostResourcePage() {
             sopsHook.fetchSops(),
         ])
         exportAllAsZip({
-            groups, clusters, allHosts, hostRelations,
+            groups, clusters, allHosts,
+            clusterRelations,
             businessServices,
             clusterTypes: clusterTypesHook.clusterTypes,
             businessTypes: businessTypesHook.businessTypes,
