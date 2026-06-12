@@ -1,0 +1,107 @@
+# Operation Intelligence runtime configuration
+# Spring Boot loads this file directly via OI_CONFIG_PATH.
+
+spring:
+  profiles:
+    active: ${OI_SPRING_PROFILE:}      # env override: OI_SPRING_PROFILE (set to 'prod' in production)
+  codec:
+    max-in-memory-size: 10MB             # allow large knowledge graph JSON imports
+
+server:
+  port: 8096                            # env override: OI_PORT
+
+# Machine-to-machine authentication (required for /machine/** endpoints)
+# Environment variables: COMMON_AOP_MACHINE_USERNAME, COMMON_AOP_MACHINE_PASSWORD
+common:
+  aop:
+    machine:
+      username: "${COMMON_AOP_MACHINE_USERNAME:}"
+      password: "${COMMON_AOP_MACHINE_PASSWORD:}"
+
+operation-intelligence:
+  secret-key: ""                        # env override: OI_SECRET_KEY [REQUIRED]
+  cors-origin: "*"                      # env override: OI_CORS_ORIGIN
+  # Data directory path (relative to application working directory or absolute path)
+  # Defaults to ./data in the application working directory if not specified
+  data-root: "./data"
+
+  qos:
+    enabled: true                             # enable health curve collection and API
+    collection-interval-ms: 300000            # metrics collection interval (5 min)
+    rotation-interval-ms: 3600000             # data file rotation interval (1 hour)
+    raw-data-retention-days: 7
+    detail-data-retention-days: 30
+    normalize-data-retention-days: 90
+    weights:
+      availability: 0.4                       # wA (0~1, wA+wP+wR=1)
+      performance: 0.4                        # wP
+      resource: 0.2                           # wR
+    dv-environments: []                        # DV environments, example:
+    #  - env-code: "DigitalCRM.sit"
+    #    env-name: "DigitalCRM SIT"
+    #    agent-solution-type: "DigitalCRM"
+    #    product-type-name: "DigitalCRM"
+    #    server-url: "https://YOUR_DV_SERVER:26335"
+    #    utm-user: "YOUR_USER_HERE"
+    #    utm-password: "${DV_PASSWORD}"  # 使用环境变量或加密密码
+    #    crt-content: ""                       # Base64 encoded certificate
+    #    crt-file-name: "client.jks"
+    #    strict-ssl: false                       # reject insecure SSL fallback (default: true)
+
+  knowledge-graph:
+    enabled: true                                # enable MVP knowledge graph import/query APIs
+    data-dir: "knowledge-graph"                  # relative to operation-intelligence.data-root
+    max-hops: 4                                  # maximum supported subgraph query hops
+    snapshot-retention: 3                        # keep the latest N successful snapshots per environment
+    call-chain-subgraph-dir: "call-chain-subgraphs" # short-term generated call chain subgraph storage
+    call-chain-subgraph-retention: 50            # keep the latest N generated call chain subgraphs
+    call-chain-subgraph-ttl-minutes: 120         # expire generated call chain subgraphs after N minutes
+    resource-subgraph-enabled: true              # enrich call chain subgraphs with vertical resource topology
+    resource-subgraph-max-hops: 4                # max hops when expanding resource-layer topology
+    resource-subgraph-relation-types:            # allowed vertical relation types
+      - "contains"
+      - "contains_service"
+      - "runs_on"
+      - "belongs_to_cluster"
+      - "manages"
+    resource-subgraph-entity-types:              # allowed resource entity types
+      - "MicroService"
+      - "Service"
+      - "ServiceCluster"
+      - "Cluster"
+      - "ApplicationServiceCluster"
+      - "MiddlewareCluster"
+      - "Pod"
+      - "K8sInstance"
+      - "K8sCluster"
+      - "WorkerNode"
+      - "ComputeNode"
+      - "Host"
+      - "Container"
+
+  call-chain:
+    enabled: true
+    query-mode: "service"                 # default call chain query mode
+    query-size: 100
+    query-limit: 10000
+    request-timeout-ms: 60000
+    max-time-range-ms: 1800000            # 30 minutes (max query time range)
+    rotation-interval-ms: 3600000         # 1 hour (data file rotation)
+    normalize-data-retention-days: 90     # data retention days
+    min-call-ratio: 3.0                   # minimum call ratio threshold for filtering low frequency flows
+    mock-query-enabled: false             # local debug: return call chain data from a JSON file instead of DV
+    mock-query-file: ""                   # absolute path or path relative to config.yaml, supports root.flows/result.flows
+    time-split:
+      initial-minutes: 15
+      degrade-minutes: [10, 5]
+
+  logging:
+    access-log-enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.huawei.opsfactory.operationintelligence: INFO
+    org.springframework: WARN
+    reactor: WARN
+    io.netty: WARN

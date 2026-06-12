@@ -1,17 +1,13 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.common.error.RetrievalConfigurationException;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.ChunkRepository;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -35,26 +31,46 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * The VectorIndexService.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
+
 @Service
 public class VectorIndexService {
 
     private static final String INDEX_NAME = "vectors";
+
     private static final String FIELD_CHUNK_ID = "chunkId";
+
     private static final String FIELD_DOCUMENT_ID = "documentId";
+
     private static final String FIELD_SOURCE_ID = "sourceId";
+
     private static final String FIELD_VECTOR = "embedding";
 
     private final int vectorDimension;
+
     private final StorageManager storageManager;
+
     private final ChunkRepository chunkRepository;
+
     private final EmbeddingService embeddingService;
 
-    public VectorIndexService(
-        KnowledgeProperties properties,
-        StorageManager storageManager,
-        ChunkRepository chunkRepository,
-        EmbeddingService embeddingService
-    ) {
+    public VectorIndexService(KnowledgeProperties properties, StorageManager storageManager,
+        ChunkRepository chunkRepository, EmbeddingService embeddingService) {
         this.vectorDimension = Math.max(1, Math.min(properties.getEmbedding().getDimensions(), 1024));
         this.storageManager = storageManager;
         this.chunkRepository = chunkRepository;
@@ -63,14 +79,14 @@ public class VectorIndexService {
 
     @EventListener(ApplicationReadyEvent.class)
     public void rebuildOnStartup() {
-        List<SearchService.SearchableChunk> chunks = chunkRepository.findAll().stream()
-            .map(this::toSearchableChunk)
-            .toList();
+        List<SearchService.SearchableChunk> chunks =
+            chunkRepository.findAll().stream().map(this::toSearchableChunk).toList();
         Map<String, List<Double>> vectors = embeddingService.ensureChunkEmbeddings(chunks);
         rebuildIndex(chunks, vectors);
     }
 
     public void rebuildIndex(List<SearchService.SearchableChunk> chunks, Map<String, List<Double>> vectors) {
+        recreateIndexDirectory();
         try (Directory directory = openDirectory()) {
             IndexWriterConfig config = new IndexWriterConfig();
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
@@ -85,6 +101,16 @@ public class VectorIndexService {
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to rebuild vector index", e);
+        }
+    }
+
+    private void recreateIndexDirectory() {
+        Path indexDir = storageManager.indexDir(INDEX_NAME);
+        storageManager.deleteRecursively(indexDir);
+        try {
+            Files.createDirectories(indexDir);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to recreate vector index directory", e);
         }
     }
 
@@ -128,7 +154,8 @@ public class VectorIndexService {
             return List.of();
         }
 
-        Set<String> allowedChunkIds = chunks.stream().map(SearchService.SearchableChunk::id).collect(Collectors.toSet());
+        Set<String> allowedChunkIds =
+            chunks.stream().map(SearchService.SearchableChunk::id).collect(Collectors.toSet());
         Query filter = new TermInSetQuery(FIELD_CHUNK_ID, allowedChunkIds.stream().map(BytesRef::new).toList());
         float[] target = toFloatArray(queryVector);
         if (target.length == 0) {
@@ -193,8 +220,7 @@ public class VectorIndexService {
     private float[] toFloatArray(List<Double> vector) {
         if (vector.size() != vectorDimension) {
             throw new RetrievalConfigurationException(
-                "Embedding dimension mismatch: expected " + vectorDimension + " but got " + vector.size()
-            );
+                "Embedding dimension mismatch: expected " + vectorDimension + " but got " + vector.size());
         }
         float[] floats = new float[vectorDimension];
         for (int i = 0; i < vectorDimension; i++) {
@@ -210,21 +236,7 @@ public class VectorIndexService {
     }
 
     private SearchService.SearchableChunk toSearchableChunk(ChunkRepository.ChunkRecord record) {
-        return new SearchService.SearchableChunk(
-            record.id(),
-            record.documentId(),
-            record.sourceId(),
-            record.title(),
-            record.titlePath(),
-            record.keywords(),
-            record.text(),
-            record.markdown(),
-            record.pageFrom(),
-            record.pageTo(),
-            record.ordinal(),
-            record.editStatus(),
-            record.updatedBy()
-        );
+        return SearchService.SearchableChunk.from(record);
     }
 
     private double clamp(double value) {

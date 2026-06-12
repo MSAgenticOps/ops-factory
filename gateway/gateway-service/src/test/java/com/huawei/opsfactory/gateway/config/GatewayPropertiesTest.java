@@ -1,4 +1,12 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.config;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -6,12 +14,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
+/**
+ * Test coverage for Gateway Properties.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class GatewayPropertiesTest {
 
+    /**
+     * Tests defaults.
+     */
     @Test
     public void testDefaults() {
         GatewayProperties props = new GatewayProperties();
@@ -21,6 +34,9 @@ public class GatewayPropertiesTest {
         assertEquals("goosed", props.getGoosedBin());
     }
 
+    /**
+     * Tests path defaults.
+     */
     @Test
     public void testPathDefaults() {
         GatewayProperties.Paths paths = new GatewayProperties.Paths();
@@ -29,6 +45,9 @@ public class GatewayPropertiesTest {
         assertEquals("users", paths.getUsersDir());
     }
 
+    /**
+     * Tests idle defaults.
+     */
     @Test
     public void testIdleDefaults() {
         GatewayProperties.Idle idle = new GatewayProperties.Idle();
@@ -36,6 +55,9 @@ public class GatewayPropertiesTest {
         assertEquals(60000L, idle.getCheckIntervalMs());
     }
 
+    /**
+     * Tests upload defaults.
+     */
     @Test
     public void testUploadDefaults() {
         GatewayProperties.Upload upload = new GatewayProperties.Upload();
@@ -43,6 +65,9 @@ public class GatewayPropertiesTest {
         assertEquals(20, upload.getMaxImageSizeMb());
     }
 
+    /**
+     * Tests files scan root defaults.
+     */
     @Test
     public void testFilesScanRootDefaults() {
         GatewayProperties.FileBrowser files = new GatewayProperties.FileBrowser();
@@ -59,6 +84,9 @@ public class GatewayPropertiesTest {
         assertFalse(files.getScanRoots().get(1).isRecursive());
     }
 
+    /**
+     * Tests skill market defaults.
+     */
     @Test
     public void testSkillMarketDefaults() {
         GatewayProperties.SkillMarket skillMarket = new GatewayProperties.SkillMarket();
@@ -67,6 +95,20 @@ public class GatewayPropertiesTest {
         assertEquals(200, skillMarket.getMaxPackageSizeMb());
     }
 
+    /**
+     * Tests operation intelligence defaults.
+     */
+    @Test
+    public void testOperationIntelligenceDefaults() {
+        GatewayProperties.OperationIntelligence operationIntelligence = new GatewayProperties.OperationIntelligence();
+        assertEquals("http://localhost:8096", operationIntelligence.getBaseUrl());
+        assertEquals("", operationIntelligence.getSecretKey());
+        assertEquals(30000, operationIntelligence.getRequestTimeoutMs());
+    }
+
+    /**
+     * Tests office preview defaults.
+     */
     @Test
     public void testOfficePreviewDefaults() {
         GatewayProperties.OfficePreview op = new GatewayProperties.OfficePreview();
@@ -74,6 +116,9 @@ public class GatewayPropertiesTest {
         assertEquals("", op.getOnlyofficeUrl());
     }
 
+    /**
+     * Tests logging defaults.
+     */
     @Test
     public void testLoggingDefaults() {
         GatewayProperties.Logging logging = new GatewayProperties.Logging();
@@ -83,6 +128,9 @@ public class GatewayPropertiesTest {
         assertEquals(160, logging.getSseChunkPreviewMaxChars());
     }
 
+    /**
+     * Tests setters.
+     */
     @Test
     public void testSetters() {
         GatewayProperties props = new GatewayProperties();
@@ -95,6 +143,9 @@ public class GatewayPropertiesTest {
         assertEquals("/usr/bin/goosed", props.getGoosedBin());
     }
 
+    /**
+     * Tests logging setters.
+     */
     @Test
     public void testLoggingSetters() {
         GatewayProperties.Logging logging = new GatewayProperties.Logging();
@@ -109,6 +160,9 @@ public class GatewayPropertiesTest {
         assertEquals(80, logging.getSseChunkPreviewMaxChars());
     }
 
+    /**
+     * Tests langfuse defaults.
+     */
     @Test
     public void testLangfuseDefaults() {
         GatewayProperties.Langfuse langfuse = new GatewayProperties.Langfuse();
@@ -117,14 +171,18 @@ public class GatewayPropertiesTest {
         assertEquals("", langfuse.getSecretKey());
     }
 
-    // ====================== TLS properties ======================
-
+    /**
+     * Tests goose tls default true.
+     */
     @Test
     public void testGooseTlsDefaultTrue() {
         GatewayProperties props = new GatewayProperties();
         assertTrue(props.isGooseTls());
     }
 
+    /**
+     * Tests goose tls set true.
+     */
     @Test
     public void testGooseTlsSetTrue() {
         GatewayProperties props = new GatewayProperties();
@@ -132,6 +190,9 @@ public class GatewayPropertiesTest {
         assertTrue(props.isGooseTls());
     }
 
+    /**
+     * Tests goose scheme https when tls true.
+     */
     @Test
     public void testGooseSchemeHttpsWhenTlsTrue() {
         GatewayProperties props = new GatewayProperties();
@@ -139,6 +200,9 @@ public class GatewayPropertiesTest {
         assertEquals("https", props.gooseScheme());
     }
 
+    /**
+     * Tests goose scheme http when tls false.
+     */
     @Test
     public void testGooseSchemeHttpWhenTlsFalse() {
         GatewayProperties props = new GatewayProperties();
@@ -146,6 +210,12 @@ public class GatewayPropertiesTest {
         assertEquals("http", props.gooseScheme());
     }
 
+    /**
+     * Tests resolves paths based on configured project-root.
+     * Absolute paths are returned as-is, relative paths are resolved against user.dir.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testResolvesPathsRelativeToGatewayConfigPath() throws IOException {
         Path tempRoot = Files.createTempDirectory("gateway-props");
@@ -153,22 +223,13 @@ public class GatewayPropertiesTest {
         Files.createDirectories(gatewayRoot);
         Files.writeString(gatewayRoot.resolve("config.yaml"), "server:\n  port: 3000\n");
 
-        String previous = System.getProperty("GATEWAY_CONFIG_PATH");
-        System.setProperty("GATEWAY_CONFIG_PATH", gatewayRoot.resolve("config.yaml").toString());
-        try {
-            GatewayProperties props = new GatewayProperties();
-            GatewayProperties.Paths paths = new GatewayProperties.Paths();
-            paths.setProjectRoot("..");
-            props.setPaths(paths);
+        GatewayProperties props = new GatewayProperties();
+        GatewayProperties.Paths paths = new GatewayProperties.Paths();
+        // Test with absolute path
+        paths.setProjectRoot(tempRoot.toString());
+        props.setPaths(paths);
 
-            assertEquals(tempRoot.normalize(), props.getProjectRootPath());
-            assertEquals(gatewayRoot.normalize(), props.getGatewayRootPath());
-        } finally {
-            if (previous == null) {
-                System.clearProperty("GATEWAY_CONFIG_PATH");
-            } else {
-                System.setProperty("GATEWAY_CONFIG_PATH", previous);
-            }
-        }
+        assertEquals(tempRoot.normalize(), props.getProjectRootPath());
+        assertEquals(tempRoot.resolve("gateway").normalize(), props.getGatewayRootPath());
     }
 }

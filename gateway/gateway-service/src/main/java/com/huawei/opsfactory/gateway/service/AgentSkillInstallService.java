@@ -1,7 +1,22 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.model.AgentRegistryEntry;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,74 +37,126 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.yaml.snakeyaml.Yaml;
 
+/**
+ * Handles downloading, validating, extracting, and uninstalling skills from the skill market for agents.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
 public class AgentSkillInstallService {
-
     private static final Logger log = LoggerFactory.getLogger(AgentSkillInstallService.class);
+
     private static final Pattern SKILL_ID_PATTERN = Pattern.compile("^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$");
 
-    private final AgentConfigService agentConfigService;
-    private final SkillMarketClient skillMarketClient;
-    private final GatewayProperties properties;
-    private final Yaml yaml = new Yaml();
+    private static final String MSG_INVALID_SKILL_ID =
+        "Skill id must use lowercase letters, numbers, and hyphens";
 
-    public AgentSkillInstallService(
-            AgentConfigService agentConfigService,
-            SkillMarketClient skillMarketClient,
-            GatewayProperties properties) {
+    private final AgentConfigService agentConfigService;
+
+    private final SkillMarketClient skillMarketClient;
+
+    private final GatewayProperties properties;
+
+    private final Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
+
+    /**
+     * Creates the agent skill install service instance.
+     */
+    public AgentSkillInstallService(AgentConfigService agentConfigService, SkillMarketClient skillMarketClient,
+        GatewayProperties properties) {
         this.agentConfigService = agentConfigService;
         this.skillMarketClient = skillMarketClient;
         this.properties = properties;
     }
 
-    public Map<String, Object> install(String agentId, String requestedSkillId) throws IOException {
+    /**
+     * Downloads, validates, and installs a skill from the skill market for the specified agent.
+     *
+     * @param agentId agent to install the skill for
+     * @param requestedSkillId skill identifier to install from the market
+     * @return installation result map with success flag, skill metadata, and restartRequired indicator
+     */
+    public Map<String, Object> install(String agentId, String requestedSkillId)
+        throws NotFoundException, BadRequestException, ConflictException {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
-            throw new IllegalArgumentException("Agent '" + agentId + "' not found");
+            throw new NotFoundException("Agent not found");
         }
 
         String skillId = validateSkillId(requestedSkillId);
         Map<String, Object> marketSkill = skillMarketClient.getSkill(skillId);
         byte[] packageBytes = skillMarketClient.downloadPackage(skillId);
-        long maxPackageBytes = properties.getSkillMarket().getMaxPackageSizeMb() * 1024L * 1024L;
-        if (packageBytes.length > maxPackageBytes) {
-            throw new IllegalArgumentException("Skill package exceeds gateway installation limit");
-        }
-
         String expectedChecksum = stringValue(marketSkill, "checksum");
         String actualChecksum = "sha256:" + sha256(packageBytes);
-        if (!expectedChecksum.isBlank() && !expectedChecksum.equalsIgnoreCase(actualChecksum)) {
-            throw new IllegalArgumentException("Skill package checksum does not match market metadata");
-        }
+        validateDownloadedSkillPackage(packageBytes, expectedChecksum, actualChecksum);
+        installSkillPackage(agentId, skillId, packageBytes, actualChecksum);
+        agentConfigService.invalidateCache(agentId);
+        Map<String, Object> skill = buildInstalledSkillMetadata(skillId, marketSkill, actualChecksum);
+        log.info("Installed skill id={} agentId={} checksum={}", skillId, agentId, actualChecksum);
+        return Map.of("success", true, "skill", skill, "restartRequired", true);
+    }
 
-        Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
+    private void validateDownloadedSkillPackage(byte[] packageBytes, String expectedChecksum, String actualChecksum)
+        throws BadRequestException {
+        long maxPackageBytes = properties.getSkillMarket().getMaxPackageSizeMb() * 1024L * 1024L;
+        if (packageBytes.length > maxPackageBytes) {
+            throw new BadRequestException("Skill package exceeds gateway installation limit");
+        }
+        if (!expectedChecksum.isBlank() && !expectedChecksum.equalsIgnoreCase(actualChecksum)) {
+            throw new BadRequestException("Skill package checksum does not match market metadata");
+        }
+    }
+
+    private void installSkillPackage(String agentId, String skillId, byte[] packageBytes, String actualChecksum)
+        throws ConflictException, BadRequestException {
+        try {
+            Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills");
+            Path destination = resolveSkillDestination(agentId, skillId, skillsDir);
+            Path tempDir = Files.createTempDirectory(skillsDir, skillId + "-install-");
+            installExtractedSkill(skillId, packageBytes, actualChecksum, destination, tempDir);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to install skill '" + skillId + "' for agent: " + agentId, e);
+        }
+    }
+
+    private Path resolveSkillDestination(String agentId, String skillId, Path skillsDir)
+        throws IOException, ConflictException {
         Path destination = skillsDir.resolve(skillId);
         if (Files.exists(destination)) {
-            throw new SkillInstallConflictException("Skill '" + skillId + "' is already installed for agent '" + agentId + "'");
+            throw new ConflictException("Skill is already installed for agent");
         }
-
         Files.createDirectories(skillsDir);
-        Path tempDir = Files.createTempDirectory(skillsDir, skillId + "-install-");
+        return destination;
+    }
+
+    private void installExtractedSkill(String skillId, byte[] packageBytes, String actualChecksum, Path destination,
+        Path tempDir) throws IOException, BadRequestException {
         try {
             extractPackage(packageBytes, tempDir);
-            Path skillMd = tempDir.resolve("SKILL.md");
-            if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
-                throw new IllegalArgumentException("Skill package must contain a non-empty SKILL.md");
-            }
-            rejectSymbolicLinks(tempDir);
+            validateExtractedSkill(tempDir);
             writeInstallMetadata(tempDir, skillId, actualChecksum);
             Files.move(tempDir, destination, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException | RuntimeException e) {
-            deleteRecursively(tempDir);
+        } catch (RuntimeException e) {
+            safeDelete(tempDir);
             throw e;
+        } catch (IOException e) {
+            safeDelete(tempDir);
+            throw new IllegalStateException("Failed to install skill '" + skillId + "'", e);
         }
+    }
 
-        agentConfigService.invalidateCache(agentId);
+    private void validateExtractedSkill(Path tempDir) throws IOException, BadRequestException {
+        Path skillMd = tempDir.resolve("SKILL.md");
+        if (!Files.isRegularFile(skillMd) || Files.size(skillMd) == 0) {
+            throw new BadRequestException("Skill package must contain a non-empty SKILL.md");
+        }
+        rejectSymbolicLinks(tempDir);
+    }
+
+    private Map<String, Object> buildInstalledSkillMetadata(String skillId, Map<String, Object> marketSkill,
+        String actualChecksum) {
         Map<String, Object> skill = new LinkedHashMap<>();
         skill.put("id", skillId);
         skill.put("name", stringValue(marketSkill, "name"));
@@ -97,74 +164,113 @@ public class AgentSkillInstallService {
         skill.put("path", "skills/" + skillId);
         skill.put("source", "skill-market");
         skill.put("checksum", actualChecksum);
-
-        log.info("Installed skill id={} agentId={} checksum={}", skillId, agentId, actualChecksum);
-        return Map.of(
-                "success", true,
-                "skill", skill,
-                "restartRequired", true);
+        return skill;
     }
 
-    public Map<String, Object> uninstall(String agentId, String requestedSkillId) throws IOException {
+    private void safeDelete(Path path) {
+        try {
+            deleteRecursively(path);
+        } catch (IOException e) {
+            log.warn("Failed to clean up temp directory: {}", path, e);
+        }
+    }
+
+    /**
+     * Uninstalls a previously installed skill from the specified agent.
+     *
+     * @param agentId agent to uninstall the skill from
+     * @param requestedSkillId skill identifier to uninstall
+     * @return uninstallation result map with success flag and restartRequired indicator
+     */
+    public Map<String, Object> uninstall(String agentId, String requestedSkillId)
+        throws NotFoundException, BadRequestException {
         AgentRegistryEntry agent = agentConfigService.findAgent(agentId);
         if (agent == null) {
-            throw new IllegalArgumentException("Agent '" + agentId + "' not found");
+            throw new NotFoundException("Agent not found");
         }
 
         String skillId = validateSkillId(requestedSkillId);
         Path skillDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").resolve(skillId).normalize();
         Path skillsDir = agentConfigService.getAgentConfigDir(agentId).resolve("skills").normalize();
         if (!skillDir.startsWith(skillsDir)) {
-            throw new IllegalArgumentException("Skill id must use lowercase letters, numbers, and hyphens");
+            throw new BadRequestException(MSG_INVALID_SKILL_ID);
         }
         if (!Files.isDirectory(skillDir)) {
-            throw new IllegalArgumentException("Skill '" + skillId + "' is not installed for agent '" + agentId + "'");
+            throw new NotFoundException("Skill is not installed for agent");
         }
 
-        deleteRecursively(skillDir);
+        try {
+            deleteRecursively(skillDir);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to uninstall skill '" + skillId + "'", e);
+        }
         agentConfigService.invalidateCache(agentId);
 
         log.info("Uninstalled skill id={} agentId={}", skillId, agentId);
-        return Map.of(
-                "success", true,
-                "skillId", skillId,
-                "restartRequired", true);
+        return Map.of("success", true, "skillId", skillId, "restartRequired", true);
     }
 
-    private void extractPackage(byte[] packageBytes, Path targetDir) throws IOException {
+    private static final long MAX_ZIP_ENTRY_SIZE = 100 * 1024 * 1024L; // 100MB
+
+    private static final int MAX_ZIP_ENTRIES = 1000;
+
+    private void extractPackage(byte[] packageBytes, Path targetDir) throws IOException, BadRequestException {
+        int entryCount = 0;
+        long totalExtracted = 0;
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(packageBytes))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
+                if (++entryCount > MAX_ZIP_ENTRIES) {
+                    throw new IllegalStateException("Too many entries in skill package (max " + MAX_ZIP_ENTRIES + ")");
+                }
                 if (entry.isDirectory()) {
                     continue;
                 }
+                long entrySize = entry.getSize();
+                if (entrySize > 0 && entrySize > MAX_ZIP_ENTRY_SIZE) {
+                    throw new IllegalStateException("Zip entry too large: " + entry.getName());
+                }
                 String safeName = safeZipName(entry.getName());
-                if (safeName.startsWith("__MACOSX/") || safeName.endsWith("/.DS_Store") || ".DS_Store".equals(safeName)) {
+                if (safeName.startsWith("__MACOSX/") || safeName.endsWith("/.DS_Store")
+                    || ".DS_Store".equals(safeName)) {
                     continue;
                 }
                 Path destination = targetDir.resolve(safeName).normalize();
                 if (!destination.startsWith(targetDir)) {
-                    throw new IllegalArgumentException("Skill package contains unsafe file path");
+                    throw new BadRequestException("Skill package contains unsafe file path");
                 }
                 Files.createDirectories(destination.getParent());
+                long written = 0;
                 try (OutputStream out = Files.newOutputStream(destination)) {
-                    zis.transferTo(out);
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = zis.read(buffer)) > 0) {
+                        out.write(buffer, 0, len);
+                        written += len;
+                        if (written > MAX_ZIP_ENTRY_SIZE) {
+                            throw new IllegalStateException("Extracted entry exceeds size limit: " + entry.getName());
+                        }
+                    }
+                }
+                totalExtracted += written;
+                if (totalExtracted > MAX_ZIP_ENTRY_SIZE) {
+                    throw new IllegalStateException("Total extracted size exceeds limit");
                 }
             }
         }
     }
 
-    private String safeZipName(String rawName) {
+    private String safeZipName(String rawName) throws BadRequestException {
         if (rawName == null || rawName.isBlank()) {
-            throw new IllegalArgumentException("Skill package contains an empty file name");
+            throw new BadRequestException("Skill package contains an empty file name");
         }
         String name = rawName.replace('\\', '/');
         if (name.startsWith("/") || name.matches("^[A-Za-z]:.*")) {
-            throw new IllegalArgumentException("Skill package contains absolute file path");
+            throw new BadRequestException("Skill package contains absolute file path");
         }
         for (String part : name.split("/")) {
             if (part.equals("..")) {
-                throw new IllegalArgumentException("Skill package contains unsafe parent path");
+                throw new BadRequestException("Skill package contains unsafe parent path");
             }
         }
         return name;
@@ -179,13 +285,13 @@ public class AgentSkillInstallService {
         Files.writeString(skillDir.resolve(".opsfactory-skill.yaml"), yaml.dump(metadata));
     }
 
-    private String validateSkillId(String value) {
+    private String validateSkillId(String value) throws BadRequestException {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Skill id is required");
+            throw new BadRequestException("Skill id is required");
         }
         String id = value.trim().toLowerCase(Locale.ROOT);
         if (!SKILL_ID_PATTERN.matcher(id).matches()) {
-            throw new IllegalArgumentException("Skill id must use lowercase letters, numbers, and hyphens");
+            throw new BadRequestException(MSG_INVALID_SKILL_ID);
         }
         return id;
     }
@@ -198,7 +304,7 @@ public class AgentSkillInstallService {
             }
             StringBuilder hex = new StringBuilder();
             for (byte b : digest.digest()) {
-                hex.append(String.format("%02x", b));
+                hex.append(String.format(Locale.ROOT, "%02x", b));
             }
             return hex.toString();
         } catch (IOException e) {
@@ -208,11 +314,11 @@ public class AgentSkillInstallService {
         }
     }
 
-    private void rejectSymbolicLinks(Path dir) throws IOException {
+    private void rejectSymbolicLinks(Path dir) throws IOException, BadRequestException {
         try (var stream = Files.walk(dir)) {
             boolean hasSymlink = stream.anyMatch(Files::isSymbolicLink);
             if (hasSymlink) {
-                throw new IllegalArgumentException("Skill package must not contain symbolic links");
+                throw new BadRequestException("Skill package must not contain symbolic links");
             }
         }
     }
@@ -222,12 +328,29 @@ public class AgentSkillInstallService {
             return;
         }
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
+
+            /**
+             * Executes the visit file operation.
+             *
+             * @param file file being visited
+             * @param attrs file attributes
+             * @return the result
+             * @throws IOException if the operation fails
+             */
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 Files.deleteIfExists(file);
                 return FileVisitResult.CONTINUE;
             }
 
+            /**
+             * Executes the post visit directory operation.
+             *
+             * @param dir directory being visited
+             * @param exc exc
+             * @return the result
+             * @throws IOException if the operation fails
+             */
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
                 Files.deleteIfExists(dir);

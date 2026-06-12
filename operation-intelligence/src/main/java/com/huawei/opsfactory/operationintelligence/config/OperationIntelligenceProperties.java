@@ -1,0 +1,1356 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
+package com.huawei.opsfactory.operationintelligence.config;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import java.nio.file.Path;
+import java.util.List;
+
+/**
+ * Operation Intelligence Properties.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
+@ConfigurationProperties(prefix = "operation-intelligence")
+public class OperationIntelligenceProperties {
+
+    private static final Logger log = LoggerFactory.getLogger(OperationIntelligenceProperties.class);
+
+    private static final String CONFIG_PATH_KEY = "OI_CONFIG_PATH";
+
+    private String secretKey = "";
+
+    private String corsOrigin = "*";
+
+    private String dataRoot = "";
+
+    private Qos qos = new Qos();
+
+    private KnowledgeGraph knowledgeGraph = new KnowledgeGraph();
+
+    private CallChain callChain = new CallChain();
+
+    private Logging logging = new Logging();
+
+    /**
+     * Gets the secret key used for authentication.
+     *
+     * @return the secret key used for authentication
+     */
+    public String getSecretKey() {
+        return secretKey;
+    }
+
+    /**
+     * Sets the secret key.
+     *
+     * @param secretKey the secretKey
+     */
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
+    }
+
+    /**
+     * Gets the allowed CORS origin pattern.
+     *
+     * @return the allowed CORS origin pattern
+     */
+    public String getCorsOrigin() {
+        return corsOrigin;
+    }
+
+    /**
+     * Sets the cors origin.
+     *
+     * @param corsOrigin the corsOrigin
+     */
+    public void setCorsOrigin(String corsOrigin) {
+        this.corsOrigin = corsOrigin;
+    }
+
+    /**
+     * Gets the data root directory path.
+     *
+     * @return the data root directory path
+     */
+    public String getDataRoot() {
+        return dataRoot;
+    }
+
+    /**
+     * Sets the data root.
+     *
+     * @param dataRoot the dataRoot
+     */
+    public void setDataRoot(String dataRoot) {
+        this.dataRoot = dataRoot;
+    }
+
+    /**
+     * Gets the QoS configuration.
+     *
+     * @return the QoS configuration
+     */
+    public Qos getQos() {
+        return qos;
+    }
+
+    /**
+     * Sets the qos.
+     *
+     * @param qos the qos
+     */
+    public void setQos(Qos qos) {
+        this.qos = qos;
+    }
+
+    /**
+     * Gets the knowledge graph configuration.
+     *
+     * @return the knowledge graph configuration
+     */
+    public KnowledgeGraph getKnowledgeGraph() {
+        return knowledgeGraph;
+    }
+
+    /**
+     * Sets the knowledge graph.
+     *
+     * @param knowledgeGraph the knowledgeGraph
+     */
+    public void setKnowledgeGraph(KnowledgeGraph knowledgeGraph) {
+        this.knowledgeGraph = knowledgeGraph;
+    }
+
+    /**
+     * Gets the logging configuration.
+     *
+     * @return the logging configuration
+     */
+    public Logging getLogging() {
+        return logging;
+    }
+
+    /**
+     * Sets the logging.
+     *
+     * @param logging the logging
+     */
+    public void setLogging(Logging logging) {
+        this.logging = logging;
+    }
+
+    /**
+     * Gets the call chain configuration.
+     *
+     * @return the call chain configuration
+     */
+    public CallChain getCallChain() {
+        return callChain;
+    }
+
+    /**
+     * Sets the call chain.
+     *
+     * @param callChain the callChain
+     */
+    public void setCallChain(CallChain callChain) {
+        this.callChain = callChain;
+    }
+
+    /**
+     * Resolves the absolute path to the data root directory.
+     * If the configured path is absolute, returns it directly.
+     * If relative, resolves against the current working directory (user.dir).
+     * If not configured, defaults to "./data" relative to user.dir.
+     *
+     * @return the absolute path to the data root directory
+     */
+    public Path resolveDataRoot() {
+        if (dataRoot != null && !dataRoot.isBlank()) {
+            Path configured = Path.of(dataRoot);
+            if (configured.isAbsolute()) {
+                return configured.normalize();
+            }
+            return configured.toAbsolutePath().normalize();
+        }
+        return Path.of("data").toAbsolutePath().normalize();
+    }
+
+    /**
+     * Resolves the knowledge graph data root under the configured data directory.
+     *
+     * @return the absolute path to the knowledge graph data root directory
+     */
+    public Path resolveKnowledgeGraphDataRoot() {
+        Path dataRootPath = resolveDataRoot();
+        Path configured = Path.of(knowledgeGraph.getDataDir());
+        if (configured.isAbsolute()) {
+            throw new IllegalStateException("knowledgeGraph.dataDir must be a relative path");
+        }
+        Path resolved = dataRootPath.resolve(configured).normalize();
+        if (!resolved.startsWith(dataRootPath)) {
+            throw new IllegalStateException("knowledgeGraph.dataDir must stay within data root");
+        }
+        return resolved;
+    }
+
+    /**
+     * Gets the config path.
+     *
+     * @return the absolute path to the config file
+     */
+    public Path getConfigPath() {
+        String configuredPath = configuredConfigPath();
+        if (configuredPath == null || configuredPath.isBlank()) {
+            return Path.of("config.yaml").toAbsolutePath().normalize();
+        }
+        Path configPath = Path.of(configuredPath);
+        if (configPath.isAbsolute()) {
+            return configPath.normalize();
+        }
+        return Path.of("").toAbsolutePath().resolve(configPath).normalize();
+    }
+
+    /**
+     * Gets the config directory.
+     *
+     * @return the directory containing the config file
+     */
+    public Path getConfigDirectory() {
+        Path configPath = getConfigPath();
+        Path parent = configPath.getParent();
+        if (parent != null) {
+            return parent;
+        }
+        return Path.of("").toAbsolutePath().normalize();
+    }
+
+    /**
+     * Resolve the runtime config file path from the same OI_CONFIG_PATH source used by
+     * Spring's {@code spring.config.import} in application.yml. This method does NOT load
+     * or parse the config file (Spring handles that); it only resolves the filesystem
+     * location so that {@link #getConfigDirectory()} and {@link #resolveDataRoot()} can
+     * place the data directory relative to the config file.
+     */
+    private String configuredConfigPath() {
+        String configuredPath = System.getProperty(CONFIG_PATH_KEY);
+        if (configuredPath == null || configuredPath.isBlank()) {
+            configuredPath = System.getenv(CONFIG_PATH_KEY);
+        }
+        return (configuredPath == null || configuredPath.isBlank()) ? null : configuredPath;
+    }
+
+    /**
+     * QoS scoring configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
+    public static class Qos {
+        private boolean enabled = true;
+
+        private long collectionIntervalMs = 300000;
+
+        private long rotationIntervalMs = 3600000;
+
+        private long rawDataRetentionDays = 7;
+
+        private long detailDataRetentionDays = 30;
+
+        private long normalizeDataRetentionDays = 90;
+
+        private Weights weights = new Weights();
+
+        private Thresholds thresholds = new Thresholds();
+
+        private List<DvEnvironment> dvEnvironments = List.of();
+
+        /**
+         * Checks whether the enabled.
+         *
+         * @return true if enabled, false otherwise
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets the enabled.
+         *
+         * @param enabled the enabled
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Gets the collection interval ms.
+         *
+         * @return the collection interval in milliseconds
+         */
+        public long getCollectionIntervalMs() {
+            return collectionIntervalMs;
+        }
+
+        /**
+         * Sets the collection interval ms.
+         *
+         * @param collectionIntervalMs the collectionIntervalMs
+         */
+        public void setCollectionIntervalMs(long collectionIntervalMs) {
+            this.collectionIntervalMs = collectionIntervalMs;
+        }
+
+        /**
+         * Gets the rotation interval ms.
+         *
+         * @return the rotation interval in milliseconds
+         */
+        public long getRotationIntervalMs() {
+            return rotationIntervalMs;
+        }
+
+        /**
+         * Sets the rotation interval ms.
+         *
+         * @param rotationIntervalMs the rotationIntervalMs
+         */
+        public void setRotationIntervalMs(long rotationIntervalMs) {
+            this.rotationIntervalMs = rotationIntervalMs;
+        }
+
+        /**
+         * Gets the raw data retention days.
+         *
+         * @return the raw data retention period in days
+         */
+        public long getRawDataRetentionDays() {
+            return rawDataRetentionDays;
+        }
+
+        /**
+         * Sets the raw data retention days.
+         *
+         * @param rawDataRetentionDays the rawDataRetentionDays
+         */
+        public void setRawDataRetentionDays(long rawDataRetentionDays) {
+            this.rawDataRetentionDays = rawDataRetentionDays;
+        }
+
+        /**
+         * Gets the detail data retention days.
+         *
+         * @return the detail data retention period in days
+         */
+        public long getDetailDataRetentionDays() {
+            return detailDataRetentionDays;
+        }
+
+        /**
+         * Sets the detail data retention days.
+         *
+         * @param detailDataRetentionDays the detailDataRetentionDays
+         */
+        public void setDetailDataRetentionDays(long detailDataRetentionDays) {
+            this.detailDataRetentionDays = detailDataRetentionDays;
+        }
+
+        /**
+         * Gets the normalize data retention days.
+         *
+         * @return the normalized data retention period in days
+         */
+        public long getNormalizeDataRetentionDays() {
+            return normalizeDataRetentionDays;
+        }
+
+        /**
+         * Sets the normalize data retention days.
+         *
+         * @param normalizeDataRetentionDays the normalizeDataRetentionDays
+         */
+        public void setNormalizeDataRetentionDays(long normalizeDataRetentionDays) {
+            this.normalizeDataRetentionDays = normalizeDataRetentionDays;
+        }
+
+        /**
+         * Gets the weights.
+         *
+         * @return the QoS weights configuration
+         */
+        public Weights getWeights() {
+            return weights;
+        }
+
+        /**
+         * Sets the weights.
+         *
+         * @param weights the weights
+         */
+        public void setWeights(Weights weights) {
+            this.weights = weights;
+        }
+
+        /**
+         * Gets the thresholds.
+         *
+         * @return the QoS thresholds configuration
+         */
+        public Thresholds getThresholds() {
+            return thresholds;
+        }
+
+        /**
+         * Sets the thresholds.
+         *
+         * @param thresholds the thresholds
+         */
+        public void setThresholds(Thresholds thresholds) {
+            this.thresholds = thresholds;
+        }
+
+        /**
+         * Gets the dv environments.
+         *
+         * @return the list of DV environments
+         */
+        public List<DvEnvironment> getDvEnvironments() {
+            return dvEnvironments;
+        }
+
+        /**
+         * Sets the dv environments.
+         *
+         * @param dvEnvironments the dvEnvironments
+         */
+        public void setDvEnvironments(List<DvEnvironment> dvEnvironments) {
+            this.dvEnvironments = dvEnvironments;
+        }
+
+        /**
+         * Weights.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
+        public static class Weights {
+            private double availability = 0.4;
+
+            private double performance = 0.4;
+
+            private double resource = 0.2;
+
+            /**
+             * Gets the availability.
+             *
+             * @return the availability weight
+             */
+            public double getAvailability() {
+                return availability;
+            }
+
+            /**
+             * Sets the availability.
+             *
+             * @param availability the availability
+             */
+            public void setAvailability(double availability) {
+                this.availability = availability;
+            }
+
+            /**
+             * Gets the performance.
+             *
+             * @return the performance weight
+             */
+            public double getPerformance() {
+                return performance;
+            }
+
+            /**
+             * Sets the performance.
+             *
+             * @param performance the performance
+             */
+            public void setPerformance(double performance) {
+                this.performance = performance;
+            }
+
+            /**
+             * Gets the resource.
+             *
+             * @return the resource weight
+             */
+            public double getResource() {
+                return resource;
+            }
+
+            /**
+             * Sets the resource.
+             *
+             * @param resource the resource
+             */
+            public void setResource(double resource) {
+                this.resource = resource;
+            }
+        }
+
+        /**
+         * Thresholds.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
+        public static class Thresholds {
+            private double good = 0.9;
+
+            private double warning = 0.7;
+
+            private double bad = 0.5;
+
+            /**
+             * Gets the good.
+             *
+             * @return the good threshold value
+             */
+            public double getGood() {
+                return good;
+            }
+
+            /**
+             * Sets the good.
+             *
+             * @param good the good
+             */
+            public void setGood(double good) {
+                this.good = good;
+            }
+
+            /**
+             * Gets the warning.
+             *
+             * @return the warning threshold value
+             */
+            public double getWarning() {
+                return warning;
+            }
+
+            /**
+             * Sets the warning.
+             *
+             * @param warning the warning
+             */
+            public void setWarning(double warning) {
+                this.warning = warning;
+            }
+
+            /**
+             * Gets the bad.
+             *
+             * @return the bad threshold value
+             */
+            public double getBad() {
+                return bad;
+            }
+
+            /**
+             * Sets the bad.
+             *
+             * @param bad the bad
+             */
+            public void setBad(double bad) {
+                this.bad = bad;
+            }
+        }
+
+        /**
+         * Dv Environment.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
+        public static class DvEnvironment {
+            private String envCode;
+
+            private String envName;
+
+            private String agentSolutionType;
+
+            private String productTypeName;
+
+            private String serverUrl;
+
+            private String utmUser;
+
+            private String utmPassword;
+
+            private String crtContent;
+
+            private String crtFileName;
+
+            private String dns;
+
+            private boolean strictSsl = true;
+
+            /**
+             * Gets the env code.
+             *
+             * @return the environment code
+             */
+            public String getEnvCode() {
+                return envCode;
+            }
+
+            /**
+             * Sets the env code.
+             *
+             * @param envCode the envCode
+             */
+            public void setEnvCode(String envCode) {
+                this.envCode = envCode;
+            }
+
+            /**
+             * Gets the env name.
+             *
+             * @return the environment name
+             */
+            public String getEnvName() {
+                return envName;
+            }
+
+            /**
+             * Sets the env name.
+             *
+             * @param envName the envName
+             */
+            public void setEnvName(String envName) {
+                this.envName = envName;
+            }
+
+            /**
+             * Gets the agent solution type.
+             *
+             * @return the agent solution type
+             */
+            public String getAgentSolutionType() {
+                return agentSolutionType;
+            }
+
+            /**
+             * Sets the agent solution type.
+             *
+             * @param agentSolutionType the agentSolutionType
+             */
+            public void setAgentSolutionType(String agentSolutionType) {
+                this.agentSolutionType = agentSolutionType;
+            }
+
+            /**
+             * Gets the product type name.
+             *
+             * @return the product type name
+             */
+            public String getProductTypeName() {
+                return productTypeName;
+            }
+
+            /**
+             * Sets the product type name.
+             *
+             * @param productTypeName the productTypeName
+             */
+            public void setProductTypeName(String productTypeName) {
+                this.productTypeName = productTypeName;
+            }
+
+            /**
+             * Gets the server url.
+             *
+             * @return the server URL
+             */
+            public String getServerUrl() {
+                return serverUrl;
+            }
+
+            /**
+             * Sets the server url.
+             *
+             * @param serverUrl the serverUrl
+             */
+            public void setServerUrl(String serverUrl) {
+                this.serverUrl = serverUrl;
+            }
+
+            /**
+             * Gets the utm user.
+             *
+             * @return the UTM user name
+             */
+            public String getUtmUser() {
+                return utmUser;
+            }
+
+            /**
+             * Sets the utm user.
+             *
+             * @param utmUser the utmUser
+             */
+            public void setUtmUser(String utmUser) {
+                this.utmUser = utmUser;
+            }
+
+            /**
+             * Gets the utm password.
+             *
+             * @return the UTM password
+             */
+            @JsonIgnore
+            public String getUtmPassword() {
+                return utmPassword;
+            }
+
+            /**
+             * Sets the utm password.
+             *
+             * @param utmPassword the utmPassword
+             */
+            public void setUtmPassword(String utmPassword) {
+                this.utmPassword = utmPassword;
+            }
+
+            /**
+             * Gets the crt content.
+             *
+             * @return the SSL certificate content
+             */
+            public String getCrtContent() {
+                return crtContent;
+            }
+
+            /**
+             * Sets the crt content.
+             *
+             * @param crtContent the crtContent
+             */
+            public void setCrtContent(String crtContent) {
+                this.crtContent = crtContent;
+            }
+
+            /**
+             * Gets the crt file name.
+             *
+             * @return the SSL certificate file name
+             */
+            public String getCrtFileName() {
+                return crtFileName;
+            }
+
+            /**
+             * Sets the crt file name.
+             *
+             * @param crtFileName the crtFileName
+             */
+            public void setCrtFileName(String crtFileName) {
+                this.crtFileName = crtFileName;
+            }
+
+            /**
+             * Gets the dns.
+             *
+             * @return the DNS server address
+             */
+            public String getDns() {
+                return dns;
+            }
+
+            /**
+             * Sets the dns.
+             *
+             * @param dns the dns
+             */
+            public void setDns(String dns) {
+                this.dns = dns;
+            }
+
+            /**
+             * Checks whether the strict ssl.
+             *
+             * @return true if strict SSL is enabled, false otherwise
+             */
+            public boolean isStrictSsl() {
+                return strictSsl;
+            }
+
+            /**
+             * Sets the strict ssl.
+             *
+             * @param strictSsl the strictSsl
+             */
+            public void setStrictSsl(boolean strictSsl) {
+                this.strictSsl = strictSsl;
+            }
+        }
+    }
+
+    /**
+     * Logging configuration properties.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
+    public static class Logging {
+        private boolean accessLogEnabled = true;
+
+        /**
+         * Checks whether the access log enabled.
+         *
+         * @return true if access log is enabled, false otherwise
+         */
+        public boolean isAccessLogEnabled() {
+            return accessLogEnabled;
+        }
+
+        /**
+         * Sets the access log enabled.
+         *
+         * @param accessLogEnabled the accessLogEnabled
+         */
+        public void setAccessLogEnabled(boolean accessLogEnabled) {
+            this.accessLogEnabled = accessLogEnabled;
+        }
+    }
+
+    /**
+     * Call chain configuration properties for tracing and log analysis.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
+    public static class CallChain {
+        private boolean enabled = true;
+
+        private int querySize = 100;
+
+        private int queryLimit = 10000;
+
+        private long requestTimeoutMs = 60000;
+
+        private long maxTimeRangeMs = 1800000;
+
+        private long rotationIntervalMs = 3600000;
+
+        private long normalizeDataRetentionDays = 90;
+
+        private double minCallRatio = 3.0;
+
+        private String queryMode = "service";
+
+        private boolean mockQueryEnabled = false;
+
+        private String mockQueryFile = "";
+
+        private TimeSplit timeSplit = new TimeSplit();
+
+        /**
+         * Checks whether the enabled.
+         *
+         * @return true if enabled, false otherwise
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets the enabled.
+         *
+         * @param enabled the enabled
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Gets the query size.
+         *
+         * @return the query size
+         */
+        public int getQuerySize() {
+            return querySize;
+        }
+
+        /**
+         * Sets the query size.
+         *
+         * @param querySize the query size
+         */
+        public void setQuerySize(int querySize) {
+            this.querySize = querySize;
+        }
+
+        /**
+         * Gets the query limit.
+         *
+         * @return the query limit
+         */
+        public int getQueryLimit() {
+            return queryLimit;
+        }
+
+        /**
+         * Sets the query limit.
+         *
+         * @param queryLimit the query limit
+         */
+        public void setQueryLimit(int queryLimit) {
+            this.queryLimit = queryLimit;
+        }
+
+        /**
+         * Gets the request timeout ms.
+         *
+         * @return the request timeout ms
+         */
+        public long getRequestTimeoutMs() {
+            return requestTimeoutMs;
+        }
+
+        /**
+         * Sets the request timeout ms.
+         *
+         * @param requestTimeoutMs the request timeout ms
+         */
+        public void setRequestTimeoutMs(long requestTimeoutMs) {
+            this.requestTimeoutMs = requestTimeoutMs;
+        }
+
+        /**
+         * Gets the rotation interval ms.
+         *
+         * @return the rotation interval ms
+         */
+        public long getRotationIntervalMs() {
+            return rotationIntervalMs;
+        }
+
+        /**
+         * Sets the rotation interval ms.
+         *
+         * @param rotationIntervalMs the rotationIntervalMs
+         */
+        public void setRotationIntervalMs(long rotationIntervalMs) {
+            this.rotationIntervalMs = rotationIntervalMs;
+        }
+
+        /**
+         * Gets the normalize data retention days.
+         *
+         * @return the normalize data retention days
+         */
+        public long getNormalizeDataRetentionDays() {
+            return normalizeDataRetentionDays;
+        }
+
+        /**
+         * Sets the normalize data retention days.
+         *
+         * @param normalizeDataRetentionDays the normalizeDataRetentionDays
+         */
+        public void setNormalizeDataRetentionDays(long normalizeDataRetentionDays) {
+            this.normalizeDataRetentionDays = normalizeDataRetentionDays;
+        }
+
+        /**
+         * Gets the max time range ms.
+         *
+         * @return the max time range ms
+         */
+        public long getMaxTimeRangeMs() {
+            return maxTimeRangeMs;
+        }
+
+        /**
+         * Sets the max time range ms.
+         *
+         * @param maxTimeRangeMs the maxTimeRangeMs
+         */
+        public void setMaxTimeRangeMs(long maxTimeRangeMs) {
+            this.maxTimeRangeMs = maxTimeRangeMs;
+        }
+
+        /**
+         * Gets the min call ratio.
+         *
+         * @return the min call ratio
+         */
+        public double getMinCallRatio() {
+            return minCallRatio;
+        }
+
+        /**
+         * Sets the min call ratio.
+         *
+         * @param minCallRatio the minCallRatio
+         */
+        public void setMinCallRatio(double minCallRatio) {
+            this.minCallRatio = minCallRatio;
+        }
+
+        /**
+         * Gets the query mode.
+         *
+         * @return the query mode
+         */
+        public String getQueryMode() {
+            return queryMode;
+        }
+
+        /**
+         * Sets the query mode.
+         *
+         * @param queryMode the query mode
+         */
+        public void setQueryMode(String queryMode) {
+            this.queryMode = queryMode;
+        }
+
+        /**
+         * Checks whether mock query is enabled.
+         *
+         * @return true if mock query is enabled, false otherwise
+         */
+        public boolean isMockQueryEnabled() {
+            return mockQueryEnabled;
+        }
+
+        /**
+         * Sets whether mock query is enabled.
+         *
+         * @param mockQueryEnabled the mockQueryEnabled
+         */
+        public void setMockQueryEnabled(boolean mockQueryEnabled) {
+            this.mockQueryEnabled = mockQueryEnabled;
+        }
+
+        /**
+         * Gets the mock query file.
+         *
+         * @return the mock query file
+         */
+        public String getMockQueryFile() {
+            return mockQueryFile;
+        }
+
+        /**
+         * Sets the mock query file.
+         *
+         * @param mockQueryFile the mockQueryFile
+         */
+        public void setMockQueryFile(String mockQueryFile) {
+            this.mockQueryFile = mockQueryFile;
+        }
+
+        /**
+         * Gets the time split.
+         *
+         * @return the time split
+         */
+        public TimeSplit getTimeSplit() {
+            return timeSplit;
+        }
+
+        /**
+         * Sets the time split.
+         *
+         * @param timeSplit the time split
+         */
+        public void setTimeSplit(TimeSplit timeSplit) {
+            this.timeSplit = timeSplit;
+        }
+
+        /**
+         * Time Split.
+         *
+         * @author x00000000
+         * @since 2026-05-27
+         */
+        public static class TimeSplit {
+            private long initialMinutes = 15;
+
+            private List<Long> degradeMinutes = List.of(10L, 5L);
+
+            /**
+             * Gets the initial minutes.
+             *
+             * @return the initial minutes
+             */
+            public long getInitialMinutes() {
+                return initialMinutes;
+            }
+
+            /**
+             * Sets the initial minutes.
+             *
+             * @param initialMinutes the initialMinutes
+             */
+            public void setInitialMinutes(long initialMinutes) {
+                this.initialMinutes = initialMinutes;
+            }
+
+            /**
+             * Gets the degrade minutes.
+             *
+             * @return the degrade minutes
+             */
+            public List<Long> getDegradeMinutes() {
+                return degradeMinutes;
+            }
+
+            /**
+             * Sets the degrade minutes.
+             *
+             * @param degradeMinutes the degradeMinutes
+             */
+            public void setDegradeMinutes(List<Long> degradeMinutes) {
+                this.degradeMinutes = degradeMinutes;
+            }
+        }
+    }
+
+    /**
+     * Knowledge graph configuration.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
+    public static class KnowledgeGraph {
+        private boolean enabled = true;
+
+        private String dataDir = "knowledge-graph";
+
+        private int maxHops = 4;
+
+        private int snapshotRetention = 3;
+
+        private String callChainSubgraphDir = "call-chain-subgraphs";
+
+        private int callChainSubgraphRetention = 50;
+
+        private int callChainSubgraphTtlMinutes = 120;
+
+        private boolean resourceSubgraphEnabled = true;
+
+        private int resourceSubgraphMaxHops = 4;
+
+        private List<String> resourceSubgraphRelationTypes = List.of();
+
+        private List<String> resourceSubgraphEntityTypes = List.of();
+
+        /**
+         * Checks whether the enabled.
+         *
+         * @return true if enabled, false otherwise
+         */
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        /**
+         * Sets the enabled.
+         *
+         * @param enabled the enabled
+         */
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        /**
+         * Gets the data dir.
+         *
+         * @return the knowledge graph data directory
+         */
+        public String getDataDir() {
+            return dataDir;
+        }
+
+        /**
+         * Sets the data dir.
+         *
+         * @param dataDir the dataDir
+         */
+        public void setDataDir(String dataDir) {
+            this.dataDir = dataDir;
+        }
+
+        /**
+         * Gets the max hops.
+         *
+         * @return the maximum number of hops for graph traversal
+         */
+        public int getMaxHops() {
+            return maxHops;
+        }
+
+        /**
+         * Sets the max hops.
+         *
+         * @param maxHops the maxHops
+         */
+        public void setMaxHops(int maxHops) {
+            this.maxHops = maxHops;
+        }
+
+        /**
+         * Gets the snapshot retention.
+         *
+         * @return the number of snapshots to retain
+         */
+        public int getSnapshotRetention() {
+            return snapshotRetention;
+        }
+
+        /**
+         * Sets the snapshot retention.
+         *
+         * @param snapshotRetention the snapshotRetention
+         */
+        public void setSnapshotRetention(int snapshotRetention) {
+            this.snapshotRetention = snapshotRetention;
+        }
+
+        /**
+         * Gets the call chain subgraph directory.
+         *
+         * @return the call chain subgraph directory name
+         */
+        public String getCallChainSubgraphDir() {
+            return callChainSubgraphDir;
+        }
+
+        /**
+         * Sets the call chain subgraph directory.
+         *
+         * @param callChainSubgraphDir the callChainSubgraphDir
+         */
+        public void setCallChainSubgraphDir(String callChainSubgraphDir) {
+            this.callChainSubgraphDir = callChainSubgraphDir;
+        }
+
+        /**
+         * Gets the call chain subgraph retention count.
+         *
+         * @return the number of call chain subgraphs to retain
+         */
+        public int getCallChainSubgraphRetention() {
+            return callChainSubgraphRetention;
+        }
+
+        /**
+         * Sets the call chain subgraph retention count.
+         *
+         * @param callChainSubgraphRetention the callChainSubgraphRetention
+         */
+        public void setCallChainSubgraphRetention(int callChainSubgraphRetention) {
+            this.callChainSubgraphRetention = callChainSubgraphRetention;
+        }
+
+        /**
+         * Gets the call chain subgraph ttl in minutes.
+         *
+         * @return the call chain subgraph TTL in minutes
+         */
+        public int getCallChainSubgraphTtlMinutes() {
+            return callChainSubgraphTtlMinutes;
+        }
+
+        /**
+         * Sets the call chain subgraph ttl in minutes.
+         *
+         * @param callChainSubgraphTtlMinutes the callChainSubgraphTtlMinutes
+         */
+        public void setCallChainSubgraphTtlMinutes(int callChainSubgraphTtlMinutes) {
+            this.callChainSubgraphTtlMinutes = callChainSubgraphTtlMinutes;
+        }
+
+        /**
+         * Checks whether the resource subgraph extraction is enabled.
+         *
+         * @return true if resource subgraph extraction is enabled, false otherwise
+         */
+        public boolean isResourceSubgraphEnabled() {
+            return resourceSubgraphEnabled;
+        }
+
+        /**
+         * Sets the resource subgraph extraction flag.
+         *
+         * @param resourceSubgraphEnabled the resourceSubgraphEnabled
+         */
+        public void setResourceSubgraphEnabled(boolean resourceSubgraphEnabled) {
+            this.resourceSubgraphEnabled = resourceSubgraphEnabled;
+        }
+
+        /**
+         * Gets the resource subgraph max hops.
+         *
+         * @return the maximum hops for resource subgraph traversal
+         */
+        public int getResourceSubgraphMaxHops() {
+            return resourceSubgraphMaxHops;
+        }
+
+        /**
+         * Sets the resource subgraph max hops.
+         *
+         * @param resourceSubgraphMaxHops the resourceSubgraphMaxHops
+         */
+        public void setResourceSubgraphMaxHops(int resourceSubgraphMaxHops) {
+            this.resourceSubgraphMaxHops = resourceSubgraphMaxHops;
+        }
+
+        /**
+         * Gets the resource subgraph relation types.
+         *
+         * @return the list of relation types for resource subgraph filtering
+         */
+        public List<String> getResourceSubgraphRelationTypes() {
+            return resourceSubgraphRelationTypes;
+        }
+
+        /**
+         * Sets the resource subgraph relation types.
+         *
+         * @param resourceSubgraphRelationTypes the resourceSubgraphRelationTypes
+         */
+        public void setResourceSubgraphRelationTypes(List<String> resourceSubgraphRelationTypes) {
+            this.resourceSubgraphRelationTypes = resourceSubgraphRelationTypes;
+        }
+
+        /**
+         * Gets the resource subgraph entity types.
+         *
+         * @return the list of entity types for resource subgraph filtering
+         */
+        public List<String> getResourceSubgraphEntityTypes() {
+            return resourceSubgraphEntityTypes;
+        }
+
+        /**
+         * Sets the resource subgraph entity types.
+         *
+         * @param resourceSubgraphEntityTypes the resourceSubgraphEntityTypes
+         */
+        public void setResourceSubgraphEntityTypes(List<String> resourceSubgraphEntityTypes) {
+            this.resourceSubgraphEntityTypes = resourceSubgraphEntityTypes;
+        }
+    }
+}

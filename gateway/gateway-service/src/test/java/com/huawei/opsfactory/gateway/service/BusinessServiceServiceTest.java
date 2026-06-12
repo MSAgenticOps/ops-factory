@@ -1,6 +1,17 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -10,19 +21,34 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.Assert.*;
-
+/**
+ * Test coverage for Business Service Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class BusinessServiceServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private BusinessServiceService businessServiceService;
+
     private GatewayProperties properties;
+
     private Path businessServicesDir;
 
+    private BusinessTypeService businessTypeService;
+
+    /**
+     * Sets the up.
+     *
+     * @throws IOException if the operation fails
+     */
     @Before
     public void setUp() throws IOException {
         properties = new GatewayProperties();
@@ -30,17 +56,51 @@ public class BusinessServiceServiceTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
 
+        businessTypeService = new BusinessTypeService(properties);
+        businessTypeService.init();
+
         businessServiceService = new BusinessServiceService(properties);
         businessServiceService.init();
+        businessServiceService.setBusinessTypeService(businessTypeService);
 
         businessServicesDir = Path.of(tempFolder.getRoot().getAbsolutePath())
-                .toAbsolutePath().normalize().resolve("gateway").resolve("data").resolve("business-services");
+            .toAbsolutePath()
+            .normalize()
+            .resolve("gateway")
+            .resolve("data")
+            .resolve("business-services");
+
+        // Create a test business type
+        Path businessTypesDir = Path.of(tempFolder.getRoot().getAbsolutePath())
+            .toAbsolutePath()
+            .normalize()
+            .resolve("gateway")
+            .resolve("data")
+            .resolve("business-types");
+        Files.createDirectories(businessTypesDir);
+
+        Map<String, Object> businessType = new LinkedHashMap<>();
+        businessType.put("id", "bt-1");
+        businessType.put("name", "Test Business Type");
+        businessType.put("code", "test-bt");
+        businessType.put("description", "Test business type");
+        businessType.put("color", "#6366f1");
+        businessType.put("knowledge", "test");
+        businessType.put("createdAt", "2024-01-01T00:00:00Z");
+        businessType.put("updatedAt", "2024-01-01T00:00:00Z");
+
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(businessType);
+        Files.writeString(businessTypesDir.resolve("bt-1.json"), json, StandardCharsets.UTF_8);
     }
 
     // ── createBusinessService ──────────────────────────────────────
 
+    /**
+     * Tests create business service.
+     */
     @Test
-    public void testCreateBusinessService() {
+    public void testCreateBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "OrderService");
         body.put("code", "ORDER");
@@ -50,6 +110,7 @@ public class BusinessServiceServiceTest {
         body.put("tags", List.of("core", "production"));
         body.put("priority", "high");
         body.put("contactInfo", "team-order@example.com");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> result = businessServiceService.createBusinessService(body);
 
@@ -66,17 +127,23 @@ public class BusinessServiceServiceTest {
         assertNotNull(result.get("updatedAt"));
     }
 
+    /**
+     * Tests create business service defaults.
+     */
     @Test
-    public void testCreateBusinessService_defaults() {
+    public void testCreateBusinessService_defaults() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "MinimalService");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> result = businessServiceService.createBusinessService(body);
 
         assertNotNull(result.get("id"));
         assertEquals("MinimalService", result.get("name"));
         assertEquals("", result.get("code"));
-        assertNull(result.get("groupId"));
+        assertEquals("group-1", result.get("groupId"));
+        assertEquals("bt-1", result.get("businessTypeId"));
         assertEquals("", result.get("description"));
         assertEquals(Collections.emptyList(), result.get("hostIds"));
         assertEquals(Collections.emptyList(), result.get("tags"));
@@ -86,11 +153,16 @@ public class BusinessServiceServiceTest {
 
     // ── getBusinessService ─────────────────────────────────────────
 
+    /**
+     * Tests get business service.
+     */
     @Test
-    public void testGetBusinessService() {
+    public void testGetBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "GetTest");
         body.put("code", "GT");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
@@ -100,21 +172,30 @@ public class BusinessServiceServiceTest {
         assertEquals("GT", result.get("code"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testGetBusinessService_notFound() {
+    /**
+     * Tests get business service not found.
+     */
+    @Test(expected = NotFoundException.class)
+    public void testGetBusinessService_notFound() throws Exception {
         businessServiceService.getBusinessService("nonexistent");
     }
 
     // ── listBusinessServices ───────────────────────────────────────
 
+    /**
+     * Tests list business services empty.
+     */
     @Test
-    public void testListBusinessServices_empty() {
+    public void testListBusinessServices_empty() throws Exception {
         List<Map<String, Object>> services = businessServiceService.listBusinessServices(null, null);
         assertTrue(services.isEmpty());
     }
 
+    /**
+     * Tests list business services returns all.
+     */
     @Test
-    public void testListBusinessServices_returnsAll() {
+    public void testListBusinessServices_returnsAll() throws Exception {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of());
         createBs("bs-2", "Svc2", "S2", "group-1", List.of());
         createBs("bs-3", "Svc3", "S3", "group-2", List.of());
@@ -123,8 +204,11 @@ public class BusinessServiceServiceTest {
         assertEquals(3, services.size());
     }
 
+    /**
+     * Tests list business services filter by group id.
+     */
     @Test
-    public void testListBusinessServices_filterByGroupId() {
+    public void testListBusinessServices_filterByGroupId() throws Exception {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of());
         createBs("bs-2", "Svc2", "S2", "group-2", List.of());
 
@@ -133,8 +217,11 @@ public class BusinessServiceServiceTest {
         assertEquals("Svc1", services.get(0).get("name"));
     }
 
+    /**
+     * Tests list business services filter by host id.
+     */
     @Test
-    public void testListBusinessServices_filterByHostId() {
+    public void testListBusinessServices_filterByHostId() throws Exception {
         createBs("bs-1", "Svc1", "S1", "group-1", List.of("host-1", "host-2"));
         createBs("bs-2", "Svc2", "S2", "group-1", List.of("host-3"));
 
@@ -145,12 +232,17 @@ public class BusinessServiceServiceTest {
 
     // ── updateBusinessService ──────────────────────────────────────
 
+    /**
+     * Tests update business service.
+     */
     @Test
-    public void testUpdateBusinessService() {
+    public void testUpdateBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("code", "ORIG");
         body.put("tags", List.of("v1"));
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
@@ -166,12 +258,17 @@ public class BusinessServiceServiceTest {
         assertEquals(List.of("v2"), result.get("tags"));
     }
 
+    /**
+     * Tests update business service partial update.
+     */
     @Test
-    public void testUpdateBusinessService_partialUpdate() {
+    public void testUpdateBusinessService_partialUpdate() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Original");
         body.put("code", "ORIG");
         body.put("description", "original desc");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
 
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
@@ -185,8 +282,11 @@ public class BusinessServiceServiceTest {
         assertEquals("new desc", result.get("description"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testUpdateBusinessService_notFound() {
+    /**
+     * Tests update business service not found.
+     */
+    @Test(expected = NotFoundException.class)
+    public void testUpdateBusinessService_notFound() throws Exception {
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("name", "NewName");
         businessServiceService.updateBusinessService("nonexistent", updates);
@@ -194,10 +294,15 @@ public class BusinessServiceServiceTest {
 
     // ── deleteBusinessService ──────────────────────────────────────
 
+    /**
+     * Tests delete business service.
+     */
     @Test
-    public void testDeleteBusinessService() {
+    public void testDeleteBusinessService() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "ToDelete");
+        body.put("groupId", "group-1");
+        body.put("businessTypeId", "bt-1");
         Map<String, Object> created = businessServiceService.createBusinessService(body);
         String id = (String) created.get("id");
 
@@ -205,21 +310,28 @@ public class BusinessServiceServiceTest {
         assertFalse(Files.exists(businessServicesDir.resolve(id + ".json")));
     }
 
+    /**
+     * Tests delete business service not found.
+     */
     @Test
-    public void testDeleteBusinessService_notFound() {
+    public void testDeleteBusinessService_notFound() throws Exception {
         assertFalse(businessServiceService.deleteBusinessService("nonexistent"));
     }
 
     // ── searchByKeyword ────────────────────────────────────────────
 
+    /**
+     * Tests search by keyword.
+     */
     @Test
-    public void testSearchByKeyword() {
+    public void testSearchByKeyword() throws Exception {
         createBs("bs-1", "OrderService", "ORDER", null, List.of(), List.of("core"));
         createBs("bs-2", "PaymentService", "PAY", null, List.of(), List.of("billing"));
         createBs("bs-3", "ShippingService", "SHIP", null, List.of(), List.of("order"));
 
         List<Map<String, Object>> byName = businessServiceService.searchByKeyword("order");
-        assertEquals(2, byName.size()); // OrderService (name) + ShippingService (tag "order")
+        // OrderService (name) + ShippingService (tag "order")
+        assertEquals(2, byName.size());
 
         List<Map<String, Object>> byCode = businessServiceService.searchByKeyword("pay");
         assertEquals(1, byCode.size());
@@ -229,8 +341,11 @@ public class BusinessServiceServiceTest {
         assertEquals(1, byTag.size());
     }
 
+    /**
+     * Tests search by keyword empty keyword.
+     */
     @Test
-    public void testSearchByKeyword_emptyKeyword() {
+    public void testSearchByKeyword_emptyKeyword() throws Exception {
         createBs("bs-1", "Svc1", "S1", null, List.of());
 
         List<Map<String, Object>> all = businessServiceService.searchByKeyword("");
@@ -246,7 +361,8 @@ public class BusinessServiceServiceTest {
         createBs(id, name, code, groupId, hostIds, List.of());
     }
 
-    private void createBs(String id, String name, String code, String groupId, List<String> hostIds, List<String> tags) {
+    private void createBs(String id, String name, String code, String groupId, List<String> hostIds,
+        List<String> tags) {
         Map<String, Object> bs = new LinkedHashMap<>();
         bs.put("id", id);
         bs.put("name", name);
@@ -262,11 +378,11 @@ public class BusinessServiceServiceTest {
 
         try {
             Path file = businessServicesDir.resolve(id + ".json");
-            String json = new com.fasterxml.jackson.databind.ObjectMapper()
-                    .writerWithDefaultPrettyPrinter().writeValueAsString(bs);
+            String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+                .writeValueAsString(bs);
             Files.writeString(file, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 }

@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useToast } from '../../../platform/providers/ToastContext'
-import { useUser } from '../../../platform/providers/UserContext'
 import {
+    buildConsumedNewChatPath,
     buildChatSessionState,
     clearPersistedChatSessionLocator,
     persistChatSessionLocator,
@@ -14,6 +14,7 @@ import {
 import { useChat, convertBackendMessage, isChatOrderDebugEnabled, buildChatMessageOrderDigest } from '../../../platform/chat/useChat'
 import MessageList from '../../../platform/chat/MessageList'
 import ChatInput from '../../../platform/chat/ChatInput'
+import { A2AProgressContext } from '../../../platform/chat/a2aProgress'
 import ChatPanelShell from '../../../platform/chat/ChatPanelShell'
 import type { Session, ImageData } from '@goosed/sdk'
 import type { AttachedFile, SelectedSkill } from '../../../../types/message'
@@ -34,6 +35,9 @@ const BOTTOM_THRESHOLD_PX = 24
 const USER_MESSAGE_TOP_ANCHOR_PX = 24
 const USER_MESSAGE_TOP_TOLERANCE_PX = 12
 const BOTTOM_CONTENT_GAP_PX = 24
+// Product convention: only the orchestrator ("digital human") agent delegates; tool-agents are call targets only.
+// So the @mention agent picker is offered only when chatting with this agent.
+const A2A_INITIATOR_AGENT_ID = 'fo-copilot'
 
 function setScrollTop(element: HTMLElement, top: number, behavior: ScrollBehavior) {
     if (typeof element.scrollTo === 'function') {
@@ -67,8 +71,6 @@ export default function Chat() {
     const { getClient, agents, isConnected, error: goosedError } = useGoosed()
     const { markSessionRead } = useInbox()
     const { showToast } = useToast()
-    const { role } = useUser()
-    const isAdmin = role === 'admin'
 
     const routeResolution = useMemo(
         () => resolveChatRouteState(searchParams, location.state),
@@ -124,14 +126,23 @@ export default function Chat() {
     const recoverySessionId = locatorState.kind === 'recovering' ? locatorState.sessionId : ''
     const activeSessionId = readyLocator?.sessionId || recoverySessionId
     const activeAgentId = readyLocator?.agentId || ''
+    const activeAgentName = agents.find(agent => agent.id === activeAgentId)?.name || activeAgentId
     const client = activeAgentId ? getClient(activeAgentId) : null
     const activeAgentSkills = useMemo(() => {
         return agents.find(agent => agent.id === activeAgentId)?.skills || []
     }, [activeAgentId, agents])
 
-    const { messages, chatState, isLoading, error, sessionError, tokenState, outputFilesEvent, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
+    // Agents the active agent may delegate to via @mention. Only the orchestrator ("digital human") delegates;
+    // tool-agents are call targets only, and an agent can't delegate to itself. Shared by the picker + the trigger.
+    const delegationAgents = useMemo(
+        () => (activeAgentId === A2A_INITIATOR_AGENT_ID ? agents.filter(agent => agent.id !== activeAgentId) : []),
+        [activeAgentId, agents],
+    )
+
+    const { messages, chatState, isLoading, error, sessionError, tokenState, outputFilesEvent, a2aProgress, sendMessage, stopMessage, clearMessages, setInitialMessages } = useChat({
         sessionId: activeSessionId || null,
         client: client!,
+        agents: delegationAgents,
     })
 
     useEffect(() => {
@@ -208,11 +219,14 @@ export default function Chat() {
             }
         }
         fetchModelInfo()
-    }, [client, isConnected])
+    }, [activeAgentId, activeSessionId, client, isConnected])
 
     const createSessionWithAgent = useCallback(async (agentId: string, options: { initialMessage?: string; initialSelectedSkill?: SelectedSkill } = {}) => {
         if (createSessionInFlightRef.current?.agentId === agentId) {
-            return createSessionInFlightRef.current.promise
+            // Swallow the shared promise's rejection: the original caller already surfaces the
+            // error via initError, and an uncaught rejection here would skip the callers'
+            // isInitializing cleanup, leaving the page on the loading spinner forever.
+            return createSessionInFlightRef.current.promise.catch(() => null)
         }
 
         cleanupEmptyDraftSessions('replace_draft_session')
@@ -232,7 +246,7 @@ export default function Chat() {
             setLocatorState({ kind: 'ready', locator: nextLocator })
             persistChatSessionLocator(nextLocator)
             clearMessages()
-            navigate('/chat', {
+            navigate(buildConsumedNewChatPath(searchParams), {
                 replace: true,
                 state: buildChatSessionState(newSession.id, agentId, {
                     initialMessage: options.initialMessage,
@@ -255,7 +269,7 @@ export default function Chat() {
             }
             setIsCreatingSession(false)
         }
-    }, [getClient, clearMessages, cleanupEmptyDraftSessions, navigate])
+    }, [getClient, clearMessages, cleanupEmptyDraftSessions, navigate, searchParams])
 
     const handleAgentChange = useCallback(async (agentId: string) => {
         if (agentId === activeAgentId) return
@@ -821,18 +835,20 @@ export default function Chat() {
                 {/* Messages area - scrollable */}
                 <div className="chat-messages-area" ref={messageScrollContainerRef}>
                     <div className="chat-messages-scroll">
-                        <MessageList
-                            messages={messages}
-                            isLoading={isLoading}
-                            chatState={chatState}
-                            agentId={activeAgentId}
-                            sessionId={activeSessionId || undefined}
-                            outputFilesEvent={outputFilesEvent}
-                            onRetry={handleRetry}
-                            onCancelRequest={handleStopMessage}
-                            scrollContainerRef={messageScrollContainerRef}
-                            showAnchorSpacer={!!pendingUserMessageAnchorId}
-                        />
+                        <A2AProgressContext.Provider value={a2aProgress}>
+                            <MessageList
+                                messages={messages}
+                                isLoading={isLoading}
+                                chatState={chatState}
+                                agentId={activeAgentId}
+                                sessionId={activeSessionId || undefined}
+                                outputFilesEvent={outputFilesEvent}
+                                onRetry={handleRetry}
+                                onCancelRequest={handleStopMessage}
+                                scrollContainerRef={messageScrollContainerRef}
+                                showAnchorSpacer={!!pendingUserMessageAnchorId}
+                            />
+                        </A2AProgressContext.Provider>
                     </div>
                 </div>
             </ChatPanelShell>
@@ -866,15 +882,24 @@ export default function Chat() {
                         isGenerating={isLoading}
                         canQuickContinue={messages.length > 0}
                         onStopGeneration={handleStopMessage}
-                        placeholder={isCreatingSession ? t('chat.switchingAgent') : isLoading ? t('chat.waitingForResponse') : t('chat.typePlaceholder')}
+                        placeholder={(() => {
+                            if (isCreatingSession) return t('chat.switchingAgent')
+                            if (isLoading) return t('chat.waitingForResponse')
+                            return t('chat.typePlaceholder')
+                        })()}
                         autoFocus
                         selectedAgent={activeAgentId}
+                        selectedAgentName={activeAgentName}
                         onAgentChange={handleAgentChange}
-                        showAgentSelector={true}
+                        // A session's agent/model are fixed once it has messages — switching agent means a NEW
+                        // session. So the picker is offered only on an empty draft; a resumed/started session
+                        // shows a read-only model badge (unifying chat-resume with the Assistant page).
+                        showAgentSelector={messages.length === 0}
                         modelInfo={modelInfo}
                         tokenState={tokenState}
                         skills={activeAgentSkills}
-                        onBrowseSkillMarket={isAdmin ? handleBrowseSkillMarket : undefined}
+                        agents={delegationAgents}
+                        onBrowseSkillMarket={handleBrowseSkillMarket}
                     />
                 </div>
             </div>

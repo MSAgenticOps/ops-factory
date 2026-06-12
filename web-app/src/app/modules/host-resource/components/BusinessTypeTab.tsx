@@ -1,9 +1,13 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeCard from './TypeCard'
+import TypeFormModal from './TypeFormModal'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import type { BusinessType } from '../../../../types/host'
+import { useFormValidation } from '../../../../utils/useFormValidation'
 
 type Props = {
     businessTypes: BusinessType[]
@@ -25,6 +29,9 @@ const emptyForm: FormData = { name: '', code: '', description: '', color: '#6366
 
 export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
+    const { showToast } = useToast()
+    const { requestConfirm } = useConfirmDialog()
+    const { validateFormData } = useFormValidation()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<BusinessType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
@@ -56,31 +63,72 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
     }, [])
 
     const handleSave = useCallback(async () => {
-        if (!form.name.trim()) return
+        if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
+            // Validate and sanitize form fields (name/code only; description allows any characters)
+            const fieldLabels = {
+                name: t('hostResource.typeName'),
+                code: t('hostResource.typeCode'),
+            }
+            const validationResult = validateFormData(
+                form,
+                ['name', 'code'],
+                fieldLabels
+            )
+
+            if (!validationResult.valid) {
+                setSaving(false)
+                return
+            }
+
+            const sanitizedForm = validationResult.sanitized
+
+            // Check for duplicate name
+            const duplicateName = businessTypes.find(bt => bt.name === sanitizedForm.name && bt.id !== editing?.id)
+            if (duplicateName) {
+                showToast('error', t('hostResource.duplicateName', { name: sanitizedForm.name }))
+                setSaving(false)
+                return
+            }
+
+            // Check for duplicate code
+            const duplicateCode = businessTypes.find(bt => bt.code === sanitizedForm.code && bt.id !== editing?.id)
+            if (duplicateCode) {
+                showToast('error', t('hostResource.duplicateCode', { code: sanitizedForm.code }))
+                setSaving(false)
+                return
+            }
+
             if (editing) {
-                await onUpdate(editing.id, form)
+                const { code: _, ...updateBody } = sanitizedForm
+                await onUpdate(editing.id, updateBody)
             } else {
-                await onCreate(form)
+                await onCreate(sanitizedForm)
             }
             setShowModal(false)
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed')
+            showToast('error', err instanceof Error ? err.message : 'Failed')
         } finally {
             setSaving(false)
         }
-    }, [editing, form, onCreate, onUpdate])
+    }, [editing, form, businessTypes, onCreate, onUpdate, showToast, t, validateFormData])
 
     const handleDelete = useCallback(async (item: BusinessType) => {
-        if (confirm(t('hostResource.confirmDeleteBusinessType'))) {
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: t('hostResource.confirmDeleteBusinessType'),
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
+        if (confirmed) {
             try {
                 await onDelete(item.id)
             } catch (err) {
-                alert(err instanceof Error ? err.message : 'Failed')
+                showToast('error', err instanceof Error ? err.message : 'Failed')
             }
         }
-    }, [onDelete, t])
+    }, [onDelete, t, requestConfirm, showToast])
 
     return (
         <div className="hr-type-tab-content">
@@ -93,13 +141,15 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
                 </button>
             </div>
 
-            {loading ? (
+            {loading && (
                 <div className="hr-empty">{t('common.loading')}</div>
-            ) : businessTypes.length === 0 ? (
+            )}
+            {!loading && businessTypes.length === 0 && (
                 <div className="hr-type-tab-empty">
                     <div className="hr-type-tab-empty-text">{t('hostResource.noBusinessTypes')}</div>
                 </div>
-            ) : (
+            )}
+            {!loading && businessTypes.length > 0 && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput
@@ -126,76 +176,16 @@ export default function BusinessTypeTab({ businessTypes, loading, onCreate, onUp
                 </>
             )}
 
-            {/* Modal */}
             {showModal && (
-                <div className="hr-host-modal modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h3>{editing ? t('hostResource.editBusinessType') : t('hostResource.createBusinessType')}</h3>
-                            <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeName')}</label>
-                                <input
-                                    className="form-input"
-                                    value={form.name}
-                                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                    placeholder={t('hostResource.typeName')}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeCode')}</label>
-                                <input
-                                    className="form-input"
-                                    value={form.code}
-                                    onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-                                    placeholder={t('hostResource.typeCode')}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.description')}</label>
-                                <input
-                                    className="form-input"
-                                    value={form.description}
-                                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeColor')}</label>
-                                <input
-                                    type="color"
-                                    value={form.color}
-                                    onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                                    style={{ width: 48, height: 32, padding: 2, cursor: 'pointer' }}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.knowledge')}</label>
-                                <textarea
-                                    className="form-input"
-                                    rows={5}
-                                    value={form.knowledge}
-                                    onChange={e => setForm(f => ({ ...f, knowledge: e.target.value }))}
-                                    placeholder={t('hostResource.knowledgeHint')}
-                                    style={{ resize: 'vertical' }}
-                                />
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                                {t('common.cancel')}
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSave}
-                                disabled={saving || !form.name.trim()}
-                            >
-                                {saving ? t('common.saving') : t('common.save')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <TypeFormModal
+                    title={editing ? t('hostResource.editBusinessType') : t('hostResource.createBusinessType')}
+                    form={form}
+                    setForm={setForm}
+                    saving={saving}
+                    onSave={handleSave}
+                    onClose={() => setShowModal(false)}
+                    isEditing={!!editing}
+                />
             )}
         </div>
     )

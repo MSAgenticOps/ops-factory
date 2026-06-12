@@ -1,15 +1,26 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package db.migration.common;
 
-import java.sql.Connection;
 import org.flywaydb.core.api.migration.Context;
+
+import java.sql.Connection;
+
+/**
+ * The V3__add_job_progress_columns.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
 
 public class V3__add_job_progress_columns extends BaseMetadataMigration {
 
     @Override
     public void migrate(Context context) throws Exception {
         Connection connection = context.getConnection();
-        executeIfMissing(connection, "ingestion_job", "stage",
-            "alter table ingestion_job add column stage TEXT");
+        executeIfMissing(connection, "ingestion_job", "stage", "alter table ingestion_job add column stage TEXT");
         executeIfMissing(connection, "ingestion_job", "created_by",
             "alter table ingestion_job add column created_by TEXT");
         executeIfMissing(connection, "ingestion_job", "total_documents",

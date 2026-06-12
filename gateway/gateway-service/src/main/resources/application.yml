@@ -1,7 +1,3 @@
-server:
-  port: 3000
-  address: 0.0.0.0
-
 gateway:
   secret-key: test
   cors-origin: http://127.0.0.1:5173
@@ -16,6 +12,12 @@ gateway:
   idle:
     timeout-minutes: 15
     check-interval-ms: 60000
+
+  proactive-delivery:
+    enabled: true
+    poll-interval-ms: 30000
+    max-age-minutes: 60
+    followup-inject-limit: 10
 
   upload:
     max-file-size-mb: 50
@@ -55,10 +57,10 @@ spring:
     import: optional:file:${GATEWAY_CONFIG_PATH:config.yaml}
   codec:
     max-in-memory-size: 50MB
-  webflux:
+  servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 100MB
 
 logging:
-  config: classpath:log4j2-spring.xml
+  config: classpath:logback-spring.xml

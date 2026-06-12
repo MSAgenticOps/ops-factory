@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -6,10 +10,17 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'https://127.0.0.1:3000'
-const GATEWAY_SECRET_KEY = process.env.GATEWAY_SECRET_KEY || 'test'
 const API_PREFIX = '/gateway'
 const OUTPUT_DIR = process.env.OUTPUT_DIR || './output'
 const MAX_OUTPUT_SIZE = 1_000_000 // 1MB
+
+function requireGatewaySecretKey(): string {
+  const secret = process.env.GATEWAY_SECRET_KEY
+  if (!secret || !secret.trim()) {
+    throw new Error('GATEWAY_SECRET_KEY is required')
+  }
+  return secret.trim()
+}
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -19,16 +30,23 @@ function escapeRegex(str: string): string {
 // Gateway HTTP helper
 // ---------------------------------------------------------------------------
 
-export async function gw<T>(path: string, params?: Record<string, string>, method?: string, body?: unknown): Promise<T> {
+export async function gw<T>(
+  path: string,
+  params?: Record<string, string>,
+  method?: string,
+  body?: unknown,
+): Promise<T> {
   const url = new URL(`${GATEWAY_URL}${path}`)
   if (params && method !== 'POST') {
-    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, v)
+    }
   }
   const res = await fetch(url, {
     method: method || 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'x-secret-key': GATEWAY_SECRET_KEY,
+      'x-secret-key': requireGatewaySecretKey(),
       'x-user-id': 'admin',
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -49,7 +67,10 @@ export const tools = [
   // --- Query tools (7) ---
   {
     name: 'list_system_resources',
-    description: '查询系统资源候选（系统名称 + 环境编码 Code）。当用户未明确系统或系统不唯一时，用于列出候选供用户选择。仅返回顶层系统资源（parentId 为空），支持 keyword 按系统名称或 Code 模糊匹配。',
+    description:
+      '查询系统资源候选（系统名称 + 环境编码 Code）。' +
+      '当用户未明确系统或系统不唯一时，用于列出候选供用户选择。' +
+      '仅返回顶层系统资源（parentId 为空），支持 keyword 按系统名称或 Code 模糊匹配。',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -71,7 +92,10 @@ export const tools = [
   },
   {
     name: 'query_hosts_by_scope',
-    description: '按明确资源范围查询主机列表，仅用于主机级诊断阶段。支持 groupName（分组名称模糊匹配）、clusterName（集群名称模糊匹配）、clusterType（集群类型精确匹配）。必须提供调用原因 reason，且禁止无范围参数时枚举全部主机。',
+    description:
+      '按明确资源范围查询主机列表，仅用于主机级诊断阶段。' +
+      '支持 groupName（分组名称模糊匹配）、clusterName（集群名称模糊匹配）、clusterType（集群类型精确匹配）。' +
+      '必须提供调用原因 reason，且禁止无范围参数时枚举全部主机。',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -97,7 +121,10 @@ export const tools = [
   },
   {
     name: 'get_cluster_type_knowledge',
-    description: '根据主机ID解析其所属集群类型的运维知识。依次查询主机→集群→集群类型，返回集群类型中存储的knowledge字段（常用诊断命令、配置文件路径、日志路径等领域知识）。用于将SOP中的抽象检查描述转化为具体操作命令。',
+    description:
+      '根据主机ID解析其所属集群类型的运维知识。' +
+      '依次查询主机→集群→集群类型，返回集群类型中存储的knowledge字段（常用诊断命令、配置文件路径、日志路径等领域知识）。' +
+      '用于将SOP中的抽象检查描述转化为具体操作命令。',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -108,14 +135,13 @@ export const tools = [
   },
   {
     name: 'list_sops',
-    description: '列出所有可用的SOP诊断流程，包含id、名称、触发条件。可通过tags过滤。',
+    description: '列出所有可用的SOP诊断流程，包含id、名称、触发条件。可通过targetSolution过滤，返回匹配的SOP（包括通用的SOP）。',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: '按标签过滤（如["haproxy"]），返回tags中包含任一指定标签的SOP',
+        targetSolution: {
+          type: 'string',
+          description: '按解决方案类型ID过滤（可选），返回targetSolution匹配或为universal的SOP',
         },
       },
     },
@@ -195,97 +221,18 @@ export const tools = [
 // Mermaid generation
 // ---------------------------------------------------------------------------
 
-interface SopNode {
-  id?: string
-  name: string
-  type: string
-  transitions?: { condition: string; nextNodes?: string[]; nextNodeId?: string; requireHumanConfirm?: boolean }[]
-}
-
 interface SopData {
   name?: string
-  nodes?: SopNode[]
-  mode?: string
   enabled?: boolean
   stepsDescription?: string
-  tags?: string[]
+  targetSolution?: string
   requiredTools?: string[]
   [key: string]: unknown
 }
 
-export function sopToMermaid(sop: SopData): string {
-  const nodes = sop.nodes ?? []
-  if (nodes.length === 0) return 'graph TD\n    empty["空SOP"]'
-
-  // Build name → index mapping (nextNodeId stores the target node's name)
-  const nameToIndex = new Map<string, number>()
-  nodes.forEach((n, i) => nameToIndex.set(n.name, i))
-
-  const lines: string[] = ['graph TD']
-
-  // Node declarations
-  nodes.forEach((node, i) => {
-    const label = node.name.replace(/"/g, "'")
-    if (node.type === 'start') {
-      lines.push(`    N${i}(["${label}"])`)
-    } else if (node.type === 'browser') {
-      lines.push(`    N${i}{{"${label}"}}`)
-    } else if (node.type === 'end') {
-      lines.push(`    N${i}((("${label}")))`)
-    } else {
-      lines.push(`    N${i}["${label}"]`)
-    }
-  })
-
-  // Edges with conditions
-  nodes.forEach((node, i) => {
-    for (const t of node.transitions ?? []) {
-      // nextNodes is an array of target node names
-      const targets = t.nextNodes ?? (t.nextNodeId ? [t.nextNodeId] : [])
-      for (const targetName of targets) {
-        const targetIdx = nameToIndex.get(targetName)
-        if (targetIdx !== undefined) {
-          const cond = (t.condition || '').replace(/"/g, "'")
-          const suffix = t.requireHumanConfirm ? ' (需确认)' : ''
-          lines.push(`    N${i} -->|"${cond}${suffix}"| N${targetIdx}`)
-        }
-      }
-    }
-  })
-
-  // Style start nodes (indigo), browser nodes (amber), and human-confirm nodes (green)
-  nodes.forEach((node, i) => {
-    if (node.type === 'start') {
-      lines.push(`    style N${i} fill:#e0e7ff,stroke:#6366f1,stroke-width:2px`)
-    } else if (node.type === 'browser') {
-      lines.push(`    style N${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`)
-    } else if (node.type === 'end') {
-      lines.push(`    style N${i} fill:#fee2e2,stroke:#dc2626,stroke-width:2px`)
-    }
-  })
-
-  return lines.join('\n')
-}
-
 interface ContentItem {
-  type: 'text' | 'resource'
+  type: 'text'
   text?: string
-  resource?: {
-    uri: string
-    mimeType: string
-    text: string
-  }
-}
-
-export function buildMermaidResource(mermaidCode: string, title: string): ContentItem {
-  return {
-    type: 'resource',
-    resource: {
-      uri: `ui://sop-executor/mermaid/${encodeURIComponent(title)}`,
-      mimeType: 'text/html',
-      text: `<div class="mermaid">\n${mermaidCode}\n</div>`,
-    },
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -295,7 +242,9 @@ export function buildMermaidResource(mermaidCode: string, title: string): Conten
 function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const k of keys) {
-    if (k in obj) result[k] = obj[k]
+    if (k in obj) {
+      result[k] = obj[k]
+    }
   }
   return result
 }
@@ -306,7 +255,7 @@ function pickEach(arr: Record<string, unknown>[], keys: string[]): Record<string
 
 const HOST_LIST_KEYS     = ['id', 'name', 'businessIp', 'clusterId', 'tags', 'purpose']
 const HOST_NODE_KEYS     = ['id', 'name', 'businessIp', 'clusterType', 'clusterName']
-const SOP_LIST_KEYS      = ['id', 'name', 'tags', 'mode', 'enabled']
+const SOP_LIST_KEYS      = ['id', 'name', 'targetSolution', 'triggerCondition', 'enabled']
 const CT_LIST_KEYS       = ['id', 'name', 'code', 'description', 'knowledge']
 const SYSTEM_LIST_KEYS   = ['id', 'name', 'code']
 const VALID_SCOPE_REASONS = new Set(['explicit_scope', 'health_root_alarm'])
@@ -325,7 +274,9 @@ function formatTimestampForFile(date: Date): string {
 
 function sanitizeFileName(fileName: string): string {
   const trimmed = fileName.trim()
-  if (!trimmed) return ''
+  if (!trimmed) {
+    return ''
+  }
   const normalized = trimmed.replace(/[\\/]/g, '_')
   return normalized.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, '_')
 }
@@ -340,9 +291,13 @@ function sanitizeFileName(fileName: string): string {
 function fuzzyMatch(text: string, keyword: string): boolean {
   const t = text.toLowerCase()
   const k = keyword.toLowerCase()
-  if (t.includes(k)) return true
+  if (t.includes(k)) {
+    return true
+  }
   for (const ch of k) {
-    if (!t.includes(ch)) return false
+    if (!t.includes(ch)) {
+      return false
+    }
   }
   return true
 }
@@ -360,7 +315,7 @@ export async function handleListSystemResources(params?: { keyword?: string; lim
 
   const data = await gw<{ groups: Record<string, unknown>[] }>(`${API_PREFIX}/host-groups`, { enabledOnly: 'true' })
   const allGroups = data.groups ?? []
-  const systems = allGroups.filter(g => g.parentId == null)
+  const systems = allGroups.filter(g => g.parentId === null || g.parentId === undefined)
 
   const filtered = keyword
     ? systems.filter(s => {
@@ -423,7 +378,9 @@ export async function handleQueryBusinessServiceNodes(keyword: string): Promise<
   // Unique match — return business context summary instead of host topology.
   const bs = services[0]
   const bsId = String(bs.id)
-  const resolved = await gw<Record<string, unknown>>(`${API_PREFIX}/business-services/${encodeURIComponent(bsId)}/resolved`)
+  const resolved = await gw<Record<string, unknown>>(
+    `${API_PREFIX}/business-services/${encodeURIComponent(bsId)}/resolved`,
+  )
 
   const businessService = pick(bs, ['id', 'name', 'code', 'groupId', 'tags'])
   const resolvedSummary = pick(
@@ -448,11 +405,15 @@ function findGroupByName(
   name: string,
 ): Record<string, unknown> | undefined {
   for (const node of tree) {
-    if (fuzzyMatch(String(node.name ?? ''), name)) return node
+    if (fuzzyMatch(String(node.name ?? ''), name)) {
+      return node
+    }
     const children = node.children as Record<string, unknown>[] | undefined
     if (Array.isArray(children)) {
       const found = findGroupByName(children, name)
-      if (found) return found
+      if (found) {
+        return found
+      }
     }
   }
   return undefined
@@ -500,8 +461,12 @@ export async function handleQueryHostsByScope(params?: {
   let clusterIds: string[] = []
   if (clusterName || clusterType) {
     const queryParams: Record<string, string> = {}
-    if (clusterType) queryParams.type = clusterType
-    if (groupId) queryParams.groupId = groupId
+    if (clusterType) {
+      queryParams.type = clusterType
+    }
+    if (groupId) {
+      queryParams.groupId = groupId
+    }
     queryParams.enabledOnly = 'true'
     const clusterData = await gw<{ clusters: Record<string, unknown>[] }>(
       `${API_PREFIX}/clusters`,
@@ -535,13 +500,17 @@ export async function handleQueryHostsByScope(params?: {
             .catch(() => [] as Record<string, unknown>[]),
         ),
       )
-      for (const batch of results) allHosts.push(...batch)
+      for (const batch of results) {
+        allHosts.push(...batch)
+      }
     }
     // Deduplicate by host id
     const seen = new Set<string>()
     const uniqueHosts = allHosts.filter(h => {
       const id = String(h.id ?? '')
-      if (seen.has(id)) return false
+      if (seen.has(id)) {
+        return false
+      }
       seen.add(id)
       return true
     })
@@ -625,15 +594,15 @@ export async function handleSaveMarkdownReport(params?: { fileName?: string; con
   }, null, 2)
 }
 
-export async function handleListSops(tags?: string[]): Promise<string> {
+export async function handleListSops(targetSolution?: string): Promise<string> {
   const data = await gw<{ sops: Record<string, unknown>[] }>(`${API_PREFIX}/sops`)
   let sops = data.sops ?? []
   // Filter out disabled SOPs
   sops = sops.filter(s => s.enabled !== false)
-  if (tags && tags.length > 0) {
+  if (targetSolution) {
     sops = sops.filter(s => {
-      const sTags = (s.tags ?? []) as string[]
-      return sTags.some((t: string) => tags.includes(t))
+      const sol = String(s.targetSolution ?? 'universal')
+      return sol === targetSolution || sol === 'universal'
     })
   }
   return JSON.stringify({ sops: pickEach(sops, SOP_LIST_KEYS) }, null, 2)
@@ -641,92 +610,35 @@ export async function handleListSops(tags?: string[]): Promise<string> {
 
 export async function handleGetSopDetail(sopId: string): Promise<ContentItem[]> {
   const data = await gw<Record<string, unknown>>(`${API_PREFIX}/sops/${sopId}`)
-  // API returns { success: true, sop: { nodes: [...] } } — extract inner sop object
+  // API returns { success: true, sop: { ... } } — extract inner sop object
   const sop = (data.sop ?? data) as SopData
 
   // Auto-infer requiredTools if missing
   if (!sop.requiredTools || sop.requiredTools.length === 0) {
-    const tools = new Set<string>(['sop-executor'])
-    for (const node of sop.nodes ?? []) {
-      if (node.type === 'browser') tools.add('browser-use')
-    }
-    sop.requiredTools = Array.from(tools)
-  }
-
-  // Natural language mode — return steps description without mermaid flowchart
-  if (sop.mode === 'natural_language') {
-    const parts: string[] = []
-    parts.push(`SOP 模式: 自然语言 (natural_language)`)
-    if (sop.tags && sop.tags.length > 0) {
-      parts.push(`目标标签: ${sop.tags.join(', ')}`)
-    }
-    parts.push(`可用工具范围: ${sop.requiredTools.join(', ')}`)
-    parts.push('')
-    parts.push('---')
-    parts.push('')
-    parts.push('诊断步骤描述:')
-    parts.push(sop.stepsDescription || '（无步骤描述）')
-    parts.push('')
-    parts.push('---')
-    parts.push('')
-    parts.push('执行指引:')
-    parts.push('1. 根据上述步骤描述，逐步推导出具体的 shell 诊断命令（只读命令，符合白名单）')
-    parts.push('2. 只有当目标主机范围已由用户明确指定，或已由健康分析收敛到明确根因对象时，才允许调用 query_hosts_by_scope')
-    parts.push('3. 调用 query_hosts_by_scope 时必须提供 reason（explicit_scope 或 health_root_alarm）以及对应 evidence')
-    parts.push('4. 对每台目标主机调用 execute_remote_command 执行诊断命令')
-    parts.push('5. 分析输出，判断是否异常')
-    parts.push('6. 不需要生成 mermaid 流程图')
-
-    return [{ type: 'text', text: parts.join('\n') }]
-  }
-
-  // Structured mode — existing logic
-  const mermaidCode = sopToMermaid(sop)
-
-  // Embed confirmation warning directly into each transition that requires it.
-  const confirmWarning = '⛔ 匹配到此条件时必须立即停止，向用户确认后才能继续执行后续节点'
-  const sopWithWarnings = JSON.parse(JSON.stringify(data)) as Record<string, unknown>
-  const inner = (sopWithWarnings.sop ?? sopWithWarnings) as SopData
-  let hasConfirm = false
-  for (const node of inner.nodes ?? []) {
-    for (const tr of node.transitions ?? []) {
-      if (tr.requireHumanConfirm) {
-        hasConfirm = true
-        ;(tr as Record<string, unknown>)['_confirmWarning'] = confirmWarning
-      }
-    }
+    sop.requiredTools = ['sop-executor']
   }
 
   const parts: string[] = []
-
-  if (hasConfirm) {
-    parts.push('⚠️ 本 SOP 包含需要人工确认的条件分支（requireHumanConfirm=true）。')
-    parts.push('当 transitions 条件匹配到 requireHumanConfirm=true 的分支时：')
-    parts.push('1. 立即停止，不调用任何工具')
-    parts.push('2. 输出：⏸️ 请确认是否继续检查「{后续节点名称}」？回复「继续」或「否」。')
-    parts.push('3. 结束本轮对话，等用户回复后再继续')
-    parts.push('')
-  }
-
+  const sol = sop.targetSolution ?? 'universal'
+  parts.push(`目标解决方案: ${sol === 'universal' ? '通用 (universal)' : sol}`)
   parts.push(`可用工具范围: ${sop.requiredTools.join(', ')}`)
-  parts.push('')
-
-  parts.push(JSON.stringify(sopWithWarnings, null, 2))
   parts.push('')
   parts.push('---')
   parts.push('')
-  parts.push('SOP 流程图（必须向用户展示）：')
+  parts.push('诊断步骤描述:')
+  parts.push(sop.stepsDescription || '（无步骤描述）')
   parts.push('')
-  parts.push('```mermaid')
-  parts.push(mermaidCode)
-  parts.push('```')
+  parts.push('---')
+  parts.push('')
+  parts.push('执行指引:')
+  parts.push('1. 根据上述步骤描述，逐步推导出具体的 shell 诊断命令（只读命令，符合白名单）')
+  parts.push('2. 根据步骤描述自动判断需要检查哪些集群或节点')
+  parts.push('3. 只有当目标主机范围已由用户明确指定，或已由健康分析收敛到明确根因对象时，才允许调用 query_hosts_by_scope')
+  parts.push('4. 调用 query_hosts_by_scope 时必须提供 reason（explicit_scope 或 health_root_alarm）以及对应 evidence')
+  parts.push('5. 对每台目标主机调用 execute_remote_command 执行诊断命令')
+  parts.push('6. 分析输出，判断是否异常')
 
-  const textContent: ContentItem = {
-    type: 'text',
-    text: parts.join('\n'),
-  }
-  const mermaidResource = buildMermaidResource(mermaidCode, String(sop.name ?? sopId))
-  return [textContent, mermaidResource]
+  return [{ type: 'text', text: parts.join('\n') }]
 }
 
 export async function handleGetHostNeighbors(hostId: string): Promise<string> {
@@ -737,11 +649,14 @@ export async function handleGetHostNeighbors(hostId: string): Promise<string> {
   const trimNeighbors = (arr: Record<string, unknown>[]) =>
     (arr ?? []).map((n: Record<string, unknown>) => {
       const node = (n.host ?? n.node) as Record<string, unknown> | undefined
+      const relation = n.relationDescription ?? n.relationType
+      const trimmedNode = node ? (pick(node, HOST_NODE_KEYS) as Record<string, unknown>) : null
+      const normalizedNode = trimmedNode
+        ? (({ businessIp, ...rest }: Record<string, unknown>) => ({ ...rest, ip: businessIp }))(trimmedNode)
+        : null
       return {
-        ...(node ? { node: (({ businessIp, ...rest }: Record<string, unknown>) => ({ ...rest, ip: businessIp }))(pick(node, HOST_NODE_KEYS) as Record<string, unknown>) } : {}),
-        ...((n.relationDescription ?? n.relationType) != null
-          ? { relationDescription: n.relationDescription ?? n.relationType }
-          : {}),
+        ...(normalizedNode ? { node: normalizedNode } : {}),
+        ...(relation !== null && relation !== undefined ? { relationDescription: relation } : {}),
       }
     })
   const upstream = trimNeighbors(data.upstream as Record<string, unknown>[] ?? [])
@@ -786,7 +701,8 @@ export async function handleExecuteRemote(hostId: string, command: string, timeo
 
     writeFileSync(join(OUTPUT_DIR, fileName), content, 'utf-8')
   } catch (writeErr) {
-    console.error('[sop-executor] Failed to write output file:', writeErr)
+    const message = writeErr instanceof Error ? writeErr.message : String(writeErr)
+    process.stderr.write(`[sop-executor] Failed to write output file: ${message}\n`)
   }
 
   return JSON.stringify(data, null, 2)
@@ -846,7 +762,8 @@ export async function handleExecuteRemoteBatch(hostIds: string[], command: strin
 
             writeFileSync(join(OUTPUT_DIR, fileName), content, 'utf-8')
           } catch (writeErr) {
-            console.error('[sop-executor] Failed to write output file:', writeErr)
+            const message = writeErr instanceof Error ? writeErr.message : String(writeErr)
+            process.stderr.write(`[sop-executor] Failed to write output file: ${message}\n`)
           }
 
           return { hostId, status: 'fulfilled', data }
@@ -921,8 +838,8 @@ export async function handleGetClusterTypeKnowledge(hostId: string): Promise<str
   const matched = clusterTypes.find(ct => {
     const name = ct.name as string | undefined
     const code = ct.code as string | undefined
-    return (name != null && name === clusterTypeStr) ||
-           (code != null && code.toLowerCase() === clusterTypeStr.toLowerCase())
+    return (typeof name === 'string' && name === clusterTypeStr) ||
+           (typeof code === 'string' && code.toLowerCase() === clusterTypeStr.toLowerCase())
   })
 
   if (!matched) {
@@ -971,7 +888,7 @@ export async function dispatch(name: string, args: Record<string, unknown>): Pro
       return handleGetClusterTypeKnowledge((args as { hostId?: string }).hostId ?? '')
     case 'list_sops':
       return handleListSops(
-        (args as { tags?: string[] }).tags,
+        (args as { targetSolution?: string }).targetSolution,
       )
     case 'get_sop_detail':
       return handleGetSopDetail((args as { sopId?: string }).sopId ?? '')

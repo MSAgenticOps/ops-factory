@@ -1,0 +1,19 @@
+[
+  {
+    "id": "ticket-watch-loop",
+    "cron": "0 */30 * * * *",
+    "recipe": "ticket-watch-loop.yaml",
+    "deliver": "im"
+  },
+  {
+    "id": "ticket-daily-brief",
+    "cron": "0 0 9 * * *",
+    "recipe": "ticket-daily-brief.yaml",
+    "deliver": "im"
+  },
+  {
+    "id": "fo-copilot-memory-maintenance",
+    "cron": "0 0 12 * * *",
+    "recipe": "fo-copilot-memory-maintenance.yaml"
+  }
+]

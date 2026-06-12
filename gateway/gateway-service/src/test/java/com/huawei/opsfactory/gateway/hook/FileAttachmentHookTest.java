@@ -1,32 +1,50 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.hook;
-
-import com.huawei.opsfactory.gateway.service.AgentConfigService;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
-import reactor.test.StepVerifier;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class FileAttachmentHookTest {
+import com.huawei.opsfactory.gateway.service.AgentConfigService;
 
+import reactor.test.StepVerifier;
+
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * Test coverage for File Attachment Hook.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
+public class FileAttachmentHookTest {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private AgentConfigService agentConfigService;
+
     private FileAttachmentHook hook;
+
     private Path usersDir;
 
+    /**
+     * Sets the up.
+     *
+     * @throws IOException if the operation fails
+     */
     @Before
     public void setUp() throws IOException {
         agentConfigService = mock(AgentConfigService.class);
@@ -36,42 +54,51 @@ public class FileAttachmentHookTest {
         hook = new FileAttachmentHook(agentConfigService);
     }
 
+    /**
+     * Tests no user message passthrough.
+     */
     @Test
     public void testNoUserMessage_passthrough() {
         String body = "{\"other\": \"data\"}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests no content passthrough.
+     */
     @Test
     public void testNoContent_passthrough() {
         String body = "{\"user_message\": {\"text\": \"hello\"}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests non array content passthrough.
+     */
     @Test
     public void testNonArrayContent_passthrough() {
         String body = "{\"user_message\": {\"content\": \"plain text\"}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests no file paths passthrough.
+     */
     @Test
     public void testNoFilePaths_passthrough() {
         String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"no paths here\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests valid file path passthrough.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testValidFilePath_passthrough() throws IOException {
         // Create a valid file in the user's agent directory
@@ -80,15 +107,19 @@ public class FileAttachmentHookTest {
         Path validFile = agentsDir.resolve("test.txt");
         Files.writeString(validFile, "content");
 
-        String filePath = validFile.toAbsolutePath().normalize().toString();
-        String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See file " + filePath + "\"}]}}";
+        String filePath = escapeJsonString(validFile.toAbsolutePath().normalize().toString());
+        String body =
+            "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See file " + filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
 
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests path traversal forbidden.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testPathTraversal_forbidden() throws IOException {
         // Create a file outside the user's directory
@@ -98,61 +129,69 @@ public class FileAttachmentHookTest {
         Files.writeString(otherFile, "secret");
 
         // Attempt to reference a file outside the user's own directory via the users path
-        String filePath = otherFile.toAbsolutePath().normalize().toString();
+        String filePath = escapeJsonString(otherFile.toAbsolutePath().normalize().toString());
         String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See " + filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
 
-        StepVerifier.create(hook.process(ctx))
-                .expectErrorSatisfies(e -> {
-                    assertTrue(e instanceof ResponseStatusException);
-                    assertEquals(HttpStatus.FORBIDDEN, ((ResponseStatusException) e).getStatus());
-                })
-                .verify();
+        StepVerifier.create(hook.process(ctx)).expectErrorSatisfies(e -> {
+            assertTrue(e instanceof ResponseStatusException);
+            assertEquals(HttpStatus.FORBIDDEN, ((ResponseStatusException) e).getStatusCode());
+        }).verify();
     }
 
+    /**
+     * Tests non existent file not found.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testNonExistentFile_notFound() throws IOException {
         // Reference a file that doesn't exist within the valid user directory
         Path agentsDir = usersDir.resolve("user1").resolve("agents");
         Files.createDirectories(agentsDir);
 
-        String filePath = agentsDir.resolve("agent1").resolve("nonexistent.txt")
-                .toAbsolutePath().normalize().toString();
+        String filePath =
+            escapeJsonString(agentsDir.resolve("agent1").resolve("nonexistent.txt").toAbsolutePath().normalize().toString());
         String body = "{\"user_message\": {\"content\": [{\"type\": \"text\", \"text\": \"See " + filePath + "\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
 
-        StepVerifier.create(hook.process(ctx))
-                .expectErrorSatisfies(e -> {
-                    assertTrue(e instanceof ResponseStatusException);
-                    assertEquals(HttpStatus.NOT_FOUND, ((ResponseStatusException) e).getStatus());
-                })
-                .verify();
+        StepVerifier.create(hook.process(ctx)).expectErrorSatisfies(e -> {
+            assertTrue(e instanceof ResponseStatusException);
+            assertEquals(HttpStatus.NOT_FOUND, ((ResponseStatusException) e).getStatusCode());
+        }).verify();
     }
 
+    /**
+     * Tests non text content ignored.
+     */
     @Test
     public void testNonTextContent_ignored() {
         // Image type content should be skipped
         String body = "{\"user_message\": {\"content\": [{\"type\": \"image\", \"data\": \"abc123\"}]}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests invalid json passthrough.
+     */
     @Test
     public void testInvalidJson_passthrough() {
         HookContext ctx = new HookContext("not valid json", "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
     }
 
+    /**
+     * Tests empty content array passthrough.
+     */
     @Test
     public void testEmptyContentArray_passthrough() {
         String body = "{\"user_message\": {\"content\": []}}";
         HookContext ctx = new HookContext(body, "agent1", "user1");
-        StepVerifier.create(hook.process(ctx))
-                .expectNext(ctx)
-                .verifyComplete();
+        StepVerifier.create(hook.process(ctx)).expectNext(ctx).verifyComplete();
+    }
+
+    private static String escapeJsonString(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

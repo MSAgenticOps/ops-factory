@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.controlcenter.api;
 
 import com.huawei.opsfactory.controlcenter.control.ServiceActionService;
@@ -10,13 +14,28 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
+/**
+ * Service Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 @RestController
-@RequestMapping("/control-center/services")
+@RestSchema(schemaId = "serviceController")
+@RequestMapping("/api/control-center/services")
 public class ServiceController {
 
     private final ServiceHealthProbeService probeService;
     private final ServiceActionService actionService;
 
+    /**
+     * Creates the service controller instance.
+     *
+     * @param probeService the service health probe service
+     * @param actionService the service action service
+     */
     public ServiceController(ServiceHealthProbeService probeService, ServiceActionService actionService) {
         this.probeService = probeService;
         this.actionService = actionService;

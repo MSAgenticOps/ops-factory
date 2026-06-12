@@ -21,9 +21,9 @@ describe('History page — connection error handling', () => {
         expect(src).toContain('useGoosed()')
     })
 
-    it('loads sessions via useHistorySessions and surfaces loading/error states', () => {
+    it('delegates loading state to useHistorySessions and surfaces error', () => {
         const src = readSource('app/modules/history/pages/HistoryPage.tsx')
-        expect(src).toContain('useHistorySessions')
+        expect(src).toContain('useHistorySessions({')
         expect(src).toContain('historySessions.isLoading')
         expect(src).toContain('historySessions.error')
     })
@@ -109,7 +109,7 @@ describe('Unified error banner CSS class — conn-banner', () => {
         { file: 'app/modules/files/pages/FilesPage.tsx', name: 'Files' },
         { file: 'app/modules/inbox/pages/InboxPage.tsx', name: 'Inbox' },
         { file: 'app/modules/agents/pages/AgentsPage.tsx', name: 'Agents' },
-        { file: 'app/modules/scheduler/pages/ScheduledActionsPage.tsx', name: 'ScheduledActions' },
+        { file: 'app/platform/scheduler/SchedulesPanel.tsx', name: 'SchedulesPanel' },
     ]
 
     for (const { file, name } of pagesToCheck) {

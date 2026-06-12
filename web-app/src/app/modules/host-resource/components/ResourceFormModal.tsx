@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { HostGroup, Cluster, Host, CustomAttribute, HostCreateRequest, BusinessService, ClusterType, BusinessType, ClusterRelation } from '../../../../types/host'
 import { isValidIp } from '../../../../utils/ip-validation'
+import { MultiSelectDropdown } from '../../../platform/ui/primitives/MultiSelectDropdown'
+import { validateAndSanitize } from '../../../../utils/inputValidation'
 import CustomAttributeEditor from './CustomAttributeEditor'
 import TopologyNodeIcon, { type TopologyNodeKind } from './TopologyNodeIcon'
 import SearchableSelect from '../../../platform/ui/forms/SearchableSelect'
@@ -55,6 +57,14 @@ export default function ResourceFormModal({
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // Auto-hide error after 3 seconds
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => setError(null), 3000)
+            return () => clearTimeout(timer)
+        }
+    }, [error])
+
     // ── Group form state ──
     const [groupName, setGroupName] = useState(editingItem?.type === 'group' ? editingItem.data.name : '')
     const [groupParentId, setGroupParentId] = useState(editingItem?.type === 'group' ? (editingItem.data.parentId ?? '') : '')
@@ -64,7 +74,17 @@ export default function ResourceFormModal({
 
     // ── Cluster form state ──
     const [clusterName, setClusterName] = useState(editingItem?.type === 'cluster' ? editingItem.data.name : '')
-    const [clusterType, setClusterType] = useState(editingItem?.type === 'cluster' ? editingItem.data.type : '')
+    const resolveClusterTypeName = (stored: string): string => {
+        if (!stored) return ''
+        if (clusterTypes.some(ct => ct.name === stored)) return stored
+        return clusterTypes.find(ct => ct.code === stored)?.name ?? stored
+    }
+    const [clusterType, setClusterType] = useState(editingItem?.type === 'cluster' ? resolveClusterTypeName(editingItem.data.type) : '')
+    useEffect(() => {
+        if (editingItem?.type === 'cluster' && editingItem.data.type) {
+            setClusterType(resolveClusterTypeName(editingItem.data.type))
+        }
+    }, [clusterTypes, editingItem])
     const [clusterTypeIsCustom, setClusterTypeIsCustom] = useState(false)
     const [clusterPurpose, setClusterPurpose] = useState(editingItem?.type === 'cluster' ? editingItem.data.purpose : '')
     const [clusterGroupId, setClusterGroupId] = useState(editingItem?.type === 'cluster' ? (editingItem.data.groupId ?? '') : (defaultGroupId ?? ''))
@@ -92,7 +112,12 @@ export default function ResourceFormModal({
     const [hostUsername, setHostUsername] = useState(editingItem?.type === 'host' ? editingItem.data.username : '')
     const [hostAuthType, setHostAuthType] = useState<'password' | 'key'>(editingItem?.type === 'host' ? editingItem.data.authType : 'password')
     const [hostCredential, setHostCredential] = useState(editingItem?.type === 'host' ? '***' : '')
-    const [hostClusterId, setHostClusterId] = useState(editingItem?.type === 'host' ? (editingItem.data.clusterId ?? '') : (defaultClusterId ?? ''))
+    const [hostClusterId, setHostClusterId] = useState<string>(() => {
+        if (editingItem?.type === 'host') {
+            return editingItem.data.clusterId ?? ''
+        }
+        return defaultClusterId ?? ''
+    })
     const [hostPurpose, setHostPurpose] = useState(editingItem?.type === 'host' ? (editingItem.data.purpose ?? '') : '')
     const [hostBusiness, setHostBusiness] = useState(editingItem?.type === 'host' ? (editingItem.data.business ?? '') : '')
     const [hostDescription, setHostDescription] = useState(editingItem?.type === 'host' ? editingItem.data.description : '')
@@ -107,7 +132,7 @@ export default function ResourceFormModal({
     const [editingRelId, setEditingRelId] = useState<string | null>(null)
     const [editRelTargetId, setEditRelTargetId] = useState('')
     const [editRelDesc, setEditRelDesc] = useState('')
-    const [newRelTargetId, setNewRelTargetId] = useState('')
+    const [newRelTargetIds, setNewRelTargetIds] = useState<string[]>([])
     const [newRelDesc, setNewRelDesc] = useState('')
 
     // Sync groupEnabled when editingItem changes (e.g. reopening same group after save)
@@ -122,7 +147,7 @@ export default function ResourceFormModal({
         if (editingItem?.type === 'cluster' || editingItem?.type === 'business-service') {
             fetchClusterRelations()
             setEditingRelId(null)
-            setNewRelTargetId('')
+            setNewRelTargetIds([])
             setNewRelDesc('')
         }
     }, [editingItem, fetchClusterRelations])
@@ -142,6 +167,32 @@ export default function ResourceFormModal({
         }
         return ids
     }, [groups])
+
+    // 获取环境组的所有父组ID（包括自身）
+    const getAncestorIds = useCallback((groupId: string): Set<string> => {
+        const ids = new Set<string>()
+        let currentGroupId: string | null = groupId
+        while (currentGroupId) {
+            ids.add(currentGroupId)
+            const group = groups.find(g => g.id === currentGroupId)
+            if (!group || !group.parentId) break
+            currentGroupId = group.parentId
+        }
+        return ids
+    }, [groups])
+
+    // 获取环境组及其所有祖先和后代ID（完整层级范围）
+    const getRelatedGroupIds = useCallback((groupId: string): Set<string> => {
+        const ancestorIds = getAncestorIds(groupId)
+        const descendantIds = new Set<string>()
+        for (const id of ancestorIds) {
+            const descendants = getDescendantIds(id)
+            for (const d of descendants) {
+                descendantIds.add(d)
+            }
+        }
+        return new Set([...ancestorIds, ...descendantIds])
+    }, [getAncestorIds, getDescendantIds, groups])
 
     const parentCandidates = useMemo(() => {
         const excludeIds = editingItem?.type === 'group' ? getDescendantIds(editingItem.data.id) : new Set<string>()
@@ -205,37 +256,47 @@ export default function ResourceFormModal({
     }, [clusterRelations, editingItem])
 
     const handleAddClusterRelation = useCallback(async (sourceType: 'cluster' | 'business-service', sourceId: string) => {
-        if (!newRelTargetId) return
+        if (newRelTargetIds.length === 0) return
+        const descResult = validateAndSanitize(newRelDesc, t('hostResource.relationDesc'))
+        if (!descResult.valid) { setError(t('hostResource.invalidChars')); return }
         setError(null)
-        try {
-            await onSaveClusterRelation({
-                sourceType,
-                sourceId,
-                targetId: newRelTargetId,
-                description: newRelDesc.trim(),
-            })
-            setNewRelTargetId('')
-            setNewRelDesc('')
-            await fetchClusterRelations()
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed')
+        const results = await Promise.allSettled(
+            newRelTargetIds.map(targetId =>
+                onSaveClusterRelation({
+                    sourceType,
+                    sourceId,
+                    targetId,
+                    description: descResult.sanitized,
+                })
+            )
+        )
+        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        if (failures.length > 0) {
+            setError(failures[0].reason instanceof Error ? failures[0].reason.message : 'Failed')
         }
-    }, [newRelTargetId, newRelDesc, onSaveClusterRelation, fetchClusterRelations])
+        if (failures.length < newRelTargetIds.length) {
+            setNewRelTargetIds([])
+        }
+        setNewRelDesc('')
+        await fetchClusterRelations()
+    }, [newRelTargetIds, newRelDesc, onSaveClusterRelation, fetchClusterRelations, t])
 
     const handleSaveRelationEdit = useCallback(async () => {
         if (!editingRelId) return
+        const descResult = validateAndSanitize(editRelDesc, t('hostResource.relationDesc'))
+        if (!descResult.valid) { setError(t('hostResource.invalidChars')); return }
         setError(null)
         try {
             await onUpdateClusterRelation(editingRelId, {
                 targetId: editRelTargetId,
-                description: editRelDesc.trim(),
+                description: descResult.sanitized,
             })
             setEditingRelId(null)
             await fetchClusterRelations()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed')
         }
-    }, [editingRelId, editRelTargetId, editRelDesc, onUpdateClusterRelation, fetchClusterRelations])
+    }, [editingRelId, editRelTargetId, editRelDesc, onUpdateClusterRelation, fetchClusterRelations, t])
 
     const handleDeleteClusterRelation = useCallback(async (relId: string) => {
         setError(null)
@@ -249,23 +310,22 @@ export default function ResourceFormModal({
 
     const getModalTitle = () => {
         if (editingItem) {
-            const prefix = t('hostResource.edit', { defaultValue: 'Edit' })
             const typeLabels: Record<string, string> = {
-                group: t('hostResource.createGroup'),
-                cluster: t('hostResource.createCluster'),
-                'business-service': t('hostResource.createBusinessService'),
-                host: t('hostResource.createHost'),
+                group: t('hostResource.editGroupTitle', { defaultValue: 'Edit Group' }),
+                cluster: t('hostResource.editClusterTitle', { defaultValue: 'Edit Cluster' }),
+                'business-service': t('hostResource.editBusinessServiceTitle', { defaultValue: 'Edit Business Service' }),
+                host: t('hostResource.editHostTitle', { defaultValue: 'Edit Host' }),
             }
-            return `${prefix}${typeLabels[editingItem.type] ?? ''}`
+            return typeLabels[editingItem.type] ?? t('hostResource.editGroupTitle')
         }
         if (!selectedType) return t('hostResource.createResource')
         const typeLabels: Record<string, string> = {
-            group: t('hostResource.createGroup'),
-            cluster: t('hostResource.createCluster'),
-            'business-service': t('hostResource.createBusinessService'),
-            host: t('hostResource.createHost'),
+            group: t('hostResource.createGroupTitle', { defaultValue: 'Create Group' }),
+            cluster: t('hostResource.createClusterTitle', { defaultValue: 'Create Cluster' }),
+            'business-service': t('hostResource.createBusinessServiceTitle', { defaultValue: 'Create Business Service' }),
+            host: t('hostResource.createHostTitle', { defaultValue: 'Create Host' }),
         }
-        return `${t('hostResource.create', { defaultValue: 'Create' })}${typeLabels[selectedType] ?? ''}`
+        return typeLabels[selectedType] ?? t('hostResource.createGroupTitle')
     }
 
     const handleSave = useCallback(async () => {
@@ -273,52 +333,225 @@ export default function ResourceFormModal({
         setSaving(true)
         try {
             if (selectedType === 'group') {
-                if (!groupName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
-                await onSaveGroup({ name: groupName.trim(), code: groupCode.trim(), parentId: groupParentId || null, description: groupDescription.trim(), enabled: groupEnabled })
+                const nameResult = validateAndSanitize(groupName, t('hostResource.groupName'))
+                if (!nameResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const codeResult = validateAndSanitize(groupCode, t('hostResource.groupCode'))
+                if (!codeResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const descResult = validateAndSanitize(groupDescription, t('hostResource.description'))
+                if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                if (!nameResult.sanitized) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!codeResult.sanitized) { setError(t('hostResource.codeRequired')); setSaving(false); return }
+
+                const editingGroupId = editingItem?.type === 'group' ? editingItem.data.id : null
+                const trimmedCode = codeResult.sanitized.trim()
+                const duplicateCode = groups.find(g =>
+                    g.code?.toLowerCase() === trimmedCode.toLowerCase() &&
+                    g.id !== editingGroupId
+                )
+                if (duplicateCode) {
+                    setError(t('hostResource.duplicateCode', { code: trimmedCode }))
+                    setSaving(false)
+                    return
+                }
+
+                const duplicateName = groups.find(g =>
+                    g.name?.toLowerCase() === nameResult.sanitized.toLowerCase() &&
+                    g.id !== editingGroupId
+                )
+                if (duplicateName) {
+                    setError(t('hostResource.duplicateName', { name: nameResult.sanitized }))
+                    setSaving(false)
+                    return
+                }
+
+                await onSaveGroup({
+                    name: nameResult.sanitized,
+                    code: trimmedCode,
+                    parentId: groupParentId || null,
+                    description: descResult.sanitized,
+                    enabled: groupEnabled
+                })
             } else if (selectedType === 'cluster') {
-                if (!clusterName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
-                if (!clusterType.trim()) { setError(t('hostResource.clusterTypeRequired')); setSaving(false); return }
+                const nameResult = validateAndSanitize(clusterName, t('hostResource.clusterName'))
+                if (!nameResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const typeResult = validateAndSanitize(clusterType, t('hostResource.clusterType'))
+                if (!typeResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const purposeResult = validateAndSanitize(clusterPurpose, t('hostResource.purpose'))
+                if (!purposeResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const descResult = validateAndSanitize(clusterDescription, t('hostResource.description'))
+                if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                if (!nameResult.sanitized) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!typeResult.sanitized) { setError(t('hostResource.clusterTypeRequired')); setSaving(false); return }
                 if (!clusterGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
+
+                // Check duplicate cluster name in related group hierarchy
+                const editingClusterId = editingItem?.type === 'cluster' ? editingItem.data.id : null
+                const trimmedClusterName = nameResult.sanitized
+                const relatedGroupIds = getRelatedGroupIds(clusterGroupId)
+                const duplicateCluster = clusters.find(c => {
+                    if (!c.groupId) return false
+                    if (c.id === editingClusterId) return false
+                    if (c.name?.toLowerCase() !== trimmedClusterName.toLowerCase()) return false
+                    const clusterRelatedIds = getRelatedGroupIds(c.groupId)
+                    return [...clusterRelatedIds].some(id => relatedGroupIds.has(id))
+                })
+                if (duplicateCluster) {
+                    setError(t('hostResource.duplicateClusterName', { name: trimmedClusterName }))
+                    setSaving(false)
+                    return
+                }
+
                 await onSaveCluster({
-                    name: clusterName.trim(), type: clusterType.trim(), purpose: clusterPurpose.trim(),
-                    groupId: clusterGroupId || null, description: clusterDescription.trim(),
+                    name: nameResult.sanitized,
+                    type: typeResult.sanitized,
+                    purpose: purposeResult.sanitized,
+                    groupId: clusterGroupId || null,
+                    description: descResult.sanitized,
                 })
             } else if (selectedType === 'business-service') {
-                if (!bsName.trim()) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                const nameResult = validateAndSanitize(bsName, t('hostResource.bsName'))
+                if (!nameResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const codeResult = validateAndSanitize(bsCode, t('hostResource.bsCode'))
+                if (!codeResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const descResult = validateAndSanitize(bsDescription, t('hostResource.description'))
+                if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                if (!nameResult.sanitized) { setError(t('hostResource.nameRequired')); setSaving(false); return }
+                if (!codeResult.sanitized) { setError(t('hostResource.codeRequired')); setSaving(false); return }
+                if (!bsSelectedBusinessTypeId) { setError(t('hostResource.businessTypeRequired')); setSaving(false); return }
                 if (!bsGroupId) { setError(t('hostResource.parentGroupRequired')); setSaving(false); return }
+
+                // Check duplicate business service name in related group hierarchy
+                const editingBsId = editingItem?.type === 'business-service' ? editingItem.data.id : null
+                const trimmedBsName = nameResult.sanitized
+                const relatedGroupIds = getRelatedGroupIds(bsGroupId)
+                const duplicateBs = businessServices.find(bs => {
+                    if (!bs.groupId) return false
+                    if (bs.id === editingBsId) return false
+                    if (bs.name?.toLowerCase() !== trimmedBsName.toLowerCase()) return false
+                    const bsRelatedIds = getRelatedGroupIds(bs.groupId)
+                    return [...bsRelatedIds].some(id => relatedGroupIds.has(id))
+                })
+                if (duplicateBs) {
+                    setError(t('hostResource.duplicateBusinessServiceName', { name: trimmedBsName }))
+                    setSaving(false)
+                    return
+                }
+
                 await onSaveBusinessService({
-                    name: bsName.trim(),
-                    code: bsCode.trim(),
+                    name: nameResult.sanitized,
+                    code: codeResult.sanitized,
                     groupId: bsGroupId || null,
                     businessTypeId: bsSelectedBusinessTypeId || null,
                     hostIds: editingItem?.type === 'business-service' ? (editingItem.data.hostIds ?? []) : [],
                     tags: bsTags.split(',').map(s => s.trim()).filter(Boolean),
                     priority: bsPriority.trim(),
-                    description: bsDescription.trim(),
+                    description: descResult.sanitized,
                     contactInfo: '',
                 })
             } else if (selectedType === 'host') {
-                if (!hostName.trim() || !hostIp.trim()) { setError(t('hostResource.nameAndIpRequired')); setSaving(false); return }
+                const nameResult = validateAndSanitize(hostName, t('hostResource.hostName'))
+                if (!nameResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const hostnameResult = validateAndSanitize(hostname, t('hostResource.hostname'))
+                if (!hostnameResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const osResult = validateAndSanitize(hostOs, t('hostResource.os'))
+                if (!osResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const locationResult = validateAndSanitize(hostLocation, t('hostResource.location'))
+                if (!locationResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const purposeResult = validateAndSanitize(hostPurpose, t('hostResource.purpose'))
+                if (!purposeResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const businessResult = validateAndSanitize(hostBusiness, t('hostResource.business'))
+                if (!businessResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                const descResult = validateAndSanitize(hostDescription, t('hostResource.description'))
+                if (!descResult.valid) { setError(t('hostResource.invalidChars')); setSaving(false); return }
+
+                if (!nameResult.sanitized || !hostIp.trim()) { setError(t('hostResource.nameAndIpRequired')); setSaving(false); return }
+                if (!hostClusterId.trim()) { setError(t('hostResource.clusterRequired')); setSaving(false); return }
                 if (!isValidIp(hostIp)) { setError(t('hostResource.ipInvalid')); setSaving(false); return }
                 if (hostBusinessIp.trim() && !isValidIp(hostBusinessIp)) { setError(t('hostResource.businessIpInvalid')); setSaving(false); return }
+                if (hostUsername && !/^[\x00-\x7F]*$/.test(hostUsername)) {
+                    setError(t('hostResource.usernameInvalidChars')); setSaving(false); return
+                }
+                if (hostCredential && hostCredential !== '***' && !/^[\x00-\x7F]*$/.test(hostCredential)) {
+                    setError(t('hostResource.credentialInvalidChars')); setSaving(false); return
+                }
                 const editingHostId = editingItem?.type === 'host' ? editingItem.data.id : null
-                const trimmedHostName = hostName.trim()
+                const trimmedHostName = nameResult.sanitized
                 const duplicate = hosts.some(h => h.name?.toLowerCase() === trimmedHostName.toLowerCase() && h.id !== editingHostId)
                 if (duplicate) { setError(t('hostResource.duplicateName', { name: trimmedHostName })); setSaving(false); return }
+
+                // SSH IP重复校验（在同一环境组层级中）
+                const cluster = hostClusterId ? clusters.find(c => c.id === hostClusterId) : null
+                const relatedGroupIds = cluster?.groupId ? getRelatedGroupIds(cluster.groupId) : new Set<string>()
+
+                const trimmedIp = hostIp.trim()
+                if (trimmedIp && relatedGroupIds.size > 0) {
+                    const duplicateIpHost = hosts.find(h => {
+                        if (h.id === editingHostId) return false
+                        if (!h.clusterId || !h.ip) return false
+                        const hostCluster = clusters.find(c => c.id === h.clusterId)
+                        if (!hostCluster?.groupId) return false
+                        const hostGroupIds = getRelatedGroupIds(hostCluster.groupId)
+                        return [...hostGroupIds].some(id => relatedGroupIds.has(id)) && h.ip.trim() === trimmedIp
+                    })
+                    if (duplicateIpHost) {
+                        setError(t('hostResource.duplicateIp', { ip: trimmedIp, host: duplicateIpHost.name }))
+                        setSaving(false)
+                        return
+                    }
+                }
+
+                // Custom attribute key duplicate validation
+                const validAttrs = hostCustomAttributes.filter(attr => attr.key.trim().length > 0)
+                const keys = validAttrs.map(attr => attr.key.trim().toLowerCase())
+                const uniqueKeys = new Set(keys)
+                if (keys.length !== uniqueKeys.size) {
+                    setError(t('hostResource.duplicateAttrKey'))
+                    setSaving(false)
+                    return
+                }
+
                 const payload: Record<string, unknown> = {
-                    name: hostName.trim(), hostname: hostname.trim() || null, ip: hostIp.trim(), port: hostPort,
-                    os: hostOs.trim() || null, location: hostLocation.trim() || null, username: hostUsername.trim(),
-                    authType: hostAuthType, clusterId: hostClusterId || null, purpose: hostPurpose.trim() || null,
-                    business: hostBusiness.trim() || null, description: hostDescription.trim(), customAttributes: hostCustomAttributes,
+                    name: nameResult.sanitized,
+                    hostname: hostnameResult.sanitized || null,
+                    ip: hostIp.trim(), port: hostPort,
+                    os: osResult.sanitized || null, location: locationResult.sanitized || null,
+                    authType: hostAuthType, clusterId: hostClusterId || null,
+                    purpose: purposeResult.sanitized || null,
+                    business: businessResult.sanitized || null, description: descResult.sanitized,
+                    customAttributes: validAttrs,
                     businessIp: hostBusinessIp.trim() || null,
                     role: hostRole || null,
                 }
-                if (hostCredential && hostCredential !== '***') payload.credential = hostCredential
+                if (hostUsername !== undefined) payload.username = hostUsername.trim()
+                // Send credential if it's not the placeholder *** (including empty string to clear it)
+                if (hostCredential !== '***') payload.credential = hostCredential.trim()
                 await onSaveHost(payload as unknown as HostCreateRequest)
             }
             onClose()
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error')
+            let errorMessage = err instanceof Error ? err.message : 'Unknown error'
+            // 特殊处理：主机编辑的用户名密码同步错误
+            if (errorMessage === 'Username and credential must be provided together') {
+                setError(t('hostResource.usernameCredentialMismatch'))
+            } else {
+                setError(errorMessage)
+            }
         } finally {
             setSaving(false)
         }
@@ -327,7 +560,8 @@ export default function ResourceFormModal({
         hostUsername, hostAuthType, hostCredential, hostClusterId, hostPurpose, hostBusiness,
         hostDescription, hostCustomAttributes, hostRole,
         bsName, bsCode, bsGroupId, bsSelectedBusinessTypeId, bsTags, bsPriority, bsDescription,
-        onSaveGroup, onSaveCluster, onSaveBusinessService, onSaveHost, onClose, t, editingItem, hosts])
+        onSaveGroup, onSaveCluster, onSaveBusinessService, onSaveHost, onClose, t, editingItem, hosts,
+        getRelatedGroupIds, clusters])
 
     const canSave = () => {
         if (selectedType === 'group') return groupName.trim().length > 0
@@ -384,7 +618,15 @@ export default function ResourceFormModal({
                     <>
                         <div className="modal-body hr-host-modal">
                             {error && (
-                                <div className="agents-alert agents-alert-error" style={{ marginBottom: 'var(--spacing-4)' }}>
+                                <div className="agents-alert agents-alert-error" style={{
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 10,
+                                    marginBottom: 'var(--spacing-4)',
+                                    borderRadius: '0 0 4px 4px',
+                                    backgroundColor: '#fee',
+                                    border: '1px solid #fca5a5',
+                                }}>
                                     {error}
                                 </div>
                             )}
@@ -393,11 +635,11 @@ export default function ResourceFormModal({
                                 <>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.groupName')}{requiredStar}</label>
-                                        <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} />
+                                        <input className="form-input" value={groupName} onChange={e => setGroupName(e.target.value)} maxLength={100} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.groupCode')}</label>
-                                        <input className="form-input" value={groupCode} onChange={e => setGroupCode(e.target.value)} placeholder={t('hostResource.groupCodePlaceholder', { defaultValue: '' })} />
+                                        <label className="form-label">{t('hostResource.groupCode')}{requiredStar}</label>
+                                        <input className="form-input" value={groupCode} onChange={e => setGroupCode(e.target.value)} placeholder={t('hostResource.groupCodePlaceholder', { defaultValue: '' })} maxLength={50} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.parentGroup')}</label>
@@ -410,7 +652,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={groupDescription} onChange={e => setGroupDescription(e.target.value)} />
+                                        <input className="form-input" value={groupDescription} onChange={e => setGroupDescription(e.target.value)} maxLength={500} />
                                     </div>
                                     {editingItem?.type === 'group' && (
                                         <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -434,7 +676,7 @@ export default function ResourceFormModal({
                                 <>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.clusterName')}{requiredStar}</label>
-                                        <input className="form-input" value={clusterName} onChange={e => setClusterName(e.target.value)} />
+                                        <input className="form-input" value={clusterName} onChange={e => setClusterName(e.target.value)} maxLength={100} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.clusterType')}{requiredStar}</label>
@@ -469,7 +711,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.purpose')}</label>
-                                        <input className="form-input" value={clusterPurpose} onChange={e => setClusterPurpose(e.target.value)} />
+                                        <input className="form-input" value={clusterPurpose} onChange={e => setClusterPurpose(e.target.value)} maxLength={200} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.parentGroup')}{requiredStar}</label>
@@ -482,7 +724,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={clusterDescription} onChange={e => setClusterDescription(e.target.value)} />
+                                        <input className="form-input" value={clusterDescription} onChange={e => setClusterDescription(e.target.value)} maxLength={500} />
                                     </div>
                                     {/* ── Contained Hosts (read-only, driven by host cluster assignment) ── */}
                                     {editingItem?.type === 'cluster' && (
@@ -547,7 +789,7 @@ export default function ResourceFormModal({
                                                                     style={{ flex: 1, fontSize: '0.75rem' }}
                                                                 />
                                                                 <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} />
+                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} maxLength={500} />
                                                                 <button className="btn btn-primary btn-sm" style={{ padding: '1px 6px' }}
                                                                     onClick={handleSaveRelationEdit}>✓</button>
                                                                 <button className="btn btn-secondary btn-sm" style={{ padding: '1px 6px' }}
@@ -557,7 +799,7 @@ export default function ResourceFormModal({
                                                             <>
                                                                 <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>{arrow}</span>
                                                                 <span style={{ flex: 1 }}>{getEntityName(peerId, resolvedPeerType)}</span>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{rel.description}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rel.description || ''}>{rel.description}</span>
                                                                 <button className="hr-tree-node-action" title={t('common.edit')}
                                                                     onClick={() => { setEditingRelId(rel.id); setEditRelTargetId(rel.targetId); setEditRelDesc(rel.description) }}>
                                                                     ✎
@@ -573,26 +815,23 @@ export default function ResourceFormModal({
                                                 })}
                                                 {/* Add new relation */}
                                                 <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: 6,
-                                                    padding: '4px 8px', background: 'var(--surface-background, #f8fafc)',
+                                                    padding: '6px 8px', background: 'var(--surface-background, #f8fafc)',
                                                     borderRadius: 4, border: '1px dashed var(--border-color, #e2e8f0)',
                                                 }}>
-                                                    <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '0.8125rem' }}>→</span>
-                                                    <SearchableSelect
-                                                        value={newRelTargetId}
-                                                        onChange={setNewRelTargetId}
-                                                        placeholder={t('hostResource.selectCluster')}
-                                                        options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({
-                                                            value: c.id, label: c.name
-                                                        }))}
-                                                        style={{ flex: 1, fontSize: '0.75rem' }}
+                                                    <MultiSelectDropdown
+                                                        options={clusters.filter(c => c.id !== editingItem.data.id).map(c => ({ value: c.id, label: c.name }))}
+                                                        selectedIds={newRelTargetIds}
+                                                        onChange={setNewRelTargetIds}
+                                                        placeholder={clusters.filter(c => c.id !== editingItem.data.id).length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
                                                     />
-                                                    <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                        placeholder={t('hostResource.relationDesc')}
-                                                        value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
-                                                    <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
-                                                        disabled={!newRelTargetId}
-                                                        onClick={() => handleAddClusterRelation('cluster', editingItem.data.id)}>+</button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
+                                                            placeholder={t('hostResource.relationDesc')}
+                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} maxLength={500} />
+                                                        <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
+                                                            disabled={newRelTargetIds.length === 0}
+                                                            onClick={() => handleAddClusterRelation('cluster', editingItem.data.id)}>+</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </>
@@ -603,7 +842,7 @@ export default function ResourceFormModal({
                             {selectedType === 'business-service' && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">{t('hostResource.selectBusinessType')}</label>
+                                        <label className="form-label">{t('hostResource.selectBusinessType')}{requiredStar}</label>
                                         {businessTypes.length > 0 ? (
                                             <select
                                                 className="form-input"
@@ -615,10 +854,6 @@ export default function ResourceFormModal({
                                                         const bt = businessTypes.find(b => b.id === btId)
                                                         if (bt) {
                                                             setBsCode(bt.code)
-                                                            if (!editingItem) {
-                                                                setBsName(bt.name)
-                                                                setBsDescription(bt.description)
-                                                            }
                                                         }
                                                     } else {
                                                         setBsCode('')
@@ -638,7 +873,11 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.bsName')}{requiredStar}</label>
-                                        <input className="form-input" value={bsName} onChange={e => setBsName(e.target.value)} />
+                                        <input className="form-input" value={bsName} onChange={e => setBsName(e.target.value)} maxLength={100} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">{t('hostResource.bsCode')}{requiredStar}</label>
+                                        <input className="form-input" value={bsCode} onChange={e => setBsCode(e.target.value)} placeholder={t('hostResource.bsCodePlaceholder', { defaultValue: '' })} maxLength={50} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.bsPriority')}</label>
@@ -665,7 +904,7 @@ export default function ResourceFormModal({
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={bsDescription} onChange={e => setBsDescription(e.target.value)} />
+                                        <input className="form-input" value={bsDescription} onChange={e => setBsDescription(e.target.value)} maxLength={500} />
                                     </div>
                                     {/* ── Topology Relations (edit mode only) ── */}
                                     {editingItem?.type === 'business-service' && (
@@ -695,7 +934,7 @@ export default function ResourceFormModal({
                                                                     style={{ flex: 1, fontSize: '0.75rem' }}
                                                                 />
                                                                 <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} />
+                                                                    value={editRelDesc} onChange={e => setEditRelDesc(e.target.value)} maxLength={500} />
                                                                 <button className="btn btn-primary btn-sm" style={{ padding: '1px 6px' }}
                                                                     onClick={handleSaveRelationEdit}>✓</button>
                                                                 <button className="btn btn-secondary btn-sm" style={{ padding: '1px 6px' }}
@@ -705,7 +944,7 @@ export default function ResourceFormModal({
                                                             <>
                                                                 <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>→</span>
                                                                 <span style={{ flex: 1 }}>{getEntityName(rel.targetId, 'cluster')}</span>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{rel.description}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rel.description || ''}>{rel.description}</span>
                                                                 <button className="hr-tree-node-action" title={t('common.edit')}
                                                                     onClick={() => { setEditingRelId(rel.id); setEditRelTargetId(rel.targetId); setEditRelDesc(rel.description) }}>
                                                                     ✎
@@ -720,26 +959,23 @@ export default function ResourceFormModal({
                                                 ))}
                                                 {/* Add new relation */}
                                                 <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: 6,
-                                                    padding: '4px 8px', background: 'var(--surface-background, #f8fafc)',
+                                                    padding: '6px 8px', background: 'var(--surface-background, #f8fafc)',
                                                     borderRadius: 4, border: '1px dashed var(--border-color, #e2e8f0)',
                                                 }}>
-                                                    <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '0.8125rem' }}>→</span>
-                                                    <SearchableSelect
-                                                        value={newRelTargetId}
-                                                        onChange={setNewRelTargetId}
-                                                        placeholder={t('hostResource.selectCluster')}
-                                                        options={clusters.map(c => ({
-                                                            value: c.id, label: c.name
-                                                        }))}
-                                                        style={{ flex: 1, fontSize: '0.75rem' }}
+                                                    <MultiSelectDropdown
+                                                        options={clusters.map(c => ({ value: c.id, label: c.name }))}
+                                                        selectedIds={newRelTargetIds}
+                                                        onChange={setNewRelTargetIds}
+                                                        placeholder={clusters.length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
                                                     />
-                                                    <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
-                                                        placeholder={t('hostResource.relationDesc')}
-                                                        value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} />
-                                                    <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
-                                                        disabled={!newRelTargetId}
-                                                        onClick={() => handleAddClusterRelation('business-service', editingItem.data.id)}>+</button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input className="form-input" style={{ flex: 1, fontSize: '0.75rem', padding: '2px 4px' }}
+                                                            placeholder={t('hostResource.relationDesc')}
+                                                            value={newRelDesc} onChange={e => setNewRelDesc(e.target.value)} maxLength={500} />
+                                                        <button className="btn btn-primary btn-sm" style={{ padding: '1px 8px' }}
+                                                            disabled={newRelTargetIds.length === 0}
+                                                            onClick={() => handleAddClusterRelation('business-service', editingItem.data.id)}>+</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </>
@@ -753,11 +989,11 @@ export default function ResourceFormModal({
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.hostName')}{requiredStar}</label>
-                                            <input className="form-input" value={hostName} onChange={e => setHostName(e.target.value)} />
+                                            <input className="form-input" value={hostName} onChange={e => setHostName(e.target.value)} maxLength={100} />
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.hostname')}</label>
-                                            <input className="form-input" value={hostname} onChange={e => setHostname(e.target.value)} />
+                                            <input className="form-input" value={hostname} onChange={e => setHostname(e.target.value)} maxLength={255} />
                                         </div>
                                     </div>
                                     <div className="hr-form-row">
@@ -781,11 +1017,11 @@ export default function ResourceFormModal({
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.os')}</label>
-                                            <input className="form-input" value={hostOs} onChange={e => setHostOs(e.target.value)} />
+                                            <input className="form-input" value={hostOs} onChange={e => setHostOs(e.target.value)} maxLength={20} />
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.location')}</label>
-                                            <input className="form-input" value={hostLocation} onChange={e => setHostLocation(e.target.value)} />
+                                            <input className="form-input" value={hostLocation} onChange={e => setHostLocation(e.target.value)} maxLength={200} />
                                         </div>
                                     </div>
 
@@ -811,13 +1047,27 @@ export default function ResourceFormModal({
                                     <h4 className="hr-section-label">{t('hostResource.businessInfo')}</h4>
                                     <div className="hr-form-row">
                                         <div className="form-group">
-                                            <label className="form-label">{t('hostResource.cluster')}</label>
-                                            <select className="form-input" value={hostClusterId} onChange={e => { setHostClusterId(e.target.value); setHostRole('') }}>
-                                                <option value="">{t('hostResource.noCluster')}</option>
-                                                {clusters.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
-                                            </select>
+                                            <label className="form-label">{t('hostResource.cluster')}{requiredStar}</label>
+                                            <SearchableSelect
+                                                value={hostClusterId}
+                                                onChange={(id) => {
+                                                    if (id !== hostClusterId) {
+                                                        const selectedCluster = clusters.find(c => c.id === id)
+                                                        const clusterTypeName = selectedCluster?.type ?? ''
+                                                        // Use resolveClusterTypeName to handle both name and code matching
+                                                        const resolvedTypeName = resolveClusterTypeName(clusterTypeName)
+                                                        const clusterTypeObj = clusterTypes.find(ct => ct.name === resolvedTypeName)
+                                                        const clusterMode = clusterTypeObj?.mode ?? 'peer'
+                                                        // Clear role when switching to peer mode cluster
+                                                        if (clusterMode === 'peer') {
+                                                            setHostRole('')
+                                                        }
+                                                    }
+                                                    setHostClusterId(id)
+                                                }}
+                                                options={clusters.map(c => ({ value: c.id, label: c.name }))}
+                                                placeholder={clusters.length === 0 ? t('hostResource.noCluster') : t('hostResource.selectCluster', { defaultValue: t('hostResource.noCluster') })}
+                                            />
                                         </div>
                                         {(() => {
                                             const selectedCluster = clusters.find(c => c.id === hostClusterId)
@@ -837,19 +1087,19 @@ export default function ResourceFormModal({
                                         })()}
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.purpose')}</label>
-                                            <input className="form-input" value={hostPurpose} onChange={e => setHostPurpose(e.target.value)} />
+                                            <input className="form-input" value={hostPurpose} onChange={e => setHostPurpose(e.target.value)} maxLength={300} />
                                         </div>
                                     </div>
                                     <div className="hr-form-row">
                                         <div className="form-group">
                                             <label className="form-label">{t('hostResource.business')}</label>
-                                            <input className="form-input" value={hostBusiness} onChange={e => setHostBusiness(e.target.value)} />
+                                            <input className="form-input" value={hostBusiness} onChange={e => setHostBusiness(e.target.value)} maxLength={200} />
                                         </div>
                                     </div>
 
                                     <div className="form-group">
                                         <label className="form-label">{t('hostResource.description')}</label>
-                                        <input className="form-input" value={hostDescription} onChange={e => setHostDescription(e.target.value)} />
+                                        <input className="form-input" value={hostDescription} onChange={e => setHostDescription(e.target.value)} maxLength={500} />
                                     </div>
 
                                     <CustomAttributeEditor attributes={hostCustomAttributes} onChange={setHostCustomAttributes} />

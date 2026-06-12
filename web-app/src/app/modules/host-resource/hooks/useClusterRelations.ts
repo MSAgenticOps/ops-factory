@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react'
-import { GATEWAY_URL, gatewayHeaders } from '../../../../config/runtime'
+import { runtime, gatewayHeaders } from '../../../../config/runtime'
 import { useUser } from '../../../platform/providers/UserContext'
 import type { ClusterRelation, ClusterGraphData } from '../../../../types/host'
 
-function apiBase() { return `${GATEWAY_URL}/cluster-relations` }
+function apiBase() { return `${runtime.GATEWAY_URL}/cluster-relations` }
 
 export function useClusterRelations() {
     const { userId } = useUser()
@@ -65,11 +65,11 @@ export function useClusterRelations() {
         })
         const data = await res.json()
         if (data.success) {
-            await fetchRelations()
+            await Promise.all([fetchRelations(), fetchClusterGraph()])
             return data.relation
         }
         throw new Error(data.error || 'Failed to update cluster relation')
-    }, [userId, fetchRelations])
+    }, [userId, fetchRelations, fetchClusterGraph])
 
     const deleteRelation = useCallback(async (id: string) => {
         const res = await fetch(`${apiBase()}/${id}`, {
@@ -78,11 +78,11 @@ export function useClusterRelations() {
         })
         const data = await res.json()
         if (data.success) {
-            await fetchRelations()
+            await Promise.all([fetchRelations(), fetchClusterGraph()])
             return true
         }
         throw new Error(data.error || 'Failed to delete cluster relation')
-    }, [userId, fetchRelations])
+    }, [userId, fetchRelations, fetchClusterGraph])
 
     return {
         relations, clusterGraphData, loading,

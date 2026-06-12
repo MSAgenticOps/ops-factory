@@ -1,18 +1,19 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
+import jakarta.annotation.PostConstruct;
+
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,63 +23,59 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Manages host group hierarchy and tree construction with cascade delete support.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
-public class HostGroupService {
+public class HostGroupService extends JsonFileEntityStore {
+    private static final String MSG_CODE_REQUIRED = "Environment code is required";
 
-    private static final Logger log = LoggerFactory.getLogger(HostGroupService.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String MSG_CODE_EXISTS = "Environment code already exists";
 
     private final GatewayProperties properties;
-    private Path groupsDir;
 
+    /**
+     * Creates the host group service instance.
+     *
+     * @param properties gateway configuration properties
+     */
     public HostGroupService(GatewayProperties properties) {
+        super("host group");
         this.properties = properties;
     }
 
+    /**
+     * Initializes the host groups data directory at startup.
+     */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.groupsDir = gatewayRoot.resolve("data").resolve("host-groups");
-        try {
-            Files.createDirectories(groupsDir);
-        } catch (IOException e) {
-            log.error("Failed to create host-groups directory: {}", groupsDir, e);
-        }
-        log.info("HostGroupService initialized, groupsDir={}", groupsDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "host-groups");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
+    /**
+     * Lists all host groups.
+     *
+     * @return list of all host group maps
+     */
     public List<Map<String, Object>> listGroups() {
-        List<Map<String, Object>> groups = new ArrayList<>();
-        if (!Files.isDirectory(groupsDir)) {
-            return groups;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(groupsDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
-                    continue;
-                }
-                try {
-                    Map<String, Object> group = readFile(file);
-                    if (group != null) {
-                        groups.add(group);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read group file: {}", file, e);
-                }
-            }
-        } catch (IOException e) {
-            log.error("Failed to list groups from {}", groupsDir, e);
-        }
-        return groups;
+        return listEntities();
     }
 
-    public Map<String, Object> getGroup(String id) {
-        Path file = groupsDir.resolve(id + ".json");
-        Map<String, Object> group = readFile(file);
+    /**
+     * Gets a host group by its ID.
+     *
+     * @param id entity identifier
+     * @return a host group by its ID
+     */
+    public Map<String, Object> getGroup(String id) throws NotFoundException {
+        Map<String, Object> group = readFile(resolveEntityFile(id));
         if (group == null) {
-            throw new IllegalArgumentException("Host group not found: " + id);
+            throw new NotFoundException("Host group not found");
         }
         return group;
     }
@@ -87,19 +84,41 @@ public class HostGroupService {
      * Build tree structure: top-level groups → sub-groups → clusters (leaf nodes).
      * Clusters are attached based on their groupId matching a group's id.
      * Business services are attached to their groupId node.
+     *
+     * @param groups list of host groups
+     * @param clusters list of clusters
+     * @return tree structure with groups and clusters
      */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters) {
         return getTree(groups, clusters, List.of());
     }
 
+    /**
+     * Builds tree structure including top-level groups, sub-groups, clusters, and business services.
+     *
+     * @param groups list of host groups
+     * @param clusters list of clusters
+     * @param businessServices list of business services
+     * @return tree structure map containing the group hierarchy
+     */
     public Map<String, Object> getTree(List<Map<String, Object>> groups, List<Map<String, Object>> clusters,
-                                        List<Map<String, Object>> businessServices) {
-        Map<String, String> groupNameMap = new LinkedHashMap<>();
-        for (Map<String, Object> g : groups) {
-            groupNameMap.put((String) g.get("id"), (String) g.get("name"));
-        }
+        List<Map<String, Object>> businessServices) {
+        Map<String, Map<String, Object>> groupNodeMap = buildGroupNodeMap(groups);
+        attachClusters(groupNodeMap, clusters);
+        attachBusinessServices(groupNodeMap, businessServices);
+        List<Map<String, Object>> tree = buildGroupHierarchy(groupNodeMap);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("tree", tree);
+        return result;
+    }
 
-        // Build group nodes with children
+    /**
+     * Builds a map of group ID to group node with initialized child collections.
+     *
+     * @param groups list of host groups
+     * @return map of group ID to group node
+     */
+    private Map<String, Map<String, Object>> buildGroupNodeMap(List<Map<String, Object>> groups) {
         Map<String, Map<String, Object>> groupNodeMap = new LinkedHashMap<>();
         for (Map<String, Object> group : groups) {
             Map<String, Object> node = new LinkedHashMap<>(group);
@@ -108,88 +127,188 @@ public class HostGroupService {
             node.put("businessServices", new ArrayList<Map<String, Object>>());
             groupNodeMap.put((String) group.get("id"), node);
         }
+        return groupNodeMap;
+    }
 
-        // Attach clusters to their groups
+    /**
+     * Attaches clusters to their respective group nodes.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @param clusters list of clusters to attach
+     */
+    private void attachClusters(Map<String, Map<String, Object>> groupNodeMap, List<Map<String, Object>> clusters) {
         for (Map<String, Object> cluster : clusters) {
-            String groupId = (String) cluster.get("groupId");
-            if (groupId != null && groupNodeMap.containsKey(groupId)) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> clusterList = (List<Map<String, Object>>) groupNodeMap.get(groupId).get("clusters");
-                clusterList.add(cluster);
-            }
+            appendGroupedItem(groupNodeMap, (String) cluster.get("groupId"), "clusters", cluster);
         }
+    }
 
-        // Attach business services to their groups
+    /**
+     * Attaches business services to their respective group nodes.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @param businessServices list of business services to attach
+     */
+    private void attachBusinessServices(Map<String, Map<String, Object>> groupNodeMap,
+        List<Map<String, Object>> businessServices) {
         for (Map<String, Object> bs : businessServices) {
-            String groupId = (String) bs.get("groupId");
-            if (groupId != null && groupNodeMap.containsKey(groupId)) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> bsList = (List<Map<String, Object>>) groupNodeMap.get(groupId).get("businessServices");
-                bsList.add(bs);
-            }
+            appendGroupedItem(groupNodeMap, (String) bs.get("groupId"), "businessServices", bs);
         }
+    }
 
-        // Build hierarchy: top-level groups first, then nest sub-groups
+    /**
+     * Appends an item to the specified collection of a group node.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @param groupId ID of the target group
+     * @param key collection key (e.g., "clusters", "businessServices")
+     * @param item item to append
+     */
+    @SuppressWarnings("unchecked")
+    private void appendGroupedItem(Map<String, Map<String, Object>> groupNodeMap, String groupId, String key,
+        Map<String, Object> item) {
+        if (groupId == null || !groupNodeMap.containsKey(groupId)) {
+            return;
+        }
+        ((List<Map<String, Object>>) groupNodeMap.get(groupId).get(key)).add(item);
+    }
+
+    /**
+     * Builds the group hierarchy by attaching sub-groups to their parent nodes.
+     *
+     * @param groupNodeMap map of group ID to group node
+     * @return list of top-level group nodes with nested children
+     */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> buildGroupHierarchy(Map<String, Map<String, Object>> groupNodeMap) {
         List<Map<String, Object>> tree = new ArrayList<>();
         for (Map<String, Object> node : groupNodeMap.values()) {
             String parentId = (String) node.get("parentId");
-            if (parentId == null) {
+            Map<String, Object> parent = parentId != null ? groupNodeMap.get(parentId) : null;
+            if (parent == null) {
                 tree.add(node);
             } else {
-                Map<String, Object> parent = groupNodeMap.get(parentId);
-                if (parent != null) {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> children = (List<Map<String, Object>>) parent.get("children");
-                    children.add(node);
-                } else {
-                    // Orphan sub-group: add to top level
-                    tree.add(node);
-                }
+                ((List<Map<String, Object>>) parent.get("children")).add(node);
+            }
+        }
+        return tree;
+    }
+
+    /**
+     * Creates a new host group from the provided field map.
+     *
+     * @param body request body
+     * @return the created host group map
+     * @throws BadRequestException if required fields are missing or validation fails
+     * @throws ConflictException if name or code already exists
+     */
+    public Map<String, Object> createGroup(Map<String, Object> body) throws BadRequestException, ConflictException {
+        String name = ValidationUtils.validateStringField(body, "name", "Group name", 100, true);
+
+        String code = ValidationUtils.validateStringField(body, "code", "Group code", 50, true);
+
+        List<Map<String, Object>> allGroups = listGroups();
+        boolean nameDuplicate = allGroups.stream()
+            .anyMatch(g -> name.equalsIgnoreCase(String.valueOf(g.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Group name already exists");
+        }
+
+        boolean codeDuplicate = allGroups.stream()
+            .anyMatch(g -> code.equalsIgnoreCase(String.valueOf(g.get("code"))));
+        if (codeDuplicate) {
+            throw new ConflictException(MSG_CODE_EXISTS);
+        }
+
+        ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
+
+        // Validate parentId if provided
+        Object parentIdObj = body.get("parentId");
+        if (parentIdObj != null && !parentIdObj.toString().isEmpty()) {
+            String parentId = parentIdObj.toString();
+            boolean parentExists = allGroups.stream()
+                .anyMatch(g -> parentId.equals(g.get("id")));
+            if (!parentExists) {
+                throw new BadRequestException("Parent group not found: " + parentId);
             }
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("tree", tree);
-        return result;
-    }
-
-    public Map<String, Object> createGroup(Map<String, Object> body) {
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> group = new LinkedHashMap<>();
         group.put("id", id);
-        group.put("name", body.getOrDefault("name", ""));
+        group.put("name", name);
         group.put("parentId", body.get("parentId"));
         group.put("description", body.getOrDefault("description", ""));
-        group.put("code", body.getOrDefault("code", ""));
+        group.put("code", code);
         group.put("enabled", body.getOrDefault("enabled", true));
         group.put("createdAt", now);
         group.put("updatedAt", now);
 
         writeEntityFile(id, group);
-        log.info("Created host group: id={}, name={}", id, group.get("name"));
+        log.info("Created host group: id={}, name={}, code={}", id, group.get("name"), code);
         return group;
     }
 
-    public Map<String, Object> updateGroup(String id, Map<String, Object> body) {
-        Path file = groupsDir.resolve(id + ".json");
-        Map<String, Object> group = readFile(file);
+    /**
+     * Updates an existing host group with the provided field map.
+     *
+     * @param id host group identifier
+     * @param body request body containing updated fields
+     * @return the updated host group map
+     * @throws NotFoundException if host group not found
+     * @throws BadRequestException if validation fails
+     * @throws ConflictException if name or code already exists
+     */
+    public Map<String, Object> updateGroup(String id, Map<String, Object> body)
+        throws NotFoundException, BadRequestException, ConflictException {
+        Map<String, Object> group = readFile(resolveEntityFile(id));
         if (group == null) {
-            throw new IllegalArgumentException("Host group not found: " + id);
+            throw new NotFoundException("Host group not found");
         }
 
         if (body.containsKey("name")) {
-            group.put("name", body.get("name"));
-        }
-        if (body.containsKey("parentId")) {
-            group.put("parentId", body.get("parentId"));
-        }
-        if (body.containsKey("description")) {
-            group.put("description", body.get("description"));
+            String newName = ValidationUtils.validateStringField(body, "name", "Group name", 100, true);
+
+            List<Map<String, Object>> allGroups = listGroups();
+            boolean nameDuplicate = allGroups.stream()
+                .filter(g -> !id.equals(g.get("id")))
+                .anyMatch(g -> newName.equalsIgnoreCase(String.valueOf(g.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Group name already exists");
+            }
+            group.put("name", newName);
         }
         if (body.containsKey("code")) {
-            group.put("code", body.get("code"));
+            String newCode = ValidationUtils.validateStringField(body, "code", "Group code", 50, true);
+
+            List<Map<String, Object>> allGroups = listGroups();
+            boolean codeDuplicate = allGroups.stream()
+                .filter(g -> !id.equals(g.get("id")))
+                .anyMatch(g -> newCode.equalsIgnoreCase(String.valueOf(g.get("code"))));
+            if (codeDuplicate) {
+                throw new ConflictException(MSG_CODE_EXISTS);
+            }
+            group.put("code", newCode);
+        }
+        if (body.containsKey("parentId")) {
+            Object newParentIdObj = body.get("parentId");
+            if (newParentIdObj != null && !newParentIdObj.toString().isEmpty()) {
+                String newParentId = newParentIdObj.toString();
+                List<Map<String, Object>> allGroups = listGroups();
+                boolean parentExists = allGroups.stream()
+                    .anyMatch(g -> newParentId.equals(g.get("id")));
+                if (!parentExists) {
+                    throw new BadRequestException("Parent group not found: " + newParentId);
+                }
+                group.put("parentId", newParentId);
+            } else {
+                group.put("parentId", null);
+            }
+        }
+        if (body.containsKey("description")) {
+            String description = ValidationUtils.validateStringField(body, "description", "Group description", 500, false);
+            group.put("description", description);
         }
         if (body.containsKey("enabled")) {
             group.put("enabled", body.get("enabled"));
@@ -203,45 +322,44 @@ public class HostGroupService {
 
     /**
      * Delete a group. Rejects if the group has sub-groups or clusters.
+     *
+     * @param id entity identifier
      * @param clusterService used to check for clusters in this group
      * @return true if deleted
      */
-    public boolean deleteGroup(String id, ClusterService clusterService) {
+    public boolean deleteGroup(String id, ClusterService clusterService) throws ConflictException {
         // Check for sub-groups
         List<Map<String, Object>> allGroups = listGroups();
         for (Map<String, Object> g : allGroups) {
             String parentId = (String) g.get("parentId");
             if (id.equals(parentId)) {
-                throw new IllegalStateException("Cannot delete group with sub-groups. Remove sub-groups first.");
+                throw new ConflictException(
+                    "Cannot delete group with sub-groups. Remove sub-groups first.");
             }
         }
 
         // Check for clusters
         List<Map<String, Object>> clusters = clusterService.listClusters(id, null);
         if (!clusters.isEmpty()) {
-            throw new IllegalStateException("Cannot delete group with clusters. Remove clusters first.");
+            throw new ConflictException(
+                "Cannot delete group with clusters. Remove clusters first.");
         }
 
-        Path file = groupsDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted host group: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete group file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
     /**
      * Force-delete a group with cascade: deletes business services, recursively force-deletes
      * sub-groups, force-deletes clusters (which cascade-delete hosts), then deletes the group.
+     *
+     * @param id group identifier
+     * @param clusterService cluster service for cascade deletion
+     * @param hostService host service for cascade deletion
+     * @param businessServiceService business service service for cascade deletion
+     * @return true if the group was deleted
      */
-    public boolean forceDeleteGroup(String id, ClusterService clusterService,
-                                     HostService hostService, BusinessServiceService businessServiceService) {
+    public boolean forceDeleteGroup(String id, ClusterService clusterService, HostService hostService,
+        BusinessServiceService businessServiceService) {
         // 1. Delete business services under this group
         for (Map<String, Object> bs : businessServiceService.listBusinessServices(id, null)) {
             businessServiceService.deleteBusinessService((String) bs.get("id"));
@@ -261,26 +379,16 @@ public class HostGroupService {
         }
 
         // 4. Delete the group file itself
-        Path file = groupsDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Force-deleted host group: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to force-delete group file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
-
-    // ── File I/O Helpers ─────────────────────────────────────────────
 
     /**
      * Compute the set of group IDs that are effectively disabled, either directly
      * or by inheritance from a disabled ancestor. Uses fixed-point iteration to
      * handle arbitrary nesting depth.
+     *
+     * @param groups list of host groups
+     * @return set of group IDs that are effectively disabled
      */
     public Set<String> getDisabledGroupIds(List<Map<String, Object>> groups) {
         Set<String> disabled = new HashSet<>();
@@ -289,7 +397,9 @@ public class HostGroupService {
             changed = false;
             for (Map<String, Object> g : groups) {
                 String id = (String) g.get("id");
-                if (disabled.contains(id)) continue;
+                if (disabled.contains(id)) {
+                    continue;
+                }
                 boolean selfOff = Boolean.FALSE.equals(g.get("enabled"));
                 String pid = (String) g.get("parentId");
                 boolean parentOff = pid != null && disabled.contains(pid);
@@ -302,28 +412,4 @@ public class HostGroupService {
         return disabled;
     }
 
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read group file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(groupsDir);
-            Path file = groupsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write group file for id={}", id, e);
-            throw new RuntimeException("Failed to save host group", e);
-        }
-    }
 }

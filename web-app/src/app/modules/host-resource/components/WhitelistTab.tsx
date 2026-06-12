@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCommandWhitelist } from '../hooks/useCommandWhitelist'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import type { WhitelistCommand } from '../../../../types/commandWhitelist'
@@ -67,10 +67,27 @@ function WhitelistFormModal({
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const validatePattern = useCallback((value: string): boolean => {
+        const trimmed = value.trim()
+        if (!trimmed) return false
+        // 只允许字母、数字、下划线、连字符、点号、斜杠和空格（避免 URL 编码问题）
+        return /^[a-zA-Z0-9_\-./\s]+$/.test(trimmed)
+    }, [])
+
     const handleSave = useCallback(async () => {
         setError(null)
         if (!pattern.trim()) {
             setError(t('remoteDiagnosis.whitelist.patternRequired'))
+            return
+        }
+
+        if (!validatePattern(pattern)) {
+            setError(t('remoteDiagnosis.whitelist.patternInvalidChars'))
+            return
+        }
+
+        if (pattern.trim().length > 500) {
+            setError(t('remoteDiagnosis.whitelist.patternTooLong'))
             return
         }
 
@@ -82,11 +99,16 @@ function WhitelistFormModal({
                 enabled,
             })
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error')
+            const message = err instanceof Error ? err.message : String(err)
+            if (message === 'Command whitelist entry conflict') {
+                setError(t('remoteDiagnosis.whitelist.duplicatePattern'))
+            } else {
+                setError(message)
+            }
         } finally {
             setSaving(false)
         }
-    }, [pattern, description, enabled, onSave, t])
+    }, [pattern, description, enabled, onSave, t, validatePattern])
 
     return (
         <div className="modal-overlay">
@@ -113,13 +135,17 @@ function WhitelistFormModal({
                     )}
 
                     <div className="form-group">
-                        <label className="form-label">{t('remoteDiagnosis.whitelist.pattern')}</label>
+                        <label className="form-label">
+                            {t('remoteDiagnosis.whitelist.pattern')}
+                            <span className="form-required">*</span>
+                        </label>
                         <input
                             className="form-input"
                             type="text"
                             value={pattern}
                             onChange={e => setPattern(e.target.value)}
                             placeholder={t('remoteDiagnosis.whitelist.patternPlaceholder')}
+                            maxLength={500}
                             autoFocus
                         />
                         <p style={{
@@ -139,6 +165,7 @@ function WhitelistFormModal({
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             placeholder="Describe what this command does"
+                            maxLength={500}
                         />
                     </div>
 
@@ -201,18 +228,20 @@ function ToggleSwitch({
 // Whitelist Tab (content only, no page wrapper)
 // ---------------------------------------------------------------------------
 
-export function WhitelistTab() {
+type Props = {
+    commands: WhitelistCommand[]
+    isLoading: boolean
+    error: string | null
+    fetchCommands: () => Promise<void>
+    createCommand: (cmd: WhitelistCommand) => Promise<boolean>
+    updateCommand: (pattern: string, updates: Partial<WhitelistCommand>) => Promise<boolean>
+    deleteCommand: (pattern: string) => Promise<boolean>
+}
+
+export function WhitelistTab({ commands, isLoading, error, fetchCommands, createCommand, updateCommand, deleteCommand }: Props) {
     const { t } = useTranslation()
-    const {
-        commands,
-        isLoading,
-        error,
-        fetchWhitelist: fetchCommands,
-        addCommand: createCommand,
-        updateCommand,
-        deleteCommand,
-    } = useCommandWhitelist()
     const { showToast } = useToast()
+    const { requestConfirm } = useConfirmDialog()
 
     const PAGE_SIZE = 15
     const [currentPage, setCurrentPage] = useState(1)
@@ -240,15 +269,21 @@ export function WhitelistTab() {
         [editingCommand, updateCommand, createCommand, fetchCommands, showToast, t],
     )
 
+    const handleCloseModal = useCallback(() => {
+        setShowAddModal(false)
+        setEditingCommand(null)
+        fetchCommands()
+    }, [fetchCommands])
+
     const handleToggleEnabled = useCallback(
         async (cmd: WhitelistCommand) => {
             try {
                 await updateCommand(cmd.pattern, { ...cmd, enabled: !cmd.enabled })
                 showToast(
                     'success',
-                    cmd.enabled
-                        ? t('remoteDiagnosis.whitelist.disabled')
-                        : t('remoteDiagnosis.whitelist.enabled'),
+                    !cmd.enabled
+                        ? t('remoteDiagnosis.whitelist.enabledSuccess', { pattern: cmd.pattern })
+                        : t('remoteDiagnosis.whitelist.disabledSuccess', { pattern: cmd.pattern }),
                 )
                 await fetchCommands()
             } catch (err) {
@@ -259,10 +294,13 @@ export function WhitelistTab() {
     )
 
     const handleDelete = useCallback(
-        (cmd: WhitelistCommand) => {
-            const confirmed = window.confirm(
-                t('remoteDiagnosis.whitelist.deleteConfirm', { pattern: cmd.pattern }),
-            )
+        async (cmd: WhitelistCommand) => {
+            const confirmed = await requestConfirm({
+                title: t('common.confirmTitle'),
+                message: t('remoteDiagnosis.whitelist.deleteConfirm', { pattern: cmd.pattern }),
+                variant: 'danger',
+                confirmLabel: t('common.delete'),
+            })
             if (!confirmed) return
             deleteCommand(cmd.pattern)
                 .then(() => {
@@ -306,38 +344,43 @@ export function WhitelistTab() {
 
                 {error && <div className="conn-banner conn-banner-error">{error}</div>}
 
-                {isLoading ? (
-                    <div className="sop-workflow-empty-shell">
-                        <div className="empty-state">
-                            <h3 className="empty-state-title">{t('common.loading')}</h3>
-                        </div>
-                    </div>
-                ) : commands.length === 0 ? (
-                    <div className="sop-workflow-empty-shell">
-                        <div className="empty-state">
-                            <svg
-                                className="empty-state-icon"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                            >
-                                <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                            <h3 className="empty-state-title">
-                                {t('remoteDiagnosis.whitelist.noCommands')}
-                            </h3>
-                            <p className="empty-state-description">
-                                {t('remoteDiagnosis.whitelist.noCommandsHint')}
-                            </p>
-                        </div>
-                    </div>
-                ) : (
-                    (() => {
-                        const totalPages = Math.max(1, Math.ceil(filteredCommands.length / PAGE_SIZE))
-                        const safePage = Math.min(currentPage, totalPages)
-                        const paginatedCommands = filteredCommands.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-                        return <>
+                {(() => {
+                    if (isLoading) {
+                        return (
+                            <div className="sop-workflow-empty-shell">
+                                <div className="empty-state">
+                                    <h3 className="empty-state-title">{t('common.loading')}</h3>
+                                </div>
+                            </div>
+                        )
+                    }
+                    if (commands.length === 0) {
+                        return (
+                            <div className="sop-workflow-empty-shell">
+                                <div className="empty-state">
+                                    <svg
+                                        className="empty-state-icon"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                    >
+                                        <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                    <h3 className="empty-state-title">
+                                        {t('remoteDiagnosis.whitelist.noCommands')}
+                                    </h3>
+                                    <p className="empty-state-description">
+                                        {t('remoteDiagnosis.whitelist.noCommandsHint')}
+                                    </p>
+                                </div>
+                            </div>
+                        )
+                    }
+                    const totalPages = Math.max(1, Math.ceil(filteredCommands.length / PAGE_SIZE))
+                    const safePage = Math.min(currentPage, totalPages)
+                    const paginatedCommands = filteredCommands.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+                    return <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput
                             value={searchTerm}
@@ -358,21 +401,23 @@ export function WhitelistTab() {
                                         <th>{t('remoteDiagnosis.whitelist.pattern')}</th>
                                         <th>{t('remoteDiagnosis.whitelist.description')}</th>
                                         <th style={{ textAlign: 'center' }}>
-                                            {t('remoteDiagnosis.whitelist.enabled')}
+                                            {t('remoteDiagnosis.whitelist.status')}
                                         </th>
-                                        <th style={{ textAlign: 'right' }}>操作</th>
+                                        <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {paginatedCommands.map(cmd => (
                                         <tr key={cmd.pattern} className="sop-workflow-table-row">
-                                            <td>
-                                                <code className="sop-workflow-code-pill">
+                                            <td style={{ maxWidth: 400, wordBreak: 'break-all', whiteSpace: 'normal' }}>
+                                                <code className="sop-workflow-code-pill" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                                                     {cmd.pattern}
                                                 </code>
                                             </td>
-                                            <td className="sop-workflow-muted-text">
-                                                {cmd.description || '--'}
+                                            <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                <span title={cmd.description || '--'}>
+                                                    {cmd.description || '--'}
+                                                </span>
                                             </td>
                                             <td style={{ textAlign: 'center' }}>
                                                 <ToggleSwitch
@@ -435,17 +480,13 @@ export function WhitelistTab() {
                         </div>
                     )}
                 </>
-                    })()
-                )}
+                })()}
             </section>
 
             {(showAddModal || editingCommand) && (
                 <WhitelistFormModal
                     command={editingCommand}
-                    onClose={() => {
-                        setShowAddModal(false)
-                        setEditingCommand(null)
-                    }}
+                    onClose={handleCloseModal}
                     onSave={handleSaveCommand}
                 />
             )}

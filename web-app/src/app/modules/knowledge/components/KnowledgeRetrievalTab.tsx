@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import { useToast } from '../../../platform/providers/ToastContext'
 import KnowledgeChunkDetailModal from './KnowledgeChunkDetailModal'
 import type {
@@ -64,12 +64,6 @@ interface RetrievalCacheEntry {
     results: Record<RetrievalMode, RetrievalModeResultState>
 }
 
-interface RetrievalPersistedState {
-    lastQuery: string
-    settings: RetrievalSettings | null
-    entries: RetrievalCacheEntry[]
-}
-
 interface RetrievalDisplayHit extends RetrievalSearchHit {
     documentName: string
     displayScore: number
@@ -110,6 +104,7 @@ interface KnowledgeRetrievalTabProps {
     defaults: KnowledgeDefaults | null
     retrievalProfileDetail: KnowledgeProfileDetail | null
     disabled?: boolean
+    userId?: string | null
 }
 
 const QUERY_MAX_LENGTH = 200
@@ -186,133 +181,6 @@ function normalizeRetrievalMode(value: string | null | undefined): RetrievalMode
     default:
         return null
     }
-}
-
-function getStorageKey(sourceId: string): string {
-    return `opsfactory:knowledge:retrieval-history:${sourceId}:v1`
-}
-
-function getCacheStorageKey(sourceId: string): string {
-    return `opsfactory:knowledge:retrieval-cache:${sourceId}:v1`
-}
-
-function normalizeHistoryEntry(raw: unknown): RetrievalHistoryEntry | null {
-    if (!raw || typeof raw !== 'object') return null
-
-    const record = raw as Record<string, unknown>
-    const query = typeof record.query === 'string' ? record.query.trim() : ''
-    if (!query) return null
-
-    return {
-        id: typeof record.id === 'string' ? record.id : `${Date.now()}:compare:${query}`,
-        query,
-        createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
-    }
-}
-
-function loadHistory(storageKey: string): RetrievalHistoryEntry[] {
-    if (typeof window === 'undefined') return []
-
-    try {
-        const raw = window.localStorage.getItem(storageKey)
-        if (!raw) return []
-
-        const parsed = JSON.parse(raw) as unknown
-        if (!Array.isArray(parsed)) return []
-
-        return parsed
-            .map(entry => normalizeHistoryEntry(entry))
-            .filter((entry): entry is RetrievalHistoryEntry => Boolean(entry))
-            .slice(0, HISTORY_LIMIT)
-    } catch {
-        return []
-    }
-}
-
-function saveHistory(storageKey: string, entries: RetrievalHistoryEntry[]): void {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(storageKey, JSON.stringify(entries))
-}
-
-function normalizeModeResultState(raw: unknown): RetrievalModeResultState {
-    if (!raw || typeof raw !== 'object') {
-        return {
-            hits: [],
-            total: 0,
-            error: null,
-        }
-    }
-
-    const record = raw as Record<string, unknown>
-    const hits = Array.isArray(record.hits) ? record.hits as RetrievalSearchHit[] : []
-    const total = typeof record.total === 'number' ? record.total : hits.length
-    const error = typeof record.error === 'string' ? record.error : null
-
-    return {
-        hits,
-        total,
-        error,
-    }
-}
-
-function normalizeCacheEntry(raw: unknown): RetrievalCacheEntry | null {
-    if (!raw || typeof raw !== 'object') return null
-
-    const record = raw as Record<string, unknown>
-    const query = typeof record.query === 'string' ? record.query.trim() : ''
-    if (!query) return null
-
-    const results = isRecord(record.results) ? record.results : {}
-
-    return {
-        query,
-        createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
-        fetchedTopK: typeof record.fetchedTopK === 'number' ? record.fetchedTopK : COMPARE_FETCH_TOP_K,
-        results: {
-            hybrid: normalizeModeResultState(results.hybrid),
-            semantic: normalizeModeResultState(results.semantic),
-            lexical: normalizeModeResultState(results.lexical),
-        },
-    }
-}
-
-function loadPersistedState(storageKey: string): RetrievalPersistedState | null {
-    if (typeof window === 'undefined') return null
-
-    try {
-        const raw = window.localStorage.getItem(storageKey)
-        if (!raw) return null
-
-        const parsed = JSON.parse(raw) as unknown
-        if (!parsed || typeof parsed !== 'object') return null
-
-        const record = parsed as Record<string, unknown>
-        const entries = Array.isArray(record.entries)
-            ? record.entries
-                .map(entry => normalizeCacheEntry(entry))
-                .filter((entry): entry is RetrievalCacheEntry => Boolean(entry))
-                .slice(0, HISTORY_LIMIT)
-            : []
-
-        return {
-            lastQuery: typeof record.lastQuery === 'string' ? record.lastQuery.trim() : '',
-            settings: normalizeSettings(record.settings, null),
-            entries,
-        }
-    } catch {
-        return null
-    }
-}
-
-function savePersistedState(storageKey: string, state: RetrievalPersistedState | null): void {
-    if (typeof window === 'undefined') return
-
-    if (!state || (state.entries.length === 0 && state.settings === null && !state.lastQuery)) {
-        window.localStorage.removeItem(storageKey)
-        return
-    }
-
-    window.localStorage.setItem(storageKey, JSON.stringify(state))
 }
 
 function upsertCacheEntry(entries: RetrievalCacheEntry[], entry: RetrievalCacheEntry): RetrievalCacheEntry[] {
@@ -433,6 +301,8 @@ function getModeLabelKey(mode: RetrievalMode): string {
         return 'knowledge.retrievalModeLexical'
     case 'hybrid':
         return 'knowledge.retrievalModeHybrid'
+    default:
+        return mode
     }
 }
 
@@ -441,11 +311,14 @@ function getDocumentName(documentId: string, names: Record<string, string>): str
 }
 
 function getModeScore(hit: RetrievalSearchHit, mode: RetrievalMode): number {
-    const modeScore = mode === 'hybrid'
-        ? hit.fusionScore
-        : mode === 'semantic'
-            ? hit.semanticScore
-            : hit.lexicalScore
+    let modeScore: number
+    if (mode === 'hybrid') {
+        modeScore = hit.fusionScore
+    } else if (mode === 'semantic') {
+        modeScore = hit.semanticScore
+    } else {
+        modeScore = hit.lexicalScore
+    }
 
     if (Number.isFinite(modeScore) && modeScore > 0) {
         return modeScore
@@ -628,11 +501,11 @@ function RetrievalModePanel({
     onSelect: (mode: RetrievalMode, hit: RetrievalDisplayHit) => void
 }) {
     const { t } = useTranslation()
-    const emptyState = !searched
-        ? t('knowledge.retrievalModeIdle')
-        : thresholdFiltered
-            ? t('knowledge.retrievalNoResultsThreshold')
-        : t('knowledge.retrievalNoResults')
+    const emptyState = (() => {
+        if (!searched) return t('knowledge.retrievalModeIdle')
+        if (thresholdFiltered) return t('knowledge.retrievalNoResultsThreshold')
+        return t('knowledge.retrievalNoResults')
+    })()
     return (
         <section className="knowledge-retrieval-mode-panel">
             <div className="knowledge-retrieval-mode-panel-header">
@@ -746,6 +619,7 @@ function RetrievalDetailPanel({
     loading,
     error,
     canEdit,
+    userId,
     onReload,
     onClear,
 }: {
@@ -754,6 +628,7 @@ function RetrievalDetailPanel({
     loading: boolean
     error: string | null
     canEdit: boolean
+    userId?: string | null
     onReload: () => Promise<void>
     onClear: () => void
 }) {
@@ -897,11 +772,9 @@ function RetrievalDetailPanel({
         setSaving(true)
 
         try {
-            const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/chunks/${hit.chunkId}`, {
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${hit.chunkId}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: knowledgeHeaders(userId),
                 body: JSON.stringify({
                     keywords,
                     text,
@@ -1125,6 +998,7 @@ export default function KnowledgeRetrievalTab({
     defaults,
     retrievalProfileDetail,
     disabled = false,
+    userId,
 }: KnowledgeRetrievalTabProps) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -1143,19 +1017,11 @@ export default function KnowledgeRetrievalTab({
         return new Set<RetrievalMode>([configuredMode])
     }, [allowRequestOverride, configuredMode, systemSupportedModes])
     const orderedModes = useMemo(() => getOrderedModes(supportedModes), [supportedModes])
-    const storageKey = useMemo(() => getStorageKey(source.id), [source.id])
-    const cacheStorageKey = useMemo(() => getCacheStorageKey(source.id), [source.id])
 
-    const [settings, setSettings] = useState<RetrievalSettings>(() => {
-        const persistedState = loadPersistedState(cacheStorageKey)
-        return persistedState?.settings
-            ? normalizeSettings(persistedState.settings, defaults)
-            : buildInitialSettings(defaults)
-    })
+    const [settings, setSettings] = useState<RetrievalSettings>(() => buildInitialSettings(defaults))
     const [query, setQuery] = useState('')
-    const [history, setHistory] = useState<RetrievalHistoryEntry[]>(() => loadHistory(storageKey))
-    const [cachedEntries, setCachedEntries] = useState<RetrievalCacheEntry[]>(() => loadPersistedState(cacheStorageKey)?.entries ?? [])
-    const [hasLoadedPersistedState, setHasLoadedPersistedState] = useState(false)
+    const [history, setHistory] = useState<RetrievalHistoryEntry[]>([])
+    const [cachedEntries, setCachedEntries] = useState<RetrievalCacheEntry[]>([])
     const [documentNames, setDocumentNames] = useState<Record<string, string>>({})
     const [modeResults, setModeResults] = useState<Record<RetrievalMode, RetrievalModeResultState>>(() => createEmptyModeResults())
     const [compareCache, setCompareCache] = useState<CompareCacheState | null>(null)
@@ -1169,7 +1035,9 @@ export default function KnowledgeRetrievalTab({
     const [detailError, setDetailError] = useState<string | null>(null)
 
     const loadChunkDetail = useCallback(async (chunkId: string): Promise<KnowledgeChunkDetail> => {
-        const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`)
+        const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`, {
+            headers: knowledgeHeaders(userId),
+        })
         const data = await response.json().catch(() => null) as KnowledgeChunkDetail | { message?: string } | null
 
         if (!response.ok) {
@@ -1181,59 +1049,36 @@ export default function KnowledgeRetrievalTab({
         }
 
         return data as KnowledgeChunkDetail
-    }, [])
+    }, [userId])
 
     useEffect(() => {
-        setHistory(loadHistory(storageKey))
-    }, [storageKey])
+        setSettings(current => normalizeSettings(current, defaults))
+    }, [defaults])
 
     useEffect(() => {
-        saveHistory(storageKey, history)
-    }, [history, storageKey])
-
-    useEffect(() => {
-        const persistedState = loadPersistedState(cacheStorageKey)
-        const nextCachedEntries = persistedState?.entries ?? []
-        const lastQuery = persistedState?.lastQuery ?? ''
-        const lastEntry = getCachedEntry(nextCachedEntries, lastQuery)
-        const restoredModes = lastEntry ? [...orderedModes] : []
-        const persistedSettings = normalizeSettings(persistedState?.settings, defaults)
-
-        setCachedEntries(nextCachedEntries)
-        setSettings(persistedSettings)
-        setQuery(lastEntry?.query ?? '')
-        setModeResults(lastEntry?.results ?? createEmptyModeResults())
-        setCompareCache(lastEntry ? {
-            query: lastEntry.query,
-            fetchedTopK: lastEntry.fetchedTopK,
-            results: lastEntry.results,
-        } : null)
-        setLastExecutedQuery(lastEntry?.query ?? '')
-        setSearchedModes(lastEntry ? restoredModes : [])
+        setCachedEntries([])
+        setHistory([])
+        setQuery('')
+        setModeResults(createEmptyModeResults())
+        setCompareCache(null)
+        setLastExecutedQuery('')
+        setSearchedModes([])
         setActiveSearchModes([])
         setSearchError(null)
         setSelection(null)
         setDetail(null)
         setDetailError(null)
         setDetailLoading(false)
-        setHasLoadedPersistedState(true)
-    }, [cacheStorageKey, orderedModes, source.id])
-
-    useEffect(() => {
-        if (!hasLoadedPersistedState) return
-        savePersistedState(cacheStorageKey, {
-            lastQuery: lastExecutedQuery,
-            settings,
-            entries: cachedEntries,
-        })
-    }, [cacheStorageKey, cachedEntries, hasLoadedPersistedState, lastExecutedQuery, settings])
+    }, [source.id])
 
     useEffect(() => {
         let cancelled = false
 
         const loadDocumentNames = async () => {
             try {
-                const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/documents?sourceId=${source.id}&page=1&pageSize=100`)
+                const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents?sourceId=${source.id}&page=1&pageSize=100`, {
+                    headers: knowledgeHeaders(userId),
+                })
                 const data = await response.json().catch(() => null) as PagedResponse<KnowledgeDocumentSummary> | { message?: string } | null
 
                 if (!response.ok) {
@@ -1260,7 +1105,7 @@ export default function KnowledgeRetrievalTab({
         return () => {
             cancelled = true
         }
-    }, [source.id])
+    }, [source.id, userId])
 
     const displayResultsByMode = useMemo<Record<RetrievalMode, RetrievalDisplayHit[]>>(() => ({
         semantic: buildDisplayResults('semantic', modeResults.semantic.hits, documentNames, settings),
@@ -1336,22 +1181,18 @@ export default function KnowledgeRetrievalTab({
             modes,
         }
 
-        const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/search/compare`, {
+        const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/search/compare`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: knowledgeHeaders(userId),
             body: JSON.stringify(compareBody),
         })
         const data = await response.json().catch(() => null) as RetrievalCompareResponse | { message?: string } | null
 
         if (response.status === 404 || response.status === 405) {
             const modeResponses = await Promise.all(modes.map(async mode => {
-                const legacyResponse = await fetch(`${KNOWLEDGE_SERVICE_URL}/search`, {
+                const legacyResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/search`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: knowledgeHeaders(userId),
                     body: JSON.stringify({
                         ...baseBody,
                         topK: COMPARE_FETCH_TOP_K,
@@ -1396,7 +1237,7 @@ export default function KnowledgeRetrievalTab({
         }
 
         return data as RetrievalCompareResponse
-    }, [source.id, source.retrievalProfileId])
+    }, [source.id, source.retrievalProfileId, userId])
 
     const executeSearch = useCallback(async (nextQuery?: string) => {
         const effectiveQuery = (nextQuery ?? query).trim()
@@ -1829,6 +1670,7 @@ export default function KnowledgeRetrievalTab({
                 loading={detailLoading}
                 error={detailError}
                 canEdit={capabilities?.featureFlags.allowChunkEdit ?? true}
+                userId={userId}
                 onReload={async () => {
                     if (!selection) return
 

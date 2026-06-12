@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.config;
 
 import static org.junit.Assert.assertEquals;
@@ -6,10 +10,11 @@ import static org.junit.Assert.assertTrue;
 
 import com.huawei.opsfactory.gateway.filter.RequestContextFilter;
 import com.huawei.opsfactory.gateway.support.TestLogAppender;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,18 +23,26 @@ import org.springframework.core.env.Environment;
 import org.springframework.test.context.junit4.SpringRunner;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    properties = "spring.config.import=optional:file:src/test/resources/config/test-gateway-config.yaml"
-)
-public class GatewayConfigImportTest {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    properties = {"spring.config.import=optional:file:src/test/resources/config/test-gateway-config.yaml",
+        "logging.level.root=WARN", "logging.level.com.huawei.opsfactory.gateway=DEBUG"})
 
+/**
+ * Test coverage for Gateway Config Import.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
+public class GatewayConfigImportTest {
     @Autowired
     private GatewayProperties properties;
 
     @Autowired
     private Environment environment;
 
+    /**
+     * Verifies that import gateway config yaml into spring environment.
+     */
     @Test
     public void shouldImportGatewayConfigYamlIntoSpringEnvironment() {
         assertEquals("127.0.0.1", environment.getProperty("server.address"));
@@ -48,13 +61,17 @@ public class GatewayConfigImportTest {
         assertEquals(42, properties.getLogging().getSseChunkPreviewMaxChars());
     }
 
+    /**
+     * Verifies that apply logging levels to logback runtime.
+     */
     @Test
-    public void shouldApplyLoggingLevelsToLog4jRuntime() {
-        LoggerContext context = (LoggerContext) LogManager.getContext(false);
-        Configuration configuration = context.getConfiguration();
+    public void shouldApplyLoggingLevelsToLogbackRuntime() {
+        LoggerContext context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+        Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        Logger gatewayLogger = context.getLogger("com.huawei.opsfactory.gateway");
 
-        assertEquals(Level.WARN, configuration.getRootLogger().getLevel());
-        assertEquals(Level.DEBUG, configuration.getLoggerConfig("com.huawei.opsfactory.gateway").getLevel());
+        assertEquals(Level.WARN, rootLogger.getEffectiveLevel());
+        assertEquals(Level.DEBUG, gatewayLogger.getEffectiveLevel());
 
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestContextFilter.class)) {
             org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RequestContextFilter.class);

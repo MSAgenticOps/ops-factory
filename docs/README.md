@@ -11,6 +11,7 @@ This `docs/` tree serves both product-facing and engineering-facing documentatio
 
 ## Current Core Docs
 - `architecture/overview.md`: service responsibilities and cross-module boundaries.
+- `architecture/ops-common-architecture.md`: shared library providing authentication, exception handling, and reusable components.
 - `architecture/api-boundaries.md`: gateway/API/auth/SSE compatibility rules.
 - `architecture/knowledge-service-architecture.md`: knowledge-service front-end/back-end architecture, retrieval strategy, defaults, and API map.
 - `architecture/knowledge-service-integration.md`: knowledge-service API, configuration, and service-to-service integration guide.

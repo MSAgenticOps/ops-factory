@@ -1,15 +1,14 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.config;
 
 import com.huawei.opsfactory.knowledge.common.logging.MdcTaskDecorator;
 import com.huawei.opsfactory.knowledge.infrastructure.db.DatabaseDialect;
-import com.huawei.opsfactory.knowledge.infrastructure.db.PostgresqlDialect;
-import com.huawei.opsfactory.knowledge.infrastructure.db.SqliteDialect;
+
 import com.zaxxer.hikari.HikariDataSource;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Locale;
-import javax.sql.DataSource;
+
 import org.springframework.boot.autoconfigure.flyway.FlywayConfigurationCustomizer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,25 +17,37 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+
+import javax.sql.DataSource;
+
+/**
+ * The RuntimeInfrastructureConfig.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
+
 @Configuration
 @EnableConfigurationProperties({KnowledgeRuntimeProperties.class, KnowledgeDatabaseProperties.class})
 public class RuntimeInfrastructureConfig {
 
-    @Bean
+    @Bean("knowledgeDatabaseDialect")
     public DatabaseDialect databaseDialect(KnowledgeDatabaseProperties databaseProperties) {
         return switch (normalizeType(databaseProperties)) {
-            case "sqlite" -> new SqliteDialect();
-            case "postgresql" -> new PostgresqlDialect();
-            default -> throw new IllegalStateException("Unsupported knowledge.database.type: " + databaseProperties.getType());
+            case "sqlite" -> DatabaseDialect.SQLITE;
+            case "postgresql" -> DatabaseDialect.POSTGRESQL;
+            default ->
+                throw new IllegalStateException("Unsupported knowledge.database.type: " + databaseProperties.getType());
         };
     }
 
-    @Bean
-    public DataSource dataSource(
-        KnowledgeRuntimeProperties runtimeProperties,
-        KnowledgeDatabaseProperties databaseProperties,
-        DatabaseDialect databaseDialect
-    ) throws IOException {
+    @Bean("knowledgeDataSource")
+    public DataSource dataSource(KnowledgeRuntimeProperties runtimeProperties,
+        KnowledgeDatabaseProperties databaseProperties, DatabaseDialect databaseDialect) throws IOException {
         Path baseDir = Path.of(runtimeProperties.getBaseDir()).toAbsolutePath().normalize();
         Files.createDirectories(baseDir);
         Files.createDirectories(baseDir.resolve("meta"));
@@ -59,15 +70,14 @@ public class RuntimeInfrastructureConfig {
         return dataSource;
     }
 
-    @Bean
+    @Bean("knowledgeJdbcTemplate")
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
 
-    @Bean
+    @Bean("knowledgeFlywayConfigurationCustomizer")
     public FlywayConfigurationCustomizer flywayConfigurationCustomizer(DatabaseDialect databaseDialect) {
-        return configuration -> configuration
-            .locations(databaseDialect.flywayLocations().toArray(String[]::new))
+        return configuration -> configuration.locations(databaseDialect.flywayLocations().toArray(String[]::new))
             .baselineOnMigrate(true)
             .baselineVersion("1");
     }
@@ -84,11 +94,8 @@ public class RuntimeInfrastructureConfig {
         return executor;
     }
 
-    private String resolveJdbcUrl(
-        Path baseDir,
-        KnowledgeDatabaseProperties databaseProperties,
-        DatabaseDialect databaseDialect
-    ) {
+    private String resolveJdbcUrl(Path baseDir, KnowledgeDatabaseProperties databaseProperties,
+        DatabaseDialect databaseDialect) {
         if (StringUtils.hasText(databaseProperties.getUrl())) {
             return databaseProperties.getUrl();
         }
@@ -99,10 +106,8 @@ public class RuntimeInfrastructureConfig {
         throw new IllegalStateException("knowledge.database.url is required for " + databaseDialect.type());
     }
 
-    private String resolveDriverClassName(
-        KnowledgeDatabaseProperties databaseProperties,
-        DatabaseDialect databaseDialect
-    ) {
+    private String resolveDriverClassName(KnowledgeDatabaseProperties databaseProperties,
+        DatabaseDialect databaseDialect) {
         if (StringUtils.hasText(databaseProperties.getDriverClassName())) {
             return databaseProperties.getDriverClassName();
         }
@@ -110,6 +115,7 @@ public class RuntimeInfrastructureConfig {
     }
 
     private String normalizeType(KnowledgeDatabaseProperties databaseProperties) {
-        return databaseProperties.getType() == null ? "sqlite" : databaseProperties.getType().trim().toLowerCase(Locale.ROOT);
+        return databaseProperties.getType() == null ? "sqlite"
+            : databaseProperties.getType().trim().toLowerCase(Locale.ROOT);
     }
 }

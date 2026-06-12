@@ -1,11 +1,22 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.springframework.core.io.Resource;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,12 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 /**
  * Extended tests for FileService covering:
  * - isAllowedExtension
@@ -27,21 +32,27 @@ import static org.junit.Assert.assertTrue;
  * - SKIP_FILES filtering in listFiles
  * - resolveFile fallback search
  * - Hidden directory filtering
+ *
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class FileServiceExtendedTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private FileService fileService;
 
+    /**
+     * Sets the up.
+     */
     @Before
     public void setUp() {
         fileService = new FileService(new GatewayProperties());
     }
 
-    // ====================== isAllowedExtension ======================
-
+    /**
+     * Tests is allowed extension allowed types.
+     */
     @Test
     public void testIsAllowedExtension_allowedTypes() {
         assertTrue(fileService.isAllowedExtension("report.txt"));
@@ -54,6 +65,9 @@ public class FileServiceExtendedTest {
         assertTrue(fileService.isAllowedExtension("log.log"));
     }
 
+    /**
+     * Tests is allowed extension blocked types.
+     */
     @Test
     public void testIsAllowedExtension_blockedTypes() {
         assertFalse(fileService.isAllowedExtension("virus.exe"));
@@ -66,12 +80,18 @@ public class FileServiceExtendedTest {
         assertFalse(fileService.isAllowedExtension("screensaver.scr"));
     }
 
+    /**
+     * Tests is allowed extension no extension allowed.
+     */
     @Test
     public void testIsAllowedExtension_noExtension_allowed() {
         assertTrue(fileService.isAllowedExtension("Makefile"));
         assertTrue(fileService.isAllowedExtension("Dockerfile"));
     }
 
+    /**
+     * Tests is allowed extension unknown extension rejected.
+     */
     @Test
     public void testIsAllowedExtension_unknownExtension_rejected() {
         // Unknown extension is not in ALLOWED set → rejected (unless blocked explicitly)
@@ -79,6 +99,9 @@ public class FileServiceExtendedTest {
         assertFalse(fileService.isAllowedExtension("file.abc"));
     }
 
+    /**
+     * Tests is allowed extension case insensitive.
+     */
     @Test
     public void testIsAllowedExtension_caseInsensitive() {
         assertTrue(fileService.isAllowedExtension("image.PNG"));
@@ -86,8 +109,11 @@ public class FileServiceExtendedTest {
         assertFalse(fileService.isAllowedExtension("virus.EXE"));
     }
 
-    // ====================== SKIP_DIRS filtering ======================
-
+    /**
+     * Tests list files skips dirs data.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsDirs_data() throws IOException {
         File dataDir = tempFolder.newFolder("data");
@@ -99,6 +125,11 @@ public class FileServiceExtendedTest {
         assertEquals("visible.txt", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips dirs state.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsDirs_state() throws IOException {
         File stateDir = tempFolder.newFolder("state");
@@ -109,6 +140,11 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
+    /**
+     * Tests list files skips dirs config.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsDirs_config() throws IOException {
         File configDir = tempFolder.newFolder("config");
@@ -120,6 +156,11 @@ public class FileServiceExtendedTest {
         assertEquals("readme.md", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips dirs node modules.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsDirs_nodeModules() throws IOException {
         File nodeModules = tempFolder.newFolder("node_modules");
@@ -130,6 +171,11 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
+    /**
+     * Tests list files skips dirs dot goose.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsDirs_dotGoose() throws IOException {
         File gooseDir = tempFolder.newFolder(".goose");
@@ -140,8 +186,11 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
-    // ====================== Hidden dirs (starting with .) ======================
-
+    /**
+     * Tests list files skips hidden dirs.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsHiddenDirs() throws IOException {
         File hiddenDir = tempFolder.newFolder(".hidden");
@@ -153,8 +202,11 @@ public class FileServiceExtendedTest {
         assertEquals("visible.txt", files.get(0).get("name"));
     }
 
-    // ====================== SKIP_FILES filtering ======================
-
+    /**
+     * Tests list files skips dsstore.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsDSStore() throws IOException {
         createFile(new File(tempFolder.getRoot(), ".DS_Store"), "");
@@ -165,6 +217,11 @@ public class FileServiceExtendedTest {
         assertEquals("file.txt", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips agentsmd.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsAGENTSmd() throws IOException {
         createFile(new File(tempFolder.getRoot(), "AGENTS.md"), "# Agents");
@@ -175,6 +232,11 @@ public class FileServiceExtendedTest {
         assertEquals("notes.md", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files skips gitkeep.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_skipsGitkeep() throws IOException {
         createFile(new File(tempFolder.getRoot(), ".gitkeep"), "");
@@ -184,8 +246,11 @@ public class FileServiceExtendedTest {
         assertEquals(1, files.size());
     }
 
-    // ====================== resolveFile fallback search ======================
-
+    /**
+     * Tests resolve file fallback search finds in subdir.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testResolveFile_fallbackSearch_findsInSubdir() throws IOException {
         File subDir = tempFolder.newFolder("uploads");
@@ -196,6 +261,11 @@ public class FileServiceExtendedTest {
         assertNull(resource);
     }
 
+    /**
+     * Tests resolve file fallback search skips skip dirs.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testResolveFile_fallbackSearch_skipsSkipDirs() throws IOException {
         File dataDir = tempFolder.newFolder("data");
@@ -206,6 +276,11 @@ public class FileServiceExtendedTest {
         assertNull(resource);
     }
 
+    /**
+     * Tests resolve file direct path exists in subdir.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testResolveFile_directPath_existsInSubdir() throws IOException {
         File subDir = tempFolder.newFolder("docs");
@@ -216,25 +291,29 @@ public class FileServiceExtendedTest {
         assertTrue(resource.exists());
     }
 
-    // ====================== output file diff filtering ======================
-
+    /**
+     * Tests diff files ignores internal mcp logs.
+     */
     @Test
     public void testDiffFiles_ignoresInternalMcpLogs() {
-        List<Map<String, Object>> before = List.of(
-                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 100L, "2026-04-08T06:58:57Z"));
-        List<Map<String, Object>> after = List.of(
-                snapshot("logs/mcp/control_center.log", "control_center.log", "log", 120L, "2026-04-08T07:00:27Z"));
+        List<Map<String, Object>> before =
+            List.of(snapshot("logs/mcp/control_center.log", "control_center.log", "log", 100L, "2026-04-08T06:58:57Z"));
+        List<Map<String, Object>> after =
+            List.of(snapshot("logs/mcp/control_center.log", "control_center.log", "log", 120L, "2026-04-08T07:00:27Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
         assertTrue(changed.isEmpty());
     }
 
+    /**
+     * Tests diff files keeps user generated files.
+     */
     @Test
     public void testDiffFiles_keepsUserGeneratedFiles() {
         List<Map<String, Object>> before = new ArrayList<>();
-        List<Map<String, Object>> after = List.of(
-                snapshot("reports/platform-status.md", "platform-status.md", "md", 256L, "2026-04-08T07:00:27Z"));
+        List<Map<String, Object>> after =
+            List.of(snapshot("reports/platform-status.md", "platform-status.md", "md", 256L, "2026-04-08T07:00:27Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -244,12 +323,17 @@ public class FileServiceExtendedTest {
         assertEquals("md", changed.get(0).get("ext"));
     }
 
+    /**
+     * Tests diff files keeps same relative path from different roots.
+     */
     @Test
     public void testDiffFiles_keepsSameRelativePathFromDifferentRoots() {
         List<Map<String, Object>> before = new ArrayList<>();
         List<Map<String, Object>> after = List.of(
-                snapshotWithRoot("workingDir", "example-file.md", "example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"),
-                snapshotWithRoot("output", "example-file.md", "output/example-file.md", "example-file.md", "md", 128L, "2026-04-21T14:20:00Z"));
+            snapshotWithRoot("workingDir", "example-file.md", "example-file.md", "example-file.md", "md", 128L,
+                "2026-04-21T14:20:00Z"),
+            snapshotWithRoot("output", "example-file.md", "output/example-file.md", "example-file.md", "md", 128L,
+                "2026-04-21T14:20:00Z"));
 
         List<Map<String, String>> changed = fileService.diffFiles(before, after);
 
@@ -260,6 +344,11 @@ public class FileServiceExtendedTest {
         assertEquals("output/example-file.md", changed.get(1).get("displayPath"));
     }
 
+    /**
+     * Tests list top level files skips files in subdirectories.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListTopLevelFiles_skipsFilesInSubdirectories() throws IOException {
         createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
@@ -271,6 +360,11 @@ public class FileServiceExtendedTest {
         assertEquals("summary.md", files.get(0).get("name"));
     }
 
+    /**
+     * Tests list files default scan roots include output non recursive.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_defaultScanRootsIncludeOutputNonRecursive() throws IOException {
         createFile(new File(tempFolder.getRoot(), "summary.md"), "# Summary");
@@ -279,10 +373,8 @@ public class FileServiceExtendedTest {
         createFile(new File(outputDir, "assets/chart.png"), "png");
 
         List<Map<String, Object>> files = fileService.listFiles(tempFolder.getRoot().toPath());
-        Map<String, Map<String, Object>> byName = files.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        file -> (String) file.get("name"),
-                        file -> file));
+        Map<String, Map<String, Object>> byName =
+            files.stream().collect(java.util.stream.Collectors.toMap(file -> (String) file.get("name"), file -> file));
 
         assertEquals(2, files.size());
         assertEquals("workingDir", byName.get("summary.md").get("rootId"));
@@ -293,6 +385,11 @@ public class FileServiceExtendedTest {
         assertFalse(byName.containsKey("chart.png"));
     }
 
+    /**
+     * Tests list capsule relevant files uses files scan roots.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListCapsuleRelevantFiles_usesFilesScanRoots() throws IOException {
         createFile(new File(tempFolder.getRoot(), "example-file.md"), "# Root");
@@ -309,13 +406,17 @@ public class FileServiceExtendedTest {
         assertEquals("output/example-file.md", files.get(1).get("displayPath"));
     }
 
-
+    /**
+     * Tests list files recursive scan root includes nested files.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_recursiveScanRootIncludesNestedFiles() throws IOException {
         GatewayProperties properties = new GatewayProperties();
         GatewayProperties.FileBrowser filesConfig = new GatewayProperties.FileBrowser();
-        filesConfig.setScanRoots(List.of(
-                new GatewayProperties.FileScanRoot("reports", "${userAgentDir}/reports", true)));
+        filesConfig
+            .setScanRoots(List.of(new GatewayProperties.FileScanRoot("reports", "${userAgentDir}/reports", true)));
         properties.setFiles(filesConfig);
         FileService recursiveFileService = new FileService(properties);
 
@@ -324,10 +425,8 @@ public class FileServiceExtendedTest {
         createFile(new File(tempFolder.getRoot(), "reports/.hidden/secret.md"), "# Secret");
 
         List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
-        Map<String, Map<String, Object>> byPath = files.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        file -> (String) file.get("path"),
-                        file -> file));
+        Map<String, Map<String, Object>> byPath =
+            files.stream().collect(java.util.stream.Collectors.toMap(file -> (String) file.get("path"), file -> file));
 
         assertEquals(2, files.size());
         assertTrue(byPath.containsKey("summary.md"));
@@ -335,6 +434,11 @@ public class FileServiceExtendedTest {
         assertFalse(byPath.containsKey(".hidden/secret.md"));
     }
 
+    /**
+     * Tests list files recursive scan root honors configured exclude dirs.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_recursiveScanRootHonorsConfiguredExcludeDirs() throws IOException {
         GatewayProperties properties = new GatewayProperties();
@@ -349,16 +453,19 @@ public class FileServiceExtendedTest {
         createFile(new File(tempFolder.getRoot(), "tmp-output/hidden.md"), "# Hidden");
 
         List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
-        Map<String, Map<String, Object>> byPath = files.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        file -> (String) file.get("path"),
-                        file -> file));
+        Map<String, Map<String, Object>> byPath =
+            files.stream().collect(java.util.stream.Collectors.toMap(file -> (String) file.get("path"), file -> file));
 
         assertEquals(1, files.size());
         assertTrue(byPath.containsKey("docs/visible.md"));
         assertFalse(byPath.containsKey("tmp-output/hidden.md"));
     }
 
+    /**
+     * Tests list files recursive scan root honors max depth.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_recursiveScanRootHonorsMaxDepth() throws IOException {
         GatewayProperties properties = new GatewayProperties();
@@ -374,10 +481,8 @@ public class FileServiceExtendedTest {
         createFile(new File(tempFolder.getRoot(), "level-one/level-two/hidden.md"), "# Hidden");
 
         List<Map<String, Object>> files = recursiveFileService.listFiles(tempFolder.getRoot().toPath());
-        Map<String, Map<String, Object>> byPath = files.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        file -> (String) file.get("path"),
-                        file -> file));
+        Map<String, Map<String, Object>> byPath =
+            files.stream().collect(java.util.stream.Collectors.toMap(file -> (String) file.get("path"), file -> file));
 
         assertEquals(2, files.size());
         assertTrue(byPath.containsKey("top.md"));
@@ -385,6 +490,11 @@ public class FileServiceExtendedTest {
         assertFalse(byPath.containsKey("level-one/level-two/hidden.md"));
     }
 
+    /**
+     * Tests list files recursive scan root honors max files.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListFiles_recursiveScanRootHonorsMaxFiles() throws IOException {
         GatewayProperties properties = new GatewayProperties();
@@ -405,23 +515,13 @@ public class FileServiceExtendedTest {
     }
 
     private Map<String, Object> snapshot(String path, String name, String type, long size, String modifiedAt) {
-        return Map.of(
-                "path", path,
-                "name", name,
-                "type", type,
-                "size", size,
-                "modifiedAt", modifiedAt);
+        return Map.of("path", path, "name", name, "type", type, "size", size, "modifiedAt", modifiedAt);
     }
 
-    private Map<String, Object> snapshotWithRoot(String rootId, String path, String displayPath, String name, String type, long size, String modifiedAt) {
-        return Map.of(
-                "rootId", rootId,
-                "path", path,
-                "displayPath", displayPath,
-                "name", name,
-                "type", type,
-                "size", size,
-                "modifiedAt", modifiedAt);
+    private Map<String, Object> snapshotWithRoot(String rootId, String path, String displayPath, String name,
+        String type, long size, String modifiedAt) {
+        return Map.of("rootId", rootId, "path", path, "displayPath", displayPath, "name", name, "type", type, "size",
+            size, "modifiedAt", modifiedAt);
     }
 
     private void createFile(File file, String content) throws IOException {

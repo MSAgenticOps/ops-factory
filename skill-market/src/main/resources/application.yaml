@@ -1,6 +1,3 @@
-server:
-  port: 8095
-
 spring:
   application:
     name: skill-market
@@ -12,7 +9,7 @@ spring:
       max-request-size: 100MB
 
 logging:
-  config: classpath:log4j2-spring.xml
+  config: classpath:logback-spring.xml
 
 management:
   endpoints:

@@ -8,7 +8,7 @@ ROOT_DIR="$(dirname "${SERVICE_DIR}")"
 yaml_val() {
     local key="$1" file="${SERVICE_DIR}/config.yaml"
     [ -f "${file}" ] || return 0
-    node -e "const y=require('yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.parse(f);const keys='${key}'.split('.');let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" 2>/dev/null || true
+    node -e "const y=require('js-yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.load(f);const keys='${key}'.split('.');let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" 2>/dev/null || true
 }
 
 SKILL_MARKET_PORT="${SKILL_MARKET_PORT:-$(yaml_val server.port)}"
@@ -63,7 +63,7 @@ build_service() {
     local jar="${SERVICE_DIR}/target/skill-market.jar"
     if [ -f "${jar}" ]; then
         local newest_src
-        newest_src="$(find "${SERVICE_DIR}/src" -type f \( -name '*.java' -o -name '*.yaml' -o -name '*.xml' \) -newer "${jar}" 2>/dev/null | head -1)"
+        newest_src="$(find "${SERVICE_DIR}/src" -type f \( -name '*.java' -o -name '*.yaml' -o -name '*.xml' \) -newer "${jar}" -print -quit 2>/dev/null)"
         if [ -z "${newest_src}" ]; then
             log_info "JAR is up-to-date, skipping build"
             return 0
@@ -118,7 +118,7 @@ do_startup() {
     if [ "${mode}" = "background" ]; then
         local app_log_file="${LOG_DIR}/skill-market.log"
         local console_log_file="${LOG_DIR}/skill-market-console.log"
-        java_opts+=("-Dlogging.config=classpath:log4j2-file-only.xml" "-jar" "${jar}")
+        java_opts+=("-Dlogging.config=classpath:logback-file-only.xml" "-jar" "${jar}")
         local service_pid
         service_pid="$(daemon_start "${PID_FILE}" "${console_log_file}" env java "${java_opts[@]}")"
         if ! kill -0 "${service_pid}" 2>/dev/null; then

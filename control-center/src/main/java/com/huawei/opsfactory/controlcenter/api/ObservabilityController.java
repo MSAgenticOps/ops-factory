@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.controlcenter.api;
 
 import com.huawei.opsfactory.controlcenter.observe.ObservabilityService;
@@ -9,12 +13,26 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
+/**
+ * Observability Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 @RestController
-@RequestMapping("/control-center/observability")
+@RestSchema(schemaId = "observabilityController")
+@RequestMapping("/api/control-center/observability")
 public class ObservabilityController {
 
     private final ObservabilityService observabilityService;
 
+    /**
+     * Creates the observability controller instance.
+     *
+     * @param observabilityService the observability service
+     */
     public ObservabilityController(ObservabilityService observabilityService) {
         this.observabilityService = observabilityService;
     }

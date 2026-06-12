@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.common.error;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,10 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 class ApiExceptionHandlerTest {
 
-    private final MockMvc mockMvc = MockMvcBuilders
-        .standaloneSetup(new FailingController())
-        .setControllerAdvice(new ApiExceptionHandler())
-        .build();
+    private final MockMvc mockMvc =
+        MockMvcBuilders.standaloneSetup(new FailingController()).setControllerAdvice(new ApiExceptionHandler()).build();
 
     @Test
     void shouldMapRetrievalConfigurationExceptionToServerErrorInsteadOfNotFound() throws Exception {

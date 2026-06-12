@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.businessintelligence.service;
 
 import com.huawei.opsfactory.businessintelligence.config.BusinessIntelligenceRuntimeProperties;
@@ -52,6 +56,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * Business Intelligence Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class BusinessIntelligenceService {
 
     private static final Logger log = LoggerFactory.getLogger(BusinessIntelligenceService.class);
@@ -645,7 +655,7 @@ public class BusinessIntelligenceService {
     }
 
     private int priorityIndex(String priority) {
-        return switch (priority.toUpperCase()) {
+        return switch (priority.toUpperCase(Locale.ROOT)) {
             case "P1" -> 1;
             case "P2" -> 2;
             case "P3" -> 3;
@@ -1215,8 +1225,22 @@ public class BusinessIntelligenceService {
                         .sorted((a, b) -> Long.compare((long) b[1], (long) a[1]))
                         .limit(15)
                         .map(obj -> {
-                            Map<String, String> row = (Map<String, String>) obj[0];
-                            long agingDays = (long) obj[1];
+                            if (!(obj instanceof Object[])) {
+                                throw new IllegalStateException("Expected Object[] array");
+                            }
+                            Object[] array = obj;
+                            if (array.length != 2) {
+                                throw new IllegalStateException("Expected array of length 2");
+                            }
+                            if (!(array[0] instanceof Map)) {
+                                throw new IllegalStateException("Expected Map at index 0, got: " + array[0].getClass());
+                            }
+                            if (!(array[1] instanceof Long)) {
+                                throw new IllegalStateException("Expected Long at index 1, got: " + array[1].getClass());
+                            }
+                            @SuppressWarnings("unchecked")
+                            Map<String, String> row = (Map<String, String>) array[0];
+                            long agingDays = (long) array[1];
                             return List.of(
                                 defaultLabel(row.get(BiColumns.PROBLEM_NUMBER), "—"),
                                 defaultLabel(row.get(BiColumns.ROOT_CAUSE_CATEGORY), "未标注"),

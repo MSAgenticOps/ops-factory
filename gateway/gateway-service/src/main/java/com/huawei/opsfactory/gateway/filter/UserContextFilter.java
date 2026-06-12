@@ -1,121 +1,128 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.filter;
 
 import com.huawei.opsfactory.gateway.common.constants.GatewayConstants;
-import com.huawei.opsfactory.gateway.common.model.UserRole;
-import com.huawei.opsfactory.gateway.config.GatewayProperties;
 import com.huawei.opsfactory.gateway.process.PrewarmService;
-import org.apache.logging.log4j.ThreadContext;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Mono;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.IOException;
 
+/**
+ * Servlet filter that resolves the authenticated user identity from request headers.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 @Order(3)
-public class UserContextFilter implements WebFilter {
-
+public class UserContextFilter implements jakarta.servlet.Filter {
     private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
-    private static final String CHANNEL_WEBHOOK_PREFIX = "/gateway/channels/webhooks/";
+
+    private static final String CHANNEL_WEBHOOK_PREFIX = "/api/gateway/channels/webhooks/";
 
     public static final String USER_ID_ATTR = "userId";
-    public static final String USER_ROLE_ATTR = "userRole";
 
     private final PrewarmService prewarmService;
-    private final GatewayProperties gatewayProperties;
 
-    // Cached set for fast lookup; refreshed when the underlying list changes.
-    private volatile Set<String> adminUserSet = Set.of();
-    private volatile List<String> cachedAdminList = List.of();
-
-    public UserContextFilter(PrewarmService prewarmService, GatewayProperties gatewayProperties) {
+    /**
+     * Creates the user context filter instance.
+     *
+     * @param prewarmService service for pre-warming agent instances
+     */
+    public UserContextFilter(PrewarmService prewarmService) {
         this.prewarmService = prewarmService;
-        this.gatewayProperties = gatewayProperties;
-    }
-
-    private Set<String> resolveAdminUserSet() {
-        List<String> current = gatewayProperties.getAdminUsers();
-        if (current != cachedAdminList) {
-            cachedAdminList = current;
-            adminUserSet = current == null ? Set.of() : new HashSet<>(current);
-        }
-        return adminUserSet;
     }
 
     private static boolean isSystemEndpoint(String path) {
-        return path.equals("/status") || path.equals("/me") || path.equals("/config") ||
-               path.equals("/gateway/status") || path.equals("/gateway/me") || path.equals("/gateway/config");
+        return path.equals("/status") || path.equals("/me") || path.equals("/config") || path.equals("/gateway/status")
+            || path.equals("/gateway/me") || path.equals("/gateway/config") || path.equals("/api/gateway/status")
+            || path.equals("/api/gateway/me") || path.equals("/api/gateway/config");
     }
 
     private static boolean isTraceEndpoint(String path) {
-        if (path.startsWith("/gateway/session-traces/")) {
-            return true;
-        }
-        if (!path.startsWith("/gateway/agents/") || !path.endsWith("/trace")) {
+        if (path == null) {
             return false;
         }
-        return path.substring("/gateway/agents/".length()).contains("/sessions/");
+        if (path.startsWith("/api/gateway/session-traces/") || path.startsWith("/gateway/session-traces/")) {
+            return true;
+        }
+        String agentPrefix = path.startsWith("/api/gateway/agents/") ? "/api/gateway/agents/" : "/gateway/agents/";
+        if (!path.startsWith(agentPrefix) || !path.endsWith("/trace")) {
+            return false;
+        }
+        return path.substring(agentPrefix.length()).contains("/sessions/");
     }
 
+    /**
+     * Resolves the authenticated user identity from request headers.
+     *
+     * @param servletRequest the servlet request
+     * @param servletResponse the servlet response
+     * @param filterChain the filter chain
+     * @throws IOException if an I/O error occurs
+     * @throws ServletException if a servlet error occurs
+     */
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        ServerHttpRequest request = exchange.getRequest();
-        String path = request.getPath().value();
+    public void doFilter(jakarta.servlet.ServletRequest servletRequest, jakarta.servlet.ServletResponse servletResponse,
+        FilterChain filterChain) throws IOException, ServletException {
+        HttpServletRequest request = (HttpServletRequest) servletRequest;
+        HttpServletResponse response = (HttpServletResponse) servletResponse;
+
+        String path = request.getRequestURI();
 
         if (path.startsWith(CHANNEL_WEBHOOK_PREFIX)) {
-            return chain.filter(exchange);
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        String userId = request.getHeaders().getFirst(GatewayConstants.HEADER_USER_ID);
-        if (userId == null || userId.isBlank()) {
-            userId = request.getQueryParams().getFirst(GatewayConstants.QUERY_UID);
+        // CORS preflight passes through without user context
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        String userId = request.getHeader(GatewayConstants.HEADER_USER_ID);
+        if (userId == null || userId.isBlank()) {
+            userId = request.getParameter(GatewayConstants.QUERY_UID);
+        }
+
         if (userId == null || userId.isBlank()) {
             // System endpoints don't require user context
             if (isSystemEndpoint(path)) {
-                return chain.filter(exchange);
+                filterChain.doFilter(request, response);
+                return;
             }
             log.warn("Rejecting request path={} reason=missing-user-id", path);
-            exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
-            return exchange.getResponse().setComplete();
+            response.setStatus(HttpStatus.BAD_REQUEST.value());
+            return;
         }
 
-        UserRole role = UserRole.fromUserId(userId, resolveAdminUserSet());
-
-        exchange.getAttributes().put(USER_ID_ATTR, userId);
-        exchange.getAttributes().put(USER_ROLE_ATTR, role);
-        ThreadContext.put("userId", userId);
+        request.setAttribute(USER_ID_ATTR, userId);
+        MDC.put("userId", userId);
 
         // Trigger pre-warm for authenticated users, except diagnostics that must not mutate runtime state.
         if (!isTraceEndpoint(path)) {
             prewarmService.onUserActivity(userId);
         }
 
-        return chain.filter(exchange);
-    }
-
-    /**
-     * Shared admin check — throws 403 if the current user is not an admin.
-     */
-    public static void requireAdmin(ServerWebExchange exchange) {
-        UserRole role = exchange.getAttribute(USER_ROLE_ATTR);
-        if (role == null || !role.isAdmin()) {
-            LoggerFactory.getLogger(UserContextFilter.class).warn(
-                "Rejecting request path={} reason=admin-access-required userRole={}",
-                exchange.getRequest().getURI().getPath(),
-                role
-            );
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "admin access required");
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            MDC.remove("userId");
         }
     }
 }

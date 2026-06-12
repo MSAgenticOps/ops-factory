@@ -27,6 +27,7 @@
 - **先收敛后主机诊断**：只有用户明确范围，或步骤2已识别出根因告警 `${rootAlarms}` / 异常集群 / 异常资源类型等可映射线索时，才允许进入步骤3。
 - **主机定位强门禁**：`query_hosts_by_scope` 必须携带 `reason`（`explicit_scope`/`health_root_alarm`），且禁止无范围参数枚举全部主机。
 - **报告必须落盘**：步骤4必须调用 `save_markdown_report` 将最终 Markdown 报告保存到 `./output`。
+- **报告时间必须来自工具**：生成或保存报告前，必须先调用 `current-time__get_current_time` 获取当前时间；报告正文中的生成时间必须使用该工具返回值，不得编造、复用上下文时间或使用分析时间范围代替。
 
 ### 步骤优先级与强制约束
 
@@ -165,14 +166,14 @@
 
 ##### 步骤3.3.3. 匹配 SOP
 
-- 调用 `list_sops()` 获取 SOP 列表。
-- 按优先级匹配：告警内容 vs `triggerCondition` 语义匹配（优先） > 主机 `tags` vs SOP `tags` 交集匹配。
+- 调用 `list_sops(targetSolution?)` 获取 SOP 列表。如果当前环境已确定解决方案类型，传入 `targetSolution` 参数以过滤匹配的 SOP（包括 `targetSolution` 为 `universal` 的通用 SOP）。
+- 按优先级匹配：告警内容 vs `triggerCondition` 语义匹配（优先） > SOP 的 `targetSolution` 与当前系统/集群的解决方案类型匹配（通用 SOP 始终匹配）。
 - 匹配不到则告知用户并终止。
 
 
 ##### 步骤3.3.4. 执行 SOP
 
-- 根据 `stepsDescription` 逐步推导诊断命令，只允许使用白名单内只读命令，SOP多个步骤执行中间不要停下来；
+- 根据 `stepsDescription` 逐步推导诊断命令，AI 根据步骤描述自动判断需要检查哪些集群或节点，只允许使用白名单内只读命令，SOP多个步骤执行中间不要停下来；
 
 #### 步骤3.4. 结果处理与拓扑升级
 
@@ -192,6 +193,8 @@
 
 ### 步骤4. 生成诊断报告
 
+- 生成报告前必须先调用 `current-time__get_current_time` 获取当前时间。
+- 报告正文中的“生成时间/报告时间”必须填写 `current-time__get_current_time` 返回的原始时间字符串，格式为 `yyyy-MM-dd HH:mm:ss`，例如 `2026-01-12 13:00:28`。
 - 输出结构化诊断报告，至少包含：触发路径、健康分析摘要（如有）、告警摘要、目标主机、各 SOP 执行结果（命令、输出、分析结论）、综合分析、处理建议、附件清单（日志文件路径）。
 - 将报告保存成本地 Markdown 文件。
   - 存储文件名格式：`system-health-analysis-{当前时间}.md`，当前时间使用 `yyyyMMddHHmmss` 格式，例如：`system-health-analysis-20260301123000.md`。

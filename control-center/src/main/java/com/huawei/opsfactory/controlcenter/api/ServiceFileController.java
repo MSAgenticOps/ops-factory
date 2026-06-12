@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.controlcenter.api;
 
 import com.huawei.opsfactory.controlcenter.control.ManagedServiceFileService;
@@ -13,12 +17,26 @@ import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
+
+/**
+ * Service File Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 @RestController
-@RequestMapping("/control-center/services/{id}")
+@RestSchema(schemaId = "serviceFileController")
+@RequestMapping("/api/control-center/services/{id}")
 public class ServiceFileController {
 
     private final ManagedServiceFileService managedServiceFileService;
 
+    /**
+     * Creates the service file controller instance.
+     *
+     * @param managedServiceFileService the managed service file service
+     */
     public ServiceFileController(ManagedServiceFileService managedServiceFileService) {
         this.managedServiceFileService = managedServiceFileService;
     }

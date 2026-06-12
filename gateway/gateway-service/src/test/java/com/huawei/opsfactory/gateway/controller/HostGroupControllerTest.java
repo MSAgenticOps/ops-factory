@@ -1,35 +1,64 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.huawei.opsfactory.gateway.config.BaseControllerTestConfig;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
 import com.huawei.opsfactory.gateway.filter.AuthWebFilter;
 import com.huawei.opsfactory.gateway.filter.UserContextFilter;
+import com.huawei.opsfactory.gateway.process.PrewarmService;
 import com.huawei.opsfactory.gateway.service.BusinessServiceService;
 import com.huawei.opsfactory.gateway.service.ClusterService;
 import com.huawei.opsfactory.gateway.service.HostGroupService;
 import com.huawei.opsfactory.gateway.service.HostService;
-import com.huawei.opsfactory.gateway.process.PrewarmService;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
-
+/**
+ * Test coverage for Host Group Controller.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RunWith(SpringRunner.class)
-@WebFluxTest(HostGroupController.class)
-@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class})
+@WebMvcTest(HostGroupController.class)
+@Import({GatewayProperties.class, AuthWebFilter.class, UserContextFilter.class, BaseControllerTestConfig.class})
+/**
+ * Host Group Controller Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class HostGroupControllerTest {
-
     @Autowired
-    private WebTestClient webTestClient;
+    private MockMvc mockMvc;
 
     @MockBean
     private HostGroupService hostGroupService;
@@ -48,44 +77,45 @@ public class HostGroupControllerTest {
 
     // ── listGroups ──────────────────────────────────────────────
 
+    /**
+     * Tests list groups returns all.
+     */
     @Test
-    public void testListGroups_returnsAll() {
-        when(hostGroupService.listGroups()).thenReturn(List.of(
-                makeGroup("g1", "PROD", null, true),
-                makeGroup("g2", "TEST", null, false)
-        ));
+    public void testListGroups_returnsAll() throws Exception {
+        when(hostGroupService.listGroups())
+            .thenReturn(List.of(makeGroup("g1", "PROD", null, true), makeGroup("g2", "TEST", null, false)));
 
-        webTestClient.get().uri("/gateway/host-groups/")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.groups").isArray()
-                .jsonPath("$.groups.length()").isEqualTo(2);
+        mockMvc.perform(get("/api/gateway/host-groups/").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.groups").isArray())
+            .andExpect(jsonPath("$.groups.length()").value(2));
     }
 
+    /**
+     * Tests list groups enabled only filters disabled.
+     */
     @Test
-    public void testListGroups_enabledOnly_filtersDisabled() {
+    public void testListGroups_enabledOnly_filtersDisabled() throws Exception {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
         Map<String, Object> g2 = makeGroup("g2", "TEST", null, true);
 
         when(hostGroupService.listGroups()).thenReturn(new ArrayList<>(List.of(g1, g2)));
         when(hostGroupService.getDisabledGroupIds(any())).thenReturn(Set.of("g1"));
 
-        webTestClient.get().uri("/gateway/host-groups/?enabledOnly=true")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.groups").isArray()
-                .jsonPath("$.groups.length()").isEqualTo(1)
-                .jsonPath("$.groups[0].id").isEqualTo("g2");
+        mockMvc
+            .perform(get("/api/gateway/host-groups/?enabledOnly=true").header("x-secret-key", "test")
+                .header("x-user-id", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.groups").isArray())
+            .andExpect(jsonPath("$.groups.length()").value(1))
+            .andExpect(jsonPath("$.groups[0].id").value("g2"));
     }
 
+    /**
+     * Tests list groups enabled only filters inherited disabled.
+     */
     @Test
-    public void testListGroups_enabledOnly_filtersInheritedDisabled() {
+    public void testListGroups_enabledOnly_filtersInheritedDisabled() throws Exception {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
         Map<String, Object> g1Sub = makeGroup("g1-sub", "PROD-Sub", "g1", true);
         Map<String, Object> g2 = makeGroup("g2", "TEST", null, true);
@@ -93,23 +123,22 @@ public class HostGroupControllerTest {
         when(hostGroupService.listGroups()).thenReturn(new ArrayList<>(List.of(g1, g1Sub, g2)));
         when(hostGroupService.getDisabledGroupIds(any())).thenReturn(Set.of("g1", "g1-sub"));
 
-        webTestClient.get().uri("/gateway/host-groups/?enabledOnly=true")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.groups.length()").isEqualTo(1)
-                .jsonPath("$.groups[0].id").isEqualTo("g2");
+        mockMvc
+            .perform(get("/api/gateway/host-groups/?enabledOnly=true").header("x-secret-key", "test")
+                .header("x-user-id", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.groups.length()").value(1))
+            .andExpect(jsonPath("$.groups[0].id").value("g2"));
     }
 
     // ── getTree ─────────────────────────────────────────────────
 
+    /**
+     * Tests get tree returns all.
+     */
     @Test
-    public void testGetTree_returnsAll() {
-        when(hostGroupService.listGroups()).thenReturn(new ArrayList<>(List.of(
-                makeGroup("g1", "PROD", null, true)
-        )));
+    public void testGetTree_returnsAll() throws Exception {
+        when(hostGroupService.listGroups()).thenReturn(new ArrayList<>(List.of(makeGroup("g1", "PROD", null, true))));
         when(clusterService.listClusters(isNull(), isNull())).thenReturn(new ArrayList<>());
         when(businessServiceService.listBusinessServices(isNull(), isNull())).thenReturn(new ArrayList<>());
         when(hostGroupService.getTree(anyList(), anyList(), anyList())).thenAnswer(inv -> {
@@ -118,17 +147,16 @@ public class HostGroupControllerTest {
             return result;
         });
 
-        webTestClient.get().uri("/gateway/host-groups/tree")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.tree").isArray();
+        mockMvc.perform(get("/api/gateway/host-groups/tree").header("x-secret-key", "test").header("x-user-id", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tree").isArray());
     }
 
+    /**
+     * Tests get tree enabled only filters disabled groups.
+     */
     @Test
-    public void testGetTree_enabledOnly_filtersDisabledGroups() {
+    public void testGetTree_enabledOnly_filtersDisabledGroups() throws Exception {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
         Map<String, Object> g2 = makeGroup("g2", "TEST", null, true);
 
@@ -142,17 +170,18 @@ public class HostGroupControllerTest {
             return result;
         });
 
-        webTestClient.get().uri("/gateway/host-groups/tree?enabledOnly=true")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.tree.length()").isEqualTo(1);
+        mockMvc
+            .perform(get("/api/gateway/host-groups/tree?enabledOnly=true").header("x-secret-key", "test")
+                .header("x-user-id", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tree.length()").value(1));
     }
 
+    /**
+     * Tests get tree enabled only filters clusters in disabled group.
+     */
     @Test
-    public void testGetTree_enabledOnly_filtersClustersInDisabledGroup() {
+    public void testGetTree_enabledOnly_filtersClustersInDisabledGroup() throws Exception {
         Map<String, Object> g1 = makeGroup("g1", "PROD", null, false);
         Map<String, Object> g2 = makeGroup("g2", "TEST", null, true);
         Map<String, Object> c1 = makeCluster("c1", "PROD-DB", "g1");
@@ -168,89 +197,81 @@ public class HostGroupControllerTest {
             return result;
         });
 
-        webTestClient.get().uri("/gateway/host-groups/tree?enabledOnly=true")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isOk();
+        mockMvc.perform(get("/api/gateway/host-groups/tree?enabledOnly=true").header("x-secret-key", "test")
+            .header("x-user-id", "admin")).andExpect(status().isOk());
     }
 
     // ── updateGroup (enabled toggle) ────────────────────────────
 
+    /**
+     * Tests update group set enabled false.
+     */
     @Test
-    public void testUpdateGroup_setEnabledFalse() {
+    public void testUpdateGroup_setEnabledFalse() throws Exception {
         Map<String, Object> updated = makeGroup("g1", "PROD", null, false);
         when(hostGroupService.updateGroup(eq("g1"), any())).thenReturn(updated);
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("enabled", false);
-
-        webTestClient.put().uri("/gateway/host-groups/g1")
-                .header("x-secret-key", "test")
+        mockMvc
+            .perform(put("/api/gateway/host-groups/g1").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.group.enabled").isEqualTo(false);
+                .content("{\"enabled\": false}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.group.enabled").value(false));
     }
 
+    /**
+     * Tests update group set enabled true.
+     */
     @Test
-    public void testUpdateGroup_setEnabledTrue() {
+    public void testUpdateGroup_setEnabledTrue() throws Exception {
         Map<String, Object> updated = makeGroup("g1", "PROD", null, true);
         when(hostGroupService.updateGroup(eq("g1"), any())).thenReturn(updated);
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("enabled", true);
-
-        webTestClient.put().uri("/gateway/host-groups/g1")
-                .header("x-secret-key", "test")
+        mockMvc
+            .perform(put("/api/gateway/host-groups/g1").header("x-secret-key", "test")
                 .header("x-user-id", "admin")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.group.enabled").isEqualTo(true);
+                .content("{\"enabled\": true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.group.enabled").value(true));
     }
 
+    /**
+     * Tests update group not found.
+     */
     @Test
-    public void testUpdateGroup_notFound() {
+    public void testUpdateGroup_notFound() throws Exception {
         when(hostGroupService.updateGroup(eq("nonexistent"), any()))
-                .thenThrow(new IllegalArgumentException("Host group not found: nonexistent"));
+            .thenThrow(new NotFoundException("Host group not found"));
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("enabled", false);
-
-        webTestClient.put().uri("/gateway/host-groups/nonexistent")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "admin")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .exchange()
-                .expectStatus().isNotFound();
+        mockMvc.perform(put("/api/gateway/host-groups/nonexistent").header("x-secret-key", "test")
+            .header("x-user-id", "admin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"enabled\": false}")).andExpect(status().isNotFound());
     }
 
     // ── Auth ────────────────────────────────────────────────────
 
+    /**
+     * Tests list groups unauthorized no key.
+     */
     @Test
-    public void testListGroups_unauthorized_noKey() {
-        webTestClient.get().uri("/gateway/host-groups/")
-                .header("x-user-id", "admin")
-                .exchange()
-                .expectStatus().isUnauthorized();
+    public void testListGroups_unauthorized_noKey() throws Exception {
+        mockMvc.perform(get("/api/gateway/host-groups/").header("x-user-id", "admin")).andExpect(status().isUnauthorized());
     }
 
+    /**
+     * Tests list groups succeeds for any authenticated user.
+     */
     @Test
-    public void testListGroups_forbidden_nonAdmin() {
-        webTestClient.get().uri("/gateway/host-groups/")
-                .header("x-secret-key", "test")
-                .header("x-user-id", "regular-user")
-                .exchange()
-                .expectStatus().isForbidden();
+    public void testListGroups_succeeds_forAnyUser() throws Exception {
+        when(hostGroupService.listGroups()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/gateway/host-groups/").header("x-secret-key", "test").header("x-user-id", "regular-user"))
+            .andExpect(status().isOk());
     }
 
     // ── Helpers ────────────────────────────────────────────────────

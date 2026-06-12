@@ -1,13 +1,9 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.regex.Pattern;
 import org.apache.tika.Tika;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -24,13 +20,31 @@ import org.jsoup.parser.Parser;
 import org.springframework.stereotype.Service;
 import org.xml.sax.SAXException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
+/**
+ * The TikaConversionService.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
+
 @Service
 public class TikaConversionService {
 
     private static final Pattern MULTIPLE_NEWLINES = Pattern.compile("\\n{3,}");
+
     private static final Pattern MULTIPLE_SPACES = Pattern.compile("[ \\t]{2,}");
 
     private final Tika tika = new Tika();
+
     private final AutoDetectParser parser = new AutoDetectParser();
 
     public ConversionResult convert(Path file) {
@@ -39,10 +53,11 @@ public class TikaConversionService {
         ToXMLContentHandler xmlHandler = new ToXMLContentHandler();
         try (var inputStream = Files.newInputStream(file)) {
             parser.parse(inputStream, new TeeContentHandler(textHandler, xmlHandler), metadata, new ParseContext());
-            String contentType = Optional.ofNullable(metadata.get(Metadata.CONTENT_TYPE))
-                .orElseGet(() -> detectType(file));
+            String contentType =
+                Optional.ofNullable(metadata.get(Metadata.CONTENT_TYPE)).orElseGet(() -> detectType(file));
             String text = normalizePlainText(Optional.ofNullable(textHandler.toString()).orElse(""));
-            String markdown = buildMarkdown(file, contentType, Optional.ofNullable(xmlHandler.toString()).orElse(""), text);
+            String markdown =
+                buildMarkdown(file, contentType, Optional.ofNullable(xmlHandler.toString()).orElse(""), text);
             String title = Optional.ofNullable(metadata.get("title"))
                 .filter(s -> !s.isBlank())
                 .orElse(file.getFileName().toString());
@@ -65,7 +80,8 @@ public class TikaConversionService {
         if (lowerFileName.endsWith(".md") || "text/markdown".equalsIgnoreCase(contentType)) {
             return normalizeMarkdown(Files.readString(file));
         }
-        if ("text/html".equalsIgnoreCase(contentType) || lowerFileName.endsWith(".html") || lowerFileName.endsWith(".htm")) {
+        if ("text/html".equalsIgnoreCase(contentType) || lowerFileName.endsWith(".html")
+            || lowerFileName.endsWith(".htm")) {
             return toMarkdownFromHtml(Files.readString(file));
         }
         String markdown = toMarkdownFromXhtml(xhtml);
@@ -118,10 +134,7 @@ public class TikaConversionService {
             case "h1", "h2", "h3", "h4", "h5", "h6" -> {
                 ensureParagraphBreak(markdown);
                 int level = Integer.parseInt(tag.substring(1));
-                markdown.append("#".repeat(level))
-                    .append(' ')
-                    .append(renderInline(element))
-                    .append("\n\n");
+                markdown.append("#".repeat(level)).append(' ').append(renderInline(element)).append("\n\n");
             }
             case "p" -> {
                 String text = renderInline(element);
@@ -146,7 +159,8 @@ public class TikaConversionService {
                 appendTable(element, markdown);
                 markdown.append("\n\n");
             }
-            case "body", "html", "div", "section", "article", "main", "header", "footer", "aside", "tbody", "thead", "tfoot" -> {
+            case "body", "html", "div", "section", "article", "main", "header", "footer", "aside", "tbody", "thead",
+                "tfoot" -> {
                 for (Node child : element.childNodes()) {
                     appendBlock(child, markdown);
                 }

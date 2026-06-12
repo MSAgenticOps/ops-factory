@@ -1,53 +1,70 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.support;
 
-import java.io.Serializable;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.Property;
-import org.apache.logging.log4j.core.layout.PatternLayout;
 
-public final class TestLogAppender extends AbstractAppender implements AutoCloseable {
+/**
+ * Test appender for capturing log events during assertions.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
+public final class TestLogAppender extends AppenderBase<ILoggingEvent> implements AutoCloseable {
+    private final ch.qos.logback.classic.Logger logger;
 
-    private final Logger logger;
-    private final List<LogEvent> events = new CopyOnWriteArrayList<>();
+    private final List<ILoggingEvent> events = new CopyOnWriteArrayList<>();
 
-    private TestLogAppender(String name, Logger logger, Layout<? extends Serializable> layout) {
-        super(name, null, layout, false, Property.EMPTY_ARRAY);
+    private TestLogAppender(ch.qos.logback.classic.Logger logger) {
         this.logger = logger;
+        setName("test-appender-" + logger.getName() + "-" + System.nanoTime());
+        start();
+        logger.addAppender(this);
     }
 
+    /**
+     * Executes the attach to operation.
+     *
+     * @param type the type parameter
+     * @return the result
+     */
     public static TestLogAppender attachTo(Class<?> type) {
-        Logger logger = (Logger) LogManager.getLogger(type);
-        TestLogAppender appender = new TestLogAppender(
-            "test-appender-" + type.getSimpleName() + "-" + System.nanoTime(),
-            logger,
-            PatternLayout.createDefaultLayout()
-        );
-        appender.start();
-        logger.addAppender(appender);
-        return appender;
+        ch.qos.logback.classic.Logger logger =
+            (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(type.getName());
+        return new TestLogAppender(logger);
     }
 
+    /**
+     * Executes the append operation.
+     *
+     * @param event the event parameter
+     */
     @Override
-    public void append(LogEvent event) {
-        events.add(event.toImmutable());
+    protected void append(ILoggingEvent event) {
+        events.add(event);
     }
 
+    /**
+     * Executes the formatted messages operation.
+     *
+     * @return the result
+     */
     public List<String> formattedMessages() {
-        return events.stream()
-            .map(event -> event.getMessage().getFormattedMessage())
-            .toList();
+        return events.stream().map(event -> event.getFormattedMessage()).toList();
     }
 
+    /**
+     * Executes the close operation.
+     */
     @Override
     public void close() {
-        logger.removeAppender((Appender) this);
+        logger.detachAppender(this);
         stop();
     }
 }

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.businessintelligence.common.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +26,12 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+/**
+ * Request Logging Filter Integration Test.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 class RequestLoggingFilterIntegrationTest {
 
     @Autowired
@@ -38,7 +48,7 @@ class RequestLoggingFilterIntegrationTest {
     @Test
     void shouldGenerateRequestIdAndWriteAccessLog() throws Exception {
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestLoggingFilter.class)) {
-            MvcResult result = mockMvc.perform(get("/business-intelligence/overview"))
+            MvcResult result = mockMvc.perform(get("/api/business-intelligence/overview"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -47,9 +57,9 @@ class RequestLoggingFilterIntegrationTest {
             assertThat(requestId).isNotBlank();
             assertThat(appender.events())
                 .anySatisfy(event -> {
-                    String loggedRequestId = Objects.toString(event.getContextData().getValue(LoggingKeys.REQUEST_ID), null);
-                    assertThat(event.getMessage().getFormattedMessage())
-                        .contains("HTTP GET /business-intelligence/overview completed status=200");
+                    String loggedRequestId = event.getMDCPropertyMap().get(LoggingKeys.REQUEST_ID);
+                    assertThat(event.getFormattedMessage())
+                        .contains("HTTP GET /api/business-intelligence/overview completed status=200");
                     assertThat(loggedRequestId).isEqualTo(requestId);
                 });
         }
@@ -60,7 +70,7 @@ class RequestLoggingFilterIntegrationTest {
         try (TestLogAppender appender = TestLogAppender.attachTo(RequestLoggingFilter.class)) {
             String requestId = "req-fixed-123";
 
-            MvcResult result = mockMvc.perform(get("/business-intelligence/overview")
+            MvcResult result = mockMvc.perform(get("/api/business-intelligence/overview")
                     .header(LoggingKeys.REQUEST_ID_HEADER, requestId))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -68,7 +78,7 @@ class RequestLoggingFilterIntegrationTest {
             assertThat(result.getResponse().getHeader(LoggingKeys.REQUEST_ID_HEADER)).isEqualTo(requestId);
             assertThat(appender.events())
                 .anySatisfy(event -> {
-                    String loggedRequestId = Objects.toString(event.getContextData().getValue(LoggingKeys.REQUEST_ID), null);
+                    String loggedRequestId = event.getMDCPropertyMap().get(LoggingKeys.REQUEST_ID);
                     assertThat(loggedRequestId).isEqualTo(requestId);
                 });
         }

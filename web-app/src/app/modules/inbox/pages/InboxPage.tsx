@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Archive, MessageSquare } from '../../../platform/ui/icons/AppIcons'
 import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
@@ -9,6 +10,7 @@ import Pagination from '../../../platform/ui/primitives/Pagination'
 import FilterBar from '../../../platform/ui/filters/FilterBar'
 import FilterInlineGroup from '../../../platform/ui/filters/FilterInlineGroup'
 import FilterSelect from '../../../platform/ui/filters/FilterSelect'
+import { ItemActionButton, ItemActionGroup } from '../../../platform/ui/primitives/ItemAction'
 import ListCard from '../../../platform/ui/list/ListCard'
 import ListFooter from '../../../platform/ui/list/ListFooter'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
@@ -125,21 +127,24 @@ export default function InboxPage() {
                     </ListFooter>
                 ) : undefined}
             >
-                {isLoading ? (
+                {isLoading && (
                     <div className="empty-state">
                         <h3 className="empty-state-title">{t('inbox.loadingInbox')}</h3>
                     </div>
-                ) : unreadSessions.length === 0 ? (
+                )}
+                {!isLoading && unreadSessions.length === 0 && (
                     <div className="empty-state">
                         <h3 className="empty-state-title">{t('inbox.inboxClear')}</h3>
                         <p className="empty-state-description">{t('inbox.noUnreadSessions')}</p>
                     </div>
-                ) : searchTerm && filteredSessions.length === 0 ? (
+                )}
+                {!isLoading && unreadSessions.length > 0 && searchTerm && filteredSessions.length === 0 && (
                     <div className="empty-state">
                         <h3 className="empty-state-title">{t('common.noResults')}</h3>
                         <p className="empty-state-description">{t('inbox.noMatchSessions', { term: searchTerm })}</p>
                     </div>
-                ) : (
+                )}
+                {!isLoading && filteredSessions.length > 0 && (
                     <div className="inbox-list">
                         {paginatedSessions.map((session) => (
                             <ListCard key={`${session.agentId}:${session.id}`} className="inbox-item">
@@ -157,22 +162,19 @@ export default function InboxPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="inbox-item-actions">
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
+                                <ItemActionGroup className="inbox-item-actions">
+                                    <ItemActionButton
+                                        icon={Archive}
                                         onClick={() => markSessionRead(session.agentId, session.id)}
-                                    >
-                                        {t('inbox.dismiss')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
+                                        label={t('inbox.dismiss')}
+                                    />
+                                    <ItemActionButton
+                                        icon={MessageSquare}
                                         onClick={() => openSession(session.agentId, session.id)}
-                                    >
-                                        {t('common.open')}
-                                    </button>
-                                </div>
+                                        label={t('common.open')}
+                                        tone="primary"
+                                    />
+                                </ItemActionGroup>
                             </ListCard>
                         ))}
                     </div>

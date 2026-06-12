@@ -63,6 +63,8 @@ java -jar target/knowledge-service.jar
 - `indexes/`：索引目录
 - `meta/knowledge.db`：默认 SQLite 模式下的元数据与 embedding 内容缓存
 
+Lucene 主版本或索引格式不兼容时，直接清理 `indexes/` 后重启服务。启动重建会基于已保存的 chunk 和 embedding 缓存重新写入词法索引与向量索引，不需要重新上传文件。
+
 建议：
 
 - 生产环境使用独立磁盘路径，不要和代码目录混放
@@ -132,11 +134,11 @@ logging:
 
 ### 3.1.1 日志与排查配置
 
-`knowledge-service` 当前使用 `SLF4J API + Log4j2 backend`。
+`knowledge-service` 当前使用 `SLF4J API + Logback backend`。
 
 默认行为：
 
-- 应用日志由 Log4j2 直接写入 `knowledge-service/logs/knowledge-service.log`
+- 应用日志由 Logback 直接写入 `knowledge-service/logs/knowledge-service.log`
 - 脚本后台启动时，标准输出与标准错误单独写入 `knowledge-service/logs/knowledge-service-console.log`
 - 日志格式默认带上：
   - `service`
@@ -507,6 +509,7 @@ KNOWLEDGE_LOG_QUERY_TEXT=false \
 - 当前可以同步返回成功结果，后续可平滑扩展为异步 job
 - 前端只需要根据返回状态给出提交成功提示，不依赖立即完成
 - 该接口应继续走 gateway 暴露给浏览器
+- 该接口会基于已保存的原始文件重新执行解析、分块与索引构建，不要求用户重新上传文件
 
 ### 6.3 文档导入与文档管理
 

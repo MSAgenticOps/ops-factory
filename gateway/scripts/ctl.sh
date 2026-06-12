@@ -17,7 +17,7 @@ GATEWAY_CONFIG_PATH="${GATEWAY_CONFIG_PATH:-${SERVICE_DIR}/config.yaml}"
 yaml_path_val() {
     local path="$1" file="${GATEWAY_CONFIG_PATH}"
     [ -f "${file}" ] || return 0
-    node -e "const y=require('yaml');const fs=require('fs');const file=process.argv[1];const keys=process.argv[2].split('.');const c=y.parse(fs.readFileSync(file,'utf-8'));let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" \
+    node -e "const y=require('js-yaml');const fs=require('fs');const file=process.argv[1];const keys=process.argv[2].split('.');const c=y.load(fs.readFileSync(file,'utf-8'));let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" \
         "${file}" "${path}" 2>/dev/null || true
 }
 
@@ -27,6 +27,7 @@ GATEWAY_PORT="${GATEWAY_PORT:-$(yaml_path_val server.port)}"
 GATEWAY_PORT="${GATEWAY_PORT:-3000}"
 GATEWAY_SECRET_KEY="${GATEWAY_SECRET_KEY:-$(yaml_path_val gateway.secret-key)}"
 GATEWAY_SECRET_KEY="${GATEWAY_SECRET_KEY:-test}"
+CONTROL_CENTER_SECRET_KEY="${CONTROL_CENTER_SECRET_KEY:-change-me}"
 GOOSED_BIN="${GOOSED_BIN:-$(yaml_path_val gateway.goosed-bin)}"
 GOOSED_BIN="${GOOSED_BIN:-goosed}"
 GOOSE_TLS="${GOOSE_TLS:-$(yaml_path_val gateway.goose-tls)}"
@@ -70,8 +71,8 @@ log_fail()  { echo -e "${RED}[FAIL]${NC}  $1"; }
 
 LOG_DIR="${SERVICE_DIR}/logs"
 PID_FILE="${LOG_DIR}/gateway.pid"
-GATEWAY_HEALTH_PATH="/gateway/status"
-GATEWAY_AGENTS_PATH="/gateway/agents"
+GATEWAY_HEALTH_PATH="/api/gateway/status"
+GATEWAY_AGENTS_PATH="/api/gateway/agents"
 DAEMON_HELPER="${ROOT_DIR}/scripts/lib/service-daemon.sh"
 
 # shellcheck source=/dev/null
@@ -166,14 +167,15 @@ gateway_url() {
 # --- Build ---
 build_gateway() {
     local jar="${SERVICE_DIR}/gateway-service/target/gateway-service.jar"
+    local lib_dir="${SERVICE_DIR}/gateway-service/target/lib"
 
-    # Skip build if JAR exists and no source changes
-    if [ -f "${jar}" ]; then
+    # Skip build if JAR and runtime dependencies exist and no source changes
+    if [ -f "${jar}" ] && [ -d "${lib_dir}" ]; then
         local jar_time
         jar_time="$(stat -f "%m" "${jar}" 2>/dev/null || stat -c "%Y" "${jar}" 2>/dev/null)"
         local newest_src
-        newest_src="$(find "${SERVICE_DIR}" -name "*.java" -newer "${jar}" 2>/dev/null | head -1)"
-        if [ -z "${newest_src}" ]; then
+        newest_src="$(find "${SERVICE_DIR}" \( -name "*.java" -o -name "pom.xml" \) -newer "${jar}" -print -quit 2>/dev/null)"
+        if [ -z "${newest_src}" ] && [ -d "${lib_dir}" ] && find "${lib_dir}" -mindepth 1 -print -quit >/dev/null 2>&1; then
             log_info "JAR is up-to-date, skipping build"
             return 0
         fi
@@ -181,6 +183,7 @@ build_gateway() {
 
     log_info "Building Java gateway..."
     cd "${SERVICE_DIR}"
+    rm -rf "${lib_dir}"
     "${MVN}" package -DskipTests -q || {
         log_error "Maven build failed"
         return 1
@@ -217,7 +220,7 @@ build_node_mcp() {
 
     if [ "${has_build_script}" = "true" ] && [ -f "${entry}" ] && [ -d "${mcp_dir}/node_modules" ] && [ "${needs_install}" != "true" ]; then
         local newest_src
-        newest_src="$(find "${mcp_dir}/src" "${mcp_dir}/package.json" "${mcp_dir}/package-lock.json" "${mcp_dir}/tsconfig.json" -newer "${entry}" 2>/dev/null | head -1)"
+        newest_src="$(find "${mcp_dir}/src" "${mcp_dir}/package.json" "${mcp_dir}/package-lock.json" "${mcp_dir}/tsconfig.json" -newer "${entry}" -print -quit 2>/dev/null)"
         if [ -z "${newest_src}" ]; then
             log_info "${label} MCP is up-to-date, skipping build"
             return 0
@@ -243,16 +246,155 @@ build_node_mcp() {
     log_info "${label} MCP build complete"
 }
 
+check_python_mcp() {
+    local label="$1"
+    local mcp_dir="$2"
+    local entry="$3"
+    local requirements="${mcp_dir}/requirements.txt"
+    local deps_dir="${mcp_dir}/.python-deps"
+
+    if [ ! -f "${entry}" ]; then
+        log_error "${label} MCP entry not found: ${entry}"
+        return 1
+    fi
+    if [ ! -f "${requirements}" ]; then
+        log_error "${label} MCP requirements not found: ${requirements}"
+        return 1
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        log_error "${label} MCP requires python3"
+        return 1
+    fi
+
+    if ! PYTHONPATH="${deps_dir}" python3 -c "import importlib.metadata as md; from mcp.server.fastmcp import FastMCP; raise SystemExit(0 if md.version('mcp') == '1.27.1' else 1)" >/dev/null 2>&1; then
+        log_info "Installing ${label} MCP Python dependencies into ${deps_dir}"
+        python3 -m pip install --disable-pip-version-check --quiet --upgrade --target "${deps_dir}" -r "${requirements}" || {
+            log_error "${label} MCP Python dependency install failed"
+            return 1
+        }
+    fi
+
+    if ! PYTHONPATH="${deps_dir}" python3 -c "import importlib.metadata as md; from mcp.server.fastmcp import FastMCP; raise SystemExit(0 if md.version('mcp') == '1.27.1' else 1)" >/dev/null 2>&1; then
+        log_error "${label} MCP requires Python dependency mcp==1.27.1. Install with: python3 -m pip install --target ${deps_dir} -r ${requirements}"
+        return 1
+    fi
+
+    log_info "${label} MCP Python dependency mcp==1.27.1 is available in ${deps_dir}"
+}
+
 build_knowledge_service_mcp() {
-    build_node_mcp "Knowledge-Service" \
+    check_python_mcp "Knowledge-Service" \
         "${SERVICE_DIR}/agents/qa-agent/config/mcp/knowledge-service" \
-        "${SERVICE_DIR}/agents/qa-agent/config/mcp/knowledge-service/dist/index.js"
+        "${SERVICE_DIR}/agents/qa-agent/config/mcp/knowledge-service/server.py"
 }
 
 build_knowledge_cli_mcp() {
-    build_node_mcp "Knowledge-Cli" \
+    check_python_mcp "Knowledge-Cli" \
         "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli" \
-        "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli/dist/index.js"
+        "${SERVICE_DIR}/agents/qa-cli-agent/config/mcp/knowledge-cli/server.py"
+}
+
+build_supervisor_control_center_mcp() {
+    check_python_mcp "Supervisor-Control-Center" \
+        "${SERVICE_DIR}/agents/supervisor-agent/config/mcp/control-center" \
+        "${SERVICE_DIR}/agents/supervisor-agent/config/mcp/control-center/server.py"
+}
+
+# `delegation` (A2A) MCP server — fo-copilot only. Uses a self-contained .venv (like the ticket MCP) so the python
+# that runs it always matches the python that built its deps, independent of goosed's PATH (which may resolve
+# `python3` to an old system python that is too old for `mcp`).
+build_delegation_mcp() {
+    build_python_mcp "Delegation" \
+        "${SERVICE_DIR}/agents/fo-copilot/config/mcp/delegation"
+}
+
+PYTHON_MIN_MINOR=10
+
+find_python_3_10_plus() {
+    local cand ver major minor
+    # Pinned project runtime is CPython 3.12.x; prefer it explicitly so a later-installed
+    # python3.13/3.14 on PATH can't silently rebuild venvs on a mismatched ABI.
+    for cand in python3.12 python3.13 python3.11 python3.10 python3; do
+        command -v "${cand}" >/dev/null 2>&1 || continue
+        ver="$("${cand}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "")"
+        major="${ver%%.*}"
+        minor="${ver##*.}"
+        if [ "${major}" = "3" ] && [ -n "${minor}" ] && [ "${minor}" -ge "${PYTHON_MIN_MINOR}" ] 2>/dev/null; then
+            echo "${cand}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Pin `python3` for this script AND everything it spawns — the python MCP builds (check_python_mcp
+# shells out to bare `python3`) and the goosed runtime, whose servers launch via `cmd: python3`.
+# A stale login shell can leave a too-old `python3` first on PATH (e.g. /usr/bin/python3 3.9 after a
+# Homebrew python is removed). find_python_3_10_plus locates the right interpreter (python3.12 still
+# resolves via ~/.local/bin even then); we prepend its real bin dir so a bare `python3` resolves to
+# it. Portable: the dir is derived from the found interpreter, never hardcoded.
+ensure_python_on_path() {
+    local cmd real bindir
+    cmd="$(find_python_3_10_plus)" || {
+        log_warn "No python3 >= 3.${PYTHON_MIN_MINOR} found on PATH; python MCP servers may fail to build/run"
+        return 0
+    }
+    real="$("${cmd}" -c 'import os, sys; print(os.path.realpath(sys.executable))' 2>/dev/null)" || return 0
+    [ -n "${real}" ] || return 0
+    bindir="$(dirname "${real}")"
+    export PATH="${bindir}:${PATH}"
+    log_info "Using python3 from ${bindir} ($("${cmd}" --version 2>&1))"
+}
+
+build_python_mcp() {
+    local label="$1"
+    local mcp_dir="$2"
+
+    if [ ! -f "${mcp_dir}/requirements.txt" ]; then
+        return 0
+    fi
+
+    local venv_dir="${mcp_dir}/.venv"
+    local stamp="${venv_dir}/.requirements-stamp"
+    local needs_install="false"
+
+    if [ ! -x "${venv_dir}/bin/python" ]; then
+        needs_install="true"
+    elif [ ! -f "${stamp}" ]; then
+        needs_install="true"
+    elif [ "${mcp_dir}/requirements.txt" -nt "${stamp}" ]; then
+        needs_install="true"
+    fi
+
+    if [ "${needs_install}" != "true" ]; then
+        log_info "${label} MCP venv is up-to-date, skipping build"
+        return 0
+    fi
+
+    local python_bin
+    python_bin="$(find_python_3_10_plus)" || {
+        log_error "${label} MCP requires python3 >= 3.${PYTHON_MIN_MINOR}; none found on PATH"
+        return 1
+    }
+
+    log_info "Building ${label} MCP venv with ${python_bin}..."
+    rm -rf "${venv_dir}"
+    "${python_bin}" -m venv "${venv_dir}" || {
+        log_error "${label} MCP venv create failed"
+        return 1
+    }
+    "${venv_dir}/bin/pip" install --quiet --disable-pip-version-check -r "${mcp_dir}/requirements.txt" || {
+        log_error "${label} MCP pip install failed"
+        return 1
+    }
+    touch "${stamp}"
+    log_info "${label} MCP build complete"
+}
+
+build_local_tiny_tools_mcp() {
+    build_python_mcp "Local-Tiny-Tools" \
+        "${SERVICE_DIR}/agents/local-tiny-agent/config/mcp/local-tiny-tools"
 }
 
 # --- Agents (goosed) helpers ---
@@ -335,9 +477,13 @@ do_startup() {
         stop_port "${GATEWAY_PORT}" "gateway"
     fi
 
+    ensure_python_on_path
     build_gateway
     build_knowledge_service_mcp
     build_knowledge_cli_mcp
+    build_supervisor_control_center_mcp
+    build_local_tiny_tools_mcp
+    build_delegation_mcp
 
     local jar="${SERVICE_DIR}/gateway-service/target/gateway-service.jar"
     local lib_dir="${SERVICE_DIR}/gateway-service/target/lib"
@@ -412,6 +558,10 @@ do_startup() {
     add_java_opt_from_env USERS_DIR gateway.paths.users-dir
     add_java_opt_from_env IDLE_TIMEOUT_MINUTES gateway.idle.timeout-minutes
     add_java_opt_from_env IDLE_CHECK_INTERVAL gateway.idle.check-interval-ms
+    add_java_opt_from_env PROACTIVE_DELIVERY_ENABLED gateway.proactive-delivery.enabled
+    add_java_opt_from_env PROACTIVE_DELIVERY_POLL_INTERVAL gateway.proactive-delivery.poll-interval-ms
+    add_java_opt_from_env PROACTIVE_DELIVERY_MAX_AGE_MINUTES gateway.proactive-delivery.max-age-minutes
+    add_java_opt_from_env PROACTIVE_DELIVERY_FOLLOWUP_INJECT_LIMIT gateway.proactive-delivery.followup-inject-limit
     add_java_opt_from_env SSE_FIRST_BYTE_TIMEOUT gateway.sse.first-byte-timeout-sec
     add_java_opt_from_env SSE_IDLE_TIMEOUT gateway.sse.idle-timeout-sec
     add_java_opt_from_env SSE_MAX_DURATION gateway.sse.max-duration-sec
@@ -456,10 +606,16 @@ do_startup() {
     java_opts+=("-DGATEWAY_CONFIG_PATH=${GATEWAY_CONFIG_PATH}")
     java_opts+=("-jar" "${jar}")
 
+    local gateway_env=(
+        "GATEWAY_CONFIG_PATH=${GATEWAY_CONFIG_PATH}"
+        "GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY}"
+        "CONTROL_CENTER_SECRET_KEY=${CONTROL_CENTER_SECRET_KEY}"
+    )
+
     if [ "${mode}" = "background" ]; then
         local console_log="${LOG_DIR}/gateway-stdout-stderr.log"
         local app_log="${LOG_DIR}/gateway.log"
-        GATEWAY_PID="$(daemon_start "${PID_FILE}" "${console_log}" env GATEWAY_CONFIG_PATH="${GATEWAY_CONFIG_PATH}" "${java_cmd}" "${java_opts[@]}")"
+        GATEWAY_PID="$(daemon_start "${PID_FILE}" "${console_log}" env "${gateway_env[@]}" "${java_cmd}" "${java_opts[@]}")"
         if ! kill -0 "${GATEWAY_PID}" 2>/dev/null; then
             log_error "Failed to start gateway"
             return 1
@@ -473,7 +629,7 @@ do_startup() {
         log_info "Gateway started (PID: ${GATEWAY_PID}, log: ${app_log})"
         check_agents_configured || true
     else
-        exec env GATEWAY_CONFIG_PATH="${GATEWAY_CONFIG_PATH}" ${java_cmd} "${java_opts[@]}"
+        exec env "${gateway_env[@]}" "${java_cmd}" "${java_opts[@]}"
     fi
 }
 

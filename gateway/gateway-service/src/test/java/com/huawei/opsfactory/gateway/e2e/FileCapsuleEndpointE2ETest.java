@@ -1,4 +1,13 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.e2e;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -10,186 +19,262 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * E2E tests for FileCapsuleController endpoints:
- * GET  /agents/{agentId}/file-capsules?sessionId=xxx
+ * GET /agents/{agentId}/file-capsules?sessionId=xxx
  * POST /agents/{agentId}/file-capsules
+ *
+ * @author x00000000
+ * @since 2026-05-09
  */
 public class FileCapsuleEndpointE2ETest extends BaseE2ETest {
-
     private static final Path USERS_DIR = Path.of("/tmp/test-gateway/gateway/users");
 
+    /**
+     * Sets the up.
+     */
     @Before
     public void setUp() {
         when(agentConfigService.getUserAgentDir(any(String.class), any(String.class)))
-                .thenAnswer(inv -> USERS_DIR.resolve(inv.getArgument(0, String.class))
-                        .resolve("agents").resolve(inv.getArgument(1, String.class)));
+            .thenAnswer(inv -> USERS_DIR.resolve(inv.getArgument(0, String.class))
+                .resolve("agents")
+                .resolve(inv.getArgument(1, String.class)));
     }
 
-    // ====================== GET /agents/{agentId}/file-capsules ======================
-
+    /**
+     * Returns the file capsules authenticated returns entries.
+     */
     @Test
     public void getFileCapsules_authenticated_returnsEntries() {
         Map<String, List<Map<String, String>>> entries = new LinkedHashMap<>();
-        entries.put("msg_001", List.of(
-                Map.of("name", "output.csv", "path", "data/output.csv")));
-        when(fileService.loadOutputFiles(any(Path.class), eq("session-1")))
-                .thenReturn(entries);
+        entries.put("msg_001", List.of(Map.of("name", "output.csv", "path", "data/output.csv")));
+        when(fileService.loadOutputFiles(any(Path.class), eq("session-1"))).thenReturn(entries);
 
-        webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=session-1")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.entries.msg_001.length()").isEqualTo(1)
-                .jsonPath("$.entries.msg_001[0].name").isEqualTo("output.csv");
+        webClient.get()
+            .uri("/api/gateway/agents/test-agent/file-capsules?sessionId=session-1")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.entries.msg_001.length()")
+            .isEqualTo(1)
+            .jsonPath("$.entries.msg_001[0].name")
+            .isEqualTo("output.csv");
     }
 
+    /**
+     * Returns the file capsules empty entries returns empty map.
+     */
     @Test
     public void getFileCapsules_emptyEntries_returnsEmptyMap() {
-        when(fileService.loadOutputFiles(any(Path.class), eq("session-1")))
-                .thenReturn(Collections.emptyMap());
+        when(fileService.loadOutputFiles(any(Path.class), eq("session-1"))).thenReturn(Collections.emptyMap());
 
-        webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=session-1")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.entries").isMap()
-                .jsonPath("$.entries.length()").isEqualTo(0);
+        webClient.get()
+            .uri("/api/gateway/agents/test-agent/file-capsules?sessionId=session-1")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.entries")
+            .isMap()
+            .jsonPath("$.entries.length()")
+            .isEqualTo(0);
     }
 
+    /**
+     * Returns the file capsules unauthenticated returns401.
+     */
     @Test
     public void getFileCapsules_unauthenticated_returns401() {
-        webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=session-1")
-                .exchange()
-                .expectStatus().isUnauthorized();
+        webClient.get()
+            .uri("/api/gateway/agents/test-agent/file-capsules?sessionId=session-1")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized();
     }
 
+    /**
+     * Returns the file capsules multiple messages returns all.
+     */
     @Test
     public void getFileCapsules_multipleMessages_returnsAll() {
         Map<String, List<Map<String, String>>> entries = new LinkedHashMap<>();
         entries.put("msg_001", List.of(Map.of("name", "a.txt", "path", "data/a.txt")));
-        entries.put("msg_002", List.of(
-                Map.of("name", "b.csv", "path", "data/b.csv"),
-                Map.of("name", "c.pdf", "path", "data/c.pdf")));
-        when(fileService.loadOutputFiles(any(Path.class), eq("session-2")))
-                .thenReturn(entries);
+        entries.put("msg_002",
+            List.of(Map.of("name", "b.csv", "path", "data/b.csv"), Map.of("name", "c.pdf", "path", "data/c.pdf")));
+        when(fileService.loadOutputFiles(any(Path.class), eq("session-2"))).thenReturn(entries);
 
-        webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=session-2")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.entries.msg_001.length()").isEqualTo(1)
-                .jsonPath("$.entries.msg_002.length()").isEqualTo(2);
+        webClient.get()
+            .uri("/api/gateway/agents/test-agent/file-capsules?sessionId=session-2")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.entries.msg_001.length()")
+            .isEqualTo(1)
+            .jsonPath("$.entries.msg_002.length()")
+            .isEqualTo(2);
     }
 
-    // ====================== POST /agents/{agentId}/file-capsules ======================
-
+    /**
+     * Executes the save file capsule valid body returns ok operation.
+     */
     @Test
     public void saveFileCapsule_validBody_returnsOk() {
-        webClient.post().uri("/gateway/agents/test-agent/file-capsules")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\",\"files\":[{\"name\":\"out.csv\",\"path\":\"data/out.csv\"}]}")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("ok");
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/file-capsules")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\",\"files\":[{\"name\":\"out.csv\","
+                + "\"path\":\"data/out.csv\"}]}")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.status")
+            .isEqualTo("ok");
 
-        verify(fileService).persistOutputFiles(
-                any(Path.class), eq("s1"), eq("msg_001"), any(List.class));
+        verify(fileService).persistOutputFiles(any(Path.class), eq("s1"), eq("msg_001"), eq((String) null), any(List.class));
     }
 
+    /**
+     * Executes the save file capsule request id persists alongside files operation.
+     */
+    @Test
+    public void saveFileCapsule_requestIdPresent_persistsWithRequestId() {
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/file-capsules")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"sessionId\":\"s1\",\"requestId\":\"req-123\",\"messageId\":\"msg_001\",\"files\":"
+                + "[{\"name\":\"out.csv\",\"path\":\"data/out.csv\"}]}")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.status")
+            .isEqualTo("ok");
+
+        verify(fileService).persistOutputFiles(any(Path.class), eq("s1"), eq("msg_001"), eq("req-123"), any(List.class));
+    }
+
+    /**
+     * Executes the save file capsule missing session id returns error operation.
+     */
     @Test
     public void saveFileCapsule_missingSessionId_returnsError() {
-        webClient.post().uri("/gateway/agents/test-agent/file-capsules")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"messageId\":\"msg_001\",\"files\":[]}")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("error");
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/file-capsules")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"messageId\":\"msg_001\",\"files\":[]}")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.status")
+            .isEqualTo("error");
     }
 
+    /**
+     * Executes the save file capsule missing message id returns error operation.
+     */
     @Test
     public void saveFileCapsule_missingMessageId_returnsError() {
-        webClient.post().uri("/gateway/agents/test-agent/file-capsules")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"sessionId\":\"s1\",\"files\":[]}")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("error");
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/file-capsules")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"sessionId\":\"s1\",\"files\":[]}")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.status")
+            .isEqualTo("error");
     }
 
+    /**
+     * Executes the save file capsule missing files returns error operation.
+     */
     @Test
     public void saveFileCapsule_missingFiles_returnsError() {
-        webClient.post().uri("/gateway/agents/test-agent/file-capsules")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\"}")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("error");
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/file-capsules")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\"}")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.status")
+            .isEqualTo("error");
     }
 
+    /**
+     * Executes the save file capsule unauthenticated returns401 operation.
+     */
     @Test
     public void saveFileCapsule_unauthenticated_returns401() {
-        webClient.post().uri("/gateway/agents/test-agent/file-capsules")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\",\"files\":[]}")
-                .exchange()
-                .expectStatus().isUnauthorized();
+        webClient.post()
+            .uri("/api/gateway/agents/test-agent/file-capsules")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"sessionId\":\"s1\",\"messageId\":\"msg_001\",\"files\":[]}")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized();
     }
 
-    // ====================== User isolation ======================
-
+    /**
+     * Executes the file capsules different users resolve different paths operation.
+     */
     @Test
     public void fileCapsules_differentUsers_resolveDifferentPaths() {
         Path aliceDir = USERS_DIR.resolve("alice").resolve("agents").resolve("test-agent");
         Path bobDir = USERS_DIR.resolve("bob").resolve("agents").resolve("test-agent");
 
-        Map<String, List<Map<String, String>>> aliceEntries = Map.of(
-                "msg_a", List.of(Map.of("name", "alice.txt", "path", "alice.txt")));
-        Map<String, List<Map<String, String>>> bobEntries = Map.of(
-                "msg_b", List.of(Map.of("name", "bob.txt", "path", "bob.txt")));
+        Map<String, List<Map<String, String>>> aliceEntries =
+            Map.of("msg_a", List.of(Map.of("name", "alice.txt", "path", "alice.txt")));
+        Map<String, List<Map<String, String>>> bobEntries =
+            Map.of("msg_b", List.of(Map.of("name", "bob.txt", "path", "bob.txt")));
 
         when(fileService.loadOutputFiles(eq(aliceDir), eq("s1"))).thenReturn(aliceEntries);
         when(fileService.loadOutputFiles(eq(bobDir), eq("s1"))).thenReturn(bobEntries);
 
         // Alice sees her capsules
-        webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=s1")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "alice")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.entries.msg_a[0].name").isEqualTo("alice.txt");
+        webClient.get()
+            .uri("/api/gateway/agents/test-agent/file-capsules?sessionId=s1")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "alice")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.entries.msg_a[0].name")
+            .isEqualTo("alice.txt");
 
         // Bob sees his capsules
-        webClient.get().uri("/gateway/agents/test-agent/file-capsules?sessionId=s1")
-                .header(HEADER_SECRET_KEY, SECRET_KEY)
-                .header(HEADER_USER_ID, "bob")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.entries.msg_b[0].name").isEqualTo("bob.txt");
+        webClient.get()
+            .uri("/api/gateway/agents/test-agent/file-capsules?sessionId=s1")
+            .header(HEADER_SECRET_KEY, SECRET_KEY)
+            .header(HEADER_USER_ID, "bob")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.entries.msg_b[0].name")
+            .isEqualTo("bob.txt");
     }
 }

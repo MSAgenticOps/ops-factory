@@ -4,6 +4,47 @@ import Button from '../../../../platform/ui/primitives/Button'
 import './Memory.css'
 import '../prompt/PromptsSection.css'
 
+function EditIcon() {
+    return (
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path
+                d="M4.75 13.95 4 16l2.05-.75 8.5-8.5-1.3-1.3-8.5 8.5Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="m11.95 6.05 1.3 1.3m.65-.65 1.05-1.05a1.15 1.15 0 0 0 0-1.6l-.5-.5a1.15 1.15 0 0 0-1.6 0L11.8 4.6"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M4 16h12"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+            />
+        </svg>
+    )
+}
+
+function TrashIcon() {
+    return (
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path
+                d="M6.5 5.5h7m-6 0V4.75A1.75 1.75 0 0 1 9.25 3h1.5A1.75 1.75 0 0 1 12.5 4.75v.75m-8 0h11m-1 0-.6 8.39a1.75 1.75 0 0 1-1.75 1.61H7.85A1.75 1.75 0 0 1 6.1 13.89L5.5 5.5m2.75 2.5v4m4-4v4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    )
+}
+
 export interface MemoryEntry {
     tags: string[]
     content: string
@@ -57,14 +98,27 @@ interface MemoryFileCardProps {
     onSave: (content: string) => Promise<boolean>
     onDelete: () => void
     autoEdit?: boolean
+    isDeleting?: boolean
 }
 
-export default function MemoryFileCard({ category, content, onSave, onDelete, autoEdit }: MemoryFileCardProps) {
+const MAX_PREVIEW_LINES = 3
+const MAX_PREVIEW_CHARS = 50
+const MAX_CONTENT_CHARS = 20000
+// Maximum number of tags to display before showing "+N more" indicator
+// Chosen to balance information density with readability
+const MAX_VISIBLE_TAGS = 3
+// Maximum number of memory entries to show by default
+// Users can click "Show more" to view all entries
+const MAX_VISIBLE_ENTRIES = 3
+
+export default function MemoryFileCard({ category, content, onSave, onDelete, autoEdit, isDeleting = false }: MemoryFileCardProps) {
     const { t } = useTranslation()
     const [isEditing, setIsEditing] = useState(autoEdit || false)
     const [editContent, setEditContent] = useState(content)
     const [isSaving, setIsSaving] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
+    const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set())
+    const [showAllEntries, setShowAllEntries] = useState(false)
 
     const entries = useMemo(() => isEditing ? [] : parseMemoryContent(content), [isEditing, content])
 
@@ -81,6 +135,9 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
     }
 
     const handleSave = async () => {
+        if (editContent.length > MAX_CONTENT_CHARS) {
+            return
+        }
         setIsSaving(true)
         const ok = await onSave(editContent)
         setIsSaving(false)
@@ -95,11 +152,39 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
         setHasChanges(val !== content)
     }
 
+    const toggleExpanded = (idx: number) => {
+        setExpandedEntries(prev => {
+            const next = new Set(prev)
+            if (next.has(idx)) {
+                next.delete(idx)
+            } else {
+                next.add(idx)
+            }
+            return next
+        })
+    }
+
+    const needsTruncate = (text: string): boolean => {
+        const lines = text.split('\n')
+        return lines.length > MAX_PREVIEW_LINES || text.length > MAX_PREVIEW_CHARS
+    }
+
+    const getPreviewContent = (text: string): string => {
+        const lines = text.split('\n')
+        if (lines.length > MAX_PREVIEW_LINES) {
+            return lines.slice(0, MAX_PREVIEW_LINES).join('\n').trim()
+        }
+        if (text.length > MAX_PREVIEW_CHARS) {
+            return text.slice(0, MAX_PREVIEW_CHARS)
+        }
+        return text
+    }
+
     return (
         <div className={`memory-file-card ${isEditing ? 'memory-file-card-editing' : ''}`}>
             <div className="memory-file-header">
                 <div className="memory-file-title">
-                    <span className="memory-file-name">{category}</span>
+                    <span className="memory-file-name" title={category}>{category}</span>
                     <span className="memory-file-count">
                         {entries.length > 0 && t('memory.entryCount', { count: entries.length })}
                     </span>
@@ -110,22 +195,33 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                             {t('prompts.collapse')}
                         </Button>
                     ) : (
-                        <Button variant="secondary" size="sm" className="prompts-edit-btn" onClick={handleEdit}>
-                            {t('common.edit')}
-                        </Button>
+                        <button
+                            type="button"
+                            className="card-icon-action"
+                            onClick={handleEdit}
+                            title={t('common.edit')}
+                            aria-label={t('common.edit')}
+                        >
+                            <EditIcon />
+                        </button>
                     )}
                     <button
                         type="button"
-                        className="memory-delete-icon"
+                        className="card-icon-action card-icon-action-danger"
                         onClick={onDelete}
                         title={t('common.delete')}
+                        aria-label={t('common.delete')}
                     >
-                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H5H10H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H11V12C11 12.5523 10.5523 13 10 13H5C4.44772 13 4 12.5523 4 12V4H3.5C3.22386 4 3 3.77614 3 3.5ZM5 4H10V12H5V4Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"/>
-                        </svg>
+                        <TrashIcon />
                     </button>
                 </div>
             </div>
+
+            {isDeleting && (
+                <div className="memory-delete-confirm">
+                    {t('memory.deleteConfirm')} <span className="memory-delete-confirm-name">「{category}」</span>
+                </div>
+            )}
 
             {isEditing ? (
                 <div className="memory-file-editor">
@@ -135,8 +231,13 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                         onChange={e => handleChange(e.target.value)}
                         rows={10}
                     />
-                    <div className="memory-format-hint">
-                        {t('memory.formatHint')}
+                    <div className="memory-editor-footer">
+                        <div className="memory-format-hint">
+                            {t('memory.formatHint')}
+                        </div>
+                        <div className={`memory-char-count ${editContent.length > MAX_CONTENT_CHARS ? 'memory-char-count-error' : ''}`}>
+                            {editContent.length.toLocaleString()} / {MAX_CONTENT_CHARS.toLocaleString()}
+                        </div>
                     </div>
                     <div className="prompts-editor-actions">
                         <div className="prompts-editor-actions-left" />
@@ -144,7 +245,7 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                             <Button variant="secondary" onClick={handleCancel}>
                                 {t('common.cancel')}
                             </Button>
-                            <Button variant="primary" onClick={handleSave} disabled={isSaving || !hasChanges}>
+                            <Button variant="primary" onClick={handleSave} disabled={isSaving || !hasChanges || editContent.length > MAX_CONTENT_CHARS}>
                                 {isSaving ? t('agentConfigure.saving') : t('common.save')}
                             </Button>
                         </div>
@@ -155,31 +256,69 @@ export default function MemoryFileCard({ category, content, onSave, onDelete, au
                     {entries.length === 0 ? (
                         <div className="memory-entry-empty">{t('memory.emptyFile')}</div>
                     ) : (
-                        entries.map((entry, idx) => (
-                            <div key={idx} className="memory-entry">
-                                <div className="memory-entry-tags">
-                                    {entry.tags.length > 0 ? (
-                                        entry.tags.map(tag => {
-                                            const c = getTagColor(tag)
-                                            return (
-                                                <span
-                                                    key={tag}
-                                                    className="memory-tag"
-                                                    style={{ background: c.bg, color: c.fg }}
+                        <>
+                            {entries.slice(0, showAllEntries ? entries.length : MAX_VISIBLE_ENTRIES).map((entry, idx) => {
+                            const isExpanded = expandedEntries.has(idx)
+                            const shouldTruncate = !isExpanded && needsTruncate(entry.content)
+                            const displayContent = shouldTruncate ? getPreviewContent(entry.content) : entry.content
+
+                            return (
+                                <div key={idx} className="memory-entry">
+                                    <div className="memory-entry-tags">
+                                        {entry.tags.length > 0 ? (
+                                            <>
+                                                {entry.tags.slice(0, MAX_VISIBLE_TAGS).map(tag => {
+                                                    const c = getTagColor(tag)
+                                                    return (
+                                                        <span
+                                                            key={tag}
+                                                            className="memory-tag"
+                                                            style={{ background: c.bg, color: c.fg }}
+                                                            title={tag}
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    )
+                                                })}
+                                                {entry.tags.length > MAX_VISIBLE_TAGS && (
+                                                    <span className="memory-tag memory-tag-more">
+                                                        +{entry.tags.length - MAX_VISIBLE_TAGS}
+                                                    </span>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="memory-tag memory-tag-untagged">{t('memory.untagged')}</span>
+                                        )}
+                                    </div>
+                                    {entry.content && (
+                                        <>
+                                            <div className={`memory-entry-content ${shouldTruncate ? 'memory-entry-content-truncated' : ''}`}>
+                                                {displayContent}
+                                            </div>
+                                            {needsTruncate(entry.content) && (
+                                                <button
+                                                    type="button"
+                                                    className="memory-expand-button"
+                                                    onClick={() => toggleExpanded(idx)}
                                                 >
-                                                    {tag}
-                                                </span>
-                                            )
-                                        })
-                                    ) : (
-                                        <span className="memory-tag memory-tag-untagged">{t('memory.untagged')}</span>
+                                                    {isExpanded ? t('memory.collapse') : t('memory.expand')}
+                                                </button>
+                                            )}
+                                        </>
                                     )}
                                 </div>
-                                {entry.content && (
-                                    <div className="memory-entry-content">{entry.content}</div>
-                                )}
-                            </div>
-                        ))
+                            )
+                        })}
+                        {entries.length > MAX_VISIBLE_ENTRIES && (
+                            <button
+                                type="button"
+                                className="memory-show-all-button"
+                                onClick={() => setShowAllEntries(!showAllEntries)}
+                            >
+                                {showAllEntries ? t('memory.showLess') : t('memory.showMore', { count: entries.length - MAX_VISIBLE_ENTRIES })}
+                            </button>
+                        )}
+                        </>
                     )}
                 </div>
             )}

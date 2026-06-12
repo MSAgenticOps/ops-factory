@@ -1,0 +1,15 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: operation-intelligence
+
+operation-intelligence:
+  secret-key: test
+  cors-origin: "*"
+  qos:
+    enabled: false
+    dv-environments: []
+  logging:
+    access-log-enabled: false

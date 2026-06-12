@@ -1,22 +1,14 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.ChunkRepository;
 import com.huawei.opsfactory.knowledge.repository.ProfileRepository;
 import com.huawei.opsfactory.knowledge.repository.SourceRepository;
-import java.io.IOException;
-import java.io.StringReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
@@ -52,33 +44,62 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Manages Lucene-based lexical indexes for document chunks, including index building,
+ * searching, and BM25 similarity configuration per source.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
+
 @Service
 public class LexicalIndexService {
 
     private static final String INDEX_NAME = "chunks";
+
     private static final String FIELD_CHUNK_ID = "chunkId";
+
     private static final String FIELD_DOCUMENT_ID = "documentId";
+
     private static final String FIELD_SOURCE_ID = "sourceId";
+
     private static final String FIELD_TITLE = "title";
+
     private static final String FIELD_TITLE_PATH = "titlePath";
+
     private static final String FIELD_KEYWORDS = "keywords";
+
     private static final String FIELD_TEXT = "text";
 
     private final StorageManager storageManager;
+
     private final KnowledgeProperties properties;
+
     private final ChunkRepository chunkRepository;
+
     private final SourceRepository sourceRepository;
+
     private final ProfileRepository profileRepository;
+
     private final ProfileBootstrapService profileBootstrapService;
 
-    public LexicalIndexService(
-        StorageManager storageManager,
-        KnowledgeProperties properties,
-        ChunkRepository chunkRepository,
-        SourceRepository sourceRepository,
-        ProfileRepository profileRepository,
-        ProfileBootstrapService profileBootstrapService
-    ) {
+    public LexicalIndexService(StorageManager storageManager, KnowledgeProperties properties,
+        ChunkRepository chunkRepository, SourceRepository sourceRepository, ProfileRepository profileRepository,
+        ProfileBootstrapService profileBootstrapService) {
         this.storageManager = storageManager;
         this.properties = properties;
         this.chunkRepository = chunkRepository;
@@ -89,7 +110,8 @@ public class LexicalIndexService {
 
     @EventListener(ApplicationReadyEvent.class)
     public void rebuildOnStartup() {
-        chunkRepository.findAll().stream()
+        chunkRepository.findAll()
+            .stream()
             .map(this::toSearchableChunk)
             .collect(Collectors.groupingBy(SearchService.SearchableChunk::sourceId))
             .forEach(this::rebuildSourceIndex);
@@ -140,8 +162,9 @@ public class LexicalIndexService {
 
     private void rebuildSourceIndex(String sourceId, List<SearchService.SearchableChunk> chunks) {
         ResolvedIndexSettings settings = resolveIndexSettings(sourceId);
+        recreateSourceIndexDirectory(sourceId);
         try (Directory directory = openDirectory(sourceId);
-             Analyzer analyzer = buildAnalyzer(settings.indexAnalyzer())) {
+            Analyzer analyzer = buildAnalyzer(settings.indexAnalyzer())) {
             IndexWriterConfig config = new IndexWriterConfig(analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
             config.setSimilarity(buildSimilarity(settings));
@@ -156,10 +179,20 @@ public class LexicalIndexService {
         }
     }
 
+    private void recreateSourceIndexDirectory(String sourceId) {
+        Path indexDir = storageManager.indexDir(INDEX_NAME).resolve(sourceId);
+        storageManager.deleteRecursively(indexDir);
+        try {
+            Files.createDirectories(indexDir);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to recreate lexical index directory for source " + sourceId, e);
+        }
+    }
+
     private void upsertSourceChunks(String sourceId, List<SearchService.SearchableChunk> chunks) {
         ResolvedIndexSettings settings = resolveIndexSettings(sourceId);
         try (Directory directory = openDirectory(sourceId);
-             Analyzer analyzer = buildAnalyzer(settings.indexAnalyzer())) {
+            Analyzer analyzer = buildAnalyzer(settings.indexAnalyzer())) {
             IndexWriterConfig config = new IndexWriterConfig(analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
             config.setSimilarity(buildSimilarity(settings));
@@ -177,7 +210,7 @@ public class LexicalIndexService {
     private void deleteByQuery(String sourceId, Query query) {
         ResolvedIndexSettings settings = resolveIndexSettings(sourceId);
         try (Directory directory = openDirectory(sourceId);
-             Analyzer analyzer = buildAnalyzer(settings.indexAnalyzer())) {
+            Analyzer analyzer = buildAnalyzer(settings.indexAnalyzer())) {
             if (!DirectoryReader.indexExists(directory)) {
                 return;
             }
@@ -193,9 +226,10 @@ public class LexicalIndexService {
         }
     }
 
-    private List<LexicalHit> searchSource(String sourceId, String query, List<SearchService.SearchableChunk> chunks, int topK) {
-        Map<String, SearchService.SearchableChunk> chunkById = chunks.stream()
-            .collect(Collectors.toMap(SearchService.SearchableChunk::id, chunk -> chunk));
+    private List<LexicalHit> searchSource(String sourceId, String query, List<SearchService.SearchableChunk> chunks,
+        int topK) {
+        Map<String, SearchService.SearchableChunk> chunkById =
+            chunks.stream().collect(Collectors.toMap(SearchService.SearchableChunk::id, chunk -> chunk));
         ResolvedIndexSettings settings = resolveIndexSettings(sourceId);
         Query luceneQuery = buildSearchQuery(query, chunkById.keySet(), settings);
         if (luceneQuery == null) {
@@ -208,7 +242,7 @@ public class LexicalIndexService {
             }
 
             try (DirectoryReader reader = DirectoryReader.open(directory);
-                 Analyzer analyzer = buildAnalyzer(settings.queryAnalyzer())) {
+                Analyzer analyzer = buildAnalyzer(settings.queryAnalyzer())) {
                 IndexSearcher searcher = new IndexSearcher(reader);
                 searcher.setSimilarity(buildSimilarity(settings));
                 TopDocs topDocs = searcher.search(luceneQuery, topK);
@@ -244,18 +278,14 @@ public class LexicalIndexService {
             boosts.put(FIELD_TEXT, (float) settings.contentBoost());
 
             MultiFieldQueryParser parser = new MultiFieldQueryParser(
-                new String[] { FIELD_TITLE, FIELD_TITLE_PATH, FIELD_KEYWORDS, FIELD_TEXT },
-                analyzer,
-                boosts
-            );
+                new String[] {FIELD_TITLE, FIELD_TITLE_PATH, FIELD_KEYWORDS, FIELD_TEXT}, analyzer, boosts);
             parser.setDefaultOperator(QueryParser.Operator.OR);
 
             Query textQuery = parser.parse(QueryParser.escape(query));
             Query phraseBoostQuery = buildPhraseBoostQuery(analyzer, query, settings);
             Query filter = new TermInSetQuery(FIELD_CHUNK_ID, allowedChunkIds.stream().map(BytesRef::new).toList());
 
-            BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder()
-                .add(textQuery, BooleanClause.Occur.MUST)
+            BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder().add(textQuery, BooleanClause.Occur.MUST)
                 .add(filter, BooleanClause.Occur.FILTER);
             if (phraseBoostQuery != null) {
                 queryBuilder.add(phraseBoostQuery, BooleanClause.Occur.SHOULD);
@@ -300,7 +330,8 @@ public class LexicalIndexService {
         return document;
     }
 
-    private List<String> matchedFields(List<String> queryTerms, Analyzer analyzer, SearchService.SearchableChunk chunk) {
+    private List<String> matchedFields(List<String> queryTerms, Analyzer analyzer,
+        SearchService.SearchableChunk chunk) {
         List<String> fields = new ArrayList<>();
         if (hasTermOverlap(queryTerms, analyzeToTerms(analyzer, chunk.title()))) {
             fields.add("title");
@@ -349,9 +380,9 @@ public class LexicalIndexService {
     private Analyzer buildAnalyzer(String name) {
         String normalized = name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
-        case "smartcn" -> new SmartChineseAnalyzer();
-        case "keyword" -> new KeywordAnalyzer();
-        default -> new StandardAnalyzer();
+            case "smartcn" -> new SmartChineseAnalyzer();
+            case "keyword" -> new KeywordAnalyzer();
+            default -> new StandardAnalyzer();
         };
     }
 
@@ -362,47 +393,57 @@ public class LexicalIndexService {
     }
 
     private SearchService.SearchableChunk toSearchableChunk(ChunkRepository.ChunkRecord record) {
-        return new SearchService.SearchableChunk(
-            record.id(),
-            record.documentId(),
-            record.sourceId(),
-            record.title(),
-            record.titlePath(),
-            record.keywords(),
-            record.text(),
-            record.markdown(),
-            record.pageFrom(),
-            record.pageTo(),
-            record.ordinal(),
-            record.editStatus(),
-            record.updatedBy()
-        );
+        return SearchService.SearchableChunk.from(record);
     }
 
     private String defaultString(String value) {
         return value == null ? "" : value;
     }
 
+    /**
+     * Builds a BM25 similarity instance from resolved index settings.
+     *
+     * @param settings the resolved index settings containing BM25 parameters
+     * @return a BM25Similarity instance
+     */
     private BM25Similarity buildSimilarity(ResolvedIndexSettings settings) {
         return new BM25Similarity(settings.bm25K1(), settings.bm25B());
     }
 
+    /**
+     * Resolves index settings for a source by merging profile config with application defaults.
+     * Validates that BM25 k1 and b values are within legal ranges.
+     *
+     * @param sourceId the source identifier
+     * @return resolved index settings
+     * @throws IllegalArgumentException if BM25 k1 is negative/infinite/NaN or b is outside [0,1]
+     */
     private ResolvedIndexSettings resolveIndexSettings(String sourceId) {
         KnowledgeProperties.Analysis analysisDefaults = properties.getAnalysis();
         KnowledgeProperties.Indexing indexingDefaults = properties.getIndexing();
-        Map<String, Object> profileConfig = sourceRepository.findById(sourceId)
-            .flatMap(source -> Optional.ofNullable(source.indexProfileId()))
-            .flatMap(profileRepository::findIndexById)
-            .map(ProfileRepository.ProfileRecord::config)
-            .orElseGet(() -> profileBootstrapService.defaultIndexProfileId() == null
-                ? Map.of()
-                : profileRepository.findIndexById(profileBootstrapService.defaultIndexProfileId())
-                    .map(ProfileRepository.ProfileRecord::config)
-                    .orElse(Map.of()));
+        Map<String,
+            Object> profileConfig = sourceRepository.findById(sourceId)
+                .flatMap(source -> Optional.ofNullable(source.indexProfileId()))
+                .flatMap(profileRepository::findIndexById)
+                .map(ProfileRepository.ProfileRecord::config)
+                .orElseGet(() -> profileBootstrapService.defaultIndexProfileId() == null ? Map.of()
+                    : profileRepository.findIndexById(profileBootstrapService.defaultIndexProfileId())
+                        .map(ProfileRepository.ProfileRecord::config)
+                        .orElse(Map.of()));
 
         Map<String, Object> analysis = section(profileConfig, "analysis");
         Map<String, Object> indexing = section(profileConfig, "indexing");
         Map<String, Object> bm25 = section(indexing, "bm25");
+
+        float k1 = floatValue(bm25.get("k1"), indexingDefaults.getBm25().getK1());
+        float b = floatValue(bm25.get("b"), indexingDefaults.getBm25().getB());
+        if (k1 < 0) {
+            throw new IllegalStateException(
+                "BM25 k1 for source " + sourceId + " is invalid (" + k1 + "). Must be >= 0.");
+        }
+        if (b < 0) {
+            throw new IllegalStateException("BM25 b for source " + sourceId + " is invalid (" + b + "). Must be >= 0.");
+        }
 
         return new ResolvedIndexSettings(
             stringValue(analysis.get("indexAnalyzer"), analysisDefaults.getIndexAnalyzer()),
@@ -410,10 +451,7 @@ public class LexicalIndexService {
             numberValue(indexing.get("titleBoost"), indexingDefaults.getTitleBoost()),
             numberValue(indexing.get("titlePathBoost"), indexingDefaults.getTitlePathBoost()),
             numberValue(indexing.get("keywordBoost"), indexingDefaults.getKeywordBoost()),
-            numberValue(indexing.get("contentBoost"), indexingDefaults.getContentBoost()),
-            floatValue(bm25.get("k1"), indexingDefaults.getBm25().getK1()),
-            floatValue(bm25.get("b"), indexingDefaults.getBm25().getB())
-        );
+            numberValue(indexing.get("contentBoost"), indexingDefaults.getContentBoost()), k1, b);
     }
 
     @SuppressWarnings("unchecked")
@@ -441,15 +479,7 @@ public class LexicalIndexService {
     public record LexicalHit(String chunkId, double score, List<String> matchedFields) {
     }
 
-    private record ResolvedIndexSettings(
-        String indexAnalyzer,
-        String queryAnalyzer,
-        double titleBoost,
-        double titlePathBoost,
-        double keywordBoost,
-        double contentBoost,
-        float bm25K1,
-        float bm25B
-    ) {
+    private record ResolvedIndexSettings(String indexAnalyzer, String queryAnalyzer, double titleBoost,
+        double titlePathBoost, double keywordBoost, double contentBoost, float bm25K1, float bm25B) {
     }
 }

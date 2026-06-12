@@ -1,6 +1,18 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -10,19 +22,31 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
-import static org.junit.Assert.*;
-
+/**
+ * Test coverage for Host Group Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class HostGroupServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private HostGroupService hostGroupService;
+
     private GatewayProperties properties;
+
     private Path groupsDir;
 
+    /**
+     * Sets the up.
+     *
+     * @throws IOException if the operation fails
+     */
     @Before
     public void setUp() throws IOException {
         properties = new GatewayProperties();
@@ -34,13 +58,20 @@ public class HostGroupServiceTest {
         hostGroupService.init();
 
         groupsDir = Path.of(tempFolder.getRoot().getAbsolutePath())
-                .toAbsolutePath().normalize().resolve("gateway").resolve("data").resolve("host-groups");
+            .toAbsolutePath()
+            .normalize()
+            .resolve("gateway")
+            .resolve("data")
+            .resolve("host-groups");
     }
 
     // ── createGroup ──────────────────────────────────────────────
 
+    /**
+     * Tests create group enabled by default.
+     */
     @Test
-    public void testCreateGroup_enabledByDefault() {
+    public void testCreateGroup_enabledByDefault() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
         body.put("code", "PROD");
@@ -53,8 +84,11 @@ public class HostGroupServiceTest {
         assertEquals(true, result.get("enabled"));
     }
 
+    /**
+     * Tests create group enabled false.
+     */
     @Test
-    public void testCreateGroup_enabledFalse() {
+    public void testCreateGroup_enabledFalse() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "TEST");
         body.put("code", "TEST");
@@ -64,10 +98,14 @@ public class HostGroupServiceTest {
         assertEquals(false, result.get("enabled"));
     }
 
+    /**
+     * Tests create group enabled true.
+     */
     @Test
-    public void testCreateGroup_enabledTrue() {
+    public void testCreateGroup_enabledTrue() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "STAGING");
+        body.put("code", "STAGING");
         body.put("enabled", true);
 
         Map<String, Object> result = hostGroupService.createGroup(body);
@@ -76,10 +114,14 @@ public class HostGroupServiceTest {
 
     // ── updateGroup ──────────────────────────────────────────────
 
+    /**
+     * Tests update group set enabled.
+     */
     @Test
-    public void testUpdateGroup_setEnabled() {
+    public void testUpdateGroup_setEnabled() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
 
@@ -91,10 +133,14 @@ public class HostGroupServiceTest {
         assertEquals("PROD", result.get("name"));
     }
 
+    /**
+     * Tests update group re enable.
+     */
     @Test
-    public void testUpdateGroup_reEnable() {
+    public void testUpdateGroup_reEnable() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         body.put("enabled", false);
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
@@ -106,10 +152,14 @@ public class HostGroupServiceTest {
         assertEquals(true, result.get("enabled"));
     }
 
+    /**
+     * Tests update group partial update preserves enabled.
+     */
     @Test
-    public void testUpdateGroup_partialUpdatePreservesEnabled() {
+    public void testUpdateGroup_partialUpdatePreservesEnabled() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         body.put("enabled", false);
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
@@ -123,10 +173,14 @@ public class HostGroupServiceTest {
         assertEquals(false, result.get("enabled"));
     }
 
+    /**
+     * Tests update group default enabled remains true.
+     */
     @Test
-    public void testUpdateGroup_defaultEnabledRemainsTrue() {
+    public void testUpdateGroup_defaultEnabledRemainsTrue() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
 
@@ -141,6 +195,9 @@ public class HostGroupServiceTest {
 
     // ── getDisabledGroupIds ──────────────────────────────────────
 
+    /**
+     * Tests get disabled group ids no disabled groups.
+     */
     @Test
     public void testGetDisabledGroupIds_noDisabledGroups() {
         createGroup("g1", "PROD", null, true);
@@ -150,6 +207,9 @@ public class HostGroupServiceTest {
         assertTrue(disabled.isEmpty());
     }
 
+    /**
+     * Tests get disabled group ids directly disabled.
+     */
     @Test
     public void testGetDisabledGroupIds_directlyDisabled() {
         createGroup("g1", "PROD", null, false);
@@ -160,6 +220,9 @@ public class HostGroupServiceTest {
         assertTrue(disabled.contains("g1"));
     }
 
+    /**
+     * Tests get disabled group ids inherited from parent.
+     */
     @Test
     public void testGetDisabledGroupIds_inheritedFromParent() {
         createGroup("g1", "PROD", null, false);
@@ -177,6 +240,9 @@ public class HostGroupServiceTest {
         assertFalse(disabled.contains("g2"));
     }
 
+    /**
+     * Tests get disabled group ids deep inheritance.
+     */
     @Test
     public void testGetDisabledGroupIds_deepInheritance() {
         // Root → A (disabled) → B → C (explicitly enabled=true) → D
@@ -196,6 +262,9 @@ public class HostGroupServiceTest {
         assertEquals(4, disabled.size());
     }
 
+    /**
+     * Tests get disabled group ids enabled missing defaults to true.
+     */
     @Test
     public void testGetDisabledGroupIds_enabledMissingDefaultsToTrue() {
         // Group created without enabled field — should be treated as enabled
@@ -205,6 +274,9 @@ public class HostGroupServiceTest {
         assertTrue(disabled.isEmpty());
     }
 
+    /**
+     * Tests get disabled group ids multiple roots.
+     */
     @Test
     public void testGetDisabledGroupIds_multipleRoots() {
         createGroup("g1", "PROD", null, false);
@@ -222,10 +294,14 @@ public class HostGroupServiceTest {
 
     // ── Persistence: enabled state survives read-back ────────────
 
+    /**
+     * Tests enabled state persisted and read back.
+     */
     @Test
-    public void testEnabledStatePersistedAndReadBack() {
+    public void testEnabledStatePersistedAndReadBack() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         body.put("enabled", false);
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
@@ -235,10 +311,14 @@ public class HostGroupServiceTest {
         assertEquals(false, readBack.get("enabled"));
     }
 
+    /**
+     * Tests update enabled persisted and read back.
+     */
     @Test
-    public void testUpdateEnabledPersistedAndReadBack() {
+    public void testUpdateEnabledPersistedAndReadBack() throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "PROD");
+        body.put("code", "PROD");
         Map<String, Object> created = hostGroupService.createGroup(body);
         String id = (String) created.get("id");
 
@@ -251,8 +331,137 @@ public class HostGroupServiceTest {
         assertEquals(true, hostGroupService.getGroup(id).get("enabled"));
     }
 
+    // ── parentId validation ───────────────────────────────────────────
+
+    /**
+     * Tests create group with invalid parent id throws exception.
+     */
+    @Test
+    public void testCreateGroup_invalidParentId_throwsException() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "SUB-PROD");
+        body.put("code", "SUB-PROD");
+        body.put("parentId", "nonexistent-parent-id");
+
+        try {
+            hostGroupService.createGroup(body);
+            fail("Expected BadRequestException for invalid parentId");
+        } catch (BadRequestException e) {
+            assertTrue(e.getMessage().contains("Parent group not found"));
+        }
+    }
+
+    /**
+     * Tests create group with valid parent id succeeds.
+     */
+    @Test
+    public void testCreateGroup_validParentId_succeeds() throws Exception {
+        // First create a parent group
+        Map<String, Object> parentBody = new LinkedHashMap<>();
+        parentBody.put("name", "PROD");
+        parentBody.put("code", "PROD");
+        Map<String, Object> parent = hostGroupService.createGroup(parentBody);
+        String parentId = (String) parent.get("id");
+
+        // Now create a child group with valid parentId
+        Map<String, Object> childBody = new LinkedHashMap<>();
+        childBody.put("name", "SUB-PROD");
+        childBody.put("code", "SUB-PROD");
+        childBody.put("parentId", parentId);
+
+        Map<String, Object> result = hostGroupService.createGroup(childBody);
+        assertNotNull(result.get("id"));
+        assertEquals("SUB-PROD", result.get("name"));
+        assertEquals(parentId, result.get("parentId"));
+    }
+
+    /**
+     * Tests update group with invalid parent id throws exception.
+     */
+    @Test
+    public void testUpdateGroup_invalidParentId_throwsException() throws Exception {
+        // First create a group
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "PROD");
+        body.put("code", "PROD");
+        Map<String, Object> created = hostGroupService.createGroup(body);
+        String id = (String) created.get("id");
+
+        // Try to update with invalid parentId
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("parentId", "nonexistent-parent-id");
+
+        try {
+            hostGroupService.updateGroup(id, updates);
+            fail("Expected BadRequestException for invalid parentId");
+        } catch (BadRequestException e) {
+            assertTrue(e.getMessage().contains("Parent group not found"));
+        }
+    }
+
+    /**
+     * Tests update group with valid parent id succeeds.
+     */
+    @Test
+    public void testUpdateGroup_validParentId_succeeds() throws Exception {
+        // First create two groups
+        Map<String, Object> parentBody = new LinkedHashMap<>();
+        parentBody.put("name", "PROD");
+        parentBody.put("code", "PROD");
+        Map<String, Object> parent = hostGroupService.createGroup(parentBody);
+        String parentId = (String) parent.get("id");
+
+        Map<String, Object> childBody = new LinkedHashMap<>();
+        childBody.put("name", "SUB-PROD");
+        childBody.put("code", "SUB-PROD");
+        Map<String, Object> child = hostGroupService.createGroup(childBody);
+        String childId = (String) child.get("id");
+
+        // Update child with valid parentId
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("parentId", parentId);
+
+        Map<String, Object> result = hostGroupService.updateGroup(childId, updates);
+        assertEquals(parentId, result.get("parentId"));
+    }
+
+    /**
+     * Tests update group clears parent id.
+     */
+    @Test
+    public void testUpdateGroup_clearParentId_succeeds() throws Exception {
+        // First create a parent and child
+        Map<String, Object> parentBody = new LinkedHashMap<>();
+        parentBody.put("name", "PROD");
+        parentBody.put("code", "PROD");
+        Map<String, Object> parent = hostGroupService.createGroup(parentBody);
+        String parentId = (String) parent.get("id");
+
+        Map<String, Object> childBody = new LinkedHashMap<>();
+        childBody.put("name", "SUB-PROD");
+        childBody.put("code", "SUB-PROD");
+        childBody.put("parentId", parentId);
+        Map<String, Object> child = hostGroupService.createGroup(childBody);
+        String childId = (String) child.get("id");
+
+        // Clear parentId
+        Map<String, Object> updates = new LinkedHashMap<>();
+        updates.put("parentId", null);
+
+        Map<String, Object> result = hostGroupService.updateGroup(childId, updates);
+        assertEquals(null, result.get("parentId"));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────
 
+    /**
+     * Creates a host group file directly on disk for testing disabled-group scenarios.
+     *
+     * @param id group identifier
+     * @param name group name
+     * @param parentId parent group identifier, or null for top-level
+     * @param enabled enabled state, or null to omit the field
+     */
     private void createGroup(String id, String name, String parentId, Boolean enabled) {
         Map<String, Object> group = new LinkedHashMap<>();
         group.put("id", id);
@@ -268,11 +477,11 @@ public class HostGroupServiceTest {
 
         try {
             Path file = groupsDir.resolve(id + ".json");
-            String json = new com.fasterxml.jackson.databind.ObjectMapper()
-                    .writerWithDefaultPrettyPrinter().writeValueAsString(group);
+            String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+                .writeValueAsString(group);
             Files.writeString(file, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 }

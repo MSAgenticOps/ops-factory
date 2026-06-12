@@ -6,7 +6,7 @@ type IconFrameProps = {
     strokeWidth?: number
 }
 
-function IconFrame({ children, strokeWidth = 1.9 }: IconFrameProps) {
+function IconFrame({ children, strokeWidth = 1.85 }: IconFrameProps) {
     return (
         <svg
             viewBox="0 0 24 24"
@@ -70,13 +70,27 @@ function FilesIcon() {
     )
 }
 
-function ChannelsIcon() {
+function ThreadIcon() {
+    // 我的助理:对话气泡 + AI 火花,与「渠道」的聚合节点彻底区分
     return (
         <IconFrame strokeWidth={1.85}>
-            <path d="M6.35 5.6h6.95a2.25 2.25 0 0 1 2.25 2.25v4.1a2.25 2.25 0 0 1-2.25 2.25H9.8l-3 2.2v-2.2h-.45a2.25 2.25 0 0 1-2.25-2.25v-4.1A2.25 2.25 0 0 1 6.35 5.6z" />
-            <path d="M10.7 9.8h6a2.2 2.2 0 0 1 2.2 2.2v3.65a2.2 2.2 0 0 1-2.2 2.2h-.35v1.65l-2.55-1.65H12.8a2.2 2.2 0 0 1-2.2-2.2" />
-            <path d="M7.45 9.95h4.65" />
-            <path d="M13 13.85h2.85" />
+            <path d="M6 4.6h12a2 2 0 0 1 2 2v6.4a2 2 0 0 1-2 2h-6.3l-3.5 2.9v-2.9H6a2 2 0 0 1-2-2V6.6a2 2 0 0 1 2-2z" />
+            <path d="M12 6.9c.33 1.6 1.05 2.32 2.65 2.65-1.6.33-2.32 1.05-2.65 2.65-.33-1.6-1.05-2.32-2.65-2.65 1.6-.33 2.32-1.05 2.65-2.65z" />
+        </IconFrame>
+    )
+}
+
+function ChannelsIcon() {
+    // 渠道:中心枢纽 + 3 个接入端点,表达「多渠道聚合」,不再用对话气泡
+    return (
+        <IconFrame strokeWidth={1.85}>
+            <circle cx="12" cy="12" r="2.5" />
+            <circle cx="12" cy="5.1" r="1.85" />
+            <circle cx="5.7" cy="16.4" r="1.85" />
+            <circle cx="18.3" cy="16.4" r="1.85" />
+            <path d="M12 9.5V6.95" />
+            <path d="M10.1 13.4l-2.75 1.85" />
+            <path d="M13.9 13.4l2.75 1.85" />
         </IconFrame>
     )
 }
@@ -90,6 +104,29 @@ function BusinessIntelligenceIcon() {
             <path d="M16.85 17.1v-5.2" />
             <path d="M6.15 10.25l2.4-2.25 2.95 1.55 4.3-4.05" />
             <path d="M13.95 5.5h1.85v1.85" />
+        </IconFrame>
+    )
+}
+
+function OperationIntelligenceIcon() {
+    // 运维智能:仪表盘/健康度,作为「业务智能」柱状图的指标家族同伴,轮廓清晰可读
+    return (
+        <IconFrame strokeWidth={1.85}>
+            <path d="M4.8 15.4a7.2 7.2 0 0 1 14.4 0" />
+            <path d="M5.6 12.2l1.55.9" />
+            <path d="M18.4 12.2l-1.55.9" />
+            <path d="M12 15.4l3.2-3.9" />
+            <circle cx="12" cy="15.4" r="1.15" />
+        </IconFrame>
+    )
+}
+
+function FinOpsIcon() {
+    // Token 运营:代币/额度 = 一枚硬币 + 价值火花,替换通用六边形
+    return (
+        <IconFrame strokeWidth={1.85}>
+            <circle cx="12" cy="12" r="7.3" />
+            <path d="M12 8.58c.38 2.05 1.37 3.04 3.42 3.42-2.05.38-3.04 1.37-3.42 3.42-.38-2.05-1.37-3.04-3.42-3.42 2.05-.38 3.04-1.37 3.42-3.42z" />
         </IconFrame>
     )
 }
@@ -133,16 +170,29 @@ function KnowledgeIcon() {
     )
 }
 
+function KnowledgeGraphIcon() {
+    return (
+        <IconFrame strokeWidth={1.8}>
+            <circle cx="6.2" cy="7.2" r="2.15" />
+            <circle cx="17.8" cy="7.2" r="2.15" />
+            <circle cx="12" cy="17.05" r="2.25" />
+            <path d="M8.18 8.05l2.55 6.75" />
+            <path d="M15.82 8.05l-2.55 6.75" />
+            <path d="M8.35 7.2h7.3" />
+            <path d="M6.2 9.35v4.05a3.65 3.65 0 0 0 3.65 3.65" />
+            <path d="M17.8 9.35v4.05a3.65 3.65 0 0 1-3.65 3.65" />
+        </IconFrame>
+    )
+}
+
 function SkillMarketIcon() {
+    // 技能市场:3 块已装 + 1 块待装(菱形),经典「扩展/市场」语汇,不再像拓扑图
     return (
         <IconFrame strokeWidth={1.85}>
-            <rect x="4.35" y="4.75" width="5.1" height="5.1" rx="1.25" />
-            <rect x="14.55" y="4.75" width="5.1" height="5.1" rx="1.25" />
-            <rect x="9.45" y="14.15" width="5.1" height="5.1" rx="1.25" />
-            <path d="M9.45 7.3h5.1" />
-            <path d="M7.35 9.85l3.35 4.3" />
-            <path d="M16.65 9.85l-3.35 4.3" />
-            <path d="M12 15.75v1.9" />
+            <rect x="4.3" y="4.3" width="6" height="6" rx="1.5" />
+            <rect x="4.3" y="13.7" width="6" height="6" rx="1.5" />
+            <rect x="13.7" y="13.7" width="6" height="6" rx="1.5" />
+            <path d="M16.7 4.05l3.25 3.25-3.25 3.25-3.25-3.25z" />
         </IconFrame>
     )
 }
@@ -169,14 +219,15 @@ function MonitoringIcon() {
 }
 
 function HostResourceIcon() {
+    // 系统资源:两层服务器,状态点改用真实空心圆(原 h.01 圆头点显得过重/像实心)
     return (
         <IconFrame strokeWidth={1.85}>
-            <rect x="4.1" y="4.7" width="15.8" height="5.6" rx="1.2" />
-            <rect x="4.1" y="13.1" width="15.8" height="5.6" rx="1.2" />
-            <path d="M7.2 7.5h.01" />
-            <path d="M7.2 15.9h.01" />
-            <path d="M9.8 7.5h7" />
-            <path d="M9.8 15.9h7" />
+            <rect x="4.2" y="5.1" width="15.6" height="5.4" rx="1.5" />
+            <rect x="4.2" y="13.5" width="15.6" height="5.4" rx="1.5" />
+            <circle cx="7.5" cy="7.8" r="0.95" />
+            <circle cx="7.5" cy="16.2" r="0.95" />
+            <path d="M10.7 7.8h6.1" />
+            <path d="M10.7 16.2h6.1" />
         </IconFrame>
     )
 }
@@ -186,13 +237,17 @@ const ICONS: Record<IconKey, () => ReactNode> = {
     plus: PlusIcon,
     history: HistoryIcon,
     inbox: InboxIcon,
+    thread: ThreadIcon,
     files: FilesIcon,
     channels: ChannelsIcon,
     diagnosis: WorkflowIcon,
     businessIntelligence: BusinessIntelligenceIcon,
+    operationIntelligence: OperationIntelligenceIcon,
+    finops: FinOpsIcon,
     agents: AgentsIcon,
     skillMarket: SkillMarketIcon,
     knowledge: KnowledgeIcon,
+    knowledgeGraph: KnowledgeGraphIcon,
     scheduler: SchedulerIcon,
     monitoring: MonitoringIcon,
     hostResource: HostResourceIcon,

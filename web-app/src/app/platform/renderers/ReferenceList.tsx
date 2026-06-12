@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { KNOWLEDGE_SERVICE_URL } from '../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../config/runtime'
 import { usePreview } from '../providers/PreviewContext'
 import type { Citation } from '../../../utils/citationParser'
 import './ReferenceList.css'
@@ -8,6 +8,7 @@ interface ReferenceListProps {
     citations: Citation[]
     label?: string
     variant?: 'cited' | 'retrieved'
+    userId?: string | null
 }
 
 interface ReferenceGroup {
@@ -23,8 +24,10 @@ function buildReferenceKey(citation: Citation): string {
     return `doc:${citation.documentId}`
 }
 
-async function loadDocumentPreview(documentId: string) {
-    const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/documents/${documentId}/preview`)
+async function loadDocumentPreview(documentId: string, userId?: string | null) {
+    const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/documents/${documentId}/preview`, {
+        headers: knowledgeHeaders(userId),
+    })
     const data = await response.json().catch(() => null) as { title?: string; markdownPreview?: string; message?: string } | null
 
     if (!response.ok || !data?.markdownPreview) {
@@ -73,6 +76,7 @@ export default function ReferenceList({
     citations,
     label = '本轮检索过的资料',
     variant = 'retrieved',
+    userId,
 }: ReferenceListProps) {
     if (citations.length === 0) return null
     const { openPreview } = usePreview()
@@ -90,7 +94,7 @@ export default function ReferenceList({
                 previewKind: 'markdown',
             })
 
-            const data = await loadDocumentPreview(group.documentId)
+            const data = await loadDocumentPreview(group.documentId, userId)
 
             await openPreview({
                 name: data.title || group.title,
@@ -102,7 +106,7 @@ export default function ReferenceList({
         } finally {
             setOpeningKey(null)
         }
-    }, [openPreview])
+    }, [openPreview, userId])
 
     const groups = groupReferences(citations)
 

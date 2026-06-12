@@ -1,8 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import P from "pino";
-import QRCode from "qrcode";
+import { toDataUrl } from "../qr-sdk/index.mjs";
 import {
   DisconnectReason,
   fetchLatestBaileysVersion,
@@ -18,7 +17,7 @@ function parseArgs(argv) {
   const args = {};
   for (let i = 2; i < argv.length; i += 1) {
     const current = argv[i];
-    if (!current.startsWith("--")) continue;
+    if (!current.startsWith("--")) { continue; }
     const key = current.slice(2);
     const next = argv[i + 1];
     if (!next || next.startsWith("--")) {
@@ -56,7 +55,7 @@ async function readJson(file) {
 }
 
 function normalizeWhatsAppE164(jid) {
-  if (!jid || typeof jid !== "string") return "";
+  if (!jid || typeof jid !== "string") { return ""; }
   const user = jid.split("@")[0] ?? "";
   const digits = user.replace(/:\d+$/, "");
   return digits ? `+${digits}` : "";
@@ -114,7 +113,7 @@ async function runLogin(args) {
     qrCodeDataUrl: null,
   });
 
-  const logger = P({ level: "silent" });
+  const logger = { level: 'silent', info: () => {}, error: () => {}, debug: () => {}, trace: () => {}, child: () => logger };
   let sock = null;
   let saveCredsRef = null;
   let connectedSelfPhone = selfPhone;
@@ -183,7 +182,7 @@ async function runLogin(args) {
     activeSock.ev.on("connection.update", async (update) => {
       if (update.qr) {
         await appendLog(debugLogFile, "connection.update.qr", { hasQr: true });
-        const qrCodeDataUrl = await QRCode.toDataURL(update.qr);
+        const qrCodeDataUrl = await toDataUrl(update.qr);
         await updateState(stateFile, {
           status: "pending",
           message: "Scan the QR code in WhatsApp -> Linked Devices.",
@@ -346,7 +345,7 @@ async function writeInboxMessage(inboxDir, messageId, payload) {
 
 function normalizeOutboundJid(peerId) {
   const digits = String(peerId ?? "").replace(/[^\d]/g, "");
-  if (!digits) return "";
+  if (!digits) { return ""; }
   return `${digits}@s.whatsapp.net`;
 }
 
@@ -392,7 +391,7 @@ const args = parseArgs(process.argv);
 const command = args.command ?? "login";
 
 if (command !== "login") {
-  console.error(`Unsupported command: ${command}`);
+  process.stderr.write(`Unsupported command: ${command}\n`);
   process.exit(1);
 }
 

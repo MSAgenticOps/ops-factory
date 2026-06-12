@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import './Message.css'
 import './ToolCallDisplay.css'
 import ToolCallDisplay from './ToolCallDisplay'
+import A2AStatusLine from './A2AStatusLine'
 import CitationMark from '../renderers/CitationMark'
 import FileCitationMark from '../renderers/FileCitationMark'
 import FileReferenceList from '../renderers/FileReferenceList'
@@ -14,10 +15,8 @@ import { usePreview } from '../providers/PreviewContext'
 import { mergeCitationMetadata, parseCitations, replaceCitationsWithPlaceholders, type Citation } from '../../../utils/citationParser'
 import { parseFileCitations, replaceFileCitationsWithPlaceholders, type FileCitation } from '../../../utils/fileCitationParser'
 import { getDisplayTextContent, getFullTextContent, getReasoningContent, getThinkingContent } from '../../../utils/messageContent'
-import { GATEWAY_URL, GATEWAY_SECRET_KEY } from '../../../config/runtime'
+import { runtime } from '../../../config/runtime'
 import type { ChatMessage, DetectedFile, ToolResponseMap } from '../../../types/message'
-import GooseAvatarIcon from './GooseAvatarIcon'
-import UserAvatarIcon from './UserAvatarIcon'
 
 interface MessageProps {
     message: ChatMessage
@@ -218,7 +217,7 @@ function FileCapsule({ filePath, fileName, fileExt, rootId, displayPath, agentId
     filePath: string; fileName: string; fileExt: string; rootId?: string; displayPath?: string; agentId?: string; userId?: string | null
 }) {
     const { t } = useTranslation()
-    const downloadUrl = `${GATEWAY_URL}/agents/${agentId}/files/${encodeURIComponent(filePath)}?key=${GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
+    const downloadUrl = `${runtime.GATEWAY_URL}/agents/${agentId}/files/get?path=${encodeURIComponent(filePath)}&key=${runtime.GATEWAY_SECRET_KEY}${rootId ? `&rootId=${encodeURIComponent(rootId)}` : ''}${userId ? `&uid=${encodeURIComponent(userId)}` : ''}`
     const { openPreview, isPreviewable } = usePreview()
     const canPreview = isPreviewable(fileExt, fileName, filePath)
     const { name: visibleName, fullPath } = getFileDisplayParts(fileName, displayPath, filePath)
@@ -477,6 +476,25 @@ function MessageInner({
     const lastTimeRef = useRef<number | null>(null)
     const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
     const wasStreamingRef = useRef(isStreaming)
+    // Long user messages collapse to a max height with a "show more" toggle (Claude/Codex-style bubble).
+    const [isUserExpanded, setIsUserExpanded] = useState(false)
+    const [userCanClamp, setUserCanClamp] = useState(false)
+    const userContentRef = useRef<HTMLDivElement>(null)
+
+    // Decide whether the user bubble needs a "show more" toggle: measure its full height against the clamp ceiling
+    // (kept in sync with the CSS .user-clamped max-height). Re-measure on width changes so wrapping is accounted for.
+    useEffect(() => {
+        if (!isUser) return
+        const el = userContentRef.current
+        if (!el) return
+        const USER_CLAMP_CEILING_PX = 220
+        const measure = () => setUserCanClamp(el.scrollHeight > USER_CLAMP_CEILING_PX + 8)
+        measure()
+        if (typeof ResizeObserver === 'undefined') return
+        const observer = new ResizeObserver(measure)
+        observer.observe(el)
+        return () => observer.disconnect()
+    }, [isUser, fullText])
 
     if (typeof message.created === 'number') {
         lastTimeRef.current = message.created
@@ -690,15 +708,16 @@ function MessageInner({
     const shouldShowCitedFileReferences = !isUser && !isStreaming && parsedFileCitations.length > 0
     const shouldShowRetrievedReferences = !isUser && !isStreaming && retrievedDocuments.length > 0
 
+    const contentClassName = [
+        'message-content',
+        isUser && userCanClamp && 'has-toggle',
+        isUser && userCanClamp && !isUserExpanded && 'user-clamped',
+    ].filter(Boolean).join(' ')
+
     return (
         <div className={`message ${isUser ? 'user' : 'assistant'}${isContinuation ? ' continuation' : ''} animate-slide-in`}>
-            {!isContinuation && (
-                <div className="message-avatar">
-                    {isUser ? <UserAvatarIcon className="message-avatar-icon" /> : <GooseAvatarIcon className="message-avatar-icon" />}
-                </div>
-            )}
             <div className="message-body">
-                <div className="message-content">
+                <div className={contentClassName} ref={isUser ? userContentRef : undefined}>
                     {sessionError && (
                         <div className="message-error-banner">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -801,7 +820,11 @@ function MessageInner({
                                 }
 
                                 const toolCall = entry.toolCall!
-                                const indicatorTone = toolCall.isError ? 'error' : toolCall.isPending ? 'pending' : 'success'
+                                const indicatorTone = (() => {
+                                    if (toolCall.isError) return 'error'
+                                    if (toolCall.isPending) return 'pending'
+                                    return 'success'
+                                })()
 
                                 return (
                                     <div key={entry.key} className={`process-step process-step-tool process-step-tool-${indicatorTone}${stepClass}`}>
@@ -812,14 +835,20 @@ function MessageInner({
                                             {toolCall.name.startsWith('todo__')
                                                 ? <TodoToolCard toolCall={toolCall} />
                                                 : (
-                                                    <ToolCallDisplay
-                                                        name={toolCall.name}
-                                                        args={toolCall.args}
-                                                        result={toolCall.result}
-                                                        isPending={toolCall.isPending}
-                                                        isError={toolCall.isError}
-                                                        embedded
-                                                    />
+                                                    <>
+                                                        <ToolCallDisplay
+                                                            name={toolCall.name}
+                                                            args={toolCall.args}
+                                                            result={toolCall.result}
+                                                            isPending={toolCall.isPending}
+                                                            isError={toolCall.isError}
+                                                            embedded
+                                                        />
+                                                        <A2AStatusLine
+                                                            requestId={toolCall.id}
+                                                            isPending={toolCall.isPending}
+                                                        />
+                                                    </>
                                                 )}
                                         </div>
                                     </div>
@@ -849,7 +878,7 @@ function MessageInner({
                                         if (href?.startsWith('#cite-')) {
                                             const index = parseInt(href.replace('#cite-', ''), 10)
                                             const citation = citationMap.get(index)
-                                            if (citation) return <CitationMark citation={citation} />
+                                            if (citation) return <CitationMark citation={citation} userId={userId} />
                                             return <>{children}</>
                                         }
                                         if (href?.startsWith('#filecite-')) {
@@ -909,7 +938,7 @@ function MessageInner({
                     )}
 
                     {shouldShowCitedReferences && displayText && (
-                        <ReferenceList citations={citations} label="回答中引用的资料" variant="cited" />
+                        <ReferenceList citations={citations} label="回答中引用的资料" variant="cited" userId={userId} />
                     )}
 
                     {shouldShowCitedFileReferences && displayText && (
@@ -917,7 +946,7 @@ function MessageInner({
                     )}
 
                     {shouldShowRetrievedReferences && displayText && (
-                        <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" variant="retrieved" />
+                        <ReferenceList citations={retrievedDocuments} label="本轮检索过的资料" variant="retrieved" userId={userId} />
                     )}
 
                     {isStreaming && (
@@ -928,6 +957,16 @@ function MessageInner({
                                 <span></span>
                             </div>
                         </div>
+                    )}
+                    {isUser && userCanClamp && (
+                        <button
+                            type="button"
+                            className="message-show-more"
+                            aria-expanded={isUserExpanded}
+                            onClick={() => setIsUserExpanded(value => !value)}
+                        >
+                            {isUserExpanded ? t('chat.showLess') : t('chat.showMore')}
+                        </button>
                     )}
                 </div>
 

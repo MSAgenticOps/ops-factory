@@ -1,0 +1,203 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
+package com.huawei.opsfactory.gateway.controller.base;
+
+import com.huawei.opsfactory.gateway.service.SopService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Base controller for CRUD operations on SOP (Standard Operating Procedure) definitions.
+ *
+ * @author x00000000
+ * @since 2026-06-06
+ */
+public abstract class BaseSopController {
+    private static final Logger log = LoggerFactory.getLogger(BaseSopController.class);
+
+    protected final SopService sopService;
+
+    /**
+     * Creates the base sop controller instance.
+     *
+     * @param sopService service handling SOP persistence and business logic
+     */
+    public BaseSopController(SopService sopService) {
+        this.sopService = sopService;
+    }
+
+    /**
+     * Lists all SOP definitions.
+     *
+     * @param request the current HTTP request
+     * @return a map containing the list of all SOP definitions under the {@code sops} key
+     */
+    @GetMapping
+    public Map<String, Object> listSops(HttpServletRequest request) {
+        List<Map<String, Object>> sops = sopService.listSops();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("sops", sops);
+        return result;
+    }
+
+    /**
+     * Gets an SOP by ID.
+     *
+     * @param id the unique identifier of the SOP to retrieve
+     * @param request the current HTTP request
+     * @return a response entity with the SOP details, or 404 if not found
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> getSop(@PathVariable("id") String id, HttpServletRequest request) {
+        Map<String, Object> sop = sopService.getSop(id);
+        if (sop == null) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("error", "SOP not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("sop", sop);
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Creates a new SOP definition.
+     *
+     * @param request the SOP definition fields to create, provided as a JSON request body
+     * @param httpRequest the current HTTP request
+     * @return a response entity with the created SOP and 201 status,
+     *         or 409 if a duplicate name already exists
+     */
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> createSop(@RequestBody Map<String, Object> request,
+        HttpServletRequest httpRequest) {
+        try {
+            Map<String, Object> sop = sopService.createSop(request);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("sop", sop);
+            return ResponseEntity.status(HttpStatus.CREATED).body(body);
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage();
+            String errorType;
+            String errorDetail;
+
+            if (message != null && message.contains("non-whitelisted commands")) {
+                errorType = message;
+                errorDetail = message;
+                log.warn("SOP creation failed - command whitelist violation: {}", message);
+            } else if (message != null && message.startsWith("SOP name already exists")) {
+                errorDetail = message.substring(message.lastIndexOf(": ") + 2);
+                errorType = "SOP name already exists: " + errorDetail;
+                log.warn("SOP creation failed - duplicate name: {}", errorDetail);
+            } else {
+                errorType = message != null ? message : "SOP creation failed";
+                errorDetail = errorType;
+                log.warn("SOP creation failed: {}", message);
+            }
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("error", errorType);
+            body.put("detail", errorDetail != null ? errorDetail : errorType);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+    }
+
+    /**
+     * Updates an SOP by ID.
+     *
+     * @param id the unique identifier of the SOP to update
+     * @param request the SOP fields to modify, provided as a JSON request body
+     * @param httpRequest the current HTTP request
+     * @return a response entity with the updated SOP, 404 if not found,
+     *         or 409 if the update causes a name conflict
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> updateSop(@PathVariable("id") String id,
+        @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
+        try {
+            Map<String, Object> sop = sopService.updateSop(id, request);
+            if (sop == null) {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("success", false);
+                body.put("error", "SOP not found: " + id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+            }
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("sop", sop);
+            return ResponseEntity.ok(body);
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage();
+            String errorType;
+            String errorDetail;
+
+            if (message != null && message.contains("non-whitelisted commands")) {
+                errorType = message;
+                errorDetail = message;
+                log.warn("SOP update failed - command whitelist violation: {}", message);
+            } else if (message != null && message.startsWith("SOP name already exists")) {
+                errorDetail = message.substring(message.lastIndexOf(": ") + 2);
+                errorType = "SOP name already exists: " + errorDetail;
+                log.warn("SOP update failed - duplicate name: {}", errorDetail);
+            } else if (message != null && message.startsWith("SOP not found")) {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("success", false);
+                body.put("error", message);
+                body.put("detail", message);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+            } else {
+                errorType = message != null ? message : "SOP update failed";
+                errorDetail = errorType;
+                log.warn("SOP update failed: {}", message);
+            }
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("error", errorType);
+            body.put("detail", errorDetail != null ? errorDetail : errorType);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+    }
+
+    /**
+     * Deletes an SOP by ID.
+     *
+     * @param id the unique identifier of the SOP to delete
+     * @param request the current HTTP request
+     * @return a response entity with a success flag, or 404 if the SOP does not exist
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> deleteSop(@PathVariable("id") String id, HttpServletRequest request) {
+        boolean deleted = sopService.deleteSop(id);
+        if (!deleted) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("error", "SOP not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        return ResponseEntity.ok(body);
+    }
+}

@@ -8,7 +8,7 @@ ROOT_DIR="$(dirname "${SERVICE_DIR}")"
 yaml_val() {
     local key="$1" file="${SERVICE_DIR}/config.yaml"
     [ -f "${file}" ] || return 0
-    node -e "const y=require('yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.parse(f);const keys='${key}'.split('.');let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" 2>/dev/null || true
+    node -e "const y=require('js-yaml');const f=require('fs').readFileSync('${file}','utf-8');const c=y.load(f);const keys='${key}'.split('.');let v=c;for(const k of keys){v=v?.[k]};if(v!=null)process.stdout.write(String(v))" 2>/dev/null || true
 }
 
 KNOWLEDGE_PORT="${KNOWLEDGE_PORT:-$(yaml_val server.port)}"
@@ -66,7 +66,7 @@ build_service() {
     local jar="${SERVICE_DIR}/target/knowledge-service.jar"
     if [ -f "${jar}" ]; then
         local newest_src
-        newest_src="$(find "${SERVICE_DIR}/src" -type f \( -name '*.java' -o -name '*.yaml' -o -name '*.yml' \) -newer "${jar}" 2>/dev/null | head -1)"
+        newest_src="$(find "${SERVICE_DIR}/src" -type f \( -name '*.java' -o -name '*.yaml' -o -name '*.yml' \) -newer "${jar}" -print -quit 2>/dev/null)"
         if [ -z "${newest_src}" ]; then
             log_info "JAR is up-to-date, skipping build"
             return 0
@@ -132,7 +132,7 @@ do_startup() {
     if [ "${mode}" = "background" ]; then
         local log_file="${LOG_DIR}/knowledge-service.log"
         local console_log_file="${LOG_DIR}/knowledge-service-console.log"
-        java_opts+=("-Dlogging.config=classpath:log4j2-file-only.xml" "-jar" "${jar}")
+        java_opts+=("-Dlogging.config=classpath:logback-file-only.xml" "-jar" "${jar}")
         SERVICE_PID="$(daemon_start "${PID_FILE}" "${console_log_file}" env CONFIG_PATH="${SERVICE_DIR}/config.yaml" java "${java_opts[@]}")"
         if ! kill -0 "${SERVICE_PID}" 2>/dev/null; then
             log_error "Failed to start knowledge-service"

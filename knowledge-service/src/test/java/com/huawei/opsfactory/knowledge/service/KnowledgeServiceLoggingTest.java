@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -5,11 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.huawei.opsfactory.knowledge.api.KnowledgeApiIntegrationTestSupport;
 import com.huawei.opsfactory.knowledge.config.KnowledgeLoggingProperties;
 import com.huawei.opsfactory.knowledge.support.TestLogAppender;
-import java.io.IOException;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.io.IOException;
 
 class KnowledgeServiceLoggingTest extends KnowledgeApiIntegrationTestSupport {
 
@@ -35,11 +41,10 @@ class KnowledgeServiceLoggingTest extends KnowledgeApiIntegrationTestSupport {
         try (TestLogAppender appender = TestLogAppender.attachTo(KnowledgeServiceFacade.class)) {
             search(sourceId, "cpu overload");
 
-            assertThat(appender.formattedMessages())
-                .anySatisfy(message -> {
-                    assertThat(message).contains("Search completed query=len=");
-                    assertThat(message).doesNotContain("cpu overload");
-                });
+            assertThat(appender.formattedMessages()).anySatisfy(message -> {
+                assertThat(message).contains("Search completed query=len=");
+                assertThat(message).doesNotContain("cpu overload");
+            });
         }
     }
 

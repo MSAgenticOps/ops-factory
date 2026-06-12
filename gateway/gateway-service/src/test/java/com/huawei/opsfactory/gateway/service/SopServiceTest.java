@@ -1,6 +1,16 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -10,18 +20,29 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.Assert.*;
-
+/**
+ * Test coverage for Sop Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class SopServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private SopService sopService;
+
     private Path sopsDir;
 
+    /**
+     * Sets the up.
+     *
+     * @throws IOException if the operation fails
+     */
     @Before
     public void setUp() throws IOException {
         GatewayProperties properties = new GatewayProperties();
@@ -29,25 +50,31 @@ public class SopServiceTest {
         paths.setProjectRoot(tempFolder.getRoot().getAbsolutePath());
         properties.setPaths(paths);
 
-        CommandWhitelistService whitelistService = new CommandWhitelistService(properties);
-        whitelistService.init();
-
-        sopService = new SopService(properties, whitelistService);
+        sopService = new SopService(properties, new SolutionTypeService(properties));
         sopService.init();
 
         sopsDir = Path.of(tempFolder.getRoot().getAbsolutePath())
-                .toAbsolutePath().normalize().resolve("gateway")
-                .resolve("data").resolve("sops");
+            .toAbsolutePath()
+            .normalize()
+            .resolve("gateway")
+            .resolve("data")
+            .resolve("sops");
     }
 
     // ── listSops ─────────────────────────────────────────────────
 
+    /**
+     * Tests list sops empty.
+     */
     @Test
     public void testListSops_empty() {
         List<Map<String, Object>> sops = sopService.listSops();
         assertTrue(sops.isEmpty());
     }
 
+    /**
+     * Tests list sops returns all.
+     */
     @Test
     public void testListSops_returnsAll() {
         createSop("sop-1", "SOP1", "desc1");
@@ -57,6 +84,11 @@ public class SopServiceTest {
         assertEquals(2, sops.size());
     }
 
+    /**
+     * Tests list sops skips corrupt file.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testListSops_skipsCorruptFile() throws IOException {
         createSop("sop-1", "SOP1", "desc1");
@@ -68,6 +100,9 @@ public class SopServiceTest {
 
     // ── getSop ───────────────────────────────────────────────────
 
+    /**
+     * Tests get sop existing.
+     */
     @Test
     public void testGetSop_existing() {
         createSop("sop-1", "TestSOP", "test description");
@@ -78,6 +113,9 @@ public class SopServiceTest {
         assertEquals("test description", sop.get("description"));
     }
 
+    /**
+     * Tests get sop not found.
+     */
     @Test(expected = IllegalArgumentException.class)
     public void testGetSop_notFound() {
         sopService.getSop("nonexistent");
@@ -85,6 +123,9 @@ public class SopServiceTest {
 
     // ── createSop ────────────────────────────────────────────────
 
+    /**
+     * Tests create sop success.
+     */
     @Test
     public void testCreateSop_success() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -92,9 +133,8 @@ public class SopServiceTest {
         body.put("description", "RCPA进程异常分析");
         body.put("version", "2.0.0");
         body.put("triggerCondition", "RCPA进程异常");
-        body.put("nodes", List.of(
-                Map.of("id", "node-1", "name", "步骤1", "command", "ps -ef")
-        ));
+        body.put("stepsDescription", "1. 检查RCPA进程状态");
+        body.put("targetSolution", "universal");
 
         Map<String, Object> result = sopService.createSop(body);
 
@@ -103,9 +143,13 @@ public class SopServiceTest {
         assertEquals("RCPA进程异常分析", result.get("description"));
         assertEquals("2.0.0", result.get("version"));
         assertEquals("RCPA进程异常", result.get("triggerCondition"));
-        assertNotNull(result.get("nodes"));
+        assertEquals("1. 检查RCPA进程状态", result.get("stepsDescription"));
+        assertEquals("universal", result.get("targetSolution"));
     }
 
+    /**
+     * Tests create sop default values.
+     */
     @Test
     public void testCreateSop_defaultValues() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -118,11 +162,15 @@ public class SopServiceTest {
         assertEquals("", result.get("description"));
         assertEquals("1.0.0", result.get("version"));
         assertEquals("", result.get("triggerCondition"));
-        assertEquals(List.of(), result.get("nodes"));
+        assertEquals("", result.get("stepsDescription"));
+        assertEquals("universal", result.get("targetSolution"));
     }
 
     // ── updateSop ────────────────────────────────────────────────
 
+    /**
+     * Tests update sop success.
+     */
     @Test
     public void testUpdateSop_success() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -140,6 +188,9 @@ public class SopServiceTest {
         assertEquals("new desc", result.get("description"));
     }
 
+    /**
+     * Tests update sop partial update.
+     */
     @Test
     public void testUpdateSop_partialUpdate() {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -158,24 +209,28 @@ public class SopServiceTest {
         assertEquals("new condition", result.get("triggerCondition"));
     }
 
+    /**
+     * Tests update sop update target solution.
+     */
     @Test
-    public void testUpdateSop_updateNodes() {
+    public void testUpdateSop_updateTargetSolution() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "SOP");
         Map<String, Object> created = sopService.createSop(body);
         String id = (String) created.get("id");
 
-        List<Map<String, Object>> newNodes = List.of(
-                Map.of("id", "n1", "name", "Node1"),
-                Map.of("id", "n2", "name", "Node2")
-        );
         Map<String, Object> updates = new LinkedHashMap<>();
-        updates.put("nodes", newNodes);
+        updates.put("targetSolution", "universal");
+        updates.put("stepsDescription", "Updated steps");
 
         Map<String, Object> result = sopService.updateSop(id, updates);
-        assertEquals(newNodes, result.get("nodes"));
+        assertEquals("universal", result.get("targetSolution"));
+        assertEquals("Updated steps", result.get("stepsDescription"));
     }
 
+    /**
+     * Tests update sop not found.
+     */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateSop_notFound() {
         Map<String, Object> updates = new LinkedHashMap<>();
@@ -185,6 +240,9 @@ public class SopServiceTest {
 
     // ── deleteSop ────────────────────────────────────────────────
 
+    /**
+     * Tests delete sop success.
+     */
     @Test
     public void testDeleteSop_success() {
         createSop("sop-del", "ToDelete", "desc");
@@ -194,12 +252,20 @@ public class SopServiceTest {
         assertTrue(sopService.listSops().isEmpty());
     }
 
+    /**
+     * Tests delete sop not found.
+     */
     @Test
     public void testDeleteSop_notFound() {
         boolean deleted = sopService.deleteSop("nonexistent");
         assertFalse(deleted);
     }
 
+    /**
+     * Tests delete sop file removed.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testDeleteSop_fileRemoved() throws IOException {
         createSop("sop-del", "ToDelete", "desc");
@@ -211,6 +277,9 @@ public class SopServiceTest {
 
     // ── Duplicate Name Validation ────────────────────────────────
 
+    /**
+     * Tests create sop duplicate name rejected.
+     */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateSop_duplicateName_rejected() {
         createSop("sop-1", "DiagnoseRCPA", "desc1");
@@ -220,6 +289,9 @@ public class SopServiceTest {
         sopService.createSop(body);
     }
 
+    /**
+     * Tests create sop duplicate name case insensitive rejected.
+     */
     @Test(expected = IllegalArgumentException.class)
     public void testCreateSop_duplicateNameCaseInsensitive_rejected() {
         createSop("sop-1", "DiagnoseRCPA", "desc1");
@@ -229,6 +301,9 @@ public class SopServiceTest {
         sopService.createSop(body);
     }
 
+    /**
+     * Tests create sop different name allowed.
+     */
     @Test
     public void testCreateSop_differentName_allowed() {
         createSop("sop-1", "DiagnoseRCPA", "desc1");
@@ -241,6 +316,9 @@ public class SopServiceTest {
         assertEquals("DiagnoseOther", result.get("name"));
     }
 
+    /**
+     * Tests update sop duplicate name rejected.
+     */
     @Test(expected = IllegalArgumentException.class)
     public void testUpdateSop_duplicateName_rejected() {
         createSop("sop-1", "DiagnoseRCPA", "desc1");
@@ -251,6 +329,9 @@ public class SopServiceTest {
         sopService.updateSop("sop-2", updates);
     }
 
+    /**
+     * Tests update sop same name same id allowed.
+     */
     @Test
     public void testUpdateSop_sameNameSameId_allowed() {
         createSop("sop-1", "DiagnoseRCPA", "desc1");
@@ -273,15 +354,16 @@ public class SopServiceTest {
         sop.put("description", description);
         sop.put("version", "1.0.0");
         sop.put("triggerCondition", "");
-        sop.put("nodes", List.of());
+        sop.put("stepsDescription", "");
+        sop.put("targetSolution", "universal");
 
         try {
             Path file = sopsDir.resolve(id + ".json");
-            String json = new com.fasterxml.jackson.databind.ObjectMapper()
-                    .writerWithDefaultPrettyPrinter().writeValueAsString(sop);
+            String json = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+                .writeValueAsString(sop);
             Files.writeString(file, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 }

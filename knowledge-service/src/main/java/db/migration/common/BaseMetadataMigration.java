@@ -1,11 +1,16 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package db.migration.common;
+
+import org.flywaydb.core.api.migration.BaseJavaMigration;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.flywaydb.core.api.migration.BaseJavaMigration;
 
 abstract class BaseMetadataMigration extends BaseJavaMigration {
 
@@ -16,7 +21,8 @@ abstract class BaseMetadataMigration extends BaseJavaMigration {
         }
     }
 
-    protected void executeIfMissing(Connection connection, String tableName, String columnName, String sql) throws SQLException {
+    protected void executeIfMissing(Connection connection, String tableName, String columnName, String sql)
+        throws SQLException {
         if (hasColumn(connection, tableName, columnName)) {
             return;
         }

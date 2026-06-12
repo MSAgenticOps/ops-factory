@@ -1,0 +1,202 @@
+{
+  "ontologyId": "commerce-topology-v1",
+  "name": "Commerce Solution Network Topology Ontology",
+  "version": "1.0",
+  "sourceSystem": "allmo-export",
+  "metadata": {
+    "description": "Commerce solution (540d4035-e461-4c95-acb3-0f1f187c374d) network topology from AllMoExport",
+    "exportFile": "AllMoExport_20260511095813862.csv",
+    "solutionId": "540d4035-e461-4c95-acb3-0f1f187c374d"
+  },
+  "entityTypes": [
+    {
+      "type": "Business",
+      "requiredProperties": [
+        "businessId",
+        "businessName"
+      ],
+      "optionalProperties": [
+        "description"
+      ]
+    },
+    {
+      "type": "MicroService",
+      "requiredProperties": [
+        "serviceName"
+      ],
+      "optionalProperties": [
+        "description",
+        "category",
+        "avgCostMs",
+        "minCostMs",
+        "maxCostMs"
+      ]
+    },
+    {
+      "type": "MiddlewareCluster",
+      "requiredProperties": [
+        "clusterName"
+      ],
+      "optionalProperties": [
+        "neType",
+        "neName",
+        "version",
+        "parentDn",
+        "clusterId",
+        "category"
+      ]
+    },
+    {
+      "type": "ApplicationServiceCluster",
+      "requiredProperties": [
+        "clusterName"
+      ],
+      "optionalProperties": [
+        "neType",
+        "neName",
+        "version",
+        "parentDn",
+        "clusterId",
+        "category"
+      ]
+    },
+    {
+      "type": "K8sCluster",
+      "requiredProperties": [
+        "clusterId",
+        "clusterName"
+      ],
+      "optionalProperties": [
+        "masterIp",
+        "vmGroup"
+      ]
+    },
+    {
+      "type": "K8sInstance",
+      "requiredProperties": [
+        "instanceId",
+        "instanceName"
+      ],
+      "optionalProperties": [
+        "ip",
+        "role",
+        "status",
+        "version",
+        "hostIp",
+        "os",
+        "authUsername",
+        "authMethod",
+        "credential",
+        "sshIp",
+        "sshPort"
+      ]
+    },
+    {
+      "type": "WorkerNode",
+      "requiredProperties": [
+        "nodeId",
+        "hostIp"
+      ],
+      "optionalProperties": [
+        "nodeName",
+        "vmGroup",
+        "hostname",
+        "sshIp",
+        "sshPort",
+        "businessAddress",
+        "os",
+        "authUsername",
+        "authMethod",
+        "credential"
+      ]
+    },
+    {
+      "type": "Pod",
+      "requiredProperties": [
+        "podName",
+        "podIp"
+      ],
+      "optionalProperties": [
+        "hostName",
+        "parentDn",
+        "dn",
+        "namespace",
+        "healthStatus"
+      ]
+    }
+  ],
+  "relationTypes": [
+    {
+      "type": "contains_service",
+      "layer": "business",
+      "from": [
+        "Business"
+      ],
+      "to": [
+        "MicroService"
+      ]
+    },
+    {
+      "type": "runs_on",
+      "layer": "deployment",
+      "from": [
+        "MicroService"
+      ],
+      "to": [
+        "ApplicationServiceCluster",
+        "MiddlewareCluster"
+      ]
+    },
+    {
+      "type": "calls",
+      "layer": "runtime",
+      "from": [
+        "MicroService"
+      ],
+      "to": [
+        "MicroService"
+      ]
+    },
+    {
+      "type": "manages",
+      "layer": "infrastructure",
+      "from": [
+        "K8sCluster"
+      ],
+      "to": [
+        "WorkerNode"
+      ]
+    },
+    {
+      "type": "contains",
+      "layer": "infrastructure",
+      "from": [
+        "K8sCluster"
+      ],
+      "to": [
+        "K8sInstance"
+      ]
+    },
+    {
+      "type": "runs_on",
+      "layer": "deployment",
+      "from": [
+        "Pod"
+      ],
+      "to": [
+        "WorkerNode"
+      ]
+    },
+    {
+      "type": "contains",
+      "layer": "deployment",
+      "from": [
+        "MiddlewareCluster",
+        "ApplicationServiceCluster"
+      ],
+      "to": [
+        "Pod"
+      ]
+    }
+  ]
+}

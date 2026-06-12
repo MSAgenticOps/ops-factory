@@ -4,7 +4,14 @@ import type { EChartsOption } from 'echarts'
 import { useTranslation } from 'react-i18next'
 import ControlCenterChartCard from '../components/ControlCenterChartCard'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
-import ResourceCard, { type ResourceStatusTone } from '../../../platform/ui/primitives/ResourceCard'
+import ResourceCard, {
+  ResourceCardActionGroup,
+  ResourceCardConfigureAction,
+  ResourceCardRestartAction,
+  ResourceCardStartAction,
+  ResourceCardStopAction,
+  type ResourceStatusTone,
+} from '../../../platform/ui/primitives/ResourceCard'
 import Button from '../../../platform/ui/primitives/Button'
 import StatCard from '../../../platform/ui/primitives/StatCard'
 import { useToast } from '../../../platform/providers/ToastContext'
@@ -16,10 +23,16 @@ import {
   type DailyPoint,
   type TraceRow,
   type AgentInfo,
+  type InstanceSnapshot,
   type ManagedServiceStatus,
 } from '../hooks/useControlCenterMonitoring'
 import { useMetrics, type MetricsPoint, type AgentMetrics } from '../hooks/useControlCenterMetrics'
-import { useControlCenterActions, type ControlCenterAction } from '../hooks/useControlCenterActions'
+import {
+  useControlCenterActions,
+  useInstanceActions,
+  type ControlCenterAction,
+  type InstanceAction,
+} from '../hooks/useControlCenterActions'
 import { useControlCenterEvents } from '../hooks/useControlCenterEvents'
 import DependencyStatus from '../../../platform/ui/primitives/DependencyStatus'
 import '../styles/control-center.css'
@@ -44,14 +57,14 @@ function fmtCost(c: number): string {
   return `$${c.toFixed(2)}`
 }
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string, locale: string): string {
   const d = new Date(iso)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
 
-function fmtTime(iso: string | number): string {
+function fmtTime(iso: string | number, locale: string): string {
   const d = new Date(iso)
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtIdleTime(ms: number): string {
@@ -278,7 +291,13 @@ function buildLatencyOption(
       axisLabel: {
         color: MON_COLORS.text,
         fontSize: 11,
-        formatter: (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}s` : `${value}`,
+        formatter: (value: number) => {
+            if (value >= 1000) {
+                const decimals = value >= 10_000 ? 0 : 1
+                return `${(value / 1000).toFixed(decimals)}s`
+            }
+            return `${value}`
+        },
       },
     },
     series: [
@@ -351,7 +370,11 @@ function buildLatencyOption(
 // --- Shared sub-components ------------------------------------------------
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: 'error' | 'success' }) {
-  const tone = accent === 'error' ? 'danger' : accent === 'success' ? 'success' : 'neutral'
+  const tone = (() => {
+    if (accent === 'error') return 'danger'
+    if (accent === 'success') return 'success'
+    return 'neutral'
+  })()
   return (
     <StatCard
       label={label}
@@ -437,11 +460,12 @@ function StatusCard({
  * The outer container controls the display size via CSS;
  * the SVG preserves its aspect ratio so circles stay round.
  */
-function Sparkline({ data, valueKey, color, formatter }: {
+function Sparkline({ data, valueKey, color, formatter, locale }: {
   data: DailyPoint[]
   valueKey: keyof DailyPoint
   color: string
   formatter?: (v: number) => string
+  locale: string
 }) {
   const fmt = formatter || String
   const values = data.map(d => d[valueKey] as number)
@@ -489,7 +513,7 @@ function Sparkline({ data, valueKey, color, formatter }: {
             {fmt(values[i])}
           </text>
           <text x={p.x} y={h - 4} textAnchor="middle" fontSize="10" fill="var(--color-text-muted)">
-            {fmtDate(data[i].date)}
+            {fmtDate(data[i].date, locale)}
           </text>
         </g>
       ))}
@@ -531,7 +555,7 @@ function ExternalLinkIcon({ size = 13 }: { size?: number }) {
 // --- Tab: Platform --------------------------------------------------------
 
 function PlatformTab() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { system, instances, services, isLoading, error, runtimeError, refresh } = useMonitoringPlatform()
   const { showToast } = useToast()
@@ -611,6 +635,7 @@ function PlatformTab() {
                 pendingAction={pendingServiceId === service.id ? pendingAction : null}
                 onAction={handleAction}
                 onConfigure={() => navigate(`/control-center/services/${service.id}`)}
+                locale={i18n.language === 'en' ? 'en-US' : 'zh-CN'}
               />
             ))}
           </CardGrid>
@@ -618,7 +643,7 @@ function PlatformTab() {
       )}
       {confirmState && (
         <ActionConfirmDialog
-          service={confirmState.service}
+          targetName={confirmState.service.name}
           action={confirmState.action}
           isRunning={pendingServiceId === confirmState.service.id && pendingAction === confirmState.action}
           onClose={() => {
@@ -632,7 +657,7 @@ function PlatformTab() {
 }
 
 function EventsTab() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { events, isLoading, error } = useControlCenterEvents()
 
   if (isLoading && events.length === 0) {
@@ -649,18 +674,25 @@ function EventsTab() {
         <div className="mon-no-data">{t('controlCenter.eventsEmpty')}</div>
       ) : (
         <div className="control-center-events-list">
-          {events.map((event, index) => (
+          {events.map((event, index) => {
+            const levelClass = (() => {
+              if (event.level === 'error') return 'error'
+              if (event.level === 'warning') return 'starting'
+              return 'healthy'
+            })()
+            return (
             <div key={`${event.timestamp}:${event.serviceId}:${index}`} className="control-center-event-row">
               <div className="control-center-event-main">
-                <span className={`status-pill status-${event.level === 'error' ? 'error' : event.level === 'warning' ? 'starting' : 'healthy'}`}>
+                <span className={`status-pill status-${levelClass}`}>
                   {event.type}
                 </span>
                 <strong>{event.serviceName}</strong>
                 <span className="control-center-event-message">{event.message}</span>
               </div>
-              <span className="control-center-event-time">{fmtTime(event.timestamp)}</span>
+              <span className="control-center-event-time">{fmtTime(event.timestamp, i18n.language === 'en' ? 'en-US' : 'zh-CN')}</span>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
@@ -671,9 +703,43 @@ function EventsTab() {
 
 function AgentsTab() {
   const { t } = useTranslation()
-  const { instances, agents, isLoading, error, runtimeError } = useMonitoringPlatform()
+  const { instances, agents, isLoading, error, runtimeError, refresh } = useMonitoringPlatform()
   const { data: metricsData } = useMetrics(30_000)
+  const { showToast } = useToast()
+  const { runInstanceAction, pendingInstanceKey, pendingAction } = useInstanceActions()
+  const [confirmState, setConfirmState] = useState<{
+    instance: InstanceSnapshot
+    agentName: string
+    action: InstanceAction
+  } | null>(null)
   const loadError = runtimeError || error
+
+  const handleConfirmInstanceAction = async () => {
+    if (!confirmState) return
+    const { instance, agentName, action } = confirmState
+    const targetName = `${agentName} (${instance.userId})`
+    try {
+      const result = await runInstanceAction(instance.agentId, instance.userId, action)
+      if (result.success) {
+        showToast('success', t('controlCenter.actionSuccess', {
+          action: t(`controlCenter.actionLabel.${action}`),
+          service: targetName,
+        }))
+        refresh()
+        // Start/restart spawn asynchronously; refresh again so the starting → running transition
+        // shows up. Stop is synchronous on the gateway, so the immediate refresh already reflects it.
+        if (action !== 'stop') {
+          window.setTimeout(refresh, 3000)
+        }
+      } else {
+        showToast('error', result.error || t('common.somethingWentWrong'))
+      }
+    } catch (actionError) {
+      showToast('error', actionError instanceof Error ? actionError.message : t('common.somethingWentWrong'))
+    } finally {
+      setConfirmState(null)
+    }
+  }
 
   if (isLoading && agents.length === 0) {
     return <div className="mon-loading">{t('monitoring.loading')}</div>
@@ -715,10 +781,12 @@ function AgentsTab() {
                       <span className="mon-agent-card-name">{agent.name}</span>
                       <span className={`status-pill status-${agent.status}`}>{agent.status}</span>
                     </div>
-                    <div className="mon-agent-card-meta">
-                      <span className="mon-agent-card-tag">{agent.provider}</span>
-                      <span className="mon-agent-card-tag">{agent.model}</span>
-                    </div>
+                    {(agent.provider || agent.model) && (
+                      <div className="mon-agent-card-meta">
+                        {agent.provider && <span className="mon-agent-card-tag">{agent.provider}</span>}
+                        {agent.model && <span className="mon-agent-card-tag">{agent.model}</span>}
+                      </div>
+                    )}
                   </div>
                   <div className="mon-agent-card-stats">
                     <div className="mon-agent-card-stat">
@@ -770,21 +838,69 @@ function AgentsTab() {
                 <span>{t('monitoring.instancesPort')}</span>
                 <span>{t('monitoring.instancesStatus')}</span>
                 <span>{t('monitoring.instancesIdleSince')}</span>
+                <span>{t('monitoring.instancesActions')}</span>
               </div>
               {instances.byAgent.flatMap(group =>
-                group.instances.map(inst => (
-                  <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
-                    <span className="mon-agent-name">{group.agentName}</span>
-                    <span>{inst.userId}</span>
-                    <span className="mon-agent-model">{inst.port}</span>
-                    <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
-                    <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
-                  </div>
-                ))
+                group.instances.map(inst => {
+                  const isPending = pendingInstanceKey === `${inst.agentId}:${inst.userId}`
+                  const openConfirm = (action: InstanceAction) =>
+                    setConfirmState({ instance: inst, agentName: group.agentName, action })
+                  return (
+                    <div key={`${inst.agentId}:${inst.userId}`} className="mon-inst-table-row">
+                      <span className="mon-agent-name">{group.agentName}</span>
+                      <span>{inst.userId}</span>
+                      <span className="mon-agent-model">{inst.port}</span>
+                      <span><span className={`status-pill status-${inst.status}`}>{inst.status}</span></span>
+                      <span className="mon-traces-ts">{fmtIdleTime(inst.idleSinceMs)}</span>
+                      <span>
+                        <ResourceCardActionGroup className="mon-inst-actions">
+                          {inst.status === 'running' ? (
+                            <>
+                              <ResourceCardRestartAction
+                                onClick={() => openConfirm('restart')}
+                                disabled={isPending}
+                                label={isPending && pendingAction === 'restart'
+                                  ? t('controlCenter.actionRunning')
+                                  : t('controlCenter.actionLabel.restart')}
+                              />
+                              <ResourceCardStopAction
+                                onClick={() => openConfirm('stop')}
+                                disabled={isPending}
+                                label={isPending && pendingAction === 'stop'
+                                  ? t('controlCenter.actionRunning')
+                                  : t('controlCenter.actionLabel.stop')}
+                              />
+                            </>
+                          ) : (
+                            <ResourceCardStartAction
+                              onClick={() => openConfirm('start')}
+                              disabled={isPending || inst.status === 'starting'}
+                              label={isPending && pendingAction === 'start'
+                                ? t('controlCenter.actionRunning')
+                                : t('controlCenter.actionLabel.start')}
+                            />
+                          )}
+                        </ResourceCardActionGroup>
+                      </span>
+                    </div>
+                  )
+                })
               )}
             </div>
           )}
         </div>
+      )}
+      {confirmState && (
+        <ActionConfirmDialog
+          targetName={`${confirmState.agentName} (${confirmState.instance.userId})`}
+          action={confirmState.action}
+          warning={confirmState.action === 'start' ? undefined : t('controlCenter.instanceActionWarning')}
+          isRunning={pendingInstanceKey === `${confirmState.instance.agentId}:${confirmState.instance.userId}`}
+          onClose={() => {
+            if (!pendingAction) setConfirmState(null)
+          }}
+          onConfirm={() => void handleConfirmInstanceAction()}
+        />
       )}
     </>
   )
@@ -908,11 +1024,11 @@ function PerformanceTab() {
           <div className="mon-chart-grid mon-chart-grid-secondary">
             <StatusCard
               title={t('monitoring.perfErrorState')}
-              description={hasSeriesData
-                ? hasErrorRequests
-                  ? t('monitoring.perfErrorStateDetected')
-                  : t('monitoring.perfNoErrors')
-                : t('monitoring.perfNoSeries')}
+              description={(() => {
+                    if (!hasSeriesData) return t('monitoring.perfNoSeries')
+                    if (hasErrorRequests) return t('monitoring.perfErrorStateDetected')
+                    return t('monitoring.perfNoErrors')
+                })()}
               value={fmtPct(errorRate)}
               tone={hasErrorRequests ? 'error' : 'success'}
               metrics={[
@@ -923,11 +1039,11 @@ function PerformanceTab() {
             />
             <StatusCard
               title={t('monitoring.perfInstancesState')}
-              description={hasSeriesData
-                ? instanceStable
-                  ? t('monitoring.perfInstancesStable', { count: current ? current.activeInstances : instanceValues[0] || 0 })
-                  : t('monitoring.perfInstancesChanged')
-                : t('monitoring.perfNoSeries')}
+              description={(() => {
+                    if (!hasSeriesData) return t('monitoring.perfNoSeries')
+                    if (instanceStable) return t('monitoring.perfInstancesStable', { count: current ? current.activeInstances : instanceValues[0] || 0 })
+                    return t('monitoring.perfInstancesChanged')
+                })()}
               value={String(current ? current.activeInstances : 0)}
               tone="success"
               metrics={[
@@ -948,7 +1064,7 @@ function PerformanceTab() {
 const RANGES: TimeRange[] = ['1h', '24h', '7d', '30d']
 
 function ObservabilityTab() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { status, overview, traces, observations, isLoading, error, range, setRange } = useMonitoring()
   const [traceFilter, setTraceFilter] = useState<'all' | 'errors'>('all')
   const filteredTraces = traceFilter === 'errors' ? traces.filter(tr => tr.hasError) : traces
@@ -1047,7 +1163,7 @@ function ObservabilityTab() {
             <div className="mon-section">
               <div className="mon-chart-block">
                 <span className="mon-chart-title">{t('monitoring.trendTraces')}</span>
-                <Sparkline data={overview.daily} valueKey="traces" color="var(--color-accent)" formatter={v => String(v)} />
+                <Sparkline data={overview.daily} valueKey="traces" color="var(--color-accent)" formatter={v => String(v)} locale={i18n.language === 'en' ? 'en-US' : 'zh-CN'} />
               </div>
             </div>
           )}
@@ -1103,7 +1219,7 @@ function ObservabilityTab() {
                   <span>{t('monitoring.status')}</span>
                 </div>
                 {filteredTraces.map(tr => (
-                  <TraceRowComp key={tr.id} trace={tr} langfuseHost={status?.host} />
+                  <TraceRowComp key={tr.id} trace={tr} langfuseHost={status?.host} locale={i18n.language === 'en' ? 'en-US' : 'zh-CN'} />
                 ))}
               </div>
             )}
@@ -1173,21 +1289,21 @@ function ServiceCard({
   pendingAction,
   onAction,
   onConfigure,
+  locale,
 }: {
   service: ManagedServiceStatus
   pendingAction: ControlCenterAction | null
   onAction: (service: ManagedServiceStatus, action: ControlCenterAction) => void
   onConfigure: () => void
+  locale: string
 }) {
   const { t } = useTranslation()
-  const statusTone: ResourceStatusTone =
-    service.status === 'healthy'
-      ? 'success'
-      : service.status === 'down'
-        ? 'danger'
-        : service.status === 'disabled'
-          ? 'neutral'
-          : 'warning'
+  const statusTone: ResourceStatusTone = (() => {
+    if (service.status === 'healthy') return 'success'
+    if (service.status === 'down') return 'danger'
+    if (service.status === 'disabled') return 'neutral'
+    return 'warning'
+  })()
 
   const showStart = service.status === 'down' || service.status === 'unknown'
   const showRestart = service.status === 'healthy' || service.status === 'degraded'
@@ -1207,7 +1323,7 @@ function ServiceCard({
           </span>
           <span className="control-center-service-checked">
             <span className="control-center-service-checked-label">{t('controlCenter.lastChecked')}</span>
-            <span className="control-center-service-checked-value">{fmtTime(service.checkedAt)}</span>
+            <span className="control-center-service-checked-value">{fmtTime(service.checkedAt, locale)}</span>
           </span>
         </div>
       )}
@@ -1220,30 +1336,39 @@ function ServiceCard({
       footer={(
         <div className="control-center-service-footer">
           <div className="control-center-service-footer-left">
-            {hasActions ? (
-              <div className="control-center-service-actions">
-                {showStart && (
-                  <Button size="sm" tone="quiet" onClick={() => onAction(service, 'start')} disabled={!!pendingAction}>
-                    {pendingAction === 'start' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.start')}
-                  </Button>
-                )}
-                {showRestart && (
-                  <Button size="sm" tone="quiet" onClick={() => onAction(service, 'restart')} disabled={!!pendingAction}>
-                    {pendingAction === 'restart' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.restart')}
-                  </Button>
-                )}
-                {showStop && (
-                  <Button size="sm" variant="danger" tone="quiet" onClick={() => onAction(service, 'stop')} disabled={!!pendingAction}>
-                    {pendingAction === 'stop' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.stop')}
-                  </Button>
-                )}
-              </div>
-            ) : null}
             {service.message ? <span className="control-center-service-message">{service.message}</span> : null}
           </div>
-          <Button size="sm" variant="primary" onClick={onConfigure}>
-            {t('controlCenter.configure')}
-          </Button>
+          <ResourceCardActionGroup className="control-center-service-actions">
+            {hasActions && (
+              <>
+                {showStart && (
+                  <ResourceCardStartAction
+                    onClick={() => onAction(service, 'start')}
+                    disabled={!!pendingAction}
+                    label={pendingAction === 'start' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.start')}
+                  />
+                )}
+                {showRestart && (
+                  <ResourceCardRestartAction
+                    onClick={() => onAction(service, 'restart')}
+                    disabled={!!pendingAction}
+                    label={pendingAction === 'restart' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.restart')}
+                  />
+                )}
+                {showStop && (
+                  <ResourceCardStopAction
+                    onClick={() => onAction(service, 'stop')}
+                    disabled={!!pendingAction}
+                    label={pendingAction === 'stop' ? t('controlCenter.actionRunning') : t('controlCenter.actionLabel.stop')}
+                  />
+                )}
+              </>
+            )}
+            <ResourceCardConfigureAction
+              onClick={onConfigure}
+              label={t('controlCenter.configure')}
+            />
+          </ResourceCardActionGroup>
         </div>
       )}
     />
@@ -1251,14 +1376,16 @@ function ServiceCard({
 }
 
 function ActionConfirmDialog({
-  service,
+  targetName,
   action,
+  warning,
   isRunning,
   onClose,
   onConfirm,
 }: {
-  service: ManagedServiceStatus
+  targetName: string
   action: ControlCenterAction
+  warning?: string
   isRunning: boolean
   onClose: () => void
   onConfirm: () => void
@@ -1270,7 +1397,7 @@ function ActionConfirmDialog({
     <DetailDialog
       title={t('controlCenter.actionConfirmTitle', {
         action: t(`controlCenter.actionLabel.${action}`),
-        service: service.name,
+        service: targetName,
       })}
       onClose={onClose}
       className="control-center-confirm-dialog"
@@ -1288,8 +1415,9 @@ function ActionConfirmDialog({
       <p className="control-center-confirm-copy">
         {t('controlCenter.actionConfirmBody', {
           action: t(`controlCenter.actionLabel.${action}`),
-          service: service.name,
+          service: targetName,
         })}
+        {warning ? ` ${warning}` : ''}
       </p>
     </DetailDialog>
   )
@@ -1297,7 +1425,7 @@ function ActionConfirmDialog({
 
 // --- Trace row sub-component (used by ObservabilityTab) --------------------
 
-function TraceRowComp({ trace: tr, langfuseHost }: { trace: TraceRow; langfuseHost?: string }) {
+function TraceRowComp({ trace: tr, langfuseHost, locale }: { trace: TraceRow; langfuseHost?: string; locale: string }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const rowClass = `mon-traces-row ${tr.hasError ? 'mon-traces-row-error' : ''}`
@@ -1306,7 +1434,7 @@ function TraceRowComp({ trace: tr, langfuseHost }: { trace: TraceRow; langfuseHo
     <>
       <div className={rowClass} onClick={() => setExpanded(!expanded)}>
         <span className="mon-traces-chevron"><ChevronIcon expanded={expanded} /></span>
-        <span className="mon-traces-ts">{fmtTime(tr.timestamp)}</span>
+        <span className="mon-traces-ts">{fmtTime(tr.timestamp, locale)}</span>
         <span className="mon-traces-name">{tr.name}</span>
         <span className="mon-traces-input" title={tr.input}>{tr.input.slice(0, 60)}{tr.input.length > 60 ? '...' : ''}</span>
         <span className="mon-traces-latency">{fmtSec(tr.latency)}</span>

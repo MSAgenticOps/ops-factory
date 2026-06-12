@@ -1,116 +1,123 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
+import jakarta.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Provides CRUD operations for cluster entities persisted as JSON files, with cascade delete support.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
-public class ClusterService {
-
-    private static final Logger log = LoggerFactory.getLogger(ClusterService.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class ClusterService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
-    private Path clustersDir;
+
     private ClusterRelationService clusterRelationService;
 
+    /**
+     * Creates the cluster service instance.
+     *
+     * @param properties gateway configuration properties
+     */
     public ClusterService(GatewayProperties properties) {
+        super("cluster");
         this.properties = properties;
     }
 
+    /**
+     * Sets the cluster relation service via lazy injection.
+     *
+     * @param clusterRelationService service managing cluster relation edges
+     */
     @Lazy
     @Autowired
     public void setClusterRelationService(ClusterRelationService clusterRelationService) {
         this.clusterRelationService = clusterRelationService;
     }
 
+    /**
+     * Initializes the clusters data directory at startup.
+     */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.clustersDir = gatewayRoot.resolve("data").resolve("clusters");
-        try {
-            Files.createDirectories(clustersDir);
-        } catch (IOException e) {
-            log.error("Failed to create clusters directory: {}", clustersDir, e);
-        }
-        log.info("ClusterService initialized, clustersDir={}", clustersDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "clusters");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
     /**
      * List clusters with optional filters.
-     * @param groupId filter by group ID (null = no filter)
-     * @param type filter by cluster type (null = no filter)
+     *
+     * @param groupId optional group identifier filter (null for no filter)
+     * @param type optional cluster type filter (null for no filter)
+     * @return list of cluster maps matching the filters
      */
     public List<Map<String, Object>> listClusters(String groupId, String type) {
+        List<Map<String, Object>> allClusters = listEntities();
         List<Map<String, Object>> clusters = new ArrayList<>();
-        if (!Files.isDirectory(clustersDir)) {
-            return clusters;
-        }
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(clustersDir, "*.json")) {
-            for (Path file : stream) {
-                if (!Files.isRegularFile(file)) {
+        for (Map<String, Object> cluster : allClusters) {
+            // Filter by groupId
+            if (groupId != null && !groupId.isEmpty()) {
+                Object cg = cluster.get("groupId");
+                if (!groupId.equals(cg)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> cluster = readFile(file);
-                    if (cluster == null) {
-                        continue;
-                    }
-                    // Filter by groupId
-                    if (groupId != null && !groupId.isEmpty()) {
-                        Object cg = cluster.get("groupId");
-                        if (!groupId.equals(cg)) {
-                            continue;
-                        }
-                    }
-                    // Filter by type
-                    if (type != null && !type.isEmpty()) {
-                        Object ct = cluster.get("type");
-                        if (!type.equalsIgnoreCase(ct != null ? ct.toString() : "")) {
-                            continue;
-                        }
-                    }
-                    clusters.add(cluster);
-                } catch (Exception e) {
-                    log.warn("Failed to read cluster file: {}", file, e);
+            }
+            // Filter by type
+            if (type != null && !type.isEmpty()) {
+                Object ct = cluster.get("type");
+                if (!type.equalsIgnoreCase(ct != null ? ct.toString() : "")) {
+                    continue;
                 }
             }
-        } catch (IOException e) {
-            log.error("Failed to list clusters from {}", clustersDir, e);
+            clusters.add(cluster);
         }
         return clusters;
     }
 
-    public Map<String, Object> getCluster(String id) {
-        Path file = clustersDir.resolve(id + ".json");
+    /**
+     * Gets a cluster by its ID.
+     *
+     * @param id cluster identifier
+     * @return cluster data map
+     */
+    public Map<String, Object> getCluster(String id) throws NotFoundException {
+        Path file = resolveEntityFile(id);
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
-            throw new IllegalArgumentException("Cluster not found: " + id);
+            throw new NotFoundException("Cluster not found");
         }
         return cluster;
     }
 
+    /**
+     * Returns the distinct cluster types across all clusters.
+     *
+     * @return distinct cluster type names across all clusters
+     */
     public List<String> getClusterTypes() {
         LinkedHashSet<String> types = new LinkedHashSet<>();
         List<Map<String, Object>> clusters = listClusters(null, null);
@@ -123,16 +130,40 @@ public class ClusterService {
         return new ArrayList<>(types);
     }
 
-    public Map<String, Object> createCluster(Map<String, Object> body) {
+    /**
+     * Creates a new cluster from the provided field map.
+     *
+     * @param body field map for the new cluster
+     * @return the created cluster map with generated id and timestamps
+     * @throws ConflictException if name already exists in the group
+     */
+    public Map<String, Object> createCluster(Map<String, Object> body) throws ConflictException {
+        String name = ValidationUtils.validateStringField(body, "name", "Cluster name", 100, true);
+
+        String type = ValidationUtils.validateStringField(body, "type", "Cluster type", 100, true);
+
+        String groupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+
+        List<Map<String, Object>> allClusters = listClusters(null, null);
+        boolean nameDuplicate = allClusters.stream()
+            .filter(c -> groupId.equals(c.get("groupId")))
+            .anyMatch(c -> name.equalsIgnoreCase(String.valueOf(c.get("name"))));
+        if (nameDuplicate) {
+            throw new ConflictException("Cluster name already exists in this group");
+        }
+
+        ValidationUtils.validateStringField(body, "purpose", "Cluster purpose", 200, false);
+        ValidationUtils.validateStringField(body, "description", "Cluster description", 500, false);
+
         String id = UUID.randomUUID().toString();
         String now = Instant.now().toString();
 
         Map<String, Object> cluster = new LinkedHashMap<>();
         cluster.put("id", id);
-        cluster.put("name", body.getOrDefault("name", ""));
-        cluster.put("type", body.getOrDefault("type", ""));
+        cluster.put("name", name);
+        cluster.put("type", type);
         cluster.put("purpose", body.getOrDefault("purpose", ""));
-        cluster.put("groupId", body.getOrDefault("groupId", null));
+        cluster.put("groupId", groupId);
         cluster.put("description", body.getOrDefault("description", ""));
         cluster.put("enabled", body.getOrDefault("enabled", true));
         cluster.put("createdAt", now);
@@ -143,27 +174,51 @@ public class ClusterService {
         return cluster;
     }
 
-    public Map<String, Object> updateCluster(String id, Map<String, Object> body) {
-        Path file = clustersDir.resolve(id + ".json");
+    /**
+     * Updates an existing cluster with the provided field map.
+     *
+     * @param id cluster identifier
+     * @param body field map with updated values
+     * @return the updated cluster map
+     * @throws NotFoundException if cluster not found
+     * @throws ConflictException if name already exists in the group
+     */
+    public Map<String, Object> updateCluster(String id, Map<String, Object> body) throws NotFoundException, ConflictException {
+        Path file = resolveEntityFile(id);
         Map<String, Object> cluster = readFile(file);
         if (cluster == null) {
-            throw new IllegalArgumentException("Cluster not found: " + id);
+            throw new NotFoundException("Cluster not found");
         }
 
         if (body.containsKey("name")) {
-            cluster.put("name", body.get("name"));
+            String newName = ValidationUtils.validateStringField(body, "name", "Cluster name", 100, true);
+
+            Object groupIdObj = body.containsKey("groupId") ? body.get("groupId") : cluster.get("groupId");
+            String groupId = groupIdObj != null ? groupIdObj.toString() : "";
+            List<Map<String, Object>> allClusters = listClusters(null, null);
+            boolean nameDuplicate = allClusters.stream()
+                .filter(c -> !id.equals(c.get("id")) && groupId.equals(c.get("groupId")))
+                .anyMatch(c -> newName.equalsIgnoreCase(String.valueOf(c.get("name"))));
+            if (nameDuplicate) {
+                throw new ConflictException("Cluster name already exists in this group");
+            }
+            cluster.put("name", newName);
         }
         if (body.containsKey("type")) {
-            cluster.put("type", body.get("type"));
-        }
-        if (body.containsKey("purpose")) {
-            cluster.put("purpose", body.get("purpose"));
+            String newType = ValidationUtils.validateStringField(body, "type", "Cluster type", 100, true);
+            cluster.put("type", newType);
         }
         if (body.containsKey("groupId")) {
-            cluster.put("groupId", body.get("groupId"));
+            String newGroupId = ValidationUtils.requireNonBlank(body, "groupId", "Group is required");
+            cluster.put("groupId", newGroupId);
+        }
+        if (body.containsKey("purpose")) {
+            String purpose = ValidationUtils.validateStringField(body, "purpose", "Cluster purpose", 200, false);
+            cluster.put("purpose", purpose);
         }
         if (body.containsKey("description")) {
-            cluster.put("description", body.get("description"));
+            String description = ValidationUtils.validateStringField(body, "description", "Cluster description", 500, false);
+            cluster.put("description", description);
         }
         if (body.containsKey("enabled")) {
             cluster.put("enabled", body.get("enabled"));
@@ -177,14 +232,16 @@ public class ClusterService {
 
     /**
      * Delete a cluster. Rejects if the cluster has hosts.
+     *
+     * @param id entity identifier
      * @param hostService used to check for hosts in this cluster
      * @return true if deleted
      */
-    public boolean deleteCluster(String id, HostService hostService) {
+    public boolean deleteCluster(String id, HostService hostService) throws ConflictException {
         // Check for hosts
         List<Map<String, Object>> hosts = hostService.listHostsByCluster(id);
         if (!hosts.isEmpty()) {
-            throw new IllegalStateException("Cannot delete cluster with hosts. Remove hosts first.");
+            throw new ConflictException("Cannot delete cluster with hosts. Remove hosts first.");
         }
 
         // Cascade delete cluster relations
@@ -192,23 +249,14 @@ public class ClusterService {
             clusterRelationService.deleteRelationsByCluster(id);
         }
 
-        Path file = clustersDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Deleted cluster: id={}", id);
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to delete cluster file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
     /**
      * Force-delete a cluster: deletes all hosts in the cluster first, then the cluster itself.
      * Host deletion cascades to their relations automatically.
+     *
+     * @param id cluster identifier
      * @param hostService used to delete hosts in this cluster
      * @return true if deleted
      */
@@ -226,44 +274,7 @@ public class ClusterService {
         }
 
         // Delete the cluster file itself
-        Path file = clustersDir.resolve(id + ".json");
-        try {
-            if (Files.exists(file)) {
-                Files.delete(file);
-                log.info("Force-deleted cluster: id={}, removed {} hosts", id, hosts.size());
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            log.error("Failed to force-delete cluster file: {}", file, e);
-            return false;
-        }
+        return deleteEntityFile(id);
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read cluster file: {}", file, e);
-            return null;
-        }
-    }
-
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(clustersDir);
-            Path file = clustersDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write cluster file for id={}", id, e);
-            throw new RuntimeException("Failed to save cluster", e);
-        }
-    }
 }

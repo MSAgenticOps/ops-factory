@@ -1,6 +1,3 @@
-server:
-  port: 8092
-
 spring:
   application:
     name: knowledge-service
@@ -12,7 +9,7 @@ spring:
       max-request-size: 1GB
 
 logging:
-  config: classpath:log4j2-spring.xml
+  config: classpath:logback-spring.xml
 
 management:
   endpoints:

@@ -1,13 +1,19 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.ConflictException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
+import jakarta.annotation.PostConstruct;
+
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,41 +22,52 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
+/**
+ * Manages the command whitelist and validates remote commands against enabled patterns and risk levels.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
-public class CommandWhitelistService {
+public class CommandWhitelistService extends JsonFileEntityStore {
 
-    private static final Logger log = LoggerFactory.getLogger(CommandWhitelistService.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final int MAX_PATTERN_LENGTH = 500;
+    private static final int MAX_DESCRIPTION_LENGTH = 500;
 
-    private static final List<String> DEFAULT_COMMANDS = List.of(
-            "ps", "tail", "grep", "cat", "ls", "df", "free", "netstat",
-            "top", "cd", "find", "wc", "head", "date", "uptime", "echo",
-            "iostat", "ping"
-    );
+    // Pattern for command whitelist: only allows alphanumeric, underscore, hyphen, dot, forward slash, and space
+    private static final Pattern COMMAND_PATTERN_REGEX = Pattern.compile("^[a-zA-Z0-9_\\-./\\s]+$");
 
-    private static final Map<String, String> DEFAULT_RISK_LEVELS = Map.ofEntries(
-            Map.entry("ps", "low"), Map.entry("tail", "low"), Map.entry("grep", "low"),
-            Map.entry("cat", "low"), Map.entry("ls", "low"), Map.entry("df", "low"),
-            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("echo", "low"),
-            Map.entry("date", "low"),
-            Map.entry("uptime", "low"), Map.entry("cd", "low"), Map.entry("find", "low"),
-            Map.entry("wc", "low"),
-            Map.entry("netstat", "medium"), Map.entry("top", "medium"),
-            Map.entry("iostat", "medium"), Map.entry("ping", "medium")
-    );
+    private static final List<String> DEFAULT_COMMANDS = List.of("ps", "tail", "grep", "cat", "ls", "df", "free",
+        "netstat", "top", "cd", "find", "wc", "head", "date", "uptime", "echo", "iostat", "ping");
+
+    private static final Map<String,
+        String> DEFAULT_RISK_LEVELS = Map.ofEntries(Map.entry("ps", "low"), Map.entry("tail", "low"),
+            Map.entry("grep", "low"), Map.entry("cat", "low"), Map.entry("ls", "low"), Map.entry("df", "low"),
+            Map.entry("free", "low"), Map.entry("head", "low"), Map.entry("echo", "low"), Map.entry("date", "low"),
+            Map.entry("uptime", "low"), Map.entry("cd", "low"), Map.entry("find", "low"), Map.entry("wc", "low"),
+            Map.entry("netstat", "medium"), Map.entry("top", "medium"), Map.entry("iostat", "medium"),
+            Map.entry("ping", "medium"));
 
     private final GatewayProperties properties;
-    private Path gatewayRoot;
+
     private Path whitelistFile;
 
+    /**
+     * Creates the command whitelist service instance.
+     */
     public CommandWhitelistService(GatewayProperties properties) {
+        super("command-whitelist");
         this.properties = properties;
     }
 
+    /**
+     * Initializes the command whitelist from the data directory at startup.
+     */
     @PostConstruct
     public void init() {
-        this.gatewayRoot = properties.getGatewayRootPath();
+        Path gatewayRoot = properties.getGatewayRootPath();
         this.whitelistFile = gatewayRoot.resolve("data").resolve("command-whitelist.json");
 
         initializeDefaultIfNeeded();
@@ -59,36 +76,93 @@ public class CommandWhitelistService {
 
     // ── Whitelist Operations ─────────────────────────────────────────
 
+    /**
+     * Returns the full command whitelist.
+     *
+     * @return the full command whitelist
+     */
     public Map<String, Object> getWhitelist() {
         return readWhitelistFile();
     }
 
-    public void addCommand(Map<String, Object> command) {
+    /**
+     * Adds a new command to the whitelist, rejecting duplicate patterns.
+     *
+     * @param command adds a new command to the whitelist, rejecting duplicate patterns
+     */
+    public void addCommand(Map<String, Object> command) throws ConflictException, BadRequestException {
+        // Validate pattern field (required)
+        String pattern = ValidationUtils.requireNonBlank(command, "pattern", "Command pattern is required");
+        // For command patterns, allow '/' (needed for paths like '/var/log') but block other XSS chars
+        if (ValidationUtils.hasDangerousChars(pattern)) {
+            throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+        }
+        ValidationUtils.requireMaxLength(pattern, MAX_PATTERN_LENGTH, "Command pattern");
+        if (!COMMAND_PATTERN_REGEX.matcher(pattern).matches()) {
+            throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+        }
+
+        // Validate description field (optional, max length)
+        if (command.containsKey("description")) {
+            String description = ValidationUtils.validateStringField(command, "description", "Description", MAX_DESCRIPTION_LENGTH, false);
+            command.put("description", description);
+        }
+
+        // Check for duplicate patterns
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
-
-        // Dedup: reject duplicate patterns
-        Object patternObj = command.get("pattern");
-        if (patternObj != null) {
-            String newPattern = patternObj.toString();
-            for (Map<String, Object> existing : commands) {
-                if (newPattern.equals(existing.get("pattern"))) {
-                    throw new IllegalArgumentException("Command pattern already exists: " + newPattern);
-                }
+        for (Map<String, Object> existing : commands) {
+            if (pattern.equals(existing.get("pattern"))) {
+                throw new ConflictException("Command pattern already exists");
             }
         }
 
+        command.put("pattern", pattern);
         commands.add(command);
         whitelist.put("commands", commands);
         writeWhitelistFile(whitelist);
-        log.info("Added command to whitelist: {}", command.get("pattern"));
+        log.info("Added command to whitelist: {}", pattern);
     }
 
-    public void updateCommand(String pattern, Map<String, Object> updates) {
+    /**
+     * Updates an existing command in the whitelist matching the given pattern.
+     *
+     * @param pattern command pattern to match
+     * @param updates fields to update
+     */
+    public void updateCommand(String pattern, Map<String, Object> updates) throws NotFoundException, BadRequestException {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
+
+        // Validate pattern if being updated
+        String newPattern = pattern;
+        if (updates.containsKey("pattern")) {
+            Object newPatternObj = updates.get("pattern");
+            if (newPatternObj != null && !newPatternObj.toString().trim().isEmpty()) {
+                newPattern = newPatternObj.toString().trim();
+                if (newPattern.isEmpty()) {
+                    throw new BadRequestException("Command pattern is required");
+                }
+                // For command patterns, allow '/' (needed for paths like '/var/log') but block other XSS chars
+                if (ValidationUtils.hasDangerousChars(newPattern)) {
+                    throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+                }
+                ValidationUtils.requireMaxLength(newPattern, MAX_PATTERN_LENGTH, "Command pattern");
+                if (!COMMAND_PATTERN_REGEX.matcher(newPattern).matches()) {
+                    throw new BadRequestException("Command pattern contains invalid characters. Only letters, numbers, underscores, hyphens, dots, forward slashes, and spaces are allowed");
+                }
+                updates.put("pattern", newPattern);
+            }
+        }
+
+        // Validate description if being updated
+        if (updates.containsKey("description")) {
+            String description = ValidationUtils.validateStringField(updates, "description", "Description",
+                MAX_DESCRIPTION_LENGTH, false);
+            updates.put("description", description);
+        }
 
         boolean found = false;
         for (Map<String, Object> cmd : commands) {
@@ -104,7 +178,7 @@ public class CommandWhitelistService {
         }
 
         if (!found) {
-            throw new IllegalArgumentException("Command pattern not found: " + pattern);
+            throw new NotFoundException("Command pattern not found");
         }
 
         whitelist.put("commands", commands);
@@ -112,14 +186,19 @@ public class CommandWhitelistService {
         log.info("Updated command in whitelist: {}", pattern);
     }
 
-    public void deleteCommand(String pattern) {
+    /**
+     * Deletes a command from the whitelist matching the given pattern.
+     *
+     * @param pattern pattern
+     */
+    public void deleteCommand(String pattern) throws NotFoundException {
         Map<String, Object> whitelist = readWhitelistFile();
         Object commandsObj = whitelist.get("commands");
         List<Map<String, Object>> commands = ensureCommandsList(commandsObj);
 
         boolean removed = commands.removeIf(cmd -> pattern.equals(cmd.get("pattern")));
         if (!removed) {
-            throw new IllegalArgumentException("Command pattern not found: " + pattern);
+            throw new NotFoundException("Command pattern not found");
         }
 
         whitelist.put("commands", commands);
@@ -132,10 +211,11 @@ public class CommandWhitelistService {
      * normalizing each subcommand (stripping path prefixes), and checking
      * against enabled patterns using two matching modes:
      * <ul>
-     *   <li>Simple mode (no spaces in pattern) — matches the command name only</li>
-     *   <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
+     * <li>Simple mode (no spaces in pattern) — matches the command name only</li>
+     * <li>Prefix mode (pattern contains spaces) — matches command + arguments prefix</li>
      * </ul>
      *
+     * @param command command to execute
      * @return a list of rejected command names (empty if all pass)
      */
     public List<String> validateCommand(String command) {
@@ -193,6 +273,9 @@ public class CommandWhitelistService {
      * Returns "high" if any sub-command is not in the whitelist,
      * "medium" if any sub-command is medium, otherwise "low".
      * When multiple patterns match, the longest (most specific) pattern's risk level wins.
+     *
+     * @param command determine the risk level of a command string
+     * @return the determine the risk level of a command string
      */
     public String getRiskLevel(String command) {
         String highestRisk = "low";
@@ -204,14 +287,19 @@ public class CommandWhitelistService {
         for (Map<String, Object> cmd : commands) {
             Object p = cmd.get("pattern");
             Object r = cmd.get("riskLevel");
-            if (p != null) patternRisks.add(Map.entry(p.toString(), r != null ? r.toString() : "high"));
+            if (p != null)
+                patternRisks.add(Map.entry(p.toString(), r != null ? r.toString() : "high"));
         }
 
         for (String sub : splitShellPipe(command)) {
             String trimmed = sub.trim();
-            if (trimmed.isEmpty()) continue;
+            if (trimmed.isEmpty()) {
+                continue;
+            }
             String normalized = normalizeSubcommand(trimmed);
-            if (normalized.isEmpty()) continue;
+            if (normalized.isEmpty()) {
+                continue;
+            }
 
             // Find the longest matching pattern
             String bestRisk = null;
@@ -225,8 +313,11 @@ public class CommandWhitelistService {
                 }
             }
             String risk = bestRisk != null ? bestRisk : "high";
-            if ("high".equals(risk)) return "high";
-            if ("medium".equals(risk) && "low".equals(highestRisk)) highestRisk = "medium";
+            if ("high".equals(risk)) {
+                return "high";
+            }
+            if ("medium".equals(risk) && "low".equals(highestRisk))
+                highestRisk = "medium";
         }
         return highestRisk;
     }
@@ -242,21 +333,25 @@ public class CommandWhitelistService {
     private String normalizeSubcommand(String sub) {
         String[] parts = sub.trim().split("\\s+", 2);
         String firstWord = parts[0].trim();
-        if (firstWord.isEmpty()) return "";
+        if (firstWord.isEmpty()) {
+            return "";
+        }
         // Strip path prefix from first word
         if (firstWord.contains("/")) {
             firstWord = firstWord.substring(firstWord.lastIndexOf('/') + 1);
         }
-        if (parts.length == 1) return firstWord;
+        if (parts.length == 1) {
+            return firstWord;
+        }
         return firstWord + " " + parts[1].trim();
     }
 
     /**
      * Check if a normalized subcommand matches a whitelist pattern.
      * <ul>
-     *   <li>Simple mode (pattern has no spaces): compare only the first word</li>
-     *   <li>Prefix mode (pattern has spaces): subcommand must equal pattern
-     *       or start with {@code pattern + " "} (word-boundary safe)</li>
+     * <li>Simple mode (pattern has no spaces): compare only the first word</li>
+     * <li>Prefix mode (pattern has spaces): subcommand must equal pattern
+     * or start with {@code pattern + " "} (word-boundary safe)</li>
      * </ul>
      */
     private boolean matchesPattern(String normalizedSub, String pattern) {
@@ -278,41 +373,82 @@ public class CommandWhitelistService {
     private List<String> splitShellPipe(String command) {
         List<String> parts = new ArrayList<>();
         StringBuilder current = new StringBuilder();
-        boolean inSingle = false, inDouble = false;
+        boolean inSingle = false;
+        boolean inDouble = false;
         for (int i = 0; i < command.length(); i++) {
             char c = command.charAt(i);
-            if (c == '\\' && !inSingle && i + 1 < command.length()) {
-                current.append(c).append(command.charAt(++i));
+            if (isEscaped(c, inSingle, i, command.length())) {
+                appendEscaped(current, command, i);
+                i++;
                 continue;
             }
-            if (c == '\'' && !inDouble) { inSingle = !inSingle; current.append(c); continue; }
-            if (c == '"'  && !inSingle) { inDouble = !inDouble; current.append(c); continue; }
-            if (!inSingle && !inDouble) {
-                // Handle || (logical OR)
-                if (c == '|' && i + 1 < command.length() && command.charAt(i + 1) == '|') {
-                    parts.add(current.toString());
-                    current.setLength(0);
-                    i++; // skip second |
-                    continue;
-                }
-                // Handle && (logical AND)
-                if (c == '&' && i + 1 < command.length() && command.charAt(i + 1) == '&') {
-                    parts.add(current.toString());
-                    current.setLength(0);
-                    i++; // skip second &
-                    continue;
-                }
-                // Handle | (pipe) and ; (semicolon)
-                if (c == '|' || c == ';') {
-                    parts.add(current.toString());
-                    current.setLength(0);
-                    continue;
-                }
+            if (isSingleQuote(c, inDouble)) {
+                inSingle = !inSingle;
+                current.append(c);
+                continue;
+            }
+            if (isDoubleQuote(c, inSingle)) {
+                inDouble = !inDouble;
+                current.append(c);
+                continue;
+            }
+            int skipCount = splitOnDelimiter(parts, current, command, i, c, inSingle, inDouble);
+            if (skipCount >= 0) {
+                i += skipCount;
+                continue;
             }
             current.append(c);
         }
-        if (current.length() > 0) parts.add(current.toString());
+        flushCurrentPart(parts, current);
         return parts;
+    }
+
+    private boolean isEscaped(char c, boolean inSingle, int index, int length) {
+        return c == '\\' && !inSingle && index + 1 < length;
+    }
+
+    private void appendEscaped(StringBuilder current, String command, int index) {
+        current.append(command.charAt(index)).append(command.charAt(index + 1));
+    }
+
+    private boolean isSingleQuote(char c, boolean inDouble) {
+        return c == '\'' && !inDouble;
+    }
+
+    private boolean isDoubleQuote(char c, boolean inSingle) {
+        return c == '"' && !inSingle;
+    }
+
+    private int splitOnDelimiter(List<String> parts, StringBuilder current, String command, int index, char c,
+        boolean inSingle, boolean inDouble) {
+        if (inSingle || inDouble) {
+            return -1;
+        }
+        if (isDoubleDelimiter(command, index, c, '|')) {
+            flushCurrentPart(parts, current);
+            return 1;
+        }
+        if (isDoubleDelimiter(command, index, c, '&')) {
+            flushCurrentPart(parts, current);
+            return 1;
+        }
+        if (c == '|' || c == ';') {
+            flushCurrentPart(parts, current);
+            return 0;
+        }
+        return -1;
+    }
+
+    private boolean isDoubleDelimiter(String command, int index, char c, char expected) {
+        return c == expected && index + 1 < command.length() && command.charAt(index + 1) == expected;
+    }
+
+    private void flushCurrentPart(List<String> parts, StringBuilder current) {
+        if (current.length() == 0) {
+            return;
+        }
+        parts.add(current.toString());
+        current.setLength(0);
     }
 
     // ── Default Initialization ───────────────────────────────────────
@@ -340,7 +476,7 @@ public class CommandWhitelistService {
 
             writeWhitelistFile(whitelist);
             log.info("Initialized default command whitelist with {} commands", commands.size());
-        } catch (Exception e) {
+        } catch (IOException | IllegalStateException e) {
             log.error("Failed to initialize default command whitelist", e);
         }
     }
@@ -348,30 +484,23 @@ public class CommandWhitelistService {
     // ── File I/O Helpers ─────────────────────────────────────────────
 
     private Map<String, Object> readWhitelistFile() {
-        if (!Files.exists(whitelistFile)) {
+        Map<String, Object> result = readFile(whitelistFile);
+        if (result == null) {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("commands", new ArrayList<>());
             return empty;
         }
-        try {
-            String json = Files.readString(whitelistFile, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read command whitelist file: {}", whitelistFile, e);
-            Map<String, Object> empty = new LinkedHashMap<>();
-            empty.put("commands", new ArrayList<>());
-            return empty;
-        }
+        return result;
     }
 
     private void writeWhitelistFile(Map<String, Object> whitelist) {
         try {
             Files.createDirectories(whitelistFile.getParent());
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(whitelist);
+            String json = mapper().writerWithDefaultPrettyPrinter().writeValueAsString(whitelist);
             Files.writeString(whitelistFile, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to write command whitelist file: {}", whitelistFile, e);
-            throw new RuntimeException("Failed to save command whitelist", e);
+            throw new IllegalStateException("Failed to save command whitelist", e);
         }
     }
 

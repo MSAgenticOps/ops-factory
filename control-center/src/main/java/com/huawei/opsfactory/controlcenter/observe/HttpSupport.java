@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.controlcenter.observe;
 
 import com.huawei.opsfactory.controlcenter.config.ControlCenterProperties;
@@ -12,6 +16,12 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 @Component
+/**
+ * Http Support.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class HttpSupport {
 
     private final ControlCenterProperties properties;
@@ -29,6 +39,24 @@ public class HttpSupport {
                 .uri(URI.create(url))
                 .timeout(Duration.ofMillis(properties.getRequestTimeoutMs()))
                 .GET();
+        headers.forEach((name, values) -> values.forEach(value -> request.header(name, value)));
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Sends a POST request with an empty body and the given headers.
+     *
+     * @param url target URL
+     * @param headers request headers
+     * @return the HTTP response with a string body
+     * @throws IOException if an I/O error occurs sending the request
+     * @throws InterruptedException if the operation is interrupted
+     */
+    public HttpResponse<String> post(String url, HttpHeaders headers) throws IOException, InterruptedException {
+        HttpRequest.Builder request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofMillis(properties.getRequestTimeoutMs()))
+                .POST(HttpRequest.BodyPublishers.noBody());
         headers.forEach((name, values) -> values.forEach(value -> request.header(name, value)));
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }

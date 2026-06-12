@@ -1,8 +1,18 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.businessintelligence.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "business-intelligence")
+/**
+ * Business Intelligence Runtime Properties.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class BusinessIntelligenceRuntimeProperties {
 
     private String corsOrigin = "*";
@@ -57,6 +67,12 @@ public class BusinessIntelligenceRuntimeProperties {
         runtime.setExportBiUrl(exportBiUrl);
     }
 
+    /**
+     * Runtime.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     public static class Runtime {
 
         private String baseDir = "./data";
@@ -88,6 +104,12 @@ public class BusinessIntelligenceRuntimeProperties {
         }
     }
 
+/**
+     * Logging.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     public static class Logging {
 
         private boolean accessLogEnabled = true;

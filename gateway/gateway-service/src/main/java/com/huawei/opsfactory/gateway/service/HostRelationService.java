@@ -1,17 +1,20 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.huawei.opsfactory.gateway.exception.BadRequestException;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
+import jakarta.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,124 +26,144 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * @deprecated Use {@link ClusterRelationService} instead. Host-level relations are replaced by cluster-level relations.
+ * HostRelationService
+ *
+ * @author x00000000
+ * @since 2026-05-09
  */
-@Deprecated
 @Service
-public class HostRelationService {
-
-    private static final Logger log = LoggerFactory.getLogger(HostRelationService.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class HostRelationService extends JsonFileEntityStore {
 
     private final GatewayProperties properties;
+
     private final HostService hostService;
+
     private final ClusterService clusterService;
-    private Path relationsDir;
 
     private BusinessServiceService businessServiceService;
 
+    /**
+     * Creates the host relation service instance.
+     */
     public HostRelationService(GatewayProperties properties, HostService hostService, ClusterService clusterService) {
+        super("host-relation");
         this.properties = properties;
         this.hostService = hostService;
         this.clusterService = clusterService;
     }
 
+    /**
+     * Sets the business service service via lazy injection.
+     *
+     * @param businessServiceService the business service service via lazy injection
+     */
     @Lazy
     @Autowired
     public void setBusinessServiceService(BusinessServiceService businessServiceService) {
         this.businessServiceService = businessServiceService;
     }
 
+    /**
+     * Initializes the host relations data directory at startup.
+     */
     @PostConstruct
     public void init() {
-        Path gatewayRoot = properties.getGatewayRootPath();
-        this.relationsDir = gatewayRoot.resolve("data").resolve("host-relations");
-        try {
-            Files.createDirectories(relationsDir);
-        } catch (IOException e) {
-            log.error("Failed to create host-relations directory: {}", relationsDir, e);
-        }
-        log.info("HostRelationService initialized, relationsDir={}", relationsDir);
+        initDataDir(properties.getGatewayRootPath().resolve("data"), "host-relations");
     }
 
     // ── CRUD Operations ──────────────────────────────────────────────
 
     /**
      * List relations with optional filters.
+     *
+     * @param hostId host identifier
+     * @param groupId group identifier
+     * @param clusterId cluster identifier
+     * @param sourceType source type filter
+     * @param sourceId source identifier filter
+     * @return the list relations with optional filters
      */
-    public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType, String sourceId) {
+    public List<Map<String, Object>> listRelations(String hostId, String groupId, String clusterId, String sourceType,
+        String sourceId) {
         List<Map<String, Object>> relations = new ArrayList<>();
-        if (!Files.isDirectory(relationsDir)) {
+        if (!Files.isDirectory(getDataDir())) {
             return relations;
         }
 
-        // Resolve host IDs for groupId/clusterId filtering
-        List<String> targetHostIds = null;
-        if ((groupId != null && !groupId.isEmpty()) || (clusterId != null && !clusterId.isEmpty())) {
-            targetHostIds = new ArrayList<>();
-            if (clusterId != null && !clusterId.isEmpty()) {
-                for (Map<String, Object> h : hostService.listHostsByCluster(clusterId)) {
-                    targetHostIds.add((String) h.get("id"));
-                }
-            } else {
-                for (Map<String, Object> h : hostService.listHostsByGroup(groupId, clusterService)) {
-                    targetHostIds.add((String) h.get("id"));
-                }
-            }
-        }
+        List<String> targetHostIds = resolveTargetHostIds(groupId, clusterId);
 
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) {
                     continue;
                 }
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel == null) {
-                        continue;
-                    }
-                    // Filter by hostId
-                    if (hostId != null && !hostId.isEmpty()) {
-                        String relSourceId = (String) rel.get("sourceHostId");
-                        String targetId = (String) rel.get("targetHostId");
-                        if (!hostId.equals(relSourceId) && !hostId.equals(targetId)) {
-                            continue;
-                        }
-                    }
-                    // Filter by groupId/clusterId
-                    if (targetHostIds != null) {
-                        String relSourceId = (String) rel.get("sourceHostId");
-                        String targetId = (String) rel.get("targetHostId");
-                        if (!targetHostIds.contains(relSourceId) && !targetHostIds.contains(targetId)) {
-                            continue;
-                        }
-                    }
-                    // Filter by sourceType
-                    if (sourceType != null && !sourceType.isEmpty()) {
-                        String relSourceType = (String) rel.getOrDefault("sourceType", "host");
-                        if (!sourceType.equals(relSourceType)) {
-                            continue;
-                        }
-                    }
-                    // Filter by sourceId (sourceHostId)
-                    if (sourceId != null && !sourceId.isEmpty()) {
-                        String relSourceId = (String) rel.get("sourceHostId");
-                        if (!sourceId.equals(relSourceId)) {
-                            continue;
-                        }
-                    }
-                    relations.add(rel);
-                } catch (Exception e) {
-                    log.warn("Failed to read relation file: {}", file, e);
+                Map<String, Object> rel = readFile(file);
+                if (rel == null || !matchesRelationFilters(rel, hostId, targetHostIds, sourceType, sourceId)) {
+                    continue;
                 }
+                relations.add(rel);
             }
         } catch (IOException e) {
-            log.error("Failed to list relations from {}", relationsDir, e);
+            log.error("Failed to list relations from {}", getDataDir(), e);
         }
         return relations;
     }
 
-    public Map<String, Object> createRelation(Map<String, Object> body) {
+    private List<String> resolveTargetHostIds(String groupId, String clusterId) {
+        if ((groupId == null || groupId.isEmpty()) && (clusterId == null || clusterId.isEmpty())) {
+            return null;
+        }
+        List<String> ids = new ArrayList<>();
+        if (clusterId != null && !clusterId.isEmpty()) {
+            for (Map<String, Object> h : hostService.listHostsByCluster(clusterId)) {
+                ids.add((String) h.get("id"));
+            }
+        } else {
+            for (Map<String, Object> h : hostService.listHostsByGroup(groupId, clusterService)) {
+                ids.add((String) h.get("id"));
+            }
+        }
+        return ids;
+    }
+
+    private boolean matchesRelationFilters(Map<String, Object> rel, String hostId, List<String> targetHostIds,
+        String sourceType, String sourceId) {
+        if (hostId != null && !hostId.isEmpty()) {
+            String relSourceId = (String) rel.get("sourceHostId");
+            String relTargetId = (String) rel.get("targetHostId");
+            if (!hostId.equals(relSourceId) && !hostId.equals(relTargetId)) {
+                return false;
+            }
+        }
+        if (targetHostIds != null) {
+            String relSourceId = (String) rel.get("sourceHostId");
+            String relTargetId = (String) rel.get("targetHostId");
+            if (!targetHostIds.contains(relSourceId) && !targetHostIds.contains(relTargetId)) {
+                return false;
+            }
+        }
+        if (sourceType != null && !sourceType.isEmpty()) {
+            String relSourceType = (String) rel.getOrDefault("sourceType", "host");
+            if (!sourceType.equals(relSourceType)) {
+                return false;
+            }
+        }
+        if (sourceId != null && !sourceId.isEmpty()) {
+            String relSourceId = (String) rel.get("sourceHostId");
+            if (!sourceId.equals(relSourceId)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Creates a new host relation from the provided field map.
+     *
+     * @param body request body
+     * @return the result
+     */
+    public Map<String, Object> createRelation(Map<String, Object> body) throws BadRequestException, NotFoundException {
         String sourceHostId = (String) body.get("sourceHostId");
         String targetHostId = (String) body.get("targetHostId");
         String sourceType = (String) body.getOrDefault("sourceType", "host");
@@ -149,21 +172,21 @@ public class HostRelationService {
         if ("business-service".equals(sourceType)) {
             try {
                 businessServiceService.getBusinessService(sourceHostId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source business service not found: " + sourceHostId);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Source business service not found", e);
             }
         } else {
             try {
                 hostService.getHost(sourceHostId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Source host not found: " + sourceHostId);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Source host not found", e);
             }
         }
         // targetHostId always validates as a host
         try {
             hostService.getHost(targetHostId);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Target host not found: " + targetHostId);
+        } catch (NotFoundException e) {
+            throw new BadRequestException("Target host not found", e);
         }
 
         String id = UUID.randomUUID().toString();
@@ -179,7 +202,8 @@ public class HostRelationService {
         relation.put("updatedAt", now);
 
         writeEntityFile(id, relation);
-        log.info("Created host relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceHostId, targetHostId);
+        log.info("Created host relation: id={}, sourceType={}, source={}, target={}", id, sourceType, sourceHostId,
+            targetHostId);
 
         // Sync hostIds on the business service
         if ("business-service".equals(sourceType) && businessServiceService != null) {
@@ -189,11 +213,18 @@ public class HostRelationService {
         return relation;
     }
 
-    public Map<String, Object> updateRelation(String id, Map<String, Object> body) {
-        Path file = relationsDir.resolve(id + ".json");
+    /**
+     * Updates an existing host relation with the provided field map.
+     *
+     * @param id an existing host relation with the provided field map
+     * @param body an existing host relation with the provided field map
+     * @return the result
+     */
+    public Map<String, Object> updateRelation(String id, Map<String, Object> body) throws BadRequestException, NotFoundException {
+        Path file = resolveEntityFile(id);
         Map<String, Object> relation = readFile(file);
         if (relation == null) {
-            throw new IllegalArgumentException("Host relation not found: " + id);
+            throw new NotFoundException("Host relation not found");
         }
 
         String currentSourceType = (String) relation.getOrDefault("sourceType", "host");
@@ -206,14 +237,14 @@ public class HostRelationService {
             if ("business-service".equals(currentSourceType)) {
                 try {
                     businessServiceService.getBusinessService(sourceHostId);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source business service not found: " + sourceHostId);
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Source business service not found", e);
                 }
             } else {
                 try {
                     hostService.getHost(sourceHostId);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Source host not found: " + sourceHostId);
+                } catch (NotFoundException e) {
+                    throw new BadRequestException("Source host not found", e);
                 }
             }
             relation.put("sourceHostId", sourceHostId);
@@ -222,8 +253,8 @@ public class HostRelationService {
             String targetHostId = (String) body.get("targetHostId");
             try {
                 hostService.getHost(targetHostId);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Target host not found: " + targetHostId);
+            } catch (NotFoundException e) {
+                throw new BadRequestException("Target host not found", e);
             }
             relation.put("targetHostId", targetHostId);
         }
@@ -240,8 +271,14 @@ public class HostRelationService {
         return relation;
     }
 
+    /**
+     * Deletes a host relation by its ID.
+     *
+     * @param id entity identifier
+     * @return the result
+     */
     public boolean deleteRelation(String id) {
-        Path file = relationsDir.resolve(id + ".json");
+        Path file = resolveEntityFile(id);
         try {
             if (Files.exists(file)) {
                 // Read relation before delete to support sync
@@ -254,7 +291,11 @@ public class HostRelationService {
 
                 // Sync hostIds if this was a business-service relation
                 if ("business-service".equals(sourceType) && sourceHostId != null && businessServiceService != null) {
-                    businessServiceService.syncHostIdsFromRelations(sourceHostId);
+                    try {
+                        businessServiceService.syncHostIdsFromRelations(sourceHostId);
+                    } catch (NotFoundException e) {
+                        log.debug("Business service not found during sync after relation delete: {}", sourceHostId);
+                    }
                 }
                 return true;
             }
@@ -267,6 +308,8 @@ public class HostRelationService {
 
     /**
      * Delete all relations involving a specific host (for cascade delete).
+     *
+     * @param hostId host identifier
      */
     public void deleteRelationsByHost(String hostId) {
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
@@ -281,6 +324,8 @@ public class HostRelationService {
 
     /**
      * Delete all relations where source is a specific business service (for cascade delete).
+     *
+     * @param bsId bs id
      */
     public void deleteRelationsByBusinessService(String bsId) {
         List<Map<String, Object>> all = listRelations(null, null, null, "business-service", bsId);
@@ -295,9 +340,33 @@ public class HostRelationService {
     /**
      * Build ECharts graph data (nodes + edges) for a given group.
      * Includes all hosts in the group plus any related hosts from other groups.
+     *
+     * @param groupId group identifier
+     * @param clusterId cluster identifier
+     * @return graph data containing nodes and edges
      */
     public Map<String, Object> getGraphData(String groupId, String clusterId) {
-        // Collect hosts in this group or cluster
+        Map<String, Map<String, Object>> hostMap = collectGroupHosts(groupId, clusterId);
+        List<Map<String, Object>> matchedEdges = new ArrayList<>();
+
+        processRelationsForGraph(hostMap, matchedEdges);
+
+        // Build cluster lookup for type info
+        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
+        for (Map<String, Object> c : clusterService.listClusters(null, null)) {
+            clusterMap.put((String) c.get("id"), c);
+        }
+
+        List<Map<String, Object>> nodes = buildGraphNodes(hostMap, clusterMap);
+        List<Map<String, Object>> edges = buildGraphEdges(matchedEdges);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("nodes", nodes);
+        result.put("edges", edges);
+        return result;
+    }
+
+    private Map<String, Map<String, Object>> collectGroupHosts(String groupId, String clusterId) {
         List<Map<String, Object>> groupHosts;
         if (clusterId != null && !clusterId.isEmpty()) {
             groupHosts = hostService.listHostsByCluster(clusterId);
@@ -311,138 +380,93 @@ public class HostRelationService {
         for (Map<String, Object> h : groupHosts) {
             hostMap.put((String) h.get("id"), h);
         }
+        return hostMap;
+    }
 
-        // Collect outgoing AND incoming relations from these hosts (+1-hop in both directions)
-        List<Map<String, Object>> allRelations = new ArrayList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(relationsDir, "*.json")) {
+    private void processRelationsForGraph(Map<String, Map<String, Object>> hostMap,
+        List<Map<String, Object>> matchedEdges) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(getDataDir(), "*.json")) {
             for (Path file : stream) {
-                if (!Files.isRegularFile(file)) continue;
-                try {
-                    Map<String, Object> rel = readFile(file);
-                    if (rel == null) continue;
-                    // Skip business-service relations; they are synthesized by enrichWithBusinessServices
-                    String relSourceType = (String) rel.getOrDefault("sourceType", "host");
-                    if ("business-service".equals(relSourceType)) continue;
-                    String sourceId = (String) rel.get("sourceHostId");
-                    String targetId = (String) rel.get("targetHostId");
-                    boolean added = false;
-                    // Outgoing: source is in the selected group/cluster → fetch target as +1-hop
-                    if (hostMap.containsKey(sourceId)) {
-                        allRelations.add(rel);
-                        added = true;
-                        if (!hostMap.containsKey(targetId)) {
-                            try {
-                                Map<String, Object> th = hostService.getHost(targetId);
-                                hostMap.put(targetId, th);
-                            } catch (Exception ignored) {}
-                        }
-                    }
-                    // Incoming: target is in the selected group/cluster → fetch source as +1-hop
-                    if (hostMap.containsKey(targetId) && !added) {
-                        allRelations.add(rel);
-                        if (!hostMap.containsKey(sourceId)) {
-                            try {
-                                Map<String, Object> sh = hostService.getHost(sourceId);
-                                hostMap.put(sourceId, sh);
-                            } catch (Exception ignored) {}
-                        }
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to read relation file: {}", file, e);
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
+                Map<String, Object> rel = readFile(file);
+                if (rel == null) {
+                    continue;
+                }
+                // Skip business-service relations; they are synthesized by enrichWithBusinessServices
+                String relSourceType = (String) rel.getOrDefault("sourceType", "host");
+                if ("business-service".equals(relSourceType)) {
+                    continue;
+                }
+                String sourceId = (String) rel.get("sourceHostId");
+                String targetId = (String) rel.get("targetHostId");
+                boolean added = false;
+                // Outgoing: source is in the selected group/cluster -> fetch target as +1-hop
+                if (hostMap.containsKey(sourceId)) {
+                    matchedEdges.add(rel);
+                    added = true;
+                    addHopHost(!hostMap.containsKey(targetId), targetId, hostMap);
+                }
+                // Incoming: target is in the selected group/cluster -> fetch source as +1-hop
+                if (hostMap.containsKey(targetId) && !added) {
+                    matchedEdges.add(rel);
+                    addHopHost(!hostMap.containsKey(sourceId), sourceId, hostMap);
                 }
             }
         } catch (IOException e) {
             log.error("Failed to read relations", e);
         }
+    }
 
-        // Build cluster lookup for type info
-        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
-        for (Map<String, Object> c : clusterService.listClusters(null, null)) {
-            clusterMap.put((String) c.get("id"), c);
+    private void addHopHost(boolean needed, String hostId, Map<String, Map<String, Object>> hostMap) {
+        if (!needed) {
+            return;
         }
+        try {
+            hostMap.put(hostId, hostService.getHost(hostId));
+        } catch (NotFoundException e) {
+            log.debug("Skipping missing host {} while building topology", hostId);
+        }
+    }
 
-        // Build nodes
+    private List<Map<String, Object>> buildGraphNodes(Map<String, Map<String, Object>> hostMap,
+        Map<String, Map<String, Object>> clusterMap) {
         List<Map<String, Object>> nodes = new ArrayList<>();
         for (Map<String, Object> h : hostMap.values()) {
             nodes.add(buildHostNode(h, clusterMap));
         }
+        return nodes;
+    }
 
-        // Build edges
+    private List<Map<String, Object>> buildGraphEdges(List<Map<String, Object>> matchedEdges) {
         List<Map<String, Object>> edges = new ArrayList<>();
-        for (Map<String, Object> rel : allRelations) {
+        for (Map<String, Object> rel : matchedEdges) {
             Map<String, Object> edge = new LinkedHashMap<>();
             edge.put("source", rel.get("sourceHostId"));
             edge.put("target", rel.get("targetHostId"));
             edge.put("description", rel.get("description"));
             edges.add(edge);
         }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("nodes", nodes);
-        result.put("edges", edges);
-        return result;
+        return edges;
     }
 
     /**
      * Get 1-hop neighbors (upstream + downstream) for a given host.
+     *
+     * @param hostId host identifier
+     * @return 1-hop neighbors (upstream + downstream) for a given host
      */
-    public Map<String, Object> getNeighbors(String hostId) {
-        // 1. Validate host exists
+    public Map<String, Object> getNeighbors(String hostId) throws NotFoundException {
         Map<String, Object> host = hostService.getHost(hostId);
-
-        // 2. Query all relations involving this host
         List<Map<String, Object>> relations = listRelations(hostId, null, null, null, null);
-
-        // 3. Build cluster lookup table
-        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
-        for (Map<String, Object> c : clusterService.listClusters(null, null)) {
-            clusterMap.put((String) c.get("id"), c);
-        }
-
-        // 4. Build current host node
+        Map<String, Map<String, Object>> clusterMap = buildClusterLookup();
         Map<String, Object> hostNode = buildHostNode(host, clusterMap);
-
-        // 5. Iterate relations, collect upstream and downstream neighbors
         List<Map<String, Object>> upstream = new ArrayList<>();
         List<Map<String, Object>> downstream = new ArrayList<>();
-
         for (Map<String, Object> rel : relations) {
-            String sourceId = (String) rel.get("sourceHostId");
-            String targetId = (String) rel.get("targetHostId");
-            String direction;
-            String neighborId;
-
-            if (hostId.equals(sourceId)) {
-                // Current host is source → neighbor is downstream
-                direction = "outgoing";
-                neighborId = targetId;
-            } else {
-                // Current host is target → neighbor is upstream
-                direction = "incoming";
-                neighborId = sourceId;
-            }
-
-            try {
-                Map<String, Object> neighborHost = hostService.getHost(neighborId);
-                Map<String, Object> neighborNode = buildHostNode(neighborHost, clusterMap);
-
-                Map<String, Object> entry = new LinkedHashMap<>();
-                entry.put("host", neighborNode);
-                entry.put("direction", direction);
-                entry.put("relationId", rel.get("id"));
-                entry.put("relationDescription", rel.get("description"));
-
-                if ("incoming".equals(direction)) {
-                    upstream.add(entry);
-                } else {
-                    downstream.add(entry);
-                }
-            } catch (Exception ignored) {
-                // Neighbor host may have been deleted
-            }
+            appendNeighborEntry(hostId, rel, clusterMap, upstream, downstream);
         }
-
-        // 6. Assemble result
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("host", hostNode);
         result.put("upstream", upstream);
@@ -451,8 +475,50 @@ public class HostRelationService {
         return result;
     }
 
-    private Map<String, Object> buildHostNode(Map<String, Object> h,
-            Map<String, Map<String, Object>> clusterMap) {
+    private Map<String, Map<String, Object>> buildClusterLookup() {
+        Map<String, Map<String, Object>> clusterMap = new LinkedHashMap<>();
+        for (Map<String, Object> cluster : clusterService.listClusters(null, null)) {
+            clusterMap.put((String) cluster.get("id"), cluster);
+        }
+        return clusterMap;
+    }
+
+    private void appendNeighborEntry(String hostId, Map<String, Object> relation, Map<String, Map<String, Object>> clusterMap,
+        List<Map<String, Object>> upstream, List<Map<String, Object>> downstream) {
+        NeighborDirection neighbor = resolveNeighborDirection(hostId, relation);
+        try {
+            Map<String, Object> neighborHost = hostService.getHost(neighbor.neighborId());
+            Map<String, Object> entry = buildNeighborEntry(neighborHost, clusterMap, relation, neighbor.direction());
+            if ("incoming".equals(neighbor.direction())) {
+                upstream.add(entry);
+            } else {
+                downstream.add(entry);
+            }
+        } catch (NotFoundException e) {
+            log.debug("Skipping missing neighbor host {} while building host relation topology", neighbor.neighborId());
+        }
+    }
+
+    private NeighborDirection resolveNeighborDirection(String hostId, Map<String, Object> relation) {
+        String sourceId = (String) relation.get("sourceHostId");
+        String targetId = (String) relation.get("targetHostId");
+        if (hostId.equals(sourceId)) {
+            return new NeighborDirection("outgoing", targetId);
+        }
+        return new NeighborDirection("incoming", sourceId);
+    }
+
+    private Map<String, Object> buildNeighborEntry(Map<String, Object> neighborHost,
+        Map<String, Map<String, Object>> clusterMap, Map<String, Object> relation, String direction) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("host", buildHostNode(neighborHost, clusterMap));
+        entry.put("direction", direction);
+        entry.put("relationId", relation.get("id"));
+        entry.put("relationDescription", relation.get("description"));
+        return entry;
+    }
+
+    private Map<String, Object> buildHostNode(Map<String, Object> h, Map<String, Map<String, Object>> clusterMap) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("id", h.get("id"));
         node.put("name", h.get("name"));
@@ -468,30 +534,7 @@ public class HostRelationService {
         return node;
     }
 
-    // ── File I/O Helpers ─────────────────────────────────────────────
-
-    private Map<String, Object> readFile(Path file) {
-        if (!Files.exists(file)) {
-            return null;
-        }
-        try {
-            String json = Files.readString(file, StandardCharsets.UTF_8);
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
-        } catch (IOException e) {
-            log.error("Failed to read relation file: {}", file, e);
-            return null;
-        }
+    private record NeighborDirection(String direction, String neighborId) {
     }
 
-    private void writeEntityFile(String id, Map<String, Object> entity) {
-        try {
-            Files.createDirectories(relationsDir);
-            Path file = relationsDir.resolve(id + ".json");
-            String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity);
-            Files.writeString(file, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to write relation file for id={}", id, e);
-            throw new RuntimeException("Failed to save host relation", e);
-        }
-    }
 }

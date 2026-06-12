@@ -1,14 +1,20 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.api.source;
 
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import java.time.Instant;
-import java.util.Map;
-import org.springframework.web.bind.annotation.DeleteMapping;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,22 +25,36 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.Map;
+
+/**
+ * The SourceController.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
+
 @Validated
 @RestController
-@RequestMapping("/knowledge/sources")
+@RestSchema(schemaId = "sourceController")
+@RequestMapping("/api/knowledge/sources")
 public class SourceController {
 
     private final KnowledgeServiceFacade facade;
 
+    /**
+     * Creates the source controller instance.
+     *
+     * @param facade the knowledge service facade
+     */
     public SourceController(KnowledgeServiceFacade facade) {
         this.facade = facade;
     }
 
     @GetMapping
-    public PageResponse<SourceResponse> listSources(
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "20") int pageSize
-    ) {
+    public PageResponse<SourceResponse> listSources(@RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
         return facade.listSources(page, pageSize);
     }
 
@@ -49,7 +69,8 @@ public class SourceController {
     }
 
     @PatchMapping("/{sourceId}")
-    public SourceResponse updateSource(@PathVariable("sourceId") String sourceId, @RequestBody UpdateSourceRequest request) {
+    public SourceResponse updateSource(@PathVariable("sourceId") String sourceId,
+        @Valid @RequestBody UpdateSourceRequest request) {
         return facade.updateSource(sourceId, request);
     }
 
@@ -79,10 +100,8 @@ public class SourceController {
     }
 
     @PutMapping("/{sourceId}/config/index-profile")
-    public SourceProfileConfigResponse putIndexProfileConfig(
-        @PathVariable("sourceId") String sourceId,
-        @RequestBody UpdateSourceProfileConfigRequest request
-    ) {
+    public SourceProfileConfigResponse putIndexProfileConfig(@PathVariable("sourceId") String sourceId,
+        @RequestBody UpdateSourceProfileConfigRequest request) {
         return facade.putSourceIndexProfileConfig(sourceId, request);
     }
 
@@ -97,10 +116,8 @@ public class SourceController {
     }
 
     @PutMapping("/{sourceId}/config/retrieval-profile")
-    public SourceProfileConfigResponse putRetrievalProfileConfig(
-        @PathVariable("sourceId") String sourceId,
-        @RequestBody UpdateSourceProfileConfigRequest request
-    ) {
+    public SourceProfileConfigResponse putRetrievalProfileConfig(@PathVariable("sourceId") String sourceId,
+        @RequestBody UpdateSourceProfileConfigRequest request) {
         return facade.putSourceRetrievalProfileConfig(sourceId, request);
     }
 
@@ -109,112 +126,45 @@ public class SourceController {
         return facade.resetSourceRetrievalProfileConfig(sourceId);
     }
 
-    public record CreateSourceRequest(
-        @NotBlank @Size(max = 64) String name,
-        @Size(max = 256) String description,
-        String indexProfileId,
-        String retrievalProfileId
-    ) {
+    public record CreateSourceRequest(@NotBlank @Size(max = 64) @Pattern(regexp = "^[\\p{L}\\p{N}_\\s-]+$") String name,
+        @Size(max = 256) String description, String indexProfileId, String retrievalProfileId) {
     }
 
-    public record UpdateSourceRequest(
-        String name,
-        String description,
-        String status,
-        String indexProfileId,
-        String retrievalProfileId
-    ) {
+    public record UpdateSourceRequest(@Size(max = 64) @Pattern(regexp = "^[\\p{L}\\p{N}_\\s-]+$") String name,
+        @Size(max = 256) String description, String status, String indexProfileId, String retrievalProfileId) {
     }
 
-    public record SourceResponse(
-        String id,
-        String name,
-        String description,
-        String status,
-        String storageMode,
-        String indexProfileId,
-        String retrievalProfileId,
-        String runtimeStatus,
-        String runtimeMessage,
-        String currentJobId,
-        String lastJobError,
-        boolean rebuildRequired,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record SourceResponse(String id, String name, String description, String status, String storageMode,
+        String indexProfileId, String retrievalProfileId, String runtimeStatus, String runtimeMessage,
+        String currentJobId, String lastJobError, boolean rebuildRequired, Instant createdAt, Instant updatedAt) {
     }
 
-    public record SourceStatsResponse(
-        String sourceId,
-        int documentCount,
-        int indexedDocumentCount,
-        int failedDocumentCount,
-        int processingDocumentCount,
-        int chunkCount,
-        int userEditedChunkCount,
-        Instant lastIngestionAt
-    ) {
+    public record SourceStatsResponse(String sourceId, int documentCount, int indexedDocumentCount,
+        int failedDocumentCount, int processingDocumentCount, int chunkCount, int userEditedChunkCount,
+        Instant lastIngestionAt) {
     }
 
-    public record DeleteSourceResponse(
-        String sourceId,
-        boolean deleted
-    ) {
+    public record DeleteSourceResponse(String sourceId, boolean deleted) {
     }
 
-    public record RebuildSourceResponse(
-        String jobId,
-        String sourceId,
-        String status
-    ) {
+    public record RebuildSourceResponse(String jobId, String sourceId, String status) {
     }
 
-    public record UpdateSourceProfileConfigRequest(
-        String name,
-        Map<String, Object> config
-    ) {
+    public record UpdateSourceProfileConfigRequest(String name, Map<String, Object> config) {
     }
 
-    public record SourceProfileConfigResponse(
-        String sourceId,
-        String id,
-        String name,
-        String scope,
-        boolean readonly,
-        String ownerSourceId,
-        String derivedFromProfileId,
-        Map<String, Object> config,
-        boolean rebuildRequired,
-        boolean createdFromDefault,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    public record SourceProfileConfigResponse(String sourceId, String id, String name, String scope, boolean readonly,
+        String ownerSourceId, String derivedFromProfileId, Map<String, Object> config, boolean rebuildRequired,
+        boolean createdFromDefault, Instant createdAt, Instant updatedAt) {
     }
 
-    public record MaintenanceOverviewResponse(
-        String sourceId,
-        MaintenanceJobSummary currentJob,
-        MaintenanceJobSummary lastCompletedJob
-    ) {
+    public record MaintenanceOverviewResponse(String sourceId, MaintenanceJobSummary currentJob,
+        MaintenanceJobSummary lastCompletedJob) {
     }
 
-    public record MaintenanceJobSummary(
-        String id,
-        String type,
-        String status,
-        String stage,
-        String createdBy,
-        Instant startedAt,
-        Instant updatedAt,
-        Instant finishedAt,
-        int totalDocuments,
-        int processedDocuments,
-        int successDocuments,
-        int failedDocuments,
-        String currentDocumentId,
-        String currentDocumentName,
-        String message,
-        String errorSummary
-    ) {
+    public record MaintenanceJobSummary(String id, String type, String status, String stage, String createdBy,
+        Instant startedAt, Instant updatedAt, Instant finishedAt, int totalDocuments, int processedDocuments,
+        int successDocuments, int failedDocuments, String currentDocumentId, String currentDocumentName, String message,
+        String errorSummary) {
     }
 }

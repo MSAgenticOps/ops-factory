@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Download, Search, X } from 'lucide-react'
+import { Check, Download, Search, X } from '../../../../platform/ui/icons/AppIcons'
 import { useTranslation } from 'react-i18next'
 import type { SkillEntry } from '../../../../../types/skill'
 import type { SkillMarketEntry } from '../../../../../types/skillMarket'
@@ -18,9 +18,9 @@ interface SkillMarketDrawerProps {
     onInstalled: () => void
 }
 
-function formatDate(value?: string | null): string {
+function formatDate(locale: string, value?: string | null): string {
     if (!value) return '-'
-    return new Date(value).toLocaleDateString(undefined, {
+    return new Date(value).toLocaleDateString(locale, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -63,7 +63,7 @@ export default function SkillMarketDrawer({
     onClose,
     onInstalled,
 }: SkillMarketDrawerProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const { showToast } = useToast()
     const { skills, isLoading, error, fetchSkills, installSkill } = useAgentSkillMarket()
     const [query, setQuery] = useState('')
@@ -157,18 +157,20 @@ export default function SkillMarketDrawer({
             </div>
 
             <div className="skill-market-drawer-content">
-                {isLoading ? (
+                {isLoading && (
                     <div className="empty-state">
                         <div className="empty-state-title">{t('skillMarket.loading')}</div>
                     </div>
-                ) : filteredSkills.length === 0 ? (
+                )}
+                {!isLoading && filteredSkills.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-state-title">{query.trim() ? t('common.noResults') : t('skillMarket.emptyTitle')}</div>
                         <div className="empty-state-description">
                             {query.trim() ? t('skillMarket.noMatchSkills') : t('skillMarket.emptyDescription')}
                         </div>
                     </div>
-                ) : (
+                )}
+                {!isLoading && filteredSkills.length > 0 && (
                     <div className="skill-market-drawer-list">
                         {filteredSkills.map(skill => {
                             const installed = isInstalled(skill)
@@ -200,7 +202,7 @@ export default function SkillMarketDrawer({
                                     metrics={[
                                         { label: t('skillMarket.files'), value: skill.fileCount },
                                         { label: t('skillMarket.size'), value: formatSize(skill.sizeBytes, t) },
-                                        { label: t('skillMarket.updatedAt'), value: formatDate(skill.updatedAt) },
+                                        { label: t('skillMarket.updatedAt'), value: formatDate(i18n.language === 'en' ? 'en-US' : 'zh-CN', skill.updatedAt) },
                                     ]}
                                     footer={(
                                         <div className="skill-market-drawer-card-footer">
@@ -212,17 +214,11 @@ export default function SkillMarketDrawer({
                                                 onClick={() => void handleInstall(skill)}
                                                 disabled={installed || isInstalling || !!installingSkillId}
                                             >
-                                                {installed ? (
-                                                    <>
-                                                        <Check size={14} /> {t('skill.installed')}
-                                                    </>
-                                                ) : isInstalling ? (
-                                                    t('skillMarket.installing')
-                                                ) : (
-                                                    <>
-                                                        <Download size={14} /> {t('skillMarket.install')}
-                                                    </>
-                                                )}
+                                                {(() => {
+                                                    if (installed) return <><Check size={14} /> {t('skill.installed')}</>
+                                                    if (isInstalling) return t('skillMarket.installing')
+                                                    return <><Download size={14} /> {t('skillMarket.install')}</>
+                                                })()}
                                             </Button>
                                         </div>
                                     )}

@@ -1,11 +1,14 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.common.logging;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -14,18 +17,25 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-@Component
+import java.io.IOException;
+import java.util.UUID;
+
+/**
+ * The RequestLoggingFilter.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
+
+@Component("knowledgeRequestLoggingFilter")
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(RequestLoggingFilter.class);
 
     @Override
-    protected void doFilterInternal(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        throws ServletException, IOException {
         String requestId = resolveRequestId(request);
         response.setHeader(LoggingKeys.REQUEST_ID_HEADER, requestId);
 
@@ -35,13 +45,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             long durationMs = System.currentTimeMillis() - startedAt;
-            log.info(
-                "HTTP {} {} completed status={} durationMs={}",
-                request.getMethod(),
-                request.getRequestURI(),
-                response.getStatus(),
-                durationMs
-            );
+            log.info("HTTP {} {} completed status={} durationMs={}", request.getMethod(), request.getRequestURI(),
+                response.getStatus(), durationMs);
             MDC.remove(LoggingKeys.REQUEST_ID);
         }
     }

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
-import { CONTROL_CENTER_URL, controlCenterHeaders } from '../../../../config/runtime'
+import { runtime, controlCenterHeaders } from '../../../../config/runtime'
 import { getErrorMessage } from '../../../../utils/errorMessages'
+import { useUser } from '../../../platform/providers/UserContext'
 
 export interface ManagedServiceConfigResponse {
     serviceId: string
@@ -18,6 +19,7 @@ export interface ManagedServiceLogsResponse {
 }
 
 export function useManagedServiceDetail() {
+    const { userId } = useUser()
     const [config, setConfig] = useState<ManagedServiceConfigResponse | null>(null)
     const [logs, setLogs] = useState<ManagedServiceLogsResponse | null>(null)
     const [isLoading, setIsLoading] = useState(false)
@@ -25,8 +27,8 @@ export function useManagedServiceDetail() {
     const [error, setError] = useState<string | null>(null)
 
     const fetchConfig = useCallback(async (serviceId: string) => {
-        const response = await fetch(`${CONTROL_CENTER_URL}/services/${serviceId}/config`, {
-            headers: controlCenterHeaders(),
+        const response = await fetch(`${runtime.CONTROL_CENTER_URL}/services/${serviceId}/config`, {
+            headers: controlCenterHeaders(userId),
             signal: AbortSignal.timeout(10_000),
         })
         if (!response.ok) {
@@ -36,11 +38,11 @@ export function useManagedServiceDetail() {
         const data = await response.json() as ManagedServiceConfigResponse
         setConfig(data)
         return data
-    }, [])
+    }, [userId])
 
     const fetchLogs = useCallback(async (serviceId: string, lines = 200) => {
-        const response = await fetch(`${CONTROL_CENTER_URL}/services/${serviceId}/logs?lines=${lines}`, {
-            headers: controlCenterHeaders(),
+        const response = await fetch(`${runtime.CONTROL_CENTER_URL}/services/${serviceId}/logs?lines=${lines}`, {
+            headers: controlCenterHeaders(userId),
             signal: AbortSignal.timeout(10_000),
         })
         if (!response.ok) {
@@ -50,7 +52,7 @@ export function useManagedServiceDetail() {
         const data = await response.json() as ManagedServiceLogsResponse
         setLogs(data)
         return data
-    }, [])
+    }, [userId])
 
     const load = useCallback(async (serviceId: string) => {
         setIsLoading(true)
@@ -68,9 +70,9 @@ export function useManagedServiceDetail() {
         setIsSaving(true)
         setError(null)
         try {
-            const response = await fetch(`${CONTROL_CENTER_URL}/services/${serviceId}/config`, {
+            const response = await fetch(`${runtime.CONTROL_CENTER_URL}/services/${serviceId}/config`, {
                 method: 'PUT',
-                headers: controlCenterHeaders(),
+                headers: controlCenterHeaders(userId),
                 body: JSON.stringify({ content }),
                 signal: AbortSignal.timeout(10_000),
             })
@@ -87,7 +89,7 @@ export function useManagedServiceDetail() {
         } finally {
             setIsSaving(false)
         }
-    }, [fetchConfig])
+    }, [fetchConfig, userId])
 
     return {
         config,

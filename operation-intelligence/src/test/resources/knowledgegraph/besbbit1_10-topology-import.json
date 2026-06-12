@@ -1,0 +1,42 @@
+{
+  "formatVersion": "1.0",
+  "ontologyId": "besbbit1_10-topology-v1",
+  "envCode": "prod",
+  "schemaVersion": "1.0",
+  "sourceSystem": "test",
+  "importMode": "UPSERT",
+  "snapshotId": "kg-prod-besbbit1-10-topology-001",
+  "generatedAt": "2026-06-10T00:00:00Z",
+  "metadata": {
+    "description": "Minimal besbbit1_10 topology fixture for update persistence tests"
+  },
+  "entities": [
+    {
+      "id": "k8sinst-besbbit1-10-master",
+      "type": "K8sInstance",
+      "name": "besbbit1_10-master",
+      "displayName": "besbbit1_10-master",
+      "status": "Running",
+      "properties": {
+        "instanceId": "NE=PbCYZ9nLTnOpjlBHBPsNEg",
+        "instanceName": "besbbit1_10-master",
+        "ip": "7.197.64.10",
+        "role": "master",
+        "status": "Running",
+        "version": "V600R001C51",
+        "hostIp": "7.197.64.10",
+        "os": "EulerOS 2.9",
+        "authUsername": "root",
+        "authMethod": "password",
+        "sshIp": "7.197.64.10",
+        "sshPort": 22
+      },
+      "source": {
+        "system": "test",
+        "externalId": "besbbit1_10-master"
+      }
+    }
+  ],
+  "relations": [],
+  "observations": []
+}

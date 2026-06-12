@@ -1,6 +1,22 @@
-import type { UserRole } from '../app/platform/providers/UserContext'
 import { trackedFetch } from '../app/platform/logging/requestClient'
 import { configureWebappLogging, type WebappLoggingRuntimeConfig } from '../app/platform/logging/settings'
+
+export interface KnowledgeGraphCollapsedRelationRule {
+    relationType: string
+    targetEntityTypes: string[]
+    threshold: number
+}
+
+export interface KnowledgeGraphResourceTreeHierarchyRule {
+    ontologyId?: string
+    relationType: string
+    mode?: 'hierarchy'
+    parentEntityTypes?: string[]
+    childEntityTypes?: string[]
+    threshold?: number
+}
+
+export type KnowledgeGraphTestConnectionEntityTypes = string[]
 
 interface RuntimeConfig {
     gatewayUrl?: string
@@ -10,6 +26,15 @@ interface RuntimeConfig {
     knowledgeServiceUrl?: string
     businessIntelligenceServiceUrl?: string
     skillMarketServiceUrl?: string
+    operationIntelligenceServiceUrl?: string
+    operationIntelligenceSecretKey?: string
+    operationIntelligenceKnowledgeGraph?: {
+        collapsedRelationRules?: KnowledgeGraphCollapsedRelationRule[]
+        resourceTreeHierarchyRules?: KnowledgeGraphResourceTreeHierarchyRule[]
+        testConnectionEntityTypes?: KnowledgeGraphTestConnectionEntityTypes
+    }
+    finopsServiceUrl?: string
+    finopsSecretKey?: string
     logging?: {
         level?: WebappLoggingRuntimeConfig['level']
         consoleEnabled?: boolean
@@ -20,171 +45,242 @@ interface RuntimeConfig {
 }
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1'])
-const GATEWAY_PATH_PREFIX = '/gateway'
-const CONTROL_CENTER_PATH_PREFIX = '/control-center'
-const KNOWLEDGE_PATH_PREFIX = '/knowledge'
-const BUSINESS_INTELLIGENCE_PATH_PREFIX = '/business-intelligence'
-const SKILL_MARKET_PATH_PREFIX = '/skill-market'
 
 function isLoopbackHost(host: string): boolean {
     return LOOPBACK_HOSTS.has(host)
 }
 
-function resolveGatewayUrl(raw: string | undefined): string {
+interface ServiceEndpoint {
+    pathPrefix: string
+    fallbackPort: number
+}
+
+const SERVICE_ENDPOINTS: Record<string, ServiceEndpoint> = {
+    gateway:                  { pathPrefix: '/api/gateway',                 fallbackPort: 3000 },
+    knowledge:                { pathPrefix: '/api/knowledge',               fallbackPort: 8092 },
+    controlCenter:            { pathPrefix: '/api/control-center',          fallbackPort: 8094 },
+    businessIntelligence:     { pathPrefix: '/api/business-intelligence',   fallbackPort: 8093 },
+    skillMarket:              { pathPrefix: '/api/skill-market',            fallbackPort: 8095 },
+    operationIntelligence:    { pathPrefix: '/api/operation-intelligence',  fallbackPort: 8096 },
+    finops:                   { pathPrefix: '/api/finops',                  fallbackPort: 8097 },
+}
+
+function resolveServiceUrl(raw: string | undefined, endpoint: ServiceEndpoint): string {
     const pageHost = window.location.hostname || '127.0.0.1'
     const pageProtocol = window.location.protocol || 'http:'
-    const fallbackOrigin = `${pageProtocol}//${pageHost}:3000`
+    const fallbackOrigin = `${pageProtocol}//${pageHost}:${endpoint.fallbackPort}`
 
-    if (!raw) return `${GATEWAY_PATH_PREFIX}`
+    if (!raw) return endpoint.pathPrefix
 
     try {
         const url = new URL(raw)
         if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
             url.hostname = pageHost
         }
-        return `${url.origin}${GATEWAY_PATH_PREFIX}`
+        return `${url.origin}${endpoint.pathPrefix}`
     } catch {
-        return `${fallbackOrigin}${GATEWAY_PATH_PREFIX}`
+        return `${fallbackOrigin}${endpoint.pathPrefix}`
     }
 }
 
-function resolveKnowledgeServiceUrl(raw: string | undefined): string {
-    const pageHost = window.location.hostname || '127.0.0.1'
-    const pageProtocol = window.location.protocol || 'http:'
-    const fallbackOrigin = `${pageProtocol}//${pageHost}:8092`
+const DEFAULT_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES: KnowledgeGraphCollapsedRelationRule[] = [
+    {
+        relationType: 'contains',
+        targetEntityTypes: ['Host'],
+        threshold: 1,
+    },
+]
+const DEFAULT_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES: KnowledgeGraphResourceTreeHierarchyRule[] = [
+    {
+        relationType: 'contains',
+        mode: 'hierarchy',
+        threshold: 1,
+    },
+]
+const DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES: KnowledgeGraphTestConnectionEntityTypes = [
+    'Host',
+    'WorkerNode',
+    'K8sInstance',
+]
 
-    if (!raw) return `${KNOWLEDGE_PATH_PREFIX}`
-
-    try {
-        const url = new URL(raw)
-        if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
-            url.hostname = pageHost
-        }
-        return `${url.origin}${KNOWLEDGE_PATH_PREFIX}`
-    } catch {
-        return `${fallbackOrigin}${KNOWLEDGE_PATH_PREFIX}`
-    }
+export const runtime = {
+    GATEWAY_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.gateway),
+    GATEWAY_SECRET_KEY: '',
+    CONTROL_CENTER_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.controlCenter),
+    CONTROL_CENTER_SECRET_KEY: '',
+    KNOWLEDGE_SERVICE_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.knowledge),
+    BUSINESS_INTELLIGENCE_SERVICE_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.businessIntelligence),
+    SKILL_MARKET_SERVICE_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.skillMarket),
+    OPERATION_INTELLIGENCE_SERVICE_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.operationIntelligence),
+    OPERATION_INTELLIGENCE_SECRET_KEY: '',
+    OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES:
+        DEFAULT_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES,
+    OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES:
+        DEFAULT_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES,
+    OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES:
+        DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES,
+    FINOPS_URL: resolveServiceUrl(undefined, SERVICE_ENDPOINTS.finops),
+    FINOPS_SECRET_KEY: '',
 }
-
-function resolveControlCenterUrl(raw: string | undefined): string {
-    const pageHost = window.location.hostname || '127.0.0.1'
-    const pageProtocol = window.location.protocol || 'http:'
-    const fallbackOrigin = `${pageProtocol}//${pageHost}:8094`
-
-    if (!raw) return `${CONTROL_CENTER_PATH_PREFIX}`
-
-    try {
-        const url = new URL(raw)
-        if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
-            url.hostname = pageHost
-        }
-        return `${url.origin}${CONTROL_CENTER_PATH_PREFIX}`
-    } catch {
-        return `${fallbackOrigin}${CONTROL_CENTER_PATH_PREFIX}`
-    }
-}
-
-function resolveBusinessIntelligenceServiceUrl(raw: string | undefined): string {
-    const pageHost = window.location.hostname || '127.0.0.1'
-    const pageProtocol = window.location.protocol || 'http:'
-    const fallbackOrigin = `${pageProtocol}//${pageHost}:8093`
-
-    if (!raw) return `${BUSINESS_INTELLIGENCE_PATH_PREFIX}`
-
-    try {
-        const url = new URL(raw)
-        if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
-            url.hostname = pageHost
-        }
-        return `${url.origin}${BUSINESS_INTELLIGENCE_PATH_PREFIX}`
-    } catch {
-        return `${fallbackOrigin}${BUSINESS_INTELLIGENCE_PATH_PREFIX}`
-    }
-}
-
-function resolveSkillMarketServiceUrl(raw: string | undefined): string {
-    const pageHost = window.location.hostname || '127.0.0.1'
-    const pageProtocol = window.location.protocol || 'http:'
-    const fallbackOrigin = `${pageProtocol}//${pageHost}:8095`
-
-    if (!raw) return `${SKILL_MARKET_PATH_PREFIX}`
-
-    try {
-        const url = new URL(raw)
-        if (isLoopbackHost(url.hostname) && url.hostname !== pageHost) {
-            url.hostname = pageHost
-        }
-        return `${url.origin}${SKILL_MARKET_PATH_PREFIX}`
-    } catch {
-        return `${fallbackOrigin}${SKILL_MARKET_PATH_PREFIX}`
-    }
-}
-
-const DEFAULT_SECRET_KEY = 'test'
-export let GATEWAY_URL = resolveGatewayUrl(undefined)
-export let GATEWAY_SECRET_KEY = DEFAULT_SECRET_KEY
-export let CONTROL_CENTER_URL = resolveControlCenterUrl(undefined)
-export let CONTROL_CENTER_SECRET_KEY = DEFAULT_SECRET_KEY
-export let KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(undefined)
-export let BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(undefined)
-export let SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(undefined)
 
 function setRuntimeConfig(config: RuntimeConfig): void {
-    GATEWAY_URL = resolveGatewayUrl(config.gatewayUrl)
-    GATEWAY_SECRET_KEY = config.gatewaySecretKey || DEFAULT_SECRET_KEY
-    CONTROL_CENTER_URL = resolveControlCenterUrl(config.controlCenterUrl)
-    CONTROL_CENTER_SECRET_KEY = config.controlCenterSecretKey || DEFAULT_SECRET_KEY
-    KNOWLEDGE_SERVICE_URL = resolveKnowledgeServiceUrl(config.knowledgeServiceUrl)
-    BUSINESS_INTELLIGENCE_SERVICE_URL = resolveBusinessIntelligenceServiceUrl(config.businessIntelligenceServiceUrl)
-    SKILL_MARKET_SERVICE_URL = resolveSkillMarketServiceUrl(config.skillMarketServiceUrl)
+    runtime.GATEWAY_URL = resolveServiceUrl(config.gatewayUrl, SERVICE_ENDPOINTS.gateway)
+    runtime.GATEWAY_SECRET_KEY = config.gatewaySecretKey ?? ''
+    runtime.CONTROL_CENTER_URL = resolveServiceUrl(config.controlCenterUrl, SERVICE_ENDPOINTS.controlCenter)
+    runtime.CONTROL_CENTER_SECRET_KEY = config.controlCenterSecretKey ?? ''
+    runtime.KNOWLEDGE_SERVICE_URL = resolveServiceUrl(config.knowledgeServiceUrl, SERVICE_ENDPOINTS.knowledge)
+    runtime.BUSINESS_INTELLIGENCE_SERVICE_URL = resolveServiceUrl(
+        config.businessIntelligenceServiceUrl,
+        SERVICE_ENDPOINTS.businessIntelligence,
+    )
+    runtime.SKILL_MARKET_SERVICE_URL = resolveServiceUrl(config.skillMarketServiceUrl, SERVICE_ENDPOINTS.skillMarket)
+    runtime.OPERATION_INTELLIGENCE_SERVICE_URL = resolveServiceUrl(
+        config.operationIntelligenceServiceUrl,
+        SERVICE_ENDPOINTS.operationIntelligence,
+    )
+    runtime.OPERATION_INTELLIGENCE_SECRET_KEY = config.operationIntelligenceSecretKey ?? ''
+    runtime.OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES =
+        normalizeCollapsedRelationRules(config.operationIntelligenceKnowledgeGraph?.collapsedRelationRules)
+    runtime.OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES =
+        normalizeResourceTreeHierarchyRules(config.operationIntelligenceKnowledgeGraph?.resourceTreeHierarchyRules)
+    runtime.OPERATION_INTELLIGENCE_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES =
+        normalizeTestConnectionEntityTypes(config.operationIntelligenceKnowledgeGraph?.testConnectionEntityTypes)
+    runtime.FINOPS_URL = resolveServiceUrl(config.finopsServiceUrl, SERVICE_ENDPOINTS.finops)
+    runtime.FINOPS_SECRET_KEY = config.finopsSecretKey ?? ''
     configureWebappLogging(config.logging)
 }
 
-async function loadRuntimeConfig(): Promise<RuntimeConfig> {
-    const response = await trackedFetch('/config.json', {
-        cache: 'no-store',
-        category: 'app',
-        name: 'app.context_init',
-    })
-    if (!response.ok) {
-        throw new Error(`Failed to load /config.json (${response.status})`)
+function normalizeCollapsedRelationRules(
+    rules: KnowledgeGraphCollapsedRelationRule[] | undefined,
+): KnowledgeGraphCollapsedRelationRule[] {
+    if (!rules?.length) {
+        return DEFAULT_KNOWLEDGE_GRAPH_COLLAPSED_RELATION_RULES
     }
+    return rules
+        .filter(rule => rule.relationType && rule.targetEntityTypes?.length && Number.isFinite(rule.threshold))
+        .map(rule => ({
+            relationType: rule.relationType,
+            targetEntityTypes: rule.targetEntityTypes,
+            threshold: Math.max(0, Math.floor(rule.threshold)),
+        }))
+}
 
-    return (await response.json()) as RuntimeConfig
+function normalizeResourceTreeHierarchyRules(
+    rules: KnowledgeGraphResourceTreeHierarchyRule[] | undefined,
+): KnowledgeGraphResourceTreeHierarchyRule[] {
+    if (!rules?.length) {
+        return DEFAULT_KNOWLEDGE_GRAPH_RESOURCE_TREE_HIERARCHY_RULES
+    }
+    return rules
+        .filter(rule => rule.relationType)
+        .map(rule => ({
+            ontologyId: rule.ontologyId,
+            relationType: rule.relationType,
+            mode: rule.mode ?? 'hierarchy',
+            parentEntityTypes: rule.parentEntityTypes,
+            childEntityTypes: rule.childEntityTypes,
+            threshold: Math.max(1, Math.floor(rule.threshold ?? 1)),
+        }))
+}
+
+function normalizeTestConnectionEntityTypes(
+    entityTypes: KnowledgeGraphTestConnectionEntityTypes | undefined,
+): KnowledgeGraphTestConnectionEntityTypes {
+    if (!entityTypes?.length) {
+        return DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES
+    }
+    const normalized = entityTypes
+        .filter(entityType => typeof entityType === 'string')
+        .map(entityType => entityType.trim())
+        .filter(entityType => entityType.length > 0)
+    return normalized.length > 0 ? Array.from(new Set(normalized)) : DEFAULT_KNOWLEDGE_GRAPH_TEST_CONNECTION_ENTITY_TYPES
+}
+
+async function loadRuntimeConfig(): Promise<RuntimeConfig> {
+    // Resolve config.json relative to the HTML page directory at runtime,
+    // so it works regardless of deployment path (e.g. /adc-static/.../dist/)
+    const baseDir = window.location.pathname.replace(/[^/]*$/, '')
+    const configUrl = baseDir + 'config.json'
+    try {
+        const response = await trackedFetch(configUrl, {
+            cache: 'no-store',
+            category: 'app',
+            name: 'app.context_init',
+        })
+        if (!response.ok) {
+            throw new Error(`Failed to load ${configUrl} (HTTP ${response.status}). Check that config.json is deployed alongside index.html.`)
+        }
+        return (await response.json()) as RuntimeConfig
+    } catch (error) {
+        if (error instanceof Error && error.message.startsWith('Failed to load')) {
+            throw error
+        }
+        throw new Error(`Failed to load ${configUrl}: ${error instanceof Error ? error.message : String(error)}. Check that config.json is deployed alongside index.html.`)
+    }
 }
 
 export async function initializeRuntimeConfig(): Promise<void> {
     const config = await loadRuntimeConfig()
-
-    if (!config.gatewayUrl) {
-        throw new Error('Missing required configuration: gatewayUrl')
-    }
-    if (!config.gatewaySecretKey) {
-        throw new Error('Missing required configuration: gatewaySecretKey')
-    }
-
     setRuntimeConfig(config)
-}
 
-export function isAdminUser(_userId: string | null, role: UserRole | null): boolean {
-    return role === 'admin'
+    // Verify gateway connectivity — wrong URL or secret key will surface here
+    // instead of failing silently on every API call later.
+    try {
+        const healthUrl = `${runtime.GATEWAY_URL}/status`
+        const userId = localStorage.getItem('opsfactory:userId') || 'admin'
+        const res = await trackedFetch(healthUrl, {
+            headers: { 'x-secret-key': runtime.GATEWAY_SECRET_KEY, 'x-user-id': userId },
+            cache: 'no-store',
+            category: 'app',
+            name: 'app.gateway_health_check',
+        })
+        if (!res.ok) {
+            throw new Error(`Gateway health check failed (HTTP ${res.status}) at ${healthUrl}. Check gatewayUrl and gatewaySecretKey in config.json.`)
+        }
+    } catch (error) {
+        if (error instanceof Error && error.message.startsWith('Gateway health check')) {
+            throw error
+        }
+        throw new Error(`Cannot reach gateway at ${runtime.GATEWAY_URL}: ${error instanceof Error ? error.message : String(error)}. Check gatewayUrl in config.json.`)
+    }
 }
 
 /** Build gateway request headers with secret key and optional user ID. */
 export function gatewayHeaders(userId?: string | null): Record<string, string> {
     const h: Record<string, string> = {
         'Content-Type': 'application/json',
-        'x-secret-key': GATEWAY_SECRET_KEY,
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
     }
     if (userId) h['x-user-id'] = userId
     return h
 }
 
-export function controlCenterHeaders(): Record<string, string> {
-    return {
+/** Build knowledge-service request headers with user ID. */
+export function knowledgeHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
         'Content-Type': 'application/json',
-        'x-secret-key': CONTROL_CENTER_SECRET_KEY,
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
     }
+    if (userId) h['x-user-id'] = userId
+    return h
+}
+
+/** Build knowledge-service headers for FormData uploads (no Content-Type, browser sets multipart boundary). */
+export function knowledgeFormDataHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
+        'x-secret-key': runtime.GATEWAY_SECRET_KEY,
+    }
+    if (userId) h['x-user-id'] = userId
+    return h
+}
+
+export function controlCenterHeaders(userId?: string | null): Record<string, string> {
+    const h: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-secret-key': runtime.CONTROL_CENTER_SECRET_KEY,
+    }
+    if (userId) h['x-user-id'] = userId
+    return h
 }
 
 /** Convert a display name to a kebab-case ID. */

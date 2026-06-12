@@ -6,6 +6,24 @@
     "knowledgeServiceUrl": "http://127.0.0.1:8092",
     "businessIntelligenceServiceUrl": "http://127.0.0.1:8093",
     "skillMarketServiceUrl": "http://127.0.0.1:8095",
+    "operationIntelligenceServiceUrl": "http://127.0.0.1:8096",
+    "operationIntelligenceSecretKey": "test",
+    "operationIntelligenceKnowledgeGraph": {
+        "collapsedRelationRules": [
+            {
+                "relationType": "contains",
+                "targetEntityTypes": ["Host"],
+                "threshold": 1
+            }
+        ],
+        "resourceTreeHierarchyRules": [
+            {
+                "relationType": "contains",
+                "mode": "hierarchy",
+                "threshold": 1
+            }
+        ]
+    },
     "logging": {
         "level": "info",
         "consoleEnabled": true,

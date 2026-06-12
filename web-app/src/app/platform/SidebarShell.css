@@ -114,14 +114,14 @@
 }
 
 .nav-link.active {
-    background: #e9edf3;
+    background: #eaf1ff;
     color: var(--text-strong);
-    border: 1px solid #dbe1e9;
+    border: 1px solid transparent;
     font-weight: 600;
 }
 
 .nav-link.active svg {
-    color: #2f3744;
+    color: var(--color-primary, #2563eb);
 }
 
 .nav-link svg {
@@ -138,7 +138,7 @@
     background: #2563eb;
     color: #ffffff;
     font-size: var(--font-size-xs);
-    font-weight: 700;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -172,25 +172,9 @@
     border-top: 1px solid var(--border-soft);
 }
 
-.new-chat-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-2);
-    padding: var(--spacing-3) var(--spacing-4);
-    background: #2f3540;
-    color: white;
-    border-radius: var(--radius-2xl);
-    font-weight: 600;
-    transition: all var(--transition-base);
-    box-shadow: var(--shadow-sm);
-}
-
-.new-chat-btn:hover {
-    background: #232a33;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(23, 28, 36, 0.22);
+.nav-link:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
 .sidebar-user-section {

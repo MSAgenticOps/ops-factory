@@ -5,18 +5,19 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --config vitest.config.ts",
-    "test:basic": "vitest run --config vitest.config.ts basic-smoke.test.ts",
+    "test:basic": "vitest run --config vitest.config.ts services/gateway/runtime/basic-smoke.test.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "npx playwright test --config playwright.config.ts",
     "test:e2e:headed": "npx playwright test --config playwright.config.ts --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@types/js-yaml": "^4.0.9",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "yaml": "^2.8.2"
+    "js-yaml": "^4.1.1"
   }
 }

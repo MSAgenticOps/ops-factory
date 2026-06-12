@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CONTROL_CENTER_URL, controlCenterHeaders } from '../../../../config/runtime'
+import { runtime, controlCenterHeaders } from '../../../../config/runtime'
 import { getErrorMessage } from '../../../../utils/errorMessages'
+import { useUser } from '../../../platform/providers/UserContext'
 
 export interface ControlCenterEvent {
     timestamp: number
@@ -12,6 +13,7 @@ export interface ControlCenterEvent {
 }
 
 export function useControlCenterEvents(autoRefreshMs = 15_000) {
+    const { userId } = useUser()
     const [events, setEvents] = useState<ControlCenterEvent[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -22,8 +24,8 @@ export function useControlCenterEvents(autoRefreshMs = 15_000) {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${CONTROL_CENTER_URL}/events`, {
-                headers: controlCenterHeaders(),
+            const response = await fetch(`${runtime.CONTROL_CENTER_URL}/events`, {
+                headers: controlCenterHeaders(userId),
                 signal: signal || AbortSignal.timeout(10_000),
             })
             if (!response.ok) {
@@ -40,7 +42,7 @@ export function useControlCenterEvents(autoRefreshMs = 15_000) {
         } finally {
             if (id === fetchIdRef.current) setIsLoading(false)
         }
-    }, [])
+    }, [userId])
 
     const refresh = useCallback(() => { load() }, [load])
 

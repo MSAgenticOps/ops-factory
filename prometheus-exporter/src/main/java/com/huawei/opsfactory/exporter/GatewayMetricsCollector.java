@@ -1,17 +1,15 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.exporter;
 
-import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.Gauge;
-import io.prometheus.client.exporter.common.TextFormat;
-import io.prometheus.client.hotspot.BufferPoolsExports;
-import io.prometheus.client.hotspot.ClassLoadingExports;
-import io.prometheus.client.hotspot.GarbageCollectorExports;
-import io.prometheus.client.hotspot.MemoryPoolsExports;
-import io.prometheus.client.hotspot.StandardExports;
-import io.prometheus.client.hotspot.ThreadExports;
-import io.prometheus.client.hotspot.VersionInfoExports;
+import io.prometheus.metrics.core.metrics.Gauge;
+import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter;
+import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
+import io.prometheus.metrics.model.registry.PrometheusRegistry;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,13 +25,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * Gateway Metrics Collector.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class GatewayMetricsCollector {
 
     private static final Logger log = LoggerFactory.getLogger(GatewayMetricsCollector.class);
 
     private final ExporterProperties config;
     private final HttpClient httpClient;
-    private final CollectorRegistry registry;
+    private final PrometheusRegistry registry;
     private final GatewayApi gatewayApi;
 
     private final Gauge gatewayUp;
@@ -56,61 +60,55 @@ public class GatewayMetricsCollector {
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getCollectTimeoutMs()))
             .build();
-        this.registry = new CollectorRegistry();
+        this.registry = new PrometheusRegistry();
         this.gatewayApi = gatewayApi != null ? gatewayApi : this::fetchJson;
 
-        new StandardExports().register(registry);
-        new MemoryPoolsExports().register(registry);
-        new GarbageCollectorExports().register(registry);
-        new ThreadExports().register(registry);
-        new ClassLoadingExports().register(registry);
-        new VersionInfoExports().register(registry);
-        new BufferPoolsExports().register(registry);
+        JvmMetrics.builder().register(registry);
 
-        this.gatewayUp = Gauge.build()
+        this.gatewayUp = Gauge.builder()
             .name("opsfactory_gateway_up")
             .help("Whether the gateway is reachable (1 = up, 0 = down)")
             .register(registry);
 
-        this.gatewayUptimeSeconds = Gauge.build()
+        this.gatewayUptimeSeconds = Gauge.builder()
             .name("opsfactory_gateway_uptime_seconds")
             .help("Gateway process uptime in seconds")
             .register(registry);
 
-        this.agentsConfigured = Gauge.build()
-            .name("opsfactory_agents_configured_total")
+        this.agentsConfigured = Gauge.builder()
+            .name("opsfactory_agents_configured")
             .help("Number of agents configured in the gateway")
             .register(registry);
 
-        this.instancesTotal = Gauge.build()
-            .name("opsfactory_instances_total")
+        this.instancesTotal = Gauge.builder()
+            .name("opsfactory_instances")
             .help("Total number of agent instances by status")
             .labelNames("status")
             .register(registry);
 
-        this.instanceIdleSeconds = Gauge.build()
+        this.instanceIdleSeconds = Gauge.builder()
             .name("opsfactory_instance_idle_seconds")
             .help("How long each instance has been idle (seconds)")
             .labelNames("agent_id", "user_id")
             .register(registry);
 
-        this.instanceInfo = Gauge.build()
-            .name("opsfactory_instance_info")
+        this.instanceInfo = Gauge.builder()
+            .name("opsfactory_instance_metadata")
             .help("Instance metadata (value is always 1)")
             .labelNames("agent_id", "user_id", "port", "status")
             .register(registry);
 
-        this.langfuseConfigured = Gauge.build()
+        this.langfuseConfigured = Gauge.builder()
             .name("opsfactory_langfuse_configured")
             .help("Whether Langfuse observability is configured (1 = yes, 0 = no)")
             .register(registry);
 
-        this.exporterProcessCpu = Gauge.build()
+        this.exporterProcessCpu = Gauge.builder()
             .name("opsfactory_exporter_process_cpu")
             .help("Exporter process CPU load")
             .register(registry);
 
-        this.exporterNodejsHeap = Gauge.build()
+        this.exporterNodejsHeap = Gauge.builder()
             .name("opsfactory_exporter_nodejs_heap")
             .help("Exporter heap used bytes (legacy metric name)")
             .register(registry);
@@ -120,7 +118,7 @@ public class GatewayMetricsCollector {
 
     private void initializeStatusGauge() {
         for (String status : List.of("starting", "running", "stopped", "error")) {
-            instancesTotal.labels(status).set(0);
+            instancesTotal.labelValues(status).set(0);
         }
     }
 
@@ -141,13 +139,14 @@ public class GatewayMetricsCollector {
     }
 
     public synchronized String renderMetrics() throws IOException {
-        StringWriter writer = new StringWriter();
-        TextFormat.write004(writer, registry.metricFamilySamples());
-        return writer.toString();
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        PrometheusTextFormatWriter textFormatWriter = new PrometheusTextFormatWriter(true);
+        textFormatWriter.write(stream, registry.scrape());
+        return stream.toString("UTF-8");
     }
 
     public String metricsContentType() {
-        return TextFormat.CONTENT_TYPE_004;
+        return "text/plain; version=0.0.4; charset=utf-8";
     }
 
     private Map<String, Object> fetchJson(String path) throws IOException, InterruptedException {
@@ -168,6 +167,12 @@ public class GatewayMetricsCollector {
     }
 
     @FunctionalInterface
+/**
+     * Gateway Api interface.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
     interface GatewayApi {
         Map<String, Object> fetch(String path) throws IOException, InterruptedException;
     }
@@ -210,14 +215,14 @@ public class GatewayMetricsCollector {
 
                 Number lastActivity = Jsons.asNumber(inst.get("lastActivity"));
                 double idleSeconds = Math.max(0, (now - lastActivity.doubleValue()) / 1000.0);
-                instanceIdleSeconds.labels(agentId, userId).set(idleSeconds);
-                instanceInfo.labels(agentId, userId, port, status).set(1);
+                instanceIdleSeconds.labelValues(agentId, userId).set(idleSeconds);
+                instanceInfo.labelValues(agentId, userId, port, status).set(1);
             }
         }
 
         instancesTotal.clear();
         for (String status : List.of("starting", "running", "stopped", "error")) {
-            instancesTotal.labels(status).set(statusCounts.getOrDefault(status, 0d));
+            instancesTotal.labelValues(status).set(statusCounts.getOrDefault(status, 0d));
         }
     }
 

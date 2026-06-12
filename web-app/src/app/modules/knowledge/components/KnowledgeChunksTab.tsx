@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import { useToast } from '../../../platform/providers/ToastContext'
 import KnowledgeChunkDetailModal from './KnowledgeChunkDetailModal'
 import Pagination from '../../../platform/ui/primitives/Pagination'
@@ -32,6 +32,7 @@ interface KnowledgeChunksTabProps {
     onDocumentFilterChange: (documentId: string | null) => void
     onChunksMutated?: () => Promise<void> | void
     readOnly?: boolean
+    userId?: string | null
 }
 
 const CHUNK_PAGE_SIZE = 100
@@ -142,13 +143,13 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     return data as T
 }
 
-async function loadAllPages<T>(buildUrl: (page: number, pageSize: number) => string): Promise<T[]> {
+async function loadAllPages<T>(buildUrl: (page: number, pageSize: number) => string, headers: Record<string, string>): Promise<T[]> {
     const items: T[] = []
     let page = 1
     let total = 0
 
     do {
-        const result = await requestJson<PagedResponse<T>>(buildUrl(page, CHUNK_PAGE_SIZE))
+        const result = await requestJson<PagedResponse<T>>(buildUrl(page, CHUNK_PAGE_SIZE), { headers })
         items.push(...result.items)
         total = result.total
         page += 1
@@ -173,8 +174,8 @@ function DeleteChunkModal({
     const { t } = useTranslation()
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.chunkDeleteTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -216,6 +217,7 @@ export default function KnowledgeChunksTab({
     onDocumentFilterChange,
     onChunksMutated,
     readOnly = false,
+    userId,
 }: KnowledgeChunksTabProps) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -240,6 +242,8 @@ export default function KnowledgeChunksTab({
     const [deleteTarget, setDeleteTarget] = useState<KnowledgeChunkSummary | null>(null)
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [deletingChunkId, setDeletingChunkId] = useState<string | null>(null)
+
+    const headers = useMemo(() => knowledgeHeaders(userId), [userId])
 
     const editableFields = useMemo(() => new Set(capabilities?.editableChunkFields || []), [capabilities?.editableChunkFields])
     const canEditChunks = (capabilities?.featureFlags.allowChunkEdit ?? true) && !readOnly
@@ -278,8 +282,8 @@ export default function KnowledgeChunksTab({
                     pageSize: String(pageSizeValue),
                 })
 
-                return `${KNOWLEDGE_SERVICE_URL}/documents?${params.toString()}`
-            })
+                return `${runtime.KNOWLEDGE_SERVICE_URL}/documents?${params.toString()}`
+            }, headers)
 
             setDocuments(items)
         } catch (err) {
@@ -288,7 +292,7 @@ export default function KnowledgeChunksTab({
         } finally {
             setDocumentsLoading(false)
         }
-    }, [source.id])
+    }, [headers, source.id])
 
     const loadChunks = useCallback(async () => {
         setChunksLoading(true)
@@ -306,8 +310,8 @@ export default function KnowledgeChunksTab({
                     params.set('documentId', documentFilter)
                 }
 
-                return `${KNOWLEDGE_SERVICE_URL}/chunks?${params.toString()}`
-            })
+                return `${runtime.KNOWLEDGE_SERVICE_URL}/chunks?${params.toString()}`
+            }, headers)
 
             setChunks(items)
         } catch (err) {
@@ -316,14 +320,14 @@ export default function KnowledgeChunksTab({
         } finally {
             setChunksLoading(false)
         }
-    }, [documentFilter, source.id])
+    }, [documentFilter, headers, source.id])
 
     const loadChunkDetail = useCallback(async (chunkId: string) => {
         setDetailLoading(true)
         setDetailError(null)
 
         try {
-            const detail = await requestJson<KnowledgeChunkDetail>(`${KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`)
+            const detail = await requestJson<KnowledgeChunkDetail>(`${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${chunkId}`, { headers })
             setSelectedChunkDetail(detail)
             setDraft({
                 documentId: detail.documentId,
@@ -341,7 +345,7 @@ export default function KnowledgeChunksTab({
         } finally {
             setDetailLoading(false)
         }
-    }, [])
+    }, [headers, t])
 
     const refreshCollections = useCallback(async () => {
         await Promise.all([
@@ -540,12 +544,10 @@ export default function KnowledgeChunksTab({
                     .reduce((maxOrdinal, chunk) => Math.max(maxOrdinal, chunk.ordinal), 0) + 1
                 const derivedTitle = deriveChunkTitle(text)
                 const response = await requestJson<KnowledgeChunkMutationResponse>(
-                    `${KNOWLEDGE_SERVICE_URL}/documents/${documentId}/chunks`,
+                    `${runtime.KNOWLEDGE_SERVICE_URL}/documents/${documentId}/chunks`,
                     {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers,
                         body: JSON.stringify({
                             ordinal: nextOrdinal,
                             title: derivedTitle || null,
@@ -570,12 +572,10 @@ export default function KnowledgeChunksTab({
             if (!selectedChunkId) return
 
             await requestJson<KnowledgeChunkMutationResponse>(
-                `${KNOWLEDGE_SERVICE_URL}/chunks/${selectedChunkId}`,
+                `${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${selectedChunkId}`,
                 {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers,
                     body: JSON.stringify({
                         keywords: canEditKeywords ? keywords : undefined,
                         text: canEditText ? text : undefined,
@@ -601,6 +601,7 @@ export default function KnowledgeChunksTab({
         canEditText,
         chunks,
         draft,
+        headers,
         loadChunkDetail,
         panelMode,
         refreshCollections,
@@ -617,9 +618,10 @@ export default function KnowledgeChunksTab({
 
         try {
             await requestJson<{ chunkId: string; deleted: boolean }>(
-                `${KNOWLEDGE_SERVICE_URL}/chunks/${deleteTarget.id}`,
+                `${runtime.KNOWLEDGE_SERVICE_URL}/chunks/${deleteTarget.id}`,
                 {
                     method: 'DELETE',
+                    headers,
                 }
             )
 
@@ -635,7 +637,7 @@ export default function KnowledgeChunksTab({
         } finally {
             setDeletingChunkId(null)
         }
-    }, [deleteTarget, handleClosePanel, refreshCollections, showToast, t])
+    }, [deleteTarget, handleClosePanel, headers, refreshCollections, showToast, t])
 
     const isEditingPanel = panelMode === 'edit' || panelMode === 'create'
     const panelEditStatusLabel = panelMode === 'create'
@@ -794,15 +796,18 @@ export default function KnowledgeChunksTab({
                             </select>
                         </div>
 
-                        {chunksLoading ? (
+                        {chunksLoading && (
                             <div className="knowledge-doc-empty">{t('common.loading')}</div>
-                        ) : documents.length === 0 ? (
+                        )}
+                        {!chunksLoading && documents.length === 0 && (
                             <div className="knowledge-doc-empty">{t('knowledge.chunkNoDocuments')}</div>
-                        ) : filteredChunks.length === 0 ? (
+                        )}
+                        {!chunksLoading && documents.length > 0 && filteredChunks.length === 0 && (
                             <div className="knowledge-doc-empty">
                                 {chunks.length === 0 ? t('knowledge.chunkEmptyState') : t('knowledge.chunkNoMatch')}
                             </div>
-                        ) : (
+                        )}
+                        {!chunksLoading && filteredChunks.length > 0 && (
                             <>
                                 <div className="knowledge-chunk-list">
                                     {pagedChunks.map(chunk => {
@@ -817,10 +822,10 @@ export default function KnowledgeChunksTab({
                                             >
                                                 <div className="knowledge-chunk-card-head">
                                                     <div className="knowledge-chunk-card-head-copy">
-                                                        <div className="knowledge-chunk-card-title">
+                                                        <div className="knowledge-chunk-card-title" title={chunk.title?.trim() || undefined}>
                                                             {chunk.title?.trim() || t('knowledge.chunkUntitled')}
                                                         </div>
-                                                        <div className="knowledge-chunk-card-subtitle">
+                                                        <div className="knowledge-chunk-card-subtitle" title={document ? getDocumentDisplayTitle(document) : chunk.documentId}>
                                                             {document ? getDocumentDisplayTitle(document) : chunk.documentId}
                                                         </div>
                                                     </div>

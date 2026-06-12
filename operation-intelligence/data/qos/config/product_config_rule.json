@@ -1,0 +1,9 @@
+[
+  {
+    "agentSolutionType": "DigitalCRM",
+    "excludeAlarmCode": "",
+    "alarmWeight": "1.0,0.6,0.3,0.1",
+    "alarmScoreMax": 20,
+    "healthWeight": "0.4,0.4,0.2"
+  }
+]

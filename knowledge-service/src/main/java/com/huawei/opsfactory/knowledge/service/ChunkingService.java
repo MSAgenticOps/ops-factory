@@ -1,11 +1,24 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.common.util.KeywordExtractor;
 import com.huawei.opsfactory.knowledge.common.util.TokenEstimator;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
+
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.stereotype.Service;
+
+/**
+ * The ChunkingService.
+ *
+ * @author x00000000
+ * @since 2026-05-26
+ */
 
 @Service
 public class ChunkingService {
@@ -48,27 +61,11 @@ public class ChunkingService {
     private ChunkDraft buildDraft(String title, String content, int ordinal) {
         List<String> titlePath = title == null || title.isBlank() ? List.of() : List.of(title);
         List<String> keywords = KeywordExtractor.extract(content, properties.getMetadata().getMaxKeywords());
-        return new ChunkDraft(
-            ordinal,
-            title,
-            titlePath,
-            keywords,
-            content,
-            content,
-            TokenEstimator.estimate(content),
-            content.length()
-        );
+        return new ChunkDraft(ordinal, title, titlePath, keywords, content, content, TokenEstimator.estimate(content),
+            content.length());
     }
 
-    public record ChunkDraft(
-        int ordinal,
-        String title,
-        List<String> titlePath,
-        List<String> keywords,
-        String text,
-        String markdown,
-        int tokenCount,
-        int textLength
-    ) {
+    public record ChunkDraft(int ordinal, String title, List<String> titlePath, List<String> keywords, String text,
+        String markdown, int tokenCount, int textLength) {
     }
 }

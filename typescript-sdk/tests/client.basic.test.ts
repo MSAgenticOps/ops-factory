@@ -4,6 +4,7 @@ import {
     GoosedAuthError,
     GoosedClient,
     GoosedConnectionError,
+    GoosedServerError,
     normalizeSessionError,
 } from '../src/index.js'
 
@@ -212,6 +213,64 @@ describe('GoosedClient basic smoke tests', () => {
         assert.equal(events[1].eventId, '7')
         assert.equal(events[2].event.type, 'Finish')
         assert.equal(events[2].eventId, '8')
+    })
+
+    test('delegateAgent() targets the cross-agent A2A endpoint with origin headers and yields frames', async () => {
+        let request: RequestInfo | URL | undefined
+        let init: RequestInit | undefined
+
+        globalThis.fetch = (async (input: RequestInfo | URL, options?: RequestInit) => {
+            request = input
+            init = options
+            return new Response([
+                'data: {"type":"a2a_progress","target_agent":"qa-agent","label":"P","step":1,"tool_calls":0}',
+                '',
+                'data: {"type":"a2a_result","target_agent":"qa-agent","status":"completed","result":"PONG","tool_calls":1}',
+                '',
+            ].join('\n'), {
+                status: 200,
+                headers: { 'content-type': 'text/event-stream' },
+            })
+        }) as typeof fetch
+
+        const client = new GoosedClient({
+            baseUrl: 'http://127.0.0.1:3002/ops-gateway/agents/fo-copilot',
+            secretKey: 'unit-secret',
+            userId: 'unit-user',
+        })
+
+        const frames = []
+        for await (const frame of client.delegateAgent('qa-agent', 'ping', { originSessionId: 'session-1' })) {
+            frames.push(frame)
+        }
+
+        // The origin client is fo-copilot; the request must hit the *target* agent's endpoint.
+        assert.equal(String(request), 'http://127.0.0.1:3002/ops-gateway/agents/qa-agent/a2a')
+        assert.equal(init?.method, 'POST')
+        const headers = init?.headers as Record<string, string>
+        assert.equal(headers['x-secret-key'], 'unit-secret')
+        assert.equal(headers['x-user-id'], 'unit-user')
+        assert.equal(headers['x-a2a-origin'], 'fo-copilot')
+        assert.equal(headers['x-a2a-origin-session'], 'session-1')
+        assert.equal(headers['Accept'], 'text/event-stream')
+        assert.deepEqual(JSON.parse(String(init?.body)), { message: 'ping' })
+        assert.equal(frames.length, 2)
+        assert.equal(frames[0].type, 'a2a_progress')
+        assert.equal(frames[1].type, 'a2a_result')
+        assert.equal((frames[1] as { result?: string }).result, 'PONG')
+    })
+
+    test('delegateAgent() maps a non-2xx response to GoosedServerError', async () => {
+        globalThis.fetch = (async () => new Response('{"message":"nesting guard"}', { status: 409 })) as typeof fetch
+        const client = new GoosedClient({
+            baseUrl: 'http://127.0.0.1:3002/ops-gateway/agents/fo-copilot',
+            secretKey: 'unit-secret',
+        })
+        await assert.rejects(async () => {
+            for await (const frame of client.delegateAgent('qa-agent', 'x')) {
+                void frame
+            }
+        }, GoosedServerError)
     })
 
     test('normalizeSessionError() preserves gateway envelope fields', () => {

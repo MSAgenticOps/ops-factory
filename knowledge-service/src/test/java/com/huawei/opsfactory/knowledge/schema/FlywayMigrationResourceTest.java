@@ -1,11 +1,16 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.knowledge.schema;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 class FlywayMigrationResourceTest {
 
@@ -21,6 +26,13 @@ class FlywayMigrationResourceTest {
         assertThat(sql).contains("CREATE TABLE IF NOT EXISTS knowledge_document");
         assertThat(sql).contains("CREATE TABLE IF NOT EXISTS document_chunk");
         assertThat(sql).contains("CREATE TABLE IF NOT EXISTS ingestion_job");
+    }
+
+    @Test
+    void shouldShipSourceNameUniqueIndexMigration() {
+        ClassPathResource migration = new ClassPathResource("db/migration/common/V6__add_source_name_unique_index.sql");
+
+        assertThat(migration.exists()).isTrue();
     }
 
     @Test

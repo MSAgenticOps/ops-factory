@@ -27,7 +27,7 @@
 | 前端生产打包可完成 | `web-app` | `npm run build` | 前端 TypeScript 编译和 Vite 打包链路可正常完成 |
 | SDK 基础请求能力可用 | `typescript-sdk` | `test:basic` | SDK 的基础请求封装、请求头拼装、错误映射等关键逻辑正常 |
 | SDK 可正常编译产物 | `typescript-sdk` | `npm run build` | SDK 可以生成可发布或可引用的编译结果 |
-| 仓库级配置与脚本基础有效 | `test` | `basic-smoke.test.ts` | 关键配置文件存在，控制脚本语法正确，Docker 辅助组件配置结构有效 |
+| 仓库级配置与脚本基础有效 | `test` | `services/gateway/runtime/basic-smoke.test.ts` | 关键配置文件存在，控制脚本语法正确，Docker 辅助组件配置结构有效 |
 | Gateway 公共基础逻辑正常 | `gateway-common` | `mvn test` | Gateway 公共工具类、模型、路径/配置等底层能力正常 |
 | Gateway 可完成整体打包 | `gateway` | `mvn -DskipTests package` | Gateway 当前代码至少可以成功编译并产出构建包 |
 | 知识服务核心后端能力正常 | `knowledge-service` | `mvn test` | 知识服务的配置、数据库迁移、接口与集成链路基本可用 |
@@ -42,8 +42,8 @@
 - `web-app` UI 逻辑变更：优先在 `web-app/src/__tests__` 中新增或更新纯工具、纯 hook、静态边界或轻量渲染 Vitest 用例。
 - Gateway Java 行为变更：在 `gateway/**/src/test/java` 下新增或更新 JUnit 用例。
 - SDK 变更：更新 `typescript-sdk/tests`。
-- 跨服务或路由行为变更：更新 `test/*.test.ts`。
-- 端到端用户流程变更：更新 `test/e2e` 下的 Playwright 用例。
+- 跨服务或路由行为变更：按部署服务归属更新 `test/services/**` 下的 Vitest 用例；共享测试工具放在 `test/platform/shared/**`。
+- 端到端用户流程变更：通用前端壳层更新 `test/e2e/platform/**`，服务相关流程更新 `test/e2e/services/**` 下的 Playwright 用例。
 
 ## 前端测试约束
 - `web-app` 的结构性改动必须执行：

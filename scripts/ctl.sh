@@ -24,6 +24,7 @@ set -euo pipefail
 #   ENABLE_ONLYOFFICE=false ./ctl.sh startup   # skip OnlyOffice
 #   ENABLE_LANGFUSE=false   ./ctl.sh startup   # skip Langfuse
 #   ENABLE_EXPORTER=false   ./ctl.sh startup   # skip Exporter
+#   ENABLE_FINOPS=false     ./ctl.sh startup   # skip FinOps
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +34,8 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 ENABLE_ONLYOFFICE="${ENABLE_ONLYOFFICE:-true}"
 ENABLE_LANGFUSE="${ENABLE_LANGFUSE:-true}"
 ENABLE_EXPORTER="${ENABLE_EXPORTER:-true}"
+ENABLE_OPERATION_INTELLIGENCE="${ENABLE_OPERATION_INTELLIGENCE:-true}"
+ENABLE_FINOPS="${ENABLE_FINOPS:-true}"
 # all other services are mandatory — no toggles
 
 # === Sub-script paths ===
@@ -45,6 +48,8 @@ CTL_WEBAPP="${ROOT_DIR}/web-app/scripts/ctl.sh"
 CTL_LANGFUSE="${ROOT_DIR}/langfuse/scripts/ctl.sh"
 CTL_ONLYOFFICE="${ROOT_DIR}/onlyoffice/scripts/ctl.sh"
 CTL_EXPORTER="${ROOT_DIR}/prometheus-exporter/scripts/ctl.sh"
+CTL_OPERATION_INTELLIGENCE="${ROOT_DIR}/operation-intelligence/scripts/ctl.sh"
+CTL_FINOPS="${ROOT_DIR}/finops/scripts/ctl.sh"
 
 # === Logging ===
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
@@ -60,24 +65,26 @@ component_name() {
         onlyoffice) echo "OnlyOffice" ;;
         langfuse) echo "Langfuse" ;;
         gateway) echo "Gateway" ;;
-        knowledge) echo "Knowledge" ;;
+        knowledge|knowledge-service) echo "Knowledge" ;;
         business-intelligence) echo "Business Intelligence" ;;
         skill-market) echo "Skill Market" ;;
         exporter) echo "Exporter" ;;
         control-center) echo "Control Center" ;;
+        operation-intelligence) echo "Operation Intelligence" ;;
+        finops) echo "FinOps" ;;
         webapp) echo "Webapp" ;;
     esac
 }
 
 is_optional_component() {
     case "$1" in
-        onlyoffice|langfuse|exporter) return 0 ;;
+        onlyoffice|langfuse|exporter|operation-intelligence|finops) return 0 ;;
         *) return 1 ;;
     esac
 }
 
 # === Component validation ===
-VALID_COMPONENTS="onlyoffice langfuse gateway knowledge business-intelligence skill-market exporter control-center webapp"
+VALID_COMPONENTS="onlyoffice langfuse gateway knowledge knowledge-service business-intelligence skill-market operation-intelligence finops exporter control-center webapp"
 
 validate_component() {
     local comp="$1"
@@ -109,9 +116,25 @@ startup_one() {
             "${CTL_LANGFUSE}" startup "$@"
             ;;
         gateway)    "${CTL_GATEWAY}" startup "$@" ;;
-        knowledge)  "${CTL_KNOWLEDGE}" startup "$@" ;;
+        knowledge|knowledge-service)
+            "${CTL_KNOWLEDGE}" startup "$@"
+            ;;
         business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" startup "$@" ;;
         skill-market) "${CTL_SKILL_MARKET}" startup "$@" ;;
+        operation-intelligence)
+            if [ "${ENABLE_OPERATION_INTELLIGENCE}" != "true" ]; then
+                log_info "Operation Intelligence disabled (toggle=false)"
+                return 0
+            fi
+            "${CTL_OPERATION_INTELLIGENCE}" startup "$@"
+            ;;
+        finops)
+            if [ "${ENABLE_FINOPS}" != "true" ]; then
+                log_info "FinOps disabled (toggle=false)"
+                return 0
+            fi
+            "${CTL_FINOPS}" startup "$@"
+            ;;
         exporter)
             if [ "${ENABLE_EXPORTER}" != "true" ]; then
                 log_info "Exporter disabled (toggle=false)"
@@ -148,9 +171,11 @@ shutdown_one() {
         onlyoffice) "${CTL_ONLYOFFICE}" shutdown ;;
         langfuse)   "${CTL_LANGFUSE}" shutdown ;;
         gateway)    "${CTL_GATEWAY}" shutdown ;;
-        knowledge)  "${CTL_KNOWLEDGE}" shutdown ;;
+        knowledge|knowledge-service) "${CTL_KNOWLEDGE}" shutdown ;;
         business-intelligence) "${CTL_BUSINESS_INTELLIGENCE}" shutdown ;;
         skill-market) "${CTL_SKILL_MARKET}" shutdown ;;
+        operation-intelligence) "${CTL_OPERATION_INTELLIGENCE}" shutdown ;;
+        finops)    "${CTL_FINOPS}" shutdown ;;
         exporter)   "${CTL_EXPORTER}" shutdown ;;
         control-center) "${CTL_CONTROL_CENTER}" shutdown ;;
         webapp)     "${CTL_WEBAPP}" shutdown ;;
@@ -168,11 +193,19 @@ status_one() {
                 "${CTL_LANGFUSE}" status || return 1
             fi ;;
         gateway)  "${CTL_GATEWAY}" status  || return 1 ;;
-        knowledge) "${CTL_KNOWLEDGE}" status || return 1 ;;
+        knowledge|knowledge-service) "${CTL_KNOWLEDGE}" status || return 1 ;;
         business-intelligence)
             "${CTL_BUSINESS_INTELLIGENCE}" status || return 1 ;;
         skill-market)
             "${CTL_SKILL_MARKET}" status || return 1 ;;
+        operation-intelligence)
+            if [ "${ENABLE_OPERATION_INTELLIGENCE}" = "true" ]; then
+                "${CTL_OPERATION_INTELLIGENCE}" status || return 1
+            fi ;;
+        finops)
+            if [ "${ENABLE_FINOPS}" = "true" ]; then
+                "${CTL_FINOPS}" status || return 1
+            fi ;;
         exporter)
             if [ "${ENABLE_EXPORTER}" = "true" ]; then
                 "${CTL_EXPORTER}" status || return 1
@@ -210,6 +243,12 @@ do_startup() {
         # 6. Skill Market (mandatory, background)
         startup_with_policy skill-market --background
 
+        # 6.5 Operation Intelligence (optional, background)
+        startup_with_policy operation-intelligence --background
+
+        # 6.6 FinOps (optional, background)
+        startup_with_policy finops --background
+
         # 7. Exporter (optional, background)
         startup_with_policy exporter --background
 
@@ -239,7 +278,9 @@ do_shutdown() {
     if [[ ${#components[@]} -eq 0 || "${components[0]}" == "all" ]]; then
         "${CTL_EXPORTER}" shutdown
         "${CTL_CONTROL_CENTER}" shutdown
+        "${CTL_FINOPS}" shutdown
         "${CTL_SKILL_MARKET}" shutdown
+        "${CTL_OPERATION_INTELLIGENCE}" shutdown
         "${CTL_BUSINESS_INTELLIGENCE}" shutdown
         "${CTL_KNOWLEDGE}" shutdown
         "${CTL_WEBAPP}" shutdown
@@ -272,6 +313,8 @@ do_status() {
         status_one knowledge  || has_fail=1
         status_one business-intelligence || has_fail=1
         status_one skill-market || has_fail=1
+        status_one operation-intelligence || has_fail=1
+        status_one finops || has_fail=1
         status_one exporter   || has_fail=1
         status_one control-center || has_fail=1
         status_one webapp     || has_fail=1
@@ -318,6 +361,8 @@ Components (multiple allowed):
   knowledge   Knowledge ingestion / retrieval service  [mandatory]
   business-intelligence  Business intelligence service [mandatory]
   skill-market  Skill package catalog service          [mandatory]
+  operation-intelligence  Operation intelligence service [optional]
+  finops      Value operations / FinOps service          [optional]
   exporter    Prometheus metrics exporter              [optional]
   control-center  Control Center service               [mandatory]
   webapp      Web application (Vite dev server)        [mandatory]
@@ -332,6 +377,8 @@ Service toggles (env vars):
   ENABLE_ONLYOFFICE=true|false  (default: true)
   ENABLE_LANGFUSE=true|false    (default: true)
   ENABLE_EXPORTER=true|false    (default: true)
+  ENABLE_OPERATION_INTELLIGENCE=true|false  (default: true)
+  ENABLE_FINOPS=true|false      (default: true)
 
 Options:
   --apipwd <value>   Set GATEWAY_API_PASSWORD (default: empty)

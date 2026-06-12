@@ -22,6 +22,7 @@ flowchart LR
     gateway -.可选观测.-> lf["langfuse\nDocker Compose\n可选 :3100"]
     gateway -.可选预览.-> oo["onlyoffice\nDocker Compose\n可选 :8080"]
     gateway -.可选指标.-> pe["prometheus-exporter\nSpring Boot / Java 21\n可选 :9091"]
+    web -.可选健康曲线.-> oi["operation-intelligence\nSpring Boot / Java 21\n可选 :8096"]
 ```
 
 ## 服务组件清单
@@ -39,6 +40,7 @@ flowchart LR
 | Langfuse | `langfuse/` | `3100` | 否 | LLM 观测，可选 Docker Compose 组件 |
 | OnlyOffice | `onlyoffice/` | `8080` | 否 | Office 文档预览，可选 Docker Compose 组件 |
 | Prometheus Exporter | `prometheus-exporter/` | `9091` | 否 | Gateway 指标导出，可选 Java 服务 |
+| Operation Intelligence | `operation-intelligence/` | `8096` | 否 | QoS 健康曲线数据采集、评分与查询 API |
 | TypeScript SDK | `typescript-sdk/` | 无 | 否 | 前端依赖本地 SDK，也可独立构建测试 |
 
 ## 硬件需求
@@ -283,6 +285,7 @@ chmod +x gateway/scripts/ctl.sh web-app/scripts/ctl.sh
 chmod +x knowledge-service/scripts/ctl.sh business-intelligence/scripts/ctl.sh
 chmod +x skill-market/scripts/ctl.sh control-center/scripts/ctl.sh
 chmod +x prometheus-exporter/scripts/ctl.sh
+chmod +x operation-intelligence/scripts/ctl.sh
 chmod +x langfuse/scripts/ctl.sh onlyoffice/scripts/ctl.sh
 ```
 
@@ -292,11 +295,17 @@ chmod +x langfuse/scripts/ctl.sh onlyoffice/scripts/ctl.sh
 
 ```bash
 cp gateway/config.yaml.example gateway/config.yaml
-cp web-app/config.json.example web-app/config.json
+# 独立运行（standalone）模式
+cp web-app/config.standalone.json.example web-app/config.json
+# 或壳应用 / embed 模式：
+# cp web-app/config.embed.json.example web-app/config.json
+# 注意：embed 模式下空 URL 会解析成同源 /gateway、/skill-market、/operation-intelligence 等路径，
+# 要求壳应用或部署网关提供对应反向代理。
 cp knowledge-service/config.yaml.example knowledge-service/config.yaml
 cp business-intelligence/config.yaml.example business-intelligence/config.yaml
 cp skill-market/config.yaml.example skill-market/config.yaml
 cp control-center/config.yaml.example control-center/config.yaml
+cp operation-intelligence/config.yaml.example operation-intelligence/config.yaml
 ```
 
 复制可选配置：
@@ -336,11 +345,13 @@ gateway:
     "knowledgeServiceUrl": "http://127.0.0.1:8092",
     "businessIntelligenceServiceUrl": "http://127.0.0.1:8093",
     "skillMarketServiceUrl": "http://127.0.0.1:8095",
+    "operationIntelligenceServiceUrl": "http://127.0.0.1:8096",
+    "operationIntelligenceSecretKey": "change-this-oi-secret",
     "port": 5173
 }
 ```
 
-`gateway.secret-key` 必须和 `web-app.config.json` 的 `gatewaySecretKey` 保持一致。`control-center/config.yaml` 中 gateway 服务的 `auth.secret-key` 也要同步。
+`gateway.secret-key` 必须和 `web-app/config.json` 的 `gatewaySecretKey` 保持一致。`operation-intelligence.secret-key` 必须和 `web-app/config.json` 的 `operationIntelligenceSecretKey` 保持一致。`control-center/config.yaml` 中 gateway 服务的 `auth.secret-key` 也要同步。
 
 ## LLM 配置
 
@@ -457,10 +468,11 @@ cd /opt/ops-factory/test
 npm install
 ```
 
-Gateway 启动脚本会自动构建 Java 包，也会为以下 MCP 子项目执行 `npm install` 和 `npm run build`：
+Gateway 启动脚本会自动构建 Java 包，也会为以下 Python MCP 子项目检查并安装 `mcp==1.27.1` 到各自的 `.python-deps` 目录：
 
 - `gateway/agents/qa-agent/config/mcp/knowledge-service`
 - `gateway/agents/qa-cli-agent/config/mcp/knowledge-cli`
+- `gateway/agents/supervisor-agent/config/mcp/control-center`
 
 如果内网环境 Maven 下载慢或失败，配置 Maven mirror。示例 `~/.m2/settings.xml`：
 
@@ -487,6 +499,7 @@ cd /opt/ops-factory/knowledge-service && mvn package -DskipTests
 cd /opt/ops-factory/business-intelligence && mvn package -DskipTests
 cd /opt/ops-factory/skill-market && mvn package -DskipTests
 cd /opt/ops-factory/control-center && mvn package -DskipTests
+cd /opt/ops-factory/operation-intelligence && mvn package -DskipTests
 cd /opt/ops-factory/web-app && npm run build
 ```
 
@@ -526,7 +539,7 @@ ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
 不启用所有可选组件：
 
 ```bash
-ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
+ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ENABLE_OPERATION_INTELLIGENCE=false ./scripts/ctl.sh startup all
 ```
 
 设置 Gateway REST API password：
@@ -567,7 +580,7 @@ ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ct
 
 ```bash
 ./scripts/ctl.sh status
-lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|9091|3100|8080)'
+lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|8096|9091|3100|8080)'
 ```
 
 检查 HTTP 健康状态：
@@ -578,6 +591,7 @@ curl -fsS http://127.0.0.1:8092/actuator/health
 curl -fsS http://127.0.0.1:8093/actuator/health
 curl -fsS http://127.0.0.1:8094/actuator/health
 curl -fsS http://127.0.0.1:8095/actuator/health
+curl -fsS http://127.0.0.1:8096/actuator/health
 curl -fsS http://127.0.0.1:5173
 ```
 
@@ -612,6 +626,7 @@ UI 验证建议按顺序执行：
 | Skill Market | `skill-market/logs/skill-market.pid` | `skill-market/logs/skill-market.log`、`skill-market/logs/skill-market-console.log` |
 | Control Center | `control-center/logs/control-center.pid` | `control-center/logs/control-center.log` |
 | Prometheus Exporter | `prometheus-exporter/logs/prometheus-exporter.pid` | `prometheus-exporter/logs/exporter.log` |
+| Operation Intelligence | `operation-intelligence/logs/operation-intelligence.pid` | `operation-intelligence/logs/operation-intelligence.log` |
 | Langfuse | Docker | `docker compose -f langfuse/docker-compose.yml logs -f` |
 | OnlyOffice | Docker | `docker compose -f onlyoffice/docker-compose.yml logs -f` |
 
@@ -679,7 +694,7 @@ SKILL_MARKET_LOG_LEVEL_APP=DEBUG ./scripts/ctl.sh restart skill-market
 
 ```bash
 ./scripts/ctl.sh status
-lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|9091|3100|8080)'
+lsof -nP -iTCP -sTCP:LISTEN | egrep ':(3000|5173|8092|8093|8094|8095|8096|9091|3100|8080)'
 tail -n 200 gateway/logs/gateway.log
 tail -n 200 web-app/logs/webapp.log
 ```
@@ -737,20 +752,22 @@ tail -n 200 gateway/logs/gateway-stdout-stderr.log
 - 内网环境配置 Maven mirror。
 - 单独进入失败服务目录执行 `mvn package -DskipTests`，查看完整错误。
 
-### 4. Node.js 或 npm 问题
+### 4. Node.js、npm 或 Python MCP 依赖问题
 
 现象：
 
 - `node: command not found`
 - `npm install` 失败
 - Web App 无法启动
-- Gateway 启动时 MCP build 失败
+- Gateway 启动时 MCP 依赖检查失败
 
 排查：
 
 ```bash
 node -v
 npm -v
+PYTHONPATH=gateway/agents/qa-agent/config/mcp/knowledge-service/.python-deps python3 -c "import importlib.metadata as md; from mcp.server.fastmcp import FastMCP; raise SystemExit(0 if md.version('mcp') == '1.27.1' else 1)"
+PYTHONPATH=gateway/agents/supervisor-agent/config/mcp/control-center/.python-deps python3 -c "import importlib.metadata as md; from mcp.server.fastmcp import FastMCP; raise SystemExit(0 if md.version('mcp') == '1.27.1' else 1)"
 tail -n 200 web-app/logs/webapp.log
 ```
 
@@ -758,11 +775,12 @@ tail -n 200 web-app/logs/webapp.log
 
 ```bash
 cd web-app && npm install
-cd ../gateway/agents/qa-agent/config/mcp/knowledge-service && npm install && npm run build
-cd ../../../../qa-cli-agent/config/mcp/knowledge-cli && npm install && npm run build
+cd ../gateway/agents/qa-agent/config/mcp/knowledge-service && python3 -m pip install --target .python-deps -r requirements.txt
+cd ../../../../qa-cli-agent/config/mcp/knowledge-cli && python3 -m pip install --target .python-deps -r requirements.txt
+cd ../../../../supervisor-agent/config/mcp/control-center && python3 -m pip install --target .python-deps -r requirements.txt
 ```
 
-内网环境配置 npm registry 后重试。
+内网环境配置 npm registry 和 Python package mirror 后重试。
 
 ### 5. `goosed` 找不到或版本不对
 
@@ -1007,6 +1025,7 @@ cd /opt/ops-factory
 tar -czf /tmp/ops-factory-config-backup-$(date +%Y%m%d%H%M%S).tar.gz \
   gateway/config.yaml web-app/config.json knowledge-service/config.yaml \
   business-intelligence/config.yaml skill-market/config.yaml control-center/config.yaml \
+  operation-intelligence/config.yaml \
   gateway/agents knowledge-service/data skill-market/data business-intelligence/data
 ```
 
@@ -1023,7 +1042,7 @@ cd ../business-intelligence && mvn package -DskipTests
 cd ../skill-market && mvn package -DskipTests
 cd ../control-center && mvn package -DskipTests
 cd ..
-ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
+ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ENABLE_OPERATION_INTELLIGENCE=false ./scripts/ctl.sh startup all
 ./scripts/ctl.sh status
 ```
 
@@ -1048,7 +1067,7 @@ ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ct
 跳过可选服务：
 
 ```bash
-ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ./scripts/ctl.sh startup all
+ENABLE_ONLYOFFICE=false ENABLE_LANGFUSE=false ENABLE_EXPORTER=false ENABLE_OPERATION_INTELLIGENCE=false ./scripts/ctl.sh startup all
 ```
 
 端口检查：

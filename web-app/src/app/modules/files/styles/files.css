@@ -4,6 +4,42 @@
     gap: var(--spacing-3);
 }
 
+/* Preview mode: expand page to full width when preview is open */
+.files-page.preview-open {
+    --page-shell-max-width: none;
+}
+
+/* Adjust layout when preview is open */
+.files-page.preview-open .list-workbench {
+    flex: 0 0 45%;
+}
+
+.files-page.preview-open .list-workbench-body {
+    overflow-y: auto;
+}
+
+/* File type filter: add indentation and limit to 2 lines when preview is open */
+.files-page.preview-open .seg-filter {
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    display: flex !important;
+    flex-wrap: wrap !important;
+    max-height: 84px;
+    min-height: 84px;
+    overflow: hidden;
+    align-content: flex-start;
+    gap: 6px;
+}
+
+.files-page.preview-open .seg-filter-btn {
+    white-space: normal !important;
+    min-height: 32px;
+    flex: 0 0 auto;
+    line-height: 1.15;
+}
+
 .file-item {
     display: flex;
     align-items: center;
@@ -133,53 +169,15 @@
 }
 
 .file-actions {
-    display: flex;
-    gap: var(--spacing-2);
     opacity: 0;
     transition: opacity var(--transition-fast);
-    align-items: center;
     justify-content: flex-end;
     flex: 0 0 120px;
 }
 
-.file-item:hover .file-actions {
+.file-item:hover .file-actions,
+.file-item:focus-within .file-actions {
     opacity: 1;
-}
-
-.file-download-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    transition: all var(--transition-fast);
-    text-decoration: none;
-}
-
-.file-download-btn:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text-primary);
-}
-
-.file-delete-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.file-delete-btn:hover {
-    background: rgba(239, 68, 68, 0.12);
-    color: var(--color-error);
 }
 
 @media (max-width: 768px) {

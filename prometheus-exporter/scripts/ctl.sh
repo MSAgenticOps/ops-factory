@@ -60,7 +60,7 @@ build_exporter() {
     local jar="${SERVICE_DIR}/target/prometheus-exporter.jar"
     if [ -f "${jar}" ]; then
         local newest_src
-        newest_src="$(find "${SERVICE_DIR}/src" -name "*.java" -newer "${jar}" 2>/dev/null | head -1)"
+        newest_src="$(find "${SERVICE_DIR}/src" -name "*.java" -newer "${jar}" -print -quit 2>/dev/null)"
         if [ -z "${newest_src}" ]; then
             log_info "JAR is up-to-date, skipping build"
             return 0

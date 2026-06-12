@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Maximize2, Minimize2 } from '../ui/icons/AppIcons'
 import { usePreview } from '../providers/PreviewContext'
 import { useToast } from '../providers/ToastContext'
 import { useUser } from '../providers/UserContext'
@@ -13,7 +13,8 @@ import 'highlight.js/styles/github.css'
 import './FilePreview.css'
 import { inferFileType, needsTextContent } from '../../../utils/filePreview'
 import OnlyOfficePreview from './OnlyOfficePreview'
-import { GATEWAY_URL, GATEWAY_SECRET_KEY, KNOWLEDGE_SERVICE_URL, gatewayHeaders, isAdminUser } from '../../../config/runtime'
+import { runtime, gatewayHeaders, knowledgeHeaders, knowledgeFormDataHeaders } from '../../../config/runtime'
+import { getFilenameFromDisposition, triggerDownload } from '../../../utils/fileDownload'
 
 const MAX_LOG_LINE_NUMBER_LINES = 12000
 const MAX_LOG_LINE_NUMBER_CHARS = 1200000
@@ -131,11 +132,6 @@ function decodeFileName(name: string): string {
     }
 }
 
-function appendRootId(url: string, rootId?: string): string {
-    if (!rootId) return url
-    return `${url}${url.includes('?') ? '&' : '?'}rootId=${encodeURIComponent(rootId)}`
-}
-
 function renderLineNumberText(content: string, className: string) {
     const lines = content.split('\n')
 
@@ -196,7 +192,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         togglePreviewFullscreen,
         exitPreviewFullscreen,
     } = usePreview()
-    const { userId, role } = useUser()
+    const { userId } = useUser()
     const [copied, setCopied] = useState(false)
     const [showSource, setShowSource] = useState(false)
     const [isEditorOpen, setIsEditorOpen] = useState(false)
@@ -277,7 +273,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         setEditError(null)
 
         try {
-            const response = await fetch(appendRootId(`${GATEWAY_URL}/agents/${targetFile.agentId}/files/${encodeURIComponent(targetFile.path)}`, targetFile.rootId), {
+            const response = await fetch(`${runtime.GATEWAY_URL}/agents/${targetFile.agentId}/files/update?path=${encodeURIComponent(targetFile.path)}${targetFile.rootId ? `&rootId=${encodeURIComponent(targetFile.rootId)}` : ''}`, {
                 method: 'PUT',
                 headers: gatewayHeaders(userId),
                 body: JSON.stringify({ content: editDraft }),
@@ -312,11 +308,30 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         if (!previewFile.agentId) {
             return ''
         }
-        let url = `${GATEWAY_URL}/agents/${previewFile.agentId}/files/${encodeURIComponent(previewFile.path)}?key=${GATEWAY_SECRET_KEY}`
+        let url = `${runtime.GATEWAY_URL}/agents/${previewFile.agentId}/files/get?path=${encodeURIComponent(previewFile.path)}&key=${runtime.GATEWAY_SECRET_KEY}`
         if (previewFile.rootId) url += `&rootId=${encodeURIComponent(previewFile.rootId)}`
         if (userId) url += `&uid=${encodeURIComponent(userId)}`
         return url
     }, [previewFile, userId])
+
+    const handleDownload = useCallback(async () => {
+        const baseUrl = getDownloadUrl()
+        const url = previewFile?.downloadUrl ? baseUrl : `${baseUrl}&download=true`
+        if (!url) return
+        try {
+            // Knowledge-service downloads use downloadUrl directly (no auth); agent file downloads need gateway headers
+            const response = await fetch(url, { headers: previewFile?.downloadUrl ? undefined : gatewayHeaders(userId) })
+            if (!response.ok) throw new Error(response.statusText)
+            const blob = await response.blob()
+            const filename = getFilenameFromDisposition(
+                response.headers.get('Content-Disposition'),
+                previewFile?.downloadFilename || previewFile?.name || 'download'
+            )
+            triggerDownload(blob, filename)
+        } catch {
+            showToast('error', t('files.downloadFailed', { defaultValue: t('errors.unknown') }))
+        }
+    }, [getDownloadUrl, previewFile, showToast, t, userId])
 
     const loadKnowledgeSources = useCallback(async () => {
         const requestId = knowledgeSourcesRequestRef.current + 1
@@ -326,7 +341,9 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
         setKnowledgeSources([])
 
         try {
-            const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`)
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`, {
+                headers: knowledgeHeaders(userId),
+            })
             const data = await response.json().catch(() => null) as KnowledgeSourceListResponse | { message?: string } | null
 
             if (!response.ok) {
@@ -354,7 +371,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                 setKnowledgeSourcesLoading(false)
             }
         }
-    }, [t])
+    }, [t, userId])
 
     const handleToggleKnowledgeMenu = useCallback(() => {
         if (!isKnowledgeMenuOpen) {
@@ -395,8 +412,9 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
             const formData = new FormData()
             formData.append('files', file)
 
-            const ingestResponse = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources/${source.id}/documents:ingest`, {
+            const ingestResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}/documents:ingest`, {
                 method: 'POST',
+                headers: knowledgeFormDataHeaders(userId),
                 body: formData,
             })
             const ingestData = await ingestResponse.json().catch(() => null) as KnowledgeIngestResponse | { message?: string } | null
@@ -453,7 +471,7 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
     const canDownload = !!getDownloadUrl()
     const displayType = previewFile ? inferFileType(previewFile) : ''
     const canEditContent = !!previewFile?.agentId && previewFile.content !== undefined && !!previewKind && needsTextContent(previewKind)
-    const canImportToKnowledge = isAdminUser(userId, role) && canDownload && !!previewFile?.agentId && !previewFile.path.startsWith('knowledge-document:')
+    const canImportToKnowledge = canDownload && !!previewFile?.agentId && !previewFile.path.startsWith('knowledge-document:')
     const canUseLineNumbers = !!previewFile?.content && shouldUseLineNumbers(previewFile.content, displayType, previewKind)
     const isLineNumberTextPreview = previewKind === 'code' && (displayType === 'txt' || displayType === 'log') && canUseLineNumbers
     const showLineNumberSource = canUseLineNumbers && (isLineNumberTextPreview || (previewKind === 'markdown' && showSource))
@@ -617,18 +635,18 @@ export default function FilePreview({ embedded = false }: { embedded?: boolean }
                                 </button>
                             )}
                             {canDownload && (
-                                <a
-                                    href={previewFile.downloadUrl ? getDownloadUrl() : `${getDownloadUrl()}&download=true`}
+                                <button
+                                    type="button"
                                     className="file-preview-btn"
                                     title={t('files.download')}
-                                    download
+                                    onClick={handleDownload}
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                         <polyline points="7 10 12 15 17 10" />
                                         <line x1="12" y1="15" x2="12" y2="3" />
                                     </svg>
-                                </a>
+                                </button>
                             )}
                             <button
                                 className={`file-preview-btn ${isPreviewFullscreen ? 'active' : ''}`}

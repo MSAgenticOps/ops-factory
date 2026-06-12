@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: operation-intelligence
+  codec:
+    max-in-memory-size: 10MB
+  config:
+    import: optional:file:${OI_CONFIG_PATH:./config.yaml}
+
+logging:
+  level:
+    root: INFO
+    com.huawei.opsfactory.operationintelligence: INFO
+    org.springframework: WARN
+    reactor: WARN
+    io.netty: WARN
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

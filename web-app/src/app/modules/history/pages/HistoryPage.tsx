@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useInbox } from '../../../platform/providers/InboxContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
 import { useUser } from '../../../platform/providers/UserContext'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
@@ -13,14 +14,14 @@ import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import FilterSelect from '../../../platform/ui/filters/FilterSelect'
 import { buildChatSessionState } from '../../../platform/chat/chatRouteState'
-import { GATEWAY_URL, gatewayHeaders, isAdminUser, isScheduledSession } from '../../../../config/runtime'
+import { runtime, gatewayHeaders, isScheduledSession } from '../../../../config/runtime'
 import { trackedFetch } from '../../../platform/logging/requestClient'
 import RenameSessionDialog from '../components/RenameSessionDialog'
 import SessionList, { type SessionWithAgent } from '../components/SessionList'
 import { useHistorySessions } from '../hooks/useHistorySessions'
 import { downloadBlobResponse } from '../../../../utils/download'
 
-type HistoryFilter = 'user' | 'scheduled' | 'all'
+type HistoryFilter = 'user' | 'scheduled' | 'agent_call' | 'all'
 
 type TraceJobStatus = 'running' | 'succeeded' | 'failed'
 
@@ -32,7 +33,7 @@ interface TraceJobResponse {
 }
 
 function parseHistoryFilter(raw: string | null): HistoryFilter {
-    if (raw === 'scheduled' || raw === 'all' || raw === 'user') return raw
+    if (raw === 'scheduled' || raw === 'agent_call' || raw === 'all' || raw === 'user') return raw
     return 'user'
 }
 
@@ -60,7 +61,8 @@ export default function HistoryPage() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { showToast } = useToast()
-    const { userId, role } = useUser()
+    const { requestConfirm } = useConfirmDialog()
+    const { userId } = useUser()
     const [searchParams, setSearchParams] = useSearchParams()
     const { getClient, agents, isConnected, error: connectionError } = useGoosed()
     const { markSessionRead, markSessionUnread } = useInbox()
@@ -85,9 +87,7 @@ export default function HistoryPage() {
         return () => clearTimeout(timer)
     }, [searchTerm])
 
-    const [lastDeletedSessionId, setLastDeletedSessionId] = useState<string | null>(null)
-    const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(null)
-    const canTraceSessions = isAdminUser(userId, role)
+    const canTraceSessions = true
 
     const getSessionKey = useCallback((session: SessionWithAgent) => `${session.agentId || 'unknown'}:${session.id}`, [])
 
@@ -171,7 +171,7 @@ export default function HistoryPage() {
     const pollTraceJob = useCallback(async (jobId: string): Promise<TraceJobResponse> => {
         const startedAt = Date.now()
         while (Date.now() - startedAt < TRACE_POLL_TIMEOUT_MS) {
-            const response = await trackedFetch(`${GATEWAY_URL}/session-traces/${encodeURIComponent(jobId)}`, {
+            const response = await trackedFetch(`${runtime.GATEWAY_URL}/session-traces/${encodeURIComponent(jobId)}`, {
                 category: 'request',
                 name: 'request.send',
                 headers: gatewayHeaders(userId),
@@ -204,7 +204,7 @@ export default function HistoryPage() {
 
         try {
             const startResponse = await trackedFetch(
-                `${GATEWAY_URL}/agents/${encodeURIComponent(resolvedAgentId)}/sessions/${encodeURIComponent(session.id)}/trace`,
+                `${runtime.GATEWAY_URL}/agents/${encodeURIComponent(resolvedAgentId)}/sessions/${encodeURIComponent(session.id)}/trace`,
                 {
                     method: 'POST',
                     category: 'request',
@@ -225,7 +225,7 @@ export default function HistoryPage() {
             }
 
             const downloadResponse = await trackedFetch(
-                `${GATEWAY_URL}/session-traces/${encodeURIComponent(completedJob.jobId)}/download`,
+                `${runtime.GATEWAY_URL}/session-traces/${encodeURIComponent(completedJob.jobId)}/download`,
                 {
                     category: 'request',
                     name: 'request.send',
@@ -254,7 +254,12 @@ export default function HistoryPage() {
     }, [agents, getSessionKey, pollTraceJob, showToast, t, tracingSessionKeys, userId])
 
     const handleDeleteSession = async (session: SessionWithAgent) => {
-        if (!confirm(t('history.confirmDeleteSession'))) return
+        if (!(await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: t('history.confirmDeleteSession'),
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        }))) return
         const resolvedAgentId = session.agentId || agents[0]?.id
         const sessionKey = getSessionKey({ ...session, agentId: resolvedAgentId })
         if (deletingSessionKeys.has(sessionKey)) return
@@ -269,15 +274,13 @@ export default function HistoryPage() {
                     break
                 }
             }
-            setLastDeletedSessionId(session.id)
-            setLastDeletedAt(Date.now())
+            showToast('success', t('history.sessionDeleted'))
             historySessions.refresh()
         } catch (err) {
             console.error('Failed to delete session:', err)
             const message = err instanceof Error ? err.message : 'Unknown error'
             if (message.includes('Resource not found')) {
-                setLastDeletedSessionId(session.id)
-                setLastDeletedAt(Date.now())
+                showToast('success', t('history.sessionDeleted'))
                 historySessions.refresh()
                 return
             }
@@ -304,20 +307,6 @@ export default function HistoryPage() {
             {tracingSessionKeys.size > 0 && (
                 <div className="conn-banner conn-banner-warning">
                     {t('history.traceSessionActiveNotice')}
-                </div>
-            )}
-
-            {lastDeletedSessionId && lastDeletedAt && (
-                <div
-                    style={{
-                        padding: 'var(--spacing-3)',
-                        background: 'rgba(16, 185, 129, 0.15)',
-                        borderRadius: 'var(--radius-lg)',
-                        color: 'var(--color-text-secondary)',
-                        marginBottom: 'var(--spacing-6)',
-                    }}
-                >
-                    {t('history.sessionDeleted')} • {new Date(lastDeletedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                 </div>
             )}
 
@@ -351,6 +340,9 @@ export default function HistoryPage() {
                                     </button>
                                     <button type="button" className={`seg-filter-btn ${historyFilter === 'scheduled' ? 'active' : ''}`} onClick={() => setHistoryFilter('scheduled')}>
                                         {t('history.filterScheduled')}
+                                    </button>
+                                    <button type="button" className={`seg-filter-btn ${historyFilter === 'agent_call' ? 'active' : ''}`} onClick={() => setHistoryFilter('agent_call')}>
+                                        {t('history.filterAgentCall')}
                                     </button>
                                     <button type="button" className={`seg-filter-btn ${historyFilter === 'all' ? 'active' : ''}`} onClick={() => setHistoryFilter('all')}>
                                         {t('history.filterAll')}

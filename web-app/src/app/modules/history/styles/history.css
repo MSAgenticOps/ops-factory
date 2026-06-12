@@ -118,8 +118,6 @@
 }
 
 .session-actions {
-    display: flex;
-    gap: var(--spacing-2);
     justify-content: flex-end;
     flex: 0 0 auto;
     min-width: 128px;
@@ -127,52 +125,9 @@
     transition: opacity var(--transition-fast);
 }
 
-.session-item:hover .session-actions {
+.session-item:hover .session-actions,
+.session-item:focus-within .session-actions {
     opacity: 1;
-}
-
-.session-action-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    transition: all var(--transition-fast);
-}
-
-.session-action-btn:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text-primary);
-}
-
-.session-action-btn.delete:hover {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--color-error);
-}
-
-.session-action-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-}
-
-.session-action-icon {
-    flex: 0 0 auto;
-}
-
-.session-action-spinner {
-    animation: session-action-spin 0.9s linear infinite;
-}
-
-@keyframes session-action-spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 .session-schedule-id {

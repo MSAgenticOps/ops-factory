@@ -1,6 +1,9 @@
 import { useCallback, useReducer, useRef, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { reduceA2AProgress, reduceA2AProgressFromFrame, type A2AProgressMap } from './a2aProgress'
+import { parseDelegationDirectives, makeCallAgentToolMessage, applyDelegationResult, applyDelegationCancelled, type DelegationDirective } from './a2aDelegation'
 import { GoosedClient, normalizeSessionError } from '@goosed/sdk'
-import type { TokenState, ImageData, OutputFile, SSEEvent, Message as GoosedMessage, SessionErrorEnvelope, SessionSSEEvent } from '@goosed/sdk'
+import type { TokenState, ImageData, OutputFile, SSEEvent, Message as GoosedMessage, SessionErrorEnvelope, SessionSSEEvent, A2AResultFrame } from '@goosed/sdk'
 import type { AttachedFile, ChatMessage, MessageContent, MessageMetadata, SelectedSkill } from '../../../types/message'
 import { getCompactingMessage, getThinkingMessage } from '../../../utils/messageContent'
 import { normalizeChatStreamError } from '../../../utils/chatStreamError'
@@ -79,6 +82,8 @@ function streamReducer(state: StreamState, action: StreamAction): StreamState {
 interface UseChatOptions {
     sessionId: string | null
     client: GoosedClient
+    /** Agents the initiator may delegate to — powers deterministic @mention delegation; empty/undefined disables it. */
+    agents?: ReadonlyArray<{ id: string }>
 }
 
 export interface OutputFilesEvent {
@@ -95,6 +100,7 @@ export interface UseChatReturn {
     sessionError: ChatSessionError | null
     tokenState: TokenState | null
     outputFilesEvent: OutputFilesEvent | null
+    a2aProgress: A2AProgressMap
     sendMessage: (text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill) => string | null
     stopMessage: () => Promise<boolean>
     clearMessages: () => void
@@ -470,12 +476,14 @@ function buildGoosedUserMessage(text: string, images?: ImageData[]): GoosedMessa
 
 // ── Hook ────────────────────────────────────────────────────────
 
-export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
+export function useChat({ sessionId, client, agents }: UseChatOptions): UseChatReturn {
+    const { t } = useTranslation()
     const [state, dispatch] = useReducer(streamReducer, initialState)
 
     const messagesRef = useRef<ChatMessage[]>([])
     const isStreamingRef = useRef(false)
     const submitAbortControllerRef = useRef<AbortController | null>(null)
+    const delegationAbortRef = useRef<AbortController | null>(null)
     const sessionEventsControllerRef = useRef<AbortController | null>(null)
     const currentRequestIdRef = useRef<string | null>(null)
     const lastSessionEventIdRef = useRef<string | null>(null)
@@ -485,6 +493,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
     const locallyCancelledRequestIdsRef = useRef<Set<string>>(new Set())
     const streamErrorRef = useRef<string | null>(null)
     const [outputFilesEvent, setOutputFilesEvent] = useState<OutputFilesEvent | null>(null)
+    const [a2aProgress, setA2aProgress] = useState<A2AProgressMap>({})
 
     // Track mounted state
     const isMountedRef = useRef(true)
@@ -503,6 +512,12 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
     useEffect(() => {
         messagesRef.current = state.messages
     }, [state.messages])
+
+    // Keep the delegation-target agents in a ref so sendMessage reads the latest without re-creating the callback.
+    const agentsRef = useRef<ReadonlyArray<{ id: string }>>(agents ?? [])
+    useEffect(() => {
+        agentsRef.current = agents ?? []
+    }, [agents])
 
     const setInitialMessages = useCallback((msgs: ChatMessage[]) => {
         if (isStreamingRef.current && messagesRef.current.length > 0) {
@@ -533,6 +548,8 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
 
     useEffect(() => {
         submitAbortControllerRef.current?.abort()
+        // Abort any in-flight @mention delegation too, so its SSE loop stops mutating this (now inactive) session.
+        delegationAbortRef.current?.abort()
         sessionEventsControllerRef.current?.abort()
         activeRequestUnsubscribeRef.current?.()
         requestListenersRef.current.clear()
@@ -543,6 +560,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         locallyCancelledRequestIdsRef.current.clear()
         streamErrorRef.current = null
         submitAbortControllerRef.current = null
+        delegationAbortRef.current = null
         sessionEventsControllerRef.current = null
         activeRequestUnsubscribeRef.current = null
         setOutputFilesEvent(null)
@@ -559,10 +577,12 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         }
         if (!options.keepRequest) {
             submitAbortControllerRef.current?.abort()
+            delegationAbortRef.current?.abort()
             activeRequestUnsubscribeRef.current?.()
             currentRequestIdRef.current = null
             isStreamingRef.current = false
             submitAbortControllerRef.current = null
+            delegationAbortRef.current = null
             activeRequestUnsubscribeRef.current = null
         }
         cancelRequestedRef.current = false
@@ -645,10 +665,16 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
                 }
                 break
             }
+            case 'Notification': {
+                // A2A progress: bind the a2a_progress payload to its call_agent tool card by request_id (last-wins).
+                setA2aProgress(prev => reduceA2AProgress(prev, event, Date.now()))
+                break
+            }
             case 'ActiveRequests':
             case 'ModelChange':
-            case 'Notification':
             case 'Ping':
+                break
+            default:
                 break
         }
         return false
@@ -840,6 +866,72 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         return apiText
     }, [])
 
+    // Drive deterministic @mention delegation: for each directive, render a pending "Call agent" card, stream the
+    // gateway A2A SSE into the live status line, then apply the agent's result. Directives run sequentially. Bypasses
+    // goosed entirely, so the initiator's model can neither skip the delegation nor fabricate the result.
+    const runDelegation = useCallback(async (directives: DelegationDirective[]) => {
+        const controller = new AbortController()
+        delegationAbortRef.current = controller
+        // Tracks the card currently awaiting a terminal frame; lets the catch/cancel paths resolve its pending spinner
+        // even though stopMessage clears currentRequestIdRef before the AbortError surfaces here.
+        let pendingRequestId: string | null = null
+        const setMessages = (next: ChatMessage[]) => {
+            messagesRef.current = next
+            dispatch({ type: 'SET_MESSAGES', payload: next })
+        }
+        try {
+            for (const directive of directives) {
+                if (controller.signal.aborted) break
+                const requestId = createRequestId()
+                currentRequestIdRef.current = requestId
+                pendingRequestId = requestId
+
+                setMessages([...messagesRef.current, makeCallAgentToolMessage(requestId, directive.agentId, directive.task)])
+                dispatch({ type: 'SET_CHAT_STATE', payload: ChatState.Streaming })
+
+                let resultFrame: A2AResultFrame | undefined
+                for await (const frame of client.delegateAgent(directive.agentId, directive.task, {
+                    originSessionId: sessionId ?? undefined,
+                    signal: controller.signal,
+                })) {
+                    if (!isMountedRef.current) return
+                    if (frame.type === 'a2a_progress') {
+                        setA2aProgress(prev => reduceA2AProgressFromFrame(prev, requestId, frame, Date.now()))
+                    } else if (frame.type === 'a2a_result') {
+                        resultFrame = frame
+                    }
+                }
+
+                setMessages(applyDelegationResult(messagesRef.current, requestId, resultFrame, t))
+                pendingRequestId = null
+            }
+            if (isMountedRef.current) finishLocalRequest()
+        } catch (err) {
+            if (!isMountedRef.current) return
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                // Cancelled via stopMessage (which already set ChatState.Cancelled): just resolve the pending card.
+                if (pendingRequestId) setMessages(applyDelegationCancelled(messagesRef.current, pendingRequestId, t))
+                return
+            }
+            const sessionError = toChatSessionError(err, {
+                sessionId: sessionId ?? undefined,
+                requestId: pendingRequestId ?? undefined,
+            })
+            const fallback = normalizeChatStreamError(sessionError.fallback)
+            // Resolve the pending card to an error state (same text as the session error) so its spinner does not hang.
+            if (pendingRequestId) {
+                const errorFrame: A2AResultFrame = { type: 'a2a_result', status: 'error', error: fallback }
+                setMessages(applyDelegationResult(messagesRef.current, pendingRequestId, errorFrame, t))
+            }
+            publishSessionError({ ...sessionError, fallback })
+            finishLocalRequest()
+        } finally {
+            if (delegationAbortRef.current === controller) {
+                delegationAbortRef.current = null
+            }
+        }
+    }, [client, sessionId, finishLocalRequest, publishSessionError, t])
+
     const sendMessage = useCallback((text: string, images?: ImageData[], attachedFiles?: AttachedFile[], selectedSkill?: SelectedSkill): string | null => {
         if (!sessionId || isStreamingRef.current) return null
         if (!text.trim() && (!images || images.length === 0) && (!attachedFiles || attachedFiles.length === 0) && !selectedSkill) return null
@@ -885,6 +977,14 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         messagesRef.current = currentMessages
         dispatch({ type: 'SET_MESSAGES', payload: currentMessages })
 
+        // Deterministic @mention delegation: if the message targets known agent(s), bypass the model and drive the
+        // gateway A2A call(s) directly — delegation can't then be skipped or fabricated by a weak initiator model.
+        const directives = parseDelegationDirectives(text, agentsRef.current)
+        if (directives.length > 0) {
+            void runDelegation(directives)
+            return userMessage.id ?? null
+        }
+
         void (async () => {
             const requestId = createRequestId()
             const submitController = new AbortController()
@@ -921,12 +1021,22 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         })()
 
         return userMessage.id ?? null
-    }, [client, sessionId, attachRequestListener, buildPayloadText, finishLocalRequest, publishSessionError])
+    }, [client, sessionId, attachRequestListener, buildPayloadText, finishLocalRequest, publishSessionError, runDelegation])
 
     const stopMessage = useCallback(async (): Promise<boolean> => {
         if (!sessionId || !isStreamingRef.current) return false
 
         console.info('[chat-stop] stop requested', { sessionId })
+
+        // Deterministic delegation has no goosed request to cancel: abort the A2A fetch (the gateway sees the caller
+        // disconnect and cancels the sub-run).
+        if (delegationAbortRef.current) {
+            delegationAbortRef.current.abort()
+            delegationAbortRef.current = null
+            finishLocalRequest({ cancelled: true })
+            console.info('[chat-stop] delegation aborted', { sessionId })
+            return true
+        }
 
         if (currentRequestIdRef.current) {
             const requestId = currentRequestIdRef.current
@@ -956,6 +1066,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         dispatch({ type: 'SET_MESSAGES', payload: [] })
         dispatch({ type: 'SET_ERROR', payload: null })
         dispatch({ type: 'SET_SESSION_ERROR', payload: null })
+        setA2aProgress({})
     }, [])
 
     return {
@@ -971,6 +1082,7 @@ export function useChat({ sessionId, client }: UseChatOptions): UseChatReturn {
         sessionError: state.sessionError,
         tokenState: state.tokenState,
         outputFilesEvent,
+        a2aProgress,
         sendMessage,
         stopMessage,
         clearMessages,

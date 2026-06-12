@@ -1,7 +1,12 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.controlcenter.control;
 
 import com.huawei.opsfactory.controlcenter.config.ControlCenterProperties;
 import com.huawei.opsfactory.controlcenter.registry.ManagedServiceRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,19 +20,54 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 @Service
+/**
+ * Managed Service File Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class ManagedServiceFileService {
 
     private final ManagedServiceRegistry registry;
+    private final ControlCenterProperties properties;
     private final Path projectRoot;
 
-    public ManagedServiceFileService(ManagedServiceRegistry registry) {
+    /**
+     * Creates the managed service file service instance.
+     *
+     * @param registry the managed service registry
+     * @param properties the control center properties
+     */
+    @Autowired
+    public ManagedServiceFileService(ManagedServiceRegistry registry, ControlCenterProperties properties) {
         this.registry = registry;
-        Path current = Path.of("").toAbsolutePath().normalize();
-        this.projectRoot = current.getFileName() != null && "control-center".equals(current.getFileName().toString())
-                ? current.getParent()
-                : current;
+        this.properties = properties;
+        this.projectRoot = resolveProjectRoot();
     }
 
+    /**
+     * Resolves the project root directory from configuration.
+     *
+     * @return the absolute path to the project root directory
+     */
+    private Path resolveProjectRoot() {
+        String configuredRoot = properties.getProjectRoot();
+        if (configuredRoot != null && !configuredRoot.isEmpty()) {
+            Path configured = Path.of(configuredRoot);
+            if (configured.isAbsolute()) {
+                return configured.normalize();
+            }
+            return configured.toAbsolutePath().normalize();
+        }
+        return Path.of("").toAbsolutePath().normalize();
+    }
+
+    /**
+     * Reads the configuration file for the specified service.
+     *
+     * @param serviceId the service identifier
+     * @return a map containing serviceId, serviceName, path, and content
+     */
     public Map<String, Object> readConfig(String serviceId) {
         ControlCenterProperties.ServiceTarget service = registry.require(serviceId);
         Path configPath = configPathFor(serviceId);
@@ -39,6 +79,14 @@ public class ManagedServiceFileService {
         );
     }
 
+    /**
+     * Writes content to the configuration file for the specified service.
+     *
+     * @param serviceId the service identifier
+     * @param content the content to write
+     * @return a map containing serviceId, serviceName, path, and saved status
+     * @throws IllegalStateException if writing the config file fails
+     */
     public Map<String, Object> writeConfig(String serviceId, String content) {
         ControlCenterProperties.ServiceTarget service = registry.require(serviceId);
         Path configPath = configPathFor(serviceId);
@@ -56,6 +104,13 @@ public class ManagedServiceFileService {
         );
     }
 
+    /**
+     * Reads the specified number of lines from the log file for the specified service.
+     *
+     * @param serviceId the service identifier
+     * @param lines the number of lines to read
+     * @return a map containing serviceId, serviceName, path, lines, and content
+     */
     public Map<String, Object> readLogs(String serviceId, int lines) {
         ControlCenterProperties.ServiceTarget service = registry.require(serviceId);
         Path logPath = logPathFor(serviceId);
@@ -68,6 +123,12 @@ public class ManagedServiceFileService {
         );
     }
 
+    /**
+     * Resolves the configuration file path for the specified service.
+     *
+     * @param serviceId the service identifier
+     * @return the absolute path to the configuration file
+     */
     private Path configPathFor(String serviceId) {
         ControlCenterProperties.ServiceTarget service = registry.require(serviceId);
         if (service.getConfigPath() != null && !service.getConfigPath().isBlank()) {
@@ -81,6 +142,12 @@ public class ManagedServiceFileService {
         };
     }
 
+    /**
+     * Resolves the log file path for the specified service.
+     *
+     * @param serviceId the service identifier
+     * @return the absolute path to the log file
+     */
     private Path logPathFor(String serviceId) {
         ControlCenterProperties.ServiceTarget service = registry.require(serviceId);
         if (service.getLogPath() != null && !service.getLogPath().isBlank()) {
@@ -94,6 +161,13 @@ public class ManagedServiceFileService {
         };
     }
 
+    /**
+     * Reads the content of a file.
+     *
+     * @param path the file path
+     * @return the file content, or empty string if file does not exist
+     * @throws IllegalStateException if reading the file fails
+     */
     private String readFile(Path path) {
         try {
             if (!Files.exists(path)) {
@@ -105,6 +179,14 @@ public class ManagedServiceFileService {
         }
     }
 
+    /**
+     * Reads the specified number of lines from the end of a file.
+     *
+     * @param path the file path
+     * @param lines the number of lines to read
+     * @return the last N lines of the file, or empty string if file does not exist
+     * @throws IllegalStateException if reading the file fails
+     */
     private String tailFile(Path path, int lines) {
         try {
             if (!Files.exists(path)) {
@@ -118,6 +200,12 @@ public class ManagedServiceFileService {
         }
     }
 
+    /**
+     * Converts an absolute path to a path relative to the project root.
+     *
+     * @param path the absolute path
+     * @return the relative path, or the file name if conversion fails
+     */
     private String relativePath(Path path) {
         try {
             return projectRoot.relativize(path.toAbsolutePath().normalize()).toString();
@@ -126,6 +214,13 @@ public class ManagedServiceFileService {
         }
     }
 
+    /**
+     * Creates a backup of an existing file before modification.
+     *
+     * @param serviceId the service identifier
+     * @param path the file path to backup
+     * @throws IOException if backup creation fails
+     */
     private void backupExistingFile(String serviceId, Path path) throws IOException {
         if (!Files.exists(path)) {
             return;
@@ -138,6 +233,14 @@ public class ManagedServiceFileService {
         pruneBackups(backupDir, serviceId + "." + fileName + ".", 5);
     }
 
+    /**
+     * Prunes old backups, keeping only the most recent ones.
+     *
+     * @param backupDir the backup directory
+     * @param prefix the backup file name prefix
+     * @param maxBackups the maximum number of backups to keep
+     * @throws IOException if listing or deleting files fails
+     */
     private void pruneBackups(Path backupDir, String prefix, int maxBackups) throws IOException {
         try (Stream<Path> stream = Files.list(backupDir)) {
             List<Path> backups = stream

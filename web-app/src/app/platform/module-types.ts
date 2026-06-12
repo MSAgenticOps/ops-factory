@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 
-export type AccessLevel = 'public' | 'authenticated' | 'admin'
+export type AccessLevel = 'public' | 'authenticated'
 
 export type NavGroupKey = 'primary' | 'business' | 'config' | 'monitoring'
 
@@ -9,18 +9,22 @@ export type IconKey =
     | 'plus'
     | 'history'
     | 'inbox'
+    | 'thread'
     | 'files'
     | 'channels'
     | 'diagnosis'
     | 'businessIntelligence'
+    | 'operationIntelligence'
+    | 'finops'
     | 'agents'
     | 'skillMarket'
     | 'knowledge'
+    | 'knowledgeGraph'
     | 'scheduler'
     | 'monitoring'
     | 'hostResource'
 
-export type BadgeSource = 'none' | 'inboxUnread'
+export type BadgeSource = 'none' | 'inboxUnread' | 'threadUnread'
 
 export type RouteDefinition = {
     id: string
@@ -57,7 +61,6 @@ export type NavActionItemDefinition = {
 export type NavItemDefinition = NavRouteItemDefinition | NavActionItemDefinition
 
 export type ModuleContext = {
-    isAdmin: boolean
     isAuthenticated: boolean
     userId?: string | null
 }

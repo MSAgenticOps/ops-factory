@@ -8,18 +8,24 @@ import { PreviewProvider } from '../app/platform/providers/PreviewContext'
 import i18n from '../i18n'
 import type { ChatMessage } from '../types/message'
 
-function renderMessageList(messages: ChatMessage[], props: Partial<ComponentProps<typeof MessageList>> = {}) {
+function renderMessageList(messages: ChatMessage[], props: Partial<ComponentProps<typeof MessageList>> = {}, withPreview = false) {
+    const inner = <MessageList messages={messages} {...props} />
+    const wrapped = withPreview ? <PreviewProvider>{inner}</PreviewProvider> : inner
     return render(
         <I18nextProvider i18n={i18n}>
             <UserProvider>
-                <MessageList messages={messages} {...props} />
+                {wrapped}
             </UserProvider>
         </I18nextProvider>
     )
 }
 
 function renderMessageListWithPreview(messages: ChatMessage[], props: Partial<ComponentProps<typeof MessageList>> = {}) {
-    return render(
+    return renderMessageList(messages, props, true)
+}
+
+function rerenderWithPreview(view: ReturnType<typeof render>, messages: ChatMessage[], props: Partial<ComponentProps<typeof MessageList>> = {}) {
+    view.rerender(
         <I18nextProvider i18n={i18n}>
             <UserProvider>
                 <PreviewProvider>
@@ -28,6 +34,75 @@ function renderMessageListWithPreview(messages: ChatMessage[], props: Partial<Co
             </UserProvider>
         </I18nextProvider>
     )
+}
+
+function createFetchMock(options: {
+    persistedEntries?: Record<string, unknown[]>
+    delayPersisted?: boolean
+}) {
+    let resolvePersisted: ((response: Response) => void) | null = null
+    const persistedLoad = options.delayPersisted
+        ? new Promise<Response>(resolve => { resolvePersisted = resolve })
+        : null
+
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes('/config')) {
+            return Promise.resolve({ ok: false }) as Promise<Response>
+        }
+        if (url.includes('/file-capsules') && init?.method === 'POST') {
+            return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+        }
+        if (url.includes('/file-capsules') && options.persistedEntries) {
+            if (persistedLoad) return persistedLoad
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ entries: options.persistedEntries }),
+            }) as Promise<Response>
+        }
+        if (url.includes('/file-capsules')) {
+            return Promise.resolve({ ok: true, json: async () => ({ entries: {} }) }) as Promise<Response>
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+    })
+
+    return { fetchMock, resolvePersisted }
+}
+
+function createScrollContainer(scrollHeight = 600, clientHeight = 200) {
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'scrollHeight', { configurable: true, value: scrollHeight })
+    Object.defineProperty(el, 'clientHeight', { configurable: true, value: clientHeight })
+    Object.defineProperty(el, 'scrollTop', { configurable: true, get: () => 0 })
+    el.scrollTo = vi.fn()
+    return el
+}
+
+function createScrollRoot() {
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'scrollHeight', { configurable: true, value: 1200 })
+    Object.defineProperty(el, 'clientHeight', { configurable: true, value: 600 })
+    let top = 0
+    Object.defineProperty(el, 'scrollTop', {
+        configurable: true,
+        get: () => top,
+        set: (v: number) => { top = v },
+    })
+    el.scrollTo = vi.fn(({ top: t }: ScrollToOptions) => { top = Number(t ?? 0) })
+    return el
+}
+
+function withScrollRootMock(scrollRoot: HTMLElement, fn: () => Promise<void>) {
+    const original = Object.getOwnPropertyDescriptor(document, 'scrollingElement')
+    Object.defineProperty(document, 'scrollingElement', { configurable: true, value: scrollRoot })
+    return fn().finally(() => {
+        if (original) {
+            Object.defineProperty(document, 'scrollingElement', original)
+        } else {
+            // @ts-expect-error test cleanup for configurable property
+            delete document.scrollingElement
+        }
+    })
 }
 
 describe('MessageList tool error rendering', () => {
@@ -208,14 +283,7 @@ describe('MessageList tool error rendering', () => {
     })
 
     it('scrolls to bottom again when a resumed session changes with the same message count', async () => {
-        const scrollContainer = document.createElement('div')
-        Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 600 })
-        Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 200 })
-        Object.defineProperty(scrollContainer, 'scrollTop', {
-            configurable: true,
-            get: () => 0,
-        })
-        scrollContainer.scrollTo = vi.fn()
+        const scrollContainer = createScrollContainer()
 
         const firstSessionMessages: ChatMessage[] = [
             {
@@ -272,33 +340,8 @@ describe('MessageList tool error rendering', () => {
     })
 
     it('falls back to the document scroll root when the provided message container does not overflow', async () => {
-        const scrollContainer = document.createElement('div')
-        Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 600 })
-        Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 600 })
-        Object.defineProperty(scrollContainer, 'scrollTop', {
-            configurable: true,
-            get: () => 0,
-        })
-        scrollContainer.scrollTo = vi.fn()
-
-        const scrollRoot = document.createElement('div')
-        Object.defineProperty(scrollRoot, 'scrollHeight', { configurable: true, value: 1200 })
-        Object.defineProperty(scrollRoot, 'clientHeight', { configurable: true, value: 600 })
-        let rootScrollTop = 0
-        Object.defineProperty(scrollRoot, 'scrollTop', {
-            configurable: true,
-            get: () => rootScrollTop,
-            set: (value: number) => { rootScrollTop = value },
-        })
-        scrollRoot.scrollTo = vi.fn(({ top }: ScrollToOptions) => {
-            rootScrollTop = Number(top ?? 0)
-        })
-
-        const originalScrollingElement = Object.getOwnPropertyDescriptor(document, 'scrollingElement')
-        Object.defineProperty(document, 'scrollingElement', {
-            configurable: true,
-            value: scrollRoot,
-        })
+        const scrollContainer = createScrollContainer(600, 600)
+        const scrollRoot = createScrollRoot()
 
         const messages: ChatMessage[] = [
             {
@@ -313,44 +356,22 @@ describe('MessageList tool error rendering', () => {
             },
         ]
 
-        renderMessageList(messages, {
-            agentId: 'agent-a',
-            sessionId: 'session-a',
-            scrollContainerRef: { current: scrollContainer },
-        })
+        await withScrollRootMock(scrollRoot, async () => {
+            renderMessageList(messages, {
+                agentId: 'agent-a',
+                sessionId: 'session-a',
+                scrollContainerRef: { current: scrollContainer },
+            })
 
-        await waitFor(() => {
-            expect(scrollContainer.scrollTo).not.toHaveBeenCalled()
-            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+            await waitFor(() => {
+                expect(scrollContainer.scrollTo).not.toHaveBeenCalled()
+                expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+            })
         })
-
-        if (originalScrollingElement) {
-            Object.defineProperty(document, 'scrollingElement', originalScrollingElement)
-        } else {
-            // @ts-expect-error test cleanup for configurable property
-            delete document.scrollingElement
-        }
     })
 
     it('falls back to the document scroll root when no message container is provided', async () => {
-        const scrollRoot = document.createElement('div')
-        Object.defineProperty(scrollRoot, 'scrollHeight', { configurable: true, value: 1200 })
-        Object.defineProperty(scrollRoot, 'clientHeight', { configurable: true, value: 600 })
-        let rootScrollTop = 0
-        Object.defineProperty(scrollRoot, 'scrollTop', {
-            configurable: true,
-            get: () => rootScrollTop,
-            set: (value: number) => { rootScrollTop = value },
-        })
-        scrollRoot.scrollTo = vi.fn(({ top }: ScrollToOptions) => {
-            rootScrollTop = Number(top ?? 0)
-        })
-
-        const originalScrollingElement = Object.getOwnPropertyDescriptor(document, 'scrollingElement')
-        Object.defineProperty(document, 'scrollingElement', {
-            configurable: true,
-            value: scrollRoot,
-        })
+        const scrollRoot = createScrollRoot()
 
         const messages: ChatMessage[] = [
             {
@@ -365,34 +386,20 @@ describe('MessageList tool error rendering', () => {
             },
         ]
 
-        renderMessageList(messages, {
-            agentId: 'agent-a',
-            sessionId: 'session-a',
-        })
+        await withScrollRootMock(scrollRoot, async () => {
+            renderMessageList(messages, {
+                agentId: 'agent-a',
+                sessionId: 'session-a',
+            })
 
-        await waitFor(() => {
-            expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+            await waitFor(() => {
+                expect(scrollRoot.scrollTo).toHaveBeenCalledTimes(1)
+            })
         })
-
-        if (originalScrollingElement) {
-            Object.defineProperty(document, 'scrollingElement', originalScrollingElement)
-        } else {
-            // @ts-expect-error test cleanup for configurable property
-            delete document.scrollingElement
-        }
     })
 
     it('renders and persists output file capsules from a live OutputFiles event', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules') && init?.method === 'POST') {
-                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
-            }
-            return Promise.resolve({ ok: true, json: async () => ({ entries: {} }) }) as Promise<Response>
-        })
+        const { fetchMock } = createFetchMock({})
         vi.stubGlobal('fetch', fetchMock)
 
         const messages: ChatMessage[] = [
@@ -408,29 +415,20 @@ describe('MessageList tool error rendering', () => {
             sessionId: 'session-1',
         })
 
-        view.rerender(
-            <I18nextProvider i18n={i18n}>
-                <UserProvider>
-                    <PreviewProvider>
-                        <MessageList
-                            messages={messages}
-                            agentId="universal-agent"
-                            sessionId="session-1"
-                            outputFilesEvent={{
-                                sessionId: 'session-1',
-                                files: [{
-                                    path: 'goose-intro.md',
-                                    name: 'goose-intro.md',
-                                    ext: 'md',
-                                    rootId: 'workingDir',
-                                    displayPath: 'goose-intro.md',
-                                }],
-                            }}
-                        />
-                    </PreviewProvider>
-                </UserProvider>
-            </I18nextProvider>
-        )
+        rerenderWithPreview(view, messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                files: [{
+                    path: 'goose-intro.md',
+                    name: 'goose-intro.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'goose-intro.md',
+                }],
+            },
+        })
 
         await waitFor(() => {
             expect(view.container.querySelector('.file-capsule')).toBeTruthy()
@@ -449,16 +447,7 @@ describe('MessageList tool error rendering', () => {
     })
 
     it('attaches late OutputFiles to the assistant message with the matching request id', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules') && init?.method === 'POST') {
-                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
-            }
-            return Promise.resolve({ ok: true, json: async () => ({ entries: {} }) }) as Promise<Response>
-        })
+        const { fetchMock } = createFetchMock({})
         vi.stubGlobal('fetch', fetchMock)
 
         const messages: ChatMessage[] = [
@@ -499,20 +488,12 @@ describe('MessageList tool error rendering', () => {
             expect(postCall).toBeTruthy()
             const body = JSON.parse(String(postCall?.[1]?.body))
             expect(body.messageId).toBe('assistant-a')
+            expect(body.requestId).toBe('req-a')
         })
     })
 
     it('does not attach request-scoped OutputFiles when no assistant request id matches', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules') && init?.method === 'POST') {
-                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
-            }
-            return Promise.resolve({ ok: true, json: async () => ({ entries: {} }) }) as Promise<Response>
-        })
+        const { fetchMock } = createFetchMock({})
         vi.stubGlobal('fetch', fetchMock)
 
         const messages: ChatMessage[] = [
@@ -548,29 +529,133 @@ describe('MessageList tool error rendering', () => {
         expect(screen.queryByText('missing-request.md')).toBeNull()
     })
 
+    it('keeps request-scoped OutputFiles pending until the matching assistant message appears', async () => {
+        const { fetchMock } = createFetchMock({})
+        vi.stubGlobal('fetch', fetchMock)
+
+        const initialMessages: ChatMessage[] = [
+            {
+                id: 'assistant-latest',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Latest done' }],
+                metadata: { requestId: 'req-latest' },
+            },
+        ]
+
+        const view = renderMessageListWithPreview(initialMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                requestId: 'req-pending',
+                files: [{
+                    path: 'pending-report.md',
+                    name: 'pending-report.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'pending-report.md',
+                }],
+            },
+        })
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )).toBe(false)
+        })
+        expect(screen.queryByText('pending-report.md')).toBeNull()
+
+        const updatedMessages: ChatMessage[] = [
+            {
+                id: 'assistant-match',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Matched done' }],
+                metadata: { requestId: 'req-pending' },
+            },
+            ...initialMessages,
+        ]
+
+        rerenderWithPreview(view, updatedMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: null,
+        })
+
+        await waitFor(() => {
+            const postCall = fetchMock.mock.calls.find(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )
+            expect(postCall).toBeTruthy()
+            const body = JSON.parse(String(postCall?.[1]?.body))
+            expect(body.messageId).toBe('assistant-match')
+        })
+        expect(screen.getByText('pending-report.md')).toBeTruthy()
+    })
+
+    it('does not fall back a pending request-scoped file to a later assistant reply', async () => {
+        const { fetchMock } = createFetchMock({})
+        vi.stubGlobal('fetch', fetchMock)
+
+        const firstMessages: ChatMessage[] = [
+            {
+                id: 'assistant-first',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'First done' }],
+                metadata: { requestId: 'req-first' },
+            },
+        ]
+
+        const view = renderMessageListWithPreview(firstMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                requestId: 'req-missing',
+                files: [{
+                    path: 'first-report.md',
+                    name: 'first-report.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'first-report.md',
+                }],
+            },
+        })
+
+        const secondMessages: ChatMessage[] = [
+            ...firstMessages,
+            {
+                id: 'assistant-second',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Second done' }],
+                metadata: { requestId: 'req-second' },
+            },
+        ]
+
+        rerenderWithPreview(view, secondMessages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: null,
+        })
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([input, init]) =>
+                String(input).includes('/file-capsules') && init?.method === 'POST'
+            )).toBe(false)
+        })
+        expect(screen.queryByText('first-report.md')).toBeNull()
+    })
+
     it('restores output file capsules from persisted session entries', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules')) {
-                return Promise.resolve({
-                    ok: true,
-                    json: async () => ({
-                        entries: {
-                            'assistant-final': [{
-                                path: 'goose-intro.md',
-                                name: 'goose-intro.md',
-                                ext: 'md',
-                                rootId: 'workingDir',
-                                displayPath: 'goose-intro.md',
-                            }],
-                        },
-                    }),
-                }) as Promise<Response>
-            }
-            return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+        const { fetchMock } = createFetchMock({
+            persistedEntries: {
+                'assistant-final': [{
+                    path: 'goose-intro.md',
+                    name: 'goose-intro.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'goose-intro.md',
+                }],
+            },
         })
         vi.stubGlobal('fetch', fetchMock)
 
@@ -593,29 +678,88 @@ describe('MessageList tool error rendering', () => {
         })
     })
 
+    it('restores output file capsules from persisted request-scoped entries', async () => {
+        const { fetchMock } = createFetchMock({
+            persistedEntries: {
+                'stale-message-id': [{
+                    path: 'goose-intro.md',
+                    name: 'goose-intro.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'goose-intro.md',
+                    requestId: 'req-final',
+                }],
+            },
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-final',
+                role: 'assistant',
+                content: [{ type: 'text', text: 'Done' }],
+                metadata: { requestId: 'req-final' },
+            },
+        ]
+
+        const { container } = renderMessageListWithPreview(messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+        })
+
+        await waitFor(() => {
+            expect(container.querySelector('.file-capsule')).toBeTruthy()
+            expect(screen.getByText('goose-intro.md')).toBeTruthy()
+        })
+    })
+
+    it('restores output file capsules by matching file names when persisted message ids drift', async () => {
+        const { fetchMock } = createFetchMock({
+            persistedEntries: {
+                'stale-message-id': [{
+                    path: 'reports/system-health-analysis-20260528211302.md',
+                    name: 'system-health-analysis-20260528211302.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'system-health-analysis-20260528211302.md',
+                }],
+            },
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        const messages: ChatMessage[] = [
+            {
+                id: 'assistant-summary',
+                role: 'assistant',
+                content: [{
+                    type: 'text',
+                    text: '报告已生成，文件名为 system-health-analysis-20260528211302.md，可在 output 目录查看。',
+                }],
+            },
+        ]
+
+        const { container } = renderMessageListWithPreview(messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-legacy',
+        })
+
+        await waitFor(() => {
+            expect(container.querySelector('.file-capsule')).toBeTruthy()
+            expect(screen.getByText('system-health-analysis-20260528211302.md')).toBeTruthy()
+        })
+    })
+
     it('restores output file capsules when the persisted id belongs to a merged final answer', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules')) {
-                return Promise.resolve({
-                    ok: true,
-                    json: async () => ({
-                        entries: {
-                            'gen-1777386391-Z5uapXjSllauI4F0BQjr': [{
-                                path: 'example.md',
-                                name: 'example.md',
-                                ext: 'md',
-                                rootId: 'workingDir',
-                                displayPath: 'example.md',
-                            }],
-                        },
-                    }),
-                }) as Promise<Response>
-            }
-            return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+        const { fetchMock } = createFetchMock({
+            persistedEntries: {
+                'gen-1777386391-Z5uapXjSllauI4F0BQjr': [{
+                    path: 'example.md',
+                    name: 'example.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'example.md',
+                }],
+            },
         })
         vi.stubGlobal('fetch', fetchMock)
 
@@ -691,31 +835,16 @@ describe('MessageList tool error rendering', () => {
     })
 
     it('merges live output files with existing persisted capsules for the same message', async () => {
-        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules') && init?.method === 'POST') {
-                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules')) {
-                return Promise.resolve({
-                    ok: true,
-                    json: async () => ({
-                        entries: {
-                            'assistant-final': [{
-                                path: 'existing.md',
-                                name: 'existing.md',
-                                ext: 'md',
-                                rootId: 'workingDir',
-                                displayPath: 'existing.md',
-                            }],
-                        },
-                    }),
-                }) as Promise<Response>
-            }
-            return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
+        const { fetchMock } = createFetchMock({
+            persistedEntries: {
+                'assistant-final': [{
+                    path: 'existing.md',
+                    name: 'existing.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'existing.md',
+                }],
+            },
         })
         vi.stubGlobal('fetch', fetchMock)
 
@@ -736,29 +865,20 @@ describe('MessageList tool error rendering', () => {
             expect(screen.getByText('existing.md')).toBeTruthy()
         })
 
-        view.rerender(
-            <I18nextProvider i18n={i18n}>
-                <UserProvider>
-                    <PreviewProvider>
-                        <MessageList
-                            messages={messages}
-                            agentId="universal-agent"
-                            sessionId="session-1"
-                            outputFilesEvent={{
-                                sessionId: 'session-1',
-                                files: [{
-                                    path: 'new.md',
-                                    name: 'new.md',
-                                    ext: 'md',
-                                    rootId: 'workingDir',
-                                    displayPath: 'new.md',
-                                }],
-                            }}
-                        />
-                    </PreviewProvider>
-                </UserProvider>
-            </I18nextProvider>
-        )
+        rerenderWithPreview(view, messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                files: [{
+                    path: 'new.md',
+                    name: 'new.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'new.md',
+                }],
+            },
+        })
 
         await waitFor(() => {
             expect(screen.getByText('existing.md')).toBeTruthy()
@@ -776,23 +896,7 @@ describe('MessageList tool error rendering', () => {
     })
 
     it('keeps live output file capsules when a stale persisted load resolves later', async () => {
-        let resolvePersistedLoad: ((response: Response) => void) | null = null
-        const persistedLoad = new Promise<Response>(resolve => {
-            resolvePersistedLoad = resolve
-        })
-        const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input)
-            if (url.includes('/config')) {
-                return Promise.resolve({ ok: false }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules') && init?.method === 'POST') {
-                return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
-            }
-            if (url.includes('/file-capsules')) {
-                return persistedLoad
-            }
-            return Promise.resolve({ ok: true, json: async () => ({}) }) as Promise<Response>
-        })
+        const { fetchMock, resolvePersisted } = createFetchMock({ delayPersisted: true })
         vi.stubGlobal('fetch', fetchMock)
 
         const messages: ChatMessage[] = [
@@ -808,36 +912,27 @@ describe('MessageList tool error rendering', () => {
             sessionId: 'session-1',
         })
 
-        view.rerender(
-            <I18nextProvider i18n={i18n}>
-                <UserProvider>
-                    <PreviewProvider>
-                        <MessageList
-                            messages={messages}
-                            agentId="universal-agent"
-                            sessionId="session-1"
-                            outputFilesEvent={{
-                                sessionId: 'session-1',
-                                files: [{
-                                    path: 'aaa.md',
-                                    name: 'aaa.md',
-                                    ext: 'md',
-                                    rootId: 'workingDir',
-                                    displayPath: 'aaa.md',
-                                }],
-                            }}
-                        />
-                    </PreviewProvider>
-                </UserProvider>
-            </I18nextProvider>
-        )
+        rerenderWithPreview(view, messages, {
+            agentId: 'universal-agent',
+            sessionId: 'session-1',
+            outputFilesEvent: {
+                sessionId: 'session-1',
+                files: [{
+                    path: 'aaa.md',
+                    name: 'aaa.md',
+                    ext: 'md',
+                    rootId: 'workingDir',
+                    displayPath: 'aaa.md',
+                }],
+            },
+        })
 
         await waitFor(() => {
             expect(screen.getByText('aaa.md')).toBeTruthy()
         })
 
         await act(async () => {
-            resolvePersistedLoad?.({
+            resolvePersisted?.({
                 ok: true,
                 json: async () => ({
                     entries: {
@@ -851,7 +946,6 @@ describe('MessageList tool error rendering', () => {
                     },
                 }),
             } as Response)
-            await persistedLoad
         })
 
         await waitFor(() => {

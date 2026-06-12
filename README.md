@@ -8,6 +8,8 @@ The current architectural boundary is:
 - `control-center` provides platform health, config, log, and service control views
 - `knowledge-service` and `business-intelligence` provide domain services consumed by the platform
 - `skill-market` provides a reusable skill package catalog that agents can install from
+- `operation-intelligence` provides QoS health curve data collection, scoring, and query APIs
+- `finops` provides Token usage attribution and operating analytics from gateway/goosed session data
 - optional integrations such as `langfuse`, `onlyoffice`, and `prometheus-exporter` stay optional
 
 ## Demo Media
@@ -34,11 +36,7 @@ The current architectural boundary is:
 
 ![Monitoring Observation](media/demo-monitoring-observation.gif)
 
-#### 6. KB Agent (Feishu)
-
-![KB Agent Feishu](media/demo-kb-agent-feishu.gif)
-
-#### 7. Self-Supervisor Agent
+#### 6. Self-Supervisor Agent
 
 ![Self-Supervisor Agent](media/demo-self-supervisor-agent.gif)
 
@@ -76,6 +74,10 @@ The current architectural boundary is:
 
 ![Agent Skill Market Integration](media/screenshot-skill-market-integration-agent.png)
 
+#### Token Ops
+
+![Token Ops](media/screenshot-token-operation.png)
+
 ## Architecture
 
 ```text
@@ -98,11 +100,19 @@ Web App (:5173)
     |
     +--> Control Center (:8094)
            - service health, logs, config, service actions
+    |
+    +--> Operation Intelligence (:8096, optional)
+           - QoS health curve data collection, scoring, query APIs
+    |
+    +--> FinOps / Token Ops (:8097, optional)
+           - Token usage attribution and operating analytics from gateway/goosed session data
 
 Optional integrations:
 - Langfuse (:3100) for observability
 - OnlyOffice (:8080) for office document preview
 - Prometheus Exporter (:9091) for metrics
+- Operation Intelligence (:8096) for QoS health curve
+- FinOps (:8097) for Token Ops usage analytics
 ```
 
 Two boundary rules matter across the repo:
@@ -111,6 +121,10 @@ Two boundary rules matter across the repo:
 - Skill Market owns catalog/package storage, while Gateway owns installing packages into agent config directories
 
 See [docs/architecture/overview.md](./docs/architecture/overview.md) for the service-level source of truth and [docs/architecture/api-boundaries.md](./docs/architecture/api-boundaries.md) for compatibility rules.
+
+### FO Copilot proactive assistant
+
+The gateway also hosts **FO Copilot**, a proactive operations assistant (shown as **我的助理 / My Assistant** in the sidebar). It watches scheduled agent runs, and for schedules marked `deliver=im` it pushes each run's brief to the user's bound IM channels (WeChat and others) while always keeping the run in the WebApp Inbox. When the user replies from IM, the gateway re-injects recent follow-up context so the assistant can continue the thread — turning ops into a "scan → open → reply" loop. Delivery is configured under `gateway.proactive-delivery` in `gateway/config.yaml`. See [docs/architecture/fo-copilot-proactive-assistant.md](./docs/architecture/fo-copilot-proactive-assistant.md).
 
 ## Core Services
 
@@ -123,6 +137,9 @@ See [docs/architecture/overview.md](./docs/architecture/overview.md) for the ser
 | Skill Market | `skill-market/` | `8095` | Java 21 + Spring Boot | Reusable skill package catalog, validation, metadata, and package downloads |
 | Control Center | `control-center/` | `8094` | Java 21 + Spring Boot | Service health, logs, config access, service control actions |
 | Prometheus Exporter | `prometheus-exporter/` | `9091` | Java 21 + Spring Boot | Gateway-oriented Prometheus metrics export |
+| Operation Intelligence | `operation-intelligence/` | `8096` | Java 21 + Spring Boot | QoS health curve data collection, scoring, and query APIs (optional) |
+| FinOps / Token Ops | `finops/` | `8097` | Java 21 + Spring Boot | Token usage attribution by user, agent, session, model, and provider from gateway/goosed session data (optional) |
+| Ops Common | `ops-common/` | n/a | Java 21 + Spring Boot | Shared library: machine-interface auth aspect (`@BasicAuth`), common exceptions, and Spring autoconfiguration reused across services |
 | TypeScript SDK | `typescript-sdk/` | n/a | TypeScript | Programmatic gateway client |
 | Langfuse | `langfuse/` | `3100` | Docker Compose | Optional LLM observability integration |
 | OnlyOffice | `onlyoffice/` | `8080` | Docker Compose | Optional office document preview |
@@ -137,7 +154,10 @@ ops-factory/
 ├── business-intelligence/    # BI service
 ├── skill-market/             # Reusable skill package catalog service
 ├── control-center/           # Platform control plane service
+├── operation-intelligence/   # QoS health curve service
+├── finops/                   # Token Ops / FinOps usage analytics service
 ├── prometheus-exporter/      # Prometheus metrics exporter
+├── ops-common/               # Shared Java library: machine-API auth aspect, exceptions, autoconfig
 ├── typescript-sdk/           # @goosed/sdk client library
 ├── test/                     # Cross-service integration and E2E coverage
 ├── docs/                     # Architecture, development, and operations docs
@@ -165,7 +185,11 @@ Mandatory for the main stack:
 
 ```bash
 cp gateway/config.yaml.example gateway/config.yaml
-cp web-app/config.json.example web-app/config.json
+# 独立运行（standalone）模式
+cp web-app/config.standalone.json.example web-app/config.json
+
+# 壳应用 / embed 模式
+# cp web-app/config.embed.json.example web-app/config.json
 cp knowledge-service/config.yaml.example knowledge-service/config.yaml
 cp skill-market/config.yaml.example skill-market/config.yaml
 cp control-center/config.yaml.example control-center/config.yaml
@@ -175,6 +199,8 @@ Optional services:
 
 ```bash
 cp business-intelligence/config.yaml.example business-intelligence/config.yaml
+cp operation-intelligence/config.yaml.example operation-intelligence/config.yaml
+cp finops/config.yaml.example finops/config.yaml
 cp prometheus-exporter/config.yaml.example prometheus-exporter/config.yaml
 cp langfuse/config.yaml.example langfuse/config.yaml
 cp onlyoffice/config.yaml.example onlyoffice/config.yaml
@@ -210,6 +236,8 @@ Run the mandatory platform stack without optional integrations:
 ENABLE_ONLYOFFICE=false \
 ENABLE_LANGFUSE=false \
 ENABLE_EXPORTER=false \
+ENABLE_OPERATION_INTELLIGENCE=false \
+ENABLE_FINOPS=false \
 ./scripts/ctl.sh startup all
 ```
 
@@ -244,7 +272,9 @@ cd knowledge-service && mvn test
 cd business-intelligence && mvn test
 cd skill-market && mvn test
 cd control-center && mvn test
+cd finops && mvn test
 cd prometheus-exporter && mvn test
+cd operation-intelligence && mvn test
 ```
 
 ### SDK and Cross-Service Tests
@@ -267,10 +297,13 @@ Main config entry points:
 - [`business-intelligence/config.yaml.example`](./business-intelligence/config.yaml.example)
 - [`skill-market/config.yaml.example`](./skill-market/config.yaml.example)
 - [`control-center/config.yaml.example`](./control-center/config.yaml.example)
+- [`finops/config.yaml.example`](./finops/config.yaml.example)
 - [`prometheus-exporter/config.yaml.example`](./prometheus-exporter/config.yaml.example)
+- [`operation-intelligence/config.yaml.example`](./operation-intelligence/config.yaml.example)
 - [`langfuse/config.yaml.example`](./langfuse/config.yaml.example)
 - [`onlyoffice/config.yaml.example`](./onlyoffice/config.yaml.example)
-- [`web-app/config.json.example`](./web-app/config.json.example)
+- [`web-app/config.standalone.json.example`](./web-app/config.standalone.json.example)
+- [`web-app/config.embed.json.example`](./web-app/config.embed.json.example)
 
 When adding or changing configuration:
 - update the owning service’s example config
@@ -285,6 +318,7 @@ Start here for cross-team work:
 - [docs/architecture/overview.md](./docs/architecture/overview.md)
 - [docs/architecture/api-boundaries.md](./docs/architecture/api-boundaries.md)
 - [docs/architecture/process-management.md](./docs/architecture/process-management.md)
+- [docs/architecture/fo-copilot-proactive-assistant.md](./docs/architecture/fo-copilot-proactive-assistant.md)
 - [docs/development/ui-guidelines.md](./docs/development/ui-guidelines.md)
 - [docs/development/review-checklist.md](./docs/development/review-checklist.md)
 

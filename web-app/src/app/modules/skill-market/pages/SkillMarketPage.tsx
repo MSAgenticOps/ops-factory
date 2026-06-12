@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { Plus, Upload } from '../../../platform/ui/icons/AppIcons'
 import type { SkillMarketDetail, SkillMarketEntry } from '../../../../types/skillMarket'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { useToast } from '../../../platform/providers/ToastContext'
@@ -12,16 +12,18 @@ import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
 import ResourceCard, {
-    ResourceCardDangerAction,
-    ResourceCardPrimaryAction,
+    ResourceCardActionGroup,
+    ResourceCardDeleteAction,
+    ResourceCardEditAction,
+    ResourceCardInstallAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import { useSkillMarket } from '../hooks/useSkillMarket'
 import '../styles/skill-market.css'
 
-function formatDate(value?: string | null): string {
+function formatDate(locale: string, value?: string | null): string {
     if (!value) return '-'
-    return new Date(value).toLocaleDateString(undefined, {
+    return new Date(value).toLocaleDateString(locale, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -33,7 +35,7 @@ function getSkillStatusTone(skill: SkillMarketEntry): ResourceStatusTone {
 }
 
 export default function SkillMarketPage() {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const { agents, refreshAgents } = useGoosed()
     const { showToast } = useToast()
     const { skills, isLoading, error, fetchSkills, fetchSkill, createSkill, updateSkill, importSkill, deleteSkill, installSkill } = useSkillMarket()
@@ -151,18 +153,20 @@ export default function SkillMarketPage() {
                     />
                 )}
             >
-                {isLoading ? (
+                {isLoading && (
                     <div className="empty-state">
                         <div className="empty-state-title">{t('skillMarket.loading')}</div>
                     </div>
-                ) : filteredSkills.length === 0 ? (
+                )}
+                {!isLoading && filteredSkills.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-state-title">{query.trim() ? t('common.noResults') : t('skillMarket.emptyTitle')}</div>
                         <div className="empty-state-description">
                             {query.trim() ? t('skillMarket.noMatchSkills') : t('skillMarket.emptyDescription')}
                         </div>
                     </div>
-                ) : (
+                )}
+                {!isLoading && filteredSkills.length > 0 && (
                     <CardGrid>
                         {filteredSkills.map(skill => {
                             const descriptionText = skill.description?.trim() || t('skill.noDescription')
@@ -191,22 +195,23 @@ export default function SkillMarketPage() {
                                     metrics={[
                                         { label: t('skillMarket.files'), value: skill.fileCount },
                                         { label: t('skillMarket.size'), value: formatSize(skill.sizeBytes, t) },
-                                        { label: t('skillMarket.updatedAt'), value: formatDate(skill.updatedAt) },
+                                        { label: t('skillMarket.updatedAt'), value: formatDate(i18n.language === 'en' ? 'en-US' : 'zh-CN', skill.updatedAt) },
                                     ]}
                                     footer={(
-                                        <>
-                                            <ResourceCardDangerAction onClick={() => setDeleteTarget(skill)}>
-                                                <Trash2 size={14} /> {t('common.delete')}
-                                            </ResourceCardDangerAction>
-                                            <div className="skill-market-actions">
-                                                <Button variant="secondary" size="sm" onClick={() => handleEdit(skill)}>
-                                                    <Pencil size={14} /> {t('common.edit')}
-                                                </Button>
-                                                <ResourceCardPrimaryAction onClick={() => setInstallTarget(skill)}>
-                                                    <Download size={14} /> {t('skillMarket.install')}
-                                                </ResourceCardPrimaryAction>
-                                            </div>
-                                        </>
+                                        <ResourceCardActionGroup>
+                                            <ResourceCardEditAction
+                                                onClick={() => handleEdit(skill)}
+                                                label={t('common.edit')}
+                                            />
+                                            <ResourceCardInstallAction
+                                                onClick={() => setInstallTarget(skill)}
+                                                label={t('skillMarket.install')}
+                                            />
+                                            <ResourceCardDeleteAction
+                                                onClick={() => setDeleteTarget(skill)}
+                                                label={t('common.delete')}
+                                            />
+                                        </ResourceCardActionGroup>
                                     )}
                                 />
                             )

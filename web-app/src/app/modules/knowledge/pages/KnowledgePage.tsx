@@ -2,18 +2,26 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../../platform/providers/ToastContext'
-import { KNOWLEDGE_SERVICE_URL } from '../../../../config/runtime'
+import { useUser } from '../../../platform/providers/UserContext'
+import { runtime, knowledgeHeaders } from '../../../../config/runtime'
 import CardGrid from '../../../platform/ui/cards/CardGrid'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import ResourceCard, {
-    ResourceCardDangerAction,
-    ResourceCardPrimaryAction,
+    ResourceCardActionGroup,
+    ResourceCardConfigureAction,
+    ResourceCardDeleteAction,
     type ResourceStatusTone,
 } from '../../../platform/ui/primitives/ResourceCard'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
+import {
+    KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH,
+    KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+    hasInvalidKnowledgeSourceNameChars,
+    isDuplicateKnowledgeSourceName,
+} from '../utils/sourceValidation'
 
 interface SourceSummary {
     id: string
@@ -45,9 +53,9 @@ interface SourceListResponse {
     total: number
 }
 
-function formatDate(value?: string | null): string {
+function formatDate(locale: string, value?: string | null): string {
     if (!value) return '—'
-    return new Date(value).toLocaleDateString(undefined, {
+    return new Date(value).toLocaleDateString(locale, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -77,11 +85,15 @@ function getKnowledgeStatusLabel(status: string | undefined, t: (key: string) =>
 }
 
 function CreateKnowledgeModal({
+    existingNames,
     onClose,
     onCreated,
+    userId,
 }: {
+    existingNames: Set<string>
     onClose: () => void
     onCreated: () => Promise<void>
+    userId: string | null
 }) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -90,20 +102,37 @@ function CreateKnowledgeModal({
     const [creating, setCreating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const isNameTooLong = name.length > KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
+    const isDescTooLong = description.length > KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH
+    const hasInvalidChars = hasInvalidKnowledgeSourceNameChars(name)
+    const isDuplicate = isDuplicateKnowledgeSourceName(name, existingNames)
+    const showDuplicateHint = !creating && isDuplicate
+    const canSubmit = name.trim() && !isNameTooLong && !hasInvalidChars && !isDuplicate
+
     const handleCreate = useCallback(async () => {
         setError(null)
         if (!name.trim()) {
             setError(t('knowledge.nameRequired'))
             return
         }
+        if (isNameTooLong) {
+            setError(t('knowledge.nameTooLong'))
+            return
+        }
+        if (hasInvalidChars) {
+            setError(t('knowledge.nameInvalidChars'))
+            return
+        }
+        if (isDuplicate) {
+            setError(t('knowledge.nameDuplicate'))
+            return
+        }
 
         setCreating(true)
         try {
-            const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources`, {
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: knowledgeHeaders(userId),
                 body: JSON.stringify({
                     name: name.trim(),
                     description: description.trim() || null,
@@ -122,11 +151,11 @@ function CreateKnowledgeModal({
         } finally {
             setCreating(false)
         }
-    }, [description, name, onClose, onCreated, showToast, t])
+    }, [description, hasInvalidChars, isDuplicate, isNameTooLong, name, onClose, onCreated, showToast, t, userId])
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.createTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -140,15 +169,29 @@ function CreateKnowledgeModal({
                     )}
 
                     <div className="form-group">
-                        <label className="form-label">{t('knowledge.name')}</label>
+                        <label className="form-label">{t('knowledge.name')} <span className="form-required">*</span></label>
                         <input
                             className="form-input"
                             type="text"
                             placeholder={t('knowledge.namePlaceholder')}
                             value={name}
                             onChange={e => setName(e.target.value)}
+                            maxLength={KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                             autoFocus
                         />
+                        <div className={`knowledge-field-hint${isNameTooLong ? ' knowledge-field-hint--error' : ''}`}>
+                            {isNameTooLong ? t('knowledge.nameTooLong') : `${name.length}/${KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}`}
+                        </div>
+                        {hasInvalidChars && !isNameTooLong && (
+                            <div className="knowledge-field-hint knowledge-field-hint--error">
+                                {t('knowledge.nameInvalidChars')}
+                            </div>
+                        )}
+                        {showDuplicateHint && !isNameTooLong && !hasInvalidChars && (
+                            <div className="knowledge-field-hint knowledge-field-hint--error">
+                                {t('knowledge.nameDuplicate')}
+                            </div>
+                        )}
                     </div>
 
                     <div className="form-group">
@@ -159,7 +202,11 @@ function CreateKnowledgeModal({
                             placeholder={t('knowledge.descriptionPlaceholder')}
                             value={description}
                             onChange={e => setDescription(e.target.value)}
+                            maxLength={KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH}
                         />
+                        <div className={`knowledge-field-hint${isDescTooLong ? ' knowledge-field-hint--error' : ''}`}>
+                            {isDescTooLong ? t('knowledge.descTooLong') : `${description.length}/${KNOWLEDGE_SOURCE_DESCRIPTION_MAX_LENGTH}`}
+                        </div>
                     </div>
                 </div>
 
@@ -170,7 +217,7 @@ function CreateKnowledgeModal({
                     <button
                         className="btn btn-primary"
                         onClick={handleCreate}
-                        disabled={creating || !name.trim()}
+                        disabled={creating || !canSubmit}
                     >
                         {creating ? t('knowledge.creating') : t('knowledge.createAction')}
                     </button>
@@ -184,10 +231,12 @@ function DeleteKnowledgeModal({
     source,
     onClose,
     onDeleted,
+    userId,
 }: {
     source: SourceSummary
     onClose: () => void
     onDeleted: () => Promise<void>
+    userId: string | null
 }) {
     const { t } = useTranslation()
     const { showToast } = useToast()
@@ -198,8 +247,9 @@ function DeleteKnowledgeModal({
         setError(null)
         setDeleting(true)
         try {
-            const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources/${source.id}`, {
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}`, {
                 method: 'DELETE',
+                headers: knowledgeHeaders(userId),
             })
             const data = await response.json().catch(() => null)
             if (!response.ok) {
@@ -217,8 +267,8 @@ function DeleteKnowledgeModal({
     }, [onClose, onDeleted, showToast, source.id, source.name, t])
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay">
+            <div className="modal">
                 <div className="modal-header">
                     <h2 className="modal-title">{t('knowledge.deleteTitle')}</h2>
                     <button className="modal-close" onClick={onClose}>&times;</button>
@@ -252,9 +302,11 @@ function DeleteKnowledgeModal({
 }
 
 export default function Knowledge() {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const navigate = useNavigate()
+    const { userId } = useUser()
     const [sources, setSources] = useState<SourceSummary[]>([])
+    const existingSourceNames = useMemo(() => new Set(sources.map(s => s.name.trim())), [sources])
     const [stats, setStats] = useState<Record<string, SourceStats>>({})
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -267,22 +319,27 @@ export default function Knowledge() {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`)
-            const data = await response.json() as SourceListResponse
+            const response = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources?page=1&pageSize=100`, {
+                headers: knowledgeHeaders(userId),
+            })
+            const data = await response.json().catch(() => null) as SourceListResponse | null
             if (!response.ok) {
-                throw new Error((data as { message?: string }).message || response.statusText)
+                const errorData = data as { message?: string } | null
+                throw new Error(errorData?.message || response.statusText)
             }
-            setSources(data.items || [])
+            setSources(data?.items || [])
 
             const statsEntries = await Promise.all(
-                (data.items || []).map(async source => {
+                (data?.items || []).map(async source => {
                     try {
-                        const statsResponse = await fetch(`${KNOWLEDGE_SERVICE_URL}/sources/${source.id}/stats`)
-                        const statsData = await statsResponse.json() as SourceStats
+                        const statsResponse = await fetch(`${runtime.KNOWLEDGE_SERVICE_URL}/sources/${source.id}/stats`, {
+                            headers: knowledgeHeaders(userId),
+                        })
+                        const statsData = await statsResponse.json().catch(() => null) as SourceStats | null
                         if (!statsResponse.ok) {
                             throw new Error(statsResponse.statusText)
                         }
-                        return [source.id, statsData] as const
+                        return [source.id, statsData!] as const
                     } catch {
                         return [source.id, {
                             sourceId: source.id,
@@ -299,7 +356,9 @@ export default function Knowledge() {
             )
             setStats(Object.fromEntries(statsEntries))
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load knowledge sources')
+            const message = err instanceof Error ? err.message : ''
+            const isJsonError = message.includes('Unexpected token') || message.includes('is not valid JSON')
+            setError(isJsonError ? t('knowledge.connectionError') : message || t('knowledge.loadFailed'))
         } finally {
             setIsLoading(false)
         }
@@ -380,16 +439,18 @@ export default function Knowledge() {
                     />
                 )}
             >
-                {isLoading ? (
+                {isLoading && (
                     <div className="empty-state">
                         <div className="empty-state-title">{t('common.loading')}</div>
                     </div>
-                ) : filteredSources.length === 0 ? (
+                )}
+                {!isLoading && filteredSources.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-state-title">{t('knowledge.emptyTitle')}</div>
                         <div className="empty-state-description">{t('knowledge.emptyHint')}</div>
                     </div>
-                ) : (
+                )}
+                {!isLoading && filteredSources.length > 0 && (
                     <CardGrid className="knowledge-resource-grid">
                         {filteredSources.map(source => {
                             const sourceStats = stats[source.id]
@@ -414,17 +475,19 @@ export default function Knowledge() {
                                     metrics={[
                                         { label: t('knowledge.documents'), value: sourceStats?.documentCount ?? 0 },
                                         { label: t('knowledge.chunks'), value: sourceStats?.chunkCount ?? 0 },
-                                        { label: t('knowledge.updatedAt'), value: formatDate(source.updatedAt) },
+                                        { label: t('knowledge.updatedAt'), value: formatDate(i18n.language === 'en' ? 'en-US' : 'zh-CN', source.updatedAt) },
                                     ]}
                                     footer={(
-                                        <>
-                                            <ResourceCardDangerAction onClick={() => setDeleteTarget(source)}>
-                                                {t('common.delete')}
-                                            </ResourceCardDangerAction>
-                                            <ResourceCardPrimaryAction onClick={() => navigate(`/knowledge/${source.id}`)}>
-                                                {t('knowledge.configure')}
-                                            </ResourceCardPrimaryAction>
-                                        </>
+                                        <ResourceCardActionGroup>
+                                            <ResourceCardConfigureAction
+                                                onClick={() => navigate(`/knowledge/${source.id}`)}
+                                                label={t('knowledge.configure')}
+                                            />
+                                            <ResourceCardDeleteAction
+                                                onClick={() => setDeleteTarget(source)}
+                                                label={t('common.delete')}
+                                            />
+                                        </ResourceCardActionGroup>
                                     )}
                                 />
                             )
@@ -435,8 +498,10 @@ export default function Knowledge() {
 
             {showCreateModal && (
                 <CreateKnowledgeModal
+                    existingNames={existingSourceNames}
                     onClose={() => setShowCreateModal(false)}
                     onCreated={loadSources}
+                    userId={userId}
                 />
             )}
 
@@ -445,6 +510,7 @@ export default function Knowledge() {
                     source={deleteTarget}
                     onClose={() => setDeleteTarget(null)}
                     onDeleted={loadSources}
+                    userId={userId}
                 />
             )}
         </div>

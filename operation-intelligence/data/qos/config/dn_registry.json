@@ -1,0 +1,35 @@
+[
+  {
+    "envCode": "DigitalCRM.sit",
+    "clusters": [
+      {
+        "clusterDn": "com.huawei.itpaas.platformservice.nslb#NSLBSHOP",
+        "elements": [
+          { "dn": "540d4035-e461-4c95-acb3-0f1f187c374d_722_NSLBSHOP", "name": "bes_pr1_NSLBSHOP" }
+        ]
+      },
+      {
+        "clusterDn": "com.huawei.itpaas.platformservice.nslb#NSLBIF",
+        "elements": [
+          { "dn": "540d4035-e461-4c95-acb3-0f1f187c374d_722_NSLBIF", "name": "bes_pr1_NSLBIF" }
+        ]
+      }
+    ]
+  }, {
+    "envCode": "DigitalCRM1.sit",
+    "clusters": [
+      {
+        "clusterDn": "com.huawei.itpaas.platformservice.nslb#NSLBSHOP",
+        "elements": [
+          { "dn": "540d4035-e461-4c95-acb3-0f1f187c374d_722_NSLBSHOP", "name": "bes_pr1_NSLBSHOP" }
+        ]
+      },
+      {
+        "clusterDn": "com.huawei.itpaas.platformservice.nslb#NSLBIF",
+        "elements": [
+          { "dn": "540d4035-e461-4c95-acb3-0f1f187c374d_722_NSLBIF", "name": "bes_pr1_NSLBIF" }
+        ]
+      }
+    ]
+  }
+]

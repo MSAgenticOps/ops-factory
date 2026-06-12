@@ -13,7 +13,6 @@ export interface Host {
     business?: string
     clusterId?: string
     purpose?: string
-    tags: string[]
     description: string
     customAttributes?: CustomAttribute[]
     role?: 'primary' | 'backup' | null
@@ -40,7 +39,6 @@ export interface HostCreateRequest {
     business?: string
     clusterId?: string
     purpose?: string
-    tags: string[]
     description?: string
     customAttributes?: CustomAttribute[]
     role?: 'primary' | 'backup' | null
@@ -104,6 +102,7 @@ export interface ClusterType {
     commandPrefix?: string
     envVariables?: EnvVariable[]
     mode?: 'peer' | 'primary-backup'
+    solutionType?: string
     createdAt: string
     updatedAt: string
 }
@@ -187,4 +186,15 @@ export interface ClusterGraphEdge {
 export interface ClusterGraphData {
     nodes: ClusterGraphNode[]
     edges: ClusterGraphEdge[]
+}
+
+export interface SolutionType {
+    id: string
+    name: string
+    code: string
+    description: string
+    color: string
+    knowledge: string
+    createdAt: string
+    updatedAt: string
 }

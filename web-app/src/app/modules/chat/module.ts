@@ -12,7 +12,7 @@ const chatModule: AppModule = {
             id: 'chat.new',
             type: 'action',
             group: 'primary',
-            order: 20,
+            order: 12,
             titleKey: 'sidebar.newChat',
             icon: 'plus',
             actionId: 'chat.startNew',

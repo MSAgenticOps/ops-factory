@@ -1,13 +1,18 @@
 import { useState, useEffect, useMemo, useCallback, type ReactNode, type SVGProps } from 'react'
 import {
     CodeXml,
+    Download,
+    Eye,
     Presentation,
-} from 'lucide-react'
+    Trash2,
+    type AppIcon,
+} from '../../../platform/ui/icons/AppIcons'
 import { useTranslation } from 'react-i18next'
 import { useGoosed } from '../../../platform/providers/GoosedContext'
 import { usePreview } from '../../../platform/providers/PreviewContext'
 import { useUser } from '../../../platform/providers/UserContext'
 import { useToast } from '../../../platform/providers/ToastContext'
+import { ItemActionButton, ItemActionGroup, ItemActionLink } from '../../../platform/ui/primitives/ItemAction'
 import PageHeader from '../../../platform/ui/primitives/PageHeader'
 import Pagination from '../../../platform/ui/primitives/Pagination'
 import ListCard from '../../../platform/ui/list/ListCard'
@@ -15,7 +20,7 @@ import ListFooter from '../../../platform/ui/list/ListFooter'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListToolbar from '../../../platform/ui/list/ListToolbar'
 import ListWorkbench from '../../../platform/ui/list/ListWorkbench'
-import { GATEWAY_URL, GATEWAY_SECRET_KEY, gatewayHeaders } from '../../../../config/runtime'
+import { runtime, gatewayHeaders } from '../../../../config/runtime'
 import '../styles/files.css'
 
 interface FileInfo {
@@ -64,22 +69,28 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / 1048576).toFixed(1)} MB`
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
     const date = new Date(iso)
-    return date.toLocaleDateString(undefined, {
+    const options: Intl.DateTimeFormatOptions = {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-    })
+    }
+    // Use English locale for zh (Chinese) to avoid mixed Chinese/English format
+    // zh format like "2026年5月19日 下午2:30" is not desired
+    if (locale === 'zh' || locale === 'zh-CN') {
+        locale = 'en-US'
+    }
+    return date.toLocaleDateString(locale, options)
 }
 
 type FileIconProps = SVGProps<SVGSVGElement> & {
     strokeWidth?: number
 }
 
-type FileIconComponent = (props: FileIconProps) => ReactNode
+type FileIconComponent = ((props: FileIconProps) => ReactNode) | AppIcon
 
 function FileIconFrame({ children, strokeWidth = 1.85, ...props }: FileIconProps & { children: ReactNode }) {
     return (
@@ -213,7 +224,7 @@ function getFileVisual(type: string | undefined): { icon: FileIconComponent; ton
 }
 
 function getDownloadUrl(file: AgentFile, userId?: string | null): string {
-    let url = `${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}?key=${GATEWAY_SECRET_KEY}`
+    let url = `${runtime.GATEWAY_URL}/agents/${file.agentId}/files/get?path=${encodeURIComponent(file.path)}&key=${runtime.GATEWAY_SECRET_KEY}`
     if (file.rootId) url += `&rootId=${encodeURIComponent(file.rootId)}`
     if (userId) url += `&uid=${encodeURIComponent(userId)}`
     return url
@@ -224,7 +235,7 @@ function getFileKey(file: AgentFile): string {
 }
 
 export default function FilesPage() {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const { agents, isConnected, error: connectionError } = useGoosed()
     const { openPreview, isPreviewable, previewFile, closePreview } = usePreview()
     const { userId } = useUser()
@@ -252,7 +263,7 @@ export default function FilesPage() {
             const allFiles: AgentFile[] = []
             const results = await Promise.allSettled(
                 agents.map(async (agent) => {
-                    const response = await fetch(`${GATEWAY_URL}/agents/${agent.id}/files`, {
+                    const response = await fetch(`${runtime.GATEWAY_URL}/agents/${agent.id}/files/list`, {
                         headers: gatewayHeaders(userId),
                     })
                     if (!response.ok) return []
@@ -349,8 +360,8 @@ export default function FilesPage() {
         const fileKey = getFileKey(file)
         setDeletingKey(fileKey)
         try {
-            const rootQuery = file.rootId ? `?rootId=${encodeURIComponent(file.rootId)}` : ''
-            const response = await fetch(`${GATEWAY_URL}/agents/${file.agentId}/files/${encodeURIComponent(file.path)}${rootQuery}`, {
+            const rootQuery = file.rootId ? `&rootId=${encodeURIComponent(file.rootId)}` : ''
+            const response = await fetch(`${runtime.GATEWAY_URL}/agents/${file.agentId}/files/delete?path=${encodeURIComponent(file.path)}${rootQuery}`, {
                 method: 'DELETE',
                 headers: gatewayHeaders(userId),
             })
@@ -364,17 +375,17 @@ export default function FilesPage() {
                 closePreview()
             }
             setDeleteTarget(null)
-            showToast('success', `已删除 ${file.name}`)
+            showToast('success', t('files.deleteSuccess', { name: file.name }))
         } catch (err) {
             console.error('Failed to delete file:', err)
-            showToast('error', err instanceof Error ? err.message : '删除文件失败')
+            showToast('error', err instanceof Error ? err.message : t('files.deleteFailed'))
         } finally {
             setDeletingKey(null)
         }
     }
 
     return (
-        <div className="page-container sidebar-top-page page-shell-wide files-page">
+        <div className={`page-container sidebar-top-page page-shell-wide files-page${previewFile ? ' preview-open' : ''}`}>
             <PageHeader title={t('files.title')} subtitle={t('files.subtitle')} />
 
             {(error || (!isConnected && connectionError)) && (
@@ -428,17 +439,19 @@ export default function FilesPage() {
                     </ListFooter>
                 ) : undefined}
             >
-                {isLoading ? (
+                {isLoading && (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-10)' }}>
                         <div className="loading-spinner" />
                     </div>
-                ) : files.length === 0 ? (
+                )}
+                {!isLoading && files.length === 0 && (
                     <div className="empty-state">
                         <DefaultFileIcon className="empty-state-icon" strokeWidth={1.6} />
                         <h3 className="empty-state-title">{t('files.noFiles')}</h3>
                         <p className="empty-state-description">{t('files.noFilesHint')}</p>
                     </div>
-                ) : searchTerm && filteredFiles.length === 0 ? (
+                )}
+                {!isLoading && files.length > 0 && searchTerm && filteredFiles.length === 0 && (
                     <div className="empty-state">
                         <svg className="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <circle cx="11" cy="11" r="8" />
@@ -447,7 +460,8 @@ export default function FilesPage() {
                         <h3 className="empty-state-title">{t('common.noResults')}</h3>
                         <p className="empty-state-description">{t('files.noMatchFiles', { term: searchTerm })}</p>
                     </div>
-                ) : (
+                )}
+                {!isLoading && filteredFiles.length > 0 && (
                     <div className="file-list">
                         {paginatedFiles.map((file) => {
                             const fileKey = getFileKey(file)
@@ -470,15 +484,16 @@ export default function FilesPage() {
                                             </div>
                                             <div className="file-meta-details">
                                                 <span>{formatFileSize(file.size)}</span>
-                                                <span>{formatDate(file.modifiedAt)}</span>
+                                                <span>{formatDate(file.modifiedAt, i18n.language)}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="file-actions">
+                                    <ItemActionGroup className="file-actions">
                                         {isPreviewable(file.type, file.name, file.path) && (
-                                            <button
-                                                className="icon-action-button"
-                                                title={t('files.preview')}
+                                            <ItemActionButton
+                                                icon={Eye}
+                                                label={t('files.preview')}
+                                                tone="primary"
                                                 onClick={() => openPreview({
                                                     name: file.name,
                                                     path: file.path,
@@ -487,35 +502,22 @@ export default function FilesPage() {
                                                     rootId: file.rootId,
                                                     displayPath: file.displayPath,
                                                 })}
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                </svg>
-                                            </button>
+                                            />
                                         )}
-                                        <a
+                                        <ItemActionLink
+                                            icon={Download}
                                             href={getDownloadUrl(file, userId) + '&download=true'}
-                                            className="file-download-btn"
-                                            title={t('files.download')}
+                                            label={t('files.download')}
+                                            tone="success"
                                             download
-                                        >
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                <polyline points="7 10 12 15 17 10" />
-                                                <line x1="12" y1="15" x2="12" y2="3" />
-                                            </svg>
-                                        </a>
-                                        <button className="file-delete-btn" title="删除文件" onClick={() => setDeleteTarget(file)}>
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                                <polyline points="3 6 5 6 21 6" />
-                                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                <line x1="10" y1="11" x2="10" y2="17" />
-                                                <line x1="14" y1="11" x2="14" y2="17" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                                        />
+                                        <ItemActionButton
+                                            icon={Trash2}
+                                            label={t('common.delete')}
+                                            tone="danger"
+                                            onClick={() => setDeleteTarget(file)}
+                                        />
+                                    </ItemActionGroup>
                                 </ListCard>
                             )
                         })}
@@ -527,7 +529,7 @@ export default function FilesPage() {
                 <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setDeleteTarget(null)}>
                     <div className="modal" onClick={(event) => event.stopPropagation()}>
                         <div className="modal-header">
-                            <h2 className="modal-title">删除文件</h2>
+                            <h2 className="modal-title">{t('files.deleteTitle')}</h2>
                             <button className="modal-close" onClick={() => setDeleteTarget(null)} aria-label={t('common.close')}>
                                 &times;
                             </button>
@@ -535,7 +537,7 @@ export default function FilesPage() {
 
                         <div className="modal-body">
                             <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-primary)', marginBottom: 'var(--spacing-4)' }}>
-                                将永久删除 “{deleteTarget.name}”，此操作不可恢复。
+                                {t('files.deleteConfirm', { name: deleteTarget.name })}
                             </p>
                         </div>
 
@@ -546,7 +548,7 @@ export default function FilesPage() {
                                 onClick={() => setDeleteTarget(null)}
                                 disabled={deletingKey === getFileKey(deleteTarget)}
                             >
-                                取消
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="button"
@@ -554,7 +556,7 @@ export default function FilesPage() {
                                 onClick={() => handleDelete(deleteTarget)}
                                 disabled={deletingKey === getFileKey(deleteTarget)}
                             >
-                                {deletingKey === getFileKey(deleteTarget) ? '删除中...' : '确认删除'}
+                                {deletingKey === getFileKey(deleteTarget) ? t('common.deleting') : t('common.delete')}
                             </button>
                         </div>
                     </div>

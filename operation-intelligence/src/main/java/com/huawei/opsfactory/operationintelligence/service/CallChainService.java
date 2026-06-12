@@ -1,0 +1,449 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
+package com.huawei.opsfactory.operationintelligence.service;
+
+import com.huawei.opsfactory.operationintelligence.config.OperationIntelligenceProperties;
+import com.huawei.opsfactory.operationintelligence.qos.dv.DvClient;
+import com.huawei.opsfactory.operationintelligence.qos.model.CallChainTree;
+import com.huawei.opsfactory.operationintelligence.qos.model.ChainTypeConfig;
+import com.huawei.opsfactory.operationintelligence.qos.model.QueryCallChainRequest;
+import com.huawei.opsfactory.operationintelligence.qos.model.TraceLogRecord;
+import com.huawei.opsfactory.operationintelligence.qos.parser.TimeSplitStrategy;
+import com.huawei.opsfactory.operationintelligence.qos.store.CallChainStore;
+import com.huawei.opsfactory.operationintelligence.qos.store.ChainTypeConfigStore;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Call Chain Service.
+ * Main service for call chain mining operations.
+ *
+ * @author call-chain
+ * @since 2026-05-14
+ */
+@Service
+public class CallChainService {
+
+    private static final Logger log = LoggerFactory.getLogger(CallChainService.class);
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private final OperationIntelligenceProperties properties;
+
+    private final DvClient dvClient;
+
+    private final CallChainBuilder chainBuilder;
+
+    private final CallChainStore chainStore;
+
+    private final ChainTypeConfigStore configStore;
+
+    private final TimeSplitStrategy timeSplitStrategy;
+
+    /**
+     * Call Chain Service.
+     *
+     * @param properties the properties
+     * @param dvClient the DV client
+     * @param chainBuilder the chain builder
+     * @param chainStore the chain store
+     * @param configStore the config store
+     * @param timeSplitStrategy the time split strategy
+     */
+    public CallChainService(OperationIntelligenceProperties properties, DvClient dvClient,
+        CallChainBuilder chainBuilder, CallChainStore chainStore, ChainTypeConfigStore configStore,
+        TimeSplitStrategy timeSplitStrategy) {
+        this.properties = properties;
+        this.dvClient = dvClient;
+        this.chainBuilder = chainBuilder;
+        this.chainStore = chainStore;
+        this.configStore = configStore;
+        this.timeSplitStrategy = timeSplitStrategy;
+    }
+
+    /**
+     * Query call chain by conditions.
+     *
+     * @param request the query call chain request
+     * @return the call chain tree
+     */
+    public CallChainTree queryCallChain(QueryCallChainRequest request) {
+        CallChainTree mockTree = loadMockTreeIfConfigured(toConditionMapList(request.getCondition()),
+            request.getStartTime(), request.getEndTime());
+        if (mockTree != null) {
+            return mockTree;
+        }
+        return doQueryCallChain(request);
+    }
+
+    /**
+     * Internal implementation of query call chain.
+     *
+     * @param request the query call chain request
+     * @return the call chain tree
+     */
+    private CallChainTree doQueryCallChain(QueryCallChainRequest request) {
+        List<Map<String, String>> conditions = toConditionMapList(request.getCondition());
+        log.info("Querying call chain with solutionType={}, {} conditions, timeRange=[{}, {}], mode={}",
+            request.getSolutionType(), conditions.size(), Instant.ofEpochMilli(request.getStartTime()),
+            Instant.ofEpochMilli(request.getEndTime()), request.getMode());
+
+        // Determine chainType by matching conditionKey with config
+        String chainType = determineChainType(conditions);
+        if (chainType == null) {
+            log.warn("No matching chain type found for conditions");
+            return createEmptyTree(null, conditions, request.getStartTime(), request.getEndTime());
+        }
+
+        log.info("Determined chainType: {}", chainType);
+
+        // Get config
+        ChainTypeConfig config = getConfigByChainType(chainType);
+        String conditionKey = config != null ? config.getConditionKey() : conditions.get(0).get("conditionKey");
+
+        // Fetch entry logs (seqNo=1) with pagination and time splitting
+        List<TraceLogRecord> entryLogs = fetchEntryLogsWithSplit(request.getSolutionType(), request.getSolutionId(),
+            chainType, conditionKey, conditions, config, request.getStartTime(), request.getEndTime());
+
+        if (entryLogs.isEmpty()) {
+            log.info("No entry logs found for query");
+            return createEmptyTree(chainType, conditions, request.getStartTime(), request.getEndTime());
+        }
+        // Extract TraceIDs
+        Set<String> traceIds = entryLogs.stream().map(TraceLogRecord::getTraceId).collect(Collectors.toSet());
+
+        log.info("Found {} unique TraceIDs", traceIds.size());
+
+        // Fetch complete call chains for each TraceID
+        // entryLogs already contains entry logs (seqNo=1) from fetchEntryLogsWithSplit
+        // fetchByTraceId returns complete trace including entry logs, so don't add entryLogs to allLogs
+        List<TraceLogRecord> allLogs = new ArrayList<>();
+        int querySize = properties.getCallChain().getQuerySize();
+        for (String traceId : traceIds) {
+            log.debug("Fetching logs for TraceID: {}", traceId);
+            List<TraceLogRecord> traceLogs = dvClient.fetchByTraceId(request.getSolutionType(), request.getSolutionId(),
+                traceId, request.getStartTime(), request.getEndTime(), querySize);
+            allLogs.addAll(traceLogs);
+        }
+
+        log.info("Fetched {} total trace log records", allLogs.size());
+
+        // Use first condition for tree building
+        Map<String, String> primaryCondition = conditions.get(0);
+        String conditionValue = primaryCondition.get("conditionValue");
+
+        // Build call chain tree
+        CallChainTree tree =
+            chainBuilder.build(chainType, conditionKey, conditionValue, allLogs, allLogs.size(), request.getMode());
+
+        // Set conditions
+        tree.setConditions(buildTreeConditions(conditions));
+
+        // Set query time range
+        tree.setQueryTimeRange(buildQueryTimeRange(request.getStartTime(), request.getEndTime()));
+
+        // Save to store
+        chainStore.save(tree);
+
+        return tree;
+    }
+
+    /**
+     * Determine chain type by matching conditionKey with config conditionKey.
+     *
+     * @param conditions the list of conditions
+     * @return the chain type, or null if no match found
+     */
+    private String determineChainType(List<Map<String, String>> conditions) {
+        List<ChainTypeConfig> configs = configStore.loadAll();
+
+        for (Map<String, String> condition : conditions) {
+            String conditionKey = condition.get("conditionKey");
+            if (conditionKey == null) {
+                continue;
+            }
+
+            // Find config where conditionKey matches
+            for (ChainTypeConfig config : configs) {
+                if (conditionKey.equals(config.getConditionKey())) {
+                    return config.getChainType();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get config by chain type.
+     *
+     * @param chainType the chain type
+     * @return the chain type configuration, or null if not found
+     */
+    private ChainTypeConfig getConfigByChainType(String chainType) {
+        return configStore.getByChainType(chainType);
+    }
+
+    /**
+     * Fetch entry logs with time range splitting support.
+     *
+     * @param solutionType the solution type (for DV environment selection)
+     * @param solutionId the solution id (for DV must filter)
+     * @param chainType the chain type
+     * @param conditionKey the primary condition key
+     * @param conditions the list of conditions
+     * @param config the chain type configuration
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @return list of entry trace log records (seqNo=1)
+     */
+    private List<TraceLogRecord> fetchEntryLogsWithSplit(String solutionType, String solutionId, String chainType,
+        String conditionKey, List<Map<String, String>> conditions, ChainTypeConfig config, long startTime,
+        long endTime) {
+        List<TraceLogRecord> allLogs = new ArrayList<>();
+        int querySize = properties.getCallChain().getQuerySize();
+
+        // Initial query
+        List<TraceLogRecord> initialLogs = dvClient.fetchTraceLogEntries(solutionType, solutionId, chainType,
+            conditionKey, conditions, config, startTime, endTime, querySize);
+
+        allLogs.addAll(initialLogs);
+
+        // Check if we hit the limit and need time splitting
+        if (initialLogs.size() >= properties.getCallChain().getQueryLimit()) {
+            log.warn("Query returned {} results (at limit), applying time splitting", initialLogs.size());
+            List<TimeSplitStrategy.TimeRange> ranges =
+                timeSplitStrategy.splitIfNeeded(startTime, endTime, initialLogs.size());
+
+            for (TimeSplitStrategy.TimeRange range : ranges) {
+                List<TraceLogRecord> rangeLogs = dvClient.fetchTraceLogEntries(solutionType, solutionId, chainType,
+                    conditionKey, conditions, config, range.startTime(), range.endTime(), querySize);
+                allLogs.addAll(rangeLogs);
+
+                // If still hitting limit, further degrade
+                if (rangeLogs.size() >= properties.getCallChain().getQueryLimit()
+                    && timeSplitStrategy.canDegradeFurther(range.duration())) {
+                    long degradedSplitMs = timeSplitStrategy.getNextDegradeSplitMs(range.duration());
+                    List<TimeSplitStrategy.TimeRange> degradedRanges =
+                        timeSplitStrategy.split(range.startTime(), range.endTime(), degradedSplitMs);
+                    for (TimeSplitStrategy.TimeRange degradedRange : degradedRanges) {
+                        List<TraceLogRecord> degradedLogs =
+                            dvClient.fetchTraceLogEntries(solutionType, solutionId, chainType, conditionKey, conditions,
+                                config, degradedRange.startTime(), degradedRange.endTime(), querySize);
+                        allLogs.addAll(degradedLogs);
+                    }
+                }
+            }
+        }
+
+        // Filter to only seqNo=1 entry logs
+        return allLogs.stream().filter(log -> "1".equals(log.getSeqNo())).distinct().collect(Collectors.toList());
+    }
+
+    /**
+     * Import chain type configurations from text content.
+     *
+     * @param content the text content
+     * @return number of configs imported
+     */
+    public int importChainTypeConfigs(String content) {
+        List<ChainTypeConfig> configs = parseChainTypeConfigs(content);
+        configStore.importConfigs(configs);
+        log.info("Imported {} chain type configs", configs.size());
+        return configs.size();
+    }
+
+    /**
+     * Parse chain type configs from text content.
+     */
+    private List<ChainTypeConfig> parseChainTypeConfigs(String content) {
+        return content.lines()
+            .map(String::trim)
+            .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+            .map(line -> line.split("\\|", 7))
+            .filter(parts -> parts.length >= 3)
+            .map(parts -> {
+                ChainTypeConfig config = new ChainTypeConfig();
+                config.setChainType(parts[0].trim());
+                config.setDescription(parts[1].trim());
+                config.setConditionKey(parts[2].trim());
+                if (parts.length > 3) {
+                    config.setExtractFields(parts[3].trim());
+                }
+                if (parts.length > 4) {
+                    config.setClassifyField(parts[4].trim());
+                }
+                if (parts.length > 5) {
+                    config.setSubClassifyField(parts[5].trim());
+                }
+                config.setEnabled(true);
+                return config;
+            })
+            .toList();
+    }
+
+    /**
+     * Create empty call chain tree.
+     *
+     * @param chainType the chain type
+     * @param conditions the list of conditions
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @return the empty call chain tree
+     */
+    private CallChainTree createEmptyTree(String chainType, List<Map<String, String>> conditions, long startTime,
+        long endTime) {
+        CallChainTree tree = new CallChainTree();
+        tree.setChainType(chainType);
+
+        // Convert conditions to tree format
+        tree.setConditions(buildTreeConditions(conditions));
+
+        tree.setFlows(new ArrayList<>());
+        tree.setTotalCount(0L);
+
+        tree.setQueryTimeRange(buildQueryTimeRange(startTime, endTime));
+
+        return tree;
+    }
+
+    /**
+     * Format timestamp to string.
+     *
+     * @param timestamp the timestamp in milliseconds
+     * @return the formatted time string
+     */
+    private String formatTime(long timestamp) {
+        return Instant.ofEpochMilli(timestamp)
+            .atZone(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    /**
+     * Load mock call chain tree if mock query is enabled.
+     *
+     * @param conditions the list of conditions
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @return the mock call chain tree, or null if mock is not enabled
+     */
+    private CallChainTree loadMockTreeIfConfigured(List<Map<String, String>> conditions, long startTime, long endTime) {
+        OperationIntelligenceProperties.CallChain callChain = properties.getCallChain();
+        if (callChain == null || !callChain.isMockQueryEnabled()) {
+            return null;
+        }
+        String configuredFile = callChain.getMockQueryFile();
+        if (configuredFile == null || configuredFile.isBlank()) {
+            throw new IllegalStateException("callChain.mockQueryFile must be configured when mockQueryEnabled=true");
+        }
+        Path file = resolveMockQueryFile(configuredFile);
+        try {
+            JsonNode root = MAPPER.readTree(file.toFile());
+            JsonNode dataNode = root.has("flows") ? root : root.path("result");
+            if (dataNode.isMissingNode() || dataNode.isNull() || !dataNode.has("flows")) {
+                throw new IllegalStateException("Mock call chain file must contain root.flows or result.flows");
+            }
+            CallChainTree tree = MAPPER.treeToValue(dataNode, CallChainTree.class);
+            if (tree.getConditions() == null || tree.getConditions().isEmpty()) {
+                tree.setConditions(buildTreeConditions(conditions));
+            }
+            if (tree.getQueryTimeRange() == null) {
+                tree.setQueryTimeRange(buildQueryTimeRange(startTime, endTime));
+            }
+            if (tree.getTotalCount() == null) {
+                tree.setTotalCount((long) (tree.getFlows() == null ? 0 : tree.getFlows().size()));
+            }
+            if (tree.getChainType() == null || tree.getChainType().isBlank()) {
+                tree.setChainType(determineChainType(conditions));
+            }
+            chainStore.save(tree);
+            log.info("Loaded mock call chain response from file {}", file);
+            return tree;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load mock call chain file: " + file, e);
+        }
+    }
+
+    /**
+     * Resolve mock query file path.
+     *
+     * @param configuredFile the configured file path
+     * @return the resolved file path
+     */
+    private Path resolveMockQueryFile(String configuredFile) {
+        Path configuredPath = Path.of(configuredFile);
+        Path resolved = configuredPath.isAbsolute() ? configuredPath.normalize()
+            : properties.getConfigDirectory().resolve(configuredPath).normalize();
+        if (!Files.isRegularFile(resolved)) {
+            throw new IllegalStateException("Mock call chain file does not exist: " + resolved);
+        }
+        return resolved;
+    }
+
+    /**
+     * Convert map conditions to tree conditions.
+     *
+     * @param conditions the list of map conditions
+     * @return the list of tree conditions
+     */
+    private List<CallChainTree.Condition> buildTreeConditions(List<Map<String, String>> conditions) {
+        return conditions.stream().map(cond -> {
+            CallChainTree.Condition treeCondition = new CallChainTree.Condition();
+            treeCondition.setConditionKey(cond.get("conditionKey"));
+            treeCondition.setConditionValue(cond.get("conditionValue"));
+            return treeCondition;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Convert QueryCallChainRequest.Condition list to Map list.
+     *
+     * @param conditions the list of QueryCallChainRequest.Condition
+     * @return the list of map conditions
+     */
+    private List<Map<String, String>> toConditionMapList(List<QueryCallChainRequest.Condition> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            return List.of();
+        }
+        return conditions.stream().map(cond -> {
+            Map<String, String> map = new LinkedHashMap<>();
+            map.put("conditionKey", cond.getConditionKey());
+            map.put("conditionValue", cond.getConditionValue());
+            return map;
+        }).toList();
+    }
+
+    /**
+     * Build a query time range from start and end times.
+     *
+     * @param startTime the start time in milliseconds
+     * @param endTime the end time in milliseconds
+     * @return the query time range
+     */
+    private CallChainTree.QueryTimeRange buildQueryTimeRange(long startTime, long endTime) {
+        CallChainTree.QueryTimeRange timeRange = new CallChainTree.QueryTimeRange();
+        timeRange.setStartTime(formatTime(startTime));
+        timeRange.setEndTime(formatTime(endTime));
+        return timeRange;
+    }
+}

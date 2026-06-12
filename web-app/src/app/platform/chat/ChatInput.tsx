@@ -7,6 +7,7 @@ import { useVoiceInput } from './useVoiceInput'
 import { useToast } from '../providers/ToastContext'
 import type { AttachedFile, SelectedSkill } from '../../../types/message'
 import type { SkillEntry } from '../../../types/skill'
+import { findAtMentionToken, buildMentionReplacement, filterAgents } from './mention'
 import './ChatInput.css'
 
 // File handling constants
@@ -126,6 +127,7 @@ interface ChatInputProps {
     placeholder?: string
     autoFocus?: boolean
     selectedAgent?: string
+    selectedAgentName?: string
     onAgentChange?: (agentId: string) => void
     showAgentSelector?: boolean
     modelInfo?: { provider: string; model: string } | null
@@ -133,6 +135,7 @@ interface ChatInputProps {
     presetMessage?: string
     presetToken?: number
     skills?: SkillEntry[]
+    agents?: { id: string; name?: string }[]
     onBrowseSkillMarket?: () => void
 }
 
@@ -146,6 +149,7 @@ export default function ChatInput({
     placeholder = "Type a message...",
     autoFocus = false,
     selectedAgent = '',
+    selectedAgentName,
     onAgentChange,
     showAgentSelector = true,
     modelInfo,
@@ -153,6 +157,7 @@ export default function ChatInput({
     presetMessage,
     presetToken,
     skills = [],
+    agents = [],
     onBrowseSkillMarket,
 }: ChatInputProps) {
     const { t, i18n } = useTranslation()
@@ -166,8 +171,14 @@ export default function ChatInput({
     const [skillQuery, setSkillQuery] = useState('')
     const [skillSlashRange, setSkillSlashRange] = useState<{ start: number; end: number } | null>(null)
     const [activeSkillIndex, setActiveSkillIndex] = useState(0)
+    const [isMentionOpen, setIsMentionOpen] = useState(false)
+    const [mentionQuery, setMentionQuery] = useState('')
+    const [mentionRange, setMentionRange] = useState<{ start: number; end: number } | null>(null)
+    const [activeMentionIndex, setActiveMentionIndex] = useState(0)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const activeSkillItemRef = useRef<HTMLButtonElement>(null)
+    const activeMentionItemRef = useRef<HTMLButtonElement>(null)
 
     const sortedSkills = useMemo(() => [...skills].sort(compareSkills), [skills])
     const filteredSkills = useMemo(() => sortedSkills.filter(skill => {
@@ -182,6 +193,10 @@ export default function ChatInput({
     const hiddenSkillCount = Math.max(0, filteredSkills.length - visibleSkills.length)
 
     const activeSkill = visibleSkills[activeSkillIndex]
+
+    const filteredAgents = useMemo(() => filterAgents(agents, mentionQuery), [agents, mentionQuery])
+    const visibleAgents = useMemo(() => filteredAgents.slice(0, MAX_VISIBLE_SKILL_OPTIONS), [filteredAgents])
+    const activeAgent = visibleAgents[activeMentionIndex]
 
     const closeSkillPicker = useCallback(() => {
         setIsSkillPickerOpen(false)
@@ -205,6 +220,30 @@ export default function ChatInput({
         setIsSkillPickerOpen(true)
         setActiveSkillIndex(0)
     }, [closeSkillPicker, disabled])
+
+    const closeMentionPicker = useCallback(() => {
+        setIsMentionOpen(false)
+        setMentionQuery('')
+        setMentionRange(null)
+        setActiveMentionIndex(0)
+    }, [])
+
+    const updateMentionPickerState = useCallback((nextValue: string, cursor: number | null) => {
+        // No agents passed => this chat's agent is not a delegator (tool-agent); never offer the picker.
+        if (disabled || cursor == null || agents.length === 0) {
+            closeMentionPicker()
+            return
+        }
+        const token = findAtMentionToken(nextValue, cursor)
+        if (!token) {
+            closeMentionPicker()
+            return
+        }
+        setMentionQuery(token.query)
+        setMentionRange({ start: token.start, end: token.end })
+        setIsMentionOpen(true)
+        setActiveMentionIndex(0)
+    }, [closeMentionPicker, disabled, agents.length])
 
     const { state: voiceState, isSupported: voiceSupported, startListening, stopListening, error: voiceError } = useVoiceInput({
         onTranscript: (text) => setValue(text),
@@ -241,12 +280,29 @@ export default function ChatInput({
     useEffect(() => {
         setSelectedSkill(null)
         closeSkillPicker()
-    }, [selectedAgent, closeSkillPicker])
+        closeMentionPicker()
+    }, [selectedAgent, closeSkillPicker, closeMentionPicker])
 
     useEffect(() => {
         if (activeSkillIndex < visibleSkills.length) return
         setActiveSkillIndex(Math.max(0, visibleSkills.length - 1))
     }, [activeSkillIndex, visibleSkills.length])
+
+    useEffect(() => {
+        if (activeMentionIndex < visibleAgents.length) return
+        setActiveMentionIndex(Math.max(0, visibleAgents.length - 1))
+    }, [activeMentionIndex, visibleAgents.length])
+
+    // Keep the keyboard-selected option scrolled into view within the picker list.
+    useEffect(() => {
+        if (!isSkillPickerOpen) return
+        activeSkillItemRef.current?.scrollIntoView({ block: 'nearest' })
+    }, [activeSkillIndex, isSkillPickerOpen])
+
+    useEffect(() => {
+        if (!isMentionOpen) return
+        activeMentionItemRef.current?.scrollIntoView({ block: 'nearest' })
+    }, [activeMentionIndex, isMentionOpen])
 
     useEffect(() => {
         if (!selectedSkill) return
@@ -294,6 +350,22 @@ export default function ChatInput({
     const handleRemoveSelectedSkill = () => {
         setSelectedSkill(null)
         textareaRef.current?.focus()
+    }
+
+    const handleSelectMention = (agent: { id: string; name?: string }) => {
+        if (mentionRange) {
+            const { value: nextValue, caret } = buildMentionReplacement(value, mentionRange, agent.id)
+            setValue(nextValue)
+            window.requestAnimationFrame(() => {
+                const textarea = textareaRef.current
+                if (!textarea) return
+                textarea.focus()
+                textarea.setSelectionRange(caret, caret)
+            })
+        } else {
+            textareaRef.current?.focus()
+        }
+        closeMentionPicker()
     }
 
     const handleBrowseSkillMarket = () => {
@@ -479,7 +551,7 @@ export default function ChatInput({
 
     const handleSubmit = () => {
         if (disabled) return
-        if (isSkillPickerOpen) return
+        if (isSkillPickerOpen || isMentionOpen) return
 
         // Extract images as ImageData[]
         const images: ImageData[] = uploadedFiles
@@ -523,6 +595,28 @@ export default function ChatInput({
     }
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (isMentionOpen) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setActiveMentionIndex(index => visibleAgents.length === 0 ? 0 : (index + 1) % visibleAgents.length)
+                return
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setActiveMentionIndex(index => visibleAgents.length === 0 ? 0 : (index - 1 + visibleAgents.length) % visibleAgents.length)
+                return
+            }
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault()
+                if (activeAgent) handleSelectMention(activeAgent)
+                return
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault()
+                closeMentionPicker()
+                return
+            }
+        }
         if (isSkillPickerOpen) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
@@ -558,11 +652,13 @@ export default function ChatInput({
         const nextValue = e.target.value
         setValue(nextValue)
         updateSkillPickerState(nextValue, e.target.selectionStart)
+        updateMentionPickerState(nextValue, e.target.selectionStart)
     }
 
     const handleSelectionChange = (e: SyntheticEvent<HTMLTextAreaElement>) => {
         const textarea = e.currentTarget
         updateSkillPickerState(textarea.value, textarea.selectionStart)
+        updateMentionPickerState(textarea.value, textarea.selectionStart)
     }
 
     const handleFileInputClick = () => {
@@ -620,20 +716,27 @@ export default function ChatInput({
                             {skillQuery && <span className="skill-picker-query">/{skillQuery}</span>}
                         </span>
                     </div>
-                    {skills.length === 0 ? (
-                        <div className="skill-picker-empty">
-                            <p>{t('chat.skillPickerNoSkills')}</p>
-                            {onBrowseSkillMarket && (
-                                <button type="button" className="skill-picker-market-btn" onClick={handleBrowseSkillMarket}>
-                                    {t('chat.skillPickerBrowseMarket')}
-                                </button>
-                            )}
-                        </div>
-                    ) : filteredSkills.length === 0 ? (
-                        <div className="skill-picker-empty">
-                            <p>{t('chat.skillPickerNoMatches')}</p>
-                        </div>
-                    ) : (
+                    {(() => {
+                        if (skills.length === 0) {
+                            return (
+                                <div className="skill-picker-empty">
+                                    <p>{t('chat.skillPickerNoSkills')}</p>
+                                    {onBrowseSkillMarket && (
+                                        <button type="button" className="skill-picker-market-btn" onClick={handleBrowseSkillMarket}>
+                                            {t('chat.skillPickerBrowseMarket')}
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                        }
+                        if (filteredSkills.length === 0) {
+                            return (
+                                <div className="skill-picker-empty">
+                                    <p>{t('chat.skillPickerNoMatches')}</p>
+                                </div>
+                            )
+                        }
+                        return (
                         <>
                         <div className="skill-picker-list">
                             {visibleSkills.map((skill, index) => {
@@ -643,6 +746,7 @@ export default function ChatInput({
                                 return (
                                     <button
                                         key={skillId}
+                                        ref={index === activeSkillIndex ? activeSkillItemRef : null}
                                         type="button"
                                         className={`skill-picker-option ${index === activeSkillIndex ? 'active' : ''}`}
                                         onMouseDown={event => event.preventDefault()}
@@ -674,6 +778,44 @@ export default function ChatInput({
                             </div>
                         )}
                         </>
+                    )
+                    })()}
+                </div>
+            )}
+
+            {isMentionOpen && (
+                <div className="skill-picker" role="listbox" aria-label={t('chat.mentionPickerLabel')}>
+                    <div className="skill-picker-header">
+                        <span>{t('chat.mentionPickerTitle')}</span>
+                        <span className="skill-picker-header-meta">
+                            {t('chat.skillPickerResultCount', { shown: visibleAgents.length, total: filteredAgents.length })}
+                            {mentionQuery && <span className="skill-picker-query">@{mentionQuery}</span>}
+                        </span>
+                    </div>
+                    {filteredAgents.length === 0 ? (
+                        <div className="skill-picker-empty"><p>{t('chat.mentionPickerNoMatches')}</p></div>
+                    ) : (
+                        <div className="skill-picker-list">
+                            {visibleAgents.map((agent, index) => (
+                                <button
+                                    key={agent.id}
+                                    ref={index === activeMentionIndex ? activeMentionItemRef : null}
+                                    type="button"
+                                    className={`skill-picker-option ${index === activeMentionIndex ? 'active' : ''}`}
+                                    onMouseDown={event => event.preventDefault()}
+                                    onClick={() => handleSelectMention(agent)}
+                                    title={agent.id}
+                                    role="option"
+                                    aria-selected={index === activeMentionIndex}
+                                >
+                                    <span className="skill-picker-option-icon" aria-hidden="true">@</span>
+                                    <span className="skill-picker-option-body">
+                                        <span className="skill-picker-option-name">{agent.name || agent.id}</span>
+                                        <span className="skill-picker-option-desc">{agent.id}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     )}
                 </div>
             )}
@@ -719,15 +861,15 @@ export default function ChatInput({
                             )}
                             <div className="uploaded-file-info">
                                 <span className="uploaded-file-name">{file.name}</span>
-                                {file.error ? (
-                                    <span className="uploaded-file-error">{file.error}</span>
-                                ) : file.isLoading ? (
-                                    <span className="uploaded-file-loading">{t('common.loading')}</span>
-                                ) : (
-                                    <span className="uploaded-file-size">
-                                        {(file.size / 1024).toFixed(1)} KB
-                                    </span>
-                                )}
+                                {(() => {
+                                    if (file.error) {
+                                        return <span className="uploaded-file-error">{file.error}</span>
+                                    }
+                                    if (file.isLoading) {
+                                        return <span className="uploaded-file-loading">{t('common.loading')}</span>
+                                    }
+                                    return <span className="uploaded-file-size">{(file.size / 1024).toFixed(1)} KB</span>
+                                })()}
                             </div>
                             <button
                                 className="uploaded-file-remove"
@@ -815,6 +957,15 @@ export default function ChatInput({
                         disabled={disabled}
                     />
                 )}
+                {!showAgentSelector && (selectedAgentName || selectedAgent) && (
+                    <div className="toolbar-item toolbar-agent-info" title={selectedAgentName || selectedAgent}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                        </svg>
+                        <span className="toolbar-text">{selectedAgentName || selectedAgent}</span>
+                    </div>
+                )}
 
                 {(() => {
                     const showMic = !hasContent && !isGenerating && !isListening && voiceSupported
@@ -834,52 +985,63 @@ export default function ChatInput({
 
                             <button
                                 className={`chat-send-btn-new ${isGenerating ? 'is-stop' : ''} ${isListening ? 'is-recording' : ''}`}
-                                onClick={
-                                    isGenerating ? handleStopGeneration :
-                                    isListening ? stopListening :
-                                    showMic ? startListening :
-                                    handleSubmit
-                                }
-                                disabled={
-                                    isGenerating ? !onStopGeneration :
-                                    isListening ? false :
-                                    showMic ? disabled :
-                                    (disabled || !hasContent || isAnyFileLoading)
-                                }
-                                aria-label={
-                                    isListening ? t('chat.stopRecording') :
-                                    showMic ? t('chat.voiceInput') :
-                                    isGenerating ? t('chat.stopGeneration') :
-                                    t('chat.sendMessage')
-                                }
-                                title={
-                                    isListening ? t('chat.stopRecording') :
-                                    showMic ? t('chat.voiceInput') :
-                                    isGenerating ? t('chat.stopGeneration') :
-                                    t('chat.sendMessage')
-                                }
+                                onClick={(() => {
+                                    if (isGenerating) return handleStopGeneration
+                                    if (isListening) return stopListening
+                                    if (showMic) return startListening
+                                    return handleSubmit
+                                })()}
+                                disabled={(() => {
+                                    if (isGenerating) return !onStopGeneration
+                                    if (isListening) return false
+                                    if (showMic) return disabled
+                                    return disabled || !hasContent || isAnyFileLoading
+                                })()}
+                                aria-label={(() => {
+                                    if (isListening) return t('chat.stopRecording')
+                                    if (showMic) return t('chat.voiceInput')
+                                    if (isGenerating) return t('chat.stopGeneration')
+                                    return t('chat.sendMessage')
+                                })()}
+                                title={(() => {
+                                    if (isListening) return t('chat.stopRecording')
+                                    if (showMic) return t('chat.voiceInput')
+                                    if (isGenerating) return t('chat.stopGeneration')
+                                    return t('chat.sendMessage')
+                                })()}
                             >
-                                {isGenerating ? (
-                                    <svg className="chat-send-btn-icon is-stop" viewBox="0 0 24 24" fill="currentColor">
-                                        <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
-                                    </svg>
-                                ) : isListening ? (
-                                    <svg className="chat-send-btn-icon is-stop" viewBox="0 0 24 24" fill="currentColor">
-                                        <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
-                                    </svg>
-                                ) : showMic ? (
-                                    <svg className="chat-send-btn-icon is-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <rect x="9" y="1" width="6" height="12" rx="3" />
-                                        <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
-                                        <line x1="12" y1="18" x2="12" y2="23" />
-                                        <line x1="8" y1="23" x2="16" y2="23" />
-                                    </svg>
-                                ) : (
-                                    <svg className="chat-send-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                                        <path d="M12 19V5" />
-                                        <path d="M6.5 10.5L12 5l5.5 5.5" />
-                                    </svg>
-                                )}
+                                {(() => {
+                                    if (isGenerating) {
+                                        return (
+                                            <svg className="chat-send-btn-icon is-stop" viewBox="0 0 24 24" fill="currentColor">
+                                                <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
+                                            </svg>
+                                        )
+                                    }
+                                    if (isListening) {
+                                        return (
+                                            <svg className="chat-send-btn-icon is-stop" viewBox="0 0 24 24" fill="currentColor">
+                                                <rect x="5.5" y="5.5" width="13" height="13" rx="2.1" />
+                                            </svg>
+                                        )
+                                    }
+                                    if (showMic) {
+                                        return (
+                                            <svg className="chat-send-btn-icon is-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <rect x="9" y="1" width="6" height="12" rx="3" />
+                                                <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+                                                <line x1="12" y1="18" x2="12" y2="23" />
+                                                <line x1="8" y1="23" x2="16" y2="23" />
+                                            </svg>
+                                        )
+                                    }
+                                    return (
+                                        <svg className="chat-send-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                                            <path d="M12 19V5" />
+                                            <path d="M6.5 10.5L12 5l5.5 5.5" />
+                                        </svg>
+                                    )
+                                })()}
                             </button>
                         </div>
                     )

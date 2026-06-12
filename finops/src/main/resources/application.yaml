@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: finops
+  config:
+    import: "optional:file:${CONFIG_PATH:./config.yaml}"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

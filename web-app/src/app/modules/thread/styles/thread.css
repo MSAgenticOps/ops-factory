@@ -1,0 +1,314 @@
+/* Assistant page header bar (rendered inside the shared conversation shell's 48px header). */
+.thread-header-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+}
+
+.thread-panel-show {
+    margin-left: auto;
+}
+
+/* Assistant switcher: a compact knowledge-base-style select control (radius-md field, not a pill). */
+.thread-switcher {
+    position: relative;
+}
+
+.thread-switcher-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    height: 32px;
+    max-width: 280px;
+    padding: 0 10px;
+    border: 1px solid #d9e0e9;
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.thread-switcher-trigger:hover {
+    border-color: #c7cfdb;
+    background: #fbfcfd;
+}
+
+.thread-switcher-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-switcher-chevron {
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+    transition: transform var(--transition-fast);
+}
+
+.thread-switcher-chevron.open {
+    transform: rotate(180deg);
+}
+
+.thread-switcher-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 60;
+    min-width: 240px;
+    max-width: 320px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--color-bg-primary);
+    border: 1px solid #d7dce3;
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.thread-switcher-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+
+.thread-switcher-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.thread-switcher-option.selected {
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+.thread-switcher-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-switcher-check {
+    flex-shrink: 0;
+    color: var(--color-accent);
+}
+
+/* Proactive-push timeline (rendered inside the shared right-panel body). */
+.thread-timeline-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--spacing-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+/* Push card: reuse the platform list-card visual (ListCard provides border / radius / hover lift); a full-card
+   button leads with the delivered content, with schedule + time below as muted, left-grouped metadata. */
+.thread-push-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.thread-push-button {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 100%;
+    padding: var(--spacing-4);
+    background: transparent;
+    border: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* Header row: schedule name (left) + run time (right) — the muted "envelope" of the push. */
+.thread-push-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+}
+
+.thread-push-schedule {
+    min-width: 0;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-push-time {
+    flex-shrink: 0;
+}
+
+/* Title: the delivered brief's lead line, prominent. */
+.thread-push-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Snippet: a muted secondary line of the brief body. */
+.thread-push-snippet {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.thread-timeline-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-4);
+}
+
+.thread-main-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: var(--spacing-8) var(--spacing-4);
+}
+
+.thread-conversation-error {
+    padding: var(--spacing-2) var(--spacing-6);
+    color: var(--color-error);
+    font-size: var(--font-size-sm);
+}
+
+/* Empty state: no bound assistants. */
+.thread-empty {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thread-empty-card {
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+
+/* Run modal: stable large height so paging short↔long briefs doesn't resize the frame (only the body scrolls). */
+.thread-run-modal {
+    height: min(80vh, 760px);
+}
+
+/* Header: schedule name + muted run-time subtitle (the ←/→ pager lives in the footer now, not a 3rd header row). */
+.thread-run-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.thread-run-title-main {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+.thread-run-title-sub {
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    color: var(--color-text-secondary);
+}
+
+/* Footer: ←/→ pager on the left, equal-weight neutral actions on the right. */
+.thread-run-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: var(--spacing-3);
+}
+
+.thread-run-pager {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.thread-run-pager-pos {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+}
+
+.thread-run-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+/* Delivered brief: capped to a comfortable reading width + a document-like rhythm. */
+.thread-brief {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--spacing-2) 0 var(--spacing-4);
+    font-size: var(--font-size-base);
+    line-height: 1.7;
+    color: var(--color-text-primary);
+}
+
+.thread-brief h1,
+.thread-brief h2,
+.thread-brief h3 {
+    margin: 1.4em 0 0.5em;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.thread-brief h1 { font-size: 1.2rem; }
+.thread-brief h2 { font-size: 1.05rem; }
+.thread-brief h3 { font-size: 0.95rem; color: var(--color-text-secondary); }
+
+.thread-brief p { margin: 0.6em 0; }
+
+.thread-brief ul,
+.thread-brief ol {
+    margin: 0.6em 0;
+    padding-left: 1.4em;
+}
+
+.thread-brief li { margin: 0.3em 0; }
+
+.thread-brief strong { font-weight: 600; }
+
+.thread-brief hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 1.5em 0;
+}
+
+.thread-brief code {
+    font-size: 0.9em;
+    background: var(--color-bg-secondary);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.thread-brief > :first-child { margin-top: 0; }
+.thread-brief > :last-child { margin-bottom: 0; }

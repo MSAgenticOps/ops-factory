@@ -1,6 +1,11 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -13,13 +18,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
+/**
+ * Prepares per-user runtime directories with symlinks to shared agent config and working directories.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Component
 public class RuntimePreparer {
-
     private static final Logger log = LoggerFactory.getLogger(RuntimePreparer.class);
 
     private final GatewayProperties properties;
 
+    /**
+     * Creates the runtime preparer instance.
+     *
+     * @param properties gateway configuration properties
+     */
     public RuntimePreparer(GatewayProperties properties) {
         this.properties = properties;
     }
@@ -28,9 +43,19 @@ public class RuntimePreparer {
      * Prepare the per-user runtime directory for an agent instance.
      * Creates directories and symlinks to shared agent config.
      *
+     * @param agentId agent instance identifier
+     * @param userId user identifier
      * @return the runtime root path for this (agentId, userId)
      */
-    public Path prepare(String agentId, String userId) throws IOException {
+    public Path prepare(String agentId, String userId) {
+        try {
+            return doPrepare(agentId, userId);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to prepare runtime directory for " + agentId, e);
+        }
+    }
+
+    private Path doPrepare(String agentId, String userId) throws IOException {
         Path gatewayRoot = properties.getGatewayRootPath();
         Path agentsDir = gatewayRoot.resolve(properties.getPaths().getAgentsDir());
         Path usersDir = gatewayRoot.resolve(properties.getPaths().getUsersDir());
@@ -62,17 +87,18 @@ public class RuntimePreparer {
         Files.createDirectories(userAgentDir.resolve("data"));
         Files.createDirectories(userAgentDir.resolve("uploads"));
 
+        // Per-user memory seeding is centralized in AgentConfigService.ensureMemorySeeded and
+        // triggered from the spawn path (InstanceManager) and the memory tab, so both readers seed
+        // the same dir exactly once. Nothing to seed here.
         return userAgentDir;
     }
 
     private void cleanDisallowedSkillDirs(Path userAgentDir) throws IOException {
-        List<Path> skillDirs = List.of(
-                userAgentDir.resolve(".goose").resolve("skills"),
-                userAgentDir.resolve(".claude").resolve("skills"),
-                userAgentDir.resolve(".agents").resolve("skills"),
-                userAgentDir.resolve("home").resolve(".agents").resolve("skills"),
-                userAgentDir.resolve("home").resolve(".claude").resolve("skills"),
-                userAgentDir.resolve("home").resolve(".config").resolve("agents").resolve("skills"));
+        List<Path> skillDirs = List.of(userAgentDir.resolve(".goose").resolve("skills"),
+            userAgentDir.resolve(".claude").resolve("skills"), userAgentDir.resolve(".agents").resolve("skills"),
+            userAgentDir.resolve("home").resolve(".agents").resolve("skills"),
+            userAgentDir.resolve("home").resolve(".claude").resolve("skills"),
+            userAgentDir.resolve("home").resolve(".config").resolve("agents").resolve("skills"));
 
         for (Path skillDir : skillDirs) {
             deleteIfExists(skillDir);

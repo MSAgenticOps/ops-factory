@@ -1,13 +1,18 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeCard from './TypeCard'
+import TypeFormModal from './TypeFormModal'
 import ListSearchInput from '../../../platform/ui/list/ListSearchInput'
 import ListResultsMeta from '../../../platform/ui/list/ListResultsMeta'
-import type { ClusterType, Cluster } from '../../../../types/host'
+import { useToast } from '../../../platform/providers/ToastContext'
+import { useConfirmDialog } from '../../../platform/providers/ConfirmDialogContext'
+import type { ClusterType, Cluster, SolutionType } from '../../../../types/host'
+import { useFormValidation } from '../../../../utils/useFormValidation'
 
 type Props = {
     clusterTypes: ClusterType[]
     clusters: Cluster[]
+    solutionTypes: SolutionType[]
     loading: boolean
     onCreate: (body: Partial<ClusterType>) => Promise<ClusterType>
     onUpdate: (id: string, body: Partial<ClusterType>) => Promise<ClusterType>
@@ -23,6 +28,7 @@ type FormData = {
     commandPrefix: string
     envVariables: { key: string; value: string }[]
     mode: 'peer' | 'primary-backup'
+    solutionType: string
 }
 
 const emptyForm: FormData = {
@@ -30,21 +36,38 @@ const emptyForm: FormData = {
     commandPrefix: '',
     envVariables: [],
     mode: 'peer',
+    solutionType: 'universal',
 }
 
-export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCreate, onUpdate, onDelete }: Props) {
+export default function ClusterTypeTab({ clusterTypes, clusters, solutionTypes, loading, onCreate, onUpdate, onDelete }: Props) {
     const { t } = useTranslation()
+    const { showToast } = useToast()
+    const { requestConfirm } = useConfirmDialog()
+    const { validateFormData, validateEnvVariables } = useFormValidation()
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<ClusterType | null>(null)
     const [form, setForm] = useState<FormData>(emptyForm)
     const [saving, setSaving] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [solutionFilter, setSolutionFilter] = useState<string>('all')
 
     const filteredTypes = useMemo(() => {
-        if (!searchTerm.trim()) return clusterTypes
+        let result = clusterTypes
+        if (solutionFilter !== 'all') {
+            result = result.filter(ct => {
+                const sol = ct.solutionType ?? 'universal'
+                // Only show exact match or universal when explicitly selected
+                if (solutionFilter === 'universal') {
+                    return sol === 'universal'
+                }
+                return sol === solutionFilter
+            })
+        }
+        if (!searchTerm.trim()) return result
         const term = searchTerm.toLowerCase()
-        return clusterTypes.filter(ct => ct.name.toLowerCase().includes(term))
-    }, [clusterTypes, searchTerm])
+        return result.filter(ct => ct.name.toLowerCase().includes(term))
+    }, [clusterTypes, searchTerm, solutionFilter])
 
     const openCreate = useCallback(() => {
         setEditing(null)
@@ -63,41 +86,201 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
             commandPrefix: item.commandPrefix ?? '',
             envVariables: item.envVariables ?? [],
             mode: item.mode ?? 'peer',
+            solutionType: item.solutionType ?? 'universal',
         })
         setShowModal(true)
     }, [])
 
     const handleSave = useCallback(async () => {
-        if (!form.name.trim()) return
+        if (!form.name.trim() || !form.code.trim()) return
         setSaving(true)
         try {
+            // Validate and sanitize form fields (name/code only; description allows any characters)
+            const fieldLabels = {
+                name: t('hostResource.typeName'),
+                code: t('hostResource.typeCode'),
+            }
+            const validationResult = validateFormData(
+                form,
+                ['name', 'code'],
+                fieldLabels
+            )
+
+            if (!validationResult.valid) {
+                setSaving(false)
+                return
+            }
+
+            const sanitizedForm = validationResult.sanitized
+
+            // Validate and sanitize environment variables
+            const envResult = validateEnvVariables(form.envVariables)
+            if (!envResult.valid) {
+                setSaving(false)
+                return
+            }
+
+            const nonEmptyEnvVars = envResult.sanitized.filter(ev => ev.key.trim() !== '')
+
+            // Check for duplicate env variable keys (case-insensitive)
+            const envKeys = nonEmptyEnvVars.map(ev => ev.key.trim().toLowerCase())
+            const uniqueEnvKeys = new Set(envKeys)
+            if (envKeys.length !== uniqueEnvKeys.size) {
+                showToast('error', t('hostResource.duplicateEnvVarKey'))
+                setSaving(false)
+                return
+            }
+
+            const cleanedForm = {
+                ...sanitizedForm,
+                envVariables: nonEmptyEnvVars,
+            }
+
+            // Check for duplicate name
+            const duplicateName = clusterTypes.find(ct => ct.name === cleanedForm.name && ct.id !== editing?.id)
+            if (duplicateName) {
+                showToast('error', t('hostResource.duplicateName', { name: cleanedForm.name }))
+                setSaving(false)
+                return
+            }
+
+            // Check for duplicate code
+            const duplicateCode = clusterTypes.find(ct => ct.code === cleanedForm.code && ct.id !== editing?.id)
+            if (duplicateCode) {
+                showToast('error', t('hostResource.duplicateCode', { code: cleanedForm.code }))
+                setSaving(false)
+                return
+            }
+
             if (editing) {
-                await onUpdate(editing.id, form)
+                const inUseByName = clusters.filter(c => c.type === cleanedForm.name)
+                // Only check code if it's not empty (empty string is not a valid type identifier)
+                const inUseByCode = editing.code ? clusters.filter(c => c.type === editing.code) : []
+                const nameChanged = cleanedForm.name !== editing.name
+                const codeChanged = cleanedForm.code !== editing.code
+
+                if (codeChanged && inUseByCode.length > 0) {
+                    const inUseClusters = inUseByCode.map(c => c.name).join(', ')
+                    showToast('warning', t('hostResource.clusterTypeInUse', { name: cleanedForm.code, clusters: inUseClusters }))
+                    setSaving(false)
+                    return
+                }
+
+                if (nameChanged && inUseByName.length > 0) {
+                    const inUseClusters = inUseByName.map(c => c.name).join(', ')
+                    showToast('warning', t('hostResource.clusterTypeInUse', { name: cleanedForm.name, clusters: inUseClusters }))
+                    setSaving(false)
+                    return
+                }
+
+                await onUpdate(editing.id, cleanedForm)
             } else {
-                await onCreate(form)
+                await onCreate(cleanedForm)
             }
             setShowModal(false)
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed')
+            showToast('error', err instanceof Error ? err.message : 'Failed')
         } finally {
             setSaving(false)
         }
-    }, [editing, form, onCreate, onUpdate])
+    }, [editing, form, clusterTypes, clusters, onCreate, onUpdate, showToast, t, validateFormData, validateEnvVariables])
 
     const handleDelete = useCallback(async (item: ClusterType) => {
-        const inUse = clusters.filter(c => c.type === item.name)
-        if (inUse.length > 0) {
-            alert(t('hostResource.clusterTypeInUse', { name: item.name, clusters: inUse.map(c => c.name).join(', ') }))
+        const inUseByName = clusters.filter(c => c.type === item.name)
+        // Only check code if it's not empty (empty string is not a valid type identifier)
+        const inUseByCode = item.code ? clusters.filter(c => c.type === item.code) : []
+        if (inUseByName.length > 0 || inUseByCode.length > 0) {
+            // Combine both sets of clusters, avoiding duplicates
+            const allInUse = [...inUseByName, ...inUseByCode.filter(c => !inUseByName.includes(c))]
+            const clusterNames = allInUse.map(c => c.name).join(', ')
+            showToast('warning', t('hostResource.clusterTypeInUse', { name: item.name, clusters: clusterNames }))
             return
         }
-        if (confirm(t('hostResource.confirmDeleteClusterType'))) {
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: t('hostResource.confirmDeleteClusterType'),
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
+        if (confirmed) {
             try {
                 await onDelete(item.id)
             } catch (err) {
-                alert(err instanceof Error ? err.message : 'Failed')
+                showToast('error', err instanceof Error ? err.message : 'Failed')
             }
         }
-    }, [clusters, onDelete, t])
+    }, [clusters, onDelete, t, requestConfirm, showToast])
+
+    const handleToggleSelect = useCallback((item: ClusterType) => {
+        setSelectedIds(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(item.id)) {
+                newSet.delete(item.id)
+            } else {
+                newSet.add(item.id)
+            }
+            return newSet
+        })
+    }, [])
+
+    const handleSelectAll = useCallback(() => {
+        if (selectedIds.size === filteredTypes.length) {
+            setSelectedIds(new Set())
+        } else {
+            setSelectedIds(new Set(filteredTypes.map(ct => ct.id)))
+        }
+    }, [filteredTypes.length, selectedIds.size])
+
+    const handleBatchDelete = useCallback(async () => {
+        const selectedItems = clusterTypes.filter(ct => selectedIds.has(ct.id))
+        if (selectedItems.length === 0) return
+
+        const inUseItems: ClusterType[] = []
+        for (const item of selectedItems) {
+            const inUse = clusters.filter(c => c.type === item.name)
+            if (inUse.length > 0) {
+                inUseItems.push(item)
+            }
+        }
+        if (inUseItems.length > 0) {
+            const names = inUseItems.map(item => item.name).join(', ')
+            showToast('warning', t('hostResource.clusterTypesInUseBatch', { names }))
+            return
+        }
+
+        const confirmed = await requestConfirm({
+            title: t('common.confirmTitle'),
+            message: t('hostResource.confirmDeleteClusterTypes', { count: selectedItems.length }),
+            variant: 'danger',
+            confirmLabel: t('common.delete'),
+        })
+
+        if (!confirmed) return
+
+        try {
+            const results = await Promise.allSettled(
+                Array.from(selectedIds).map(id => onDelete(id))
+            )
+
+            const successful = results.filter(r => r.status === 'fulfilled').length
+            const failed = results.filter(r => r.status === 'rejected').length
+            const totalCount = selectedIds.size
+
+            if (failed > 0) {
+                showToast('warning', t('hostResource.deletePartialResult', {
+                    success: successful,
+                    failed,
+                    total: totalCount
+                }))
+            } else {
+                showToast('success', t('hostResource.deleteSuccess', { count: totalCount }))
+            }
+
+            setSelectedIds(new Set())
+        } catch (err) {
+            showToast('error', err instanceof Error ? err.message : 'Failed')
+        }
+    }, [clusterTypes, clusters, selectedIds, onDelete, t, requestConfirm, showToast])
 
     const updateEnvVar = useCallback((index: number, field: 'key' | 'value', val: string) => {
         setForm(f => {
@@ -132,13 +315,46 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                 </button>
             </div>
 
-            {loading ? (
+            {solutionTypes.length > 0 && (
+                <div className="hr-solution-filter-bar">
+                    <button
+                        className={`hr-solution-filter-pill ${solutionFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setSolutionFilter('all')}
+                    >
+                        {t('hostResource.filterAll')}
+                    </button>
+                    <button
+                        className={`hr-solution-filter-pill ${solutionFilter === 'universal' ? 'active' : ''}`}
+                        onClick={() => setSolutionFilter('universal')}
+                    >
+                        {t('hostResource.filterUniversal')}
+                    </button>
+                    {solutionTypes.map(st => (
+                        <button
+                            key={st.id}
+                            className={`hr-solution-filter-pill ${solutionFilter === st.code ? 'active' : ''}`}
+                            onClick={() => setSolutionFilter(st.code)}
+                        >
+                            {st.name}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {loading && (
                 <div className="hr-empty">{t('common.loading')}</div>
-            ) : clusterTypes.length === 0 ? (
+            )}
+            {!loading && clusterTypes.length === 0 && (
                 <div className="hr-type-tab-empty">
                     <div className="hr-type-tab-empty-text">{t('hostResource.noClusterTypes')}</div>
                 </div>
-            ) : (
+            )}
+            {!loading && clusterTypes.length > 0 && filteredTypes.length === 0 && (
+                <div className="hr-type-tab-empty">
+                    <div className="hr-type-tab-empty-text">{t('hostResource.noMatchingClusterTypes')}</div>
+                </div>
+            )}
+            {!loading && filteredTypes.length > 0 && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-3)' }}>
                         <ListSearchInput
@@ -152,11 +368,36 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                             </ListResultsMeta>
                         )}
                     </div>
+                    {selectedIds.size > 0 && (
+                        <div className="hr-batch-bar">
+                            <input
+                                type="checkbox"
+                                checked={selectedIds.size === filteredTypes.length}
+                                onChange={handleSelectAll}
+                                className="hr-batch-bar-checkbox"
+                            />
+                            <span className="hr-batch-bar-label">
+                                {selectedIds.size > 0 ? t('common.selectedCount', { count: selectedIds.size }) : t('common.selectAll')}
+                            </span>
+                            <div className="hr-batch-bar-spacer" />
+                            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedIds(new Set())}>
+                                {t('common.cancel')}
+                            </button>
+                            <button
+                                className="btn btn-primary btn-sm hr-batch-bar-delete"
+                                onClick={handleBatchDelete}
+                            >
+                                {t('common.delete')} ({selectedIds.size})
+                            </button>
+                        </div>
+                    )}
                     <div className="hr-type-def-grid">
                         {filteredTypes.map(ct => (
                             <TypeCard
                                 key={ct.id}
                                 item={ct}
+                                selected={selectedIds.has(ct.id)}
+                                onSelect={handleToggleSelect}
                                 onEdit={openEdit}
                                 onDelete={handleDelete}
                             />
@@ -165,49 +406,29 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                 </>
             )}
 
-            {/* Modal */}
             {showModal && (
-                <div className="hr-host-modal modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h3>{editing ? t('hostResource.editClusterType') : t('hostResource.createClusterType')}</h3>
-                            <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
-                        </div>
-                        <div className="modal-body">
+                <TypeFormModal
+                    title={editing ? t('hostResource.editClusterType') : t('hostResource.createClusterType')}
+                    form={form}
+                    setForm={setForm}
+                    saving={saving}
+                    onSave={handleSave}
+                    onClose={() => setShowModal(false)}
+                    isEditing={editing !== null}
+                    extraFields={
+                        <>
                             <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeName')}</label>
-                                <input
+                                <label className="form-label">{t('hostResource.solutionType')}</label>
+                                <select
                                     className="form-input"
-                                    value={form.name}
-                                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                    placeholder={t('hostResource.typeName')}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeCode')}</label>
-                                <input
-                                    className="form-input"
-                                    value={form.code}
-                                    onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-                                    placeholder={t('hostResource.typeCode')}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.description')}</label>
-                                <input
-                                    className="form-input"
-                                    value={form.description}
-                                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">{t('hostResource.typeColor')}</label>
-                                <input
-                                    type="color"
-                                    value={form.color}
-                                    onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                                    style={{ width: 48, height: 32, padding: 2, cursor: 'pointer' }}
-                                />
+                                    value={form.solutionType}
+                                    onChange={e => setForm(f => ({ ...f, solutionType: e.target.value }))}
+                                >
+                                    <option value="universal">{t('hostResource.universal')}</option>
+                                    {solutionTypes.map(st => (
+                                        <option key={st.id} value={st.code}>{st.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">{t('hostResource.clusterMode')}</label>
@@ -221,23 +442,13 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">{t('hostResource.knowledge')}</label>
-                                <textarea
-                                    className="form-input"
-                                    rows={5}
-                                    value={form.knowledge}
-                                    onChange={e => setForm(f => ({ ...f, knowledge: e.target.value }))}
-                                    placeholder={t('hostResource.knowledgeHint')}
-                                    style={{ resize: 'vertical' }}
-                                />
-                            </div>
-                            <div className="form-group">
                                 <label className="form-label">{t('hostResource.commandPrefix')}</label>
                                 <input
                                     className="form-input"
                                     value={form.commandPrefix}
                                     onChange={e => setForm(f => ({ ...f, commandPrefix: e.target.value }))}
                                     placeholder={t('hostResource.commandPrefixPlaceholder')}
+                                    maxLength={100}
                                 />
                             </div>
                             <div className="form-group">
@@ -250,6 +461,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                                             placeholder={t('hostResource.varKey')}
                                             onChange={e => updateEnvVar(i, 'key', e.target.value)}
                                             style={{ flex: 1 }}
+                                            maxLength={100}
                                         />
                                         <input
                                             className="form-input"
@@ -257,6 +469,7 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                                             placeholder={t('hostResource.varValue')}
                                             onChange={e => updateEnvVar(i, 'value', e.target.value)}
                                             style={{ flex: 1 }}
+                                            maxLength={500}
                                         />
                                         <button className="btn btn-secondary btn-sm" onClick={() => removeEnvVar(i)}>×</button>
                                     </div>
@@ -265,21 +478,9 @@ export default function ClusterTypeTab({ clusterTypes, clusters, loading, onCrea
                                     + {t('hostResource.addEnvVar')}
                                 </button>
                             </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                                {t('common.cancel')}
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSave}
-                                disabled={saving || !form.name.trim()}
-                            >
-                                {saving ? t('common.saving') : t('common.save')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                        </>
+                    }
+                />
             )}
         </div>
     )

@@ -1,6 +1,14 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.process;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
+
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -10,24 +18,46 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.Assert.assertTrue;
-
+/**
+ * Test coverage for Runtime Preparer.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 public class RuntimePreparerTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private RuntimePreparer preparer;
+
     private Path gatewayRoot;
 
+    /**
+     * Sets the up.
+     *
+     * @throws IOException if the operation fails
+     */
     @Before
     public void setUp() throws IOException {
+        // Check if symbolic links are supported (requires admin privileges on Windows)
+        Path testLink = tempFolder.getRoot().toPath().resolve("test-symlink-check");
+        Path testTarget = tempFolder.getRoot().toPath().resolve("test-target");
+        Files.createDirectory(testTarget);
+        boolean supportsSymlinks;
+        try {
+            Files.createSymbolicLink(testLink, testTarget);
+            supportsSymlinks = true;
+            Files.deleteIfExists(testLink);
+        } catch (Exception e) {
+            supportsSymlinks = false;
+        }
+        assumeTrue("Symbolic links not supported (requires admin privileges on Windows)", supportsSymlinks);
+
         gatewayRoot = tempFolder.getRoot().toPath().resolve("gateway");
         Files.createDirectories(gatewayRoot.resolve("agents").resolve("test-agent").resolve("config"));
         Files.writeString(gatewayRoot.resolve("agents").resolve("test-agent").resolve("config").resolve("config.yaml"),
-                "GOOSE_PROVIDER: openai\n");
-        Files.writeString(gatewayRoot.resolve("agents").resolve("test-agent").resolve("AGENTS.md"),
-                "# Test\n");
+            "GOOSE_PROVIDER: openai\n");
+        Files.writeString(gatewayRoot.resolve("agents").resolve("test-agent").resolve("AGENTS.md"), "# Test\n");
         Files.createDirectories(gatewayRoot.resolve("users"));
 
         GatewayProperties properties = new GatewayProperties();
@@ -38,6 +68,11 @@ public class RuntimePreparerTest {
         preparer = new RuntimePreparer(properties);
     }
 
+    /**
+     * Tests prepare creates directories.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testPrepare_createsDirectories() throws IOException {
         Path result = preparer.prepare("test-agent", "user1");
@@ -48,6 +83,11 @@ public class RuntimePreparerTest {
         assertTrue(Files.isDirectory(result.resolve("home")));
     }
 
+    /**
+     * Tests prepare creates config symlink.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testPrepare_createsConfigSymlink() throws IOException {
         Path result = preparer.prepare("test-agent", "user1");
@@ -57,6 +97,11 @@ public class RuntimePreparerTest {
         assertTrue(Files.isSymbolicLink(configLink));
     }
 
+    /**
+     * Tests prepare creates agents md symlink.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testPrepare_createsAgentsMdSymlink() throws IOException {
         Path result = preparer.prepare("test-agent", "user1");
@@ -66,6 +111,11 @@ public class RuntimePreparerTest {
         assertTrue(Files.isSymbolicLink(mdLink));
     }
 
+    /**
+     * Tests prepare idempotent.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testPrepare_idempotent() throws IOException {
         Path result1 = preparer.prepare("test-agent", "user1");
@@ -75,15 +125,23 @@ public class RuntimePreparerTest {
         assertTrue(Files.isSymbolicLink(result2.resolve("config")));
     }
 
+    /**
+     * Tests prepare removes disallowed skill directories.
+     *
+     * @throws IOException if the operation fails
+     */
     @Test
     public void testPrepare_removesDisallowedSkillDirectories() throws IOException {
         Path runtimeRoot = gatewayRoot.resolve("users").resolve("user1").resolve("agents").resolve("test-agent");
         Files.createDirectories(runtimeRoot.resolve(".goose").resolve("skills").resolve("local-skill"));
         Files.createDirectories(runtimeRoot.resolve(".claude").resolve("skills").resolve("local-skill"));
         Files.createDirectories(runtimeRoot.resolve(".agents").resolve("skills").resolve("local-skill"));
-        Files.createDirectories(runtimeRoot.resolve("home").resolve(".agents").resolve("skills").resolve("global-skill"));
-        Files.createDirectories(runtimeRoot.resolve("home").resolve(".claude").resolve("skills").resolve("global-skill"));
-        Files.createDirectories(runtimeRoot.resolve("home").resolve(".config").resolve("agents").resolve("skills").resolve("global-skill"));
+        Files.createDirectories(
+            runtimeRoot.resolve("home").resolve(".agents").resolve("skills").resolve("global-skill"));
+        Files.createDirectories(
+            runtimeRoot.resolve("home").resolve(".claude").resolve("skills").resolve("global-skill"));
+        Files.createDirectories(
+            runtimeRoot.resolve("home").resolve(".config").resolve("agents").resolve("skills").resolve("global-skill"));
         Files.createDirectories(runtimeRoot.resolve(".goose").resolve("memory"));
         Files.writeString(runtimeRoot.resolve(".goose").resolve("memory").resolve("notes.txt"), "keep");
 
@@ -94,7 +152,8 @@ public class RuntimePreparerTest {
         org.junit.Assert.assertFalse(Files.exists(result.resolve(".agents").resolve("skills")));
         org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".agents").resolve("skills")));
         org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".claude").resolve("skills")));
-        org.junit.Assert.assertFalse(Files.exists(result.resolve("home").resolve(".config").resolve("agents").resolve("skills")));
+        org.junit.Assert
+            .assertFalse(Files.exists(result.resolve("home").resolve(".config").resolve("agents").resolve("skills")));
         assertTrue(Files.exists(result.resolve(".goose").resolve("memory").resolve("notes.txt")));
     }
 

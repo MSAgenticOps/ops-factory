@@ -1,0 +1,82 @@
+version: "1.0.0"
+title: "Windows Gateway 自动部署任务"
+description: "每天凌晨3点自动克隆代码、编译Gateway项目、编译Operation Intelligence项目、编译Control Center项目、编译Agents MCP服务、编译Webapp项目、验证文件并上传到服务器的自动化部署任务"
+instructions: |
+  执行以下步骤完成Gateway和Webapp项目的自动化部署：
+
+  1. 克隆/更新代码仓库
+     - 检查目录 C:\zhulin\ops-factory 是否存在
+     - 如果存在，执行 git pull origin main
+     - 如果不存在，执行 git clone https://github.com/your-org/ops-factory.git C:\zhulin\ops-factory
+
+  2. 编译 gateway 项目
+     - 进入目录 C:\zhulin\ops-factory\gateway
+     - 执行 Maven 编译命令: C:\zhulin\apache-maven-3.9.14\bin\mvn clean package -DskipTests
+     - 检查编译是否成功(errorlevel 为0表示成功)
+
+  2b. 编译 operation-intelligence 项目
+      - 进入目录 C:\zhulin\ops-factory\operation-intelligence
+      - 执行 Maven 编译命令: C:\zhulin\apache-maven-3.9.14\bin\mvn clean package -DskipTests
+      - 检查编译是否成功(errorlevel 为0表示成功)
+      - 验证文件存在: C:\zhulin\ops-factory\operation-intelligence\target\operation-intelligence.jar
+
+  2c. 编译 control-center 项目
+      - 进入目录 C:\zhulin\ops-factory\control-center
+      - 执行 Maven 编译命令: C:\zhulin\apache-maven-3.9.14\bin\mvn clean package -DskipTests
+      - 检查编译是否成功(errorlevel 为0表示成功)
+      - 验证文件存在: C:\zhulin\ops-factory\control-center\target\control-center.jar
+
+  2d. 编译 knowledge-service 项目
+      - 进入目录 C:\zhulin\ops-factory\knowledge-service
+      - 执行 Maven 编译命令: C:\zhulin\apache-maven-3.9.14\bin\mvn clean package -DskipTests
+      - 检查编译是否成功(errorlevel 为0表示成功)
+      - 验证文件存在: C:\zhulin\ops-factory\knowledge-service\target\knowledge-service.jar
+
+  2e. 编译 skill-market 项目
+      - 进入目录 C:\zhulin\ops-factory\skill-market
+      - 执行 Maven 编译命令: C:\zhulin\apache-maven-3.9.14\bin\mvn clean package -DskipTests
+      - 检查编译是否成功(errorlevel 为0表示成功)
+      - 验证文件存在: C:\zhulin\ops-factory\skill-market\target\skill-market.jar
+
+  3. 准备 Agents MCP 服务
+     - sop-executor 仍需要执行 npm install && npm run build（编译TypeScript为JavaScript）:
+       a. cd C:\zhulin\ops-factory\gateway\agents\qos-agent\config\mcp\sop-executor && npm install && npm run build
+     - 检查每个命令是否成功(errorlevel 为0表示成功)
+
+  4. 编译 webapp 项目
+     - 进入目录 C:\zhulin\ops-factory\webapp
+     - 执行 npm 编译命令: npm run build
+     - 检查编译是否成功(errorlevel 为0表示成功)
+
+  5. 准备 gateway-service 文件
+     - 验证文件是否存在: C:\zhulin\ops-factory\gateway\gateway-service\target\gateway-service.jar
+     - 如果文件不存在，任务失败并退出
+
+  5b. 准备 operation-intelligence 文件
+      - 验证文件是否存在: C:\zhulin\ops-factory\operation-intelligence\target\operation-intelligence.jar
+      - 如果文件不存在，OI 部署将被跳过（不影响 gateway/webapp）
+
+  5c. 准备 control-center 文件
+      - 验证文件是否存在: C:\zhulin\ops-factory\control-center\target\control-center.jar
+      - 如果文件不存在，CC 部署将被跳过（不影响 gateway/webapp）
+      
+  5d. 准备 knowledge-service 文件
+      - 验证文件是否存在: C:\zhulin\ops-factory\knowledge-service\target\knowledge-service.jar
+      - 如果文件不存在，KS 部署将被跳过（不影响 gateway/webapp）
+
+  5e. 准备 skill-market 文件
+      - 验证文件是否存在: C:\zhulin\ops-factory\skill-market\target\skill-market.jar
+      - 如果文件不存在，SM 部署将被跳过（不影响 gateway/webapp）
+
+  6. 执行文件上传脚本
+     - 执行脚本: C:\zhulin\goose\upload-opsfactory.bat
+     - 该脚本会自动压缩 lib 目录、agents 目录和 webapp dist，然后上传到服务器
+     - 上传完成后自动执行远程部署脚本 handle_ops_app.sh
+     - 检查脚本执行是否成功
+
+  环境要求：
+  - Java: JDK 21.0.10 (C:\Program Files\Java\jdk-21.0.10)
+  - Maven: 3.9.14 (C:\zhulin\apache-maven-3.9.14)
+  - Node.js: 确保已安装 npm
+  - 工作目录: C:\deployment
+  - MAVEN_OPTS: -Xmx2g -Xms1g

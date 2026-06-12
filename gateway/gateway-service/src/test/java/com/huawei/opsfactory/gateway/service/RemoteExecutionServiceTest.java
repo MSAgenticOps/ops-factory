@@ -1,6 +1,18 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -9,19 +21,19 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
-
+/**
+ * Test coverage for Remote Execution Service.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @RunWith(MockitoJUnitRunner.class)
 public class RemoteExecutionServiceTest {
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -38,22 +50,28 @@ public class RemoteExecutionServiceTest {
     private ClusterTypeService clusterTypeService;
 
     private RemoteExecutionService remoteExecutionService;
+
     private GatewayProperties properties;
 
+    /**
+     * Sets the up.
+     */
     @Before
     public void setUp() {
         properties = new GatewayProperties();
-        remoteExecutionService = new RemoteExecutionService(
-                hostService, commandWhitelistService, properties,
-                clusterService, clusterTypeService);
+        remoteExecutionService = new RemoteExecutionService(hostService, commandWhitelistService, properties,
+            clusterService, clusterTypeService);
     }
 
     // ── execute: host not found ──────────────────────────────────
 
+    /**
+     * Tests execute host not found.
+     */
     @Test
-    public void testExecute_hostNotFound() {
+    public void testExecute_hostNotFound() throws Exception {
         when(hostService.getHostWithCredential("nonexistent"))
-                .thenThrow(new IllegalArgumentException("Host not found: nonexistent"));
+            .thenThrow(new NotFoundException("Host not found: nonexistent"));
 
         Map<String, Object> result = remoteExecutionService.execute("nonexistent", "ps -ef", 30);
 
@@ -64,8 +82,11 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: command rejected by whitelist ───────────────────
 
+    /**
+     * Tests execute command rejected.
+     */
     @Test
-    public void testExecute_commandRejected() {
+    public void testExecute_commandRejected() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "TestHost");
         host.put("ip", "192.168.1.1");
@@ -75,8 +96,7 @@ public class RemoteExecutionServiceTest {
         host.put("credential", "secret");
         when(hostService.getHostWithCredential("host-1")).thenReturn(host);
 
-        when(commandWhitelistService.validateCommand("rm -rf /"))
-                .thenReturn(List.of("rm"));
+        when(commandWhitelistService.validateCommand("rm -rf /")).thenReturn(List.of("rm"));
 
         Map<String, Object> result = remoteExecutionService.execute("host-1", "rm -rf /", 30);
 
@@ -87,11 +107,15 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: SSH connection fails (invalid host) ─────────────
 
+    /**
+     * Tests execute ssh connection fails.
+     */
     @Test
-    public void testExecute_sshConnectionFails() {
+    public void testExecute_sshConnectionFails() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "BadHost");
-        host.put("ip", "256.256.256.256"); // invalid IP
+        // invalid IP
+        host.put("ip", "256.256.256.256");
         host.put("port", 22);
         host.put("username", "root");
         host.put("authType", "password");
@@ -110,8 +134,11 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: whitelist validation passes, SSH fails gracefully ─
 
+    /**
+     * Tests execute whitelist checked before ssh.
+     */
     @Test
-    public void testExecute_whitelistCheckedBeforeSsh() {
+    public void testExecute_whitelistCheckedBeforeSsh() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -122,8 +149,7 @@ public class RemoteExecutionServiceTest {
         when(hostService.getHostWithCredential("host-1")).thenReturn(host);
 
         // Command rejected - should NOT attempt SSH
-        when(commandWhitelistService.validateCommand("reboot"))
-                .thenReturn(List.of("reboot"));
+        when(commandWhitelistService.validateCommand("reboot")).thenReturn(List.of("reboot"));
 
         Map<String, Object> result = remoteExecutionService.execute("host-1", "reboot", 30);
 
@@ -134,8 +160,11 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: port from Number ────────────────────────────────
 
+    /**
+     * Tests execute host with non default port.
+     */
     @Test
-    public void testExecute_hostWithNonDefaultPort() {
+    public void testExecute_hostWithNonDefaultPort() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -154,8 +183,11 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: key auth type ───────────────────────────────────
 
+    /**
+     * Tests execute key auth type.
+     */
     @Test
-    public void testExecute_keyAuthType() {
+    public void testExecute_keyAuthType() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "KeyHost");
         host.put("ip", "10.0.0.1");
@@ -175,8 +207,11 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: missing port uses default 22 ────────────────────
 
+    /**
+     * Tests execute missing port defaults to22.
+     */
     @Test
-    public void testExecute_missingPortDefaultsTo22() {
+    public void testExecute_missingPortDefaultsTo22() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -194,8 +229,11 @@ public class RemoteExecutionServiceTest {
 
     // ── execute: empty command ───────────────────────────────────
 
+    /**
+     * Tests execute empty command.
+     */
     @Test
-    public void testExecute_emptyCommand() {
+    public void testExecute_emptyCommand() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -213,8 +251,11 @@ public class RemoteExecutionServiceTest {
 
     // ── env variable replacement + command prefix ─────────────────
 
+    /**
+     * Tests execute host without cluster no prefix no vars.
+     */
     @Test
-    public void testExecute_hostWithoutCluster_noPrefixNoVars() {
+    public void testExecute_hostWithoutCluster_noPrefixNoVars() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -233,8 +274,11 @@ public class RemoteExecutionServiceTest {
         // SSH will fail but command was processed without prefix/vars
     }
 
+    /**
+     * Tests execute env vars replaced before whitelist check.
+     */
     @Test
-    public void testExecute_envVarsReplacedBeforeWhitelistCheck() {
+    public void testExecute_envVarsReplacedBeforeWhitelistCheck() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -261,8 +305,7 @@ public class RemoteExecutionServiceTest {
 
         // Whitelist should see the RESOLVED command (after variable replacement, before prefix)
         // "cd ${NSLB_HOME} && ls" -> "cd /opt/nslb && ls"
-        when(commandWhitelistService.validateCommand("cd /opt/nslb && ls"))
-                .thenReturn(List.of("cd"));
+        when(commandWhitelistService.validateCommand("cd /opt/nslb && ls")).thenReturn(List.of("cd"));
 
         Map<String, Object> result = remoteExecutionService.execute("host-1", "cd ${NSLB_HOME} && ls", 30);
 
@@ -272,8 +315,11 @@ public class RemoteExecutionServiceTest {
         assertTrue(((List<?>) result.get("rejectedCommands")).contains("cd"));
     }
 
+    /**
+     * Tests execute with cluster type prefix applied to ssh command.
+     */
     @Test
-    public void testExecute_withClusterTypePrefix_appliedToSshCommand() {
+    public void testExecute_withClusterTypePrefix_appliedToSshCommand() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -298,8 +344,7 @@ public class RemoteExecutionServiceTest {
 
         // After replacement: "cd /opt/nslb && ls" - whitelisted
         // After prefix: "sudo -u nslb cd /opt/nslb && ls"
-        when(commandWhitelistService.validateCommand("cd /opt/nslb && ls"))
-                .thenReturn(List.of());
+        when(commandWhitelistService.validateCommand("cd /opt/nslb && ls")).thenReturn(List.of());
 
         Map<String, Object> result = remoteExecutionService.execute("host-1", "cd ${NSLB_HOME} && ls", 5);
 
@@ -310,8 +355,11 @@ public class RemoteExecutionServiceTest {
         verify(commandWhitelistService).validateCommand("cd /opt/nslb && ls");
     }
 
+    /**
+     * Tests execute no matching cluster type no prefix no vars.
+     */
     @Test
-    public void testExecute_noMatchingClusterType_noPrefixNoVars() {
+    public void testExecute_noMatchingClusterType_noPrefixNoVars() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -338,8 +386,11 @@ public class RemoteExecutionServiceTest {
         assertNotNull(result);
     }
 
+    /**
+     * Tests execute cluster service throws handled gracefully.
+     */
     @Test
-    public void testExecute_clusterServiceThrows_handledGracefully() {
+    public void testExecute_clusterServiceThrows_handledGracefully() throws Exception {
         Map<String, Object> host = new LinkedHashMap<>();
         host.put("name", "Host");
         host.put("ip", "10.0.0.1");
@@ -350,8 +401,7 @@ public class RemoteExecutionServiceTest {
         host.put("clusterId", "cluster-1");
         when(hostService.getHostWithCredential("host-1")).thenReturn(host);
 
-        when(clusterService.getCluster("cluster-1"))
-                .thenThrow(new IllegalArgumentException("Cluster not found"));
+        when(clusterService.getCluster("cluster-1")).thenThrow(new NotFoundException("Cluster not found"));
 
         // Command should still work without prefix/vars
         when(commandWhitelistService.validateCommand("ls")).thenReturn(List.of());

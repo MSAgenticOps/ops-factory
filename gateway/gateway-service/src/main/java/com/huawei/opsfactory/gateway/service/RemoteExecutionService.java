@@ -1,37 +1,71 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ */
+
 package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
+import com.huawei.opsfactory.gateway.exception.NotFoundException;
+
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
+/**
+ * Executes remote commands on hosts via SSH with command-prefix resolution, variable substitution, and whitelist
+ * validation.
+ *
+ * @author x00000000
+ * @since 2026-05-09
+ */
 @Service
+/**
+ * Remote Execution Service.
+ *
+ * @author x00000000
+ * @since 2026-05-27
+ */
 public class RemoteExecutionService {
-
     private static final Logger log = LoggerFactory.getLogger(RemoteExecutionService.class);
 
     private final HostService hostService;
+
     private final CommandWhitelistService commandWhitelistService;
+
     private final GatewayProperties properties;
+
     private final ClusterService clusterService;
+
     private final ClusterTypeService clusterTypeService;
 
-    public RemoteExecutionService(HostService hostService,
-                                  CommandWhitelistService commandWhitelistService,
-                                  GatewayProperties properties,
-                                  ClusterService clusterService,
-                                  ClusterTypeService clusterTypeService) {
+    /**
+     * Creates the remote execution service instance.
+     *
+     * @param hostService service for resolving host credentials
+     * @param commandWhitelistService service for validating commands against the whitelist
+     * @param properties gateway configuration properties
+     * @param clusterService service for resolving cluster data
+     * @param clusterTypeService service for resolving cluster type command prefixes
+     */
+    public RemoteExecutionService(HostService hostService, CommandWhitelistService commandWhitelistService,
+        GatewayProperties properties, ClusterService clusterService, ClusterTypeService clusterTypeService) {
         this.hostService = hostService;
         this.commandWhitelistService = commandWhitelistService;
         this.properties = properties;
@@ -42,225 +76,371 @@ public class RemoteExecutionService {
     /**
      * Execute a remote command on the specified host via SSH.
      *
-     * @param hostId         the host ID to connect to
-     * @param command        the shell command to execute
+     * @param hostId the host ID to connect to
+     * @param command the shell command to execute
      * @param timeoutSeconds maximum execution time in seconds
      * @return result map with hostIp, username, hostName, exitCode, output, error, duration
      */
     public Map<String, Object> execute(String hostId, String command, int timeoutSeconds) {
-        // Step 1: Get host with decrypted credential
-        Map<String, Object> host;
-        try {
-            host = hostService.getHostWithCredential(hostId);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("hostId", hostId);
-            result.put("hostIp", "");
-            result.put("username", "");
-            result.put("hostName", "");
-            result.put("exitCode", -1);
-            result.put("output", "");
-            result.put("error", "Host not found: " + hostId);
-            result.put("duration", 0L);
-            return result;
+        HostConnection connection = resolveExecutionContext(hostId);
+        if (connection == null) {
+            return buildResult(new ExecutionContext(hostId, "", "", ""), -1, "", "Host not found: " + hostId, 0L);
         }
 
-        String hostName = (String) host.getOrDefault("name", "");
-        String hostname = (String) host.get("ip");
-        int port = host.get("port") instanceof Number n ? n.intValue() : 22;
-        String username = (String) host.get("username");
-        String authType = (String) host.get("authType");
-        String credential = (String) host.get("credential");
-
-        // Step 2: Resolve ClusterType from Host -> Cluster -> ClusterType
-        String commandPrefix = "";
-        Map<String, String> envVars = new LinkedHashMap<>();
-        Object clusterIdObj = host.get("clusterId");
-        if (clusterIdObj != null) {
-            try {
-                Map<String, Object> cluster = clusterService.getCluster(clusterIdObj.toString());
-                String typeName = cluster != null ? (String) cluster.get("type") : null;
-                if (typeName != null) {
-                    List<Map<String, Object>> allTypes = clusterTypeService.listClusterTypes();
-                    for (Map<String, Object> ct : allTypes) {
-                        if (typeName.equals(ct.get("name"))) {
-                            Object prefix = ct.get("commandPrefix");
-                            if (prefix != null && !prefix.toString().isBlank()) {
-                                commandPrefix = prefix.toString().trim();
-                            }
-                            Object vars = ct.get("envVariables");
-                            if (vars instanceof List<?> list) {
-                                for (Object item : list) {
-                                    if (item instanceof Map<?, ?> m) {
-                                        String k = m.get("key") != null ? m.get("key").toString() : null;
-                                        String v = m.get("value") != null ? m.get("value").toString() : "";
-                                        if (k != null && !k.isEmpty()) envVars.put(k, v);
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("Could not resolve cluster type for host {}: {}", hostId, e.getMessage());
-            }
+        CommandResolution cmdResolution = resolveEffectiveCommand(connection.context, hostId, command, connection.host);
+        if (cmdResolution.result != null) {
+            return cmdResolution.result;
         }
 
-        // Step 2a: Replace ${VAR} and $VAR placeholders (sorted longest key first to avoid partial matches)
-        String effectiveCommand = command;
-        List<String> sortedKeys = new ArrayList<>(envVars.keySet());
-        sortedKeys.sort((a, b) -> b.length() - a.length());
-        for (String key : sortedKeys) {
-            String value = envVars.get(key);
-            effectiveCommand = effectiveCommand.replace("${" + key + "}", value);
-            // Also replace $VAR when not followed by a valid identifier char
-            effectiveCommand = effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key) + "(?![A-Za-z0-9_])",
-                    java.util.regex.Matcher.quoteReplacement(value));
-        }
-
-        // Step 2b: Validate resolved command against whitelist
-        List<String> rejected = commandWhitelistService.validateCommand(effectiveCommand);
-        if (!rejected.isEmpty()) {
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("hostId", hostId);
-            result.put("hostIp", hostname);
-            result.put("username", username);
-            result.put("hostName", hostName);
-            result.put("exitCode", -1);
-            result.put("output", "");
-            result.put("error", "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected));
-            result.put("rejectedCommands", rejected);
-            result.put("duration", 0L);
-            return result;
-        }
-
-        // Step 2c: Apply command prefix
-        // Wrap in bash -c so the prefix applies to the entire command chain (&&, ||, ;)
-        if (!commandPrefix.isEmpty()) {
-            effectiveCommand = commandPrefix + " bash -c " + singleQuote(effectiveCommand);
-        }
-
-        // Step 3: Execute via SSH
         Session session = null;
         ChannelExec channel = null;
         long startTime = System.currentTimeMillis();
 
         try {
             JSch jsch = new JSch();
-            session = jsch.getSession(username, hostname, port);
-
-            if ("key".equals(authType)) {
-                jsch.addIdentity("remote-exec", credential.getBytes(StandardCharsets.UTF_8),
-                        null, null);
-            } else {
-                session.setPassword(credential);
-            }
-
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect(5000);
-
-            channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("bash -l -c " + singleQuote(effectiveCommand));
-
-            InputStream in = channel.getInputStream();
-            InputStream err = channel.getExtInputStream();
-
-            ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
-            ByteArrayOutputStream errorBuffer = new ByteArrayOutputStream();
-
-            channel.connect();
-
-            // Read streams with timeout
-            long deadline = System.currentTimeMillis() + (long) timeoutSeconds * 1000;
-            byte[] buf = new byte[4096];
-
-            while (true) {
-                if (channel.isClosed()) {
-                    // Read any remaining data
-                    while (in.available() > 0) {
-                        int len = in.read(buf);
-                        if (len > 0) {
-                            outputBuffer.write(buf, 0, len);
-                        }
-                    }
-                    while (err.available() > 0) {
-                        int len = err.read(buf);
-                        if (len > 0) {
-                            errorBuffer.write(buf, 0, len);
-                        }
-                    }
-                    break;
-                }
-
-                while (in.available() > 0) {
-                    int len = in.read(buf);
-                    if (len > 0) {
-                        outputBuffer.write(buf, 0, len);
-                    }
-                }
-                while (err.available() > 0) {
-                    int len = err.read(buf);
-                    if (len > 0) {
-                        errorBuffer.write(buf, 0, len);
-                    }
-                }
-
-                if (System.currentTimeMillis() > deadline) {
-                    log.warn("Command execution timed out after {} seconds for host {}", timeoutSeconds, hostId);
-                    channel.sendSignal("KILL");
-                    break;
-                }
-
-                Thread.sleep(50);
-            }
-
-            int exitCode = channel.getExitStatus();
-            long duration = System.currentTimeMillis() - startTime;
-
-            String output = outputBuffer.toString(StandardCharsets.UTF_8);
-            String errorOutput = errorBuffer.toString(StandardCharsets.UTF_8);
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("hostId", hostId);
-            result.put("hostIp", hostname);
-            result.put("username", username);
-            result.put("hostName", hostName);
-            result.put("command", command);
-            result.put("effectiveCommand", effectiveCommand);
-            result.put("exitCode", exitCode);
-            result.put("output", output);
-            result.put("error", errorOutput);
-            result.put("duration", duration);
-            return result;
-
-        } catch (Exception e) {
+            session = openSshSession(jsch, connection.host);
+            channel = openExecChannel(session, cmdResolution.effectiveCommand);
+            ExecutionCaptureRequest captureRequest = new ExecutionCaptureRequest(connection.context, hostId, command,
+                cmdResolution.effectiveCommand, timeoutSeconds, startTime);
+            return executeAndCapture(channel, captureRequest);
+        } catch (JSchException | IOException e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("SSH execution failed for host {}: {}", hostId, e.getMessage());
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("hostId", hostId);
-            result.put("hostIp", hostname);
-            result.put("username", username);
-            result.put("hostName", hostName);
-            result.put("exitCode", -1);
-            result.put("output", "");
-            result.put("error", "SSH execution failed: " + e.getMessage());
-            result.put("duration", duration);
-            return result;
+            return buildResult(connection.context, -1, "", "SSH execution failed: " + e.getMessage(), duration);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long duration = System.currentTimeMillis() - startTime;
+            log.warn("SSH execution interrupted for host {}", hostId);
+            return buildResult(connection.context, -1, "", "SSH execution interrupted", duration);
         } finally {
-            if (channel != null) {
-                try {
-                    channel.disconnect();
-                } catch (Exception ignored) {
+            disconnectQuietly(channel, session);
+        }
+    }
+
+    private HostConnection resolveExecutionContext(String hostId) {
+        Map<String, Object> host = resolveHost(hostId);
+        if (host == null) {
+            return null;
+        }
+        String hostName = (String) host.getOrDefault("name", "");
+        String hostname = (String) host.get("ip");
+        String username = (String) host.get("username");
+        return new HostConnection(host, new ExecutionContext(hostId, hostname, username, hostName));
+    }
+
+    private CommandResolution resolveEffectiveCommand(ExecutionContext ctx, String hostId, String command,
+        Map<String, Object> host) {
+        EnvResolution envResolution = resolveClusterEnv(hostId, host);
+        return buildEffectiveCommand(ctx, command, envResolution.commandPrefix, envResolution.envVars);
+    }
+
+    private Session openSshSession(JSch jsch, Map<String, Object> host) throws JSchException {
+        String hostname = (String) host.get("ip");
+        int port = host.get("port") instanceof Number n ? n.intValue() : 22;
+        String username = (String) host.get("username");
+        String authType = (String) host.get("authType");
+        String credential = (String) host.get("credential");
+        Session session = jsch.getSession(username, hostname, port);
+        configureAuthentication(jsch, session, authType, credential);
+        configureSshSecurity(jsch, session);
+        session.connect(5000);
+        return session;
+    }
+
+    private void configureSshSecurity(JSch jsch, Session session) throws JSchException {
+        boolean strictHostKeyChecking = properties.getRemoteExecution().isStrictHostKeyChecking();
+        if (strictHostKeyChecking) {
+            Path knownHosts = Path.of(System.getProperty("user.home"), ".ssh", "known_hosts");
+            if (Files.isRegularFile(knownHosts)) {
+                jsch.setKnownHosts(knownHosts.toString());
+            } else {
+                log.warn("SSH known_hosts file not found at {}; remote execution will reject unknown host keys",
+                    knownHosts);
+            }
+        }
+
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", strictHostKeyChecking ? "yes" : "no");
+        config.put("cipher.s2c", "aes128-ctr,aes192-ctr,aes256-ctr");
+        config.put("cipher.c2s", "aes128-ctr,aes192-ctr,aes256-ctr");
+        config.put("mac.s2c", "hmac-sha2-256");
+        config.put("mac.c2s", "hmac-sha2-256");
+        config.put("compression.s2c", "none");
+        config.put("compression.c2s", "none");
+        session.setConfig(config);
+    }
+
+    private void configureAuthentication(JSch jsch, Session session, String authType, String credential)
+        throws JSchException {
+        if ("key".equals(authType)) {
+            jsch.addIdentity("remote-exec", credential.getBytes(StandardCharsets.UTF_8), null, null);
+            return;
+        }
+        session.setPassword(credential);
+    }
+
+    private ChannelExec openExecChannel(Session session, String effectiveCommand) throws JSchException {
+        ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        channel.setCommand("bash -l -c " + singleQuote(effectiveCommand));
+        return channel;
+    }
+
+    private Map<String, Object> executeAndCapture(ChannelExec channel, ExecutionCaptureRequest request)
+        throws IOException, InterruptedException, JSchException {
+        try (InputStream in = channel.getInputStream(); InputStream err = channel.getExtInputStream()) {
+            ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
+            ByteArrayOutputStream errorBuffer = new ByteArrayOutputStream();
+            channel.connect();
+            readStreamsUntilDone(channel, in, err, outputBuffer, errorBuffer, request.timeoutSeconds(),
+                request.hostId());
+            return buildExecutionResult(request.context(), channel, outputBuffer, errorBuffer, request.command(),
+                request.effectiveCommand(), System.currentTimeMillis() - request.startTime());
+        }
+    }
+
+    private Map<String, Object> buildExecutionResult(ExecutionContext ctx, ChannelExec channel,
+        ByteArrayOutputStream outputBuffer, ByteArrayOutputStream errorBuffer, String command, String effectiveCommand,
+        long duration) {
+        Map<String, Object> result = buildResult(ctx, channel.getExitStatus(), outputBuffer.toString(StandardCharsets.UTF_8),
+            errorBuffer.toString(StandardCharsets.UTF_8), duration);
+        result.put("command", command);
+        result.put("effectiveCommand", effectiveCommand);
+        return result;
+    }
+
+    private void disconnectQuietly(ChannelExec channel, Session session) {
+        if (channel != null) {
+            channel.disconnect();
+        }
+        if (session != null) {
+            session.disconnect();
+        }
+    }
+
+    /**
+     * Resolves host information by ID. Returns the host map, or null if the host cannot be found.
+     */
+    private Map<String, Object> resolveHost(String hostId) {
+        try {
+            return hostService.getHostWithCredential(hostId);
+        } catch (NotFoundException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Resolves command prefix and environment variables from the cluster type associated with the host's cluster.
+     */
+    private EnvResolution resolveClusterEnv(String hostId, Map<String, Object> host) {
+        String commandPrefix = "";
+        Map<String, String> envVars = new LinkedHashMap<>();
+        Object clusterIdObj = host.get("clusterId");
+        if (clusterIdObj == null) {
+            return new EnvResolution(commandPrefix, envVars);
+        }
+        try {
+            Map<String, Object> cluster = clusterService.getCluster(clusterIdObj.toString());
+            String typeName = cluster != null ? (String) cluster.get("type") : null;
+            if (typeName == null) {
+                return new EnvResolution(commandPrefix, envVars);
+            }
+            List<Map<String, Object>> allTypes = clusterTypeService.listClusterTypes();
+            for (Map<String, Object> ct : allTypes) {
+                if (typeName.equals(ct.get("name"))) {
+                    Object prefix = ct.get("commandPrefix");
+                    if (prefix != null && !prefix.toString().isBlank()) {
+                        commandPrefix = prefix.toString().trim();
+                    }
+                    Object vars = ct.get("envVariables");
+                    if (vars instanceof List<?> list) {
+                        for (Object item : list) {
+                            if (item instanceof Map<?, ?> m) {
+                                String k = m.get("key") != null ? m.get("key").toString() : null;
+                                String v = m.get("value") != null ? m.get("value").toString() : "";
+                                if (k != null && !k.isEmpty()) {
+                                    envVars.put(k, v);
+                                }
+                            }
+                        }
+                    }
+                    break;
                 }
             }
-            if (session != null) {
-                try {
-                    session.disconnect();
-                } catch (Exception ignored) {
-                }
+        } catch (NotFoundException e) {
+            log.debug("Could not resolve cluster type for host {}: {}", hostId, e.getMessage());
+        }
+        return new EnvResolution(commandPrefix, envVars);
+    }
+
+    /**
+     * Builds the effective command by applying variable substitution, whitelist validation, and command prefix.
+     * Returns a CommandResolution where result is non-null if validation failed (caller should return immediately),
+     * or effectiveCommand is set when the command is ready to execute.
+     */
+    private CommandResolution buildEffectiveCommand(ExecutionContext ctx, String command, String commandPrefix,
+        Map<String, String> envVars) {
+        // Replace ${VAR} and $VAR placeholders (sorted longest key first to avoid partial matches)
+        String effectiveCommand = command;
+        List<String> sortedKeys = new ArrayList<>(envVars.keySet());
+        sortedKeys.sort((a, b) -> b.length() - a.length());
+        for (String key : sortedKeys) {
+            String value = envVars.get(key);
+            effectiveCommand = effectiveCommand.replace("${" + key + "}", value);
+            effectiveCommand =
+                effectiveCommand.replaceAll("\\$" + java.util.regex.Pattern.quote(key) + "(?![A-Za-z0-9_])",
+                    java.util.regex.Matcher.quoteReplacement(value));
+        }
+
+        // Validate resolved command against whitelist
+        List<String> rejected = commandWhitelistService.validateCommand(effectiveCommand);
+        if (!rejected.isEmpty()) {
+            Map<String,
+                Object> result = buildResult(ctx, -1, "",
+                    "Command rejected: the following commands are not in the whitelist: " + String.join(", ", rejected),
+                    0L);
+            result.put("rejectedCommands", rejected);
+            return new CommandResolution(null, result);
+        }
+
+        // Apply command prefix
+        // Wrap in bash -c so the prefix applies to the entire command chain (&&, ||, ;)
+        if (!commandPrefix.isEmpty()) {
+            effectiveCommand = commandPrefix + " bash -c " + singleQuote(effectiveCommand);
+        }
+
+        return new CommandResolution(effectiveCommand, null);
+    }
+
+    /**
+     * Reads stdout and stderr streams from an SSH channel until the channel closes or the timeout expires.
+     */
+    private void readStreamsUntilDone(ChannelExec channel, InputStream in, InputStream err,
+        ByteArrayOutputStream outputBuffer, ByteArrayOutputStream errorBuffer, int timeoutSeconds, String hostId)
+        throws IOException, InterruptedException {
+        long deadline = System.currentTimeMillis() + (long) timeoutSeconds * 1000;
+        byte[] buf = new byte[4096];
+
+        while (true) {
+            if (channel.isClosed()) {
+                drainStream(in, outputBuffer, buf);
+                drainStream(err, errorBuffer, buf);
+                break;
             }
+
+            drainStream(in, outputBuffer, buf);
+            drainStream(err, errorBuffer, buf);
+
+            if (System.currentTimeMillis() > deadline) {
+                log.warn("Command execution timed out after {} seconds for host {}", timeoutSeconds, hostId);
+                channel.disconnect();
+                break;
+            }
+
+            Thread.sleep(50);
+        }
+    }
+
+    /**
+     * Drains all available bytes from an InputStream into a ByteArrayOutputStream.
+     */
+    private void drainStream(InputStream stream, ByteArrayOutputStream buffer, byte[] buf) throws IOException {
+        while (stream.available() > 0) {
+            int len = stream.read(buf);
+            if (len > 0) {
+                buffer.write(buf, 0, len);
+            }
+        }
+    }
+
+    /**
+     * Builds a standard result map for remote execution responses.
+     */
+    private Map<String, Object> buildResult(ExecutionContext ctx, int exitCode, String output, String error,
+        long duration) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("hostId", ctx.hostId);
+        result.put("hostIp", ctx.hostname);
+        result.put("username", ctx.username);
+        result.put("hostName", ctx.hostName);
+        result.put("exitCode", exitCode);
+        result.put("output", output);
+        result.put("error", error);
+        result.put("duration", duration);
+        return result;
+    }
+
+    /**
+     * Holds resolved command prefix and environment variables from cluster type lookup.
+     */
+    private static class EnvResolution {
+        final String commandPrefix;
+
+        final Map<String, String> envVars;
+
+        EnvResolution(String commandPrefix, Map<String, String> envVars) {
+            this.commandPrefix = commandPrefix;
+            this.envVars = envVars;
+        }
+    }
+
+    /**
+     * Holds the result of effective-command building. Exactly one of effectiveCommand or result is non-null:
+     * effectiveCommand is set on success; result is set when validation fails (caller should return immediately).
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
+    private static class CommandResolution {
+        final String effectiveCommand;
+
+        final Map<String, Object> result;
+
+        CommandResolution(String effectiveCommand, Map<String, Object> result) {
+            this.effectiveCommand = effectiveCommand;
+            this.result = result;
+        }
+    }
+
+    /**
+     * Encapsulates host identity fields shared across remote execution result building.
+     *
+     * @author x00000000
+     * @since 2026-05-27
+     */
+    private static final class ExecutionContext {
+        final String hostId;
+
+        final String hostname;
+
+        final String username;
+
+        final String hostName;
+
+        ExecutionContext(String hostId, String hostname, String username, String hostName) {
+            this.hostId = hostId;
+            this.hostname = hostname;
+            this.username = username;
+            this.hostName = hostName;
+        }
+    }
+
+    private record ExecutionCaptureRequest(
+        ExecutionContext context,
+        String hostId,
+        String command,
+        String effectiveCommand,
+        int timeoutSeconds,
+        long startTime) {
+    }
+
+    private static final class HostConnection {
+        final Map<String, Object> host;
+
+        final ExecutionContext context;
+
+        HostConnection(Map<String, Object> host, ExecutionContext context) {
+            this.host = host;
+            this.context = context;
         }
     }
 
