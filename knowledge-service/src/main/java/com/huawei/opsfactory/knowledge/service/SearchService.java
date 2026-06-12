@@ -6,14 +6,15 @@ package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.ChunkRepository;
-import java.util.ArrayList;
+
+import org.springframework.stereotype.Service;
+
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
 
 /**
  * The SearchService.

@@ -14,7 +14,6 @@ import com.huawei.opsfactory.knowledge.common.error.ApiConflictException;
 import com.huawei.opsfactory.knowledge.common.logging.LoggingKeys;
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.common.util.Ids;
-import com.huawei.opsfactory.knowledge.common.util.Jsons;
 import com.huawei.opsfactory.knowledge.config.KnowledgeLoggingProperties;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.BindingRepository;
@@ -24,6 +23,17 @@ import com.huawei.opsfactory.knowledge.repository.JobRepository;
 import com.huawei.opsfactory.knowledge.repository.MaintenanceJobFailureRepository;
 import com.huawei.opsfactory.knowledge.repository.ProfileRepository;
 import com.huawei.opsfactory.knowledge.repository.SourceRepository;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -39,15 +49,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Facade service for knowledge management, coordinating sources, documents,

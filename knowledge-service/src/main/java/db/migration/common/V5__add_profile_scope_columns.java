@@ -4,8 +4,9 @@
 
 package db.migration.common;
 
-import java.sql.Connection;
 import org.flywaydb.core.api.migration.Context;
+
+import java.sql.Connection;
 
 /**
  * The V5__add_profile_scope_columns.

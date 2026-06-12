@@ -4,16 +4,19 @@
 
 package com.huawei.opsfactory.knowledge.repository;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.opsfactory.knowledge.common.util.Jsons;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
 
 /**
  * The ChunkRepository.

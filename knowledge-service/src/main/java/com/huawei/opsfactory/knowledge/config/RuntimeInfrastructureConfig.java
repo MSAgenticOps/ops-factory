@@ -6,12 +6,9 @@ package com.huawei.opsfactory.knowledge.config;
 
 import com.huawei.opsfactory.knowledge.common.logging.MdcTaskDecorator;
 import com.huawei.opsfactory.knowledge.infrastructure.db.DatabaseDialect;
+
 import com.zaxxer.hikari.HikariDataSource;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Locale;
-import javax.sql.DataSource;
+
 import org.springframework.boot.autoconfigure.flyway.FlywayConfigurationCustomizer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +16,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+
+import javax.sql.DataSource;
 
 /**
  * The RuntimeInfrastructureConfig.

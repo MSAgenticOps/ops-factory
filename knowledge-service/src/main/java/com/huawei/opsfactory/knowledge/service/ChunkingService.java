@@ -7,9 +7,11 @@ package com.huawei.opsfactory.knowledge.service;
 import com.huawei.opsfactory.knowledge.common.util.KeywordExtractor;
 import com.huawei.opsfactory.knowledge.common.util.TokenEstimator;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
+
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.stereotype.Service;
 
 /**
  * The ChunkingService.

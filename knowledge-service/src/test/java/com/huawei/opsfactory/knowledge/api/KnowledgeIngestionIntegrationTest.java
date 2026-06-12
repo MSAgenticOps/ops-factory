@@ -6,21 +6,22 @@ package com.huawei.opsfactory.knowledge.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-
 import com.fasterxml.jackson.databind.JsonNode;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.List;
 
 class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSupport {
 
@@ -57,13 +58,13 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
         assertThat(htmlDetail.path("status").asText()).isEqualTo("INDEXED");
         assertThat(htmlDetail.path("indexStatus").asText()).isEqualTo("INDEXED");
 
-        String htmlMarkdown = mockMvc.perform(get("/api/knowledge/documents/{documentId}/artifacts/markdown", htmlDocumentId))
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-        assertThat(htmlMarkdown)
-            .contains("# SLA违约归因分析报告")
+        String htmlMarkdown =
+            mockMvc.perform(get("/api/knowledge/documents/{documentId}/artifacts/markdown", htmlDocumentId))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(htmlMarkdown).contains("# SLA违约归因分析报告")
             .contains("SLA")
             .doesNotContain("<html")
             .doesNotContain("<style");
@@ -75,31 +76,27 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
             .getContentAsByteArray();
         assertThat(original).isNotEmpty();
 
-        JsonNode xlsxChunks = readJson(mockMvc.perform(get("/api/knowledge/documents/{documentId}/chunks", xlsxDocumentId))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode xlsxChunks =
+            readJson(mockMvc.perform(get("/api/knowledge/documents/{documentId}/chunks", xlsxDocumentId))
+                .andExpect(status().isOk())
+                .andReturn());
         assertThat(xlsxChunks.path("total").asInt()).isGreaterThan(1);
 
         String middleChunkId = xlsxChunks.path("items").get(1).path("id").asText();
-        JsonNode fetch = readJson(mockMvc.perform(get("/api/knowledge/fetch/{chunkId}", middleChunkId)
-                .param("includeNeighbors", "true")
-                .param("neighborWindow", "1"))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode fetch = readJson(
+            mockMvc.perform(get("/api/knowledge/fetch/{chunkId}", middleChunkId).param("includeNeighbors", "true")
+                .param("neighborWindow", "1")).andExpect(status().isOk()).andReturn());
         assertThat(fetch.path("text").asText()).isNotBlank();
         assertThat(fetch.path("neighbors").isArray()).isTrue();
 
-        JsonNode retrieval = readJson(mockMvc.perform(post("/api/knowledge/retrieve")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "query": "SLA",
-                      "sourceIds": ["%s"],
-                      "topK": 3
-                    }
-                    """.formatted(sourceId)))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode retrieval =
+            readJson(mockMvc.perform(post("/api/knowledge/retrieve").contentType(MediaType.APPLICATION_JSON).content("""
+                {
+                  "query": "SLA",
+                  "sourceIds": ["%s"],
+                  "topK": 3
+                }
+                """.formatted(sourceId))).andExpect(status().isOk()).andReturn());
         assertThat(retrieval.path("evidences").isArray()).isTrue();
         assertThat(retrieval.path("evidences")).isNotEmpty();
         assertThat(retrieval.path("evidences").get(0).path("content").asText()).containsIgnoringCase("SLA");
@@ -108,35 +105,33 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
     @Test
     void shouldRejectUnsupportedContentTypeWithBadRequest() throws Exception {
         String sourceId = createSource();
-        MockMultipartFile unsupportedFile = new MockMultipartFile(
-            "files", "malware.exe", "application/x-msdownload", "MZ fake exe content".getBytes(StandardCharsets.UTF_8)
-        );
+        MockMultipartFile unsupportedFile = new MockMultipartFile("files", "malware.exe", "application/x-msdownload",
+            "MZ fake exe content".getBytes(StandardCharsets.UTF_8));
 
-        mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId)
-                .file(unsupportedFile))
+        mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId).file(unsupportedFile))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("REQUEST_FAILED"))
-            .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Failed to ingest file malware.exe")));
+            .andExpect(
+                jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Failed to ingest file malware.exe")));
     }
 
     @Test
     void shouldDeduplicateIdenticalFileOnSecondUpload() throws Exception {
         String sourceId = createSource();
-        MockMultipartFile file = new MockMultipartFile(
-            "files", "repeat.md", "text/markdown", "# Repeat\n\nSame content".getBytes(StandardCharsets.UTF_8)
-        );
+        MockMultipartFile file = new MockMultipartFile("files", "repeat.md", "text/markdown",
+            "# Repeat\n\nSame content".getBytes(StandardCharsets.UTF_8));
 
-        JsonNode first = readJson(mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId)
-                .file(file))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode first = readJson(
+            mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId).file(file))
+                .andExpect(status().isOk())
+                .andReturn());
         assertThat(first.path("status").asText()).isEqualTo("SUCCEEDED");
         assertThat(first.path("documentCount").asInt()).isEqualTo(1);
 
-        JsonNode second = readJson(mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId)
-                .file(file))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode second = readJson(
+            mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId).file(file))
+                .andExpect(status().isOk())
+                .andReturn());
         assertThat(second.path("documentCount").asInt()).isEqualTo(0);
 
         JsonNode docs = listDocuments(sourceId);
@@ -146,29 +141,23 @@ class KnowledgeIngestionIntegrationTest extends KnowledgeApiIntegrationTestSuppo
     @Test
     void shouldPersistDetectedContentTypeWhenUploadUsesGenericMime() throws Exception {
         String sourceId = createSource();
-        MockMultipartFile file = new MockMultipartFile(
-            "files",
-            "guide.html",
-            "application/octet-stream",
-            """
+        MockMultipartFile file = new MockMultipartFile("files", "guide.html", "application/octet-stream", """
             <html>
               <body>
                 <h1>CHM import path smoke test</h1>
                 <p>Use detected content type instead of octet-stream.</p>
               </body>
             </html>
-            """.getBytes(StandardCharsets.UTF_8)
-        );
+            """.getBytes(StandardCharsets.UTF_8));
 
-        JsonNode ingest = readJson(mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId)
-                .file(file))
-            .andExpect(status().isOk())
-            .andReturn());
+        JsonNode ingest = readJson(
+            mockMvc.perform(multipart("/api/knowledge/sources/{sourceId}/documents:ingest", sourceId).file(file))
+                .andExpect(status().isOk())
+                .andReturn());
         assertThat(ingest.path("documentCount").asInt()).isEqualTo(1);
 
         JsonNode docs = listDocuments(sourceId);
         assertThat(docs.path("total").asInt()).isEqualTo(1);
-        assertThat(contentTypeByName(docs, "guide.html"))
-            .isEqualTo("text/html");
+        assertThat(contentTypeByName(docs, "guide.html")).isEqualTo("text/html");
     }
 }

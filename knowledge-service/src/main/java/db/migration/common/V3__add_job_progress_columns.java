@@ -4,8 +4,9 @@
 
 package db.migration.common;
 
-import java.sql.Connection;
 import org.flywaydb.core.api.migration.Context;
+
+import java.sql.Connection;
 
 /**
  * The V3__add_job_progress_columns.

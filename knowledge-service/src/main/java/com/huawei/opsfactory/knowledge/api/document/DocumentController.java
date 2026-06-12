@@ -6,9 +6,10 @@ package com.huawei.opsfactory.knowledge.api.document;
 
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
+
 import jakarta.validation.constraints.NotNull;
-import java.time.Instant;
-import java.util.List;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,14 +19,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import org.apache.servicecomb.provider.rest.common.RestSchema;
+import java.time.Instant;
+import java.util.List;
 
 /**
  * The DocumentController.

@@ -6,13 +6,15 @@ package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.repository.ProfileRepository;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 /**
  * The ProfileBootstrapService.

@@ -6,7 +6,6 @@ package com.huawei.opsfactory.gateway.service;
 
 import com.huawei.opsfactory.gateway.common.util.ValidationUtils;
 import com.huawei.opsfactory.gateway.config.GatewayProperties;
-import com.huawei.opsfactory.gateway.exception.BadRequestException;
 import com.huawei.opsfactory.gateway.exception.ConflictException;
 import com.huawei.opsfactory.gateway.exception.NotFoundException;
 

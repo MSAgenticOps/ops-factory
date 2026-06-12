@@ -5,11 +5,11 @@
 package com.huawei.opsfactory.knowledge.api.stats;
 
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import org.apache.servicecomb.provider.rest.common.RestSchema;
 
 /**
  * The StatsController.

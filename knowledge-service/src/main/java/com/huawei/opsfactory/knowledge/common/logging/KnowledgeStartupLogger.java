@@ -8,6 +8,7 @@ import com.huawei.opsfactory.knowledge.config.KnowledgeDatabaseProperties;
 import com.huawei.opsfactory.knowledge.config.KnowledgeLoggingProperties;
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
 import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;

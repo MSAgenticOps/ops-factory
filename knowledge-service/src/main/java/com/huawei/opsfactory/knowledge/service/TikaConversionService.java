@@ -4,14 +4,6 @@
 
 package com.huawei.opsfactory.knowledge.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.regex.Pattern;
 import org.apache.tika.Tika;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
@@ -27,6 +19,15 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.parser.Parser;
 import org.springframework.stereotype.Service;
 import org.xml.sax.SAXException;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * The TikaConversionService.

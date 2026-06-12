@@ -8,17 +8,16 @@ import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallC
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.service.CallChainSubgraphService;
 import com.huawei.opsfactory.operationintelligence.common.util.ControllerHelper;
 
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
-
-import org.apache.servicecomb.provider.rest.common.RestSchema;
 
 /**
  * REST API for generating and querying short-lived call chain entity subgraphs.

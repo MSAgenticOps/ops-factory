@@ -5,14 +5,16 @@
 package com.huawei.opsfactory.knowledge.service;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeRuntimeProperties;
+
+import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.stream.Stream;
-import org.springframework.stereotype.Component;
 
 /**
  * The StorageManager.

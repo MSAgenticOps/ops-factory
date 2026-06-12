@@ -6,8 +6,8 @@ package com.huawei.opsfactory.knowledge.api.profile;
 
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
-import java.time.Instant;
-import java.util.Map;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,7 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.apache.servicecomb.provider.rest.common.RestSchema;
+import java.time.Instant;
+import java.util.Map;
 
 /**
  * The ProfileController.

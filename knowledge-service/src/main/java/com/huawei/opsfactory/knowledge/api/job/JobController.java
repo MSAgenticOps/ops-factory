@@ -6,8 +6,8 @@ package com.huawei.opsfactory.knowledge.api.job;
 
 import com.huawei.opsfactory.knowledge.common.model.PageResponse;
 import com.huawei.opsfactory.knowledge.service.KnowledgeServiceFacade;
-import java.time.Instant;
-import java.util.List;
+
+import org.apache.servicecomb.provider.rest.common.RestSchema;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,7 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.apache.servicecomb.provider.rest.common.RestSchema;
+import java.time.Instant;
+import java.util.List;
 
 /**
  * The JobController.

@@ -4,6 +4,11 @@
 
 package com.huawei.opsfactory.knowledge.common.util;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -13,11 +18,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
  * The KeywordExtractor.

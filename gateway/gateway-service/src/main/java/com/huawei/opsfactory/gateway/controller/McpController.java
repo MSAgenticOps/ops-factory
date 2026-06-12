@@ -117,16 +117,13 @@ public class McpController {
         }
 
         if (!isUpdate && isDuplicateMcpName(mcpName, instance)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body("MCP '" + mcpName + "' already exists");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("MCP '" + mcpName + "' already exists");
         }
 
         String result = goosedProxy
             .fetchJson(instance.getPort(), HttpMethod.POST, "/config/extensions", body, 30, instance.getSecretKey())
             .block();
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(result);
+        return ResponseEntity.status(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body(result);
     }
 
     private String validateMcpName(JsonNode bodyNode) {
@@ -149,14 +146,12 @@ public class McpController {
 
     private boolean isUpdateOperation(JsonNode bodyNode) {
         JsonNode configNode = bodyNode.get("config");
-        return configNode != null && configNode.isObject()
-            && configNode.hasNonNull("bundled");
+        return configNode != null && configNode.isObject() && configNode.hasNonNull("bundled");
     }
 
     private boolean isDuplicateMcpName(String mcpName, ManagedInstance instance) {
         String existingJson = goosedProxy
-            .fetchJson(instance.getPort(), HttpMethod.GET, "/config/extensions", null, 30,
-                instance.getSecretKey())
+            .fetchJson(instance.getPort(), HttpMethod.GET, "/config/extensions", null, 30, instance.getSecretKey())
             .block();
         try {
             JsonNode root = OBJECT_MAPPER.readTree(existingJson);

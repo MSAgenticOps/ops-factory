@@ -6,9 +6,10 @@ package com.huawei.opsfactory.knowledge.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.Test;
+
 import java.lang.reflect.Method;
 import java.nio.file.Path;
-import org.junit.jupiter.api.Test;
 
 class TikaConversionServiceTest {
 
@@ -16,13 +17,13 @@ class TikaConversionServiceTest {
 
     @Test
     void shouldConvertHtmlInputIntoMarkdownInsteadOfReturningRawHtml() {
-        Path htmlFile = Path.of("src/test/resources/inputFiles/SLA_Violation_Analysis_Report_CN.html").toAbsolutePath().normalize();
+        Path htmlFile =
+            Path.of("src/test/resources/inputFiles/SLA_Violation_Analysis_Report_CN.html").toAbsolutePath().normalize();
 
         TikaConversionService.ConversionResult result = service.convert(htmlFile);
 
         assertThat(result.contentType()).startsWith("text/html");
-        assertThat(result.markdown())
-            .contains("# SLA违约归因分析报告")
+        assertThat(result.markdown()).contains("# SLA违约归因分析报告")
             .contains("## 执行摘要")
             .doesNotContain("<html")
             .doesNotContain("<style")
@@ -53,8 +54,7 @@ class TikaConversionServiceTest {
             </html>
             """);
 
-        assertThat(markdown)
-            .contains("# 执行安全加固")
+        assertThat(markdown).contains("# 执行安全加固")
             .contains("执行安全维护操作前，请确保产品已经实施了安全加固操作。")
             .contains("| 应用场景 | 手册名称 |")
             .doesNotContain("<h1>")
@@ -77,11 +77,7 @@ class TikaConversionServiceTest {
         assertThat(result.markdown()).isNotEmpty();
 
         // Verify content is extracted (text extraction works without jhighlight)
-        assertThat(result.text())
-            .contains("Sample")
-            .contains("getName")
-            .contains("setName")
-            .contains("public class");
+        assertThat(result.text()).contains("Sample").contains("getName").contains("setName").contains("public class");
 
         // Verify file type detection works
         assertThat(result.contentType()).contains("text");

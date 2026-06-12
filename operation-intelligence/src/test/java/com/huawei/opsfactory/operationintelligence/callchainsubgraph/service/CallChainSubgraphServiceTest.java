@@ -4,6 +4,14 @@
 
 package com.huawei.opsfactory.operationintelligence.callchainsubgraph.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphRequest;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.model.CallChainSubgraphResult;
 import com.huawei.opsfactory.operationintelligence.callchainsubgraph.service.CallChainResourceSubgraphService.MatchResult;
@@ -31,14 +39,6 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link CallChainSubgraphService}.
@@ -79,8 +79,7 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(any(QueryCallChainRequest.class)))
-            .thenReturn(createCallChainTree());
+        when(callChainService.queryCallChain(any(QueryCallChainRequest.class))).thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
             .thenReturn(ResourceSubgraphResult.empty());
 
@@ -101,23 +100,34 @@ class CallChainSubgraphServiceTest {
         assertEquals(2, result.getSummary().get("flowCount"));
         assertEquals(0L, result.getSummary().get("resourceEntityCount"));
         assertEquals(0L, result.getSummary().get("resourceRelationCount"));
-        assertTrue(result.getGraph().getRelations().stream().anyMatch(relation ->
-            relation.getType().equals("belongs_to_cluster") && relation.getTo().startsWith("cc-cluster-")));
-        GraphObservation avgCostObservation = result.getGraph().getObservations().stream()
+        assertTrue(result.getGraph()
+            .getRelations()
+            .stream()
+            .anyMatch(relation -> relation.getType().equals("belongs_to_cluster")
+                && relation.getTo().startsWith("cc-cluster-")));
+        GraphObservation avgCostObservation = result.getGraph()
+            .getObservations()
+            .stream()
             .filter(observation -> "avgCost".equals(observation.getName()))
             .findFirst()
             .orElseThrow();
         assertEquals(10L, avgCostObservation.getValue());
-        assertEquals(6L, result.getGraph().getObservations().stream()
-            .filter(observation -> "minCost".equals(observation.getName()))
-            .findFirst()
-            .orElseThrow()
-            .getValue());
-        assertEquals(15L, result.getGraph().getObservations().stream()
-            .filter(observation -> "maxCost".equals(observation.getName()))
-            .findFirst()
-            .orElseThrow()
-            .getValue());
+        assertEquals(6L,
+            result.getGraph()
+                .getObservations()
+                .stream()
+                .filter(observation -> "minCost".equals(observation.getName()))
+                .findFirst()
+                .orElseThrow()
+                .getValue());
+        assertEquals(15L,
+            result.getGraph()
+                .getObservations()
+                .stream()
+                .filter(observation -> "maxCost".equals(observation.getName()))
+                .findFirst()
+                .orElseThrow()
+                .getValue());
         assertEquals("CRM-001", service.get(result.getSubgraphId()).getSolutionId());
     }
 
@@ -128,8 +138,7 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphStore store = new CallChainSubgraphStore(properties);
         CallChainSubgraphService service =
             new CallChainSubgraphService(properties, callChainService, resourceSubgraphService, store);
-        when(callChainService.queryCallChain(any(QueryCallChainRequest.class)))
-            .thenReturn(createCallChainTree());
+        when(callChainService.queryCallChain(any(QueryCallChainRequest.class))).thenReturn(createCallChainTree());
         when(resourceSubgraphService.buildResourceSubgraph(eq("b2b-callchain-v1"), eq("prod"), anyList()))
             .thenReturn(createBhfResourceSubgraph());
 
@@ -142,10 +151,15 @@ class CallChainSubgraphServiceTest {
         CallChainSubgraphResult result = service.generate(request);
 
         assertTrue(result.getGraph().getEntities().stream().anyMatch(entity -> "app-bhf".equals(entity.getId())));
-        assertTrue(result.getGraph().getEntities().stream().noneMatch(entity ->
-            "cc-cluster-540d4035-e461-4c95-acb3-0f1f187c374d_603_bhf".equals(entity.getId())));
-        assertTrue(result.getGraph().getRelations().stream().anyMatch(relation ->
-            "app-bhf".equals(relation.getTo()) && "belongs_to_cluster".equals(relation.getType())));
+        assertTrue(result.getGraph()
+            .getEntities()
+            .stream()
+            .noneMatch(entity -> "cc-cluster-540d4035-e461-4c95-acb3-0f1f187c374d_603_bhf".equals(entity.getId())));
+        assertTrue(result.getGraph()
+            .getRelations()
+            .stream()
+            .anyMatch(
+                relation -> "app-bhf".equals(relation.getTo()) && "belongs_to_cluster".equals(relation.getType())));
     }
 
     private OperationIntelligenceProperties createProperties(Path tempRoot) {
@@ -168,9 +182,7 @@ class CallChainSubgraphServiceTest {
     private CallChainTree createCallChainTree() {
         CallChainTree tree = new CallChainTree();
         tree.setChainType("BES");
-        tree.setFlows(List.of(
-            createFlow("flow-1", 12L, 10L, 15L),
-            createFlow("flow-2", 8L, 6L, 14L)));
+        tree.setFlows(List.of(createFlow("flow-1", 12L, 10L, 15L), createFlow("flow-2", 8L, 6L, 14L)));
         tree.setTotalCount(2L);
         return tree;
     }
@@ -206,9 +218,8 @@ class CallChainSubgraphServiceTest {
         appBhf.setName("BHF");
         appBhf.setDisplayName("BHF");
         appBhf.setStatus("Normal");
-        appBhf.setProperties(java.util.Map.of(
-            "clusterId", "540d4035-e461-4c95-acb3-0f1f187c374d_603_BHF",
-            "clusterName", "BHF"));
+        appBhf.setProperties(
+            java.util.Map.of("clusterId", "540d4035-e461-4c95-acb3-0f1f187c374d_603_BHF", "clusterName", "BHF"));
 
         GraphSnapshot snapshot = new GraphSnapshot();
         snapshot.setOntologyId("b2b-callchain-v1");
@@ -221,10 +232,7 @@ class CallChainSubgraphServiceTest {
         snapshot.setObservations(List.of());
         snapshot.setMetadata(java.util.Map.of());
 
-        return new ResourceSubgraphResult(snapshot, new MatchResult(
-            java.util.Set.of("app-bhf"),
-            java.util.Set.of(),
-            java.util.Set.of("app-bhf"),
-            java.util.Set.of()));
+        return new ResourceSubgraphResult(snapshot, new MatchResult(java.util.Set.of("app-bhf"), java.util.Set.of(),
+            java.util.Set.of("app-bhf"), java.util.Set.of()));
     }
 }

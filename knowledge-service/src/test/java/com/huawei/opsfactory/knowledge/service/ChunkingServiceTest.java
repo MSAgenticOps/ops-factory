@@ -7,13 +7,16 @@ package com.huawei.opsfactory.knowledge.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.huawei.opsfactory.knowledge.config.KnowledgeProperties;
-import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 class ChunkingServiceTest {
 
     private KnowledgeProperties properties;
+
     private ChunkingService service;
 
     @BeforeEach
