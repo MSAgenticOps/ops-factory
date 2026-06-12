@@ -4,6 +4,7 @@
 
 package com.huawei.opsfactory.common.aop;
 
+import com.huawei.opsfactory.common.config.CommonProperties;
 import com.huawei.opsfactory.common.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.servicecomb.swagger.invocation.context.InvocationContext;
@@ -17,7 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.nio.charset.StandardCharsets;
 
@@ -32,10 +34,14 @@ import static org.mockito.Mockito.when;
  * @since 2026-06-06
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class BasicAuthAspectTest {
 
     @Mock
     private HttpServletRequest request;
+
+    @Mock
+    private CommonProperties commonProperties;
 
     @Mock
     private ProceedingJoinPoint proceedingJoinPoint;
@@ -47,14 +53,13 @@ class BasicAuthAspectTest {
     /**
      * Sets up test fixtures before each test.
      *
-     * @throws Throwable if setup fails
+     * @throws Throwable if an error occurs during test execution
      */
     @BeforeEach
     void setUp() throws Throwable {
-        aspect = new BasicAuthAspect(request);
-        // Set test configuration values
-        ReflectionTestUtils.setField(aspect, "configUserName", "testUser");
-        ReflectionTestUtils.setField(aspect, "configPassword", "testPass");
+        when(commonProperties.getUserName()).thenReturn("testUser");
+        when(commonProperties.getPassword()).thenReturn("testPass");
+        aspect = new BasicAuthAspect(request, commonProperties);
         contextUtilsMock = mockStatic(ContextUtils.class);
 
         // Configure proceedingJoinPoint mock
@@ -73,6 +78,8 @@ class BasicAuthAspectTest {
 
     /**
      * Test successful authentication via request header.
+     *
+     * @throws Throwable if an error occurs during test execution
      */
     @Test
     void testBasicAuthSuccessViaHeader() throws Throwable {
@@ -89,6 +96,8 @@ class BasicAuthAspectTest {
 
     /**
      * Test successful authentication via invocation context.
+     *
+     * @throws Throwable if an error occurs during test execution
      */
     @Test
     void testBasicAuthSuccessViaContext() throws Throwable {
@@ -109,6 +118,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with invalid credentials.
+     * AuthException is thrown when credentials are invalid.
      */
     @Test
     void testBasicAuthFailureInvalidCredentials() {
@@ -128,8 +138,8 @@ class BasicAuthAspectTest {
      */
     @Test
     void testBasicAuthFailureEmptyConfiguration() {
-        ReflectionTestUtils.setField(aspect, "configUserName", "");
-        ReflectionTestUtils.setField(aspect, "configPassword", "testPass");
+        when(commonProperties.getUserName()).thenReturn("");
+        when(commonProperties.getPassword()).thenReturn("testPass");
 
         String credentials = "testUser:testPass";
         String base64Credentials = java.util.Base64.getEncoder().encodeToString(
@@ -143,6 +153,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with malformed Base64.
+     * AuthException is thrown when Base64 decoding fails.
      */
     @Test
     void testBasicAuthFailureMalformedBase64() {
@@ -153,6 +164,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with malformed credentials format.
+     * AuthException is thrown when credentials format is invalid.
      */
     @Test
     void testBasicAuthFailureMalformedCredentials() {
@@ -165,6 +177,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with missing Authorization header.
+     * AuthException is thrown when Authorization header is missing.
      */
     @Test
     void testBasicAuthFailureMissingAuthorization() {
@@ -176,6 +189,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication failure with empty Authorization header.
+     * AuthException is thrown when Authorization header is empty.
      */
     @Test
     void testBasicAuthFailureEmptyAuthorization() {
@@ -187,6 +201,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication with wrong username.
+     * AuthException is thrown when username is incorrect.
      */
     @Test
     void testBasicAuthFailureWrongUsername() {
@@ -200,6 +215,7 @@ class BasicAuthAspectTest {
 
     /**
      * Test authentication with wrong password.
+     * AuthException is thrown when password is incorrect.
      */
     @Test
     void testBasicAuthFailureWrongPassword() {
